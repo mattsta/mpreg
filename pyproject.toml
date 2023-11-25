@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "mpreg"
+version = "0.1.0"
+description = "Matt’s Protocol for Results Everywhere Guaranteed"
+authors = ["Matt Stancliff <matt@genges.com>"]
+license = "Apache-2.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">3.10"
+fastapi = "^0.103.1"
+orjson = "^3.9.7"
+websockets = "^12.0"
+loguru = "^0.7.2"
+ulid-py = "^1.1.0"
+jsonargparse = "^4.24.1"
+
+[tool.poetry.scripts]
+mpreg-server = "mpreg.server:cmd"
+mpreg-client = "mpreg.client:cmd"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
