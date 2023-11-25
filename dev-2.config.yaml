@@ -1,0 +1,10 @@
+host: 127.0.0.1
+port: 6676
+name: "ATTACHED SERVER"
+resources:
+- model-a
+- model-b
+- model-c
+peers: null
+funs: null
+connect: "ws://127.0.01:7773/"
