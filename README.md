@@ -1,4 +1,4 @@
-# mpreeg: Matt’s Protocol for Results Everywhere Guaranteed
+# mpreg: Matt’s Protocol for Results Everywhere Guaranteed
 
 Do you need results? Everywhere? Guaranteed? Then you need MPREG!
 
