@@ -2,6 +2,8 @@
 
 Do you need results? Everywhere? Guaranteed? Then you need MPREG!
 
+Status: This is/was a demo proof of concept for a network-enabled multi-function-call dependency resolver with custom function topologies on every request. It is missing many features to make it more usable, but I still haven't found anything else equivalent. A similar system is the nice https://github.com/pipefunc/pipefunc but it is designed around running local things or running in "big cluster mode" so it doesn't meet the "gossip cluster group hierarchy low latency late-binding dependency resolution" ideas I was exploring here.
+
 ## What is it?
 
 `mpreg` allows you to define a distributed cluster multi-call function topology across multiple processes or servers so you can run your requests against one cluster endpoint and automatically receive results from your data anywhere in the cluster.
@@ -46,7 +48,7 @@ await self.request(
 
 and it returns the `first` RPC returned value as the parameter to the `second` name:
 
-```
+```python
 {"second": "hi there!"}
 ```
 
@@ -91,6 +93,8 @@ returns:
 ```json
 {"|third": ["hi there!", "hi there!", "AND ME TOO"]}
 ```
+
+Note how here it returns only `|third` because `third` contains _both_ `|first` _and_ `|second` (so all return values have been resolved in the final result).
 
 #### 4-returns-1 using multiple replacements
 
