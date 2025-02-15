@@ -169,7 +169,7 @@ To register your own clients with custom datasets, the logic is currently manual
 - each server is configured on startup with a config file describing:
   - an input of RESOURCES (set[str]) to advertise to the mesh/hive/cluster
     - note: you can also have servers with no RESOURCES which can act as load balancers
-    - any server with NO RESOURCES is labeled BALANCER while other with RESOURCES are SERVERS
+    - any server with NO RESOURCES is labeled BALANCER while others with RESOURCES are SERVERS
   - an input of NAME for reporting to the Mesh/Hive/Cluster (MHC)
   - peers: a list of peer contact locations for joining yourself to the MHC
 
