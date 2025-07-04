@@ -40,6 +40,12 @@ This document maintains a high-level log of architectural changes and significan
 
 **Reasoning:** The previous connection handling was basic and lacked mechanisms for automatically recovering from transient network failures. By integrating exponential backoff into the `Connection` class, we ensure that the system can gracefully handle temporary disconnections and automatically attempt to re-establish connections with increasing delays. This significantly improves the stability and fault-tolerance of the MPREG cluster, reducing manual intervention and enhancing overall system availability.
 
+### `feat: Implement basic server discovery`
+
+**Purpose:** To enable servers to announce their capabilities upon connection, laying the groundwork for dynamic service discovery within the cluster.
+
+**Reasoning:** The initial architecture relied on static peer lists, which limited scalability and resilience. By introducing a basic server discovery mechanism, where servers send a HELLO message with their functions and resources upon connecting to a peer, we move towards a more decentralized and self-organizing cluster. This is a foundational step for implementing a full gossip protocol, allowing the cluster to dynamically discover and manage available services.
+
 ### `refactor: Clear server and client roles`
 
 **Purpose:** To clearly separate the responsibilities of the MPREGServer into distinct server (listening) and client (connecting to peers) roles.
