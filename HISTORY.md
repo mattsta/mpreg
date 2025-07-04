@@ -44,6 +44,18 @@ This document maintains a high-level log of architectural changes and significan
 
 **Purpose:** To enhance the flexibility and expressiveness of RPC calls by allowing the use of keyword arguments.
 
+**Reasoning:** Previously, RPC commands only supported positional arguments, which could lead to less readable and more maintainable code, especially for functions with many parameters. By extending the `RPCCommand` model to include a `kwargs` field, we enable developers to use named arguments, improving code clarity and making RPC interfaces more self-documenting. This change aligns with modern Python practices and enhances the overall usability and extensibility of the MPREG system.
+
+### `feat: Implement request timeouts`
+
+**Purpose:** To prevent RPC client requests from blocking indefinitely, improving the robustness and predictability of the system.
+
+**Reasoning:** Without timeouts, a client request could hang indefinitely if the server is unresponsive or a network issue occurs, leading to a poor user experience and potential resource exhaustion. By adding an optional `timeout` parameter to the client's `request` method and enforcing it with `asyncio.wait_for`, we ensure that requests either complete within a specified duration or fail gracefully. This makes the client more resilient to network and server issues, providing a more reliable and responsive system.
+
+### `feat: Add keyword argument support to RPC commands`
+
+**Purpose:** To enhance the flexibility and expressiveness of RPC calls by allowing the use of keyword arguments.
+
 **Reasoning:** Previously, RPC commands only supported positional arguments, which could lead to less readable and maintainable code, especially for functions with many parameters. By extending the `RPCCommand` model to include a `kwargs` field, we enable developers to use named arguments, improving code clarity and making RPC interfaces more self-documenting. This change aligns with modern Python practices and enhances the overall usability and extensibility of the MPREG system.
 
 ### `feat: Implement basic gossip protocol`
