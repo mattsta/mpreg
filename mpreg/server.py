@@ -20,6 +20,7 @@ from loguru import logger
 
 from .model import RPCCommand, RPCRequest, RPCInternalRequest, RPCInternalAnswer, RPCServerRequest, RPCServerHello, RPCResponse
 from .registry import Command, CommandRegistry
+from .config import MPREGSettings
 
 
 ############################################
@@ -374,31 +375,15 @@ class Cluster:
 ############################################
 @dataclass
 class MPREGServer:
-    # name of server
-    name: str = "NO NAME PROVIDED"
+    """Main MPREG server application class."""
 
-    # where server will listen for connections
-    # TODO: could refactor into list[Endpoint] to allow multiple binding
-    host: str = "127.0.0.1"
-    port: int = 6666
-
-    # a file in RESOURCE SCHEMA FORMAT describing resource keys for this server
-    # (e.g. dataset-A, printer-C, NFS-mount-D)
-    resources: set[str, ...] | None = None
-
-    # a file in PEER SCHEMA FORMAT describing static peers to initially connect to
-    # (additional peers can be discovered via gossip with these local peers)
-    peers: list[str] | None = None
-
-    # mappings in the form of {"rpc-name": callable-when-rpc-requested, ...}
-    # basically the thing clients call
-    # will run for clients: self.funs[rpcName](*args, **kwargs)
-    funs: Mapping[str, Callable[..., Any]] | None = None
-
-    # if a string, we use it as the URI of another server to connect to on startup
-    connect: str | None = None
+    settings: MPREGSettings = Field(default_factory=MPREGSettings, description="Server configuration settings.")
 
     def __post_init__(self) -> None:
+        """Initializes the MPREGServer instance.
+
+        Sets up the cluster, command registry, and client tracking.
+        """
         self.cluster = Cluster()
         self.registry = CommandRegistry()
         self.clients = set()
@@ -406,8 +391,8 @@ class MPREGServer:
     def report(self):
         """General report of current server state."""
 
-        logger.info("Resources: {}", pp.pformat(self.resources))
-        logger.info("Funs: {}", pp.pformat(self.funs))
+        logger.info("Resources: {}", pp.pformat(self.settings.resources))
+        logger.info("Funs: {}", pp.pformat(self.settings.funs))
         logger.info("Clients: {}", pp.pformat(self.clients))
 
     def run_server(
@@ -550,23 +535,30 @@ class MPREGServer:
         self.cluster.add_fun_ability("self", name, resources)
 
     async def server(self) -> None:
-        logger.info("[{}:{}] [{}] Launching server...", self.host, self.port, self.name)
+        """Starts the MPREG server and handles incoming and outgoing connections.
 
-        # Register OURSELF with the global echo target...
+        This method sets up the websocket server, registers default commands,
+        and manages connections to other peers if specified in the settings.
+        """
+        logger.info("[{}:{}] [{}] Launching server...", self.settings.host, self.settings.port, self.settings.name)
+
+        # Register OURSELF with the global echo target.
+        # The resources for these default commands are empty, meaning they are available globally.
         self.register_command("echo", echo, [])
         self.register_command("echos", echos, [])
 
         async with websockets.server.serve(
             self.opened,
-            self.host,
-            self.port,
+            self.settings.host,
+            self.settings.port,
             max_size=None,
             max_queue=None,
             read_limit=MPREG_DATA_MAX,
             write_limit=MPREG_DATA_MAX,
         ):
-            # if no external connection requested to another server, run an infinte wait here
-            if not self.connect:
+            # If no external connection is requested, run an infinite wait here
+            # to keep the server alive.
+            if not self.settings.connect:
                 await asyncio.Future()
                 return
 
@@ -574,7 +566,7 @@ class MPREGServer:
             # TODO: we should technically also be a client of MULTIPLE upstreams...
             # connect to another server requested, so do it now and announce our services upstream.
             async for websocket in websockets.connect(
-                self.connect,
+                self.settings.connect,
                 user_agent_header=None,
                 # 'open_timeout=1' means there's a 1 second delay between reconnect attempts
                 open_timeout=1,
@@ -658,4 +650,13 @@ def cmd():
 
     import jsonargparse
 
-    jsonargparse.CLI(MPREGServer)
+    # Load settings using Pydantic-settings. This will automatically read from
+    # environment variables or a .env file if present.
+    settings = MPREGSettings()
+
+    # Create an MPREGServer instance with the loaded settings.
+    server_instance = MPREGServer(settings=settings)
+
+    # Use jsonargparse to allow command-line overriding of settings.
+    # This integrates with Pydantic-settings to provide a robust configuration system.
+    jsonargparse.CLI(server_instance, as_dict=False)
