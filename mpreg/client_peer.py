@@ -5,9 +5,10 @@ from typing import Any, Callable, Optional
 import ulid
 import websockets.client
 from loguru import logger
+import time
 
 from .connection import Connection
-from .model import RPCServerRequest, RPCServerHello, RPCInternalRequest, RPCInternalAnswer
+from .model import RPCServerRequest, RPCServerHello, RPCInternalRequest, RPCInternalAnswer, GossipMessage, PeerInfo
 from .serialization import JsonSerializer
 from .registry import CommandRegistry
 
@@ -21,9 +22,10 @@ class MPREGClient:
     serializer: JsonSerializer
     local_funs: Tuple[str, ...]
     local_resources: FrozenSet[str]
-    gossip_interval: float = field(default=5.0, description="Interval in seconds for sending gossip messages.")
     cluster_id: str = Field(description="The ID of the cluster this client belongs to.")
     local_advertised_urls: Tuple[str, ...] = Field(default_factory=tuple, description="URLs that this client's server advertises.")
+    cluster_peers_info: dict = Field(description="Reference to the cluster's peers_info for gossip.")
+    gossip_interval: float = field(default=5.0, description="Interval in seconds for sending gossip messages.")
     # TODO: This should be a list of connections to multiple peers.
     peer_connection: Optional[Connection] = field(default=None, init=False)
     _gossip_task: Optional[asyncio.Task] = field(default=None, init=False)
@@ -130,22 +132,15 @@ class MPREGClient:
         """Periodically sends gossip messages to the connected peer."""
         while True:
             try:
-                # Create a GossipMessage with information about known peers.
-                # For now, we'll just send our own info as a single peer.
+                # Create a GossipMessage with information about all known healthy peers.
+                # This propagates the cluster state to the connected peer.
                 gossip_message = GossipMessage(
-                    peers=(PeerInfo(
-                        url=self.url,
-                        funs=self.local_funs,
-                        locs=self.local_resources,
-                        last_seen=time.time(),
-                        cluster_id=self.cluster_id,
-                        advertised_urls=self.local_advertised_urls
-                    ),),
+                    peers=tuple(self.cluster_peers_info.values()),
                     u=str(ulid.new()),
                     cluster_id=self.cluster_id
                 )
                 await self.peer_connection.send(self.serializer.serialize(gossip_message.model_dump()))
-                logger.info("[{}] Sent gossip message.", self.url)
+                logger.info("[{}] Sent gossip message with {} peers.", self.url, len(gossip_message.peers))
             except Exception as e:
                 logger.error("[{}] Error sending gossip message: {}", self.url, e)
             await asyncio.sleep(self.gossip_interval)

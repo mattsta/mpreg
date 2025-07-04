@@ -179,6 +179,7 @@ class Cluster:
     # Information about known peers in the cluster, for gossip protocol.
     # Key: peer URL, Value: PeerInfo object.
     peers_info: dict[str, PeerInfo] = field(default_factory=dict)
+    dead_peer_timeout: float = field(default=30.0, description="Timeout in seconds after which a peer is considered dead.")
 
     def __post_init__(self) -> None:
         self.waitingFor = dict()
@@ -257,9 +258,26 @@ class Cluster:
         the received information is more recent.
         """
         for peer_info in gossip_message.peers:
+            # Only process if the cluster_id matches
+            if peer_info.cluster_id != self.settings.cluster_id:
+                logger.warning("Received gossip from different cluster ID: Expected {}, Got {}",
+                               self.settings.cluster_id, peer_info.cluster_id)
+                continue
+
             if peer_info.url not in self.peers_info or \
                peer_info.last_seen > self.peers_info[peer_info.url].last_seen:
                 logger.info("Updating peer info for {}: {}", peer_info.url, peer_info)
+                self.peers_info[peer_info.url] = peer_info
+
+        # Prune dead peers: remove peers not updated recently
+        current_time = time.time()
+        peers_to_remove = [
+            url for url, info in self.peers_info.items()
+            if current_time - info.last_seen > self.dead_peer_timeout
+        ]
+        for url in peers_to_remove:
+            logger.info("Removing stale peer: {}", url)
+            del self.peers_info[url]
                 self.peers_info[peer_info.url] = peer_info
 
     def server_for(self, fun: str, locs: frozenset[str]) -> Optional[Connection]:
@@ -462,7 +480,8 @@ class MPREGServer:
                 local_funs=tuple(self.registry._commands.keys()),
                 local_resources=frozenset(self.settings.resources or []),
                 cluster_id=self.settings.cluster_id,
-                local_advertised_urls=tuple(self.settings.advertised_urls or [f"ws://{self.settings.host}:{self.settings.port}"])
+                local_advertised_urls=tuple(self.settings.advertised_urls or [f"ws://{self.settings.host}:{self.settings.port}"]),
+                cluster_peers_info=self.cluster.peers_info
             )
 
     def report(self):
