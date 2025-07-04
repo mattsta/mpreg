@@ -1,7 +1,7 @@
-from typing import Any, Tuple, FrozenSet, Literal, Union, Optional
+from dataclasses import dataclass, field
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
-from dataclasses import field, dataclass
 
 
 class RPCCommand(BaseModel):
@@ -47,8 +47,12 @@ class RPCInternalRequest(BaseModel):
 
     role: Literal["internal-rpc"] = "internal-rpc"
     command: str = Field(description="The name of the command to execute.")
-    args: Tuple[Any, ...] = Field(description="Positional arguments for the function call.")
-    kwargs: dict[str, Any] = Field(default_factory=dict, description="Keyword arguments for the function call.")
+    args: tuple[Any, ...] = Field(
+        description="Positional arguments for the function call."
+    )
+    kwargs: dict[str, Any] = Field(
+        default_factory=dict, description="Keyword arguments for the function call."
+    )
     results: dict = Field(description="Intermediate results from previous RPC steps.")
     u: str = Field(description="A unique identifier for this internal request.")
 
@@ -98,7 +102,7 @@ class RPCServerStatus(BaseModel):
     what: Literal["STATUS"] = "STATUS"
 
 
-RPCServerMessage = Union[RPCServerHello, RPCServerGoodbye, RPCServerStatus]
+type RPCServerMessage = RPCServerHello | RPCServerGoodbye | RPCServerStatus
 
 
 class PeerInfo(BaseModel):
@@ -150,13 +154,14 @@ class RPCError(BaseModel):
     )
 
 
-
 class RPCResponse(BaseModel):
     """
     Represents a generic RPC response.
     """
 
-    r: Any = Field(default=None, description="The result of the RPC call, if successful.")
+    r: Any = Field(
+        default=None, description="The result of the RPC call, if successful."
+    )
     error: RPCError | None = Field(
         default=None, description="Structured error information, if the RPC failed."
     )
@@ -165,17 +170,23 @@ class RPCResponse(BaseModel):
     )
 
 
-RPCMessage = Union[
-    RPCRequest,
-    RPCInternalRequest,
-    RPCInternalAnswer,
-    RPCServerRequest,
-    GossipMessage,
-    RPCResponse,
-]
+type RPCMessage = (
+    RPCRequest
+    | RPCInternalRequest
+    | RPCInternalAnswer
+    | RPCServerRequest
+    | GossipMessage
+    | RPCResponse
+)
+
 
 class MPREGException(Exception):
-    rpc_error: RPCError = field(default_factory=lambda: RPCError(code=-1, message="Unknown / Unset Error Condition"))
+    rpc_error: RPCError = field(
+        default_factory=lambda: RPCError(
+            code=-1, message="Unknown / Unset Error Condition"
+        )
+    )
+
 
 @dataclass
 class CommandNotFoundException(MPREGException):
@@ -188,4 +199,3 @@ class CommandNotFoundException(MPREGException):
     code: Literal[1001] = 1001
     message: Literal["Command not found"] = "Command not found"
     details: str | None = None
-

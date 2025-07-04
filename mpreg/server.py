@@ -8,7 +8,7 @@ from collections import defaultdict
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from graphlib import TopologicalSorter
-from typing import Any, Optional, Tuple, FrozenSet, Literal, Union
+from typing import Any
 
 import ulid
 import websockets.client
@@ -19,18 +19,17 @@ from .client_peer import MPREGClient
 from .config import MPREGSettings
 from .connection import Connection
 from .model import (
+    CommandNotFoundException,
     GossipMessage,
     PeerInfo,
     RPCCommand,
+    RPCError,
     RPCInternalAnswer,
     RPCInternalRequest,
     RPCRequest,
     RPCResponse,
-    RPCServerRequest,
     RPCServerMessage,
-    MPREGException,
-    RPCError,
-    CommandNotFoundException,
+    RPCServerRequest,
 )
 from .registry import Command, CommandRegistry
 from .serialization import JsonSerializer
@@ -43,14 +42,13 @@ from .serialization import JsonSerializer
 
 # Use more efficient coroutine logic if available
 # https://docs.python.org/3.12/library/asyncio-task.html#asyncio.eager_task_factory
-if sys.version_info >= (3, 12):
-    asyncio.get_event_loop().set_task_factory(asyncio.eager_task_factory)
+asyncio.get_event_loop().set_task_factory(asyncio.eager_task_factory)
 
 # maximum 4 GB messages should be enough for anybody, right?
 MPREG_DATA_MAX = 2**32
 
 
-def rpc_command(name: str, resources: Optional[Iterable[str]] = None) -> Callable:
+def rpc_command(name: str, resources: Iterable[str] | None = None) -> Callable:
     """Decorator to register a function as an RPC command.
 
     Args:
@@ -64,11 +62,16 @@ def rpc_command(name: str, resources: Optional[Iterable[str]] = None) -> Callabl
     def decorator(func: Callable) -> Callable:
         # This is a placeholder. The actual registration will happen when the MPREGServer is initialized.
         # We store the metadata on the function itself.
-        setattr(func, '_rpc_command_name', name)
-        setattr(func, '_rpc_command_resources', frozenset(resources) if resources is not None else frozenset())
+        setattr(func, "_rpc_command_name", name)
+        setattr(
+            func,
+            "_rpc_command_resources",
+            frozenset(resources) if resources is not None else frozenset(),
+        )
         return func
 
     return decorator
+
 
 ############################################
 #
@@ -142,7 +145,6 @@ class RPC:
 ############################################
 
 
-
 ############################################
 #
 # Cluster Representation and Servers Management
@@ -168,14 +170,12 @@ class Cluster:
     registry: CommandRegistry = field(init=False)
     serializer: JsonSerializer = field(init=False)
 
-
     def __post_init__(self) -> None:
         self.waitingFor: dict[str, asyncio.Event] = dict()
         self.answer: dict[str, Any] = dict()
         # These will be set by MPREGServer
         # self.registry = CommandRegistry()
         # self.serializer = JsonSerializer()
-
 
     def add_fun_ability(self, peer_info: PeerInfo):
         """Add a new function and resource(s) to a server mapping.
@@ -196,7 +196,7 @@ class Cluster:
         # iterate everything and remove matching server from all sets
         for fun, resources in self.funtimes.items():
             for locations, servers in resources.items():
-                servers.discard(server.url) # Changed to server.url
+                servers.discard(server.url)  # Changed to server.url
 
         self.servers.discard(server.url)
 
@@ -230,7 +230,7 @@ class Cluster:
             case "STATUS":
                 ...
                 return RPCResponse(r="STATUS", u=str(ulid.new()))
-            case _:\
+            case _:
                 assert None
 
     def process_gossip_message(self, gossip_message: GossipMessage):
@@ -268,8 +268,9 @@ class Cluster:
             logger.info("Removing stale peer: {}", url)
             del self.peers_info[url]
 
-
-    def server_for(self, fun: str, locs: frozenset[str]) -> Optional[str]: # Changed return type
+    def server_for(
+        self, fun: str, locs: frozenset[str]
+    ) -> str | None:  # Changed return type
         """Finds a suitable server for a given function and location.
 
         Args:
@@ -325,7 +326,9 @@ class Cluster:
         del self.waitingFor[rid]
 
     async def _execute_local_command(
-        self, rpc_command: RPCCommand, results: dict[str, Any] # Added type hint
+        self,
+        rpc_command: RPCCommand,
+        results: dict[str, Any],  # Added type hint
     ) -> Any:
         """Executes a command locally using the command registry.
 
@@ -336,7 +339,7 @@ class Cluster:
         Returns:
             The result of the local command execution.
         """
-        return self.registry.get(rpc_command.fun)( # Access registry via self.registry
+        return self.registry.get(rpc_command.fun)(  # Access registry via self.registry
             *rpc_command.args, **rpc_command.kwargs
         )
 
@@ -357,7 +360,7 @@ class Cluster:
             ConnectionError: If the connection to the remote server is not open.
         """
         localrid = str(ulid.new())
-        body = self.serializer.serialize( # Access serializer via self.serializer
+        body = self.serializer.serialize(  # Access serializer via self.serializer
             RPCInternalRequest(
                 command=rpc_step.fun,
                 args=rpc_step.args,
@@ -379,7 +382,9 @@ class Cluster:
             # This is a form of self-healing for the cluster.
             new_where = self.server_for(rpc_step.fun, rpc_step.locs)
             if new_where:
-                return await self._execute_remote_command(rpc_step, results, Connection(url=new_where)) # Changed new_where to where
+                return await self._execute_remote_command(
+                    rpc_step, results, Connection(url=new_where)
+                )  # Changed new_where to where
             else:
                 raise ConnectionError(
                     f"No alternative server found for: {rpc_step.fun} at {rpc_step.locs}"
@@ -401,7 +406,9 @@ class Cluster:
           - Reply to client.
         """
 
-        async def runner(rpc_command: RPCCommand, results: dict[str, Any]) -> dict[str, Any]:
+        async def runner(
+            rpc_command: RPCCommand, results: dict[str, Any]
+        ) -> dict[str, Any]:
             """Executes a single RPC command, either locally or remotely.
 
             Args:
@@ -419,14 +426,16 @@ class Cluster:
             if where == "self":
                 got = await self._execute_local_command(rpc_command, results)
             else:
-                got = await self._execute_remote_command(rpc_command, results, Connection(url=where)) # Wrap string in Connection
+                got = await self._execute_remote_command(
+                    rpc_command, results, Connection(url=where)
+                )  # Wrap string in Connection
 
             results[rpc_command.name] = got
-            
+
             # TODO: this should return a STABLE DATACLASS OBJECT and not just a generic dict
             return {rpc_command.name: got}
 
-        results: dict[str, Any] = {} # Added type hint
+        results: dict[str, Any] = {}  # Added type hint
         # logger.info("rpc is: {}", rpc)
         for level in rpc.tasks():
             # Note: EVERYTHING in the current level is parallelizable!
@@ -458,8 +467,9 @@ class Cluster:
 class MPREGServer:
     """Main MPREG server application class."""
 
-    settings: MPREGSettings = field( # Changed from Field to field
-        default_factory=MPREGSettings, metadata={"description": "Server configuration settings."}
+    settings: MPREGSettings = field(  # Changed from Field to field
+        default_factory=MPREGSettings,
+        metadata={"description": "Server configuration settings."},
     )
 
     def __post_init__(self) -> None:
@@ -467,15 +477,15 @@ class MPREGServer:
 
         Sets up the cluster, command registry, and client tracking.
         """
-        self.registry = CommandRegistry() # Moved registry initialization here
-        self.serializer = JsonSerializer() # Moved serializer initialization here
+        self.registry = CommandRegistry()  # Moved registry initialization here
+        self.serializer = JsonSerializer()  # Moved serializer initialization here
         self.cluster = Cluster(
             cluster_id=self.settings.cluster_id,
             advertised_urls=tuple(self.settings.advertised_urls or []),
         )
         self.cluster.registry = self.registry
         self.cluster.serializer = self.serializer
-        self.clients: set[Connection] = set() # Added type hint
+        self.clients: set[Connection] = set()  # Added type hint
         self.peer_clients: dict[str, MPREGClient] = {}
 
         # Register default commands and any commands decorated with @rpc_command
@@ -549,7 +559,7 @@ class MPREGServer:
                     # A server is sending a status update (e.g., for gossip protocol).\
                     # TODO: Implement actual status processing.
                     return RPCResponse(r="STATUS", u=req.u)
-                case _:\
+                case _:
                     # Handle unknown server message types.
                     return RPCResponse(
                         r=None,
@@ -615,11 +625,13 @@ class MPREGServer:
             async for msg in websocket:
                 # Attempt to parse the incoming message into a Pydantic model.
                 # This provides automatic validation and type conversion.
-                parsed_msg = self.serializer.deserialize(msg.encode('utf-8') if isinstance(msg, str) else msg)
+                parsed_msg = self.serializer.deserialize(
+                    msg.encode("utf-8") if isinstance(msg, str) else msg
+                )
 
                 # logger.info("[{}:{}] Received: {}", websocket.host, websocket.port, parsed_msg)
 
-                response_model: Union[RPCResponse, RPCInternalAnswer, None] = None
+                response_model: RPCResponse | RPCInternalAnswer | None = None
                 match parsed_msg.get("role"):
                     case "server":
                         # SERVER-TO-SERVER communications packet
@@ -640,7 +652,7 @@ class MPREGServer:
                             logger.warning(
                                 "[{}:{}] Received HELLO from different cluster ID: Expected {}, Got {}",
                                 *websocket.remote_address,
-                                self.cluster.cluster_id, # Changed to self.cluster.cluster_id
+                                self.cluster.cluster_id,  # Changed to self.cluster.cluster_id
                                 server_request.server.cluster_id,
                             )
                             # Close connection or return an error response
@@ -702,7 +714,7 @@ class MPREGServer:
                             logger.warning(
                                 "[{}:{}] Received gossip from different cluster ID: Expected {}, Got {}",
                                 *websocket.remote_address,
-                                self.cluster.cluster_id, # Changed to self.cluster.cluster_id
+                                self.cluster.cluster_id,  # Changed to self.cluster.cluster_id
                                 gossip_message.cluster_id,
                             )
                             continue  # Ignore gossip from different cluster
@@ -710,7 +722,7 @@ class MPREGServer:
                         # Gossip messages do not typically require a direct response.
                         continue
 
-                    case _:\
+                    case _:
                         # Handle unknown message roles.
                         logger.error(
                             "[{}:{}] Invalid RPC request role: {}",
@@ -721,7 +733,7 @@ class MPREGServer:
                             r=None,
                             error=RPCError(
                                 code=1004,
-                                message=f"Invalid RPC request role: {parsed_msg.get('role')}"
+                                message=f"Invalid RPC request role: {parsed_msg.get('role')}",
                             ),
                             u=parsed_msg.get("u", "unknown"),
                         )
@@ -749,7 +761,11 @@ class MPREGServer:
             peer_url: The URL of the peer to connect to.
         """
         peer_client = self.peer_clients.get(peer_url)
-        if peer_client and peer_client.peer_connection and peer_client.peer_connection.is_connected:
+        if (
+            peer_client
+            and peer_client.peer_connection
+            and peer_client.peer_connection.is_connected
+        ):
             logger.info(
                 "[{}] Already connected to peer: {}", self.settings.name, peer_url
             )
@@ -768,7 +784,7 @@ class MPREGServer:
                 local_funs=tuple(self.registry._commands.keys()),
                 local_resources=frozenset(self.settings.resources or []),
                 cluster_id=self.settings.cluster_id,
-                local_advertised_urls=tuple( # Changed to tuple
+                local_advertised_urls=tuple(  # Changed to tuple
                     self.settings.advertised_urls
                     or [f"ws://{self.settings.host}:{self.settings.port}"]
                 ),
@@ -810,9 +826,7 @@ class MPREGServer:
                         )
 
             # Periodically check for new peers.
-            await asyncio.sleep(
-                self.settings.gossip_interval
-            )
+            await asyncio.sleep(self.settings.gossip_interval)
 
     def register_command(
         self, name: str, func: Callable[..., Any], resources: Iterable[str]
@@ -831,10 +845,12 @@ class MPREGServer:
             locs=frozenset(resources),
             last_seen=time.time(),
             cluster_id=self.settings.cluster_id,
-            advertised_urls=tuple(self.settings.advertised_urls or [f"ws://{self.settings.host}:{self.settings.port}"]),
+            advertised_urls=tuple(
+                self.settings.advertised_urls
+                or [f"ws://{self.settings.host}:{self.settings.port}"]
+            ),
         )
         self.cluster.add_fun_ability(peer_info)
-
 
     async def server(self) -> None:
         """Starts the MPREG server and handles incoming and outgoing connections.
@@ -851,8 +867,8 @@ class MPREGServer:
 
         # Register OURSELF with the global echo target.
         # The resources for these default commands are empty, meaning they are available globally.
-        self._register_default_commands() # Call _register_default_commands here
-        self._discover_and_register_rpc_commands() # Call _discover_and_register_rpc_commands here
+        self._register_default_commands()  # Call _register_default_commands here
+        self._discover_and_register_rpc_commands()  # Call _discover_and_register_rpc_commands here
 
         # Start a background task to manage peer connections based on gossip.
         self._peer_connection_manager_task = asyncio.create_task(

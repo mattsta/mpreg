@@ -1,17 +1,22 @@
 import asyncio
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional, Tuple, FrozenSet
 
 import ulid
 import websockets.client
 from loguru import logger
-import time
 from pydantic import Field
 
 from .connection import Connection
-from .model import RPCServerRequest, RPCServerHello, RPCInternalRequest, RPCInternalAnswer, GossipMessage, PeerInfo
-from .serialization import JsonSerializer
+from .model import (
+    GossipMessage,
+    PeerInfo,
+    RPCInternalAnswer,
+    RPCInternalRequest,
+    RPCServerHello,
+    RPCServerRequest,
+)
 from .registry import CommandRegistry
+from .serialization import JsonSerializer
 
 
 @dataclass
@@ -21,15 +26,22 @@ class MPREGClient:
     url: str
     registry: CommandRegistry
     serializer: JsonSerializer
-    local_funs: Tuple[str, ...]
-    local_resources: FrozenSet[str]
+    local_funs: tuple[str, ...]
+    local_resources: frozenset[str]
     cluster_id: str = Field(description="The ID of the cluster this client belongs to.")
-    local_advertised_urls: tuple[str, ...] = Field(default_factory=tuple, description="URLs that this client's server advertises.")
-    cluster_peers_info: dict[str, PeerInfo] = Field(description="Reference to the cluster's peers_info for gossip.")
-    gossip_interval: float = field(default=5.0, metadata={"description": "Interval in seconds for sending gossip messages."})
+    local_advertised_urls: tuple[str, ...] = Field(
+        default_factory=tuple, description="URLs that this client's server advertises."
+    )
+    cluster_peers_info: dict[str, PeerInfo] = Field(
+        description="Reference to the cluster's peers_info for gossip."
+    )
+    gossip_interval: float = field(
+        default=5.0,
+        metadata={"description": "Interval in seconds for sending gossip messages."},
+    )
     # TODO: This should be a list of connections to multiple peers.
-    peer_connection: Optional[Connection] = field(default=None, init=False)
-    _gossip_task: Optional[asyncio.Task] = field(default=None, init=False)
+    peer_connection: Connection | None = field(default=None, init=False)
+    _gossip_task: asyncio.Task | None = field(default=None, init=False)
 
     async def connect(self) -> None:
         """Establishes a connection to the remote MPREG server and handles message exchange.

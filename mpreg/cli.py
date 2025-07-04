@@ -1,8 +1,8 @@
 import pprint as pp
+from typing import Any
 
 from jsonargparse import CLI
 from loguru import logger
-from typing import Any, Optional, FrozenSet, List, Tuple, Set
 
 from mpreg.client_api import MPREGClientAPI
 from mpreg.config import MPREGSettings
@@ -25,8 +25,8 @@ class MPREGCLI:
         self,
         fun: str,
         *args: Any,
-        locs: Optional[FrozenSet[str]] = None,
-        timeout: Optional[float] = None,
+        locs: frozenset[str] | None = None,
+        timeout: float | None = None,
         **kwargs: Any,
     ):
         """Calls an RPC function on the MPREG cluster.
@@ -60,11 +60,11 @@ class MPREGCLI:
         host: str = "127.0.0.1",
         port: int = 6666,
         name: str = "MPREG Server",
-        resources: Optional[Set[str]] = None,
-        peers: Optional[List[str]] = None,
-        connect: Optional[str] = None,
+        resources: set[str] | None = None,
+        peers: list[str] | None = None,
+        connect: str | None = None,
         cluster_id: str = "default-cluster",
-        advertised_urls: Optional[Tuple[str, ...]] = None,
+        advertised_urls: tuple[str, ...] | None = None,
     ):
         """Starts an MPREG server instance.
 

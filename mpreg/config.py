@@ -22,7 +22,7 @@ class MPREGSettings(BaseSettings):
     peers: list[str] | None = Field(
         None, description="A list of static peer URLs to initially connect to."
     )
-    
+
     connect: str | None = Field(
         None,
         description="The URL of another server to connect to on startup (for client role).",
@@ -35,4 +35,6 @@ class MPREGSettings(BaseSettings):
         None,
         description="List of URLs that this server advertises to other peers for inbound connections.",
     )
-    gossip_interval: float = Field(5.0, description="Interval in seconds for sending gossip messages.")
+    gossip_interval: float = Field(
+        5.0, description="Interval in seconds for sending gossip messages."
+    )

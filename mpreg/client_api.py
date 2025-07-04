@@ -3,7 +3,7 @@ from typing import Any
 from loguru import logger
 
 from .client import Client
-from .model import CommandNotFoundException, RPCCommand, MPREGException
+from .model import CommandNotFoundException, MPREGException, RPCCommand
 
 
 class MPREGClientAPI:
@@ -73,7 +73,9 @@ class MPREGClientAPI:
         except CommandNotFoundException as e:
             raise e
         except MPREGException as e:
-            logger.error("RPC Call Failed: {}: {}", e.rpc_error.code, e.rpc_error.message)
+            logger.error(
+                "RPC Call Failed: {}: {}", e.rpc_error.code, e.rpc_error.message
+            )
             raise e
         except Exception as e:
             logger.error("RPC Call Failed: {}", e)

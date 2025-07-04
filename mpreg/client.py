@@ -6,7 +6,6 @@ test a cluster with echo commands for the processing/resolution/connection logic
 
 import asyncio
 import pprint as pp
-import sys
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -15,14 +14,10 @@ import websockets
 import websockets.client
 from loguru import logger
 
-from .model import RPCCommand, RPCRequest, RPCResponse, MPREGException
+from .model import MPREGException, RPCCommand, RPCRequest, RPCResponse
 from .serialization import JsonSerializer
 
-if sys.version_info >= (3, 12):
-    asyncio.get_event_loop().set_task_factory(asyncio.eager_task_factory)
-
-
-
+asyncio.get_event_loop().set_task_factory(asyncio.eager_task_factory)
 
 
 @dataclass
@@ -67,12 +62,20 @@ class Client:
         await self.websocket.send(send)
 
         try:
-            raw_response = await asyncio.wait_for(self.websocket.recv(), timeout=timeout)
-        except asyncio.TimeoutError:
+            raw_response = await asyncio.wait_for(
+                self.websocket.recv(), timeout=timeout
+            )
+        except TimeoutError:
             logger.error("[{}] Request timed out after {} seconds.", req.u, timeout)
             raise
 
-        response = RPCResponse.model_validate(self.serializer.deserialize(raw_response.encode('utf-8') if isinstance(raw_response, str) else raw_response))
+        response = RPCResponse.model_validate(
+            self.serializer.deserialize(
+                raw_response.encode("utf-8")
+                if isinstance(raw_response, str)
+                else raw_response
+            )
+        )
 
         if self.full_log:
             logger.info(
@@ -96,8 +99,6 @@ class Client:
         if self.websocket:
             await self.websocket.close()
             self.websocket = None
-
-    
 
 
 @logger.catch
