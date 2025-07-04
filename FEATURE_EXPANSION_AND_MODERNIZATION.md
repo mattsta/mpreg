@@ -96,9 +96,9 @@ The goal is to create a clear, well-documented, and intuitive system for definin
 
 The goal is to create a robust and flexible system for handling data, including RPC arguments, results, and server configurations.
 
--   [ ] **Unified Data Models:**
-    -   [ ] Define all network-transported data structures (e.g., `Request`, `Response`, `ServerHello`) as Pydantic models. This will provide automatic validation and serialization/deserialization, reducing boilerplate code and runtime errors.
-    -   [ ] Replace all manual `orjson.dumps` and `orjson.loads` calls with Pydantic's built-in methods (`.model_dump_json()` and `model_validate_json()`).
+-   [x] **Unified Data Models:**
+    -   [x] Define all network-transported data structures (e.g., `Request`, `Response`, `ServerHello`) as Pydantic models. This will provide automatic validation and serialization/deserialization, reducing boilerplate code and runtime errors.
+    -   [x] Replace all manual `orjson.dumps` and `orjson.loads` calls with Pydantic's built-in methods (`.model_dump_json()` and `model_validate_json()`).
 -   [ ] **Configuration as Code:**
     -   [ ] Implement `pydantic-settings` to manage server configuration. This will allow for type-safe configuration loaded from environment variables, `.env` files, or other sources, replacing the current `dev-*.config.yaml` files.
 -   [ ] **Flexible Serialization:**
