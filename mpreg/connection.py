@@ -11,8 +11,8 @@ class Connection:
     """Encapsulates a websocket connection to a remote peer."""
 
     url: str
-    max_retries: int = field(default=5, repr=False, description="Maximum number of reconnection attempts.")
-    base_delay: float = field(default=1.0, repr=False, description="Base delay in seconds for exponential backoff.")
+    max_retries: int = field(default=5, repr=False)
+    base_delay: float = field(default=1.0, repr=False)
     websocket: Optional[websockets.client.WebSocketClientProtocol] = field(default=None, init=False)
     _receive_queue: asyncio.Queue = field(default_factory=asyncio.Queue, init=False)
     _listener_task: Optional[asyncio.Task] = field(default=None, init=False)

@@ -23,7 +23,13 @@ class JsonSerializer(Serializer):
 
     def serialize(self, data: Any) -> bytes:
         """Serializes data to JSON bytes using orjson."""
-        return orjson.dumps(data)
+        # orjson can't serialize frozenset directly, convert to list
+        def default(obj):
+            if isinstance(obj, frozenset):
+                return list(obj)
+            raise TypeError
+
+        return orjson.dumps(data, default=default)
 
     def deserialize(self, data: bytes) -> Any:
         """Deserializes JSON bytes to data using orjson."""

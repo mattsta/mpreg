@@ -8,15 +8,17 @@ import asyncio
 import pprint as pp
 import sys
 
-from typing import Any
+from typing import Any, Optional
 
 import orjson
 import ulid
 import websockets
 import websockets.client
 from loguru import logger
+from dataclasses import dataclass, field
 
 from .model import RPCCommand, RPCRequest, RPCResponse, RPCError, CommandNotFoundError
+from .serialization import JsonSerializer
 
 if sys.version_info >= (3, 12):
     asyncio.get_event_loop().set_task_factory(asyncio.eager_task_factory)
@@ -34,6 +36,9 @@ class Client:
 
     # optionally disable big log printing to get more accurate timing measurements
     full_log: bool = True
+
+    websocket: Optional[websockets.client.WebSocketClientProtocol] = field(default=None, init=False)
+    serializer: JsonSerializer = field(default_factory=JsonSerializer, init=False)
 
     async def request(self, cmds: list[RPCCommand], timeout: Optional[float] = None) -> Any:
         """Sends an RPC request to the server and waits for a response.
