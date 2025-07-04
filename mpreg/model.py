@@ -14,6 +14,7 @@ class RPCCommand(BaseModel):
     name: str = Field(description="The name of the command to execute.")
     fun: str = Field(description="The name of the function to call on the target server.")
     args: Tuple[Any, ...] = Field(default_factory=tuple, description="Positional arguments for the function call.")
+    kwargs: dict[str, Any] = Field(default_factory=dict, description="Keyword arguments for the function call.")
     locs: FrozenSet[str] = Field(default_factory=frozenset, description="Resource locations where this command can be executed.")
 
 

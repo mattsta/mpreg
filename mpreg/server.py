@@ -315,9 +315,17 @@ class Cluster:
         # logger.info("Woke up!")
         del self.waitingFor[rid]
 
-    async def _execute_local_command(self, rpc_step: RPCStep, results: dict) -> Any:
-        """Executes a command locally using the command registry."""
-        return self.registry.get(rpc_step.command.fun)(*rpc_step.command.args)
+    async def _execute_local_command(self, rpc_command: RPCCommand, results: dict) -> Any:
+        """Executes a command locally using the command registry.
+
+        Args:
+            rpc_command: The RPCCommand to execute locally.
+            results: The current intermediate results of the RPC execution.
+
+        Returns:
+            The result of the local command execution.
+        """
+        return self.registry.get(rpc_command.fun)(*rpc_command.args, **rpc_command.kwargs)
 
     async def _execute_remote_command(self, rpc_step: RPCCommand, results: dict, where: Connection) -> Any:
         """Sends a command to a remote server and waits for the response.
@@ -338,6 +346,7 @@ class Cluster:
             RPCInternalRequest(
                 command=rpc_step.fun,
                 args=rpc_step.args,
+                kwargs=rpc_step.kwargs,
                 results=results,
                 u=localrid,
             ).model_dump()
@@ -575,10 +584,11 @@ class MPREGServer:
                         internal_rpc = RPCInternalRequest.model_validate(parsed_msg)
                         command = internal_rpc.command
                         args = internal_rpc.args
+                        kwargs = internal_rpc.kwargs
                         u = internal_rpc.u
 
                         # Generate RESULT PAYLOAD
-                        answer_payload = self.registry.get(command)(*args)
+                        answer_payload = self.registry.get(command)(*args, **kwargs)
                         response_model = RPCInternalAnswer(answer=answer_payload, u=u)
 
                         # logger.info("[{}] Generated answer: {}", u, answer_payload)

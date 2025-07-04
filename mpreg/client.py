@@ -69,14 +69,14 @@ class Client:
 
             # Test one simple echo command
             with Timer("Single Echo"):
-                await self.request([RPCCommand("first", "echo", ("hi there!",), frozenset())])
+                await self.request([RPCCommand("first", "echo", ("hi there!",), frozenset(), kwargs={"test": 1})])
 
             # Test echo command chaining its result to ANOTHER echo command
             with Timer("Double Echo"):
                 await self.request(
                     [
                         RPCCommand("first", "echo", ("hi there!",), frozenset()),
-                        RPCCommand("second", "echo", ("first",), frozenset()),
+                        RPCCommand("second", "echo", ("first",), frozenset(), kwargs={"test": 2}),
                     ]
                 )
 
@@ -89,7 +89,7 @@ class Client:
                     [
                         RPCCommand("|first", "echo", ("hi there!",), frozenset()),
                         RPCCommand("|second", "echo", ("|first",), frozenset()),
-                        RPCCommand("|third", "echos", ("|first", "AND ME TOO"), frozenset()),
+                        RPCCommand("|third", "echos", ("|first", "AND ME TOO"), frozenset(), kwargs={"test": 3}),
                     ]
                 )
 
@@ -104,6 +104,7 @@ class Client:
                             "echos",
                             ("|first", "|second", "AND ME TOO"),
                             frozenset(),
+                            kwargs={"test": 4}
                         ),
                     ]
                 )
@@ -120,7 +121,7 @@ class Client:
                             ("|first", "|second", "AND ME TOO"),
                             frozenset(),
                         ),
-                        RPCCommand("|4th", "echo", ("|third",), frozenset()),
+                        RPCCommand("|4th", "echo", ("|third",), frozenset(), kwargs={"test": 5}),
                     ]
                 )
 

@@ -81,10 +81,11 @@ class MPREGClient:
                         internal_rpc = RPCInternalRequest.model_validate(parsed_msg)
                         command = internal_rpc.command
                         args = internal_rpc.args
+                        kwargs = internal_rpc.kwargs
                         u = internal_rpc.u
 
                         # Generate RESULT PAYLOAD
-                        answer_payload = self.registry.get(command)(*args)
+                        answer_payload = self.registry.get(command)(*args, **kwargs)
                         response_model = RPCInternalAnswer(answer=answer_payload, u=u)
 
                         # logger.info("[{}] Generated answer: {}", u, answer_payload)
