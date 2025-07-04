@@ -59,6 +59,7 @@ class RPCServerHello(BaseModel):
     funs: Tuple[str, ...] = Field(description="Functions provided by this server.")
     locs: Tuple[str, ...] = Field(description="Locations/resources associated with this server.")
     cluster_id: str = Field(description="The ID of the cluster this server belongs to.")
+    advertised_urls: Tuple[str, ...] = Field(default_factory=tuple, description="List of URLs that this server advertises for inbound connections.")
 
 
 class RPCServerGoodbye(BaseModel):
@@ -87,6 +88,7 @@ class PeerInfo(BaseModel):
     locs: FrozenSet[str] = Field(description="Locations/resources associated with this peer.")
     last_seen: float = Field(description="Timestamp of when this peer was last seen alive.")
     cluster_id: str = Field(description="The ID of the cluster this peer belongs to.")
+    advertised_urls: Tuple[str, ...] = Field(default_factory=tuple, description="List of URLs that this peer advertises for inbound connections.")
 
 
 class GossipMessage(BaseModel):

@@ -17,3 +17,4 @@ class MPREGSettings(BaseSettings):
     funs: Optional[dict] = Field(None, description="A mapping of RPC names to callable functions provided by this server.")
     connect: Optional[str] = Field(None, description="The URL of another server to connect to on startup (for client role).")
     cluster_id: str = Field("default-cluster", description="A unique identifier for the cluster this server belongs to.")
+    advertised_urls: Optional[List[str]] = Field(None, description="List of URLs that this server advertises to other peers for inbound connections.")

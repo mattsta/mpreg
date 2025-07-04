@@ -23,6 +23,7 @@ class MPREGClient:
     local_resources: FrozenSet[str]
     gossip_interval: float = field(default=5.0, description="Interval in seconds for sending gossip messages.")
     cluster_id: str = Field(description="The ID of the cluster this client belongs to.")
+    local_advertised_urls: Tuple[str, ...] = Field(default_factory=tuple, description="URLs that this client's server advertises.")
     # TODO: This should be a list of connections to multiple peers.
     peer_connection: Optional[Connection] = field(default=None, init=False)
     _gossip_task: Optional[asyncio.Task] = field(default=None, init=False)
@@ -30,16 +31,28 @@ class MPREGClient:
     async def connect(self) -> None:
         """Establishes a connection to the remote MPREG server and handles message exchange.
 
-        This method connects to the peer, sends a HELLO message advertising
-        its own server's capabilities (functions and resources), and then
-        enters a loop to process incoming messages from the peer.
+        This method attempts to connect to the peer using its advertised URLs.
+        It tries each URL until a successful connection is established.
+        Once connected, it sends a HELLO message advertising its own server's
+        capabilities (functions and resources), and then enters a loop to
+        process incoming messages from the peer.
         """
-        self.peer_connection = Connection(url=self.url)
-        await self.peer_connection.connect()
+        connected = False
+        for url in self.local_advertised_urls:
+            try:
+                self.peer_connection = Connection(url=url)
+                await self.peer_connection.connect()
+                connected = True
+                break
+            except Exception as e:
+                logger.warning("[{}] Failed to connect to advertised URL {}: {}", self.url, url, e)
+                self.peer_connection = None
+
+        if not connected:
+            raise ConnectionError(f"Failed to connect to any advertised URL for {self.url}")
 
         # Register OURSELF with the global echo target.
         # We send a RPCServerHello message with our capabilities.
-        # For now, we hardcode 'echo' and 'echos' and 'local', 'test' resources.
         # In a more advanced implementation, this would come from the server's actual registry and resources.
         await self.peer_connection.send(
             self.serializer.serialize(
@@ -47,7 +60,8 @@ class MPREGClient:
                     server=RPCServerHello(
                         funs=self.local_funs,
                         locs=self.local_resources,
-                        cluster_id=self.cluster_id
+                        cluster_id=self.cluster_id,
+                        advertised_urls=self.local_advertised_urls
                     ),
                     u=str(ulid.new())
                 ).model_dump()
@@ -124,7 +138,8 @@ class MPREGClient:
                         funs=self.local_funs,
                         locs=self.local_resources,
                         last_seen=time.time(),
-                        cluster_id=self.cluster_id
+                        cluster_id=self.cluster_id,
+                        advertised_urls=self.local_advertised_urls
                     ),),
                     u=str(ulid.new()),
                     cluster_id=self.cluster_id

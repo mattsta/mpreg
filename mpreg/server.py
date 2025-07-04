@@ -209,7 +209,8 @@ class Cluster:
             funs=tuple(sorted(list(self.funtimes.keys()))),  # All functions known to this server
             locs=resources,
             last_seen=time.time(),
-            cluster_id=self.settings.cluster_id
+            cluster_id=self.settings.cluster_id,
+            advertised_urls=tuple(self.settings.advertised_urls or [f"ws://{self.settings.host}:{self.settings.port}"])
         )
 
     def remove_server(self, server: Connection):
@@ -460,7 +461,8 @@ class MPREGServer:
                 serializer=self.serializer,
                 local_funs=tuple(self.registry._commands.keys()),
                 local_resources=frozenset(self.settings.resources or []),
-                cluster_id=self.settings.cluster_id
+                cluster_id=self.settings.cluster_id,
+                local_advertised_urls=tuple(self.settings.advertised_urls or [f"ws://{self.settings.host}:{self.settings.port}"])
             )
 
     def report(self):
