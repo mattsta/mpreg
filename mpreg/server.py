@@ -222,14 +222,14 @@ class Cluster:
                     advertised_urls=cmd.advertised_urls,
                 )
                 self.add_fun_ability(peer_info)
-                return RPCResponse(r="ADDED", u=str(ulid.new()), error=None)
+                return RPCResponse(r="ADDED", u=str(ulid.new()))
             case "GOODBYE":
                 # TODO: also remove on any error/disconnect in other places.......
                 self.remove_server(server_connection)
-                return RPCResponse(r="GONE", u=str(ulid.new()), error=None)
+                return RPCResponse(r="GONE", u=str(ulid.new()))
             case "STATUS":
                 ...
-                return RPCResponse(r="STATUS", u=str(ulid.new()), error=None)
+                return RPCResponse(r="STATUS", u=str(ulid.new()))
             case _:\
                 assert None
 
@@ -538,16 +538,16 @@ class MPREGServer:
                         advertised_urls=req.server.advertised_urls,
                     )
                     self.cluster.add_fun_ability(peer_info)
-                    return RPCResponse(r="ADDED", u=req.u, error=None)
+                    return RPCResponse(r="ADDED", u=req.u)
                 case "GOODBYE":
                     # A server is gracefully shutting down.
                     # Remove it from all fun mappings in the cluster.
                     self.cluster.remove_server(server_connection)
-                    return RPCResponse(r="GONE", u=req.u, error=None)
+                    return RPCResponse(r="GONE", u=req.u)
                 case "STATUS":
                     # A server is sending a status update (e.g., for gossip protocol).\
                     # TODO: Implement actual status processing.
-                    return RPCResponse(r="STATUS", u=req.u, error=None)
+                    return RPCResponse(r="STATUS", u=req.u)
                 case _:\
                     # Handle unknown server message types.
                     return RPCResponse(
@@ -582,7 +582,7 @@ class MPREGServer:
             # the topological sorting of commands.
             rpc = RPC(req)
             # Execute the RPC and return the results.
-            return RPCResponse(r=await self.cluster.run(rpc), u=req.u, error=None)
+            return RPCResponse(r=await self.cluster.run(rpc), u=req.u)
         except Exception as e:
             # Catch any exceptions during RPC execution and return an error response.
             logger.exception("Error running RPC")
@@ -646,7 +646,7 @@ class MPREGServer:
                             response_model = RPCResponse(
                                 r=None,
                                 error=RPCError(
-                                    code=1005, message="Cluster ID mismatch", details=None
+                                    code=1005, message="Cluster ID mismatch"
                                 ),
                                 u=server_request.u,
                             )
@@ -720,8 +720,7 @@ class MPREGServer:
                             r=None,
                             error=RPCError(
                                 code=1004,
-                                message=f"Invalid RPC request role: {parsed_msg.get('role')}",
-                                details=None
+                                message=f"Invalid RPC request role: {parsed_msg.get('role')}"
                             ),
                             u=parsed_msg.get("u", "unknown"),
                         )

@@ -3,7 +3,7 @@ from typing import Any
 from loguru import logger
 
 from .client import Client
-from .model import CommandNotFoundError, RPCCommand
+from .model import CommandNotFoundError, RPCCommand, MPREGException
 
 
 class MPREGClientAPI:
@@ -29,12 +29,7 @@ class MPREGClientAPI:
     async def disconnect(self) -> None:
         """Closes the connection to the MPREG server."""
         if self._connected:
-            # The underlying client's connect method is an async for loop,
-            # so there's no explicit disconnect. We just stop the loop.
-            # For a more robust solution, the Client class would need a disconnect method.
-            logger.warning(
-                "MPREGClientAPI does not support explicit disconnect yet. This will be implemented in future refactoring."
-            )
+            await self._client.disconnect()
             self._connected = False
 
     async def call(
@@ -69,20 +64,19 @@ class MPREGClientAPI:
             name=fun,  # Using fun as name for simplicity in this API
             fun=fun,
             args=tuple(args),
-            locs=locs if locs is not None else frozenset(),
+            locs=locs,
             kwargs=kwargs,
         )
         try:
             result = await self._client.request(cmds=[command], timeout=timeout)
             return result
+        except CommandNotFoundError as e:
+            raise e
+        except MPREGException as e:
+            logger.error("RPC Call Failed: {}: {}", e.rpc_error.code, e.rpc_error.message)
+            raise e
         except Exception as e:
-            # Re-raise specific RPC errors as Python exceptions for better user experience.
-            if isinstance(e, Exception) and "RPC Error" in str(e):
-                # Attempt to parse the structured error from the message
-                # This is a temporary parsing, ideally the client.request would return structured error
-                # or raise specific exceptions directly.
-                if "Command not found" in str(e):
-                    raise CommandNotFoundError(command_name=fun)
+            logger.error("RPC Call Failed: {}", e)
             raise
 
     async def __aenter__(self):

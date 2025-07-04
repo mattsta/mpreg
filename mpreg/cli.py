@@ -2,6 +2,7 @@ import pprint as pp
 
 from jsonargparse import CLI
 from loguru import logger
+from typing import Any, Optional, FrozenSet, List, Tuple, Set
 
 from mpreg.client_api import MPREGClientAPI
 from mpreg.config import MPREGSettings
@@ -59,11 +60,11 @@ class MPREGCLI:
         host: str = "127.0.0.1",
         port: int = 6666,
         name: str = "MPREG Server",
-        resources: Optional[List[str]] = None,
+        resources: Optional[Set[str]] = None,
         peers: Optional[List[str]] = None,
         connect: Optional[str] = None,
         cluster_id: str = "default-cluster",
-        advertised_urls: Optional[List[str]] = None,
+        advertised_urls: Optional[Tuple[str, ...]] = None,
     ):
         """Starts an MPREG server instance.
 
@@ -81,7 +82,7 @@ class MPREGCLI:
             host=host,
             port=port,
             name=name,
-            resources=set(resources) if resources else None,
+            resources=resources,
             peers=peers,
             connect=connect,
             cluster_id=cluster_id,
