@@ -1,20 +1,15 @@
-import asyncio
-from dataclasses import dataclass, field
+from typing import Any, Callable, Optional, Tuple, FrozenSet
 
 import ulid
 import websockets.client
 from loguru import logger
+import time
+from pydantic import Field
 
 from .connection import Connection
-from .model import (
-    GossipMessage,
-    RPCInternalAnswer,
-    RPCInternalRequest,
-    RPCServerHello,
-    RPCServerRequest,
-)
-from .registry import CommandRegistry
+from .model import RPCServerRequest, RPCServerHello, RPCInternalRequest, RPCInternalAnswer, GossipMessage, PeerInfo
 from .serialization import JsonSerializer
+from .registry import CommandRegistry
 
 
 @dataclass
@@ -27,18 +22,12 @@ class MPREGClient:
     local_funs: Tuple[str, ...]
     local_resources: FrozenSet[str]
     cluster_id: str = Field(description="The ID of the cluster this client belongs to.")
-    local_advertised_urls: Tuple[str, ...] = Field(
-        default_factory=tuple, description="URLs that this client's server advertises."
-    )
-    cluster_peers_info: dict = Field(
-        description="Reference to the cluster's peers_info for gossip."
-    )
-    gossip_interval: float = field(
-        default=5.0, description="Interval in seconds for sending gossip messages."
-    )
+    local_advertised_urls: Tuple[str, ...] = Field(default_factory=tuple, description="URLs that this client's server advertises.")
+    cluster_peers_info: dict = Field(description="Reference to the cluster's peers_info for gossip.")
+    gossip_interval: float = field(default=5.0, metadata={"description": "Interval in seconds for sending gossip messages."})
     # TODO: This should be a list of connections to multiple peers.
-    peer_connection: Connection | None = field(default=None, init=False)
-    _gossip_task: asyncio.Task | None = field(default=None, init=False)
+    peer_connection: Optional[Connection] = field(default=None, init=False)
+    _gossip_task: Optional[asyncio.Task] = field(default=None, init=False)
 
     async def connect(self) -> None:
         """Establishes a connection to the remote MPREG server and handles message exchange.
@@ -90,7 +79,12 @@ class MPREGClient:
         # This is the processing loop for US AS A CLUSTER CLIENT.
         # Here we RECEIVE messages from OTHER servers for LOCAL PROCESSING then REPLYING TO THE UPSTREAM.
         try:
+            if self.peer_connection is None or self.peer_connection.websocket is None:
+                raise ConnectionError("Peer connection not established.")
             async for msg in self.peer_connection.websocket:
+                if not isinstance(msg, bytes):
+                    logger.warning("[{}] Received non-bytes message: {}", self.url, msg)
+                    continue
                 parsed_msg = self.serializer.deserialize(msg)
                 if False:
                     logger.info(

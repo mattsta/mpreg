@@ -67,10 +67,12 @@ class Client:
         await self.websocket.send(send)
 
         try:
+            if self.websocket is None:
+                raise ConnectionError("WebSocket connection is not established.")
             raw_response = await asyncio.wait_for(
                 self.websocket.recv(), timeout=timeout
             )
-        except TimeoutError:
+        except asyncio.TimeoutError:
             logger.error("[{}] Request timed out after {} seconds.", req.u, timeout)
             raise
 

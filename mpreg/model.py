@@ -46,9 +46,8 @@ class RPCInternalRequest(BaseModel):
 
     role: Literal["internal-rpc"] = "internal-rpc"
     command: str = Field(description="The name of the command to execute.")
-    args: tuple[Any, ...] = Field(
-        description="Positional arguments for the function call."
-    )
+    args: Tuple[Any, ...] = Field(description="Positional arguments for the function call.")
+    kwargs: dict[str, Any] = Field(default_factory=dict, description="Keyword arguments for the function call.")
     results: dict = Field(description="Intermediate results from previous RPC steps.")
     u: str = Field(description="A unique identifier for this internal request.")
 
