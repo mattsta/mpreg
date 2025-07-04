@@ -108,9 +108,9 @@ The goal is to create a robust and flexible system for handling data, including 
 
 The goal is to improve the reliability and resilience of the cluster by abstracting network operations and improving connection handling.
 
--   [ ] **Abstract Network Connections:**
-    -   [ ] Create a `Connection` or `Peer` class that encapsulates a websocket connection. This class will handle the low-level details of sending and receiving messages, as well as managing the connection state (connected, disconnected, reconnecting).
-    -   [ ] The `Cluster` class will manage a collection of these `Connection` objects instead of raw websocket objects.
+-   [x] **Abstract Network Connections:**
+    -   [x] Create a `Connection` or `Peer` class that encapsulates a websocket connection. This class will handle the low-level details of sending and receiving messages, as well as managing the connection state (connected, disconnected, reconnecting).
+    -   [x] The `Cluster` class will manage a collection of these `Connection` objects instead of raw websocket objects.
 -   [ ] **Robust Connection Handling:**
     -   [ ] Implement automatic reconnection logic with exponential backoff within the `Connection` class. This will make the cluster more resilient to transient network failures.
     -   [ ] Implement a proper gossip protocol for server discovery. The `Connection` class can be extended to handle the exchange of peer information.
