@@ -10,6 +10,12 @@ This document maintains a high-level log of architectural changes and significan
 
 **Reasoning:** Achieving a clean mypy run is crucial for maintaining code quality, preventing potential runtime errors, and improving developer productivity. This set of fixes specifically targeted issues related to dataclass attribute ordering, type mismatches in `PeerInfo` instantiation, missing arguments in `RPCResponse` constructors, and correct handling of optional `Connection` objects. By resolving these, the codebase is now more robust, easier to reason about, and better prepared for future development.
 
+### `fix: Correct CommandNotFoundError test`
+
+**Purpose:** To fix the `test_command_not_found_error_creation` in `tests/test_model.py` which was failing due to incorrect arguments being passed to the `CommandNotFoundError` constructor.
+
+**Reasoning:** The `CommandNotFoundError` class was refactored to automatically set `code` and `message` attributes, making them redundant as constructor arguments. The test was updated to reflect this change, ensuring it correctly validates the exception's behavior without passing unnecessary parameters.
+
 ## 2025-07-03
 
 ### `fix: Resolve mypy type errors and improve type safety`
