@@ -23,6 +23,7 @@ from .registry import Command, CommandRegistry
 from .config import MPREGSettings
 from .serialization import JsonSerializer
 from .connection import Connection
+from .client_peer import MPREGClient
 
 
 ############################################
@@ -415,6 +416,13 @@ class MPREGServer:
         self.registry = CommandRegistry()
         self.clients = set()
         self.serializer = JsonSerializer()
+        self.peer_client: Optional[MPREGClient] = None
+        if self.settings.connect:
+            self.peer_client = MPREGClient(
+                url=self.settings.connect,
+                registry=self.registry,
+                serializer=self.serializer
+            )
 
     def report(self):
         """General report of current server state."""
@@ -599,61 +607,10 @@ class MPREGServer:
                 await asyncio.Future()
                 return
 
-            # Else, we ARE connecting to another server, so this keeps *our* server alive
-            # while we are a *client* to another upstream. We should technically also be
-            # a client of MULTIPLE upstreams, but for now, we connect to one.
-            peer_connection = Connection(url=self.settings.connect)
-            await peer_connection.connect()
-
-            # This is registering CLUSTER NODE FUNCTIONS AND DATASETS into our upstream host.
-            # We send a RPCServerHello message with our capabilities.
-            await peer_connection.send(
-                self.serializer.serialize(
-                    RPCServerRequest(
-                        server=RPCServerHello(
-                            funs=("echo", "echos"),
-                            locs=("local", "test"),
-                        ),
-                        u=str(ulid.new())
-                    ).model_dump()
-                )
-            )
-
-            # This is the processing loop for US AS A CLUSTER CLIENT.
-            # Here we RECEIVE messages from OTHER servers for LOCAL PROCESSING then REPLYING TO THE UPSTREAM.
-            async for msg in peer_connection.websocket:
-                parsed_msg = self.serializer.deserialize(msg)
-                if False:
-                    logger.info(
-                        "[{} :: {}] Cluster message: {}",
-                        self.settings.connect,
-                        parsed_msg.get("u", "[no id]"),
-                        parsed_msg,
-                    )
-                match parsed_msg.get("role"):
-                    case "server":
-                        server_request = RPCServerRequest.model_validate(parsed_msg)
-                        logger.info(
-                            "[{}:{}] Server status: {}",
-                            *peer_connection.websocket.remote_address,
-                            server_request.model_dump_json(),
-                        )
-                    case "internal-rpc":
-                        # FORWARDED REQUEST from ANOTHER SERVER in MID-RPC mode.
-                        # We know this request is FOR US since it was sent TO US directly.
-                        internal_rpc = RPCInternalRequest.model_validate(parsed_msg)
-                        command = internal_rpc.command
-                        args = internal_rpc.args
-                        u = internal_rpc.u
-
-                        # Generate RESULT PAYLOAD
-                        answer_payload = self.registry.get(command)(*args)
-                        response_model = RPCInternalAnswer(answer=answer_payload, u=u)
-
-                        # logger.info("[{}] Generated answer: {}", u, answer_payload)
-
-                        # SEND RESULT PAYLOAD back UPSTREAM
-                        await peer_connection.send(self.serializer.serialize(response_model.model_dump()))
+            # If an external connection is requested, start the peer client.
+            # This keeps *our* server alive while we are a *client* to another upstream.
+            if self.peer_client:
+                await self.peer_client.connect()
 
     def start(self) -> None:
         try:
