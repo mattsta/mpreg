@@ -45,3 +45,9 @@ This document maintains a high-level log of architectural changes and significan
 **Purpose:** To encapsulate websocket connections and abstract low-level network details, improving modularity and testability.
 
 **Reasoning:** The previous implementation directly managed raw websocket objects, leading to scattered connection logic and making it difficult to test and extend. By introducing a `Connection` class, we centralize connection management, including connecting, disconnecting, sending, and receiving messages. This abstraction simplifies the `Cluster` and `MPREGServer` classes, making the network layer more robust, easier to reason about, and prepares the system for advanced features like automatic reconnection and connection pooling.
+
+### `feat: Implement robust connection handling with exponential backoff`
+
+**Purpose:** To enhance the reliability and resilience of network communication by implementing automatic reconnection with exponential backoff.
+
+**Reasoning:** The previous connection handling was basic and lacked mechanisms for automatically recovering from transient network failures. By integrating exponential backoff into the `Connection` class, we ensure that the system can gracefully handle temporary disconnections and automatically attempt to re-establish connections with increasing delays. This significantly improves the stability and fault-tolerance of the MPREG cluster, reducing manual intervention and enhancing overall system availability.
