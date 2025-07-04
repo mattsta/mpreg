@@ -4,6 +4,12 @@ This document maintains a high-level log of architectural changes and significan
 
 ## 2025-07-03
 
+### `feat: Implement configurable multiple advertised addresses`
+
+**Purpose:** To enhance the flexibility and robustness of the MPREG cluster by allowing servers to advertise multiple network addresses.
+
+**Reasoning:** In complex network environments, a single server might be reachable via multiple interfaces (e.g., internal IP, external IP, CDN). The previous system only allowed advertising a single address, which limited connectivity. By enabling servers to advertise a list of URLs, and by implementing client-side logic to try each advertised URL until a successful connection is made, we significantly improve the system's ability to establish and maintain connections across diverse network topologies. This simplifies network configuration for users and enhances the self-organizing capabilities of the cluster.
+
 ### `feat: Standardize RPC command representation`
 
 **Purpose:** To improve code clarity, reduce redundancy, and establish a single source of truth for how commands are represented within the system.
@@ -57,12 +63,6 @@ This document maintains a high-level log of architectural changes and significan
 **Purpose:** To enhance the security and reliability of the MPREG cluster by ensuring that servers only communicate with peers belonging to the same logical cluster.
 
 **Reasoning:** In a distributed system, it is crucial to prevent accidental communication between different clusters, which could lead to data corruption or security vulnerabilities. By introducing a mandatory `cluster_id` that must match between communicating peers, we establish a clear boundary for cluster membership. This mechanism ensures that only authorized and correctly configured nodes can join and participate in a specific cluster, improving overall system integrity and simplifying multi-cluster deployments.
-
-### `feat: Add keyword argument support to RPC commands`
-
-**Purpose:** To enhance the flexibility and expressiveness of RPC calls by allowing the use of keyword arguments.
-
-**Reasoning:** Previously, RPC commands only supported positional arguments, which could lead to less readable and maintainable code, especially for functions with many parameters. By extending the `RPCCommand` model to include a `kwargs` field, we enable developers to use named arguments, improving code clarity and making RPC interfaces more self-documenting. This change aligns with modern Python practices and enhances the overall usability and extensibility of the MPREG system.
 
 ### `feat: Enhance Server Discovery & Gossip Protocol`
 
