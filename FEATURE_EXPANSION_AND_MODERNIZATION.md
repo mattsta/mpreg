@@ -19,8 +19,8 @@ This section focuses on improving the foundational aspects of the MPREG codebase
 
 -   [ ] **Server Discovery & Gossip Protocol:**
     -   [ ] Implement a proper gossip protocol for server discovery and health checks. This will eliminate the need for static peer lists and improve cluster resilience.
--   [ ] **Connection Handling:**
-    -   [ ] Refactor the `Server` class to manage websocket connections more robustly, including automatic reconnection logic with exponential backoff.
+-   [x] **Connection Handling:**
+    -   [x] Refactor the `Server` class to manage websocket connections more robustly, including automatic reconnection logic with exponential backoff.
     -   [ ] Implement a more graceful shutdown procedure for servers, ensuring all client requests are handled before exiting.
 -   [x] **Serialization:**
     -   [x] Add support for `cloudpickle` as an alternative to JSON for serializing more complex Python objects. This will require a negotiation step during the initial handshake to determine the serialization format.
