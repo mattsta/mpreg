@@ -603,68 +603,57 @@ class MPREGServer:
             # while we are a *client* to another upstream. We should technically also be
             # a client of MULTIPLE upstreams, but for now, we connect to one.
             peer_connection = Connection(url=self.settings.connect)
-            while True:
-                try:
-                    await peer_connection.connect()
-                    # This is registering CLUSTER NODE FUNCTIONS AND DATASETS into our upstream host.
-                    # We send a RPCServerHello message with our capabilities.
-                    await peer_connection.send(
-                        self.serializer.serialize(
-                            RPCServerRequest(
-                                server=RPCServerHello(
-                                    funs=("echo", "echos"),
-                                    locs=("local", "test"),
-                                ),
-                                u=str(ulid.new())
-                            ).model_dump()
-                        )
+            await peer_connection.connect()
+
+            # This is registering CLUSTER NODE FUNCTIONS AND DATASETS into our upstream host.
+            # We send a RPCServerHello message with our capabilities.
+            await peer_connection.send(
+                self.serializer.serialize(
+                    RPCServerRequest(
+                        server=RPCServerHello(
+                            funs=("echo", "echos"),
+                            locs=("local", "test"),
+                        ),
+                        u=str(ulid.new())
+                    ).model_dump()
+                )
+            )
+
+            # This is the processing loop for US AS A CLUSTER CLIENT.
+            # Here we RECEIVE messages from OTHER servers for LOCAL PROCESSING then REPLYING TO THE UPSTREAM.
+            async for msg in peer_connection.websocket:
+                parsed_msg = self.serializer.deserialize(msg)
+                if False:
+                    logger.info(
+                        "[{} :: {}] Cluster message: {}",
+                        self.settings.connect,
+                        parsed_msg.get("u", "[no id]"),
+                        parsed_msg,
                     )
+                match parsed_msg.get("role"):
+                    case "server":
+                        server_request = RPCServerRequest.model_validate(parsed_msg)
+                        logger.info(
+                            "[{}:{}] Server status: {}",
+                            *peer_connection.websocket.remote_address,
+                            server_request.model_dump_json(),
+                        )
+                    case "internal-rpc":
+                        # FORWARDED REQUEST from ANOTHER SERVER in MID-RPC mode.
+                        # We know this request is FOR US since it was sent TO US directly.
+                        internal_rpc = RPCInternalRequest.model_validate(parsed_msg)
+                        command = internal_rpc.command
+                        args = internal_rpc.args
+                        u = internal_rpc.u
 
-                    # This is the processing loop for US AS A CLUSTER CLIENT.
-                    # Here we RECEIVE messages from OTHER servers for LOCAL PROCESSING then REPLYING TO THE UPSTREAM.
-                    async for msg in peer_connection.websocket:
-                        parsed_msg = self.serializer.deserialize(msg)
-                        if False:
-                            logger.info(
-                                "[{} :: {}] Cluster message: {}",
-                                self.settings.connect,
-                                parsed_msg.get("u", "[no id]"),
-                                parsed_msg,
-                            )
-                        match parsed_msg.get("role"):
-                            case "server":
-                                server_request = RPCServerRequest.model_validate(parsed_msg)
-                                logger.info(
-                                    "[{}:{}] Server status: {}",
-                                    *peer_connection.websocket.remote_address,
-                                    server_request.model_dump_json(),
-                                )
-                            case "internal-rpc":
-                                # FORWARDED REQUEST from ANOTHER SERVER in MID-RPC mode.
-                                # We know this request is FOR US since it was sent TO US directly.
-                                internal_rpc = RPCInternalRequest.model_validate(parsed_msg)
-                                command = internal_rpc.command
-                                args = internal_rpc.args
-                                u = internal_rpc.u
+                        # Generate RESULT PAYLOAD
+                        answer_payload = self.registry.get(command)(*args)
+                        response_model = RPCInternalAnswer(answer=answer_payload, u=u)
 
-                                # Generate RESULT PAYLOAD
-                                answer_payload = self.registry.get(command)(*args)
-                                response_model = RPCInternalAnswer(answer=answer_payload, u=u)
+                        # logger.info("[{}] Generated answer: {}", u, answer_payload)
 
-                                # logger.info("[{}] Generated answer: {}", u, answer_payload)
-
-                                # SEND RESULT PAYLOAD back UPSTREAM
-                                await peer_connection.send(self.serializer.serialize(response_model.model_dump()))
-                except (
-                    websockets.ConnectionClosedError,
-                    websockets.ConnectionClosedOK,
-                ):
-                    # Note: we just need to catch here since the `websockets.connect()` we're inside
-                    #       is already an infinite generator for connection retries...
-                    logger.info("Server disconnected... reconnecting...")
-                except Exception as e:
-                    logger.error("[{}] Error in peer connection: {}", peer_connection.url, e)
-                    await asyncio.sleep(1) # Wait before retrying to connect
+                        # SEND RESULT PAYLOAD back UPSTREAM
+                        await peer_connection.send(self.serializer.serialize(response_model.model_dump()))
 
     def start(self) -> None:
         try:

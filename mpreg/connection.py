@@ -11,25 +11,39 @@ class Connection:
     """Encapsulates a websocket connection to a remote peer."""
 
     url: str
+    max_retries: int = field(default=5, repr=False, description="Maximum number of reconnection attempts.")
+    base_delay: float = field(default=1.0, repr=False, description="Base delay in seconds for exponential backoff.")
     websocket: Optional[websockets.client.WebSocketClientProtocol] = field(default=None, init=False)
     _receive_queue: asyncio.Queue = field(default_factory=asyncio.Queue, init=False)
     _listener_task: Optional[asyncio.Task] = field(default=None, init=False)
 
     async def connect(self) -> None:
-        """Establishes a websocket connection to the peer."""
+        """Establishes a websocket connection to the peer with exponential backoff.
+
+        This method attempts to connect to the peer. If the connection fails,
+        it retries with an exponentially increasing delay up to `max_retries`.
+        """
         if self.websocket and not self.websocket.closed:
             logger.info("[{}] Connection already open.", self.url)
             return
 
-        logger.info("[{}] Attempting to connect...", self.url)
-        try:
-            self.websocket = await websockets.connect(self.url, user_agent_header=None)
-            logger.info("[{}] Connected.", self.url)
-            self._listener_task = asyncio.create_task(self._listen_for_messages())
-        except Exception as e:
-            logger.error("[{}] Failed to connect: {}", self.url, e)
-            self.websocket = None
-            raise
+        for attempt in range(self.max_retries + 1):
+            logger.info("[{}] Attempting to connect (attempt {}/{})", self.url, attempt + 1, self.max_retries + 1)
+            try:
+                self.websocket = await websockets.connect(self.url, user_agent_header=None)
+                logger.info("[{}] Connected.", self.url)
+                self._listener_task = asyncio.create_task(self._listen_for_messages())
+                return
+            except Exception as e:
+                logger.error("[{}] Failed to connect: {}.", self.url, e)
+                self.websocket = None
+                if attempt < self.max_retries:
+                    delay = self.base_delay * (2 ** attempt)
+                    logger.info("[{}] Retrying in {:.2f} seconds...", self.url, delay)
+                    await asyncio.sleep(delay)
+                else:
+                    logger.error("[{}] Max reconnection attempts reached. Giving up.", self.url)
+                    raise ConnectionError(f"Failed to connect to {self.url} after {self.max_retries + 1} attempts.")
 
     async def disconnect(self) -> None:
         """Closes the websocket connection."""
