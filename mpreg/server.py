@@ -208,7 +208,8 @@ class Cluster:
             url=server.url,
             funs=tuple(sorted(list(self.funtimes.keys()))),  # All functions known to this server
             locs=resources,
-            last_seen=time.time()
+            last_seen=time.time(),
+            cluster_id=self.settings.cluster_id
         )
 
     def remove_server(self, server: Connection):
@@ -458,7 +459,8 @@ class MPREGServer:
                 registry=self.registry,
                 serializer=self.serializer,
                 local_funs=tuple(self.registry._commands.keys()),
-                local_resources=frozenset(self.settings.resources or [])
+                local_resources=frozenset(self.settings.resources or []),
+                cluster_id=self.settings.cluster_id
             )
 
     def report(self):
@@ -555,6 +557,15 @@ class MPREGServer:
                             server_request.model_dump_json(),
                         )
                         response_model = self.run_server(connection, server_request)
+                        # Enforce cluster_id matching for HELLO messages
+                        if server_request.server.what == "HELLO" and server_request.server.cluster_id != self.settings.cluster_id:
+                            logger.warning("[{}:{}] Received HELLO from different cluster ID: Expected {}, Got {}",
+                                           *websocket.remote_address, self.settings.cluster_id, server_request.server.cluster_id)
+                            # Close connection or return an error response
+                            response_model = RPCResponse(error=RPCError(code=1005, message="Cluster ID mismatch"), u=server_request.u)
+                            await websocket.send(self.serializer.serialize(response_model.model_dump()))
+                            return # Terminate connection for mismatch
+
                     case "rpc":
                         # CLIENT request
                         rpc_request = RPCRequest.model_validate(parsed_msg)
@@ -596,6 +607,11 @@ class MPREGServer:
                     case "gossip":
                         # Incoming gossip message from a peer.
                         gossip_message = GossipMessage.model_validate(parsed_msg)
+                        # Enforce cluster_id matching for gossip messages
+                        if gossip_message.cluster_id != self.settings.cluster_id:
+                            logger.warning("[{}:{}] Received gossip from different cluster ID: Expected {}, Got {}",
+                                           *websocket.remote_address, self.settings.cluster_id, gossip_message.cluster_id)
+                            continue # Ignore gossip from different cluster
                         self.cluster.process_gossip_message(gossip_message)
                         # Gossip messages do not typically require a direct response.
                         continue

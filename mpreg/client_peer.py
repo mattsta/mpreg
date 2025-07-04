@@ -22,6 +22,7 @@ class MPREGClient:
     local_funs: Tuple[str, ...]
     local_resources: FrozenSet[str]
     gossip_interval: float = field(default=5.0, description="Interval in seconds for sending gossip messages.")
+    cluster_id: str = Field(description="The ID of the cluster this client belongs to.")
     # TODO: This should be a list of connections to multiple peers.
     peer_connection: Optional[Connection] = field(default=None, init=False)
     _gossip_task: Optional[asyncio.Task] = field(default=None, init=False)
@@ -46,6 +47,7 @@ class MPREGClient:
                     server=RPCServerHello(
                         funs=self.local_funs,
                         locs=self.local_resources,
+                        cluster_id=self.cluster_id
                     ),
                     u=str(ulid.new())
                 ).model_dump()
@@ -121,9 +123,11 @@ class MPREGClient:
                         url=self.url,
                         funs=self.local_funs,
                         locs=self.local_resources,
-                        last_seen=time.time()
+                        last_seen=time.time(),
+                        cluster_id=self.cluster_id
                     ),),
-                    u=str(ulid.new())
+                    u=str(ulid.new()),
+                    cluster_id=self.cluster_id
                 )
                 await self.peer_connection.send(self.serializer.serialize(gossip_message.model_dump()))
                 logger.info("[{}] Sent gossip message.", self.url)
