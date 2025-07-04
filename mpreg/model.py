@@ -1,6 +1,7 @@
 from typing import Any, Tuple, FrozenSet, Literal, Union, Optional
 
 from pydantic import BaseModel, Field
+from dataclasses import field, dataclass
 
 
 class RPCCommand(BaseModel):
@@ -145,18 +146,9 @@ class RPCError(BaseModel):
     code: int = Field(description="A numeric error code.")
     message: str = Field(description="A human-readable error message.")
     details: Any | None = Field(
-        None, description="Optional additional details about the error."
+        default=None, description="Optional additional details about the error."
     )
 
-
-class CommandNotFoundError(RPCError):
-    """Error indicating that a requested command was not found."""
-
-    code: Literal[1001] = Field(1001, description="Error code for command not found.")
-    message: Literal["Command not found"] = Field(
-        "Command not found", description="Default message for command not found."
-    )
-    command_name: str = Field(description="The name of the command that was not found.")
 
 
 class RPCResponse(BaseModel):
@@ -164,9 +156,9 @@ class RPCResponse(BaseModel):
     Represents a generic RPC response.
     """
 
-    r: Any = Field(None, description="The result of the RPC call, if successful.")
+    r: Any = Field(default=None, description="The result of the RPC call, if successful.")
     error: RPCError | None = Field(
-        None, description="Structured error information, if the RPC failed."
+        default=None, description="Structured error information, if the RPC failed."
     )
     u: str = Field(
         description="The unique identifier of the request this is responding to."
@@ -181,3 +173,19 @@ RPCMessage = Union[
     GossipMessage,
     RPCResponse,
 ]
+
+class MPREGException(Exception):
+    rpc_error: RPCError = field(default_factory=lambda: RPCError(code=-1, message="Unknown / Unset Error Condition"))
+
+@dataclass
+class CommandNotFoundException(MPREGException):
+    """Error indicating that a requested command was not found.
+
+    Note: Commands not being found are a service/protocol level problem and not just "an error return value"
+    """
+
+    command_name: str
+    code: Literal[1001] = 1001
+    message: Literal["Command not found"] = "Command not found"
+    details: str | None = None
+

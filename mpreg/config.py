@@ -1,5 +1,5 @@
 from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, SettingsConfigDict  # type: ignore
 
 
 class MPREGSettings(BaseSettings):
@@ -22,10 +22,7 @@ class MPREGSettings(BaseSettings):
     peers: list[str] | None = Field(
         None, description="A list of static peer URLs to initially connect to."
     )
-    funs: dict | None = Field(
-        None,
-        description="A mapping of RPC names to callable functions provided by this server.",
-    )
+    
     connect: str | None = Field(
         None,
         description="The URL of another server to connect to on startup (for client role).",
@@ -34,7 +31,8 @@ class MPREGSettings(BaseSettings):
         "default-cluster",
         description="A unique identifier for the cluster this server belongs to.",
     )
-    advertised_urls: list[str] | None = Field(
+    advertised_urls: tuple[str, ...] | None = Field(
         None,
         description="List of URLs that this server advertises to other peers for inbound connections.",
     )
+    gossip_interval: float = Field(5.0, description="Interval in seconds for sending gossip messages.")

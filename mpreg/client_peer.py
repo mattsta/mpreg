@@ -1,7 +1,5 @@
 import asyncio
 from dataclasses import dataclass, field
-import asyncio
-from dataclasses import dataclass, field
 from typing import Any, Callable, Optional, Tuple, FrozenSet
 
 import ulid
@@ -26,8 +24,8 @@ class MPREGClient:
     local_funs: Tuple[str, ...]
     local_resources: FrozenSet[str]
     cluster_id: str = Field(description="The ID of the cluster this client belongs to.")
-    local_advertised_urls: Tuple[str, ...] = Field(default_factory=tuple, description="URLs that this client's server advertises.")
-    cluster_peers_info: dict = Field(description="Reference to the cluster's peers_info for gossip.")
+    local_advertised_urls: tuple[str, ...] = Field(default_factory=tuple, description="URLs that this client's server advertises.")
+    cluster_peers_info: dict[str, PeerInfo] = Field(description="Reference to the cluster's peers_info for gossip.")
     gossip_interval: float = field(default=5.0, metadata={"description": "Interval in seconds for sending gossip messages."})
     # TODO: This should be a list of connections to multiple peers.
     peer_connection: Optional[Connection] = field(default=None, init=False)
@@ -63,19 +61,20 @@ class MPREGClient:
         # Register OURSELF with the global echo target.
         # We send a RPCServerHello message with our capabilities.
         # In a more advanced implementation, this would come from the server's actual registry and resources.
-        await self.peer_connection.send(
-            self.serializer.serialize(
-                RPCServerRequest(
-                    server=RPCServerHello(
-                        funs=self.local_funs,
-                        locs=tuple(self.local_resources),
-                        cluster_id=self.cluster_id,
-                        advertised_urls=self.local_advertised_urls,
-                    ),
-                    u=str(ulid.new()),
-                ).model_dump()
+        if self.peer_connection is not None:
+            await self.peer_connection.send(
+                self.serializer.serialize(
+                    RPCServerRequest(
+                        server=RPCServerHello(
+                            funs=self.local_funs,
+                            locs=tuple(self.local_resources),
+                            cluster_id=self.cluster_id,
+                            advertised_urls=self.local_advertised_urls,
+                        ),
+                        u=str(ulid.new()),
+                    ).model_dump()
+                )
             )
-        )
 
         # Start the gossip task after successful connection.
         self._gossip_task = asyncio.create_task(self._gossip_loop())
@@ -121,9 +120,10 @@ class MPREGClient:
                         # logger.info("[{}] Generated answer: {}", u, answer_payload)
 
                         # SEND RESULT PAYLOAD back UPSTREAM
-                        await self.peer_connection.send(
-                            self.serializer.serialize(response_model.model_dump())
-                        )
+                        if self.peer_connection is not None:
+                            await self.peer_connection.send(
+                                self.serializer.serialize(response_model.model_dump())
+                            )
                     case "gossip":
                         # Process incoming gossip message.
                         gossip_message = GossipMessage.model_validate(parsed_msg)
@@ -161,9 +161,10 @@ class MPREGClient:
                     u=str(ulid.new()),
                     cluster_id=self.cluster_id,
                 )
-                await self.peer_connection.send(
-                    self.serializer.serialize(gossip_message.model_dump())
-                )
+                if self.peer_connection is not None:
+                    await self.peer_connection.send(
+                        self.serializer.serialize(gossip_message.model_dump())
+                    )
                 logger.info(
                     "[{}] Sent gossip message with {} peers.",
                     self.url,

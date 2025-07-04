@@ -30,7 +30,7 @@ from .model import (
     RPCServerMessage,
     MPREGException,
     RPCError,
-    CommandNotFoundError,
+    CommandNotFoundException,
 )
 from .registry import Command, CommandRegistry
 from .serialization import JsonSerializer
@@ -401,7 +401,7 @@ class Cluster:
           - Reply to client.
         """
 
-        async def runner(rpc_command: RPCCommand, results: dict[str, Any]) -> dict[str, Any]: # Added type hints
+        async def runner(rpc_command: RPCCommand, results: dict[str, Any]) -> dict[str, Any]:
             """Executes a single RPC command, either locally or remotely.
 
             Args:
@@ -414,7 +414,7 @@ class Cluster:
             where = self.server_for(rpc_command.fun, rpc_command.locs)
             if not where:
                 logger.error("Sorry, no server found for: {}", rpc_command)
-                raise CommandNotFoundError(command_name=rpc_command.fun) # Corrected raising of CommandNotFoundError
+                raise CommandNotFoundException(command_name=rpc_command.fun)
 
             if where == "self":
                 got = await self._execute_local_command(rpc_command, results)
@@ -422,7 +422,8 @@ class Cluster:
                 got = await self._execute_remote_command(rpc_command, results, Connection(url=where)) # Wrap string in Connection
 
             results[rpc_command.name] = got
-
+            
+            # TODO: this should return a STABLE DATACLASS OBJECT and not just a generic dict
             return {rpc_command.name: got}
 
         results: dict[str, Any] = {} # Added type hint

@@ -3,7 +3,7 @@ from typing import Any
 from loguru import logger
 
 from .client import Client
-from .model import CommandNotFoundError, RPCCommand, MPREGException
+from .model import CommandNotFoundException, RPCCommand, MPREGException
 
 
 class MPREGClientAPI:
@@ -53,7 +53,7 @@ class MPREGClientAPI:
             The result of the RPC function call.
 
         Raises:
-            CommandNotFoundError: If the specified function is not found on any available server.
+            CommandNotFoundException: If the specified function is not found on any available server.
             asyncio.TimeoutError: If the RPC call times out.
             Exception: For other RPC errors returned by the server.
         """
@@ -64,13 +64,13 @@ class MPREGClientAPI:
             name=fun,  # Using fun as name for simplicity in this API
             fun=fun,
             args=tuple(args),
-            locs=locs,
+            locs=locs or frozenset(),
             kwargs=kwargs,
         )
         try:
             result = await self._client.request(cmds=[command], timeout=timeout)
             return result
-        except CommandNotFoundError as e:
+        except CommandNotFoundException as e:
             raise e
         except MPREGException as e:
             logger.error("RPC Call Failed: {}: {}", e.rpc_error.code, e.rpc_error.message)

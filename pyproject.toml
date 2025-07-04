@@ -44,3 +44,8 @@ extend-select = [
   "I",
 ]
 ignore = ["E402", "F841", "E741"] # Ignore Module level import not at top of file
+
+[tool.mypy]
+check_untyped_defs = true
+show_traceback = true
+pretty = true
