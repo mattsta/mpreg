@@ -421,7 +421,9 @@ class MPREGServer:
             self.peer_client = MPREGClient(
                 url=self.settings.connect,
                 registry=self.registry,
-                serializer=self.serializer
+                serializer=self.serializer,
+                local_funs=tuple(self.registry._commands.keys()),
+                local_resources=frozenset(self.settings.resources or [])
             )
 
     def report(self):

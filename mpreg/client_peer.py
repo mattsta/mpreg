@@ -19,22 +19,31 @@ class MPREGClient:
     url: str
     registry: CommandRegistry
     serializer: JsonSerializer
+    local_funs: Tuple[str, ...]
+    local_resources: FrozenSet[str]
     # TODO: This should be a list of connections to multiple peers.
     peer_connection: Optional[Connection] = field(default=None, init=False)
 
     async def connect(self) -> None:
-        """Establishes a connection to the remote MPREG server and handles message exchange."""
+        """Establishes a connection to the remote MPREG server and handles message exchange.
+
+        This method connects to the peer, sends a HELLO message advertising
+        its own server's capabilities (functions and resources), and then
+        enters a loop to process incoming messages from the peer.
+        """
         self.peer_connection = Connection(url=self.url)
         await self.peer_connection.connect()
 
         # Register OURSELF with the global echo target.
         # We send a RPCServerHello message with our capabilities.
+        # For now, we hardcode 'echo' and 'echos' and 'local', 'test' resources.
+        # In a more advanced implementation, this would come from the server's actual registry and resources.
         await self.peer_connection.send(
             self.serializer.serialize(
                 RPCServerRequest(
                     server=RPCServerHello(
-                        funs=("echo", "echos"),
-                        locs=("local", "test"),
+                        funs=self.local_funs,
+                        locs=self.local_resources,
                     ),
                     u=str(ulid.new())
                 ).model_dump()
