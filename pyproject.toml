@@ -19,6 +19,7 @@ pydantic = "^2.11.7"
 [tool.poetry.scripts]
 mpreg-server = "mpreg.server:cmd"
 mpreg-client = "mpreg.client:cmd"
+mpreg = "mpreg.cli:main"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.12.2"
