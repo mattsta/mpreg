@@ -4,6 +4,18 @@ This document maintains a high-level log of architectural changes and significan
 
 ## 2025-07-03
 
+### `feat: Implement reusable client library`
+
+**Purpose:** To provide a high-level, user-friendly API for interacting with the MPREG cluster, abstracting away low-level communication details.
+
+**Reasoning:** Direct interaction with websockets and Pydantic models for every RPC call is cumbersome and error-prone for end-users. By introducing a `MPREGClientAPI`, we provide a more idiomatic Python interface that simplifies RPC function invocation, handles request/response serialization, and translates RPC errors into standard Python exceptions. This significantly improves the usability and developer experience, making it easier to build applications that leverage the MPREG cluster.
+
+### `feat: Implement connection management based on gossip`
+
+**Purpose:** To enable MPREGServer to proactively establish and manage multiple outbound connections to peers discovered via gossip.
+
+**Reasoning:** The previous system relied on a single, manually configured peer connection. This enhancement introduces dynamic connection management, where the server actively seeks out and connects to other known peers in the cluster based on gossip information. This improves the self-organizing capabilities and resilience of the MPREG cluster, ensuring a robust mesh network and moving towards a fully decentralized and dynamic peer discovery model.
+
 ### `feat: Implement configurable multiple advertised addresses`
 
 **Purpose:** To enhance the flexibility and robustness of the MPREG cluster by allowing servers to advertise multiple network addresses.
@@ -38,7 +50,7 @@ This document maintains a high-level log of architectural changes and significan
 
 **Purpose:** To abstract the serialization logic, making it easier to support multiple serialization formats and improving the extensibility of the system.
 
-**Reasoning:** Previously, `orjson.dumps` and `orjson.loads` were used directly throughout the codebase, tightly coupling the application to a specific serialization implementation. By introducing a `Serializer` interface and a `JsonSerializer` concrete class, we decouple the serialization concerns. This change lays the groundwork for future integration of other serialization methods (e.g., `cloudpickle` for more complex Python objects) without requiring significant changes to the core server logic. The `cloudpickle` implementation itself is a separate, future task.
+**Reasoning:** Previously, `orjson.dumps` and `orjson.loads` were used directly throughout the codebase, tightly coupling the application to a specific serialization implementation. By introducing a `Serializer` interface and a `JsonSerializer` concrete class, we decouple the serialization concerns. This allows for future integration of other serialization methods (e.g., `cloudpickle` for more complex Python objects) without requiring significant changes to the core server logic. The `cloudpickle` implementation itself is a separate, future task.
 
 ### `feat: Implement robust connection handling with exponential backoff`
 
