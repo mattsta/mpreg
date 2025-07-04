@@ -1,16 +1,20 @@
 import asyncio
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
 
 import ulid
 import websockets.client
 from loguru import logger
-import time
 
 from .connection import Connection
-from .model import RPCServerRequest, RPCServerHello, RPCInternalRequest, RPCInternalAnswer, GossipMessage, PeerInfo
-from .serialization import JsonSerializer
+from .model import (
+    GossipMessage,
+    RPCInternalAnswer,
+    RPCInternalRequest,
+    RPCServerHello,
+    RPCServerRequest,
+)
 from .registry import CommandRegistry
+from .serialization import JsonSerializer
 
 
 @dataclass
@@ -23,12 +27,18 @@ class MPREGClient:
     local_funs: Tuple[str, ...]
     local_resources: FrozenSet[str]
     cluster_id: str = Field(description="The ID of the cluster this client belongs to.")
-    local_advertised_urls: Tuple[str, ...] = Field(default_factory=tuple, description="URLs that this client's server advertises.")
-    cluster_peers_info: dict = Field(description="Reference to the cluster's peers_info for gossip.")
-    gossip_interval: float = field(default=5.0, description="Interval in seconds for sending gossip messages.")
+    local_advertised_urls: Tuple[str, ...] = Field(
+        default_factory=tuple, description="URLs that this client's server advertises."
+    )
+    cluster_peers_info: dict = Field(
+        description="Reference to the cluster's peers_info for gossip."
+    )
+    gossip_interval: float = field(
+        default=5.0, description="Interval in seconds for sending gossip messages."
+    )
     # TODO: This should be a list of connections to multiple peers.
-    peer_connection: Optional[Connection] = field(default=None, init=False)
-    _gossip_task: Optional[asyncio.Task] = field(default=None, init=False)
+    peer_connection: Connection | None = field(default=None, init=False)
+    _gossip_task: asyncio.Task | None = field(default=None, init=False)
 
     async def connect(self) -> None:
         """Establishes a connection to the remote MPREG server and handles message exchange.
@@ -47,11 +57,15 @@ class MPREGClient:
                 connected = True
                 break
             except Exception as e:
-                logger.warning("[{}] Failed to connect to advertised URL {}: {}", self.url, url, e)
+                logger.warning(
+                    "[{}] Failed to connect to advertised URL {}: {}", self.url, url, e
+                )
                 self.peer_connection = None
 
         if not connected:
-            raise ConnectionError(f"Failed to connect to any advertised URL for {self.url}")
+            raise ConnectionError(
+                f"Failed to connect to any advertised URL for {self.url}"
+            )
 
         # Register OURSELF with the global echo target.
         # We send a RPCServerHello message with our capabilities.
@@ -63,9 +77,9 @@ class MPREGClient:
                         funs=self.local_funs,
                         locs=self.local_resources,
                         cluster_id=self.cluster_id,
-                        advertised_urls=self.local_advertised_urls
+                        advertised_urls=self.local_advertised_urls,
                     ),
-                    u=str(ulid.new())
+                    u=str(ulid.new()),
                 ).model_dump()
             )
         )
@@ -109,14 +123,24 @@ class MPREGClient:
                         # logger.info("[{}] Generated answer: {}", u, answer_payload)
 
                         # SEND RESULT PAYLOAD back UPSTREAM
-                        await self.peer_connection.send(self.serializer.serialize(response_model.model_dump()))
+                        await self.peer_connection.send(
+                            self.serializer.serialize(response_model.model_dump())
+                        )
                     case "gossip":
                         # Process incoming gossip message.
                         gossip_message = GossipMessage.model_validate(parsed_msg)
                         # In a real scenario, this would update the local cluster state.
-                        logger.info("[{}] Received gossip message: {}", self.url, gossip_message.model_dump_json())
+                        logger.info(
+                            "[{}] Received gossip message: {}",
+                            self.url,
+                            gossip_message.model_dump_json(),
+                        )
                     case _:
-                        logger.error("[{}] Unknown message role: {}", self.url, parsed_msg.get("role"))
+                        logger.error(
+                            "[{}] Unknown message role: {}",
+                            self.url,
+                            parsed_msg.get("role"),
+                        )
         except (
             websockets.ConnectionClosedError,
             websockets.ConnectionClosedOK,
@@ -126,7 +150,7 @@ class MPREGClient:
             logger.info("Server disconnected... reconnecting...")
         except Exception as e:
             logger.error("[{}] Error in peer connection: {}", self.url, e)
-            await asyncio.sleep(1) # Wait before retrying to connect
+            await asyncio.sleep(1)  # Wait before retrying to connect
 
     async def _gossip_loop(self) -> None:
         """Periodically sends gossip messages to the connected peer."""
@@ -137,10 +161,16 @@ class MPREGClient:
                 gossip_message = GossipMessage(
                     peers=tuple(self.cluster_peers_info.values()),
                     u=str(ulid.new()),
-                    cluster_id=self.cluster_id
+                    cluster_id=self.cluster_id,
                 )
-                await self.peer_connection.send(self.serializer.serialize(gossip_message.model_dump()))
-                logger.info("[{}] Sent gossip message with {} peers.", self.url, len(gossip_message.peers))
+                await self.peer_connection.send(
+                    self.serializer.serialize(gossip_message.model_dump())
+                )
+                logger.info(
+                    "[{}] Sent gossip message with {} peers.",
+                    self.url,
+                    len(gossip_message.peers),
+                )
             except Exception as e:
                 logger.error("[{}] Error sending gossip message: {}", self.url, e)
             await asyncio.sleep(self.gossip_interval)

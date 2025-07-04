@@ -1,13 +1,27 @@
-import pytest
-from mpreg.model import RPCCommand, RPCRequest, RPCError, CommandNotFoundError, PeerInfo, GossipMessage
+from mpreg.model import (
+    CommandNotFoundError,
+    GossipMessage,
+    PeerInfo,
+    RPCCommand,
+    RPCError,
+    RPCRequest,
+)
+
 
 def test_rpc_command_creation():
-    cmd = RPCCommand(name="test_cmd", fun="my_func", args=("arg1", 123), kwargs={"key": "value"}, locs=frozenset(["loc1"]))
+    cmd = RPCCommand(
+        name="test_cmd",
+        fun="my_func",
+        args=("arg1", 123),
+        kwargs={"key": "value"},
+        locs=frozenset(["loc1"]),
+    )
     assert cmd.name == "test_cmd"
     assert cmd.fun == "my_func"
     assert cmd.args == ("arg1", 123)
     assert cmd.kwargs == {"key": "value"}
     assert cmd.locs == frozenset(["loc1"])
+
 
 def test_rpc_request_creation():
     cmd = RPCCommand(name="test_cmd", fun="my_func")
@@ -16,11 +30,13 @@ def test_rpc_request_creation():
     assert req.cmds == (cmd,)
     assert req.u == "test_uuid"
 
+
 def test_rpc_error_creation():
     error = RPCError(code=100, message="Test Error", details={"info": "some_detail"})
     assert error.code == 100
     assert error.message == "Test Error"
     assert error.details == {"info": "some_detail"}
+
 
 def test_command_not_found_error_creation():
     error = CommandNotFoundError(command_name="non_existent_cmd")
@@ -28,16 +44,30 @@ def test_command_not_found_error_creation():
     assert error.message == "Command not found"
     assert error.command_name == "non_existent_cmd"
 
+
 def test_peer_info_creation():
-    peer = PeerInfo(url="ws://localhost:8000", funs=("echo",), locs=frozenset(["loc1"]), last_seen=123.45, cluster_id="test_cluster")
+    peer = PeerInfo(
+        url="ws://localhost:8000",
+        funs=("echo",),
+        locs=frozenset(["loc1"]),
+        last_seen=123.45,
+        cluster_id="test_cluster",
+    )
     assert peer.url == "ws://localhost:8000"
     assert peer.funs == ("echo",)
     assert peer.locs == frozenset(["loc1"])
     assert peer.last_seen == 123.45
     assert peer.cluster_id == "test_cluster"
 
+
 def test_gossip_message_creation():
-    peer = PeerInfo(url="ws://localhost:8000", funs=("echo",), locs=frozenset(["loc1"]), last_seen=123.45, cluster_id="test_cluster")
+    peer = PeerInfo(
+        url="ws://localhost:8000",
+        funs=("echo",),
+        locs=frozenset(["loc1"]),
+        last_seen=123.45,
+        cluster_id="test_cluster",
+    )
     gossip = GossipMessage(peers=(peer,), u="gossip_uuid", cluster_id="test_cluster")
     assert gossip.role == "gossip"
     assert gossip.peers == (peer,)

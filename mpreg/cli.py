@@ -1,13 +1,11 @@
-import asyncio
 import pprint as pp
 
 from jsonargparse import CLI
 from loguru import logger
 
-from mpreg.client import Client
 from mpreg.client_api import MPREGClientAPI
-from mpreg.server import MPREGServer
 from mpreg.config import MPREGSettings
+from mpreg.server import MPREGServer
 
 
 class MPREGCLI:
@@ -22,7 +20,14 @@ class MPREGCLI:
         await client_api.connect()
         return client_api
 
-    async def call(self, fun: str, *args: Any, locs: Optional[FrozenSet[str]] = None, timeout: Optional[float] = None, **kwargs: Any):
+    async def call(
+        self,
+        fun: str,
+        *args: Any,
+        locs: Optional[FrozenSet[str]] = None,
+        timeout: Optional[float] = None,
+        **kwargs: Any,
+    ):
         """Calls an RPC function on the MPREG cluster.
 
         Args:
@@ -34,7 +39,9 @@ class MPREGCLI:
         """
         async with await self._get_client_api() as client_api:
             try:
-                result = await client_api.call(fun, *args, locs=locs, timeout=timeout, **kwargs)
+                result = await client_api.call(
+                    fun, *args, locs=locs, timeout=timeout, **kwargs
+                )
                 logger.info("RPC Call Result: {}", pp.pformat(result))
             except Exception as e:
                 logger.error("RPC Call Failed: {}", e)
@@ -43,9 +50,21 @@ class MPREGCLI:
         """Lists all known peers in the MPREG cluster and their capabilities."""
         # This command needs to be implemented by querying the cluster for its known peers.
         # For now, this is a placeholder.
-        logger.info("Listing peers is not yet implemented. This will require a dedicated RPC on the server.")
+        logger.info(
+            "Listing peers is not yet implemented. This will require a dedicated RPC on the server."
+        )
 
-    async def start_server(self, host: str = "127.0.0.1", port: int = 6666, name: str = "MPREG Server", resources: Optional[List[str]] = None, peers: Optional[List[str]] = None, connect: Optional[str] = None, cluster_id: str = "default-cluster", advertised_urls: Optional[List[str]] = None):
+    async def start_server(
+        self,
+        host: str = "127.0.0.1",
+        port: int = 6666,
+        name: str = "MPREG Server",
+        resources: Optional[List[str]] = None,
+        peers: Optional[List[str]] = None,
+        connect: Optional[str] = None,
+        cluster_id: str = "default-cluster",
+        advertised_urls: Optional[List[str]] = None,
+    ):
         """Starts an MPREG server instance.
 
         Args:
@@ -66,13 +85,15 @@ class MPREGCLI:
             peers=peers,
             connect=connect,
             cluster_id=cluster_id,
-            advertised_urls=advertised_urls
+            advertised_urls=advertised_urls,
         )
         server_instance = MPREGServer(settings=settings)
         await server_instance.server()
 
+
 def main():
     CLI(MPREGCLI, as_dict=False)
+
 
 if __name__ == "__main__":
     main()

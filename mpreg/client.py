@@ -7,17 +7,15 @@ test a cluster with echo commands for the processing/resolution/connection logic
 import asyncio
 import pprint as pp
 import sys
+from dataclasses import dataclass, field
+from typing import Any
 
-from typing import Any, Optional
-
-import orjson
 import ulid
 import websockets
 import websockets.client
 from loguru import logger
-from dataclasses import dataclass, field
 
-from .model import RPCCommand, RPCRequest, RPCResponse, RPCError, CommandNotFoundError
+from .model import RPCCommand, RPCRequest, RPCResponse
 from .serialization import JsonSerializer
 
 if sys.version_info >= (3, 12):
@@ -37,10 +35,14 @@ class Client:
     # optionally disable big log printing to get more accurate timing measurements
     full_log: bool = True
 
-    websocket: Optional[websockets.client.WebSocketClientProtocol] = field(default=None, init=False)
+    websocket: websockets.client.WebSocketClientProtocol | None = field(
+        default=None, init=False
+    )
     serializer: JsonSerializer = field(default_factory=JsonSerializer, init=False)
 
-    async def request(self, cmds: list[RPCCommand], timeout: Optional[float] = None) -> Any:
+    async def request(
+        self, cmds: list[RPCCommand], timeout: float | None = None
+    ) -> Any:
         """Sends an RPC request to the server and waits for a response.
 
         Args:
@@ -65,20 +67,26 @@ class Client:
         await self.websocket.send(send)
 
         try:
-            raw_response = await asyncio.wait_for(self.websocket.recv(), timeout=timeout)
-        except asyncio.TimeoutError:
+            raw_response = await asyncio.wait_for(
+                self.websocket.recv(), timeout=timeout
+            )
+        except TimeoutError:
             logger.error("[{}] Request timed out after {} seconds.", req.u, timeout)
             raise
 
         response = RPCResponse.model_validate(self.serializer.deserialize(raw_response))
 
         if self.full_log:
-            logger.info("[{}] Result:\n{}", response.u, pp.pformat(response.model_dump()))
+            logger.info(
+                "[{}] Result:\n{}", response.u, pp.pformat(response.model_dump())
+            )
 
         assert req.u == response.u
 
         if response.error:
-            logger.error("RPC Error: {}: {}", response.error.code, response.error.message)
+            logger.error(
+                "RPC Error: {}: {}", response.error.code, response.error.message
+            )
             raise Exception(f"RPC Error: {response.error.message}")
 
         return response.r
