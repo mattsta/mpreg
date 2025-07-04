@@ -471,18 +471,7 @@ class MPREGServer:
         self.registry = CommandRegistry()
         self.clients = set()
         self.serializer = JsonSerializer()
-        self.peer_client: Optional[MPREGClient] = None
-        if self.settings.connect:
-            self.peer_client = MPREGClient(
-                url=self.settings.connect,
-                registry=self.registry,
-                serializer=self.serializer,
-                local_funs=tuple(self.registry._commands.keys()),
-                local_resources=frozenset(self.settings.resources or []),
-                cluster_id=self.settings.cluster_id,
-                local_advertised_urls=tuple(self.settings.advertised_urls or [f"ws://{self.settings.host}:{self.settings.port}"]),
-                cluster_peers_info=self.cluster.peers_info
-            )
+        self.peer_clients: dict[str, MPREGClient] = {}
 
     def report(self):
         """General report of current server state."""
@@ -656,6 +645,53 @@ class MPREGServer:
             # TODO: if this was a CLIENT, we need to cancel any oustanding requests/subscriptions too.
             self.clients.remove(connection)
 
+    async def _establish_peer_connection(self, peer_url: str) -> None:
+        """Establishes a connection to a single peer and adds it to peer_clients.
+
+        Args:
+            peer_url: The URL of the peer to connect to.
+        """
+        if peer_url in self.peer_clients and self.peer_clients[peer_url].peer_connection.is_connected:
+            logger.info("[{}] Already connected to peer: {}", self.settings.name, peer_url)
+            return
+
+        logger.info("[{}] Attempting to establish connection to peer: {}", self.settings.name, peer_url)
+        try:
+            peer_client = MPREGClient(
+                url=peer_url,
+                registry=self.registry,
+                serializer=self.serializer,
+                local_funs=tuple(self.registry._commands.keys()),
+                local_resources=frozenset(self.settings.resources or []),
+                cluster_id=self.settings.cluster_id,
+                local_advertised_urls=tuple(self.settings.advertised_urls or [f"ws://{self.settings.host}:{self.settings.port}"])
+            )
+            await peer_client.connect()
+            self.peer_clients[peer_url] = peer_client
+            logger.info("[{}] Successfully connected to peer: {}", self.settings.name, peer_url)
+        except Exception as e:
+            logger.error("[{}] Failed to connect to peer {}: {}", self.settings.name, peer_url, e)
+
+    async def _manage_peer_connections(self) -> None:
+        """Periodically checks for new peers from gossip and establishes connections.
+
+        This background task ensures that the server proactively connects to
+        other known peers in the cluster, maintaining a robust mesh network.
+        """
+        while True:
+            # Iterate through known peers from gossip and try to connect if not already connected.
+            for peer_url, peer_info in list(self.cluster.peers_info.items()): # Use list to avoid RuntimeError during dict modification
+                if peer_url != f"ws://{self.settings.host}:{self.settings.port}" and peer_url not in self.peer_clients:
+                    # Only connect if the cluster_id matches
+                    if peer_info.cluster_id == self.settings.cluster_id:
+                        await self._establish_peer_connection(peer_url)
+                    else:
+                        logger.warning("[{}] Discovered peer {} with mismatched cluster ID: {}",
+                                       self.settings.name, peer_url, peer_info.cluster_id)
+
+            # Periodically check for new peers.
+            await asyncio.sleep(self.settings.gossip_interval) # Use gossip interval for checking frequency
+
     def register_command(self, name: str, func: Callable[..., Any], resources: Iterable[str]) -> None:
         """Register a command with the server."""
         self.registry.register(Command(name, func))
@@ -674,6 +710,9 @@ class MPREGServer:
         self.register_command("echo", echo, [])
         self.register_command("echos", echos, [])
 
+        # Start a background task to manage peer connections based on gossip.
+        self._peer_connection_manager_task = asyncio.create_task(self._manage_peer_connections())
+
         async with websockets.server.serve(
             self.opened,
             self.settings.host,
@@ -683,16 +722,19 @@ class MPREGServer:
             read_limit=MPREG_DATA_MAX,
             write_limit=MPREG_DATA_MAX,
         ):
-            # If no external connection is requested, run an infinite wait here
+            # If no external connection requested, run an infinite wait here
             # to keep the server alive.
-            if not self.settings.connect:
+            if not self.settings.peers and not self.settings.connect:
                 await asyncio.Future()
                 return
 
-            # If an external connection is requested, start the peer client.
-            # This keeps *our* server alive while we are a *client* to another upstream.
-            if self.peer_client:
-                await self.peer_client.connect()
+            # If static peers are configured, establish initial connections.
+            if self.settings.peers:
+                for peer_url in self.settings.peers:
+                    await self._establish_peer_connection(peer_url)
+
+            # Keep the server running indefinitely.
+            await asyncio.Future()
 
     def start(self) -> None:
         try:
