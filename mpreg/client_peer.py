@@ -1,3 +1,7 @@
+import asyncio
+from dataclasses import dataclass, field
+import asyncio
+from dataclasses import dataclass, field
 from typing import Any, Callable, Optional, Tuple, FrozenSet
 
 import ulid
@@ -64,7 +68,7 @@ class MPREGClient:
                 RPCServerRequest(
                     server=RPCServerHello(
                         funs=self.local_funs,
-                        locs=self.local_resources,
+                        locs=tuple(self.local_resources),
                         cluster_id=self.cluster_id,
                         advertised_urls=self.local_advertised_urls,
                     ),

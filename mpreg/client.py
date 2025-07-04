@@ -64,14 +64,12 @@ class Client:
             logger.info("====================== NEW REQUEST ======================")
             logger.info("[{}] Sending:\n{}", req.u, pp.pformat(req.model_dump()))
 
+        if self.websocket is None:
+            raise ConnectionError("WebSocket connection is not established.")
         await self.websocket.send(send)
 
         try:
-            if self.websocket is None:
-                raise ConnectionError("WebSocket connection is not established.")
-            raw_response = await asyncio.wait_for(
-                self.websocket.recv(), timeout=timeout
-            )
+            raw_response = await asyncio.wait_for(self.websocket.recv(), timeout=timeout)
         except asyncio.TimeoutError:
             logger.error("[{}] Request timed out after {} seconds.", req.u, timeout)
             raise

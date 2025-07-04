@@ -1,4 +1,4 @@
-from typing import Any, Literal, Union
+from typing import Any, Tuple, FrozenSet, Literal, Union, Optional
 
 from pydantic import BaseModel, Field
 
