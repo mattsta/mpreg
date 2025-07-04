@@ -9,16 +9,18 @@ from dataclasses import dataclass, field
 
 from graphlib import TopologicalSorter
 from pathlib import Path
+import time
 
 from typing import Any, Callable, Iterable, Mapping
 
 import orjson
+import ulid
 import websockets.client
 import websockets.server
 
 from loguru import logger
 
-from .model import RPCCommand, RPCRequest, RPCInternalRequest, RPCInternalAnswer, RPCServerRequest, RPCServerHello, RPCResponse
+from .model import RPCCommand, RPCRequest, RPCInternalRequest, RPCInternalAnswer, RPCServerRequest, RPCServerHello, RPCResponse, PeerInfo, GossipMessage
 from .registry import Command, CommandRegistry
 from .config import MPREGSettings
 from .serialization import JsonSerializer
@@ -174,6 +176,10 @@ class Cluster:
     # collection of all servers for easy reference
     servers: set[Connection] = field(default_factory=set)
 
+    # Information about known peers in the cluster, for gossip protocol.
+    # Key: peer URL, Value: PeerInfo object.
+    peers_info: dict[str, PeerInfo] = field(default_factory=dict)
+
     def __post_init__(self) -> None:
         self.waitingFor = dict()
         self.answer = dict()
@@ -189,14 +195,21 @@ class Cluster:
         # also tell the cluster we exist for routing this new local command
         self.add_fun_ability("self", fun, resources)
 
-    def add_fun_ability(self, server: Connection, fun: str, resources: Iterable[str]):
+    def add_fun_ability(self, server: Connection, fun: str, resources: frozenset[str]):
         """Add a new function and resource(s) to a server mapping.
 
         This method updates the cluster's knowledge of which functions are available
         on which servers and with what resources.
         """
-        self.funtimes[fun][frozenset(resources)].add(server)
+        self.funtimes[fun][resources].add(server)
         self.servers.add(server)
+        # Update peer information with the latest capabilities and last seen timestamp.
+        self.peers_info[server.url] = PeerInfo(
+            url=server.url,
+            funs=tuple(sorted(list(self.funtimes.keys()))),  # All functions known to this server
+            locs=resources,
+            last_seen=time.time()
+        )
 
     def remove_server(self, server: Connection):
         """If server disconnects, remove it from ALL fun mappings.
@@ -233,6 +246,19 @@ class Cluster:
                 return RPCResponse(r="STATUS", u=str(ulid.new()))
             case _:
                 assert None
+
+    def process_gossip_message(self, gossip_message: GossipMessage):
+        """Processes an incoming gossip message, updating local peer information.
+
+        This method iterates through the peers in the gossip message and updates
+        the local peers_info, adding new peers or updating existing ones if
+        the received information is more recent.
+        """
+        for peer_info in gossip_message.peers:
+            if peer_info.url not in self.peers_info or \
+               peer_info.last_seen > self.peers_info[peer_info.url].last_seen:
+                logger.info("Updating peer info for {}: {}", peer_info.url, peer_info)
+                self.peers_info[peer_info.url] = peer_info
 
     def server_for(self, fun: str, locs: frozenset[str]) -> Optional[Connection]:
         """Finds a suitable server for a given function and location.
@@ -556,6 +582,13 @@ class MPREGServer:
                         response_model = RPCInternalAnswer(answer=answer_payload, u=u)
 
                         # logger.info("[{}] Generated answer: {}", u, answer_payload)
+
+                    case "gossip":
+                        # Incoming gossip message from a peer.
+                        gossip_message = GossipMessage.model_validate(parsed_msg)
+                        self.cluster.process_gossip_message(gossip_message)
+                        # Gossip messages do not typically require a direct response.
+                        continue
 
                     case _:
                         # Handle unknown message roles.

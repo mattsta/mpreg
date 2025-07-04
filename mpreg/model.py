@@ -78,6 +78,21 @@ class RPCServerStatus(BaseModel):
 RPCServerMessage = Union[RPCServerHello, RPCServerGoodbye, RPCServerStatus]
 
 
+class PeerInfo(BaseModel):
+    """Information about a peer in the cluster."""
+    url: str = Field(description="The URL of the peer.")
+    funs: Tuple[str, ...] = Field(description="Functions provided by this peer.")
+    locs: FrozenSet[str] = Field(description="Locations/resources associated with this peer.")
+    last_seen: float = Field(description="Timestamp of when this peer was last seen alive.")
+
+
+class GossipMessage(BaseModel):
+    """A message exchanged during the gossip protocol."""
+    role: Literal["gossip"] = "gossip"
+    peers: Tuple[PeerInfo, ...] = Field(description="Information about known peers.")
+    u: str = Field(description="A unique identifier for this gossip message.")
+
+
 class RPCServerRequest(BaseModel):
     """
     Represents a server-to-server communication request.
@@ -99,4 +114,4 @@ class RPCResponse(BaseModel):
     u: str = Field(description="The unique identifier of the request this is responding to.")
 
 
-RPCMessage = Union[RPCRequest, RPCInternalRequest, RPCInternalAnswer, RPCServerRequest, RPCResponse]
+RPCMessage = Union[RPCRequest, RPCInternalRequest, RPCInternalAnswer, RPCServerRequest, GossipMessage, RPCResponse]

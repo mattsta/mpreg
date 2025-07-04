@@ -21,8 +21,10 @@ class MPREGClient:
     serializer: JsonSerializer
     local_funs: Tuple[str, ...]
     local_resources: FrozenSet[str]
+    gossip_interval: float = field(default=5.0, description="Interval in seconds for sending gossip messages.")
     # TODO: This should be a list of connections to multiple peers.
     peer_connection: Optional[Connection] = field(default=None, init=False)
+    _gossip_task: Optional[asyncio.Task] = field(default=None, init=False)
 
     async def connect(self) -> None:
         """Establishes a connection to the remote MPREG server and handles message exchange.
@@ -49,6 +51,9 @@ class MPREGClient:
                 ).model_dump()
             )
         )
+
+        # Start the gossip task after successful connection.
+        self._gossip_task = asyncio.create_task(self._gossip_loop())
 
         # This is the processing loop for US AS A CLUSTER CLIENT.
         # Here we RECEIVE messages from OTHER servers for LOCAL PROCESSING then REPLYING TO THE UPSTREAM.
@@ -86,6 +91,13 @@ class MPREGClient:
 
                         # SEND RESULT PAYLOAD back UPSTREAM
                         await self.peer_connection.send(self.serializer.serialize(response_model.model_dump()))
+                    case "gossip":
+                        # Process incoming gossip message.
+                        gossip_message = GossipMessage.model_validate(parsed_msg)
+                        # In a real scenario, this would update the local cluster state.
+                        logger.info("[{}] Received gossip message: {}", self.url, gossip_message.model_dump_json())
+                    case _:
+                        logger.error("[{}] Unknown message role: {}", self.url, parsed_msg.get("role"))
         except (
             websockets.ConnectionClosedError,
             websockets.ConnectionClosedOK,
@@ -96,3 +108,24 @@ class MPREGClient:
         except Exception as e:
             logger.error("[{}] Error in peer connection: {}", self.url, e)
             await asyncio.sleep(1) # Wait before retrying to connect
+
+    async def _gossip_loop(self) -> None:
+        """Periodically sends gossip messages to the connected peer."""
+        while True:
+            try:
+                # Create a GossipMessage with information about known peers.
+                # For now, we'll just send our own info as a single peer.
+                gossip_message = GossipMessage(
+                    peers=(PeerInfo(
+                        url=self.url,
+                        funs=self.local_funs,
+                        locs=self.local_resources,
+                        last_seen=time.time()
+                    ),),
+                    u=str(ulid.new())
+                )
+                await self.peer_connection.send(self.serializer.serialize(gossip_message.model_dump()))
+                logger.info("[{}] Sent gossip message.", self.url)
+            except Exception as e:
+                logger.error("[{}] Error sending gossip message: {}", self.url, e)
+            await asyncio.sleep(self.gossip_interval)
