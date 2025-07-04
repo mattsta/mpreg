@@ -48,6 +48,7 @@ MPREG_DATA_MAX = 2**32
 # Default commands for all servers
 #
 ############################################
+@rpc_command(name="echo", resources=[])
 def echo(arg):
     """Default echo handler for all servers.
 
@@ -55,6 +56,7 @@ def echo(arg):
     return arg
 
 
+@rpc_command(name="echos", resources=[])
 def echos(*args):
     """Default echos handler for all servers.
 
@@ -473,12 +475,35 @@ class MPREGServer:
         self.serializer = JsonSerializer()
         self.peer_clients: dict[str, MPREGClient] = {}
 
+        # Register default commands and any commands decorated with @rpc_command
+        self._register_default_commands()
+        self._discover_and_register_rpc_commands()
+
     def report(self):
         """General report of current server state."""
 
         logger.info("Resources: {}", pp.pformat(self.settings.resources))
         logger.info("Funs: {}", pp.pformat(self.settings.funs))
         logger.info("Clients: {}", pp.pformat(self.clients))
+
+    def _register_default_commands(self) -> None:
+        """Registers the default RPC commands (echo, echos)."""
+        self.register_command("echo", echo, [])
+        self.register_command("echos", echos, [])
+
+    def _discover_and_register_rpc_commands(self) -> None:
+        """Discovers and registers RPC commands defined using the @rpc_command decorator.
+
+        This method inspects the current module's global namespace for functions
+        that have been decorated with @rpc_command and registers them with the server.
+        """
+        for name in dir(sys.modules[__name__]):
+            obj = getattr(sys.modules[__name__], name)
+            if callable(obj) and hasattr(obj, '_rpc_command_name'):
+                rpc_name = getattr(obj, '_rpc_command_name')
+                rpc_resources = getattr(obj, '_rpc_command_resources')
+                self.register_command(rpc_name, obj, rpc_resources)
+                logger.info("Registered RPC command: {} with resources {}", rpc_name, rpc_resources)
 
     def run_server(
         self,
@@ -693,9 +718,33 @@ class MPREGServer:
             await asyncio.sleep(self.settings.gossip_interval) # Use gossip interval for checking frequency
 
     def register_command(self, name: str, func: Callable[..., Any], resources: Iterable[str]) -> None:
-        """Register a command with the server."""
+        """Register a command with the server.
+
+        Args:
+            name: The name of the command.
+            func: The callable function that implements the command.
+            resources: An iterable of resource strings associated with the command.
+        """
         self.registry.register(Command(name, func))
-        self.cluster.add_fun_ability("self", name, resources)
+        self.cluster.add_fun_ability("self", name, frozenset(resources))
+
+def rpc_command(name: str, resources: Optional[Iterable[str]] = None) -> Callable:
+    """Decorator to register a function as an RPC command.
+
+    Args:
+        name: The name of the RPC command.
+        resources: Optional iterable of resource strings associated with the command.
+
+    Returns:
+        A decorator that registers the function as an RPC command.
+    """
+    def decorator(func: Callable) -> Callable:
+        # This is a placeholder. The actual registration will happen when the MPREGServer is initialized.
+        # We store the metadata on the function itself.
+        func._rpc_command_name = name
+        func._rpc_command_resources = frozenset(resources) if resources is not None else frozenset()
+        return func
+    return decorator
 
     async def server(self) -> None:
         """Starts the MPREG server and handles incoming and outgoing connections.
