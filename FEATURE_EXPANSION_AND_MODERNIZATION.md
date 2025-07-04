@@ -85,9 +85,9 @@ The goal is to create a clear, well-documented, and intuitive system for definin
 -   [x] **Standardize Command Representation:**
     -   [x] Design a single, unified `Command` dataclass/Pydantic model that is used across the entire system (client, server, and network). This class should encapsulate all properties of a command, including its name, the function to be executed, and any resource requirements (`locs`).
     -   [x] Refactor `mpreg/client.py` and `mpreg/server.py` to use this single `Command` definition, eliminating the current separate and inconsistent representations.
--   [ ] **Decouple Command Definition from Execution:**
-    -   [ ] Create a `CommandRegistry` class responsible for storing and looking up available commands on a server. This will replace the current `cluster.self` dictionary.
-    -   [ ] The `MPREGServer` will own an instance of the `CommandRegistry`. The `add_self_ability` method will be refactored to `registry.register(command)`.
+-   [x] **Decouple Command Definition from Execution:**
+    -   [x] Create a `CommandRegistry` class responsible for storing and looking up available commands on a server. This will replace the current `cluster.self` dictionary.
+    -   [x] The `MPREGServer` will own an instance of the `CommandRegistry`. The `add_self_ability` method will be refactored to `registry.register(command)`.
 -   [ ] **Clarify RPC Execution Logic:**
     -   [ ] Refactor the `Cluster.run` method to be more readable and maintainable. The logic for finding a suitable server and executing a command should be extracted into separate, well-named methods (e.g., `_find_server_for_command`, `_execute_local_command`, `_execute_remote_command`).
     -   [ ] The `RPCFun` dataclass should be re-evaluated. Its purpose is to represent a step in a larger RPC chain. We should rename it to `RPCStep` or similar to better reflect its role and ensure its fields (`command`, `args`, etc.) are clear and strongly typed.
