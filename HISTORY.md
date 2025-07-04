@@ -39,3 +39,9 @@ This document maintains a high-level log of architectural changes and significan
 **Purpose:** To improve the readability and maintainability of the RPC execution flow within the server.
 
 **Reasoning:** The `Cluster.run` method previously contained intertwined logic for both local and remote command execution, making it harder to understand and modify. By extracting these concerns into dedicated private methods (`_execute_local_command` and `_execute_remote_command`), we enhance the clarity of the execution path, improve modularity, and adhere to the Single Responsibility Principle. This refactoring makes the core RPC execution logic more transparent and easier to debug or extend.
+
+### `feat: Abstract network connections with Connection class`
+
+**Purpose:** To encapsulate websocket connections and abstract low-level network details, improving modularity and testability.
+
+**Reasoning:** The previous implementation directly managed raw websocket objects, leading to scattered connection logic and making it difficult to test and extend. By introducing a `Connection` class, we centralize connection management, including connecting, disconnecting, sending, and receiving messages. This abstraction simplifies the `Cluster` and `MPREGServer` classes, making the network layer more robust, easier to reason about, and prepares the system for advanced features like automatic reconnection and connection pooling.
