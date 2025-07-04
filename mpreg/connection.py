@@ -2,6 +2,7 @@ import asyncio
 from dataclasses import dataclass, field
 
 import websockets.client
+import websockets.server
 from loguru import logger
 
 
@@ -12,7 +13,7 @@ class Connection:
     url: str
     max_retries: int = field(default=5, repr=False)
     base_delay: float = field(default=1.0, repr=False)
-    websocket: websockets.client.WebSocketClientProtocol | None = field(
+    websocket: websockets.client.WebSocketClientProtocol | websockets.server.WebSocketServerProtocol | None = field(
         default=None, init=False
     )
     _receive_queue: asyncio.Queue = field(default_factory=asyncio.Queue, init=False)

@@ -9,8 +9,8 @@ This section focuses on improving the foundational aspects of the MPREG codebase
 
 ### A. Refactor to Modern Python Practices
 
--   [ ] **Typed Data Structures:**
-    -   [ ] Replace `dict` with `dataclasses` or `pydantic` models for all network communication schemas (RPCs, server messages, etc.). This will improve code clarity, reduce runtime errors, and enable static analysis.
+-   [x] **Typed Data Structures:**
+    -   [x] Replace `dict` with `dataclasses` or `pydantic` models for all network communication schemas (RPCs, server messages, etc.). This will improve code clarity, reduce runtime errors, and enable static analysis.
     -   [ ] Investigate using `pydantic` for automatic validation of incoming data.
 -   [x] **Configuration:**
     -   [x] Replace YAML configuration with a more robust solution like `pydantic-settings` for type-safe configuration management.

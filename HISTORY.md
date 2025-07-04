@@ -2,7 +2,21 @@
 
 This document maintains a high-level log of architectural changes and significant feature implementations.
 
+## 2025-07-04
+
+### `fix: Resolve remaining mypy type errors`
+
+**Purpose:** To systematically address and resolve all remaining mypy type errors in `mpreg/server.py`, ensuring full type-checking compliance.
+
+**Reasoning:** Achieving a clean mypy run is crucial for maintaining code quality, preventing potential runtime errors, and improving developer productivity. This set of fixes specifically targeted issues related to dataclass attribute ordering, type mismatches in `PeerInfo` instantiation, missing arguments in `RPCResponse` constructors, and correct handling of optional `Connection` objects. By resolving these, the codebase is now more robust, easier to reason about, and better prepared for future development.
+
 ## 2025-07-03
+
+### `fix: Resolve mypy type errors and improve type safety`
+
+**Purpose:** To address and resolve various mypy type errors across the codebase, thereby improving overall type safety and code quality.
+
+**Reasoning:** As the codebase evolves and new features are integrated, maintaining strict type consistency is crucial for preventing runtime errors and enhancing code readability. This commit systematically addresses type mismatches and missing type hints, particularly concerning dataclass definitions, optional fields, and argument passing in network-related components. By ensuring that the code adheres to its defined types, we improve the reliability and maintainability of the system, making it easier for developers to understand and extend the codebase with confidence.
 
 ### `revert: Remove flawed client API unit tests`
 

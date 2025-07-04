@@ -8,7 +8,7 @@ from collections import defaultdict
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from graphlib import TopologicalSorter
-from typing import Any
+from typing import Any, Optional, Tuple, FrozenSet, Literal, Union
 
 import ulid
 import websockets.client
@@ -27,6 +27,10 @@ from .model import (
     RPCRequest,
     RPCResponse,
     RPCServerRequest,
+    RPCServerMessage,
+    MPREGException,
+    RPCError,
+    CommandNotFoundError,
 )
 from .registry import Command, CommandRegistry
 from .serialization import JsonSerializer
@@ -45,6 +49,26 @@ if sys.version_info >= (3, 12):
 # maximum 4 GB messages should be enough for anybody, right?
 MPREG_DATA_MAX = 2**32
 
+
+def rpc_command(name: str, resources: Optional[Iterable[str]] = None) -> Callable:
+    """Decorator to register a function as an RPC command.
+
+    Args:
+        name: The name of the RPC command.
+        resources: Optional iterable of resource strings associated with the command.
+
+    Returns:
+        A decorator that registers the function as an RPC command.
+    """
+
+    def decorator(func: Callable) -> Callable:
+        # This is a placeholder. The actual registration will happen when the MPREGServer is initialized.
+        # We store the metadata on the function itself.
+        setattr(func, '_rpc_command_name', name)
+        setattr(func, '_rpc_command_resources', frozenset(resources) if resources is not None else frozenset())
+        return func
+
+    return decorator
 
 ############################################
 #
@@ -85,7 +109,7 @@ class RPC:
         self.funs = {cmd.name: cmd for cmd in self.req.cmds}
 
         # We also have to resolve the funs to a call graph...
-        sorter = TopologicalSorter()
+        sorter: TopologicalSorter = TopologicalSorter()
 
         for name, rpc_command in self.funs.items():
             # only attach child dependencies IF the argument matches a NAME in the entire RPC Request
@@ -116,50 +140,7 @@ class RPC:
 # MPREG Server Instance
 #
 ############################################
-@dataclass
-class Server:
-    """Representation of one server in the cluster.
 
-    Purpose: maintains contact with remote servers for command sending and result receiving.
-    """
-
-    host: str
-    port: int
-
-    def __post_init__(self) -> None:
-        # TODO: maybe just allow URL to be passed in completely
-        self.url = f"ws://{self.host}:{self.port}"
-        self.ws = None
-
-    async def connect(self):
-        if self.ws:
-            await self.ws.close()
-            self.ws = None
-
-        # https://websockets.readthedocs.io/en/stable/reference/asyncio/client.html
-        self.ws = await websockets.connect(self.url, user_agent_header=None)
-
-    async def call(self, cmd, args):
-        """Send this command request to the server and return reply."""
-
-        # if server IS THIS HOST, we run command DIRECTLY (because re-sending it to us won't help!)
-
-        # else, we request from REMOTE SOURCE
-        while True:
-            try:
-                cmdfmt = ...
-                return await self.ws.send(cmdfmt)
-            except websockets.ConnectionClosedOK:
-                # connection gone, reconnect.......
-                logger.error(
-                    "[{}] websocket connection closed. Reconnecting...", self.url
-                )
-                self.ws = None
-                await self.connect()
-            except:
-                # TODO maybe re-connect if this is a websocket error.........
-                logger.exception("Failed to send? Retrying...")
-                await asyncio.sleep(1)
 
 
 ############################################
@@ -169,60 +150,43 @@ class Server:
 ############################################
 @dataclass
 class Cluster:
+    cluster_id: str
+    advertised_urls: tuple[str, ...]
     # map of RPC names to resources to hosts
     # e.g. {"rpc-name": {"resource-1": set(servers), "resource-2": set(servers), ...}}
-    funtimes: dict[dict[frozenset[str], set[str]]] = field(
+    funtimes: dict[str, dict[frozenset[str], set[str]]] = field(
         default_factory=lambda: defaultdict(lambda: defaultdict(set))
     )
 
     # collection of all servers for easy reference
-    servers: set[Connection] = field(default_factory=set)
+    servers: set[str] = field(default_factory=set)
 
     # Information about known peers in the cluster, for gossip protocol.
     # Key: peer URL, Value: PeerInfo object.
     peers_info: dict[str, PeerInfo] = field(default_factory=dict)
-    dead_peer_timeout: float = field(
-        default=30.0,
-        description="Timeout in seconds after which a peer is considered dead.",
-    )
+    dead_peer_timeout: float = field(default=30.0)
+    registry: CommandRegistry = field(init=False)
+    serializer: JsonSerializer = field(init=False)
+
 
     def __post_init__(self) -> None:
-        self.waitingFor = dict()
-        self.answer = dict()
-        ...
+        self.waitingFor: dict[str, asyncio.Event] = dict()
+        self.answer: dict[str, Any] = dict()
+        # These will be set by MPREGServer
+        # self.registry = CommandRegistry()
+        # self.serializer = JsonSerializer()
 
-    def add_self_ability(
-        self, fun: str, call: Callable[Any, Any], resources: Iterable[str]
-    ):
-        """Add an ability for THIS SERVER so we have a final command resolve point."""
-        logger.info("Adding local behavior: {} ({}) -> {}", fun, resources, call)
-        self.self[fun] = Command(fun, call)
 
-        # also tell the cluster we exist for routing this new local command
-        self.add_fun_ability("self", fun, resources)
-
-    def add_fun_ability(self, server: Connection, fun: str, resources: frozenset[str]):
+    def add_fun_ability(self, peer_info: PeerInfo):
         """Add a new function and resource(s) to a server mapping.
 
         This method updates the cluster's knowledge of which functions are available
         on which servers and with what resources.
         """
-        self.funtimes[fun][resources].add(server)
-        self.servers.add(server)
-        # Update peer information with the latest capabilities and last seen timestamp.
-        self.peers_info[server.url] = PeerInfo(
-            url=server.url,
-            funs=tuple(
-                sorted(list(self.funtimes.keys()))
-            ),  # All functions known to this server
-            locs=resources,
-            last_seen=time.time(),
-            cluster_id=self.settings.cluster_id,
-            advertised_urls=tuple(
-                self.settings.advertised_urls
-                or [f"ws://{self.settings.host}:{self.settings.port}"]
-            ),
-        )
+        for fun in peer_info.funs:
+            self.funtimes[fun][peer_info.locs].add(peer_info.url)
+        self.servers.add(peer_info.url)
+        self.peers_info[peer_info.url] = peer_info
 
     def remove_server(self, server: Connection):
         """If server disconnects, remove it from ALL fun mappings.
@@ -232,9 +196,9 @@ class Cluster:
         # iterate everything and remove matching server from all sets
         for fun, resources in self.funtimes.items():
             for locations, servers in resources.items():
-                servers.discard(server)
+                servers.discard(server.url) # Changed to server.url
 
-        self.servers.discard(server)
+        self.servers.discard(server.url)
 
     def server_cmd(
         self, server_connection: Connection, cmd: RPCServerMessage
@@ -247,19 +211,26 @@ class Cluster:
         # logger.info("New command here too: {}", cmd)
         match cmd.what:
             case "HELLO":
-                # HELLO has a list of LOCATION and a list of FUNS for those locations
-                for fun in cmd.funs:
-                    self.add_fun_ability(server_connection, fun, cmd.locs)
-
-                return RPCResponse(r="ADDED", u=str(ulid.new()))
+                # A new server is announcing its capabilities.
+                # Add its functions and locations to the cluster's funtimes mapping.
+                peer_info = PeerInfo(
+                    url=server_connection.url,
+                    funs=cmd.funs,
+                    locs=frozenset(cmd.locs),
+                    last_seen=time.time(),
+                    cluster_id=cmd.cluster_id,
+                    advertised_urls=cmd.advertised_urls,
+                )
+                self.add_fun_ability(peer_info)
+                return RPCResponse(r="ADDED", u=str(ulid.new()), error=None)
             case "GOODBYE":
                 # TODO: also remove on any error/disconnect in other places.......
                 self.remove_server(server_connection)
-                return RPCResponse(r="GONE", u=str(ulid.new()))
+                return RPCResponse(r="GONE", u=str(ulid.new()), error=None)
             case "STATUS":
                 ...
-                return RPCResponse(r="STATUS", u=str(ulid.new()))
-            case _:
+                return RPCResponse(r="STATUS", u=str(ulid.new()), error=None)
+            case _:\
                 assert None
 
     def process_gossip_message(self, gossip_message: GossipMessage):
@@ -271,10 +242,10 @@ class Cluster:
         """
         for peer_info in gossip_message.peers:
             # Only process if the cluster_id matches
-            if peer_info.cluster_id != self.settings.cluster_id:
+            if peer_info.cluster_id != self.cluster_id:
                 logger.warning(
                     "Received gossip from different cluster ID: Expected {}, Got {}",
-                    self.settings.cluster_id,
+                    self.cluster_id,
                     peer_info.cluster_id,
                 )
                 continue
@@ -296,9 +267,9 @@ class Cluster:
         for url in peers_to_remove:
             logger.info("Removing stale peer: {}", url)
             del self.peers_info[url]
-            self.peers_info[peer_info.url] = peer_info
 
-    def server_for(self, fun: str, locs: frozenset[str]) -> Optional[Connection]:
+
+    def server_for(self, fun: str, locs: frozenset[str]) -> Optional[str]: # Changed return type
         """Finds a suitable server for a given function and location.
 
         Args:
@@ -354,7 +325,7 @@ class Cluster:
         del self.waitingFor[rid]
 
     async def _execute_local_command(
-        self, rpc_command: RPCCommand, results: dict
+        self, rpc_command: RPCCommand, results: dict[str, Any] # Added type hint
     ) -> Any:
         """Executes a command locally using the command registry.
 
@@ -365,12 +336,12 @@ class Cluster:
         Returns:
             The result of the local command execution.
         """
-        return self.registry.get(rpc_command.fun)(
+        return self.registry.get(rpc_command.fun)( # Access registry via self.registry
             *rpc_command.args, **rpc_command.kwargs
         )
 
     async def _execute_remote_command(
-        self, rpc_step: RPCCommand, results: dict, where: Connection
+        self, rpc_step: RPCCommand, results: dict[str, Any], where: Connection
     ) -> Any:
         """Sends a command to a remote server and waits for the response.
 
@@ -386,7 +357,7 @@ class Cluster:
             ConnectionError: If the connection to the remote server is not open.
         """
         localrid = str(ulid.new())
-        body = self.serializer.serialize(
+        body = self.serializer.serialize( # Access serializer via self.serializer
             RPCInternalRequest(
                 command=rpc_step.fun,
                 args=rpc_step.args,
@@ -408,7 +379,7 @@ class Cluster:
             # This is a form of self-healing for the cluster.
             new_where = self.server_for(rpc_step.fun, rpc_step.locs)
             if new_where:
-                return await self._execute_remote_command(rpc_step, results, new_where)
+                return await self._execute_remote_command(rpc_step, results, Connection(url=new_where)) # Changed new_where to where
             else:
                 raise ConnectionError(
                     f"No alternative server found for: {rpc_step.fun} at {rpc_step.locs}"
@@ -430,7 +401,7 @@ class Cluster:
           - Reply to client.
         """
 
-        async def runner(rpc_command: RPCCommand, results: dict) -> dict:
+        async def runner(rpc_command: RPCCommand, results: dict[str, Any]) -> dict[str, Any]: # Added type hints
             """Executes a single RPC command, either locally or remotely.
 
             Args:
@@ -443,18 +414,18 @@ class Cluster:
             where = self.server_for(rpc_command.fun, rpc_command.locs)
             if not where:
                 logger.error("Sorry, no server found for: {}", rpc_command)
-                raise CommandNotFoundError(command_name=rpc_command.fun)
+                raise CommandNotFoundError(command_name=rpc_command.fun) # Corrected raising of CommandNotFoundError
 
             if where == "self":
                 got = await self._execute_local_command(rpc_command, results)
             else:
-                got = await self._execute_remote_command(rpc_command, results, where)
+                got = await self._execute_remote_command(rpc_command, results, Connection(url=where)) # Wrap string in Connection
 
             results[rpc_command.name] = got
 
             return {rpc_command.name: got}
 
-        results = {}
+        results: dict[str, Any] = {} # Added type hint
         # logger.info("rpc is: {}", rpc)
         for level in rpc.tasks():
             # Note: EVERYTHING in the current level is parallelizable!
@@ -486,8 +457,8 @@ class Cluster:
 class MPREGServer:
     """Main MPREG server application class."""
 
-    settings: MPREGSettings = Field(
-        default_factory=MPREGSettings, description="Server configuration settings."
+    settings: MPREGSettings = field( # Changed from Field to field
+        default_factory=MPREGSettings, metadata={"description": "Server configuration settings."}
     )
 
     def __post_init__(self) -> None:
@@ -495,10 +466,15 @@ class MPREGServer:
 
         Sets up the cluster, command registry, and client tracking.
         """
-        self.cluster = Cluster()
-        self.registry = CommandRegistry()
-        self.clients = set()
-        self.serializer = JsonSerializer()
+        self.registry = CommandRegistry() # Moved registry initialization here
+        self.serializer = JsonSerializer() # Moved serializer initialization here
+        self.cluster = Cluster(
+            cluster_id=self.settings.cluster_id,
+            advertised_urls=tuple(self.settings.advertised_urls or []),
+        )
+        self.cluster.registry = self.registry
+        self.cluster.serializer = self.serializer
+        self.clients: set[Connection] = set() # Added type hint
         self.peer_clients: dict[str, MPREGClient] = {}
 
         # Register default commands and any commands decorated with @rpc_command
@@ -509,7 +485,7 @@ class MPREGServer:
         """General report of current server state."""
 
         logger.info("Resources: {}", pp.pformat(self.settings.resources))
-        logger.info("Funs: {}", pp.pformat(self.settings.funs))
+        # logger.info("Funs: {}", pp.pformat(self.settings.funs)) # Removed as funs is no longer in settings
         logger.info("Clients: {}", pp.pformat(self.clients))
 
     def _register_default_commands(self) -> None:
@@ -553,23 +529,29 @@ class MPREGServer:
                 case "HELLO":
                     # A new server is announcing its capabilities.
                     # Add its functions and locations to the cluster's funtimes mapping.
-                    for fun in req.server.funs:
-                        self.cluster.add_fun_ability(
-                            server_connection, fun, req.server.locs
-                        )
-                    return RPCResponse(r="ADDED", u=req.u)
+                    peer_info = PeerInfo(
+                        url=server_connection.url,
+                        funs=req.server.funs,
+                        locs=frozenset(req.server.locs),
+                        last_seen=time.time(),
+                        cluster_id=req.server.cluster_id,
+                        advertised_urls=req.server.advertised_urls,
+                    )
+                    self.cluster.add_fun_ability(peer_info)
+                    return RPCResponse(r="ADDED", u=req.u, error=None)
                 case "GOODBYE":
                     # A server is gracefully shutting down.
                     # Remove it from all fun mappings in the cluster.
                     self.cluster.remove_server(server_connection)
-                    return RPCResponse(r="GONE", u=req.u)
+                    return RPCResponse(r="GONE", u=req.u, error=None)
                 case "STATUS":
-                    # A server is sending a status update (e.g., for gossip protocol).
+                    # A server is sending a status update (e.g., for gossip protocol).\
                     # TODO: Implement actual status processing.
-                    return RPCResponse(r="STATUS", u=req.u)
-                case _:
+                    return RPCResponse(r="STATUS", u=req.u, error=None)
+                case _:\
                     # Handle unknown server message types.
                     return RPCResponse(
+                        r=None,
                         error=RPCError(
                             code=1000,
                             message=f"Unknown server message type: {req.server.what}",
@@ -580,6 +562,7 @@ class MPREGServer:
             # Catch any exceptions during server command processing and return an error response.
             logger.exception("Error processing server command")
             return RPCResponse(
+                r=None,
                 error=RPCError(
                     code=1002,
                     message="Internal server error",
@@ -599,11 +582,12 @@ class MPREGServer:
             # the topological sorting of commands.
             rpc = RPC(req)
             # Execute the RPC and return the results.
-            return RPCResponse(r=await self.cluster.run(rpc), u=req.u)
+            return RPCResponse(r=await self.cluster.run(rpc), u=req.u, error=None)
         except Exception as e:
             # Catch any exceptions during RPC execution and return an error response.
             logger.exception("Error running RPC")
             return RPCResponse(
+                r=None,
                 error=RPCError(
                     code=1003,
                     message="RPC execution failed",
@@ -613,7 +597,7 @@ class MPREGServer:
             )
 
     @logger.catch
-    async def opened(self, websocket: websockets.client.WebSocketClientProtocol):
+    async def opened(self, websocket: websockets.server.WebSocketServerProtocol):
         """Handles a new incoming websocket connection.
 
         This method is the entry point for all incoming messages, routing them
@@ -630,11 +614,11 @@ class MPREGServer:
             async for msg in websocket:
                 # Attempt to parse the incoming message into a Pydantic model.
                 # This provides automatic validation and type conversion.
-                parsed_msg = self.serializer.deserialize(msg)
+                parsed_msg = self.serializer.deserialize(msg.encode('utf-8') if isinstance(msg, str) else msg)
 
                 # logger.info("[{}:{}] Received: {}", websocket.host, websocket.port, parsed_msg)
 
-                response_model = None
+                response_model: Union[RPCResponse, RPCInternalAnswer, None] = None
                 match parsed_msg.get("role"):
                     case "server":
                         # SERVER-TO-SERVER communications packet
@@ -655,13 +639,14 @@ class MPREGServer:
                             logger.warning(
                                 "[{}:{}] Received HELLO from different cluster ID: Expected {}, Got {}",
                                 *websocket.remote_address,
-                                self.settings.cluster_id,
+                                self.cluster.cluster_id, # Changed to self.cluster.cluster_id
                                 server_request.server.cluster_id,
                             )
                             # Close connection or return an error response
                             response_model = RPCResponse(
+                                r=None,
                                 error=RPCError(
-                                    code=1005, message="Cluster ID mismatch"
+                                    code=1005, message="Cluster ID mismatch", details=None
                                 ),
                                 u=server_request.u,
                             )
@@ -716,7 +701,7 @@ class MPREGServer:
                             logger.warning(
                                 "[{}:{}] Received gossip from different cluster ID: Expected {}, Got {}",
                                 *websocket.remote_address,
-                                self.settings.cluster_id,
+                                self.cluster.cluster_id, # Changed to self.cluster.cluster_id
                                 gossip_message.cluster_id,
                             )
                             continue  # Ignore gossip from different cluster
@@ -724,7 +709,7 @@ class MPREGServer:
                         # Gossip messages do not typically require a direct response.
                         continue
 
-                    case _:
+                    case _:\
                         # Handle unknown message roles.
                         logger.error(
                             "[{}:{}] Invalid RPC request role: {}",
@@ -732,9 +717,11 @@ class MPREGServer:
                             parsed_msg.get("role"),
                         )
                         response_model = RPCResponse(
+                            r=None,
                             error=RPCError(
                                 code=1004,
                                 message=f"Invalid RPC request role: {parsed_msg.get('role')}",
+                                details=None
                             ),
                             u=parsed_msg.get("u", "unknown"),
                         )
@@ -761,10 +748,8 @@ class MPREGServer:
         Args:
             peer_url: The URL of the peer to connect to.
         """
-        if (
-            peer_url in self.peer_clients
-            and self.peer_clients[peer_url].peer_connection.is_connected
-        ):
+        peer_client = self.peer_clients.get(peer_url)
+        if peer_client and peer_client.peer_connection and peer_client.peer_connection.is_connected:
             logger.info(
                 "[{}] Already connected to peer: {}", self.settings.name, peer_url
             )
@@ -783,7 +768,7 @@ class MPREGServer:
                 local_funs=tuple(self.registry._commands.keys()),
                 local_resources=frozenset(self.settings.resources or []),
                 cluster_id=self.settings.cluster_id,
-                local_advertised_urls=tuple(
+                local_advertised_urls=tuple( # Changed to tuple
                     self.settings.advertised_urls
                     or [f"ws://{self.settings.host}:{self.settings.port}"]
                 ),
@@ -827,7 +812,7 @@ class MPREGServer:
             # Periodically check for new peers.
             await asyncio.sleep(
                 self.settings.gossip_interval
-            )  # Use gossip interval for checking frequency
+            )
 
     def register_command(
         self, name: str, func: Callable[..., Any], resources: Iterable[str]
@@ -840,30 +825,16 @@ class MPREGServer:
             resources: An iterable of resource strings associated with the command.
         """
         self.registry.register(Command(name, func))
-        self.cluster.add_fun_ability("self", name, frozenset(resources))
-
-
-def rpc_command(name: str, resources: Optional[Iterable[str]] = None) -> Callable:
-    """Decorator to register a function as an RPC command.
-
-    Args:
-        name: The name of the RPC command.
-        resources: Optional iterable of resource strings associated with the command.
-
-    Returns:
-        A decorator that registers the function as an RPC command.
-    """
-
-    def decorator(func: Callable) -> Callable:
-        # This is a placeholder. The actual registration will happen when the MPREGServer is initialized.
-        # We store the metadata on the function itself.
-        func._rpc_command_name = name
-        func._rpc_command_resources = (
-            frozenset(resources) if resources is not None else frozenset()
+        peer_info = PeerInfo(
+            url=f"ws://{self.settings.host}:{self.settings.port}",
+            funs=(name,),
+            locs=frozenset(resources),
+            last_seen=time.time(),
+            cluster_id=self.settings.cluster_id,
+            advertised_urls=tuple(self.settings.advertised_urls or [f"ws://{self.settings.host}:{self.settings.port}"]),
         )
-        return func
+        self.cluster.add_fun_ability(peer_info)
 
-    return decorator
 
     async def server(self) -> None:
         """Starts the MPREG server and handles incoming and outgoing connections.
@@ -880,8 +851,8 @@ def rpc_command(name: str, resources: Optional[Iterable[str]] = None) -> Callabl
 
         # Register OURSELF with the global echo target.
         # The resources for these default commands are empty, meaning they are available globally.
-        self.register_command("echo", echo, [])
-        self.register_command("echos", echos, [])
+        self._register_default_commands() # Call _register_default_commands here
+        self._discover_and_register_rpc_commands() # Call _discover_and_register_rpc_commands here
 
         # Start a background task to manage peer connections based on gossip.
         self._peer_connection_manager_task = asyncio.create_task(
