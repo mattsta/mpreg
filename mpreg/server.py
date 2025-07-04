@@ -366,7 +366,7 @@ class Cluster:
             if new_where:
                 return await self._execute_remote_command(rpc_step, results, new_where)
             else:
-                raise Exception(f"No alternative server found for: {rpc_step}")
+                raise ConnectionError(f"No alternative server found for: {rpc_step.fun} at {rpc_step.locs}")
 
         waiting = await asyncio.create_task(self.answerFor(localrid))
         got = self.answer[localrid]
@@ -397,7 +397,7 @@ class Cluster:
             where = self.server_for(rpc_command.fun, rpc_command.locs)
             if not where:
                 logger.error("Sorry, no server found for: {}", rpc_command)
-                raise Exception(f"No server found for: {rpc_command}")
+                raise CommandNotFoundError(command_name=rpc_command.fun)
 
             if where == "self":
                 got = await self._execute_local_command(rpc_command, results)
@@ -500,11 +500,11 @@ class MPREGServer:
                     return RPCResponse(r="STATUS", u=req.u)
                 case _:
                     # Handle unknown server message types.
-                    return RPCResponse(e=f"Unknown server message type: {req.server.what}", state="server_cmd_error", u=req.u)
+                    return RPCResponse(error=RPCError(code=1000, message=f"Unknown server message type: {req.server.what}"), u=req.u)
         except Exception as e:
             # Catch any exceptions during server command processing and return an error response.
             logger.exception("Error processing server command")
-            return RPCResponse(e=traceback.format_exc(), state="server_cmd_exception", u=req.u)
+            return RPCResponse(error=RPCError(code=1002, message="Internal server error", details=traceback.format_exc()), u=req.u)
 
     async def run_rpc(self, req: RPCRequest) -> RPCResponse:
         """Run a client RPC request command in the cluster.
@@ -521,7 +521,7 @@ class MPREGServer:
         except Exception as e:
             # Catch any exceptions during RPC execution and return an error response.
             logger.exception("Error running RPC")
-            return RPCResponse(e=traceback.format_exc(), state="running", u=req.u)
+            return RPCResponse(error=RPCError(code=1003, message="RPC execution failed", details=traceback.format_exc()), u=req.u)
 
     @logger.catch
     async def opened(self, websocket: websockets.client.WebSocketClientProtocol):
@@ -603,7 +603,7 @@ class MPREGServer:
                     case _:
                         # Handle unknown message roles.
                         logger.error("[{}:{}] Invalid RPC request role: {}", *websocket.remote_address, parsed_msg.get("role"))
-                        response_model = RPCResponse(e=f"Invalid RPC request role: {parsed_msg.get("role")}", state="invalid_role", u=parsed_msg.get("u", "unknown"))
+                        response_model = RPCResponse(error=RPCError(code=1004, message=f"Invalid RPC request role: {parsed_msg.get("role")}"), u=parsed_msg.get("u", "unknown"))
 
                 # If a response model was generated, send it back to the client.
                 if response_model:

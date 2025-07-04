@@ -54,13 +54,19 @@ class Client:
 
         await self.websocket.send(send)
 
-        got = orjson.loads(await self.websocket.recv())
+        raw_response = await self.websocket.recv()
+        response = RPCResponse.model_validate(self.serializer.deserialize(raw_response))
 
         if self.full_log:
-            logger.info("[{}] Result:\n{}", got["u"], pp.pformat(got))
+            logger.info("[{}] Result:\n{}", response.u, pp.pformat(response.model_dump()))
 
-        assert req.u == got["u"]
-        return got
+        assert req.u == response.u
+
+        if response.error:
+            logger.error("RPC Error: {}: {}", response.error.code, response.error.message)
+            raise Exception(f"RPC Error: {response.error.message}")
+
+        return response.r
 
 
     async def connect(self):

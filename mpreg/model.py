@@ -110,9 +110,22 @@ class RPCResponse(BaseModel):
     """
 
     r: Any = Field(None, description="The result of the RPC call, if successful.")
-    e: str = Field(None, description="Error message, if the RPC failed.")
-    state: str = Field(None, description="The state of the RPC when the error occurred.")
+    error: Optional[RPCError] = Field(None, description="Structured error information, if the RPC failed.")
     u: str = Field(description="The unique identifier of the request this is responding to.")
+
+
+class RPCError(BaseModel):
+    """Base model for structured RPC errors."""
+    code: int = Field(description="A numeric error code.")
+    message: str = Field(description="A human-readable error message.")
+    details: Optional[Any] = Field(None, description="Optional additional details about the error.")
+
+
+class CommandNotFoundError(RPCError):
+    """Error indicating that a requested command was not found."""
+    code: int = Field(1001, const=True, description="Error code for command not found.")
+    message: str = Field("Command not found", const=True, description="Default message for command not found.")
+    command_name: str = Field(description="The name of the command that was not found.")
 
 
 RPCMessage = Union[RPCRequest, RPCInternalRequest, RPCInternalAnswer, RPCServerRequest, GossipMessage, RPCResponse]
