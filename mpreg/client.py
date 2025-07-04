@@ -18,6 +18,7 @@ import websockets
 import websockets.client
 from loguru import logger
 
+from .model import RPCCommand
 from .timer import Timer
 
 if sys.version_info >= (3, 12):
@@ -25,16 +26,8 @@ if sys.version_info >= (3, 12):
 
 
 @dataclass(slots=True)
-class Command:
-    name: str
-    fun: str
-    args: tuple[Any, ...]
-    locs: tuple[str, ...]
-
-
-@dataclass(slots=True)
 class Request:
-    cmds: tuple[Command, ...]
+    cmds: tuple[RPCCommand, ...]
 
     # uniqe id for this request...
     u: str | None = field(default_factory=lambda: str(ulid.new()))
@@ -51,7 +44,7 @@ class Client:
     # optionally disable big log printing to get more accurate timing measurements
     full_log: bool = True
 
-    async def request(self, cmds: list[Command]):
+    async def request(self, cmds: list[RPCCommand]):
         req = Request(cmds=cmds)
 
         send = orjson.dumps(req.dump())
@@ -76,14 +69,14 @@ class Client:
 
             # Test one simple echo command
             with Timer("Single Echo"):
-                await self.request([Command("first", "echo", ["hi there!"], [])])
+                await self.request([RPCCommand("first", "echo", ("hi there!",), frozenset())])
 
             # Test echo command chaining its result to ANOTHER echo command
             with Timer("Double Echo"):
                 await self.request(
                     [
-                        Command("first", "echo", ["hi there!"], []),
-                        Command("second", "echo", ["first"], []),
+                        RPCCommand("first", "echo", ("hi there!",), frozenset()),
+                        RPCCommand("second", "echo", ("first",), frozenset()),
                     ]
                 )
 
@@ -94,9 +87,9 @@ class Client:
             with Timer("Triple Echo"):
                 await self.request(
                     [
-                        Command("|first", "echo", ["hi there!"], []),
-                        Command("|second", "echo", ["|first"], []),
-                        Command("|third", "echos", ["|first", "AND ME TOO"], []),
+                        RPCCommand("|first", "echo", ("hi there!",), frozenset()),
+                        RPCCommand("|second", "echo", ("|first",), frozenset()),
+                        RPCCommand("|third", "echos", ("|first", "AND ME TOO"), frozenset()),
                     ]
                 )
 
@@ -104,10 +97,13 @@ class Client:
             with Timer("Triple Echo 2"):
                 await self.request(
                     [
-                        Command("|first", "echo", ["hi there!"], []),
-                        Command("|second", "echo", ["|first"], []),
-                        Command(
-                            "|third", "echos", ["|first", "|second", "AND ME TOO"], []
+                        RPCCommand("|first", "echo", ("hi there!",), frozenset()),
+                        RPCCommand("|second", "echo", ("|first",), frozenset()),
+                        RPCCommand(
+                            "|third",
+                            "echos",
+                            ("|first", "|second", "AND ME TOO"),
+                            frozenset(),
                         ),
                     ]
                 )
@@ -116,12 +112,15 @@ class Client:
             with Timer("Quad Echo"):
                 await self.request(
                     [
-                        Command("|first", "echo", ["hi there!"], []),
-                        Command("|second", "echo", ["|first"], []),
-                        Command(
-                            "|third", "echos", ["|first", "|second", "AND ME TOO"], []
+                        RPCCommand("|first", "echo", ("hi there!",), frozenset()),
+                        RPCCommand("|second", "echo", ("|first",), frozenset()),
+                        RPCCommand(
+                            "|third",
+                            "echos",
+                            ("|first", "|second", "AND ME TOO"),
+                            frozenset(),
                         ),
-                        Command("|4th", "echo", ["|third"], []),
+                        RPCCommand("|4th", "echo", ("|third",), frozenset()),
                     ]
                 )
 

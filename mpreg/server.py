@@ -19,6 +19,8 @@ import websockets.server
 
 from loguru import logger
 
+from .model import RPCCommand
+
 
 ############################################
 #
@@ -87,18 +89,14 @@ class Command:
 
 
 @dataclass(slots=True)
-class RPCFun:
-    """RPC Fun is one row of an RPC for the distributed system.
-
-    Here, 'fun' is still the function RPC name and NOT an actual callable itself.
-    The actual callable is determed by a per-server local RPCName->Command mapping."""
+class RPCStep:
+    """RPC Step is one row of an RPC for the distributed system."""
 
     name: str
-    command: Command
-    args: Iterable[Any]
-    locs: frozenset[str]
+    command: RPCCommand
 
     me: str = field(default_factory=lambda: str(ulid.new()))
+
 
     def call(self, results) -> Any:
         return self.command.call(self.args, results)
@@ -115,8 +113,11 @@ class RPC:
 
     def __post_init__(self) -> None:
         self.funs = {
-            row["name"]: RPCFun(
-                row["name"], row["fun"], row["args"], frozenset(row["locs"])
+            row["name"]: RPCStep(
+                row["name"],
+                RPCCommand(
+                    row["name"], row["fun"], row["args"], frozenset(row["locs"])
+                ),
             )
             for row in self.req["cmds"]
         }
@@ -126,7 +127,7 @@ class RPC:
 
         for name, rpc in self.funs.items():
             # only attach child dependencies IF the argument matches a NAME in the entire RPC Request
-            deps = filter(lambda x: x in self.funs, rpc.args)
+            deps = filter(lambda x: x in self.funs, rpc.command.args)
             sorter.add(name, *deps)
 
         levels = []
@@ -345,16 +346,16 @@ class Cluster:
           - Reply to client.
         """
 
-        async def runner(rpcfun, results):
-            where = self.server_for(rpcfun.name, rpcfun.locs)
+        async def runner(rpc_step, results):
+            where = self.server_for(rpc_step.command.fun, rpc_step.command.locs)
             if not where:
-                logger.error("Sorry, no server found for: {}", rpcfun)
-                raise Exception(f"No server found for: {rpcfun}")
+                logger.error("Sorry, no server found for: {}", rpc_step)
+                raise Exception(f"No server found for: {rpc_step}")
 
             # logger.info("[{}] Running {}", where, cmd)
             if where == "self":
                 # LOCAL call
-                got = self.self[rpcfun.command].call(rpcfun.args, results)
+                got = self.self[rpc_step.command.fun].call(rpc_step.command.args, results)
             else:
                 # REMOTE call (another websocket call, "where" must be a server-websocket thing doing requests)
                 localrid = str(ulid.new())
@@ -362,8 +363,8 @@ class Cluster:
                     dict(
                         role="internal-rpc",
                         internal=dict(
-                            command=rpcfun.command,
-                            args=rpcfun.args,
+                            command=rpc_step.command.fun,
+                            args=rpc_step.command.args,
                             results=results,
                         ),
                         u=localrid,
@@ -386,7 +387,7 @@ class Cluster:
                     # actually, RETRY this again because MAYBE we have another server with this
                     # service available?????
                     # (maybe this counts as "self-healing")
-                    return await runner(rpcfun, results)
+                    return await runner(rpc_step, results)
 
                 # now subscribe THIS CLIENT to wait for THIS RESULT ID
                 # pause here until we GET AN ASYNC ANSWER BACK FROM THE NETWORK
@@ -395,10 +396,10 @@ class Cluster:
                 got = self.answer[localrid]
                 del self.answer[localrid]
 
-            results[rpcfun.name] = got
+            results[rpc_step.name] = got
 
             # return result ATTACHED TO FUN NAME so the client gets (name -> result) mappings returned
-            return {rpcfun.name: got}
+            return {rpc_step.name: got}
 
         results = {}
         # logger.info("rpc is: {}", rpc)
@@ -407,9 +408,9 @@ class Cluster:
             cmds = []
             # logger.info("Tasks for level are: {}", level)
             for name in level:
-                rpcfun = rpc.funs[name]
+                rpc_step = rpc.funs[name]
                 # here, each 'cmd' is only command NAME we look up in the rpc to run with the resolved local args
-                cmds.append(runner(rpcfun, results))
+                cmds.append(runner(rpc_step, results))
 
             got = await asyncio.gather(*cmds)
 
