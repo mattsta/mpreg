@@ -31,8 +31,8 @@ This section focuses on adding new features and improving the overall user exper
 
 ### A. Enhance RPC Capabilities
 
--   [ ] **Keyword Argument (kwargs) Support:**
-    -   [ ] Extend the `Command` and `RPCFun` data structures to support keyword arguments in addition to positional arguments.
+-   [x] **Keyword Argument (kwargs) Support:**
+    -   [x] Extend the `Command` and `RPCFun` data structures to support keyword arguments in addition to positional arguments.
 -   [ ] **Error Handling & Reporting:**
     -   [ ] Implement a more structured error handling mechanism. Instead of returning tracebacks, define a set of error codes and messages that can be easily parsed by clients.
 -   [ ] **Request Timeouts:**
