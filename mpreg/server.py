@@ -22,6 +22,7 @@ from .model import RPCCommand, RPCRequest, RPCInternalRequest, RPCInternalAnswer
 from .registry import Command, CommandRegistry
 from .config import MPREGSettings
 from .serialization import JsonSerializer
+from .connection import Connection
 
 
 ############################################
@@ -170,7 +171,7 @@ class Cluster:
     )
 
     # collection of all servers for easy reference
-    servers: set[str] = field(default_factory=set)
+    servers: set[Connection] = field(default_factory=set)
 
     def __post_init__(self) -> None:
         self.waitingFor = dict()
@@ -187,14 +188,16 @@ class Cluster:
         # also tell the cluster we exist for routing this new local command
         self.add_fun_ability("self", fun, resources)
 
-    def add_fun_ability(self, server, fun: str, resources: Iterable[str]):
-        """Add a new function and resource(s) to a server mapping."""
-        # TODO: figure out what these server objects are... index into a server connector map? probably on direct clients?
+    def add_fun_ability(self, server: Connection, fun: str, resources: Iterable[str]):
+        """Add a new function and resource(s) to a server mapping.
 
+        This method updates the cluster's knowledge of which functions are available
+        on which servers and with what resources.
+        """
         self.funtimes[fun][frozenset(resources)].add(server)
         self.servers.add(server)
 
-    def remove_server(self, server):
+    def remove_server(self, server: Connection):
         """If server disconnects, remove it from ALL fun mappings.
 
         Note: this may leave some empty {fun: {resource: set()}} but it's okay"""
@@ -206,71 +209,71 @@ class Cluster:
 
         self.servers.discard(server)
 
-    def server_cmd(self, server_websocket, cmd):
+    def server_cmd(self, server_connection: Connection, cmd: RPCServerMessage) -> RPCResponse:
         """A remote server is telling us about itself.
 
-        # TODO: this should be creating a Server() object in the fun mappings instead of
-        #       adding WEBSOCKTS directly to the mappings! We can't reconnect to a "websocket" object
-        #       because those were established INBOUND ONLY and they aren't feeding us their own listening
-        #       details yet.
-
-        Potential actions here are:
-          - HELLO: new connection advertising capabilites
-          - GOODBYE: clean shutdown
-          - STATUS: gossip local status/metrics around
+        This method processes incoming server-to-server messages, such as HELLO,
+        GOODBYE, or STATUS updates, and updates the cluster's state accordingly.
         """
-
         # logger.info("New command here too: {}", cmd)
-        match cmd["what"]:
+        match cmd.what:
             case "HELLO":
                 # HELLO has a list of LOCATION and a list of FUNS for those locations
-                for fun in cmd["funs"]:
-                    self.add_fun_ability(server_websocket, fun, cmd["locs"])
+                for fun in cmd.funs:
+                    self.add_fun_ability(server_connection, fun, cmd.locs)
 
-                return "ADDED"
+                return RPCResponse(r="ADDED", u=str(ulid.new()))
             case "GOODBYE":
                 # TODO: also remove on any error/disconnect in other places.......
-                self.remove_server(server_websocket)
-                return "GONE"
+                self.remove_server(server_connection)
+                return RPCResponse(r="GONE", u=str(ulid.new()))
             case "STATUS":
                 ...
-                return "STATUS"
+                return RPCResponse(r="STATUS", u=str(ulid.new()))
             case _:
                 assert None
 
-    def server_for(self, fun, locs):
-        server = None
+    def server_for(self, fun: str, locs: frozenset[str]) -> Optional[Connection]:
+        """Finds a suitable server for a given function and location.
 
-        # if no servers exist, we can't find anything anywhere
-        # NOTE: this should be impossible, because we register OURSELF as a server on startup...
+        Args:
+            fun: The name of the function to find a server for.
+            locs: The frozenset of locations/resources required by the function.
+
+        Returns:
+            A Connection object to the suitable server, or None if no server is found.
+        """
+        # If no servers exist, we can't find anything anywhere.
+        # NOTE: This should be impossible, because we register OURSELF as a server on startup.
         if not self.servers:
             return None
 
-        # if no location requested, we can run ANYWHERE
+        # If no location requested, we can run ANYWHERE.
         if not locs:
             return random.choice(tuple(self.servers))
 
-        # if EXACT loc request exists in the rpc-capability map, use single result
-        servers = self.funtimes[fun][locs]
+        # If an EXACT loc request exists in the rpc-capability map, use that single result.
+        servers = self.funtimes[fun].get(locs)
 
         if not servers:
-            # else, no EXACT match, but try to discover a FULL match?
+            # Else, no EXACT match, but try to discover a FULL match.
             # TODO: if this is too slow, we could also directly add all matching subset possibilities
             #       with something like:
             #       itertools.chain(*[itertools.combinations(loc, N) for N in range(1, len(loc) + 1)])
-            for funlocs, servers in self.funtimes[fun].items():
-                if locs & funlocs == locs:
-                    # we found a match for ALL our requested resources (even if the target has MORE)
+            for funlocs, srvs in self.funtimes[fun].items():
+                if locs.issubset(funlocs):
+                    # We found a match for ALL our requested resources (even if the target has MORE).
+                    servers = srvs
                     break
             else:
-                # else, loop failed to break, so we have NO matching servers
+                # Else, loop failed to break, so we have NO matching servers.
                 servers = None
 
-        # random selection only works if found elements exist
+        # Random selection only works if found elements exist.
         if servers:
             return random.choice(tuple(servers))
 
-        # else, we tried everything and no matches were found
+        # Else, we tried everything and no matches were found.
         return None
 
     async def answerFor(self, rid: str):
@@ -289,13 +292,25 @@ class Cluster:
         """Executes a command locally using the command registry."""
         return self.registry.get(rpc_step.command.fun)(*rpc_step.command.args)
 
-    async def _execute_remote_command(self, rpc_step: RPCStep, results: dict, where: Any) -> Any:
-        """Sends a command to a remote server and waits for the response."""
+    async def _execute_remote_command(self, rpc_step: RPCCommand, results: dict, where: Connection) -> Any:
+        """Sends a command to a remote server and waits for the response.
+
+        Args:
+            rpc_step: The RPCCommand to execute remotely.
+            results: The current intermediate results of the RPC execution.
+            where: The Connection object representing the remote server.
+
+        Returns:
+            The result of the remote command execution.
+
+        Raises:
+            ConnectionError: If the connection to the remote server is not open.
+        """
         localrid = str(ulid.new())
         body = self.serializer.serialize(
             RPCInternalRequest(
-                command=rpc_step.command.fun,
-                args=rpc_step.command.args,
+                command=rpc_step.fun,
+                args=rpc_step.args,
                 results=results,
                 u=localrid,
             ).model_dump()
@@ -303,14 +318,19 @@ class Cluster:
 
         try:
             await where.send(body)
-        except websockets.ConnectionClosedOK:
+        except ConnectionError:
             logger.error(
-                "[{}] websocket connection closed. Removing from services for now...",
-                where,
+                "[{}] Connection to remote server closed. Removing from services for now...",
+                where.url,
             )
             self.remove_server(where)
             # Retry if the server was removed, as another might be available
-            return await self._execute_remote_command(rpc_step, results, self.server_for(rpc_step.command.fun, rpc_step.command.locs))
+            # This is a form of self-healing for the cluster.
+            new_where = self.server_for(rpc_step.fun, rpc_step.locs)
+            if new_where:
+                return await self._execute_remote_command(rpc_step, results, new_where)
+            else:
+                raise Exception(f"No alternative server found for: {rpc_step}")
 
         waiting = await asyncio.create_task(self.answerFor(localrid))
         got = self.answer[localrid]
@@ -328,20 +348,29 @@ class Cluster:
           - Reply to client.
         """
 
-        async def runner(rpc_step, results):
-            where = self.server_for(rpc_step.command.fun, rpc_step.command.locs)
+        async def runner(rpc_command: RPCCommand, results: dict) -> dict:
+            """Executes a single RPC command, either locally or remotely.
+
+            Args:
+                rpc_command: The RPCCommand to execute.
+                results: The current intermediate results of the RPC execution.
+
+            Returns:
+                A dictionary containing the result of the executed command.
+            """
+            where = self.server_for(rpc_command.fun, rpc_command.locs)
             if not where:
-                logger.error("Sorry, no server found for: {}", rpc_step)
-                raise Exception(f"No server found for: {rpc_step}")
+                logger.error("Sorry, no server found for: {}", rpc_command)
+                raise Exception(f"No server found for: {rpc_command}")
 
             if where == "self":
-                got = await self._execute_local_command(rpc_step, results)
+                got = await self._execute_local_command(rpc_command, results)
             else:
-                got = await self._execute_remote_command(rpc_step, results, where)
+                got = await self._execute_remote_command(rpc_command, results, where)
 
-            results[rpc_step.name] = got
+            results[rpc_command.name] = got
 
-            return {rpc_step.name: got}
+            return {rpc_command.name: got}
 
         results = {}
         # logger.info("rpc is: {}", rpc)
@@ -350,9 +379,9 @@ class Cluster:
             cmds = []
             # logger.info("Tasks for level are: {}", level)
             for name in level:
-                rpc_step = rpc.funs[name]
+                rpc_command = rpc.funs[name]
                 # here, each 'cmd' is only command NAME we look up in the rpc to run with the resolved local args
-                cmds.append(runner(rpc_step, results))
+                cmds.append(runner(rpc_command, results))
 
             got = await asyncio.gather(*cmds)
 
@@ -396,7 +425,7 @@ class MPREGServer:
 
     def run_server(
         self,
-        server_websocket: websockets.client.WebSocketClientProtocol,
+        server_connection: Connection,
         req: RPCServerRequest,
     ) -> RPCResponse:
         """Run a server-to-server command in the cluster.
@@ -413,12 +442,12 @@ class MPREGServer:
                     # A new server is announcing its capabilities.
                     # Add its functions and locations to the cluster's funtimes mapping.
                     for fun in req.server.funs:
-                        self.cluster.add_fun_ability(server_websocket, fun, req.server.locs)
+                        self.cluster.add_fun_ability(server_connection, fun, req.server.locs)
                     return RPCResponse(r="ADDED", u=req.u)
                 case "GOODBYE":
                     # A server is gracefully shutting down.
                     # Remove it from all fun mappings in the cluster.
-                    self.cluster.remove_server(server_websocket)
+                    self.cluster.remove_server(server_connection)
                     return RPCResponse(r="GONE", u=req.u)
                 case "STATUS":
                     # A server is sending a status update (e.g., for gossip protocol).
@@ -451,8 +480,17 @@ class MPREGServer:
 
     @logger.catch
     async def opened(self, websocket: websockets.client.WebSocketClientProtocol):
+        """Handles a new incoming websocket connection.
+
+        This method is the entry point for all incoming messages, routing them
+        to the appropriate handler based on their 'role'.
+        """
+        # Create a Connection object for the incoming websocket.
+        connection = Connection(url=str(websocket.remote_address))
+        connection.websocket = websocket  # Assign the raw websocket to the connection object
+
         try:
-            self.clients.add(websocket)
+            self.clients.add(connection)
             async for msg in websocket:
                 # Attempt to parse the incoming message into a Pydantic model.
                 # This provides automatic validation and type conversion.
@@ -471,7 +509,7 @@ class MPREGServer:
                             *websocket.remote_address,
                             server_request.model_dump_json(),
                         )
-                        response_model = self.run_server(websocket, server_request)
+                        response_model = self.run_server(connection, server_request)
                     case "rpc":
                         # CLIENT request
                         rpc_request = RPCRequest.model_validate(parsed_msg)
@@ -526,7 +564,7 @@ class MPREGServer:
         finally:
             # TODO: if this was a SERVER, we need to clean up the server resources.
             # TODO: if this was a CLIENT, we need to cancel any oustanding requests/subscriptions too.
-            self.clients.remove(websocket)
+            self.clients.remove(connection)
 
     def register_command(self, name: str, func: Callable[..., Any], resources: Iterable[str]) -> None:
         """Register a command with the server."""
@@ -561,40 +599,30 @@ class MPREGServer:
                 await asyncio.Future()
                 return
 
-            # else, we ARE connecting to another server, so this keeps *our* server alive while we are a *client* to another upstream.
-            # TODO: we should technically also be a client of MULTIPLE upstreams...
-            # connect to another server requested, so do it now and announce our services upstream.
-            async for websocket in websockets.connect(
-                self.settings.connect,
-                user_agent_header=None,
-                # 'open_timeout=1' means there's a 1 second delay between reconnect attempts
-                open_timeout=1,
-                ping_interval=5,
-                ping_timeout=30,
-                close_timeout=5,
-                max_size=None,
-                max_queue=None,
-                read_limit=MPREG_DATA_MAX,
-                write_limit=MPREG_DATA_MAX,
-            ):
-                # This is registering CLUSTER NODE FUNCTIONS AND DATASETS into our upstream host.
-                # We send a RPCServerHello message with our capabilities.
-                await websocket.send(
-                    self.serializer.serialize(
-                        RPCServerRequest(
-                            server=RPCServerHello(
-                                funs=("echo", "echos"),
-                                locs=("local", "test"),
-                            ),
-                            u=str(ulid.new())
-                        ).model_dump()
-                    )
-                )
-
-                # This is the processing loop for US AS A CLUSTER CLIENT.
-                # Here we RECEIVE messages from OTHER servers for LOCAL PROCESSING then REPLYING TO THE UPSTREAM.
+            # Else, we ARE connecting to another server, so this keeps *our* server alive
+            # while we are a *client* to another upstream. We should technically also be
+            # a client of MULTIPLE upstreams, but for now, we connect to one.
+            peer_connection = Connection(url=self.settings.connect)
+            while True:
                 try:
-                    async for msg in websocket:
+                    await peer_connection.connect()
+                    # This is registering CLUSTER NODE FUNCTIONS AND DATASETS into our upstream host.
+                    # We send a RPCServerHello message with our capabilities.
+                    await peer_connection.send(
+                        self.serializer.serialize(
+                            RPCServerRequest(
+                                server=RPCServerHello(
+                                    funs=("echo", "echos"),
+                                    locs=("local", "test"),
+                                ),
+                                u=str(ulid.new())
+                            ).model_dump()
+                        )
+                    )
+
+                    # This is the processing loop for US AS A CLUSTER CLIENT.
+                    # Here we RECEIVE messages from OTHER servers for LOCAL PROCESSING then REPLYING TO THE UPSTREAM.
+                    async for msg in peer_connection.websocket:
                         parsed_msg = self.serializer.deserialize(msg)
                         if False:
                             logger.info(
@@ -608,7 +636,7 @@ class MPREGServer:
                                 server_request = RPCServerRequest.model_validate(parsed_msg)
                                 logger.info(
                                     "[{}:{}] Server status: {}",
-                                    *websocket.remote_address,
+                                    *peer_connection.websocket.remote_address,
                                     server_request.model_dump_json(),
                                 )
                             case "internal-rpc":
@@ -626,14 +654,17 @@ class MPREGServer:
                                 # logger.info("[{}] Generated answer: {}", u, answer_payload)
 
                                 # SEND RESULT PAYLOAD back UPSTREAM
-                                await websocket.send(self.serializer.serialize(response_model.model_dump()))
+                                await peer_connection.send(self.serializer.serialize(response_model.model_dump()))
                 except (
                     websockets.ConnectionClosedError,
                     websockets.ConnectionClosedOK,
                 ):
-                    # note: we just need to catch here since the `websockets.connect()` we're inside
-                    #       is already an infinte generator for connection retries...
+                    # Note: we just need to catch here since the `websockets.connect()` we're inside
+                    #       is already an infinite generator for connection retries...
                     logger.info("Server disconnected... reconnecting...")
+                except Exception as e:
+                    logger.error("[{}] Error in peer connection: {}", peer_connection.url, e)
+                    await asyncio.sleep(1) # Wait before retrying to connect
 
     def start(self) -> None:
         try:
