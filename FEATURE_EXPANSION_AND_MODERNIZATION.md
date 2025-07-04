@@ -22,8 +22,8 @@ This section focuses on improving the foundational aspects of the MPREG codebase
 -   [x] **Connection Handling:**
     -   [x] Refactor the `Server` class to manage websocket connections more robustly, including automatic reconnection logic with exponential backoff.
     -   [ ] Implement a more graceful shutdown procedure for servers, ensuring all client requests are handled before exiting.
--   [x] **Serialization:**
-    -   [x] Add support for `cloudpickle` as an alternative to JSON for serializing more complex Python objects. This will require a negotiation step during the initial handshake to determine the serialization format.
+-   [ ] **Serialization:**
+    -   [ ] Add support for `cloudpickle` as an alternative to JSON for serializing more complex Python objects. This will require a negotiation step during the initial handshake to determine the serialization format.
 
 ## II. Feature Expansion & Usability
 
@@ -114,5 +114,5 @@ The goal is to improve the reliability and resilience of the cluster by abstract
 -   [ ] **Robust Connection Handling:**
     -   [ ] Implement automatic reconnection logic with exponential backoff within the `Connection` class. This will make the cluster more resilient to transient network failures.
     -   [ ] Implement a proper gossip protocol for server discovery. The `Connection` class can be extended to handle the exchange of peer information.
--   [ ] **Clear Server and Client Roles:**
-    -   [ ] Refactor the `MPREGServer` to clearly separate its two roles: the "server" role (listening for incoming connections) and the "client" role (connecting to other peers). This might involve creating separate classes or modules to handle each role's logic.
+-   [x] **Clear Server and Client Roles:**
+    -   [x] Refactor the `MPREGServer` to clearly separate its two roles: the "server" role (listening for incoming connections) and the "client" role (connecting to other peers). This might involve creating separate classes or modules to handle each role's logic.

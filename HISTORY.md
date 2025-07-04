@@ -32,22 +32,16 @@ This document maintains a high-level log of architectural changes and significan
 
 **Purpose:** To abstract the serialization logic, making it easier to support multiple serialization formats and improving the extensibility of the system.
 
-**Reasoning:** Previously, `orjson.dumps` and `orjson.loads` were used directly throughout the codebase, tightly coupling the application to a specific serialization implementation. By introducing a `Serializer` interface and a `JsonSerializer` concrete class, we decouple the serialization concerns. This allows for future integration of other serialization methods (e.g., `cloudpickle` for more complex Python objects) without requiring significant changes to the core server logic. This enhances the system's flexibility and maintainability.
-
-### `refactor: Clarify RPC execution logic`
-
-**Purpose:** To improve the readability and maintainability of the RPC execution flow within the server.
-
-**Reasoning:** The `Cluster.run` method previously contained intertwined logic for both local and remote command execution, making it harder to understand and modify. By extracting these concerns into dedicated private methods (`_execute_local_command` and `_execute_remote_command`), we enhance the clarity of the execution path, improve modularity, and adhere to the Single Responsibility Principle. This refactoring makes the core RPC execution logic more transparent and easier to debug or extend.
-
-### `feat: Abstract network connections with Connection class`
-
-**Purpose:** To encapsulate websocket connections and abstract low-level network details, improving modularity and testability.
-
-**Reasoning:** The previous implementation directly managed raw websocket objects, leading to scattered connection logic and making it difficult to test and extend. By introducing a `Connection` class, we centralize connection management, including connecting, disconnecting, sending, and receiving messages. This abstraction simplifies the `Cluster` and `MPREGServer` classes, making the network layer more robust, easier to reason about, and prepares the system for advanced features like automatic reconnection and connection pooling.
+**Reasoning:** Previously, `orjson.dumps` and `orjson.loads` were used directly throughout the codebase, tightly coupling the application to a specific serialization implementation. By introducing a `Serializer` interface and a `JsonSerializer` concrete class, we decouple the serialization concerns. This change lays the groundwork for future integration of other serialization methods (e.g., `cloudpickle` for more complex Python objects) without requiring significant changes to the core server logic. The `cloudpickle` implementation itself is a separate, future task.
 
 ### `feat: Implement robust connection handling with exponential backoff`
 
 **Purpose:** To enhance the reliability and resilience of network communication by implementing automatic reconnection with exponential backoff.
 
 **Reasoning:** The previous connection handling was basic and lacked mechanisms for automatically recovering from transient network failures. By integrating exponential backoff into the `Connection` class, we ensure that the system can gracefully handle temporary disconnections and automatically attempt to re-establish connections with increasing delays. This significantly improves the stability and fault-tolerance of the MPREG cluster, reducing manual intervention and enhancing overall system availability.
+
+### `refactor: Clear server and client roles`
+
+**Purpose:** To clearly separate the responsibilities of the MPREGServer into distinct server (listening) and client (connecting to peers) roles.
+
+**Reasoning:** The `MPREGServer` previously conflated both server and client functionalities, leading to a less modular and harder-to-maintain codebase. By extracting the client-side logic into a dedicated `MPREGClient` class, we adhere to the Single Responsibility Principle. This separation enhances code clarity, simplifies testing of individual components, and provides a cleaner architecture for future development, especially for implementing more sophisticated peer-to-peer communication and gossip protocols.
