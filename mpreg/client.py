@@ -11,12 +11,12 @@ import sys
 from typing import Any
 
 import orjson
+import ulid
 import websockets
 import websockets.client
 from loguru import logger
 
-from .model import RPCCommand, RPCRequest
-from .timer import Timer
+from .model import RPCCommand, RPCRequest, RPCResponse, RPCError, CommandNotFoundError
 
 if sys.version_info >= (3, 12):
     asyncio.get_event_loop().set_task_factory(asyncio.eager_task_factory)
@@ -78,81 +78,15 @@ class Client:
 
         return response.r
 
-
     async def connect(self):
         async for websocket in websockets.connect(self.url, user_agent_header=None):
             self.websocket = websocket
-
-            # Test one simple echo command
-            with Timer("Single Echo"):
-                await self.request([RPCCommand("first", "echo", ("hi there!",), frozenset(), kwargs={"test": 1})], timeout=5)
-
-            # Test echo command chaining its result to ANOTHER echo command
-            with Timer("Double Echo"):
-                await self.request(
-                    [
-                        RPCCommand("first", "echo", ("hi there!",), frozenset()),
-                        RPCCommand("second", "echo", ("first",), frozenset(), kwargs={"test": 2}),
-                    ],
-                    timeout=5
-                )
-
-            # Test echo command chaining its result to ANOTHER echo command and THIRD unrelated command
-            # Note: if a command has NO follow-ons, it runs at the first level and doesn't get returned.
-            #       Values returned to the client only happen if they are in the last processing level.
-            #       This also means if all commands have NO shared arguments, ALL commands get returned.
-            with Timer("Triple Echo"):
-                await self.request(
-                    [
-                        RPCCommand("|first", "echo", ("hi there!",), frozenset()),
-                        RPCCommand("|second", "echo", ("|first",), frozenset()),
-                        RPCCommand("|third", "echos", ("|first", "AND ME TOO"), frozenset(), kwargs={"test": 3}),
-                    ],
-                    timeout=5
-                )
-
-            # test final result combining first/second
-            with Timer("Triple Echo 2"):
-                await self.request(
-                    [
-                        RPCCommand("|first", "echo", ("hi there!",), frozenset()),
-                        RPCCommand("|second", "echo", ("|first",), frozenset()),
-                        RPCCommand(
-                            "|third",
-                            "echos",
-                            ("|first", "|second", "AND ME TOO"),
-                            frozenset(),
-                            kwargs={"test": 4}
-                        ),
-                    ],
-                    timeout=5
-                )
-
-            # test re-assembly of previously assembled results
-            with Timer("Quad Echo"):
-                await self.request(
-                    [
-                        RPCCommand("|first", "echo", ("hi there!",), frozenset()),
-                        RPCCommand("|second", "echo", ("|first",), frozenset()),
-                        RPCCommand(
-                            "|third",
-                            "echos",
-                            ("|first", "|second", "AND ME TOO"),
-                            frozenset(),
-                        ),
-                        RPCCommand("|4th", "echo", ("|third",), frozenset(), kwargs={"test": 5}),
-                    ],
-                    timeout=5
-                )
-
-            # return required because this is inside an infinte websocket re-connect generator
-            # (though, for extra load testing, comment out the 'return' and it's just an infinte loop of requests)
+            # The client will now be used by MPREGClientAPI, so no direct examples here.
             return
 
     def run(self):
         try:
-            with Timer("Total Run"):
-                asyncio.run(self.connect())
+            asyncio.run(self.connect())
         except KeyboardInterrupt:
             logger.warning("EXIT REQUEST CONFIRMED")
 
