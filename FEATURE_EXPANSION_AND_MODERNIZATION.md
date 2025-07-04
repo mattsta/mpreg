@@ -48,8 +48,8 @@ This section focuses on adding new features and improving the overall user exper
     -   [x] Create a more user-friendly and reusable client library that abstracts away the low-level details of websocket communication and request creation.
 -   [x] **Simplified Server Interface:**
     -   [x] Develop a simpler API for registering RPC functions and datasets on a server. This will make it easier to integrate MPREG with existing applications.
--   [ ] **Command-Line Interface (CLI):**
-    -   [ ] Enhance the existing `jsonargparse`-based CLI with more commands and options for managing the cluster and inspecting its state.
+-   [x] **Command-Line Interface (CLI):**
+    -   [x] Enhance the existing `jsonargparse`-based CLI with more commands and options for managing the cluster and inspecting its state.
 
 ### C. Testing & Documentation
 
