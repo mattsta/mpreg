@@ -17,8 +17,12 @@ This section focuses on improving the foundational aspects of the MPREG codebase
 
 ### B. Improve Cluster Management & Communication
 
--   [x] **Server Discovery & Gossip Protocol:**
-    -   [x] Implement a proper gossip protocol for server discovery and health checks. This will eliminate the need for static peer lists and improve cluster resilience.
+-   [ ] **Server Discovery & Gossip Protocol:**
+    -   [ ] Implement a proper gossip protocol for server discovery and health checks. This will eliminate the need for static peer lists and improve cluster resilience.
+    -   [ ] **Introduce Cluster Identification:** Add a mandatory `cluster_id` to `MPREGSettings` and `PeerInfo`. Ensure servers only accept connections and process gossip messages from peers sharing the same `cluster_id`.
+    -   [ ] **Configurable Advertised Addresses (Multiple):** Modify `MPREGSettings` to include an optional `advertised_urls` (list of strings). Update `PeerInfo`, `RPCServerHello`, and `GossipMessage` to include `advertised_urls`. Implement logic for connecting peers to try all advertised URLs until a successful connection.
+    -   [ ] **Dynamic Peer Management and Propagation:** Enhance `Cluster.process_gossip_message` to intelligently merge `PeerInfo`. Implement `MPREGClient` to periodically send `GossipMessage` containing all known healthy peers. Add dead peer detection.
+    -   [ ] **Connection Management based on Gossip:** Implement logic in `MPREGServer` to proactively establish connections to newly discovered peers, respecting `cluster_id` and trying all advertised URLs. Ensure `MPREGServer` can manage multiple outbound `MPREGClient` connections.
 -   [x] **Connection Handling:**
     -   [x] Refactor the `Server` class to manage websocket connections more robustly, including automatic reconnection logic with exponential backoff.
     -   [ ] Implement a more graceful shutdown procedure for servers, ensuring all client requests are handled before exiting.

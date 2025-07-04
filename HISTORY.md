@@ -58,17 +58,15 @@ This document maintains a high-level log of architectural changes and significan
 
 **Reasoning:** Previously, RPC commands only supported positional arguments, which could lead to less readable and maintainable code, especially for functions with many parameters. By extending the `RPCCommand` model to include a `kwargs` field, we enable developers to use named arguments, improving code clarity and making RPC interfaces more self-documenting. This change aligns with modern Python practices and enhances the overall usability and extensibility of the MPREG system.
 
-### `feat: Implement basic gossip protocol`
+### `feat: Enhance Server Discovery & Gossip Protocol`
 
-**Purpose:** To enable servers to exchange information about known peers and their capabilities, laying the groundwork for dynamic service discovery within the cluster.
+**Purpose:** To build a robust, self-organizing, and secure gossip mechanism that handles diverse network topologies and prevents accidental cross-cluster communication.
 
-**Reasoning:** The initial architecture relied on static peer lists, which limited scalability and resilience. By introducing a basic gossip mechanism, where servers send a HELLO message with their functions and resources upon connecting to a peer, and periodically exchange GossipMessages containing information about known peers, we move towards a more decentralized and self-organizing cluster. This is a foundational step for implementing a full gossip protocol, allowing the cluster to dynamically discover and manage available services.
-
-### `feat: Implement basic server discovery`
-
-**Purpose:** To enable servers to announce their capabilities upon connection, laying the groundwork for dynamic service discovery within the cluster.
-
-**Reasoning:** The initial architecture relied on static peer lists, which limited scalability and resilience. By introducing a basic server discovery mechanism, where servers send a HELLO message with their functions and resources upon connecting to a peer, we move towards a more decentralized and self-organizing cluster. This is a foundational step for implementing a full gossip protocol, allowing the cluster to dynamically discover and manage available services.
+**Reasoning:** The previous basic implementations of server discovery and gossip laid the groundwork but lacked crucial features for real-world deployments. This enhancement addresses key areas:
+-   **Cluster Identification:** Ensures that only peers belonging to the same logical cluster can communicate, preventing accidental cross-talk and improving security.
+-   **Configurable Advertised Addresses (Multiple):** Provides flexibility for nodes to advertise multiple network interfaces (e.g., internal, external, CDN) allowing other nodes to intelligently discover and connect via the most suitable path. This simplifies network configuration and improves connectivity in complex environments.
+-   **Dynamic Peer Management and Propagation:** Enables the cluster to dynamically learn about and propagate information about all known healthy peers, leading to faster and more accurate cluster state convergence.
+-   **Connection Management based on Gossip:** Allows the server to proactively establish and maintain connections to a dynamic set of peers, improving overall cluster resilience and responsiveness.
 
 ### `refactor: Clear server and client roles`
 
