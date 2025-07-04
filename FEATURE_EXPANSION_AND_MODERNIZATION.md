@@ -17,8 +17,8 @@ This section focuses on improving the foundational aspects of the MPREG codebase
 
 ### B. Improve Cluster Management & Communication
 
--   [ ] **Server Discovery & Gossip Protocol:**
-    -   [ ] Implement a proper gossip protocol for server discovery and health checks. This will eliminate the need for static peer lists and improve cluster resilience.
+-   [x] **Server Discovery & Gossip Protocol:**
+    -   [x] Implement a proper gossip protocol for server discovery and health checks. This will eliminate the need for static peer lists and improve cluster resilience.
 -   [x] **Connection Handling:**
     -   [x] Refactor the `Server` class to manage websocket connections more robustly, including automatic reconnection logic with exponential backoff.
     -   [ ] Implement a more graceful shutdown procedure for servers, ensuring all client requests are handled before exiting.
