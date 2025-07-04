@@ -302,6 +302,41 @@ class Cluster:
         # logger.info("Woke up!")
         del self.waitingFor[rid]
 
+    async def _execute_local_command(self, rpc_step: RPCStep, results: dict) -> Any:
+        """Executes a command locally using the command registry."""
+        return self.registry.get(rpc_step.command.fun)(*rpc_step.command.args)
+
+    async def _execute_remote_command(self, rpc_step: RPCStep, results: dict, where: Any) -> Any:
+        """Sends a command to a remote server and waits for the response."""
+        localrid = str(ulid.new())
+        body = orjson.dumps(
+            dict(
+                role="internal-rpc",
+                internal=dict(
+                    command=rpc_step.command.fun,
+                    args=rpc_step.command.args,
+                    results=results,
+                ),
+                u=localrid,
+            )
+        )
+
+        try:
+            await where.send(body)
+        except websockets.ConnectionClosedOK:
+            logger.error(
+                "[{}] websocket connection closed. Removing from services for now...",
+                where,
+            )
+            self.remove_server(where)
+            # Retry if the server was removed, as another might be available
+            return await self._execute_remote_command(rpc_step, results, self.server_for(rpc_step.command.fun, rpc_step.command.locs))
+
+        waiting = await asyncio.create_task(self.answerFor(localrid))
+        got = self.answer[localrid]
+        del self.answer[localrid]
+        return got
+
     async def run(self, rpc) -> Any:
         """Run the RPC.
 
@@ -319,53 +354,13 @@ class Cluster:
                 logger.error("Sorry, no server found for: {}", rpc_step)
                 raise Exception(f"No server found for: {rpc_step}")
 
-            # logger.info("[{}] Running {}", where, cmd)
             if where == "self":
-                # LOCAL call
-                got = self.registry.get(rpc_step.command.fun)(*rpc_step.command.args)
+                got = await self._execute_local_command(rpc_step, results)
             else:
-                # REMOTE call (another websocket call, "where" must be a server-websocket thing doing requests)
-                localrid = str(ulid.new())
-                body = orjson.dumps(
-                    dict(
-                        role="internal-rpc",
-                        internal=dict(
-                            command=rpc_step.command.fun,
-                            args=rpc_step.command.args,
-                            results=results,
-                        ),
-                        u=localrid,
-                    )
-                )
-
-                # logger.info("[{}] Sending: {}", where, body)
-
-                try:
-                    await where.send(body)
-                except websockets.ConnectionClosedOK:
-                    # connection gone, but we don't have Server() reconnect logic yet, so just
-                    # abandon this for now. TODO: refactor the server mapping to have actual Server()
-                    # objects and not just websocket connections from other cluster connections.
-                    logger.error(
-                        "[{}] websocket connection closed. Removing from services for now...",
-                        where,
-                    )
-                    self.remove_server(where)
-                    # actually, RETRY this again because MAYBE we have another server with this
-                    # service available?????
-                    # (maybe this counts as "self-healing")
-                    return await runner(rpc_step, results)
-
-                # now subscribe THIS CLIENT to wait for THIS RESULT ID
-                # pause here until we GET AN ASYNC ANSWER BACK FROM THE NETWORK
-
-                waiting = await asyncio.create_task(self.answerFor(localrid))
-                got = self.answer[localrid]
-                del self.answer[localrid]
+                got = await self._execute_remote_command(rpc_step, results, where)
 
             results[rpc_step.name] = got
 
-            # return result ATTACHED TO FUN NAME so the client gets (name -> result) mappings returned
             return {rpc_step.name: got}
 
         results = {}
