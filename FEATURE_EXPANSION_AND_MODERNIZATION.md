@@ -22,8 +22,8 @@ This section focuses on improving the foundational aspects of the MPREG codebase
 -   [ ] **Connection Handling:**
     -   [ ] Refactor the `Server` class to manage websocket connections more robustly, including automatic reconnection logic with exponential backoff.
     -   [ ] Implement a more graceful shutdown procedure for servers, ensuring all client requests are handled before exiting.
--   [ ] **Serialization:**
-    -   [ ] Add support for `cloudpickle` as an alternative to JSON for serializing more complex Python objects. This will require a negotiation step during the initial handshake to determine the serialization format.
+-   [x] **Serialization:**
+    -   [x] Add support for `cloudpickle` as an alternative to JSON for serializing more complex Python objects. This will require a negotiation step during the initial handshake to determine the serialization format.
 
 ## II. Feature Expansion & Usability
 

@@ -28,6 +28,12 @@ This document maintains a high-level log of architectural changes and significan
 
 **Reasoning:** The previous YAML-based configuration was prone to errors due to lack of type validation and limited programmatic access. By adopting `pydantic-settings`, we introduce strong typing for configuration parameters, enabling automatic validation and better integration with the Python codebase. This change enhances the reliability, maintainability, and extensibility of the configuration system, allowing for easier management of settings across different environments and reducing the risk of misconfigurations.
 
+### `feat: Implement flexible serialization with JsonSerializer`
+
+**Purpose:** To abstract the serialization logic, making it easier to support multiple serialization formats and improving the extensibility of the system.
+
+**Reasoning:** Previously, `orjson.dumps` and `orjson.loads` were used directly throughout the codebase, tightly coupling the application to a specific serialization implementation. By introducing a `Serializer` interface and a `JsonSerializer` concrete class, we decouple the serialization concerns. This allows for future integration of other serialization methods (e.g., `cloudpickle` for more complex Python objects) without requiring significant changes to the core server logic. This enhances the system's flexibility and maintainability.
+
 ### `refactor: Clarify RPC execution logic`
 
 **Purpose:** To improve the readability and maintainability of the RPC execution flow within the server.
