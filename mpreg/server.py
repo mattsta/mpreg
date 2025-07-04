@@ -280,7 +280,7 @@ class Cluster:
         for url in peers_to_remove:
             logger.info("Removing stale peer: {}", url)
             del self.peers_info[url]
-                self.peers_info[peer_info.url] = peer_info
+            self.peers_info[peer_info.url] = peer_info
 
     def server_for(self, fun: str, locs: frozenset[str]) -> Optional[Connection]:
         """Finds a suitable server for a given function and location.

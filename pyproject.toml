@@ -24,6 +24,7 @@ mpreg = "mpreg.cli:main"
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.12.2"
 mypy = "^1.16.1"
+pytest = "^8.2.2"
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,4 +1,4 @@
-from typing import Any, Tuple, FrozenSet, Literal, Union
+from typing import Any, Tuple, FrozenSet, Literal, Union, Optional
 
 from pydantic import BaseModel, Field
 
@@ -109,16 +109,6 @@ class RPCServerRequest(BaseModel):
     u: str = Field(description="A unique identifier for this server request.")
 
 
-class RPCResponse(BaseModel):
-    """
-    Represents a generic RPC response.
-    """
-
-    r: Any = Field(None, description="The result of the RPC call, if successful.")
-    error: Optional[RPCError] = Field(None, description="Structured error information, if the RPC failed.")
-    u: str = Field(description="The unique identifier of the request this is responding to.")
-
-
 class RPCError(BaseModel):
     """Base model for structured RPC errors."""
     code: int = Field(description="A numeric error code.")
@@ -128,9 +118,19 @@ class RPCError(BaseModel):
 
 class CommandNotFoundError(RPCError):
     """Error indicating that a requested command was not found."""
-    code: int = Field(1001, const=True, description="Error code for command not found.")
-    message: str = Field("Command not found", const=True, description="Default message for command not found.")
+    code: Literal[1001] = Field(1001, description="Error code for command not found.")
+    message: Literal["Command not found"] = Field("Command not found", description="Default message for command not found.")
     command_name: str = Field(description="The name of the command that was not found.")
+
+class RPCResponse(BaseModel):
+    """
+    Represents a generic RPC response.
+    """
+
+    r: Any = Field(None, description="The result of the RPC call, if successful.")
+    error: Optional[RPCError] = Field(None, description="Structured error information, if the RPC failed.")
+    u: str = Field(description="The unique identifier of the request this is responding to.")
+
 
 
 RPCMessage = Union[RPCRequest, RPCInternalRequest, RPCInternalAnswer, RPCServerRequest, GossipMessage, RPCResponse]
