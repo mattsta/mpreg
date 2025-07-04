@@ -4,6 +4,12 @@ This document maintains a high-level log of architectural changes and significan
 
 ## 2025-07-03
 
+### `feat: Enhance Command-Line Interface (CLI)`
+
+**Purpose:** To provide a more comprehensive and user-friendly command-line interface for managing the MPREG cluster and interacting with its services.
+
+**Reasoning:** The previous CLI was limited in scope, primarily serving as a basic entry point for starting servers and clients. By introducing a unified `mpreg` command with subcommands for server management (`start_server`) and RPC interaction (`call`), we significantly improve the developer and operator experience. This enhancement centralizes common tasks, leverages the newly developed `MPREGClientAPI` for robust communication, and provides a more intuitive way to control and inspect the cluster, reducing the learning curve and increasing productivity.
+
 ### `feat: Implement reusable client library`
 
 **Purpose:** To provide a high-level, user-friendly API for interacting with the MPREG cluster, abstracting away low-level communication details.
