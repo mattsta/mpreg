@@ -5,35 +5,26 @@ where "echo" accepts 1 argument and "echos" accepts a list of arguments, so we c
 test a cluster with echo commands for the processing/resolution/connection logic."""
 
 import asyncio
-import dataclasses
 import pprint as pp
 import sys
 
-from dataclasses import dataclass, field
 from typing import Any
 
 import orjson
-import ulid
 import websockets
 import websockets.client
 from loguru import logger
 
-from .model import RPCCommand
+from .model import RPCCommand, RPCRequest
 from .timer import Timer
 
 if sys.version_info >= (3, 12):
     asyncio.get_event_loop().set_task_factory(asyncio.eager_task_factory)
 
 
-@dataclass(slots=True)
-class Request:
-    cmds: tuple[RPCCommand, ...]
-
-    # uniqe id for this request...
-    u: str | None = field(default_factory=lambda: str(ulid.new()))
-
-    def dump(self):
-        return dict(role="rpc", rpc=dataclasses.asdict(self))
+class Request(RPCRequest):
+    # This class now inherits from RPCRequest in mpreg.model
+    pass
 
 
 @dataclass
@@ -45,13 +36,21 @@ class Client:
     full_log: bool = True
 
     async def request(self, cmds: list[RPCCommand]):
-        req = Request(cmds=cmds)
+        """Sends an RPC request to the server and waits for a response.
 
-        send = orjson.dumps(req.dump())
+        Args:
+            cmds: A list of RPCCommand objects representing the commands to execute.
+
+        Returns:
+            The server's response as a dictionary.
+        """
+        req = Request(cmds=tuple(cmds), u=str(ulid.new()))
+
+        send = req.model_dump_json()
 
         if self.full_log:
             logger.info("====================== NEW REQUEST ======================")
-            logger.info("[{}] Sending:\n{}", req.u, pp.pformat(req))
+            logger.info("[{}] Sending:\n{}", req.u, pp.pformat(req.model_dump()))
 
         await self.websocket.send(send)
 
@@ -62,6 +61,7 @@ class Client:
 
         assert req.u == got["u"]
         return got
+
 
     async def connect(self):
         async for websocket in websockets.connect(self.url, user_agent_header=None):

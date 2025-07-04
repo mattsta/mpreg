@@ -13,12 +13,12 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
 import orjson
-import ulid
 import websockets.client
 import websockets.server
 
 from loguru import logger
 
+from .model import RPCCommand, RPCRequest, RPCInternalRequest, RPCInternalAnswer, RPCServerRequest, RPCServerHello, RPCResponse
 from .registry import Command, CommandRegistry
 
 
@@ -61,20 +61,6 @@ def echos(*args):
 # RPC Management
 #
 ############################################
-@dataclass(slots=True)
-class RPCStep:
-    """RPC Step is one row of an RPC for the distributed system."""
-
-    name: str
-    command: RPCCommand
-
-    me: str = field(default_factory=lambda: str(ulid.new()))
-
-
-    def call(self, results) -> Any:
-        return self.command.call(self.args, results)
-
-
 @dataclass
 class RPC:
     """Representation of a full RPC request hierarchy.
@@ -82,25 +68,20 @@ class RPC:
     Upon instantiation, we create the full call graph from our JSON RPC format
     so this entire RPC can be executed in the cluster."""
 
-    req: list[Any]
+    req: RPCRequest
 
     def __post_init__(self) -> None:
         self.funs = {
-            row["name"]: RPCStep(
-                row["name"],
-                RPCCommand(
-                    row["name"], row["fun"], row["args"], frozenset(row["locs"])
-                ),
-            )
-            for row in self.req["cmds"]
+            cmd.name: cmd
+            for cmd in self.req.cmds
         }
 
         # We also have to resolve the funs to a call graph...
         sorter = TopologicalSorter()
 
-        for name, rpc in self.funs.items():
+        for name, rpc_command in self.funs.items():
             # only attach child dependencies IF the argument matches a NAME in the entire RPC Request
-            deps = filter(lambda x: x in self.funs, rpc.command.args)
+            deps = filter(lambda x: x in self.funs, rpc_command.args)
             sorter.add(name, *deps)
 
         levels = []
@@ -432,107 +413,132 @@ class MPREGServer:
     def run_server(
         self,
         server_websocket: websockets.client.WebSocketClientProtocol,
-        req: dict[str, str],
-    ):
-        """Run a server-to-server command in the cluster."""
-        # logger.info("[{}] New server command: {}", server_websocket, req)
+        req: RPCServerRequest,
+    ) -> RPCResponse:
+        """Run a server-to-server command in the cluster.
 
+        This method handles incoming server-to-server communication, such as
+        new server announcements (HELLO), graceful shutdowns (GOODBYE), or
+        status updates (STATUS).
+        """
         try:
-            # Idea:
-            #  - Another server connects to us: HELLO I AM <remote server>, I SERVE <locations> WITH <rpc names>
-            #     - Optionally: server can include CONTACT ME AT X:Y
-            #     - Without a CONTACT ME value, we operate as a PROXY NODE for the NEW SERVER (because without a
-            #       CONTACT ME from a server, we can't gossip the new server address to peers, but since WE have
-            #       a connection to NEW SERVER, we can accept requests on its behalf and forward along).
-            #  - We reply I GOT YOU FAM
-            #  - Then, depending on operating mode, we notify our other servers in the cluster:
-            #     - NEW NODE: ROUTABLE THROUGH US, CONTACT US TO FORWARD FOR RESULTS
-            #     - NEW NODE: CONNECT TO ADDRESS X:Y, CONTACT NODE DIRECTLY
-            return dict(
-                r=self.cluster.server_cmd(server_websocket, req), u=str(ulid.new())
-            )
-        except:
-            return dict(e=traceback.format_exc(), state="setup", u=str(ulid.new()))
+            # The 'what' field in the server message determines the action.
+            # This uses Pydantic's validation to ensure the message structure is correct.
+            match req.server.what:
+                case "HELLO":
+                    # A new server is announcing its capabilities.
+                    # Add its functions and locations to the cluster's funtimes mapping.
+                    for fun in req.server.funs:
+                        self.cluster.add_fun_ability(server_websocket, fun, req.server.locs)
+                    return RPCResponse(r="ADDED", u=req.u)
+                case "GOODBYE":
+                    # A server is gracefully shutting down.
+                    # Remove it from all fun mappings in the cluster.
+                    self.cluster.remove_server(server_websocket)
+                    return RPCResponse(r="GONE", u=req.u)
+                case "STATUS":
+                    # A server is sending a status update (e.g., for gossip protocol).
+                    # TODO: Implement actual status processing.
+                    return RPCResponse(r="STATUS", u=req.u)
+                case _:
+                    # Handle unknown server message types.
+                    return RPCResponse(e=f"Unknown server message type: {req.server.what}", state="server_cmd_error", u=req.u)
+        except Exception as e:
+            # Catch any exceptions during server command processing and return an error response.
+            logger.exception("Error processing server command")
+            return RPCResponse(e=traceback.format_exc(), state="server_cmd_exception", u=req.u)
 
-    async def run_rpc(self, req: dict[str, str]):
-        """Run a client RPC request command in the cluster."""
-        # load current request and remainder of req into the arguments
-        # to loop through...
+    async def run_rpc(self, req: RPCRequest) -> RPCResponse:
+        """Run a client RPC request command in the cluster.
 
-        # style note: we call the ENTIRE REQUEST the 'RPC' full of individual 'Commands'
-        # so: RPC -> Commands -> Functions
+        This method takes an RPCRequest, constructs an RPC execution graph,
+        and then runs the commands across the cluster.
+        """
         try:
+            # Create an RPC object from the incoming request. This handles
+            # the topological sorting of commands.
             rpc = RPC(req)
-            u = req.get("u", None)
+            # Execute the RPC and return the results.
+            return RPCResponse(r=await self.cluster.run(rpc), u=req.u)
         except Exception as e:
-            # error return
-            logger.exception("rpc setup whoopsie?")
-            return dict(e=traceback.format_exc(), state="setup", u=u)
-
-        # Attempt to find a 'fun' with all matching 'loc' requirements
-        try:
-            # logger.info("Requesting from RPC: {}", rpc)
-            return dict(r=await self.cluster.run(rpc), u=u)
-        except Exception as e:
-            logger.exception("rpc running failed?")
-            return dict(e=traceback.format_exc(), state="running", u=u)
+            # Catch any exceptions during RPC execution and return an error response.
+            logger.exception("Error running RPC")
+            return RPCResponse(e=traceback.format_exc(), state="running", u=req.u)
 
     @logger.catch
     async def opened(self, websocket: websockets.client.WebSocketClientProtocol):
         try:
             self.clients.add(websocket)
             async for msg in websocket:
-                req = orjson.loads(msg)
+                # Attempt to parse the incoming message into a Pydantic model.
+                # This provides automatic validation and type conversion.
+                parsed_msg = orjson.loads(msg)
 
-                # logger.info("[{}:{}] Received: {}", websocket.host, websocket.port, req)
+                # logger.info("[{}:{}] Received: {}", websocket.host, websocket.port, parsed_msg)
 
-                match req["role"]:
+                response_model = None
+                match parsed_msg.get("role"):
                     case "server":
                         # SERVER-TO-SERVER communications packet
                         # (joining/leaving cluster, gossip updates of servers attached to other servers)
+                        server_request = RPCServerRequest.model_validate(parsed_msg)
                         logger.info(
                             "[{}:{}] Server message: {}",
                             *websocket.remote_address,
-                            req,
+                            server_request.model_dump_json(),
                         )
-                        result = orjson.dumps(
-                            dict(role="server")
-                            | self.run_server(websocket, req["server"])
-                        )
+                        response_model = self.run_server(websocket, server_request)
                     case "rpc":
                         # CLIENT request
+                        rpc_request = RPCRequest.model_validate(parsed_msg)
                         logger.info(
                             "[{}:{} :: {}] Running request...",
                             *websocket.remote_address,
-                            req["rpc"]["u"],
+                            rpc_request.u,
                         )
-                        result = orjson.dumps(await self.run_rpc(req["rpc"]))
+                        response_model = await self.run_rpc(rpc_request)
                     case "internal-answer":
                         # REPLY from a previous INTERNAL-RPC request
-                        answer = req["answer"]
-                        u = req["u"]
+                        internal_answer = RPCInternalAnswer.model_validate(parsed_msg)
 
                         # add answer globally for the consumer to read again
-                        self.cluster.answer[u] = answer
+                        self.cluster.answer[internal_answer.u] = internal_answer.answer
 
                         # notify the waiting process we have an answer now
-                        self.cluster.waitingFor[u].set()
+                        self.cluster.waitingFor[internal_answer.u].set()
 
-                        # logger.info("[{}] Processed Internal Answer: {}", u, answer)
+                        # logger.info("[{}] Processed Internal Answer: {}", internal_answer.u, internal_answer.answer)
 
                         # no result here, this is returned upstream elsewhere
                         continue
-                    case _:
-                        assert None, f"Invalid RPC request? Got: {req}"
+                    case "internal-rpc":
+                        # FORWARDED REQUEST from ANOTHER SERVER in MID-RPC mode.
+                        # We know this request is FOR US since it was sent TO US directly.
+                        internal_rpc = RPCInternalRequest.model_validate(parsed_msg)
+                        command = internal_rpc.command
+                        args = internal_rpc.args
+                        u = internal_rpc.u
 
-                # regular result return
-                try:
-                    await websocket.send(result)
-                except:
-                    logger.error(
-                        "[{}:{}] Client connection error! Dropping reply.",
-                        *websocket.remote_address,
-                    )
+                        # Generate RESULT PAYLOAD
+                        answer_payload = self.registry.get(command)(*args)
+                        response_model = RPCInternalAnswer(answer=answer_payload, u=u)
+
+                        # logger.info("[{}] Generated answer: {}", u, answer_payload)
+
+                    case _:
+                        # Handle unknown message roles.
+                        logger.error("[{}:{}] Invalid RPC request role: {}", *websocket.remote_address, parsed_msg.get("role"))
+                        response_model = RPCResponse(e=f"Invalid RPC request role: {parsed_msg.get("role")}", state="invalid_role", u=parsed_msg.get("u", "unknown"))
+
+                # If a response model was generated, send it back to the client.
+                if response_model:
+                    try:
+                        await websocket.send(response_model.model_dump_json())
+                    except Exception:
+                        logger.error(
+                            "[{}:{}] Client connection error! Dropping reply.",
+                            *websocket.remote_address,
+                        )
         finally:
             # TODO: if this was a SERVER, we need to clean up the server resources.
             # TODO: if this was a CLIENT, we need to cancel any oustanding requests/subscriptions too.
@@ -580,79 +586,54 @@ class MPREGServer:
                 read_limit=MPREG_DATA_MAX,
                 write_limit=MPREG_DATA_MAX,
             ):
+                # This is registering CLUSTER NODE FUNCTIONS AND DATASETS into our upstream host.
+                # We send a RPCServerHello message with our capabilities.
                 await websocket.send(
-                    # this is registering CLUSTER NODE FUNCTIONS AND DATASETS into our upstream host
-                    orjson.dumps(
-                        dict(
-                            role="server",
-                            server=dict(
-                                what="HELLO",
-                                funs=[1, 2, 3],
-                                locs=["a", "b", "c"],
-                            ),
-                        )
-                    )
+                    RPCServerRequest(
+                        server=RPCServerHello(
+                            funs=("echo", "echos"),
+                            locs=("local", "test"),
+                        ),
+                        u=str(ulid.new())
+                    ).model_dump_json()
                 )
 
-                await websocket.send(
-                    # this is registering CLUSTER NODE FUNCTIONS AND DATASETS into our upstream host
-                    orjson.dumps(
-                        dict(
-                            role="server",
-                            server=dict(
-                                what="HELLO",
-                                funs=["fun1", "fun2"],
-                                locs=["d1", "d2", "d3"],
-                            ),
-                        )
-                    )
-                )
-
-                # this is the processing loop for US AS A CLUSTER CLIENT.
-                # here we RECEIVE messages from OTHER servers for LOCAL PROCESSING then REPLYING TO THE UPSTREAM
+                # This is the processing loop for US AS A CLUSTER CLIENT.
+                # Here we RECEIVE messages from OTHER servers for LOCAL PROCESSING then REPLYING TO THE UPSTREAM.
                 try:
                     async for msg in websocket:
-                        req = orjson.loads(msg)
+                        parsed_msg = orjson.loads(msg)
                         if False:
                             logger.info(
                                 "[{} :: {}] Cluster message: {}",
                                 self.connect,
-                                req.get("u", "[no id]"),
-                                req,
+                                parsed_msg.get("u", "[no id]"),
+                                parsed_msg,
                             )
-                        match req["role"]:
+                        match parsed_msg.get("role"):
                             case "server":
+                                server_request = RPCServerRequest.model_validate(parsed_msg)
                                 logger.info(
                                     "[{}:{}] Server status: {}",
                                     *websocket.remote_address,
-                                    req,
+                                    server_request.model_dump_json(),
                                 )
                             case "internal-rpc":
                                 # FORWARDED REQUEST from ANOTHER SERVER in MID-RPC mode.
                                 # We know this request is FOR US since it was sent TO US directly.
-                                # TODO: in the case of proxy-forward-internal nodes, we'd need to still lookup the server.
-                                # this has role=internal-rpc, internal=(command, args, result), u=uniqueid
-                                i = req["internal"]
-                                command = i["command"]
-                                args = i["args"]
-                                results = i["results"]
-                                u = req["u"]
+                                internal_rpc = RPCInternalRequest.model_validate(parsed_msg)
+                                command = internal_rpc.command
+                                args = internal_rpc.args
+                                u = internal_rpc.u
 
                                 # Generate RESULT PAYLOAD
-                                result = orjson.dumps(
-                                    dict(
-                                        role="internal-answer",
-                                        answer=self.registry.get(command)(
-                                            *args
-                                        ),
-                                        u=u,
-                                    )
-                                )
+                                answer_payload = self.registry.get(command)(*args)
+                                response_model = RPCInternalAnswer(answer=answer_payload, u=u)
 
-                                # logger.info("[{}] Generated answer: {}", u, result)
+                                # logger.info("[{}] Generated answer: {}", u, answer_payload)
 
                                 # SEND RESULT PAYLOAD back UPSTREAM
-                                await websocket.send(result)
+                                await websocket.send(response_model.model_dump_json())
                 except (
                     websockets.ConnectionClosedError,
                     websockets.ConnectionClosedOK,
