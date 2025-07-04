@@ -35,14 +35,19 @@ class Client:
     # optionally disable big log printing to get more accurate timing measurements
     full_log: bool = True
 
-    async def request(self, cmds: list[RPCCommand]):
+    async def request(self, cmds: list[RPCCommand], timeout: Optional[float] = None) -> Any:
         """Sends an RPC request to the server and waits for a response.
 
         Args:
             cmds: A list of RPCCommand objects representing the commands to execute.
+            timeout: Optional timeout in seconds for the request.
 
         Returns:
-            The server's response as a dictionary.
+            The result of the RPC call.
+
+        Raises:
+            asyncio.TimeoutError: If the request times out.
+            Exception: For other RPC errors returned by the server.
         """
         req = Request(cmds=tuple(cmds), u=str(ulid.new()))
 
@@ -54,7 +59,12 @@ class Client:
 
         await self.websocket.send(send)
 
-        raw_response = await self.websocket.recv()
+        try:
+            raw_response = await asyncio.wait_for(self.websocket.recv(), timeout=timeout)
+        except asyncio.TimeoutError:
+            logger.error("[{}] Request timed out after {} seconds.", req.u, timeout)
+            raise
+
         response = RPCResponse.model_validate(self.serializer.deserialize(raw_response))
 
         if self.full_log:
@@ -75,7 +85,7 @@ class Client:
 
             # Test one simple echo command
             with Timer("Single Echo"):
-                await self.request([RPCCommand("first", "echo", ("hi there!",), frozenset(), kwargs={"test": 1})])
+                await self.request([RPCCommand("first", "echo", ("hi there!",), frozenset(), kwargs={"test": 1})], timeout=5)
 
             # Test echo command chaining its result to ANOTHER echo command
             with Timer("Double Echo"):
@@ -83,7 +93,8 @@ class Client:
                     [
                         RPCCommand("first", "echo", ("hi there!",), frozenset()),
                         RPCCommand("second", "echo", ("first",), frozenset(), kwargs={"test": 2}),
-                    ]
+                    ],
+                    timeout=5
                 )
 
             # Test echo command chaining its result to ANOTHER echo command and THIRD unrelated command
@@ -96,7 +107,8 @@ class Client:
                         RPCCommand("|first", "echo", ("hi there!",), frozenset()),
                         RPCCommand("|second", "echo", ("|first",), frozenset()),
                         RPCCommand("|third", "echos", ("|first", "AND ME TOO"), frozenset(), kwargs={"test": 3}),
-                    ]
+                    ],
+                    timeout=5
                 )
 
             # test final result combining first/second
@@ -112,7 +124,8 @@ class Client:
                             frozenset(),
                             kwargs={"test": 4}
                         ),
-                    ]
+                    ],
+                    timeout=5
                 )
 
             # test re-assembly of previously assembled results
@@ -128,7 +141,8 @@ class Client:
                             frozenset(),
                         ),
                         RPCCommand("|4th", "echo", ("|third",), frozenset(), kwargs={"test": 5}),
-                    ]
+                    ],
+                    timeout=5
                 )
 
             # return required because this is inside an infinte websocket re-connect generator
