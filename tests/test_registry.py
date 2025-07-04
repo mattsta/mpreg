@@ -1,4 +1,5 @@
 import pytest
+
 from mpreg.registry import Command, CommandRegistry
 
 def sample_func_1():

@@ -1,10 +1,9 @@
-import asyncio
-from typing import Any, Optional, Tuple, FrozenSet
+from typing import Any
 
 from loguru import logger
 
 from .client import Client
-from .model import RPCCommand, RPCError, CommandNotFoundError
+from .model import CommandNotFoundError, RPCCommand
 
 class MPREGClientAPI:
     """A high-level client API for interacting with the MPREG cluster."""
@@ -32,10 +31,19 @@ class MPREGClientAPI:
             # The underlying client's connect method is an async for loop,
             # so there's no explicit disconnect. We just stop the loop.
             # For a more robust solution, the Client class would need a disconnect method.
-            logger.warning("MPREGClientAPI does not support explicit disconnect yet. This will be implemented in future refactoring.")
+            logger.warning(
+                "MPREGClientAPI does not support explicit disconnect yet. This will be implemented in future refactoring."
+            )
             self._connected = False
 
-    async def call(self, fun: str, *args: Any, locs: Optional[FrozenSet[str]] = None, timeout: Optional[float] = None, **kwargs: Any) -> Any:
+    async def call(
+        self,
+        fun: str,
+        *args: Any,
+        locs: frozenset[str] | None = None,
+        timeout: float | None = None,
+        **kwargs: Any,
+    ) -> Any:
         """Calls an RPC function on the MPREG cluster.
 
         Args:
@@ -61,7 +69,7 @@ class MPREGClientAPI:
             fun=fun,
             args=tuple(args),
             locs=locs if locs is not None else frozenset(),
-            kwargs=kwargs
+            kwargs=kwargs,
         )
         try:
             result = await self._client.request(cmds=[command], timeout=timeout)
