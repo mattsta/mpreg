@@ -62,6 +62,7 @@ This section focuses on adding new features and improving the overall user exper
     -   [ ] Create integration tests that simulate a multi-server cluster and verify end-to-end functionality.
     -   [ ] *Note: Network-related unit tests will require a revised approach focusing on mocking external services comprehensively.*
     -   [ ] *Note: Network-related unit tests will require a revised approach focusing on mocking external services comprehensively.*
+    -   [ ] *Note: Network-related unit tests will require a revised approach focusing on mocking external services comprehensively.*
 -   [ ] **Documentation:**
     -   [ ] Expand the `README.md` with more detailed examples and a clearer explanation of the project's architecture.
 
