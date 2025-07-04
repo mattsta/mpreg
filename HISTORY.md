@@ -52,6 +52,12 @@ This document maintains a high-level log of architectural changes and significan
 
 **Reasoning:** Without timeouts, a client request could hang indefinitely if the server is unresponsive or a network issue occurs, leading to a poor user experience and potential resource exhaustion. By adding an optional `timeout` parameter to the client's `request` method and enforcing it with `asyncio.wait_for`, we ensure that requests either complete within a specified duration or fail gracefully. This makes the client more resilient to network and server issues, providing a more reliable and responsive system.
 
+### `feat: Introduce cluster identification`
+
+**Purpose:** To enhance the security and reliability of the MPREG cluster by ensuring that servers only communicate with peers belonging to the same logical cluster.
+
+**Reasoning:** In a distributed system, it is crucial to prevent accidental communication between different clusters, which could lead to data corruption or security vulnerabilities. By introducing a mandatory `cluster_id` that must match between communicating peers, we establish a clear boundary for cluster membership. This mechanism ensures that only authorized and correctly configured nodes can join and participate in a specific cluster, improving overall system integrity and simplifying multi-cluster deployments.
+
 ### `feat: Add keyword argument support to RPC commands`
 
 **Purpose:** To enhance the flexibility and expressiveness of RPC calls by allowing the use of keyword arguments.
