@@ -22,6 +22,12 @@ This document maintains a high-level log of architectural changes and significan
 
 **Reasoning:** The previous approach relied on manual dictionary manipulation and `orjson` calls, which was error-prone and lacked type safety. By introducing Pydantic models, we gain strong typing, automatic data validation, and simplified serialization/deserialization. This significantly improves the reliability and maintainability of the system, reducing the likelihood of data-related bugs and making future development more efficient.
 
+### `feat: Implement configuration as code with Pydantic-settings`
+
+**Purpose:** To replace the existing YAML configuration with a more robust and type-safe solution.
+
+**Reasoning:** The previous YAML-based configuration was prone to errors due to lack of type validation and limited programmatic access. By adopting `pydantic-settings`, we introduce strong typing for configuration parameters, enabling automatic validation and better integration with the Python codebase. This change enhances the reliability, maintainability, and extensibility of the configuration system, allowing for easier management of settings across different environments and reducing the risk of misconfigurations.
+
 ### `refactor: Clarify RPC execution logic`
 
 **Purpose:** To improve the readability and maintainability of the RPC execution flow within the server.
