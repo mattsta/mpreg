@@ -88,9 +88,9 @@ The goal is to create a clear, well-documented, and intuitive system for definin
 -   [x] **Decouple Command Definition from Execution:**
     -   [x] Create a `CommandRegistry` class responsible for storing and looking up available commands on a server. This will replace the current `cluster.self` dictionary.
     -   [x] The `MPREGServer` will own an instance of the `CommandRegistry`. The `add_self_ability` method will be refactored to `registry.register(command)`.
--   [ ] **Clarify RPC Execution Logic:**
-    -   [ ] Refactor the `Cluster.run` method to be more readable and maintainable. The logic for finding a suitable server and executing a command should be extracted into separate, well-named methods (e.g., `_find_server_for_command`, `_execute_local_command`, `_execute_remote_command`).
-    -   [ ] The `RPCFun` dataclass should be re-evaluated. Its purpose is to represent a step in a larger RPC chain. We should rename it to `RPCStep` or similar to better reflect its role and ensure its fields (`command`, `args`, etc.) are clear and strongly typed.
+-   [x] **Clarify RPC Execution Logic:**
+    -   [x] Refactor the `Cluster.run` method to be more readable and maintainable. The logic for finding a suitable server and executing a command has been extracted into separate, well-named methods (`_execute_local_command`, `_execute_remote_command`).
+    -   [x] The `RPCFun` dataclass has been renamed to `RPCStep` to better reflect its role as a step in the RPC chain, and its fields are now strongly typed.
 
 ### B. Data Management & Serialization
 
