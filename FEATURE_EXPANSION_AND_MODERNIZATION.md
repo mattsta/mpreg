@@ -44,8 +44,8 @@ This section focuses on adding new features and improving the overall user exper
 
 ### B. Improve Client & Server APIs
 
--   [ ] **Reusable Client Library:**
-    -   [ ] Create a more user-friendly and reusable client library that abstracts away the low-level details of websocket communication and request creation.
+-   [x] **Reusable Client Library:**
+    -   [x] Create a more user-friendly and reusable client library that abstracts away the low-level details of websocket communication and request creation.
 -   [ ] **Simplified Server Interface:**
     -   [ ] Develop a simpler API for registering RPC functions and datasets on a server. This will make it easier to integrate MPREG with existing applications.
 -   [ ] **Command-Line Interface (CLI):**
