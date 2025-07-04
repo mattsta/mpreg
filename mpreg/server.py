@@ -21,6 +21,7 @@ from loguru import logger
 from .model import RPCCommand, RPCRequest, RPCInternalRequest, RPCInternalAnswer, RPCServerRequest, RPCServerHello, RPCResponse
 from .registry import Command, CommandRegistry
 from .config import MPREGSettings
+from .serialization import JsonSerializer
 
 
 ############################################
@@ -291,16 +292,13 @@ class Cluster:
     async def _execute_remote_command(self, rpc_step: RPCStep, results: dict, where: Any) -> Any:
         """Sends a command to a remote server and waits for the response."""
         localrid = str(ulid.new())
-        body = orjson.dumps(
-            dict(
-                role="internal-rpc",
-                internal=dict(
-                    command=rpc_step.command.fun,
-                    args=rpc_step.command.args,
-                    results=results,
-                ),
+        body = self.serializer.serialize(
+            RPCInternalRequest(
+                command=rpc_step.command.fun,
+                args=rpc_step.command.args,
+                results=results,
                 u=localrid,
-            )
+            ).model_dump()
         )
 
         try:
@@ -387,6 +385,7 @@ class MPREGServer:
         self.cluster = Cluster()
         self.registry = CommandRegistry()
         self.clients = set()
+        self.serializer = JsonSerializer()
 
     def report(self):
         """General report of current server state."""
@@ -457,7 +456,7 @@ class MPREGServer:
             async for msg in websocket:
                 # Attempt to parse the incoming message into a Pydantic model.
                 # This provides automatic validation and type conversion.
-                parsed_msg = orjson.loads(msg)
+                parsed_msg = self.serializer.deserialize(msg)
 
                 # logger.info("[{}:{}] Received: {}", websocket.host, websocket.port, parsed_msg)
 
@@ -518,7 +517,7 @@ class MPREGServer:
                 # If a response model was generated, send it back to the client.
                 if response_model:
                     try:
-                        await websocket.send(response_model.model_dump_json())
+                        await websocket.send(self.serializer.serialize(response_model.model_dump()))
                     except Exception:
                         logger.error(
                             "[{}:{}] Client connection error! Dropping reply.",
@@ -581,24 +580,26 @@ class MPREGServer:
                 # This is registering CLUSTER NODE FUNCTIONS AND DATASETS into our upstream host.
                 # We send a RPCServerHello message with our capabilities.
                 await websocket.send(
-                    RPCServerRequest(
-                        server=RPCServerHello(
-                            funs=("echo", "echos"),
-                            locs=("local", "test"),
-                        ),
-                        u=str(ulid.new())
-                    ).model_dump_json()
+                    self.serializer.serialize(
+                        RPCServerRequest(
+                            server=RPCServerHello(
+                                funs=("echo", "echos"),
+                                locs=("local", "test"),
+                            ),
+                            u=str(ulid.new())
+                        ).model_dump()
+                    )
                 )
 
                 # This is the processing loop for US AS A CLUSTER CLIENT.
                 # Here we RECEIVE messages from OTHER servers for LOCAL PROCESSING then REPLYING TO THE UPSTREAM.
                 try:
                     async for msg in websocket:
-                        parsed_msg = orjson.loads(msg)
+                        parsed_msg = self.serializer.deserialize(msg)
                         if False:
                             logger.info(
                                 "[{} :: {}] Cluster message: {}",
-                                self.connect,
+                                self.settings.connect,
                                 parsed_msg.get("u", "[no id]"),
                                 parsed_msg,
                             )
@@ -625,7 +626,7 @@ class MPREGServer:
                                 # logger.info("[{}] Generated answer: {}", u, answer_payload)
 
                                 # SEND RESULT PAYLOAD back UPSTREAM
-                                await websocket.send(response_model.model_dump_json())
+                                await websocket.send(self.serializer.serialize(response_model.model_dump()))
                 except (
                     websockets.ConnectionClosedError,
                     websockets.ConnectionClosedOK,
