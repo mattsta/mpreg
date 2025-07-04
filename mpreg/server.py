@@ -19,7 +19,7 @@ import websockets.server
 
 from loguru import logger
 
-from .model import RPCCommand
+from .registry import Command, CommandRegistry
 
 
 ############################################
@@ -61,33 +61,6 @@ def echos(*args):
 # RPC Management
 #
 ############################################
-@dataclass(slots=True)
-class Command:
-    name: str
-    fun: list[Callable[Any, Any]]
-
-    def __post_init__(self) -> None:
-        assert (
-            len(self.fun) == 1
-        ), f"Sorry, the 'fun' input must have ONLY length 1 but found length {len(self.fun)=}!"
-
-    def call(self, args, results) -> Any:
-        # replace argument in arg map with RESULT (or leave as arg if not a result mapper)
-        # this means: args must have the same result name as the arg name everywhere.
-        for idx, arg in enumerate(args):
-            args[idx] = results.get(arg, args[idx])
-
-        # this is a hack so we don't call self.fun() which would make python call self.fun(self, *args)
-        fun = self.fun[0]
-        # TODO: implement kwargs with an additional 'kwargs' dict in the rpc schema?
-        # logger.info("[{}] Calling: {}({})", self.name, fun, args)
-
-        got = fun(*args)
-        # logger.info("[{}] Result: {}", self.name, got)
-
-        return got
-
-
 @dataclass(slots=True)
 class RPCStep:
     """RPC Step is one row of an RPC for the distributed system."""
@@ -215,12 +188,6 @@ class Cluster:
 
     # collection of all servers for easy reference
     servers: set[str] = field(default_factory=set)
-
-    # for OURSELF, a map of command names to command implementations
-    # (base case of the cluster distribution mechanism so we _can_ find targets eventually)
-    self: dict[str, Command] = field(
-        default_factory=lambda: defaultdict(lambda: defaultdict(set))
-    )
 
     def __post_init__(self) -> None:
         self.waitingFor = dict()
@@ -355,7 +322,7 @@ class Cluster:
             # logger.info("[{}] Running {}", where, cmd)
             if where == "self":
                 # LOCAL call
-                got = self.self[rpc_step.command.fun].call(rpc_step.command.args, results)
+                got = self.registry.get(rpc_step.command.fun)(*rpc_step.command.args)
             else:
                 # REMOTE call (another websocket call, "where" must be a server-websocket thing doing requests)
                 localrid = str(ulid.new())
@@ -457,6 +424,7 @@ class MPREGServer:
 
     def __post_init__(self) -> None:
         self.cluster = Cluster()
+        self.registry = CommandRegistry()
         self.clients = set()
 
     def report(self):
@@ -575,13 +543,17 @@ class MPREGServer:
             # TODO: if this was a CLIENT, we need to cancel any oustanding requests/subscriptions too.
             self.clients.remove(websocket)
 
+    def register_command(self, name: str, func: Callable[..., Any], resources: Iterable[str]) -> None:
+        """Register a command with the server."""
+        self.registry.register(Command(name, func))
+        self.cluster.add_fun_ability("self", name, resources)
+
     async def server(self) -> None:
         logger.info("[{}:{}] [{}] Launching server...", self.host, self.port, self.name)
 
         # Register OURSELF with the global echo target...
-        self.cluster.add_self_ability("echo", [echo], [])
-        self.cluster.add_self_ability("echos", [echos], [])
-        # TODO: we need to bind the self->echo to echo function mapping in addition to the name...
+        self.register_command("echo", echo, [])
+        self.register_command("echos", echos, [])
 
         async with websockets.server.serve(
             self.opened,
@@ -675,8 +647,8 @@ class MPREGServer:
                                 result = orjson.dumps(
                                     dict(
                                         role="internal-answer",
-                                        answer=self.cluster.self[command].call(
-                                            args, results
+                                        answer=self.registry.get(command)(
+                                            *args
                                         ),
                                         u=u,
                                     )
