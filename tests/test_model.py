@@ -39,7 +39,7 @@ def test_rpc_error_creation():
 
 
 def test_command_not_found_error_creation():
-    error = CommandNotFoundError(command_name="non_existent_cmd")
+    error = CommandNotFoundError(command_name="non_existent_cmd", details=None)
     assert error.code == 1001
     assert error.message == "Command not found"
     assert error.command_name == "non_existent_cmd"

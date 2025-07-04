@@ -15,16 +15,14 @@ import websockets
 import websockets.client
 from loguru import logger
 
-from .model import RPCCommand, RPCRequest, RPCResponse
+from .model import RPCCommand, RPCRequest, RPCResponse, MPREGException
 from .serialization import JsonSerializer
 
 if sys.version_info >= (3, 12):
     asyncio.get_event_loop().set_task_factory(asyncio.eager_task_factory)
 
 
-class Request(RPCRequest):
-    # This class now inherits from RPCRequest in mpreg.model
-    pass
+
 
 
 @dataclass
@@ -56,7 +54,7 @@ class Client:
             asyncio.TimeoutError: If the request times out.
             Exception: For other RPC errors returned by the server.
         """
-        req = Request(cmds=tuple(cmds), u=str(ulid.new()))
+        req = RPCRequest(cmds=tuple(cmds), u=str(ulid.new()))
 
         send = req.model_dump_json()
 
@@ -74,7 +72,7 @@ class Client:
             logger.error("[{}] Request timed out after {} seconds.", req.u, timeout)
             raise
 
-        response = RPCResponse.model_validate(self.serializer.deserialize(raw_response))
+        response = RPCResponse.model_validate(self.serializer.deserialize(raw_response.encode('utf-8') if isinstance(raw_response, str) else raw_response))
 
         if self.full_log:
             logger.info(
@@ -87,21 +85,19 @@ class Client:
             logger.error(
                 "RPC Error: {}: {}", response.error.code, response.error.message
             )
-            raise Exception(f"RPC Error: {response.error.message}")
+            raise MPREGException(response.error)
 
         return response.r
 
     async def connect(self):
-        async for websocket in websockets.connect(self.url, user_agent_header=None):
-            self.websocket = websocket
-            # The client will now be used by MPREGClientAPI, so no direct examples here.
-            return
+        self.websocket = await websockets.connect(self.url, user_agent_header=None)
 
-    def run(self):
-        try:
-            asyncio.run(self.connect())
-        except KeyboardInterrupt:
-            logger.warning("EXIT REQUEST CONFIRMED")
+    async def disconnect(self):
+        if self.websocket:
+            await self.websocket.close()
+            self.websocket = None
+
+    
 
 
 @logger.catch
