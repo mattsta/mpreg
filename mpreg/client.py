@@ -92,17 +92,17 @@ class Client:
 
         return response.r
 
-    async def connect(self):
+    async def connect(self) -> None:
         self.websocket = await websockets.connect(self.url, user_agent_header=None)
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         if self.websocket:
             await self.websocket.close()
             self.websocket = None
 
 
 @logger.catch
-def cmd():
+def cmd() -> None:
     import jsonargparse
 
-    jsonargparse.CLI(Client)
+    jsonargparse.CLI(Client)  # type: ignore[no-untyped-call]

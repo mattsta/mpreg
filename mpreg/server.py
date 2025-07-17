@@ -48,7 +48,9 @@ asyncio.get_event_loop().set_task_factory(asyncio.eager_task_factory)
 MPREG_DATA_MAX = 2**32
 
 
-def rpc_command(name: str, resources: Iterable[str] | None = None) -> Callable:
+def rpc_command(
+    name: str, resources: Iterable[str] | None = None
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     """Decorator to register a function as an RPC command.
 
     Args:
@@ -59,7 +61,7 @@ def rpc_command(name: str, resources: Iterable[str] | None = None) -> Callable:
         A decorator that registers the function as an RPC command.
     """
 
-    def decorator(func: Callable) -> Callable:
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         # This is a placeholder. The actual registration will happen when the MPREGServer is initialized.
         # We store the metadata on the function itself.
         setattr(func, "_rpc_command_name", name)
@@ -79,7 +81,7 @@ def rpc_command(name: str, resources: Iterable[str] | None = None) -> Callable:
 #
 ############################################
 @rpc_command(name="echo", resources=[])
-def echo(arg):
+def echo(arg: Any) -> Any:
     """Default echo handler for all servers.
 
     Single-argument echo demo."""
@@ -87,7 +89,7 @@ def echo(arg):
 
 
 @rpc_command(name="echos", resources=[])
-def echos(*args):
+def echos(*args: Any) -> tuple[Any, ...]:
     """Default echos handler for all servers.
 
     Multi-argument echo demo."""
@@ -112,11 +114,14 @@ class RPC:
         self.funs = {cmd.name: cmd for cmd in self.req.cmds}
 
         # We also have to resolve the funs to a call graph...
-        sorter: TopologicalSorter = TopologicalSorter()
+        sorter: TopologicalSorter[str] = TopologicalSorter()
 
         for name, rpc_command in self.funs.items():
             # only attach child dependencies IF the argument matches a NAME in the entire RPC Request
-            deps = filter(lambda x: x in self.funs, rpc_command.args)
+            # Only check string arguments that could be RPC names
+            deps = filter(
+                lambda x: isinstance(x, str) and x in self.funs, rpc_command.args
+            )
             sorter.add(name, *deps)
 
         levels = []
@@ -134,7 +139,7 @@ class RPC:
         # logger.info("Runnable levels are: {}", levels)
         self.levels = levels
 
-    def tasks(self):
+    def tasks(self) -> Any:
         yield from self.levels
 
 
@@ -154,6 +159,7 @@ class RPC:
 class Cluster:
     cluster_id: str
     advertised_urls: tuple[str, ...]
+    local_url: str = ""  # Local server URL for self-identification
     # map of RPC names to resources to hosts
     # e.g. {"rpc-name": {"resource-1": set(servers), "resource-2": set(servers), ...}}
     funtimes: dict[str, dict[frozenset[str], set[str]]] = field(
@@ -177,7 +183,7 @@ class Cluster:
         # self.registry = CommandRegistry()
         # self.serializer = JsonSerializer()
 
-    def add_fun_ability(self, peer_info: PeerInfo):
+    def add_fun_ability(self, peer_info: PeerInfo) -> None:
         """Add a new function and resource(s) to a server mapping.
 
         This method updates the cluster's knowledge of which functions are available
@@ -188,7 +194,7 @@ class Cluster:
         self.servers.add(peer_info.url)
         self.peers_info[peer_info.url] = peer_info
 
-    def remove_server(self, server: Connection):
+    def remove_server(self, server: Connection) -> None:
         """If server disconnects, remove it from ALL fun mappings.
 
         Note: this may leave some empty {fun: {resource: set()}} but it's okay"""
@@ -233,7 +239,7 @@ class Cluster:
             case _:
                 assert None
 
-    def process_gossip_message(self, gossip_message: GossipMessage):
+    def process_gossip_message(self, gossip_message: GossipMessage) -> None:
         """Processes an incoming gossip message, updating local peer information.
 
         This method iterates through the peers in the gossip message and updates
@@ -287,7 +293,11 @@ class Cluster:
 
         # If no location requested, we can run ANYWHERE.
         if not locs:
-            return random.choice(tuple(self.servers))
+            selected_server = random.choice(tuple(self.servers))
+            # Check if the selected server is ourselves
+            if selected_server == self.local_url:
+                return "self"
+            return selected_server
 
         # If an EXACT loc request exists in the rpc-capability map, use that single result.
         servers = self.funtimes[fun].get(locs)
@@ -308,12 +318,16 @@ class Cluster:
 
         # Random selection only works if found elements exist.
         if servers:
-            return random.choice(tuple(servers))
+            selected_server = random.choice(tuple(servers))
+            # Check if the selected server is ourselves
+            if selected_server == self.local_url:
+                return "self"
+            return selected_server
 
         # Else, we tried everything and no matches were found.
         return None
 
-    async def answerFor(self, rid: str):
+    async def answerFor(self, rid: str) -> None:
         """Wait for a reply on unique id 'rid' then return the answer."""
         e = asyncio.Event()
 
@@ -390,12 +404,12 @@ class Cluster:
                     f"No alternative server found for: {rpc_step.fun} at {rpc_step.locs}"
                 )
 
-        waiting = await asyncio.create_task(self.answerFor(localrid))
+        await asyncio.create_task(self.answerFor(localrid))
         got = self.answer[localrid]
         del self.answer[localrid]
         return got
 
-    async def run(self, rpc) -> Any:
+    async def run(self, rpc: RPC) -> Any:
         """Run the RPC.
 
         Steps:
@@ -468,7 +482,7 @@ class MPREGServer:
     """Main MPREG server application class."""
 
     settings: MPREGSettings = field(  # Changed from Field to field
-        default_factory=MPREGSettings,
+        default_factory=lambda: MPREGSettings(),  # type: ignore[call-arg]
         metadata={"description": "Server configuration settings."},
     )
 
@@ -482,6 +496,7 @@ class MPREGServer:
         self.cluster = Cluster(
             cluster_id=self.settings.cluster_id,
             advertised_urls=tuple(self.settings.advertised_urls or []),
+            local_url=f"ws://{self.settings.host}:{self.settings.port}",
         )
         self.cluster.registry = self.registry
         self.cluster.serializer = self.serializer
@@ -492,7 +507,7 @@ class MPREGServer:
         self._register_default_commands()
         self._discover_and_register_rpc_commands()
 
-    def report(self):
+    def report(self) -> None:
         """General report of current server state."""
 
         logger.info("Resources: {}", pp.pformat(self.settings.resources))
@@ -608,7 +623,9 @@ class MPREGServer:
             )
 
     @logger.catch
-    async def opened(self, websocket: websockets.server.WebSocketServerProtocol):
+    async def opened(
+        self, websocket: websockets.server.WebSocketServerProtocol
+    ) -> None:
         """Handles a new incoming websocket connection.
 
         This method is the entry point for all incoming messages, routing them
@@ -752,7 +769,11 @@ class MPREGServer:
         finally:
             # TODO: if this was a SERVER, we need to clean up the server resources.
             # TODO: if this was a CLIENT, we need to cancel any oustanding requests/subscriptions too.
-            self.clients.remove(connection)
+            try:
+                self.clients.remove(connection)
+            except KeyError:
+                # Connection might have already been removed
+                pass
 
     async def _establish_peer_connection(self, peer_url: str) -> None:
         """Establishes a connection to a single peer and adds it to peer_clients.
@@ -906,7 +927,7 @@ class MPREGServer:
 
 
 @logger.catch
-def cmd():
+def cmd() -> None:
     """You can run an MPREG Server standalone without embedding into a process.
 
     Running standalone allows you to run server(s) as pure forwarding agents (except for the global shared default commands).
@@ -916,11 +937,11 @@ def cmd():
 
     # Load settings using Pydantic-settings. This will automatically read from
     # environment variables or a .env file if present.
-    settings = MPREGSettings()
+    settings = MPREGSettings()  # type: ignore[call-arg]
 
     # Create an MPREGServer instance with the loaded settings.
     server_instance = MPREGServer(settings=settings)
 
     # Use jsonargparse to allow command-line overriding of settings.
     # This integrates with Pydantic-settings to provide a robust configuration system.
-    jsonargparse.CLI(server_instance, as_dict=False)
+    jsonargparse.CLI(server_instance, as_dict=False)  # type: ignore[no-untyped-call]

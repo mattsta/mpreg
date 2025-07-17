@@ -25,7 +25,7 @@ class JsonSerializer(Serializer):
         """Serializes data to JSON bytes using orjson."""
 
         # orjson can't serialize frozenset directly, convert to list
-        def default(obj):
+        def default(obj: Any) -> Any:
             if isinstance(obj, frozenset):
                 return list(obj)
             raise TypeError

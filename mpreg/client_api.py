@@ -69,6 +69,9 @@ class MPREGClientAPI:
         )
         try:
             result = await self._client.request(cmds=[command], timeout=timeout)
+            # For single command calls, extract the result directly
+            if isinstance(result, dict) and len(result) == 1:
+                return list(result.values())[0]
             return result
         except CommandNotFoundException as e:
             raise e
@@ -81,9 +84,9 @@ class MPREGClientAPI:
             logger.error("RPC Call Failed: {}", e)
             raise
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "MPREGClientAPI":
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.disconnect()

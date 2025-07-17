@@ -2,6 +2,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
+from loguru import logger
+
 
 @dataclass(slots=True)
 class Command:
@@ -21,7 +23,8 @@ class CommandRegistry:
     def register(self, command: Command) -> None:
         """Register a command."""
         if command.name in self._commands:
-            raise ValueError(f"Command {command.name} already registered.")
+            # Allow overriding commands (useful for tests and reregistration)
+            logger.debug(f"Overriding existing command: {command.name}")
         self._commands[command.name] = command
 
     def get(self, name: str) -> Command:

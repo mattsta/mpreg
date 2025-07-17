@@ -6,7 +6,7 @@ import websockets.server
 from loguru import logger
 
 
-@dataclass
+@dataclass(eq=True)
 class Connection:
     """Encapsulates a websocket connection to a remote peer."""
 
@@ -18,8 +18,10 @@ class Connection:
         | websockets.server.WebSocketServerProtocol
         | None
     ) = field(default=None, init=False)
-    _receive_queue: asyncio.Queue = field(default_factory=asyncio.Queue, init=False)
-    _listener_task: asyncio.Task | None = field(default=None, init=False)
+    _receive_queue: asyncio.Queue[bytes] = field(
+        default_factory=asyncio.Queue, init=False
+    )
+    _listener_task: asyncio.Task[None] | None = field(default=None, init=False)
 
     async def connect(self) -> None:
         """Establishes a websocket connection to the peer with exponential backoff.
@@ -83,7 +85,13 @@ class Connection:
 
     async def receive(self) -> bytes:
         """Receives a message from the websocket connection."""
-        return await self._receive_queue.get()
+        message = await self._receive_queue.get()
+        if isinstance(message, bytes):
+            return message
+        elif isinstance(message, str):
+            return message.encode("utf-8")
+        else:
+            raise TypeError(f"Unexpected message type: {type(message)}")
 
     async def _listen_for_messages(self) -> None:
         """Listens for incoming messages and puts them into the receive queue."""
@@ -91,7 +99,12 @@ class Connection:
             return
         try:
             async for message in self.websocket:
-                await self._receive_queue.put(message)
+                if isinstance(message, bytes):
+                    await self._receive_queue.put(message)
+                elif isinstance(message, str):
+                    await self._receive_queue.put(message.encode("utf-8"))
+                else:
+                    logger.warning(f"Received unexpected message type: {type(message)}")
         except websockets.ConnectionClosedOK:
             logger.info("[{}] Connection closed gracefully.", self.url)
         except websockets.ConnectionClosedError as e:
@@ -107,3 +120,7 @@ class Connection:
     def is_connected(self) -> bool:
         """Checks if the websocket connection is currently open."""
         return self.websocket is not None and not self.websocket.closed
+
+    def __hash__(self) -> int:
+        """Hash based on URL for set storage."""
+        return hash(self.url)

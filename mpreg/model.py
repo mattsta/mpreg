@@ -53,7 +53,9 @@ class RPCInternalRequest(BaseModel):
     kwargs: dict[str, Any] = Field(
         default_factory=dict, description="Keyword arguments for the function call."
     )
-    results: dict = Field(description="Intermediate results from previous RPC steps.")
+    results: dict[str, Any] = Field(
+        description="Intermediate results from previous RPC steps."
+    )
     u: str = Field(description="A unique identifier for this internal request.")
 
 

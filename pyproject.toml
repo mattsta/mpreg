@@ -15,6 +15,7 @@ loguru = "^0.7.3"
 ulid-py = "^1.1.0"
 jsonargparse = "^4.24.1"
 pydantic = "^2.11.7"
+pydantic-settings = "^2.0.0"
 
 [tool.poetry.scripts]
 mpreg-server = "mpreg.server:cmd"
@@ -27,6 +28,7 @@ mypy = "^1.16.1"
 pytest = "^8.2.2"
 pytest-mock = "^3.14.0"
 pytest-asyncio = "^0.23.6"
+types-psutil = "^7.0.0.20250601"
 
 [build-system]
 requires = ["poetry-core"]

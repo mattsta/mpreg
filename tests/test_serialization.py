@@ -4,7 +4,7 @@ from mpreg.model import RPCCommand, RPCError, RPCRequest, RPCResponse
 from mpreg.serialization import JsonSerializer
 
 
-def test_json_serializer_serialize():
+def test_json_serializer_serialize() -> None:
     serializer = JsonSerializer()
     data = {"key": "value", "number": 123, "boolean": True}
     serialized_data = serializer.serialize(data)
@@ -12,7 +12,7 @@ def test_json_serializer_serialize():
     assert orjson.loads(serialized_data) == data
 
 
-def test_json_serializer_deserialize():
+def test_json_serializer_deserialize() -> None:
     serializer = JsonSerializer()
     data_bytes = b'{"key": "value", "number": 123, "boolean": true}'
     deserialized_data = serializer.deserialize(data_bytes)
@@ -20,7 +20,7 @@ def test_json_serializer_deserialize():
     assert deserialized_data == {"key": "value", "number": 123, "boolean": True}
 
 
-def test_json_serializer_with_pydantic_model():
+def test_json_serializer_with_pydantic_model() -> None:
     serializer = JsonSerializer()
     cmd = RPCCommand(
         name="test", fun="func", args=("a",), kwargs={"b": 1}, locs=frozenset(["loc1"])
@@ -33,7 +33,7 @@ def test_json_serializer_with_pydantic_model():
     assert deserialized_req == req
 
 
-def test_json_serializer_with_pydantic_response_error():
+def test_json_serializer_with_pydantic_response_error() -> None:
     serializer = JsonSerializer()
     error = RPCError(code=100, message="Test Error", details=None)
     response = RPCResponse(r=None, error=error, u="456")

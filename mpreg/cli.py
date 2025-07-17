@@ -28,7 +28,7 @@ class MPREGCLI:
         locs: frozenset[str] | None = None,
         timeout: float | None = None,
         **kwargs: Any,
-    ):
+    ) -> None:
         """Calls an RPC function on the MPREG cluster.
 
         Args:
@@ -47,7 +47,7 @@ class MPREGCLI:
             except Exception as e:
                 logger.error("RPC Call Failed: {}", e)
 
-    async def list_peers(self):
+    async def list_peers(self) -> None:
         """Lists all known peers in the MPREG cluster and their capabilities."""
         # This command needs to be implemented by querying the cluster for its known peers.
         # For now, this is a placeholder.
@@ -65,7 +65,7 @@ class MPREGCLI:
         connect: str | None = None,
         cluster_id: str = "default-cluster",
         advertised_urls: tuple[str, ...] | None = None,
-    ):
+    ) -> None:
         """Starts an MPREG server instance.
 
         Args:
@@ -87,13 +87,14 @@ class MPREGCLI:
             connect=connect,
             cluster_id=cluster_id,
             advertised_urls=advertised_urls,
+            gossip_interval=5.0,  # Add missing required field
         )
         server_instance = MPREGServer(settings=settings)
         await server_instance.server()
 
 
-def main():
-    CLI(MPREGCLI, as_dict=False)
+def main() -> None:
+    CLI(MPREGCLI, as_dict=False)  # type: ignore[no-untyped-call]
 
 
 if __name__ == "__main__":

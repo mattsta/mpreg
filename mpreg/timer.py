@@ -1,5 +1,6 @@
 import sys
 import time
+from typing import Any
 
 from loguru import logger
 
@@ -32,7 +33,7 @@ class Timer:
         self.every = every
         self.count = 0
 
-    def step(self):
+    def step(self) -> None:
         # Note: we currently only support SINGLE-ENTRY steps to avoid
         #       needing to check if we stepped "over" a print boundary
         #       (if we allowed something like `step(amount=N)`.
@@ -40,7 +41,7 @@ class Timer:
         if self.count % self.every == 0:
             self.log(self.count)
 
-    def __enter__(self):
+    def __enter__(self) -> "Timer":
         # Note: don't use time.clock() or time.process_time()
         #       because those don't record time during sleep calls,
         #       but we need to record sleeps for when we're waiting
@@ -49,7 +50,7 @@ class Timer:
         self.start_global = self.start
         return self
 
-    def log(self, extra=None) -> None:
+    def log(self, extra: Any = None) -> None:
         # calculate closing state
         self.end = time.perf_counter()
         self.interval = self.end - self.start
@@ -78,7 +79,7 @@ class Timer:
             "{}Duration{}: {:,.4f}", self.name, extrafmt, self.interval
         )
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: Any) -> None:
         # print final particle rollup ONLY IF we have sub-steps
         if self.count:
             self.log(self.count)

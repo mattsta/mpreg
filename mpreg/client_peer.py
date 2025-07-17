@@ -41,7 +41,7 @@ class MPREGClient:
     )
     # TODO: This should be a list of connections to multiple peers.
     peer_connection: Connection | None = field(default=None, init=False)
-    _gossip_task: asyncio.Task | None = field(default=None, init=False)
+    _gossip_task: asyncio.Task[None] | None = field(default=None, init=False)
 
     async def connect(self) -> None:
         """Establishes a connection to the remote MPREG server and handles message exchange.
