@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 import ulid
 import websockets.client
 from loguru import logger
-from pydantic import Field
 
 from .connection import Connection
 from .model import (
@@ -28,13 +27,9 @@ class MPREGClient:
     serializer: JsonSerializer
     local_funs: tuple[str, ...]
     local_resources: frozenset[str]
-    cluster_id: str = Field(description="The ID of the cluster this client belongs to.")
-    local_advertised_urls: tuple[str, ...] = Field(
-        default_factory=tuple, description="URLs that this client's server advertises."
-    )
-    cluster_peers_info: dict[str, PeerInfo] = Field(
-        description="Reference to the cluster's peers_info for gossip."
-    )
+    cluster_id: str
+    local_advertised_urls: tuple[str, ...] = field(default_factory=tuple)
+    cluster_peers_info: dict[str, PeerInfo] = field(default_factory=dict)
     gossip_interval: float = field(
         default=5.0,
         metadata={"description": "Interval in seconds for sending gossip messages."},
@@ -53,22 +48,19 @@ class MPREGClient:
         process incoming messages from the peer.
         """
         connected = False
-        for url in self.local_advertised_urls:
-            try:
-                self.peer_connection = Connection(url=url)
-                await self.peer_connection.connect()
-                connected = True
-                break
-            except Exception as e:
-                logger.warning(
-                    "[{}] Failed to connect to advertised URL {}: {}", self.url, url, e
-                )
-                self.peer_connection = None
+        # Try to connect to the target peer URL (self.url is the peer we want to connect to)
+        try:
+            self.peer_connection = Connection(url=self.url)
+            await self.peer_connection.connect()
+            connected = True
+        except Exception as e:
+            logger.warning(
+                "[{}] Failed to connect to peer URL {}: {}", self.url, self.url, e
+            )
+            self.peer_connection = None
 
         if not connected:
-            raise ConnectionError(
-                f"Failed to connect to any advertised URL for {self.url}"
-            )
+            raise ConnectionError(f"Failed to connect to peer URL {self.url}")
 
         # Register OURSELF with the global echo target.
         # We send a RPCServerHello message with our capabilities.

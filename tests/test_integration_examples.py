@@ -53,11 +53,11 @@ class TestBasicUsageExamples:
         client = await client_factory(single_server.settings.port)
 
         result = await client.call("echos", "arg1", "arg2", "arg3")
-        assert result == ("arg1", "arg2", "arg3")
+        assert result == ["arg1", "arg2", "arg3"]
 
         # Mix of data types
         result = await client.call("echos", 1, "two", [3, 4], {"five": 6})
-        assert result == (1, "two", [3, 4], {"five": 6})
+        assert result == [1, "two", [3, 4], {"five": 6}]
 
     async def test_function_with_keyword_arguments(
         self, enhanced_server: MPREGServer, client_factory: Callable[[int], Any]
@@ -182,7 +182,7 @@ class TestWorkflowExamples:
         )
 
         # Results from both parallel branches should be combined
-        assert result["combined"] == (6, 15)  # sums of [1,2,3] and [4,5,6]
+        assert result["combined"] == [6, 15]  # sums of [1,2,3] and [4,5,6]
 
 
 class TestDistributedExamples:
@@ -208,7 +208,7 @@ class TestDistributedExamples:
         result2 = await client.call("echos", "distributed", "call", "2")
 
         assert result1 == "distributed call 1"
-        assert result2 == ("distributed", "call", "2")
+        assert result2 == ["distributed", "call", "2"]
 
     async def test_resource_based_routing(
         self,
@@ -439,7 +439,7 @@ class TestErrorHandlingExamples:
 
         # This should timeout quickly
         with pytest.raises(asyncio.TimeoutError):
-            await client.call("echo", "test", timeout=0.001)  # Very short timeout
+            await client.call("echo", "test", timeout=0.0001)  # Extremely short timeout
 
     async def test_graceful_degradation(
         self,

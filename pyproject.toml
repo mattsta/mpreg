@@ -29,6 +29,7 @@ pytest = "^8.2.2"
 pytest-mock = "^3.14.0"
 pytest-asyncio = "^0.23.6"
 types-psutil = "^7.0.0.20250601"
+psutil = "^6.1.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -46,6 +47,9 @@ extend-select = [
   "I",
 ]
 ignore = ["E402", "F841", "E741"] # Ignore Module level import not at top of file
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
 
 [tool.mypy]
 check_untyped_defs = true

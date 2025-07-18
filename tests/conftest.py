@@ -30,14 +30,26 @@ class AsyncTestContext:
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Ensure all resources are cleaned up properly."""
-        # Cancel all running tasks
-        for task in self.tasks:
-            if not task.done():
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
+        # Stop all servers first by calling shutdown method
+        for server in self.servers:
+            try:
+                server.shutdown()
+            except Exception as e:
+                logger.warning(f"Error shutting down server: {e}")
+
+        # Cancel and wait for all running tasks with timeout
+        if self.tasks:
+            for task in self.tasks:
+                if not task.done():
+                    task.cancel()
+
+            # Wait for all tasks to complete with timeout
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*self.tasks, return_exceptions=True), timeout=2.0
+                )
+            except TimeoutError:
+                logger.warning("Some tasks did not complete within timeout")
 
         # Disconnect all clients
         for client in self.clients:
@@ -45,19 +57,6 @@ class AsyncTestContext:
                 await client.disconnect()
             except Exception as e:
                 logger.warning(f"Error disconnecting client: {e}")
-
-        # Stop all servers by cancelling their tasks
-        for server in self.servers:
-            if hasattr(server, "_peer_connection_manager_task"):
-                if (
-                    server._peer_connection_manager_task
-                    and not server._peer_connection_manager_task.done()
-                ):
-                    server._peer_connection_manager_task.cancel()
-                    try:
-                        await server._peer_connection_manager_task
-                    except asyncio.CancelledError:
-                        pass
 
         # Clear all collections
         self.servers.clear()
@@ -153,12 +152,16 @@ async def cluster_2_servers(
 
     test_context.servers.extend([server1, server2])
 
-    # Start both servers concurrently
-    tasks = [
-        asyncio.create_task(server1.server()),
-        asyncio.create_task(server2.server()),
-    ]
-    test_context.tasks.extend(tasks)
+    # Start server1 first, then server2 after a delay to avoid race conditions
+    task1 = asyncio.create_task(server1.server())
+    test_context.tasks.append(task1)
+
+    # Wait for server1 to be ready
+    await asyncio.sleep(0.2)
+
+    # Now start server2 which will connect to server1
+    task2 = asyncio.create_task(server2.server())
+    test_context.tasks.append(task2)
 
     # Wait for servers to establish connection
     await asyncio.sleep(0.5)

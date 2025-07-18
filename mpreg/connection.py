@@ -1,9 +1,13 @@
 import asyncio
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import websockets.client
 import websockets.server
 from loguru import logger
+
+if TYPE_CHECKING:
+    from .server import Cluster
 
 
 @dataclass(eq=True)
@@ -22,6 +26,7 @@ class Connection:
         default_factory=asyncio.Queue, init=False
     )
     _listener_task: asyncio.Task[None] | None = field(default=None, init=False)
+    cluster: "Cluster | None" = field(default=None, init=False)
 
     async def connect(self) -> None:
         """Establishes a websocket connection to the peer with exponential backoff.
@@ -99,12 +104,47 @@ class Connection:
             return
         try:
             async for message in self.websocket:
+                message_bytes = None
                 if isinstance(message, bytes):
-                    await self._receive_queue.put(message)
+                    message_bytes = message
                 elif isinstance(message, str):
-                    await self._receive_queue.put(message.encode("utf-8"))
+                    message_bytes = message.encode("utf-8")
                 else:
                     logger.warning(f"Received unexpected message type: {type(message)}")
+                    continue
+
+                # If we have a cluster reference, check for internal-answer messages
+                if self.cluster and message_bytes:
+                    try:
+                        parsed_msg = self.cluster.serializer.deserialize(message_bytes)
+                        if parsed_msg.get("role") == "internal-answer":
+                            logger.info(
+                                "Processing internal-answer in client connection"
+                            )
+                            # Import here to avoid circular import
+                            from .model import RPCInternalAnswer
+
+                            internal_answer = RPCInternalAnswer.model_validate(
+                                parsed_msg
+                            )
+                            # Store answer and notify waiting process
+                            self.cluster.answer[internal_answer.u] = (
+                                internal_answer.answer
+                            )
+                            if internal_answer.u in self.cluster.waitingFor:
+                                self.cluster.waitingFor[internal_answer.u].set()
+                                logger.info(
+                                    "Notified waiting process for u={}",
+                                    internal_answer.u,
+                                )
+                            continue
+                    except Exception as e:
+                        logger.debug(
+                            "Failed to parse message as internal-answer: {}", e
+                        )
+                        # Fall through to normal queue processing
+
+                await self._receive_queue.put(message_bytes)
         except websockets.ConnectionClosedOK:
             logger.info("[{}] Connection closed gracefully.", self.url)
         except websockets.ConnectionClosedError as e:

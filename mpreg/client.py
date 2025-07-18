@@ -32,6 +32,10 @@ class Client:
         default=None, init=False
     )
     serializer: JsonSerializer = field(default_factory=JsonSerializer, init=False)
+    _pending_requests: dict[str, asyncio.Future[RPCResponse]] = field(
+        default_factory=dict, init=False
+    )
+    _listener_task: asyncio.Task[None] | None = field(default=None, init=False)
 
     async def request(
         self, cmds: list[RPCCommand], timeout: float | None = None
@@ -59,23 +63,22 @@ class Client:
 
         if self.websocket is None:
             raise ConnectionError("WebSocket connection is not established.")
-        await self.websocket.send(send)
+
+        # Create a future for this request's response
+        response_future: asyncio.Future[RPCResponse] = asyncio.Future()
+        self._pending_requests[req.u] = response_future
 
         try:
-            raw_response = await asyncio.wait_for(
-                self.websocket.recv(), timeout=timeout
-            )
+            await self.websocket.send(send)
+
+            # Wait for the response with timeout
+            response = await asyncio.wait_for(response_future, timeout=timeout)
         except TimeoutError:
             logger.error("[{}] Request timed out after {} seconds.", req.u, timeout)
             raise
-
-        response = RPCResponse.model_validate(
-            self.serializer.deserialize(
-                raw_response.encode("utf-8")
-                if isinstance(raw_response, str)
-                else raw_response
-            )
-        )
+        finally:
+            # Clean up the pending request
+            self._pending_requests.pop(req.u, None)
 
         if self.full_log:
             logger.info(
@@ -88,17 +91,67 @@ class Client:
             logger.error(
                 "RPC Error: {}: {}", response.error.code, response.error.message
             )
-            raise MPREGException(response.error)
+            raise MPREGException(rpc_error=response.error)
 
         return response.r
 
+    async def _listen_for_responses(self) -> None:
+        """Listen for incoming responses and route them to the correct pending request."""
+        if not self.websocket:
+            return
+
+        try:
+            async for raw_message in self.websocket:
+                try:
+                    response = RPCResponse.model_validate(
+                        self.serializer.deserialize(
+                            raw_message.encode("utf-8")
+                            if isinstance(raw_message, str)
+                            else raw_message
+                        )
+                    )
+
+                    # Route the response to the correct pending request
+                    if response.u in self._pending_requests:
+                        future = self._pending_requests[response.u]
+                        if not future.done():
+                            future.set_result(response)
+                    else:
+                        logger.warning(
+                            "Received response for unknown request: {}", response.u
+                        )
+
+                except Exception as e:
+                    logger.error("Failed to process response: {}", e)
+
+        except Exception as e:
+            logger.error("Error in response listener: {}", e)
+        finally:
+            # Cancel all pending requests
+            for future in self._pending_requests.values():
+                if not future.done():
+                    future.cancel()
+
     async def connect(self) -> None:
         self.websocket = await websockets.connect(self.url, user_agent_header=None)
+        # Start the response listener
+        self._listener_task = asyncio.create_task(self._listen_for_responses())
 
     async def disconnect(self) -> None:
+        if self._listener_task:
+            self._listener_task.cancel()
+            try:
+                await self._listener_task
+            except asyncio.CancelledError:
+                pass
         if self.websocket:
             await self.websocket.close()
-            self.websocket = None
+        # Cancel any remaining pending requests
+        for future in self._pending_requests.values():
+            if not future.done():
+                future.cancel()
+        self._pending_requests.clear()
+        self.websocket = None
 
 
 @logger.catch

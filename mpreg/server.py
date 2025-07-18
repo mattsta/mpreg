@@ -15,7 +15,6 @@ import websockets.client
 import websockets.server
 from loguru import logger
 
-from .client_peer import MPREGClient
 from .config import MPREGSettings
 from .connection import Connection
 from .model import (
@@ -179,6 +178,8 @@ class Cluster:
     def __post_init__(self) -> None:
         self.waitingFor: dict[str, asyncio.Event] = dict()
         self.answer: dict[str, Any] = dict()
+        # Persistent connections to peer servers for RPC forwarding
+        self.peer_connections: dict[str, Connection] = dict()
         # These will be set by MPREGServer
         # self.registry = CommandRegistry()
         # self.serializer = JsonSerializer()
@@ -189,10 +190,27 @@ class Cluster:
         This method updates the cluster's knowledge of which functions are available
         on which servers and with what resources.
         """
+        logger.info(
+            "Adding peer {} with functions {} and locs {}",
+            peer_info.url,
+            peer_info.funs,
+            peer_info.locs,
+        )
         for fun in peer_info.funs:
             self.funtimes[fun][peer_info.locs].add(peer_info.url)
+            logger.info(
+                "Registered function '{}' with locs {} on server {}",
+                fun,
+                peer_info.locs,
+                peer_info.url,
+            )
         self.servers.add(peer_info.url)
         self.peers_info[peer_info.url] = peer_info
+        logger.info(
+            "Cluster now has {} servers and {} functions",
+            len(self.servers),
+            len(self.funtimes),
+        )
 
     def remove_server(self, server: Connection) -> None:
         """If server disconnects, remove it from ALL fun mappings.
@@ -286,9 +304,16 @@ class Cluster:
         Returns:
             A Connection object to the suitable server, or None if no server is found.
         """
+        logger.info("Looking for function '{}' with locs={}", fun, locs)
+        logger.info("Available servers: {}", self.servers)
+        logger.info("Available functions: {}", list(self.funtimes.keys()))
+        if fun in self.funtimes:
+            logger.info("Function '{}' details: {}", fun, dict(self.funtimes[fun]))
+
         # If no servers exist, we can't find anything anywhere.
         # NOTE: This should be impossible, because we register OURSELF as a server on startup.
         if not self.servers:
+            logger.warning("No servers available!")
             return None
 
         # If no location requested, we can run ANYWHERE.
@@ -339,6 +364,38 @@ class Cluster:
         # logger.info("Woke up!")
         del self.waitingFor[rid]
 
+    def _resolve_arguments(
+        self, args: tuple[Any, ...], kwargs: dict[str, Any], results: dict[str, Any]
+    ) -> tuple[tuple[Any, ...], dict[str, Any]]:
+        """Resolve arguments by substituting result references with actual values.
+
+        Recursively resolves string references in nested data structures.
+        If a string matches a key in results, replace it with the actual result value.
+
+        Args:
+            args: Original positional arguments
+            kwargs: Original keyword arguments
+            results: Dictionary of previous command results
+
+        Returns:
+            Tuple of (resolved_args, resolved_kwargs)
+        """
+
+        def resolve_value(value: Any) -> Any:
+            if isinstance(value, str) and value in results:
+                return results[value]
+            elif isinstance(value, dict):
+                return {k: resolve_value(v) for k, v in value.items()}
+            elif isinstance(value, list | tuple):
+                resolved_list = [resolve_value(item) for item in value]
+                return type(value)(resolved_list)
+            return value
+
+        resolved_args = tuple(resolve_value(arg) for arg in args)
+        resolved_kwargs = {k: resolve_value(v) for k, v in kwargs.items()}
+
+        return resolved_args, resolved_kwargs
+
     async def _execute_local_command(
         self,
         rpc_command: RPCCommand,
@@ -353,8 +410,13 @@ class Cluster:
         Returns:
             The result of the local command execution.
         """
+        # Resolve arguments by substituting previous results
+        resolved_args, resolved_kwargs = self._resolve_arguments(
+            rpc_command.args, rpc_command.kwargs, results
+        )
+
         return self.registry.get(rpc_command.fun)(  # Access registry via self.registry
-            *rpc_command.args, **rpc_command.kwargs
+            *resolved_args, **resolved_kwargs
         )
 
     async def _execute_remote_command(
@@ -373,19 +435,33 @@ class Cluster:
         Raises:
             ConnectionError: If the connection to the remote server is not open.
         """
+        # Resolve arguments by substituting previous results
+        resolved_args, resolved_kwargs = self._resolve_arguments(
+            rpc_step.args, rpc_step.kwargs, results
+        )
+
         localrid = str(ulid.new())
         body = self.serializer.serialize(  # Access serializer via self.serializer
             RPCInternalRequest(
                 command=rpc_step.fun,
-                args=rpc_step.args,
-                kwargs=rpc_step.kwargs,
+                args=resolved_args,
+                kwargs=resolved_kwargs,
                 results=results,
                 u=localrid,
             ).model_dump()
         )
 
         try:
+            logger.info(
+                "Sending internal-rpc request: command={}, u={}, to={}",
+                rpc_step.fun,
+                localrid,
+                where.url,
+            )
             await where.send(body)
+            logger.info(
+                "Internal-rpc request sent successfully, waiting for response..."
+            )
         except ConnectionError:
             logger.error(
                 "[{}] Connection to remote server closed. Removing from services for now...",
@@ -404,9 +480,12 @@ class Cluster:
                     f"No alternative server found for: {rpc_step.fun} at {rpc_step.locs}"
                 )
 
+        logger.info("Waiting for answer with rid={}", localrid)
         await asyncio.create_task(self.answerFor(localrid))
+        logger.info("Received answer for rid={}", localrid)
         got = self.answer[localrid]
         del self.answer[localrid]
+        logger.info("Remote command completed: got={}", got)
         return got
 
     async def run(self, rpc: RPC) -> Any:
@@ -419,6 +498,7 @@ class Cluster:
             - If MORE THAN ONE RPC at this level, coordinate the next level.
           - Reply to client.
         """
+        logger.info("Starting RPC execution with {} levels", len(rpc.levels))
 
         async def runner(
             rpc_command: RPCCommand, results: dict[str, Any]
@@ -432,40 +512,89 @@ class Cluster:
             Returns:
                 A dictionary containing the result of the executed command.
             """
+            logger.info(
+                "Executing command '{}' with locs={}", rpc_command.fun, rpc_command.locs
+            )
+
             where = self.server_for(rpc_command.fun, rpc_command.locs)
+            logger.info(
+                "server_for('{}', {}) returned: {}",
+                rpc_command.fun,
+                rpc_command.locs,
+                where,
+            )
+
             if not where:
-                logger.error("Sorry, no server found for: {}", rpc_command)
+                logger.error(
+                    "No server found for command '{}' with locs={}",
+                    rpc_command.fun,
+                    rpc_command.locs,
+                )
+                logger.info(
+                    "Available functions in cluster: {}", list(self.funtimes.keys())
+                )
                 raise CommandNotFoundException(command_name=rpc_command.fun)
 
             if where == "self":
+                logger.info("Executing '{}' locally", rpc_command.fun)
                 got = await self._execute_local_command(rpc_command, results)
             else:
-                got = await self._execute_remote_command(
-                    rpc_command, results, Connection(url=where)
-                )  # Wrap string in Connection
+                logger.info("Executing '{}' remotely on {}", rpc_command.fun, where)
+                # Use persistent connection if available, else create new one
+                connection = self.peer_connections.get(where)
+                if not connection or not connection.is_connected:
+                    logger.info("Creating new connection to {}", where)
+                    # Create new connection if none exists or is dead
+                    connection = Connection(url=where)
+                    connection.cluster = (
+                        self  # Set cluster reference for response handling
+                    )
+                    await connection.connect()
+                    self.peer_connections[where] = connection
+                else:
+                    logger.info("Using existing connection to {}", where)
 
+                got = await self._execute_remote_command(
+                    rpc_command, results, connection
+                )
+
+            logger.info(
+                "Command '{}' completed with result type: {}",
+                rpc_command.fun,
+                type(got),
+            )
             results[rpc_command.name] = got
 
             # TODO: this should return a STABLE DATACLASS OBJECT and not just a generic dict
             return {rpc_command.name: got}
 
         results: dict[str, Any] = {}  # Added type hint
-        # logger.info("rpc is: {}", rpc)
-        for level in rpc.tasks():
+        logger.info("RPC has {} levels to execute", len(list(rpc.tasks())))
+
+        for level_idx, level in enumerate(rpc.tasks()):
+            logger.info("Processing level {} with tasks: {}", level_idx, level)
             # Note: EVERYTHING in the current level is parallelizable!
             cmds = []
-            # logger.info("Tasks for level are: {}", level)
             for name in level:
                 rpc_command = rpc.funs[name]
+                logger.info("Adding command '{}' to level {}", name, level_idx)
                 # here, each 'cmd' is only command NAME we look up in the rpc to run with the resolved local args
                 cmds.append(runner(rpc_command, results))
 
+            logger.info(
+                "Executing {} commands in parallel for level {}", len(cmds), level_idx
+            )
             got = await asyncio.gather(*cmds)
+            logger.info("Level {} completed with {} results", level_idx, len(got))
 
         result = {}
         for g in got:
             result.update(g)
+            logger.debug("Merged result: {}", g)
 
+        logger.info(
+            "RPC execution completed with final result keys: {}", list(result.keys())
+        )
         return result
 
         # using result.update() in a loop is twice as fast as this:
@@ -501,11 +630,21 @@ class MPREGServer:
         self.cluster.registry = self.registry
         self.cluster.serializer = self.serializer
         self.clients: set[Connection] = set()  # Added type hint
-        self.peer_clients: dict[str, MPREGClient] = {}
+        self.peer_connections: dict[
+            str, Connection
+        ] = {}  # Persistent connections to peers
+        self._shutdown_event = asyncio.Event()  # Event to signal server shutdown
+        self._peer_connection_manager_task: asyncio.Task[None] | None = None
 
         # Register default commands and any commands decorated with @rpc_command
         self._register_default_commands()
         self._discover_and_register_rpc_commands()
+
+    def shutdown(self) -> None:
+        """Signal the server to shutdown gracefully."""
+        self._shutdown_event.set()
+        if self._peer_connection_manager_task:
+            self._peer_connection_manager_task.cancel()
 
     def report(self) -> None:
         """General report of current server state."""
@@ -555,8 +694,14 @@ class MPREGServer:
                 case "HELLO":
                     # A new server is announcing its capabilities.
                     # Add its functions and locations to the cluster's funtimes mapping.
+                    # Use the server's advertised URL instead of the connection's remote address
+                    server_url = (
+                        req.server.advertised_urls[0]
+                        if req.server.advertised_urls
+                        else server_connection.url
+                    )
                     peer_info = PeerInfo(
-                        url=server_connection.url,
+                        url=server_url,
                         funs=req.server.funs,
                         locs=frozenset(req.server.locs),
                         last_seen=time.time(),
@@ -632,7 +777,9 @@ class MPREGServer:
         to the appropriate handler based on their 'role'.
         """
         # Create a Connection object for the incoming websocket.
-        connection = Connection(url=str(websocket.remote_address))
+        # Construct proper WebSocket URL from remote address
+        remote_host, remote_port = websocket.remote_address
+        connection = Connection(url=f"ws://{remote_host}:{remote_port}")
         connection.websocket = (
             websocket  # Assign the raw websocket to the connection object
         )
@@ -715,13 +862,32 @@ class MPREGServer:
                         command = internal_rpc.command
                         args = internal_rpc.args
                         kwargs = internal_rpc.kwargs
+                        results = internal_rpc.results
                         u = internal_rpc.u
 
+                        logger.info(
+                            "Received internal-rpc request: command={}, u={}, args={}",
+                            command,
+                            u,
+                            args,
+                        )
+
+                        # Resolve arguments using available results (though they should already be resolved)
+                        resolved_args, resolved_kwargs = (
+                            self.cluster._resolve_arguments(args, kwargs, results)
+                        )
+
                         # Generate RESULT PAYLOAD
-                        answer_payload = self.registry.get(command)(*args, **kwargs)
+                        answer_payload = self.registry.get(command)(
+                            *resolved_args, **resolved_kwargs
+                        )
                         response_model = RPCInternalAnswer(answer=answer_payload, u=u)
 
-                        # logger.info("[{}] Generated answer: {}", u, answer_payload)
+                        logger.info(
+                            "Generated internal answer: u={}, answer={}",
+                            u,
+                            answer_payload,
+                        )
 
                     case "gossip":
                         # Incoming gossip message from a peer.
@@ -757,10 +923,16 @@ class MPREGServer:
 
                 # If a response model was generated, send it back to the client.
                 if response_model:
+                    logger.info(
+                        "Sending response: type={}, u={}",
+                        type(response_model).__name__,
+                        getattr(response_model, "u", "no-u"),
+                    )
                     try:
                         await websocket.send(
                             self.serializer.serialize(response_model.model_dump())
                         )
+                        logger.info("Response sent successfully")
                     except Exception:
                         logger.error(
                             "[{}:{}] Client connection error! Dropping reply.",
@@ -776,42 +948,51 @@ class MPREGServer:
                 pass
 
     async def _establish_peer_connection(self, peer_url: str) -> None:
-        """Establishes a connection to a single peer and adds it to peer_clients.
+        """Establishes a persistent connection to a peer for RPC forwarding.
 
         Args:
             peer_url: The URL of the peer to connect to.
         """
-        peer_client = self.peer_clients.get(peer_url)
-        if (
-            peer_client
-            and peer_client.peer_connection
-            and peer_client.peer_connection.is_connected
-        ):
-            logger.info(
-                "[{}] Already connected to peer: {}", self.settings.name, peer_url
-            )
-            return
+        if peer_url in self.peer_connections:
+            # Check if existing connection is still valid
+            if self.peer_connections[peer_url].is_connected:
+                logger.debug(
+                    "[{}] Already connected to peer: {}", self.settings.name, peer_url
+                )
+                return
+            else:
+                # Clean up dead connection
+                del self.peer_connections[peer_url]
 
         logger.info(
-            "[{}] Attempting to establish connection to peer: {}",
+            "[{}] Establishing persistent connection to peer: {}",
             self.settings.name,
             peer_url,
         )
         try:
-            peer_client = MPREGClient(
-                url=peer_url,
-                registry=self.registry,
-                serializer=self.serializer,
-                local_funs=tuple(self.registry._commands.keys()),
-                local_resources=frozenset(self.settings.resources or []),
-                cluster_id=self.settings.cluster_id,
-                local_advertised_urls=tuple(  # Changed to tuple
-                    self.settings.advertised_urls
-                    or [f"ws://{self.settings.host}:{self.settings.port}"]
+            # Create persistent connection for RPC forwarding
+            connection = Connection(url=peer_url)
+            await connection.connect()
+            self.peer_connections[peer_url] = connection
+
+            # Send HELLO message to announce ourselves
+            from .model import RPCServerHello, RPCServerRequest
+
+            hello_message = RPCServerRequest(
+                server=RPCServerHello(
+                    funs=tuple(self.registry._commands.keys()),
+                    locs=tuple(self.settings.resources or []),
+                    cluster_id=self.settings.cluster_id,
+                    advertised_urls=tuple(
+                        self.settings.advertised_urls
+                        or [f"ws://{self.settings.host}:{self.settings.port}"]
+                    ),
                 ),
+                u=str(ulid.new()),
             )
-            await peer_client.connect()
-            self.peer_clients[peer_url] = peer_client
+
+            await connection.send(self.serializer.serialize(hello_message.model_dump()))
+
             logger.info(
                 "[{}] Successfully connected to peer: {}", self.settings.name, peer_url
             )
@@ -821,20 +1002,17 @@ class MPREGServer:
             )
 
     async def _manage_peer_connections(self) -> None:
-        """Periodically checks for new peers from gossip and establishes connections.
+        """Periodically checks for new peers and maintains connections.
 
-        This background task ensures that the server proactively connects to
-        other known peers in the cluster, maintaining a robust mesh network.
+        This background task ensures that the server maintains persistent
+        connections to all known peers in the cluster.
         """
-        while True:
-            # Iterate through known peers from gossip and try to connect if not already connected.
+        while not self._shutdown_event.is_set():
+            # Iterate through known peers and establish connections if needed
             for peer_url, peer_info in list(
                 self.cluster.peers_info.items()
             ):  # Use list to avoid RuntimeError during dict modification
-                if (
-                    peer_url != f"ws://{self.settings.host}:{self.settings.port}"
-                    and peer_url not in self.peer_clients
-                ):
+                if peer_url != f"ws://{self.settings.host}:{self.settings.port}":
                     # Only connect if the cluster_id matches
                     if peer_info.cluster_id == self.settings.cluster_id:
                         await self._establish_peer_connection(peer_url)
@@ -846,8 +1024,28 @@ class MPREGServer:
                             peer_info.cluster_id,
                         )
 
+            # Clean up dead connections
+            dead_connections = [
+                url
+                for url, conn in self.peer_connections.items()
+                if not conn.is_connected
+            ]
+            for url in dead_connections:
+                logger.info(
+                    "[{}] Removing dead connection to {}", self.settings.name, url
+                )
+                del self.peer_connections[url]
+
             # Periodically check for new peers.
-            await asyncio.sleep(self.settings.gossip_interval)
+            try:
+                await asyncio.wait_for(
+                    self._shutdown_event.wait(), timeout=self.settings.gossip_interval
+                )
+                # If we get here, shutdown was signaled
+                break
+            except TimeoutError:
+                # Timeout is normal, continue the loop
+                continue
 
     def register_command(
         self, name: str, func: Callable[..., Any], resources: Iterable[str]
@@ -872,6 +1070,59 @@ class MPREGServer:
             ),
         )
         self.cluster.add_fun_ability(peer_info)
+
+        # Immediately broadcast the new function to all connected peers
+        asyncio.create_task(self._broadcast_new_function(name, resources))
+
+    async def _broadcast_new_function(
+        self, name: str, resources: Iterable[str]
+    ) -> None:
+        """Broadcast a newly registered function to all connected peers.
+
+        Args:
+            name: The name of the newly registered function.
+            resources: The resources associated with the function.
+        """
+        from .model import RPCServerHello, RPCServerRequest
+
+        hello_message = RPCServerRequest(
+            server=RPCServerHello(
+                funs=(name,),
+                locs=tuple(resources),
+                cluster_id=self.settings.cluster_id,
+                advertised_urls=tuple(
+                    self.settings.advertised_urls
+                    or [f"ws://{self.settings.host}:{self.settings.port}"]
+                ),
+            ),
+            u=str(ulid.new()),
+        )
+
+        # Send to all connected peers concurrently
+        async def send_to_peer(connection: Connection) -> None:
+            try:
+                if connection.is_connected:
+                    await connection.send(
+                        self.serializer.serialize(hello_message.model_dump())
+                    )
+                    logger.debug(
+                        "[{}] Broadcasted new function '{}' to peer {}",
+                        self.settings.name,
+                        name,
+                        connection.url,
+                    )
+            except Exception as e:
+                logger.warning(
+                    "[{}] Failed to broadcast new function to peer {}: {}",
+                    self.settings.name,
+                    connection.url,
+                    e,
+                )
+
+        # Gather all send operations for concurrent execution
+        if self.peer_connections:
+            send_tasks = [send_to_peer(conn) for conn in self.peer_connections.values()]
+            await asyncio.gather(*send_tasks, return_exceptions=True)
 
     async def server(self) -> None:
         """Starts the MPREG server and handles incoming and outgoing connections.
@@ -905,10 +1156,10 @@ class MPREGServer:
             read_limit=MPREG_DATA_MAX,
             write_limit=MPREG_DATA_MAX,
         ):
-            # If no external connection requested, run an infinite wait here
+            # If no external connection requested, wait for shutdown signal
             # to keep the server alive.
             if not self.settings.peers and not self.settings.connect:
-                await asyncio.Future()
+                await self._shutdown_event.wait()
                 return
 
             # If static peers are configured, establish initial connections.
@@ -916,8 +1167,12 @@ class MPREGServer:
                 for peer_url in self.settings.peers:
                     await self._establish_peer_connection(peer_url)
 
-            # Keep the server running indefinitely.
-            await asyncio.Future()
+            # If a specific connect URL is configured, connect to it.
+            if self.settings.connect:
+                await self._establish_peer_connection(self.settings.connect)
+
+            # Keep the server running until shutdown signal.
+            await self._shutdown_event.wait()
 
     def start(self) -> None:
         try:
