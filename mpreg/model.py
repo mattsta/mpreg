@@ -167,6 +167,7 @@ type RPCMessage = (
     | RPCResponse
 )
 
+@dataclass
 class MPREGException(Exception):
     rpc_error: RPCError = field(
         default_factory=lambda: RPCError(
@@ -181,7 +182,7 @@ class CommandNotFoundException(MPREGException):
     Note: Commands not being found are a service/protocol level problem and not just "an error return value"
     """
 
-    command_name: str
+    command_name: str = ""
     code: Literal[1001] = 1001
     message: Literal["Command not found"] = "Command not found"
     details: str | None = None
