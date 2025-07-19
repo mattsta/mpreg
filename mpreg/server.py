@@ -20,6 +20,7 @@ from .connection import Connection
 from .model import (
     CommandNotFoundException,
     GossipMessage,
+    MPREGException,
     PeerInfo,
     RPCCommand,
     RPCError,
@@ -41,7 +42,12 @@ from .serialization import JsonSerializer
 
 # Use more efficient coroutine logic if available
 # https://docs.python.org/3.12/library/asyncio-task.html#asyncio.eager_task_factory
-asyncio.get_event_loop().set_task_factory(asyncio.eager_task_factory)
+try:
+    loop = asyncio.get_running_loop()
+    loop.set_task_factory(asyncio.eager_task_factory)
+except RuntimeError:
+    # No event loop running, this is fine for imports
+    pass
 
 # maximum 4 GB messages should be enough for anybody, right?
 MPREG_DATA_MAX = 2**32
@@ -115,12 +121,35 @@ class RPC:
         # We also have to resolve the funs to a call graph...
         sorter: TopologicalSorter[str] = TopologicalSorter()
 
+        def find_dependencies_recursive(obj, deps_list):
+            """Recursively search for dependencies in nested data structures."""
+            if isinstance(obj, str):
+                # Check for exact match first
+                if obj in self.funs:
+                    deps_list.append(obj)
+                # Check for field access pattern (e.g., "step2_result.final")
+                elif "." in obj:
+                    base_name = obj.split(".", 1)[0]
+                    if base_name in self.funs:
+                        deps_list.append(base_name)
+            elif isinstance(obj, dict):
+                # Search dictionary values
+                for value in obj.values():
+                    find_dependencies_recursive(value, deps_list)
+            elif isinstance(obj, list | tuple):
+                # Search list/tuple elements
+                for item in obj:
+                    find_dependencies_recursive(item, deps_list)
+
         for name, rpc_command in self.funs.items():
             # only attach child dependencies IF the argument matches a NAME in the entire RPC Request
-            # Only check string arguments that could be RPC names
-            deps = filter(
-                lambda x: isinstance(x, str) and x in self.funs, rpc_command.args
-            )
+            # Check both direct string arguments AND nested structures
+            deps = []
+            for arg in rpc_command.args:
+                find_dependencies_recursive(arg, deps)
+
+            # Remove duplicates while preserving order
+            deps = list(dict.fromkeys(deps))
             sorter.add(name, *deps)
 
         levels = []
@@ -135,7 +164,7 @@ class RPC:
                 # append this concurrent execution level to the call order
                 levels.append(level)
 
-        # logger.info("Runnable levels are: {}", levels)
+        logger.info("Runnable levels are: {}", levels)
         self.levels = levels
 
     def tasks(self) -> Any:
@@ -352,17 +381,24 @@ class Cluster:
         # Else, we tried everything and no matches were found.
         return None
 
-    async def answerFor(self, rid: str) -> None:
+    async def answerFor(self, rid: str, timeout: float = 30.0) -> None:
         """Wait for a reply on unique id 'rid' then return the answer."""
         e = asyncio.Event()
 
         self.waitingFor[rid] = e
 
-        # logger.info("[{}] Sleeping waiting for answer...", rid)
-        await e.wait()
-
-        # logger.info("Woke up!")
-        del self.waitingFor[rid]
+        try:
+            # logger.info("[{}] Sleeping waiting for answer...", rid)
+            await asyncio.wait_for(e.wait(), timeout=timeout)
+            # logger.info("Woke up!")
+        except TimeoutError:
+            logger.error(
+                "Timeout waiting for answer for rid={} after {} seconds", rid, timeout
+            )
+            raise
+        finally:
+            # Always clean up
+            self.waitingFor.pop(rid, None)
 
     def _resolve_arguments(
         self, args: tuple[Any, ...], kwargs: dict[str, Any], results: dict[str, Any]
@@ -382,8 +418,50 @@ class Cluster:
         """
 
         def resolve_value(value: Any) -> Any:
-            if isinstance(value, str) and value in results:
-                return results[value]
+            if isinstance(value, str):
+                # Handle dot notation for nested field access (e.g., "edge_data.average")
+                if "." in value:
+                    parts = value.split(".", 1)
+                    base_key = parts[0]
+                    field_path = parts[1]
+                    logger.debug(
+                        "Resolving field access: base_key={}, field_path={}, available_results={}",
+                        base_key,
+                        field_path,
+                        list(results.keys()),
+                    )
+                    if base_key in results:
+                        base_result = results[base_key]
+                        logger.debug("Found base result: {}", base_result)
+                        # Navigate nested fields
+                        current = base_result
+                        for field in field_path.split("."):
+                            if isinstance(current, dict) and field in current:
+                                current = current[field]
+                                logger.debug(
+                                    "Navigated to field '{}': {}", field, current
+                                )
+                            else:
+                                logger.warning(
+                                    "Field '{}' not found in nested result structure: {}",
+                                    field,
+                                    current,
+                                )
+                                return value  # Return original if path not found
+                        logger.info("Successfully resolved '{}' to: {}", value, current)
+                        return current
+                    else:
+                        logger.warning(
+                            "Base key '{}' not found in results: {}",
+                            base_key,
+                            list(results.keys()),
+                        )
+                # Simple key lookup
+                elif value in results:
+                    logger.debug(
+                        "Simple key resolution: '{}' -> {}", value, results[value]
+                    )
+                    return results[value]
             elif isinstance(value, dict):
                 return {k: resolve_value(v) for k, v in value.items()}
             elif isinstance(value, list | tuple):
@@ -488,7 +566,7 @@ class Cluster:
         logger.info("Remote command completed: got={}", got)
         return got
 
-    async def run(self, rpc: RPC) -> Any:
+    async def run(self, rpc: RPC, timeout: float = 30.0) -> Any:
         """Run the RPC.
 
         Steps:
@@ -498,7 +576,11 @@ class Cluster:
             - If MORE THAN ONE RPC at this level, coordinate the next level.
           - Reply to client.
         """
-        logger.info("Starting RPC execution with {} levels", len(rpc.levels))
+        logger.info(
+            "Starting RPC execution with {} levels and timeout={}",
+            len(rpc.levels),
+            timeout,
+        )
 
         async def runner(
             rpc_command: RPCCommand, results: dict[str, Any]
@@ -541,9 +623,19 @@ class Cluster:
             else:
                 logger.info("Executing '{}' remotely on {}", rpc_command.fun, where)
                 # Use persistent connection if available, else create new one
+                logger.debug(
+                    "Looking for peer connection: where={}, available_keys={}",
+                    where,
+                    list(self.peer_connections.keys()),
+                )
                 connection = self.peer_connections.get(where)
                 if not connection or not connection.is_connected:
-                    logger.info("Creating new connection to {}", where)
+                    logger.info(
+                        "Creating new connection to {} (existing: {}, connected: {})",
+                        where,
+                        connection is not None,
+                        connection.is_connected if connection else False,
+                    )
                     # Create new connection if none exists or is dead
                     connection = Connection(url=where)
                     connection.cluster = (
@@ -571,21 +663,37 @@ class Cluster:
         results: dict[str, Any] = {}  # Added type hint
         logger.info("RPC has {} levels to execute", len(list(rpc.tasks())))
 
-        for level_idx, level in enumerate(rpc.tasks()):
-            logger.info("Processing level {} with tasks: {}", level_idx, level)
-            # Note: EVERYTHING in the current level is parallelizable!
-            cmds = []
-            for name in level:
-                rpc_command = rpc.funs[name]
-                logger.info("Adding command '{}' to level {}", name, level_idx)
-                # here, each 'cmd' is only command NAME we look up in the rpc to run with the resolved local args
-                cmds.append(runner(rpc_command, results))
+        async def execute_with_timeout():
+            for level_idx, level in enumerate(rpc.tasks()):
+                logger.info("Processing level {} with tasks: {}", level_idx, level)
+                # Note: EVERYTHING in the current level is parallelizable!
+                cmds = []
+                for name in level:
+                    rpc_command = rpc.funs[name]
+                    logger.info("Adding command '{}' to level {}", name, level_idx)
+                    # here, each 'cmd' is only command NAME we look up in the rpc to run with the resolved local args
+                    cmds.append(runner(rpc_command, results))
 
-            logger.info(
-                "Executing {} commands in parallel for level {}", len(cmds), level_idx
+                logger.info(
+                    "Executing {} commands in parallel for level {}",
+                    len(cmds),
+                    level_idx,
+                )
+                got = await asyncio.gather(*cmds)
+                logger.info("Level {} completed with {} results", level_idx, len(got))
+            return got
+
+        try:
+            got = await asyncio.wait_for(execute_with_timeout(), timeout=timeout)
+        except TimeoutError:
+            logger.error("RPC execution timed out after {} seconds", timeout)
+            raise MPREGException(
+                rpc_error=RPCError(
+                    code=1004,
+                    message=f"RPC execution timed out after {timeout} seconds",
+                    details="The RPC workflow took too long to complete",
+                )
             )
-            got = await asyncio.gather(*cmds)
-            logger.info("Level {} completed with {} results", level_idx, len(got))
 
         result = {}
         for g in got:
@@ -877,10 +985,44 @@ class MPREGServer:
                             self.cluster._resolve_arguments(args, kwargs, results)
                         )
 
+                        # Validate argument types for common problematic patterns
+                        for i, arg in enumerate(resolved_args):
+                            if isinstance(arg, dict | list) and len(str(arg)) > 200:
+                                logger.warning(
+                                    "Large complex object passed to function: command={}, arg[{}]={}, type={}. "
+                                    "Consider if function expects simple values instead of complex objects.",
+                                    command,
+                                    i,
+                                    type(arg).__name__,
+                                    type(arg).__name__,
+                                )
+
                         # Generate RESULT PAYLOAD
-                        answer_payload = self.registry.get(command)(
-                            *resolved_args, **resolved_kwargs
-                        )
+                        try:
+                            answer_payload = self.registry.get(command)(
+                                *resolved_args, **resolved_kwargs
+                            )
+                        except Exception as e:
+                            logger.error(
+                                "Function execution failed: command={}, u={}, error={}, args_types={}",
+                                command,
+                                u,
+                                str(e),
+                                [type(arg).__name__ for arg in resolved_args],
+                            )
+                            # Send a detailed error response instead of hanging
+                            response_model = RPCInternalAnswer(
+                                answer={
+                                    "error": str(e),
+                                    "command": command,
+                                    "arg_types": [
+                                        type(arg).__name__ for arg in resolved_args
+                                    ],
+                                    "error_type": type(e).__name__,
+                                },
+                                u=u,
+                            )
+                            continue
                         response_model = RPCInternalAnswer(answer=answer_payload, u=u)
 
                         logger.info(

@@ -17,7 +17,12 @@ from loguru import logger
 from .model import MPREGException, RPCCommand, RPCRequest, RPCResponse
 from .serialization import JsonSerializer
 
-asyncio.get_event_loop().set_task_factory(asyncio.eager_task_factory)
+try:
+    loop = asyncio.get_running_loop()
+    loop.set_task_factory(asyncio.eager_task_factory)
+except RuntimeError:
+    # No event loop running, this is fine for imports
+    pass
 
 
 @dataclass
