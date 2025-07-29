@@ -4,29 +4,36 @@ import asyncio
 
 import pytest
 
-from mpreg.client_api import MPREGClientAPI
-from mpreg.config import MPREGSettings
-from mpreg.model import RPCCommand
+from mpreg.client.client_api import MPREGClientAPI
+from mpreg.core.config import MPREGSettings
+from mpreg.core.model import RPCCommand
 from mpreg.server import MPREGServer
+
+from .test_helpers import TestPortManager
 
 
 @pytest.fixture
 async def two_server_cluster():
     """Create a simple 2-server cluster for dependency testing."""
     servers = []
+    port_manager = TestPortManager()
+
     try:
+        port1 = port_manager.get_server_port()
+        port2 = port_manager.get_server_port()
+
         server1 = MPREGServer(
             MPREGSettings(
-                port=9001, name="Server1", resources={"step1"}, log_level="INFO"
+                port=port1, name="Server1", resources={"step1"}, log_level="INFO"
             )
         )
 
         server2 = MPREGServer(
             MPREGSettings(
-                port=9002,
+                port=port2,
                 name="Server2",
                 resources={"step2"},
-                peers=["ws://127.0.0.1:9001"],
+                peers=[f"ws://127.0.0.1:{port1}"],
                 log_level="INFO",
             )
         )
@@ -85,19 +92,27 @@ async def two_server_cluster():
 async def field_access_cluster():
     """Create a cluster for testing field access patterns."""
     servers = []
+    port_manager = TestPortManager()
+
     try:
+        port1 = port_manager.get_server_port()
+        port2 = port_manager.get_server_port()
+
         server1 = MPREGServer(
             MPREGSettings(
-                port=9001, name="Sensor-Server", resources={"sensors"}, log_level="INFO"
+                port=port1,
+                name="Sensor-Server",
+                resources={"sensors"},
+                log_level="INFO",
             )
         )
 
         server2 = MPREGServer(
             MPREGSettings(
-                port=9002,
+                port=port2,
                 name="Alert-Server",
                 resources={"realtime"},
-                peers=["ws://127.0.0.1:9001"],
+                peers=[f"ws://127.0.0.1:{port1}"],
                 log_level="INFO",
             )
         )
@@ -169,7 +184,9 @@ class TestDependencyResolution:
         """Test simple two-step dependency resolution."""
         servers = two_server_cluster
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{servers[0].settings.port}"
+        ) as client:
             # Test dependency resolution
             result = await client._client.request(
                 [
@@ -196,7 +213,9 @@ class TestDependencyResolution:
         """Test dependency resolution with field access."""
         servers = field_access_cluster
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{servers[0].settings.port}"
+        ) as client:
             # Test dependency resolution with field access
             result = await client._client.request(
                 [
@@ -239,7 +258,9 @@ class TestComplexDependencyChains:
 
         servers[0].register_command("third_step", third_step, ["step1"])
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{servers[0].settings.port}"
+        ) as client:
             # Test 3-step dependency chain
             result = await client._client.request(
                 [
@@ -291,7 +312,9 @@ class TestComplexDependencyChains:
         servers[0].register_command("third_step", third_step, ["step1"])
         servers[1].register_command("fourth_step", fourth_step, ["step2"])
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{servers[0].settings.port}"
+        ) as client:
             # Test 4-step dependency chain
             result = await client._client.request(
                 [

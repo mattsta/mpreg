@@ -9,65 +9,70 @@ import time
 
 import pytest
 
-from mpreg.client_api import MPREGClientAPI
-from mpreg.config import MPREGSettings
-from mpreg.model import RPCCommand
+from mpreg.client.client_api import MPREGClientAPI
+from mpreg.core.config import MPREGSettings
+from mpreg.core.model import RPCCommand
 from mpreg.server import MPREGServer
+from tests.test_helpers import TestPortManager
 
 
 @pytest.fixture
 async def production_cluster():
     """Create a production-like cluster with realistic specializations."""
     servers = []
+    port_manager = TestPortManager()
+
     try:
+        # Get ports for all services
+        frontend_port = port_manager.get_server_port()
+        auth_port = port_manager.get_server_port()
+        payment_port = port_manager.get_server_port()
+        inventory_port = port_manager.get_server_port()
+        analytics_port = port_manager.get_server_port()
+
         # Frontend Load Balancer
         frontend = MPREGServer(
             MPREGSettings(
-                port=9001,
+                port=frontend_port,
                 name="Frontend-LB",
                 resources={"web", "api"},
-                log_level="INFO",
             )
         )
 
         # Microservice Cluster
         auth_service = MPREGServer(
             MPREGSettings(
-                port=9002,
+                port=auth_port,
                 name="Auth-Service",
                 resources={"auth", "users", "sessions"},
-                peers=["ws://127.0.0.1:9001"],
-                log_level="INFO",
+                peers=[f"ws://127.0.0.1:{frontend_port}"],
             )
         )
 
         payment_service = MPREGServer(
             MPREGSettings(
-                port=9003,
+                port=payment_port,
                 name="Payment-Service",
                 resources={"payments", "billing", "transactions"},
-                peers=["ws://127.0.0.1:9001"],
-                log_level="INFO",
+                peers=[f"ws://127.0.0.1:{frontend_port}"],
             )
         )
 
         inventory_service = MPREGServer(
             MPREGSettings(
-                port=9004,
+                port=inventory_port,
                 name="Inventory-Service",
                 resources={"inventory", "products", "stock"},
-                peers=["ws://127.0.0.1:9001"],
-                log_level="INFO",
+                peers=[f"ws://127.0.0.1:{frontend_port}"],
             )
         )
 
         analytics_service = MPREGServer(
             MPREGSettings(
-                port=9005,
+                port=analytics_port,
                 name="Analytics-Service",
                 resources={"analytics", "metrics", "reporting"},
-                peers=["ws://127.0.0.1:9001"],
-                log_level="INFO",
+                peers=[f"ws://127.0.0.1:{frontend_port}"],
             )
         )
 
@@ -79,11 +84,13 @@ async def production_cluster():
             analytics_service,
         ]
 
+        # Initialize tasks list for cleanup
+        tasks = []
+
         # Register business logic functions
         await _register_business_functions(servers)
 
         # Start servers
-        tasks = []
         for server in servers:
             task = asyncio.create_task(server.server())
             tasks.append(task)
@@ -107,14 +114,18 @@ async def production_cluster():
                 task.cancel()
 
         # Wait for tasks to complete with timeout
-        try:
-            await asyncio.wait_for(
-                asyncio.gather(*tasks, return_exceptions=True), timeout=2.0
-            )
-        except TimeoutError:
-            print("Some server tasks did not complete within timeout")
+        if tasks:
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*tasks, return_exceptions=True), timeout=2.0
+                )
+            except TimeoutError:
+                print("Some server tasks did not complete within timeout")
 
         await asyncio.sleep(0.5)
+
+        # Cleanup port allocations
+        port_manager.cleanup()
 
 
 async def _register_business_functions(servers):
@@ -300,7 +311,9 @@ class TestECommerceWorkflows:
         """Test a complete purchase workflow spanning multiple services."""
         servers = production_cluster
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{production_cluster[0].settings.port}"
+        ) as client:
             # Complete purchase workflow
             purchase_workflow = await client._client.request(
                 [
@@ -390,7 +403,9 @@ class TestECommerceWorkflows:
         """Test handling multiple concurrent user sessions."""
         servers = production_cluster
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{production_cluster[0].settings.port}"
+        ) as client:
             # Simulate multiple users authenticating concurrently
             auth_tasks = []
             for i in range(10):
@@ -422,7 +437,9 @@ class TestECommerceWorkflows:
         """Test inventory system under concurrent load."""
         servers = production_cluster
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{production_cluster[0].settings.port}"
+        ) as client:
             # Multiple concurrent inventory operations
             inventory_tasks = []
 
@@ -471,7 +488,9 @@ class TestMicroserviceOrchestration:
         """Test a saga pattern for distributed transactions."""
         servers = production_cluster
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{production_cluster[0].settings.port}"
+        ) as client:
             # Saga pattern: Each step can be compensated if needed
             saga_workflow = await client._client.request(
                 [
@@ -534,7 +553,9 @@ class TestMicroserviceOrchestration:
         """Test circuit breaker-like behavior with timeouts."""
         servers = production_cluster
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{production_cluster[0].settings.port}"
+        ) as client:
             # Test rapid successive calls with timeouts
             start_time = time.time()
 
@@ -567,7 +588,9 @@ class TestMicroserviceOrchestration:
         """Test event-driven patterns with analytics tracking."""
         servers = production_cluster
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{production_cluster[0].settings.port}"
+        ) as client:
             # Simulate event-driven workflow
             events_workflow = await client._client.request(
                 [
@@ -628,7 +651,9 @@ class TestHighThroughputScenarios:
         """Test processing of bulk operations efficiently."""
         servers = production_cluster
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{production_cluster[0].settings.port}"
+        ) as client:
             # Create a large batch of operations
             batch_size = 20
 
@@ -664,7 +689,9 @@ class TestHighThroughputScenarios:
         """Test performance with mixed workload types."""
         servers = production_cluster
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{production_cluster[0].settings.port}"
+        ) as client:
             # Mix of different operation types
             mixed_tasks = []
 

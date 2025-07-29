@@ -1,19 +1,21 @@
 import pprint as pp
+from dataclasses import dataclass
 from typing import Any
 
 from jsonargparse import CLI
 from loguru import logger
 
-from mpreg.client_api import MPREGClientAPI
-from mpreg.config import MPREGSettings
+from mpreg.cli.main import main as federation_main
+from mpreg.client.client_api import MPREGClientAPI
+from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
 
+@dataclass(slots=True)
 class MPREGCLI:
     """MPREG Command Line Interface for managing servers and interacting with the cluster."""
 
-    def __init__(self, url: str = "ws://127.0.0.1:6666/"):
-        self.url = url
+    url: str = "ws://127.0.0.1:6666/"
 
     async def _get_client_api(self) -> MPREGClientAPI:
         """Helper to get a connected MPREGClientAPI instance."""
@@ -88,9 +90,20 @@ class MPREGCLI:
             cluster_id=cluster_id,
             advertised_urls=advertised_urls,
             gossip_interval=5.0,  # Add missing required field
+            log_level="INFO",
         )
         server_instance = MPREGServer(settings=settings)
         await server_instance.server()
+
+    def federation(self) -> None:
+        """Access federation management CLI commands.
+
+        Launches the comprehensive federation management interface with
+        commands for cluster discovery, registration, health monitoring,
+        and deployment automation.
+        """
+        logger.info("Launching federation management CLI...")
+        federation_main()
 
 
 def main() -> None:

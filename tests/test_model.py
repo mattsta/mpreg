@@ -1,4 +1,4 @@
-from mpreg.model import (
+from mpreg.core.model import (
     CommandNotFoundException,
     GossipMessage,
     PeerInfo,

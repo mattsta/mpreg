@@ -8,21 +8,31 @@ import asyncio
 
 import pytest
 
-from mpreg.client_api import MPREGClientAPI
-from mpreg.config import MPREGSettings
-from mpreg.model import RPCCommand
+from mpreg.client.client_api import MPREGClientAPI
+from mpreg.core.config import MPREGSettings
+from mpreg.core.model import RPCCommand
 from mpreg.server import MPREGServer
+from tests.test_helpers import TestPortManager
 
 
 @pytest.fixture
 async def five_node_cluster():
     """Create a 5-node cluster with different specializations."""
     servers = []
+    port_manager = TestPortManager()
+
     try:
+        # Get ports for all nodes
+        coordinator_port = port_manager.get_server_port()
+        gpu_port = port_manager.get_server_port()
+        cpu_port = port_manager.get_server_port()
+        db_port = port_manager.get_server_port()
+        edge_port = port_manager.get_server_port()
+
         # Node 1: Primary coordinator with no specific resources (pure load balancer)
         server1 = MPREGServer(
             MPREGSettings(
-                port=9001,
+                port=coordinator_port,
                 name="Coordinator",
                 resources=set(),  # Pure balancer node
                 log_level="INFO",
@@ -32,10 +42,10 @@ async def five_node_cluster():
         # Node 2: GPU processing node
         server2 = MPREGServer(
             MPREGSettings(
-                port=9002,
+                port=gpu_port,
                 name="GPU-Worker",
                 resources={"gpu", "ml-models", "dataset-large"},
-                peers=["ws://127.0.0.1:9001"],
+                peers=[f"ws://127.0.0.1:{coordinator_port}"],
                 log_level="INFO",
             )
         )
@@ -43,10 +53,10 @@ async def five_node_cluster():
         # Node 3: CPU-intensive processing
         server3 = MPREGServer(
             MPREGSettings(
-                port=9003,
+                port=cpu_port,
                 name="CPU-Worker",
                 resources={"cpu-heavy", "analytics", "dataset-medium"},
-                peers=["ws://127.0.0.1:9001"],
+                peers=[f"ws://127.0.0.1:{coordinator_port}"],
                 log_level="INFO",
             )
         )
@@ -54,10 +64,10 @@ async def five_node_cluster():
         # Node 4: Database operations
         server4 = MPREGServer(
             MPREGSettings(
-                port=9004,
+                port=db_port,
                 name="Database-Worker",
                 resources={"database", "cache", "storage"},
-                peers=["ws://127.0.0.1:9001"],
+                peers=[f"ws://127.0.0.1:{coordinator_port}"],
                 log_level="INFO",
             )
         )
@@ -65,10 +75,10 @@ async def five_node_cluster():
         # Node 5: Edge processing
         server5 = MPREGServer(
             MPREGSettings(
-                port=9005,
+                port=edge_port,
                 name="Edge-Worker",
                 resources={"edge", "sensors", "realtime"},
-                peers=["ws://127.0.0.1:9001"],
+                peers=[f"ws://127.0.0.1:{coordinator_port}"],
                 log_level="INFO",
             )
         )
@@ -113,6 +123,9 @@ async def five_node_cluster():
 
         # Give servers time to shut down
         await asyncio.sleep(0.5)
+
+        # Cleanup port allocations
+        port_manager.cleanup()
 
 
 async def _register_specialized_functions(servers):
@@ -215,7 +228,9 @@ class TestAdvancedClusterScenarios:
         servers = five_node_cluster
 
         # Connect to coordinator and verify cluster membership
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{five_node_cluster[0].settings.port}"
+        ) as client:
             # Should be able to route to any specialized function
             gpu_result = await client.call(
                 "train_model", "ResNet50", 10, locs=frozenset(["gpu", "ml-models"])
@@ -237,7 +252,9 @@ class TestAdvancedClusterScenarios:
         """Test a complex workflow that spans multiple specialized nodes."""
         servers = five_node_cluster
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{five_node_cluster[0].settings.port}"
+        ) as client:
             # Complex ML pipeline across cluster
             workflow = await client._client.request(
                 [
@@ -284,7 +301,9 @@ class TestAdvancedClusterScenarios:
         """Test that requests are intelligently routed based on resources."""
         servers = five_node_cluster
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{five_node_cluster[0].settings.port}"
+        ) as client:
             # Multiple concurrent requests that should route to different nodes
             tasks = []
 
@@ -339,7 +358,9 @@ class TestAdvancedClusterScenarios:
         """Test that the cluster handles node-specific failures gracefully."""
         servers = five_node_cluster
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{five_node_cluster[0].settings.port}"
+        ) as client:
             # First verify normal operation
             result = await client.call(
                 "train_model", "TestModel", 1, locs=frozenset(["gpu", "ml-models"])
@@ -372,7 +393,9 @@ class TestAdvancedClusterScenarios:
         # Give time for gossip to propagate
         await asyncio.sleep(1.0)
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{five_node_cluster[0].settings.port}"
+        ) as client:
             # Should be able to call the new function through the coordinator
             result = await client.call(
                 "new_function", "test_data", locs=frozenset(["gpu"])
@@ -389,7 +412,9 @@ class TestTopologicalRequestRouting:
         """Test complex dependency resolution across multiple nodes."""
         servers = five_node_cluster
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{five_node_cluster[0].settings.port}"
+        ) as client:
             # Create a complex dependency graph that spans the entire cluster
             complex_workflow = await client._client.request(
                 [
@@ -450,7 +475,9 @@ class TestTopologicalRequestRouting:
         """Test parallel processing branches that converge."""
         servers = five_node_cluster
 
-        async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+        async with MPREGClientAPI(
+            f"ws://127.0.0.1:{five_node_cluster[0].settings.port}"
+        ) as client:
             # Create parallel branches that converge
             parallel_workflow = await client._client.request(
                 [

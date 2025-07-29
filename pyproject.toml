@@ -7,7 +7,7 @@ license = "Apache-2.0"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">3.10,<4"
+python = " >=3.11,<4"
 fastapi = "^0.115.14"
 orjson = "^3.9.7"
 websockets = "^12.0"
@@ -16,11 +16,32 @@ ulid-py = "^1.1.0"
 jsonargparse = "^4.24.1"
 pydantic = "^2.11.7"
 pydantic-settings = "^2.0.0"
+pympler = "^1.1"
+click = "^8.1.0"
+rich = "^13.7.0"
+aiofiles = "^24.1.0"
+aiohttp = "^3.10.0"
+cryptography = "^45.0.5"
+sortedcontainers = "^2.4.0"
+aiosqlite = "^0.21.0"
 
 [tool.poetry.scripts]
 mpreg-server = "mpreg.server:cmd"
 mpreg-client = "mpreg.client:cmd"
 mpreg = "mpreg.cli:main"
+mpreg-federation = "mpreg.cli.main:main"
+mpreg-topic-demo = "mpreg.examples.topic_exchange_demo:main"
+mpreg-topic-benchmark = "mpreg.examples.topic_exchange_benchmark:main"
+mpreg-benchmark-demo = "mpreg.examples.benchmark_demo:main"
+mpreg-federation-demo = "mpreg.examples.federation_demo:main"
+mpreg-federation-benchmark = "mpreg.examples.federation_benchmark:main"
+mpreg-federation-comparison = "mpreg.examples.federation_performance_comparison:main"
+mpreg-federation-alerting-demo = "mpreg.examples.federation_alerting_demo:main"
+mpreg-caching-demo = "mpreg.examples.caching_demo:main"
+mpreg-cache-demo = "mpreg.examples.cache_client_server_demo:main"
+mpreg-queue-demo = "mpreg.examples.message_queue_demo:main"
+mpreg-federated-queue-demo = "mpreg.examples.federated_queue_examples:main"
+mpreg-unified-monitoring-demo = "mpreg.examples.unified_monitoring_demo:main"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.12.2"
@@ -30,6 +51,12 @@ pytest-mock = "^3.14.0"
 pytest-asyncio = "^0.23.6"
 types-psutil = "^7.0.0.20250601"
 psutil = "^6.1.0"
+pytest-xdist = "^3.8.0"
+types-aiofiles = "^24.1.0.20250708"
+pytest-cov = "^6.2.1"
+hypothesis = "^6.136.0"
+networkx = "^3.5"
+types-networkx = "^3.5.0.20250712"
 
 [build-system]
 requires = ["poetry-core"]
@@ -50,6 +77,23 @@ ignore = ["E402", "F841", "E741"] # Ignore Module level import not at top of fil
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# Configure test markers
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+# Test discovery
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+# Concurrent testing with pytest-xdist
+addopts = [
+    "--tb=short",           # Shorter traceback format
+    "--strict-markers",     # Strict marker enforcement
+    "--disable-warnings",   # Disable warnings during test runs
+]
 
 [tool.mypy]
 check_untyped_defs = true

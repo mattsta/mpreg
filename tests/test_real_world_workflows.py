@@ -13,8 +13,8 @@ from typing import Any
 
 import pytest
 
-from mpreg.client_api import MPREGClientAPI
-from mpreg.model import RPCCommand
+from mpreg.client.client_api import MPREGClientAPI
+from mpreg.core.model import RPCCommand
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
@@ -24,15 +24,17 @@ class TestDataPipelineWorkflows:
 
     @pytest.fixture
     async def data_pipeline_cluster(
-        self, test_context: AsyncTestContext
+        self, test_context: AsyncTestContext, server_cluster_ports: list[int]
     ) -> AsyncGenerator[list[MPREGServer], None]:
         """Set up a 3-server cluster optimized for data pipeline processing."""
-        from mpreg.config import MPREGSettings
+        from mpreg.core.config import MPREGSettings
+
+        port1, port2, port3 = server_cluster_ports[:3]  # Use first 3 ports
 
         # Data ingestion server
         ingestion_settings = MPREGSettings(
             host="127.0.0.1",
-            port=9021,
+            port=port1,
             name="Data Ingestion Server",
             cluster_id="pipeline-cluster",
             resources={"raw-data", "csv-parser", "json-parser"},
@@ -45,12 +47,12 @@ class TestDataPipelineWorkflows:
         # Processing server
         processing_settings = MPREGSettings(
             host="127.0.0.1",
-            port=9022,
+            port=port2,
             name="Data Processing Server",
             cluster_id="pipeline-cluster",
             resources={"data-cleaner", "transformer", "aggregator"},
             peers=None,
-            connect="ws://127.0.0.1:9021",
+            connect=f"ws://127.0.0.1:{port1}",
             advertised_urls=None,
             gossip_interval=5.0,
         )
@@ -58,12 +60,12 @@ class TestDataPipelineWorkflows:
         # Output server
         output_settings = MPREGSettings(
             host="127.0.0.1",
-            port=9023,
+            port=port3,
             name="Data Output Server",
             cluster_id="pipeline-cluster",
             resources={"formatter", "validator", "exporter"},
             peers=None,
-            connect="ws://127.0.0.1:9021",
+            connect=f"ws://127.0.0.1:{port1}",
             advertised_urls=None,
             gossip_interval=5.0,
         )
@@ -211,15 +213,17 @@ class TestMLWorkflows:
 
     @pytest.fixture
     async def ml_cluster(
-        self, test_context: AsyncTestContext
+        self, test_context: AsyncTestContext, server_cluster_ports: list[int]
     ) -> AsyncGenerator[list[MPREGServer], None]:
         """Set up a cluster optimized for ML workflows."""
-        from mpreg.config import MPREGSettings
+        from mpreg.core.config import MPREGSettings
+
+        port1, port2, port3 = server_cluster_ports[:3]  # Use first 3 ports
 
         # Data preprocessing server
         prep_settings = MPREGSettings(
             host="127.0.0.1",
-            port=9031,
+            port=port1,
             name="ML Preprocessing Server",
             cluster_id="ml-cluster",
             resources={"data-loader", "feature-extractor", "normalizer"},
@@ -232,12 +236,12 @@ class TestMLWorkflows:
         # Model serving server
         model_settings = MPREGSettings(
             host="127.0.0.1",
-            port=9032,
+            port=port2,
             name="ML Model Server",
             cluster_id="ml-cluster",
             resources={"model-a", "model-b", "ensemble"},
             peers=None,
-            connect="ws://127.0.0.1:9031",
+            connect=f"ws://127.0.0.1:{port1}",
             advertised_urls=None,
             gossip_interval=5.0,
         )
@@ -245,12 +249,12 @@ class TestMLWorkflows:
         # Post-processing server
         post_settings = MPREGSettings(
             host="127.0.0.1",
-            port=9033,
+            port=port3,
             name="ML Postprocessing Server",
             cluster_id="ml-cluster",
             resources={"result-processor", "confidence-calculator", "explainer"},
             peers=None,
-            connect="ws://127.0.0.1:9031",
+            connect=f"ws://127.0.0.1:{port1}",
             advertised_urls=None,
             gossip_interval=5.0,
         )

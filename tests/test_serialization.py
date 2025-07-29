@@ -1,7 +1,7 @@
 import orjson
 
-from mpreg.model import RPCCommand, RPCError, RPCRequest, RPCResponse
-from mpreg.serialization import JsonSerializer
+from mpreg.core.model import RPCCommand, RPCError, RPCRequest, RPCResponse
+from mpreg.core.serialization import JsonSerializer
 
 
 def test_json_serializer_serialize() -> None:

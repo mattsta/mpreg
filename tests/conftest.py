@@ -5,6 +5,8 @@ MPREG servers and clients cleanly. All fixtures ensure proper cleanup to prevent
 tests from hanging or leaving orphaned processes.
 """
 
+# ruff hates this file and the way imports are used as param names but that's how pytest works.
+
 import asyncio
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -12,9 +14,20 @@ from typing import Any
 import pytest_asyncio
 from loguru import logger
 
-from mpreg.client_api import MPREGClientAPI
-from mpreg.config import MPREGSettings
+from mpreg.client.client_api import MPREGClientAPI
+from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
+
+# Import port allocation fixtures explicitly
+from .port_allocator import (  # noqa
+    client_port,  # noqa
+    federation_port,  # noqa
+    port_allocator,  # noqa
+    port_pair,  # noqa
+    server_cluster_ports,  # noqa
+    server_port,  # noqa
+    test_port,  # noqa
+)
 
 
 class AsyncTestContext:
@@ -30,38 +43,143 @@ class AsyncTestContext:
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Ensure all resources are cleaned up properly."""
-        # Stop all servers first by calling shutdown method
+        # Disconnect all clients first
+        for client in self.clients:
+            try:
+                await client.disconnect()
+            except Exception as e:
+                try:
+                    logger.warning(f"Error disconnecting client: {e}")
+                except RuntimeError:
+                    # Event loop closed during logging
+                    pass
+
+        # Stop all servers using ASYNC shutdown method
+        shutdown_tasks = []
         for server in self.servers:
             try:
-                server.shutdown()
+                # Use async shutdown instead of sync shutdown
+                shutdown_tasks.append(asyncio.create_task(server.shutdown_async()))
             except Exception as e:
-                logger.warning(f"Error shutting down server: {e}")
+                try:
+                    logger.warning(f"Error initiating server shutdown: {e}")
+                except RuntimeError:
+                    pass
 
-        # Cancel and wait for all running tasks with timeout
+        # Wait for all servers to shut down properly
+        if shutdown_tasks:
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*shutdown_tasks, return_exceptions=True), timeout=5.0
+                )
+            except TimeoutError:
+                try:
+                    logger.warning("Some servers did not shut down within timeout")
+                except RuntimeError:
+                    pass
+            except Exception as e:
+                try:
+                    logger.warning(f"Error during server shutdown: {e}")
+                except RuntimeError:
+                    pass
+
+        # Cancel all tracked tasks
         if self.tasks:
             for task in self.tasks:
                 if not task.done():
                     task.cancel()
 
-            # Wait for all tasks to complete with timeout
+        # Give tasks time to respond to cancellation
+        try:
+            await asyncio.sleep(0.3)
+        except RuntimeError:
+            # Event loop might be closed
+            pass
+
+        # Wait for all tracked tasks to complete with timeout
+        if self.tasks:
             try:
                 await asyncio.wait_for(
-                    asyncio.gather(*self.tasks, return_exceptions=True), timeout=2.0
+                    asyncio.gather(*self.tasks, return_exceptions=True), timeout=5.0
                 )
             except TimeoutError:
-                logger.warning("Some tasks did not complete within timeout")
-
-        # Disconnect all clients
-        for client in self.clients:
-            try:
-                await client.disconnect()
+                try:
+                    logger.warning(
+                        "Some tasks did not complete within timeout during cleanup"
+                    )
+                except RuntimeError:
+                    pass
             except Exception as e:
-                logger.warning(f"Error disconnecting client: {e}")
+                try:
+                    logger.warning(f"Error during task cleanup: {e}")
+                except RuntimeError:
+                    pass
+
+        # Additional cleanup delay to ensure all async operations complete
+        try:
+            await asyncio.sleep(0.2)
+        except RuntimeError:
+            # Event loop closed, skip final delay
+            pass
+
+        # NEW: Verify no leaked tasks
+        try:
+            await self._check_for_leaked_tasks()
+        except RuntimeError:
+            # Event loop closed, skip leak check
+            pass
 
         # Clear all collections
         self.servers.clear()
         self.clients.clear()
         self.tasks.clear()
+
+    async def cleanup(self) -> None:
+        """Explicit cleanup method for compatibility."""
+        await self.__aexit__(None, None, None)
+
+    async def _check_for_leaked_tasks(self) -> None:
+        """Check for leaked asyncio tasks and attempt cleanup."""
+        remaining_tasks = [t for t in asyncio.all_tasks() if not t.done()]
+
+        # Filter out system tasks and expected tasks
+        user_tasks = []
+        for task in remaining_tasks:
+            task_name = task.get_name()
+            # Skip known system tasks
+            if any(
+                system_name in task_name.lower()
+                for system_name in [
+                    "_probe_",
+                    "selector",
+                    "reader",
+                    "writer",
+                    "signal",
+                    "task-",
+                ]
+            ):
+                continue
+            # Skip current cleanup task
+            if "check_for_leaked_tasks" in task_name or "cleanup" in task_name.lower():
+                continue
+            user_tasks.append(task)
+
+        if user_tasks:
+            logger.warning(
+                f"Found {len(user_tasks)} potentially leaked tasks during cleanup:"
+            )
+            for task in user_tasks:
+                logger.warning(f"  Leaked task: {task.get_name()} - {task}")
+
+            # Cancel leaked tasks
+            for task in user_tasks:
+                if not task.cancelled() and not task.done():
+                    logger.warning(f"Cancelling leaked task: {task.get_name()}")
+                    task.cancel()
+
+            # Give cancelled tasks a moment to clean up
+            if user_tasks:
+                await asyncio.sleep(0.1)
 
 
 @pytest_asyncio.fixture
@@ -74,6 +192,7 @@ async def test_context() -> AsyncGenerator[AsyncTestContext, None]:
 @pytest_asyncio.fixture
 async def single_server(
     test_context: AsyncTestContext,
+    server_port: int,  # noqa
 ) -> AsyncGenerator[MPREGServer, None]:
     """Creates a single MPREG server for testing.
 
@@ -87,7 +206,7 @@ async def single_server(
     """
     settings = MPREGSettings(
         host="127.0.0.1",
-        port=9999,  # Use fixed port for testing
+        port=server_port,  # Use allocated port for testing
         name="Test Server",
         cluster_id="test-cluster",
         resources={"test-resource-1", "test-resource-2"},
@@ -113,6 +232,7 @@ async def single_server(
 @pytest_asyncio.fixture
 async def cluster_2_servers(
     test_context: AsyncTestContext,
+    port_pair: list[int],  # noqa
 ) -> AsyncGenerator[tuple[MPREGServer, MPREGServer], None]:
     """Creates a 2-server cluster for testing distributed operations.
 
@@ -121,10 +241,12 @@ async def cluster_2_servers(
             server1, server2 = cluster_2_servers
             # Test cross-server RPC calls and dependency resolution
     """
+    port1, port2 = port_pair
+
     # Primary server
     settings1 = MPREGSettings(
         host="127.0.0.1",
-        port=9001,
+        port=port1,
         name="Primary Server",
         cluster_id="test-cluster",
         resources={"model-a", "dataset-1"},
@@ -137,12 +259,12 @@ async def cluster_2_servers(
     # Secondary server that connects to primary
     settings2 = MPREGSettings(
         host="127.0.0.1",
-        port=9002,
+        port=port2,
         name="Secondary Server",
         cluster_id="test-cluster",
         resources={"model-b", "dataset-2"},
         peers=None,
-        connect="ws://127.0.0.1:9001",
+        connect=f"ws://127.0.0.1:{port1}",
         advertised_urls=None,
         gossip_interval=5.0,
     )
@@ -172,6 +294,7 @@ async def cluster_2_servers(
 @pytest_asyncio.fixture
 async def cluster_3_servers(
     test_context: AsyncTestContext,
+    server_cluster_ports: list[int],  # noqa
 ) -> AsyncGenerator[tuple[MPREGServer, MPREGServer, MPREGServer], None]:
     """Creates a 3-server cluster for testing complex distributed scenarios.
 
@@ -180,10 +303,12 @@ async def cluster_3_servers(
             primary, secondary, tertiary = cluster_3_servers
             # Test multi-hop dependency resolution across cluster
     """
+    port1, port2, port3 = server_cluster_ports[:3]  # Use first 3 ports
+
     settings = [
         MPREGSettings(
             host="127.0.0.1",
-            port=9011,
+            port=port1,
             name="Primary Server",
             cluster_id="test-cluster",
             resources={"model-a", "dataset-1"},
@@ -194,23 +319,23 @@ async def cluster_3_servers(
         ),
         MPREGSettings(
             host="127.0.0.1",
-            port=9012,
+            port=port2,
             name="Secondary Server",
             cluster_id="test-cluster",
             resources={"model-b", "dataset-2"},
             peers=None,
-            connect="ws://127.0.0.1:9011",
+            connect=f"ws://127.0.0.1:{port1}",
             advertised_urls=None,
             gossip_interval=5.0,
         ),
         MPREGSettings(
             host="127.0.0.1",
-            port=9013,
+            port=port3,
             name="Tertiary Server",
             cluster_id="test-cluster",
             resources={"model-c", "dataset-3"},
             peers=None,
-            connect="ws://127.0.0.1:9011",
+            connect=f"ws://127.0.0.1:{port1}",
             advertised_urls=None,
             gossip_interval=5.0,
         ),
@@ -223,8 +348,8 @@ async def cluster_3_servers(
     tasks = [asyncio.create_task(server.server()) for server in servers]
     test_context.tasks.extend(tasks)
 
-    # Wait for cluster formation
-    await asyncio.sleep(1.0)
+    # Wait for cluster formation (gossip interval is 5.0s)
+    await asyncio.sleep(7.0)
 
     yield servers[0], servers[1], servers[2]
 
@@ -283,6 +408,7 @@ def format_results_function(
 @pytest_asyncio.fixture
 async def enhanced_server(
     test_context: AsyncTestContext,
+    server_port: int,  # noqa
 ) -> AsyncGenerator[MPREGServer, None]:
     """Creates a server with additional test functions registered.
 
@@ -301,7 +427,7 @@ async def enhanced_server(
     """
     settings = MPREGSettings(
         host="127.0.0.1",
-        port=9999,
+        port=server_port,  # Use allocated port for testing
         name="Enhanced Test Server",
         cluster_id="test-cluster",
         resources={"data-processor", "ml-model", "formatter"},

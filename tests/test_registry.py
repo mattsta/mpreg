@@ -1,6 +1,6 @@
 import pytest
 
-from mpreg.registry import Command, CommandRegistry
+from mpreg.core.registry import Command, CommandRegistry
 
 
 def sample_func_1() -> str:

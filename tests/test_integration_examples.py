@@ -17,7 +17,7 @@ from typing import Any
 
 import pytest
 
-from mpreg.model import RPCCommand
+from mpreg.core.model import RPCCommand
 from mpreg.server import MPREGServer
 
 

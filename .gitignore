@@ -1,2 +1,7 @@
 poetry.lock
 *.json
+.hypothesis/
+.coverage*
+htmlcov
+CLAUDE.md
+IDEAS.md
