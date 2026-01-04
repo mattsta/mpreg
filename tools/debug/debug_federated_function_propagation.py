@@ -4,6 +4,7 @@ Debug script to test federated function propagation.
 """
 
 import asyncio
+import contextlib
 
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
@@ -94,15 +95,11 @@ async def test_federated_function_propagation():
     task1.cancel()
     task2.cancel()
 
-    try:
+    with contextlib.suppress(asyncio.CancelledError):
         await task1
-    except asyncio.CancelledError:
-        pass
 
-    try:
+    with contextlib.suppress(asyncio.CancelledError):
         await task2
-    except asyncio.CancelledError:
-        pass
 
 if __name__ == "__main__":
     asyncio.run(test_federated_function_propagation())

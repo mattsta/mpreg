@@ -17,6 +17,7 @@ from hypothesis import strategies as st
 
 from .block import Block
 from .blockchain import Blockchain
+from .blockchain_crypto import TransactionSigner
 from .blockchain_types import (
     ConsensusConfig,
     ConsensusType,
@@ -77,6 +78,7 @@ class DecentralizedAutonomousOrganization:
             ),
         )
     )
+    signer: TransactionSigner | None = None
     members: dict[MemberId, DaoMember] = field(default_factory=dict)
     proposals: dict[ProposalId, DaoProposal] = field(default_factory=dict)
     votes: dict[ProposalId, list[DaoVote]] = field(default_factory=dict)
@@ -98,6 +100,16 @@ class DecentralizedAutonomousOrganization:
             raise ValueError("Treasury balance cannot be negative")
 
     # Member Management
+
+    def _sign_transaction(
+        self, transaction: Transaction
+    ) -> tuple[Transaction, TransactionSigner | None]:
+        """Sign transaction if the chain requires signatures."""
+        if not self.blockchain.crypto_config.require_signatures:
+            return transaction, self.signer
+
+        signer = self.signer or TransactionSigner.create()
+        return signer.sign(transaction), signer
 
     def add_member(self, member: DaoMember) -> DecentralizedAutonomousOrganization:
         """Add new member to DAO with blockchain record."""
@@ -129,6 +141,8 @@ class DecentralizedAutonomousOrganization:
             fee=0,  # No fee for membership
         )
 
+        membership_tx, signer = self._sign_transaction(membership_tx)
+
         # Add to blockchain
         new_block = Block.create_next_block(
             previous_block=self.blockchain.get_latest_block(),
@@ -147,6 +161,7 @@ class DecentralizedAutonomousOrganization:
             dao_type=self.dao_type,
             config=self.config,
             blockchain=new_blockchain,
+            signer=signer,
             members=new_members,
             proposals=self.proposals,
             votes=self.votes,
@@ -181,6 +196,8 @@ class DecentralizedAutonomousOrganization:
             fee=1,
         )
 
+        update_tx, signer = self._sign_transaction(update_tx)
+
         # Add to blockchain
         new_block = Block.create_next_block(
             previous_block=self.blockchain.get_latest_block(),
@@ -199,6 +216,7 @@ class DecentralizedAutonomousOrganization:
             dao_type=self.dao_type,
             config=self.config,
             blockchain=new_blockchain,
+            signer=signer,
             members=new_members,
             proposals=self.proposals,
             votes=self.votes,
@@ -292,6 +310,8 @@ class DecentralizedAutonomousOrganization:
             fee=self.config.proposal_deposit,
         )
 
+        proposal_tx, signer = self._sign_transaction(proposal_tx)
+
         # Add to blockchain
         new_block = Block.create_next_block(
             previous_block=self.blockchain.get_latest_block(),
@@ -326,6 +346,7 @@ class DecentralizedAutonomousOrganization:
             dao_type=self.dao_type,
             config=self.config,
             blockchain=new_blockchain,
+            signer=signer,
             members=new_members,
             proposals=new_proposals,
             votes=new_votes,
@@ -389,6 +410,8 @@ class DecentralizedAutonomousOrganization:
             fee=1,
         )
 
+        vote_tx, signer = self._sign_transaction(vote_tx)
+
         # Add to blockchain
         new_block = Block.create_next_block(
             previous_block=self.blockchain.get_latest_block(),
@@ -407,6 +430,7 @@ class DecentralizedAutonomousOrganization:
             dao_type=self.dao_type,
             config=self.config,
             blockchain=new_blockchain,
+            signer=signer,
             members=self.members,
             proposals=self.proposals,
             votes=new_votes,
@@ -519,6 +543,8 @@ class DecentralizedAutonomousOrganization:
             fee=0,
         )
 
+        finalize_tx, signer = self._sign_transaction(finalize_tx)
+
         # Add to blockchain
         new_block = Block.create_next_block(
             previous_block=self.blockchain.get_latest_block(),
@@ -537,6 +563,7 @@ class DecentralizedAutonomousOrganization:
             dao_type=self.dao_type,
             config=self.config,
             blockchain=new_blockchain,
+            signer=signer,
             members=self.members,
             proposals=new_proposals,
             votes=self.votes,
@@ -590,6 +617,8 @@ class DecentralizedAutonomousOrganization:
             fee=10,
         )
 
+        execute_tx, signer = self._sign_transaction(execute_tx)
+
         # Add to blockchain
         new_block = Block.create_next_block(
             previous_block=self.blockchain.get_latest_block(),
@@ -614,6 +643,7 @@ class DecentralizedAutonomousOrganization:
             dao_type=self.dao_type,
             config=self.config,
             blockchain=new_blockchain,
+            signer=signer,
             members=self.members,
             proposals=new_proposals,
             votes=self.votes,

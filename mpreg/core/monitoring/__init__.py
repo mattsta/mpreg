@@ -17,6 +17,8 @@ Features:
 - Performance trend analysis
 """
 
+from __future__ import annotations
+
 from .unified_monitoring import (
     CorrelationMetrics,
     CrossSystemEvent,

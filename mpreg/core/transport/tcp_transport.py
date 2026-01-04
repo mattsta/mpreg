@@ -14,7 +14,10 @@ Protocol Specification:
 - Keepalive: TCP SO_KEEPALIVE and application-level pings
 """
 
+from __future__ import annotations
+
 import asyncio
+import contextlib
 import struct
 import time
 from collections.abc import AsyncIterable
@@ -86,7 +89,7 @@ class TCPTransport(TransportInterface):
     import struct
 
     async def tcp_client():
-        reader, writer = await asyncio.open_connection('localhost', 6668)
+        reader, writer = await asyncio.open_connection('localhost', <port>)
 
         # Send message
         message = b"Hello, MPREG!"
@@ -117,7 +120,7 @@ class TCPTransport(TransportInterface):
     )
 
     func main() {
-        conn, err := net.Dial("tcp", "localhost:6668")
+        conn, err := net.Dial("tcp", "localhost:<port>")
         if err != nil {
             panic(err)
         }
@@ -154,7 +157,7 @@ class TCPTransport(TransportInterface):
         int sock = socket(AF_INET, SOCK_STREAM, 0);
         struct sockaddr_in server = {0};
         server.sin_family = AF_INET;
-        server.sin_port = htons(6668);
+        server.sin_port = htons(<port>);
         inet_pton(AF_INET, "127.0.0.1", &server.sin_addr);
 
         connect(sock, (struct sockaddr*)&server, sizeof(server));
@@ -263,10 +266,8 @@ class TCPTransport(TransportInterface):
         """Close TCP connection."""
         if self._writer:
             self._writer.close()
-            try:
+            with contextlib.suppress(Exception):
                 await self._writer.wait_closed()
-            except Exception:
-                pass
 
         self._reader = None
         self._writer = None
@@ -795,10 +796,8 @@ class _TCPServerTransport(TransportInterface):
         """Close server-side TCP connection."""
         if self._writer:
             self._writer.close()
-            try:
+            with contextlib.suppress(Exception):
                 await self._writer.wait_closed()
-            except Exception:
-                pass
 
         self._connected = False
 
@@ -1160,7 +1159,7 @@ import asyncio
 import struct
 
 async def tcp_client():
-    reader, writer = await asyncio.open_connection('localhost', 6668)
+    reader, writer = await asyncio.open_connection('localhost', <port>)
     
     # Send message
     message = b"Hello, MPREG!"
@@ -1181,7 +1180,7 @@ asyncio.run(tcp_client())
 
 # Streaming example for large data
 async def tcp_streaming_client():
-    reader, writer = await asyncio.open_connection('localhost', 6668)
+    reader, writer = await asyncio.open_connection('localhost', <port>)
     
     # Send streaming marker
     streaming_marker = struct.pack('>I', 0xFFFFFFFF)
@@ -1216,7 +1215,7 @@ import (
 )
 
 func main() {
-    conn, err := net.Dial("tcp", "localhost:6668")
+    conn, err := net.Dial("tcp", "localhost:<port>")
     if err != nil {
         panic(err)
     }
@@ -1251,7 +1250,7 @@ int main() {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     struct sockaddr_in server = {0};
     server.sin_family = AF_INET;
-    server.sin_port = htons(6668);
+    server.sin_port = htons(<port>);
     inet_pton(AF_INET, "127.0.0.1", &server.sin_addr);
     
     connect(sock, (struct sockaddr*)&server, sizeof(server));
@@ -1318,7 +1317,7 @@ async def secure_tcp_client():
     ssl_context = ssl.create_default_context()
     
     reader, writer = await asyncio.open_connection(
-        'localhost', 6669, ssl=ssl_context
+        'localhost', <port>, ssl=ssl_context
     )
     
     # Send secure message

@@ -5,7 +5,10 @@ This module extends the existing MPREGClientAPI with topic-based
 publish/subscribe capabilities.
 """
 
+from __future__ import annotations
+
 import asyncio
+import contextlib
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -32,6 +35,8 @@ from ..core.statistics import (
     TopicMetrics,
 )
 from .client_api import MPREGClientAPI
+
+pubsub_log = logger
 
 @dataclass(slots=True)
 class SubscriptionCallback:
@@ -82,15 +87,13 @@ class MPREGPubSubClient:
             try:
                 await self.unsubscribe(subscription_id)
             except Exception as e:
-                logger.warning(f"Error unsubscribing from {subscription_id}: {e}")
+                pubsub_log.warning(f"Error unsubscribing from {subscription_id}: {e}")
 
         # Cancel notification handler
         if self._notification_task and not self._notification_task.done():
             self._notification_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._notification_task
-            except asyncio.CancelledError:
-                pass
 
     async def publish(
         self, topic: str, payload: Any, headers: MessageHeaders | None = None
@@ -130,7 +133,7 @@ class MPREGPubSubClient:
 
             return False
         except Exception as e:
-            logger.error(f"Error publishing to topic {topic}: {e}")
+            pubsub_log.error(f"Error publishing to topic {topic}: {e}")
             return False
 
     async def publish_with_reply(
@@ -233,7 +236,7 @@ class MPREGPubSubClient:
             try:
                 await self.unsubscribe(reply_subscription)
             except Exception as e:
-                logger.warning(f"Error cleaning up reply subscription: {e}")
+                pubsub_log.warning(f"Error cleaning up reply subscription: {e}")
 
     async def subscribe(
         self,
@@ -300,7 +303,7 @@ class MPREGPubSubClient:
             raise Exception("Invalid response to subscription request")
 
         except Exception as e:
-            logger.error(f"Error subscribing to patterns {patterns}: {e}")
+            pubsub_log.error(f"Error subscribing to patterns {patterns}: {e}")
             raise
 
     async def unsubscribe(self, subscription_id: str) -> bool:
@@ -333,13 +336,13 @@ class MPREGPubSubClient:
                     del self.subscriptions[subscription_id]
                     return True
                 else:
-                    logger.error(f"Unsubscribe failed: {ack.error}")
+                    pubsub_log.error(f"Unsubscribe failed: {ack.error}")
                     return False
 
             return False
 
         except Exception as e:
-            logger.error(f"Error unsubscribing from {subscription_id}: {e}")
+            pubsub_log.error(f"Error unsubscribing from {subscription_id}: {e}")
             return False
 
     async def _notification_handler(self):
@@ -361,7 +364,7 @@ class MPREGPubSubClient:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Error in notification handler: {e}")
+                pubsub_log.error(f"Error in notification handler: {e}")
                 await asyncio.sleep(0.1)  # Brief pause before retrying
 
     def _handle_notification(self, notification: PubSubNotification):
@@ -371,7 +374,7 @@ class MPREGPubSubClient:
             try:
                 callback_info.callback(notification.message)
             except Exception as e:
-                logger.error(f"Error in subscription callback: {e}")
+                pubsub_log.error(f"Error in subscription callback: {e}")
 
     def list_subscriptions(self) -> list[SubscriptionInfo]:
         """List all active subscriptions."""
@@ -471,7 +474,7 @@ async def create_topic_logger(
     """Create a subscription that logs all messages matching a pattern."""
 
     def log_callback(message: PubSubMessage):
-        logger.info(
+        pubsub_log.info(
             f"[TOPIC:{message.topic}] {message.payload} (from {message.publisher})",
         )
 
@@ -552,7 +555,7 @@ async def create_topic_forwarder(
 # Example usage patterns
 async def example_basic_pubsub():
     """Example of basic pub/sub operations."""
-    async with MPREGPubSubExtendedClient("ws://localhost:9001") as client:
+    async with MPREGPubSubExtendedClient("ws://localhost:<port>") as client:
         # Subscribe to user events
         def user_callback(message: PubSubMessage):
             print(f"User event: {message.topic} -> {message.payload}")
@@ -577,7 +580,7 @@ async def example_basic_pubsub():
 
 async def example_advanced_topic_routing():
     """Example of advanced topic routing patterns."""
-    async with MPREGPubSubExtendedClient("ws://localhost:9001") as client:
+    async with MPREGPubSubExtendedClient("ws://localhost:<port>") as client:
         # Create multiple specialized subscriptions
         error_sub = await client.subscribe(
             patterns=["*.error", "system.*.critical"],

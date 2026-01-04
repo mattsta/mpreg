@@ -413,6 +413,7 @@ class TestLocationConsistencyWithLiveServers:
         # Clean up
         await consistency_manager.shutdown()
         await pubsub_integration.shutdown()
+        await cache_manager.shutdown()
 
     async def test_cache_pinning(
         self,
@@ -475,6 +476,7 @@ class TestLocationConsistencyWithLiveServers:
         # Clean up
         await consistency_manager.shutdown()
         await pubsub_integration.shutdown()
+        await cache_manager.shutdown()
 
     async def test_cache_migration(
         self,
@@ -533,6 +535,7 @@ class TestLocationConsistencyWithLiveServers:
         # Clean up
         await consistency_manager.shutdown()
         await pubsub_integration.shutdown()
+        await cache_manager.shutdown()
 
     async def test_conflict_resolution(
         self,
@@ -606,6 +609,7 @@ class TestLocationConsistencyWithLiveServers:
         # Clean up
         await consistency_manager.shutdown()
         await pubsub_integration.shutdown()
+        await cache_manager.shutdown()
 
 class TestLocationConsistencyEdgeCases:
     """Test edge cases and error conditions."""

@@ -19,7 +19,7 @@ import time
 
 import pytest
 
-from mpreg.federation.federation_graph import (
+from mpreg.fabric.federation_graph import (
     FederationGraph,
     FederationGraphEdge,
     FederationGraphNode,
@@ -27,7 +27,7 @@ from mpreg.federation.federation_graph import (
     GraphBasedFederationRouter,
     NodeType,
 )
-from mpreg.federation.federation_graph_monitor import (
+from mpreg.fabric.federation_graph_monitor import (
     FederationGraphMonitor,
     GraphMetric,
     GraphMetricsCollector,

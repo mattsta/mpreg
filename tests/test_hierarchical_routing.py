@@ -20,8 +20,8 @@ import time
 
 import pytest
 
-from mpreg.federation.federation_graph import GeographicCoordinate
-from mpreg.federation.federation_hierarchy import (
+from mpreg.fabric.federation_graph import GeographicCoordinate
+from mpreg.fabric.hub_hierarchy import (
     HierarchicalRouter,
     HubRoute,
     HubSelector,
@@ -30,7 +30,7 @@ from mpreg.federation.federation_hierarchy import (
     ZoneDefinition,
     ZonePartitioner,
 )
-from mpreg.federation.federation_hubs import (
+from mpreg.fabric.hubs import (
     GlobalHub,
     HubCapabilities,
     HubTier,

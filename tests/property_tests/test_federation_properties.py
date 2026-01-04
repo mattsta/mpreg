@@ -14,14 +14,14 @@ from hypothesis import strategies as st
 
 from mpreg.core.monitoring.unified_monitoring import HealthStatus
 from mpreg.datastructures.type_aliases import ClusterId
-from mpreg.federation.federation_config import FederationConfig, FederationMode
-from mpreg.federation.federation_graph import (
+from mpreg.fabric.federation_config import FederationConfig, FederationMode
+from mpreg.fabric.federation_graph import (
     FederationGraphNode,
     GeographicCoordinate,
     NodeId,
     NodeType,
 )
-from mpreg.federation.federation_monitoring_endpoints import (
+from mpreg.fabric.monitoring_endpoints import (
     FederationHealthSummary,
     FederationPerformanceSummary,
     FederationTopologySnapshot,

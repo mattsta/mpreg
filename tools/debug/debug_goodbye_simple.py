@@ -2,6 +2,7 @@
 """Simple debug test for GOODBYE protocol."""
 
 import asyncio
+import contextlib
 
 from mpreg.core.config import MPREGSettings
 from mpreg.core.model import GoodbyeReason
@@ -89,10 +90,8 @@ async def debug_goodbye_simple():
         server1_task.cancel()
         server2_task.cancel()
 
-        try:
+        with contextlib.suppress(Exception):
             await asyncio.gather(server1_task, server2_task, return_exceptions=True)
-        except Exception:
-            pass
 
         port_manager.cleanup()
 

@@ -12,17 +12,18 @@ import pytest
 from loguru import logger
 
 from mpreg.datastructures.vector_clock import VectorClock
-from mpreg.federation.federation_consensus import (
+from mpreg.fabric.consensus import (
     ConsensusManager,
     StateType,
     StateValue,
 )
-from mpreg.federation.federation_gossip import (
+from mpreg.fabric.gossip import (
     GossipProtocol,
     GossipStrategy,
     NodeMetadata,
 )
-from mpreg.federation.federation_registry import HubRegistry
+from mpreg.fabric.gossip_transport import InProcessGossipTransport
+from mpreg.fabric.hub_registry import HubRegistry
 
 class TestConsensusGossipIntegration:
     """Test consensus integration with gossip protocol."""
@@ -48,8 +49,10 @@ class TestConsensusGossipIntegration:
         )
 
         # Create gossip protocols with consensus managers
+        transport = InProcessGossipTransport()
         gossip1 = GossipProtocol(
             node_id="node1",
+            transport=transport,
             hub_registry=hub_registry1,
             consensus_manager=consensus1,
             gossip_interval=0.5,
@@ -59,6 +62,7 @@ class TestConsensusGossipIntegration:
 
         gossip2 = GossipProtocol(
             node_id="node2",
+            transport=transport,
             hub_registry=hub_registry2,
             consensus_manager=consensus2,
             gossip_interval=0.5,
@@ -182,8 +186,10 @@ class TestConsensusGossipIntegration:
         )
 
         # Create gossip protocols with consensus managers
+        transport = InProcessGossipTransport()
         gossip1 = GossipProtocol(
             node_id="node1",
+            transport=transport,
             hub_registry=hub_registry1,
             consensus_manager=consensus1,
             gossip_interval=0.5,
@@ -193,6 +199,7 @@ class TestConsensusGossipIntegration:
 
         gossip2 = GossipProtocol(
             node_id="node2",
+            transport=transport,
             hub_registry=hub_registry2,
             consensus_manager=consensus2,
             gossip_interval=0.5,

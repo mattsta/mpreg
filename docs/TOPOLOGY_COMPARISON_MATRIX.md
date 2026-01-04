@@ -1,4 +1,4 @@
-# MPREG Federation Topology Comparison Matrix
+# MPREG Fabric Topology Comparison Matrix
 
 ## Visual Topology Overview
 
@@ -117,7 +117,7 @@ Legend: ★★★ Excellent  ★★ Good  ★ Suitable
 ```
 ┌─────────────────────────┬─────────────┬─────────────┬─────────────┬─────────────┬─────────────┐
 │                         │   Dynamic   │  Byzantine  │Hierarchical │  Cross-DC   │Self-Healing │
-│    COMPLEXITY METRICS   │    Mesh     │  Tolerant   │Auto-Balance │  Federation │  Partitions │
+│    COMPLEXITY METRICS   │    Mesh     │  Tolerant   │Auto-Balance │   Fabric    │  Partitions │
 ├─────────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
 │ Configuration Complexity│     Low     │   Medium    │    High     │  Very High  │   Medium    │
 │ Monitoring Requirements │     Low     │    High     │   Medium    │    High     │  Very High  │
@@ -181,7 +181,7 @@ Start Here: What's your primary use case?
 │   └── Large scale (50+ nodes) → Hierarchical Auto-Balancing
 │
 ├── Global / Multi-Region / CDN
-│   ├── Cross-Datacenter Federation ← Always choose this for global deployment
+│   ├── Cross-Datacenter Fabric ← Always choose this for global deployment
 │   └── Hierarchical (as fallback for single-region with global growth plan)
 │
 └── Mission-Critical / Healthcare / Safety
@@ -216,7 +216,7 @@ Phase 2: Add Reliability or Scale
 Phase 3: Global Deployment
 ┌─────────────────┐
 │ Cross-Datacenter│ ← Final evolution for global scale
-│  Federation     │   Multi-region with latency awareness
+│  Fabric         │   Multi-region with latency awareness
 └─────────────────┘
 ```
 
@@ -261,13 +261,13 @@ Total Range         │$530-700   │$1,325-1,825│$2,800-3,650│$5,600-9,800�
 
 ```bash
 # Run comprehensive topology comparison
-poetry run pytest tests/test_advanced_topological_research.py::TestAdvancedTopologicalResearch::test_comprehensive_topology_performance_comparison -v
+uv run pytest tests/test_advanced_topological_research.py::TestAdvancedTopologicalResearch::test_comprehensive_topology_performance_comparison -v
 
 # Test specific topology
-poetry run pytest tests/test_advanced_topological_research.py::TestAdvancedTopologicalResearch::test_dynamic_mesh_reconfiguration_research -v
+uv run pytest tests/test_advanced_topological_research.py::TestAdvancedTopologicalResearch::test_dynamic_mesh_reconfiguration_research -v
 
 # Run all advanced topology tests
-poetry run pytest tests/test_advanced_topological_research.py -v
+uv run pytest tests/test_advanced_topological_research.py -v
 
 # Performance benchmarking
 python -m mpreg.tools.benchmark --topology=all --nodes=10 --iterations=5
@@ -277,6 +277,7 @@ python -m mpreg.tools.benchmark --topology=all --nodes=10 --iterations=5
 
 ```python
 # Create your own topology tester
+from mpreg.core.port_allocator import port_range_context
 from mpreg.tests.test_advanced_topological_research import AdvancedTopologyBuilder
 
 async def test_my_topology():
@@ -286,20 +287,21 @@ async def test_my_topology():
     for node_count in [5, 10, 15, 20]:
         print(f"Testing {node_count} nodes...")
 
-        servers = await builder._create_gossip_cluster(
-            ports=list(range(8000, 8000 + node_count)),
-            cluster_id=f"test-{node_count}",
-            topology="STAR_HUB"
-        )
+        with port_range_context(node_count) as ports:
+            servers = await builder._create_gossip_cluster(
+                ports=ports,
+                cluster_id=f"test-{node_count}",
+                topology="STAR_HUB"
+            )
 
-        # Your testing logic here
-        await asyncio.sleep(3.0)  # Wait for convergence
+            # Your testing logic here
+            await asyncio.sleep(3.0)  # Wait for convergence
 
-        # Measure performance
-        connections = sum(len(s.peer_connections) for s in servers)
-        efficiency = connections / (node_count * (node_count - 1))
+            # Measure performance
+            connections = sum(len(s.peer_connections) for s in servers)
+            efficiency = connections / (node_count * (node_count - 1))
 
-        print(f"  Efficiency: {efficiency:.2%}")
+            print(f"  Efficiency: {efficiency:.2%}")
 ```
 
 ---
@@ -316,4 +318,4 @@ async def test_my_topology():
 
 - See [ADVANCED_FEDERATION_ARCHITECTURE_GUIDE.md](./ADVANCED_FEDERATION_ARCHITECTURE_GUIDE.md) for detailed architecture
 - See [FEDERATION_QUICK_START_EXAMPLES.md](./FEDERATION_QUICK_START_EXAMPLES.md) for copy-paste examples
-- Run the test suite for validation: `poetry run pytest tests/test_advanced_topological_research.py -v`
+- Run the test suite for validation: `uv run pytest tests/test_advanced_topological_research.py -v`

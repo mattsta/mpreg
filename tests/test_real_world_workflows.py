@@ -24,7 +24,7 @@ class TestDataPipelineWorkflows:
     @pytest.fixture
     async def data_pipeline_cluster(
         self, test_context: AsyncTestContext, server_cluster_ports: list[int]
-    ) -> AsyncGenerator[list[MPREGServer], None]:
+    ) -> AsyncGenerator[list[MPREGServer]]:
         """Set up a 3-server cluster optimized for data pipeline processing."""
         from mpreg.core.config import MPREGSettings
 
@@ -212,7 +212,7 @@ class TestMLWorkflows:
     @pytest.fixture
     async def ml_cluster(
         self, test_context: AsyncTestContext, server_cluster_ports: list[int]
-    ) -> AsyncGenerator[list[MPREGServer], None]:
+    ) -> AsyncGenerator[list[MPREGServer]]:
         """Set up a cluster optimized for ML workflows."""
         from mpreg.core.config import MPREGSettings
 

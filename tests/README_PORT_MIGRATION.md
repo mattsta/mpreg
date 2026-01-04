@@ -8,7 +8,10 @@ The port allocation system enables safe concurrent testing with `pytest-xdist` b
 
 ## Key Components
 
-### 1. Port Allocator (`port_allocator.py`)
+### 1. Port Allocator (`mpreg/core/port_allocator.py`)
+
+Port fixtures are now defined in `tests/conftest.py` and backed by the core
+allocator (no test-only allocator module).
 
 - **Thread-safe**: Uses file-based locking across processes
 - **Worker-aware**: Automatically detects pytest-xdist worker ID
@@ -35,7 +38,7 @@ The port allocation system enables safe concurrent testing with `pytest-xdist` b
 ```python
 @pytest.fixture
 async def my_server():
-    server = MPREGServer(MPREGSettings(port=9001, ...))
+    server = MPREGServer(MPREGSettings(port=LEGACY_PORT, ...))
     # ... setup and cleanup
 ```
 
@@ -55,8 +58,8 @@ async def my_server(server_port: int):
 ```python
 @pytest.fixture
 async def cluster():
-    server1 = MPREGServer(MPREGSettings(port=9001, ...))
-    server2 = MPREGServer(MPREGSettings(port=9002, connect="ws://127.0.0.1:9001", ...))
+    server1 = MPREGServer(MPREGSettings(port=LEGACY_PORT_A, ...))
+    server2 = MPREGServer(MPREGSettings(port=LEGACY_PORT_B, connect="ws://127.0.0.1:LEGACY_PORT_A", ...))
 ```
 
 **After:**
@@ -77,9 +80,9 @@ async def cluster(port_pair: list[int]):
 async def test_complex():
     # Multiple hardcoded ports
     servers = [
-        MPREGServer(MPREGSettings(port=9001, ...)),
-        MPREGServer(MPREGSettings(port=9002, ...)),
-        MPREGServer(MPREGSettings(port=9003, ...)),
+        MPREGServer(MPREGSettings(port=LEGACY_PORT_A, ...)),
+        MPREGServer(MPREGSettings(port=LEGACY_PORT_B, ...)),
+        MPREGServer(MPREGSettings(port=LEGACY_PORT_C, ...)),
     ]
 ```
 
@@ -102,7 +105,7 @@ async def test_complex():
 
 ```python
 async def test_client():
-    async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+    async with MPREGClientAPI("ws://127.0.0.1:LEGACY_PORT") as client:
         # ...
 ```
 
@@ -157,16 +160,16 @@ Each pytest-xdist worker gets its own port range:
 
 ```bash
 # Run tests in parallel with 4 workers
-poetry run pytest -n 4
+uv run pytest -n 4
 
 # Run with auto-detection of CPU cores
-poetry run pytest -n auto
+uv run pytest -n auto
 
 # Run specific test categories in parallel
-poetry run pytest -n 4 -m "not slow"
+uv run pytest -n 4 -m "not slow"
 
 # Run with verbose output
-poetry run pytest -n 4 -v
+uv run pytest -n 4 -v
 ```
 
 ## Migration Checklist

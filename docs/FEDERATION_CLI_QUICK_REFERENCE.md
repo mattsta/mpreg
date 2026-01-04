@@ -1,4 +1,9 @@
-# MPREG Federation CLI - Quick Reference
+# MPREG Fabric Federation CLI - Quick Reference
+
+Note: CLI command names and config keys still use `federation`, but all behavior
+is powered by the unified fabric control plane.
+Omit `--port` on `mpreg server start` to auto-allocate a free port; the CLI prints
+`MPREG_URL=...` for easy client use.
 
 ## Essential Commands
 
@@ -6,50 +11,75 @@
 
 ```bash
 # Discover clusters
-poetry run mpreg-federation discover
+uv run mpreg discover
 
 # Generate config template
-poetry run mpreg-federation generate-config config.json
+uv run mpreg generate-config config.json
 
 # Validate configuration
-poetry run mpreg-federation validate-config config.json
+uv run mpreg validate-config config.json
 
 # Deploy federation
-poetry run mpreg-federation deploy config.json --dry-run
-poetry run mpreg-federation deploy config.json
+uv run mpreg deploy config.json --dry-run
+uv run mpreg deploy config.json
+```
+
+### 🖥️ Server Start
+
+```bash
+# Start a server with defaults
+uv run mpreg server start --port <port> --cluster-id dev-cluster
+
+# Configure monitoring
+uv run mpreg server start --monitoring-port <port> --no-monitoring-cors
+
+# Disable monitoring endpoints
+uv run mpreg server start --no-monitoring
 ```
 
 ### 🏥 Health & Monitoring
 
 ```bash
 # Check health
-poetry run mpreg-federation health
-poetry run mpreg-federation health --cluster cluster-id
+uv run mpreg health
+uv run mpreg health --cluster cluster-id
 
 # Show metrics
-poetry run mpreg-federation metrics
+uv run mpreg metrics
 
 # Continuous monitoring
-poetry run mpreg-federation monitor health-watch --interval 30
-poetry run mpreg-federation monitor metrics-watch --interval 60
+uv run mpreg monitor health-watch --interval 30
+uv run mpreg monitor metrics-watch --interval 60
+uv run mpreg monitor route-trace --destination cluster-b
+uv run mpreg monitor link-state
+uv run mpreg monitor transport-endpoints
+uv run mpreg monitor persistence
+uv run mpreg monitor persistence-watch --interval 30
+uv run mpreg monitor metrics --system unified
+uv run mpreg monitor endpoints
+
+# Monitoring endpoint shortcuts (set MPREG_MONITORING_URL)
+uv run mpreg monitor health --summary
+uv run mpreg monitor metrics-watch --system transport --interval 15
+uv run mpreg monitor status
 ```
 
 ### 🌍 Cluster Management
 
 ```bash
 # Register cluster
-poetry run mpreg-federation register \
+uv run mpreg register \
   cluster-id "Cluster Name" region \
-  ws://server:8000 ws://bridge:9000
+  ws://server:<port> ws://bridge:<port>
 
 # Unregister cluster
-poetry run mpreg-federation unregister cluster-id
+uv run mpreg unregister cluster-id
 
 # Show topology
-poetry run mpreg-federation topology
+uv run mpreg topology
 
 # Cleanup all
-poetry run mpreg-federation cleanup --force
+uv run mpreg cleanup --force
 ```
 
 ## Quick Configuration Templates
@@ -75,8 +105,8 @@ poetry run mpreg-federation cleanup --force
       "cluster_id": "prod-primary",
       "cluster_name": "Production Primary",
       "region": "us-west-2",
-      "server_url": "ws://cluster.company.com:8000",
-      "bridge_url": "ws://federation.company.com:9000",
+      "server_url": "ws://cluster.company.com:<port>",
+      "bridge_url": "ws://federation.company.com:<port>",
       "priority": 1,
       "resources": ["compute", "storage"]
     }
@@ -98,8 +128,8 @@ poetry run mpreg-federation cleanup --force
       "cluster_id": "dev-local",
       "cluster_name": "Development Local",
       "region": "local",
-      "server_url": "ws://localhost:8000",
-      "bridge_url": "ws://localhost:9000"
+      "server_url": "ws://localhost:<port>",
+      "bridge_url": "ws://localhost:<port>"
     }
   ]
 }
@@ -111,57 +141,57 @@ poetry run mpreg-federation cleanup --force
 
 ```bash
 # 1. Generate config
-poetry run mpreg-federation generate-config federation.json
+uv run mpreg generate-config federation.json
 
 # 2. Edit federation.json with your cluster details
 
 # 3. Validate
-poetry run mpreg-federation validate-config federation.json
+uv run mpreg validate-config federation.json
 
 # 4. Deploy
-poetry run mpreg-federation deploy federation.json
+uv run mpreg deploy federation.json
 ```
 
 ### 📊 Daily Operations
 
 ```bash
 # Morning health check
-poetry run mpreg-federation health
+uv run mpreg health
 
 # Check topology
-poetry run mpreg-federation topology
+uv run mpreg topology
 
 # Review metrics
-poetry run mpreg-federation metrics
+uv run mpreg metrics
 ```
 
 ### 🚨 Emergency Response
 
 ```bash
 # Quick health assessment
-poetry run mpreg-federation health --output json
+uv run mpreg health --output json
 
 # Remove failing cluster
-poetry run mpreg-federation unregister failing-cluster-id
+uv run mpreg unregister failing-cluster-id
 
 # Add backup cluster
-poetry run mpreg-federation register backup-cluster "Backup" region ws://backup:8000 ws://backup:9000
+uv run mpreg register backup-cluster "Backup" region ws://backup:<server-port> ws://backup:<bridge-port>
 ```
 
 ### 🔧 Maintenance
 
 ```bash
 # Validate before changes
-poetry run mpreg-federation validate-config updated-config.json
+uv run mpreg validate-config updated-config.json
 
 # Test deployment
-poetry run mpreg-federation deploy updated-config.json --dry-run
+uv run mpreg deploy updated-config.json --dry-run
 
 # Apply changes
-poetry run mpreg-federation deploy updated-config.json
+uv run mpreg deploy updated-config.json
 
 # Verify
-poetry run mpreg-federation health
+uv run mpreg health
 ```
 
 ## Output Formats
@@ -170,23 +200,23 @@ poetry run mpreg-federation health
 
 ```bash
 # Rich table format (default)
-poetry run mpreg-federation health
+uv run mpreg health
 
 # JSON for automation
-poetry run mpreg-federation health --output json
+uv run mpreg health --output json
 
 # Detailed report
-poetry run mpreg-federation health --output report
+uv run mpreg health --output report
 ```
 
 ### Discovery Outputs
 
 ```bash
 # Rich table (default)
-poetry run mpreg-federation discover
+uv run mpreg discover
 
 # JSON for scripting
-poetry run mpreg-federation discover --output json
+uv run mpreg discover --output json
 ```
 
 ## Automation Examples
@@ -197,7 +227,7 @@ poetry run mpreg-federation discover --output json
 #!/bin/bash
 # Monitor and alert on unhealthy clusters
 
-HEALTH_JSON=$(poetry run mpreg-federation health --output json)
+HEALTH_JSON=$(uv run mpreg health --output json)
 UNHEALTHY_COUNT=$(echo "$HEALTH_JSON" | jq '[.[] | select(.status=="error")] | length')
 
 if [ "$UNHEALTHY_COUNT" -gt 0 ]; then
@@ -216,23 +246,23 @@ fi
 CONFIG_FILE="$1"
 
 # Validate configuration
-if ! poetry run mpreg-federation validate-config "$CONFIG_FILE"; then
+if ! uv run mpreg validate-config "$CONFIG_FILE"; then
     echo "Configuration validation failed"
     exit 1
 fi
 
 # Test deployment
-if ! poetry run mpreg-federation deploy "$CONFIG_FILE" --dry-run; then
+if ! uv run mpreg deploy "$CONFIG_FILE" --dry-run; then
     echo "Dry run failed"
     exit 1
 fi
 
 # Deploy
-poetry run mpreg-federation deploy "$CONFIG_FILE"
+uv run mpreg deploy "$CONFIG_FILE"
 
 # Verify
 sleep 10
-poetry run mpreg-federation health
+uv run mpreg health
 ```
 
 ## Troubleshooting Quick Fixes
@@ -241,20 +271,20 @@ poetry run mpreg-federation health
 
 ```bash
 # Test cluster connectivity
-curl -I ws://cluster.example.com:8000
+curl -I ws://cluster.example.com:<server-port>
 
 # Check configuration
-poetry run mpreg-federation config show config.json --key clusters
+uv run mpreg config show config.json --key clusters
 ```
 
 ### Health Check Failures
 
 ```bash
 # Verbose health check
-poetry run mpreg-federation --verbose health --cluster problematic-cluster
+uv run mpreg --verbose health --cluster problematic-cluster
 
 # Check specific cluster
-poetry run mpreg-federation health --cluster cluster-id
+uv run mpreg health --cluster cluster-id
 ```
 
 ### Configuration Problems
@@ -264,7 +294,7 @@ poetry run mpreg-federation health --cluster cluster-id
 python -m json.tool config.json
 
 # Check specific sections
-poetry run mpreg-federation config show config.json --key federation.resilience
+uv run mpreg config show config.json --key federation.resilience
 ```
 
 ## Environment Variables
@@ -288,40 +318,40 @@ export MPREG_FEDERATION_CONFIG=/path/to/config.json
 1. **Always validate before deploying**
 
    ```bash
-   poetry run mpreg-federation validate-config config.json
+   uv run mpreg validate-config config.json
    ```
 
 2. **Use dry-run for testing**
 
    ```bash
-   poetry run mpreg-federation deploy config.json --dry-run
+   uv run mpreg deploy config.json --dry-run
    ```
 
 3. **Monitor continuously in production**
 
    ```bash
-   poetry run mpreg-federation monitor health-watch --interval 30 &
+   uv run mpreg monitor health-watch --interval 30 &
    ```
 
 4. **Use JSON output for automation**
 
    ```bash
-   poetry run mpreg-federation health --output json | jq '.cluster_health'
+   uv run mpreg health --output json | jq '.cluster_health'
    ```
 
 5. **Check topology regularly**
    ```bash
-   poetry run mpreg-federation topology
+   uv run mpreg topology
    ```
 
 ## Help Commands
 
 ```bash
 # General help
-poetry run mpreg-federation --help
+uv run mpreg --help
 
 # Command-specific help
-poetry run mpreg-federation deploy --help
-poetry run mpreg-federation monitor --help
-poetry run mpreg-federation config --help
+uv run mpreg deploy --help
+uv run mpreg monitor --help
+uv run mpreg config --help
 ```

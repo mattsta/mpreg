@@ -13,12 +13,20 @@ Protocol Specification:
 - Authentication: Via HTTP headers during handshake
 """
 
+from __future__ import annotations
+
 import asyncio
+import contextlib
 import time
 
-from websockets.client import WebSocketClientProtocol, connect
+from websockets import (
+    ClientConnection,
+    Server,
+    ServerConnection,
+    connect,
+    serve,
+)
 from websockets.exceptions import ConnectionClosed, WebSocketException
-from websockets.server import WebSocketServer, WebSocketServerProtocol, serve
 
 from .defaults import DEFAULT_MAX_MESSAGE_SIZE
 from .factory import ProtocolSpec, register_transport
@@ -69,7 +77,7 @@ class WebSocketTransport(TransportInterface):
     import websockets
 
     async def client():
-        uri = "ws://localhost:6666"
+        uri = "ws://localhost:<port>"
         async with websockets.connect(uri) as websocket:
             # Send message
             await websocket.send(b"Hello, MPREG!")
@@ -83,7 +91,7 @@ class WebSocketTransport(TransportInterface):
 
     Example External Client (JavaScript):
     ```javascript
-    const ws = new WebSocket('ws://localhost:6666');
+    const ws = new WebSocket('ws://localhost:<port>');
 
     ws.onopen = function() {
         // Send message as ArrayBuffer
@@ -105,7 +113,7 @@ class WebSocketTransport(TransportInterface):
             config: Transport configuration
         """
         super().__init__(url, config)
-        self._websocket: WebSocketClientProtocol | None = None
+        self._websocket: ClientConnection | None = None
         self._connect_lock = asyncio.Lock()
 
     async def connect(self) -> None:
@@ -137,9 +145,8 @@ class WebSocketTransport(TransportInterface):
                     connect(
                         self.url,
                         ssl=ssl_context,
-                        extra_headers=extra_headers,
+                        additional_headers=extra_headers,
                         max_size=self.config.get_max_message_size(),
-                        read_limit=self.config.read_buffer_size,
                         write_limit=self.config.write_buffer_size,
                     ),
                     timeout=self.config.connect_timeout,
@@ -154,8 +161,9 @@ class WebSocketTransport(TransportInterface):
 
     async def disconnect(self) -> None:
         """Close WebSocket connection."""
-        if self._websocket and not self._websocket.closed:
-            await self._websocket.close()
+        if self._websocket:
+            with contextlib.suppress(Exception):
+                await self._websocket.close()
 
         self._websocket = None
         self._connected = False
@@ -271,7 +279,7 @@ class WebSocketListener(TransportListener):
             config: Transport configuration
         """
         super().__init__(host, port, config)
-        self._server: WebSocketServer | None = None
+        self._server: Server | None = None
         self._accept_queue: asyncio.Queue | None = None
 
     def _get_protocol_scheme(self) -> str:
@@ -306,7 +314,6 @@ class WebSocketListener(TransportListener):
                 self.port,
                 ssl=ssl_context,
                 max_size=self.config.get_max_message_size(),
-                read_limit=self.config.read_buffer_size,
                 write_limit=self.config.write_buffer_size,
             )
 
@@ -351,25 +358,19 @@ class WebSocketListener(TransportListener):
         except Exception as e:
             raise TransportError(f"WebSocket accept failed: {e}")
 
-    async def _handle_connection(
-        self, websocket: WebSocketServerProtocol, path: str
-    ) -> None:
+    async def _handle_connection(self, websocket: ServerConnection) -> None:
         """Handle incoming WebSocket connection."""
         if self._accept_queue:
             await self._accept_queue.put(websocket)
 
             # Keep connection alive until it's closed
-            try:
+            with contextlib.suppress(Exception):
                 await websocket.wait_closed()
-            except Exception:
-                pass
 
 class _WebSocketServerTransport(TransportInterface):
     """WebSocket transport wrapper for server-side connections."""
 
-    def __init__(
-        self, websocket: WebSocketServerProtocol, config: TransportConfig
-    ) -> None:
+    def __init__(self, websocket: ServerConnection, config: TransportConfig) -> None:
         """Initialize server-side WebSocket transport.
 
         Args:
@@ -386,14 +387,15 @@ class _WebSocketServerTransport(TransportInterface):
 
     async def disconnect(self) -> None:
         """Close server-side WebSocket connection."""
-        if self._websocket and not self._websocket.closed:
-            await self._websocket.close()
+        if self._websocket:
+            with contextlib.suppress(Exception):
+                await self._websocket.close()
 
         self._connected = False
 
     async def send(self, data: bytes) -> None:
         """Send data via server-side WebSocket."""
-        if not self._connected or self._websocket.closed:
+        if not self._connected:
             raise TransportConnectionError("WebSocket not connected")
 
         try:
@@ -415,7 +417,7 @@ class _WebSocketServerTransport(TransportInterface):
 
     async def receive(self) -> bytes:
         """Receive data from server-side WebSocket."""
-        if not self._connected or self._websocket.closed:
+        if not self._connected:
             raise TransportConnectionError("WebSocket not connected")
 
         try:
@@ -442,7 +444,7 @@ class _WebSocketServerTransport(TransportInterface):
 
     async def ping(self) -> float:
         """Send WebSocket ping from server side."""
-        if not self._connected or self._websocket.closed:
+        if not self._connected:
             raise TransportConnectionError("WebSocket not connected")
 
         try:
@@ -491,7 +493,7 @@ import asyncio
 import websockets
 
 async def client():
-    uri = "ws://localhost:6666"
+    uri = "ws://localhost:<port>"
     async with websockets.connect(uri) as websocket:
         # Send binary message
         await websocket.send(b"Hello, MPREG!")
@@ -503,7 +505,7 @@ async def client():
 asyncio.run(client())
 """,
             "javascript": """
-const ws = new WebSocket('ws://localhost:6666');
+const ws = new WebSocket('ws://localhost:<port>');
 
 ws.onopen = function() {
     // Send message as ArrayBuffer
@@ -518,7 +520,7 @@ ws.onmessage = function(event) {
             "curl": """
 # WebSocket connections require special tools, not curl
 # Use websocat instead:
-echo "Hello, MPREG!" | websocat ws://localhost:6666
+echo "Hello, MPREG!" | websocat ws://localhost:<port>
 """,
         },
     },
@@ -553,7 +555,7 @@ async def secure_client():
     # For production, use proper certificate verification
     ssl_context = ssl.create_default_context()
     
-    uri = "wss://localhost:6667"
+    uri = "wss://localhost:<port>"
     async with websockets.connect(uri, ssl=ssl_context) as websocket:
         await websocket.send(b"Secure Hello!")
         response = await websocket.recv()

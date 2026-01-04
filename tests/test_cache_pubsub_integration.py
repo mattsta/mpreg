@@ -343,6 +343,8 @@ class TestCachePubSubIntegrationWithLiveServer:
         # Clean up
         await integration1.shutdown()
         await integration2.shutdown()
+        await cache_manager1.shutdown()
+        await cache_manager2.shutdown()
 
     async def test_concurrent_cache_operations(
         self,
@@ -415,6 +417,7 @@ class TestCachePubSubIntegrationWithLiveServer:
 
         # Clean up
         await integration.shutdown()
+        await cache_manager.shutdown()
 
     async def test_condition_based_notifications(
         self,
@@ -487,6 +490,7 @@ class TestCachePubSubIntegrationWithLiveServer:
         assert isinstance(stats, dict)
 
         await integration.shutdown()
+        await cache_manager.shutdown()
         await cache_manager.shutdown()
 
 class TestCachePubSubIntegrationEdgeCases:

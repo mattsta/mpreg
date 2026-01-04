@@ -1,7 +1,7 @@
 """
-Federation Management CLI for MPREG.
+Fabric Federation Management CLI for MPREG.
 
-Provides comprehensive command-line interface for managing federation clusters:
+Provides comprehensive command-line interface for managing fabric federated clusters:
 - Cluster discovery and registration
 - Health monitoring and alerting
 - Performance metrics and analytics
@@ -10,8 +10,11 @@ Provides comprehensive command-line interface for managing federation clusters:
 - Backup and recovery operations
 """
 
+from __future__ import annotations
+
 import json
 import time
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -23,7 +26,7 @@ from rich.table import Table
 from rich.tree import Tree
 
 from ..core.statistics import CLIDiscoveredCluster
-from ..federation.auto_discovery import (
+from ..fabric.auto_discovery import (
     AutoDiscoveryService,
     create_auto_discovery_service,
     create_consul_discovery_config,
@@ -31,12 +34,8 @@ from ..federation.auto_discovery import (
     create_http_discovery_config,
     create_static_discovery_config,
 )
-from ..federation.federated_topic_exchange import (
-    FederatedTopicExchange,
-    create_federated_cluster,
-)
-from ..federation.federation_optimized import ClusterIdentity
-from ..federation.federation_resilience import (
+from ..fabric.federation_optimized import ClusterIdentity
+from ..fabric.federation_resilience import (
     EnhancedFederationResilience,
     HealthCheckConfiguration,
     RetryConfiguration,
@@ -44,9 +43,17 @@ from ..federation.federation_resilience import (
 
 console = Console()
 
+@dataclass(slots=True)
+class ClusterRegistration:
+    """Registered cluster metadata for fabric-based federation tooling."""
+
+    cluster_identity: ClusterIdentity
+    server_url: str
+    registered_at: float = field(default_factory=time.time)
+
 class FederationCLI:
     """
-    Comprehensive CLI for MPREG federation management.
+    Comprehensive CLI for MPREG fabric federation management.
 
     Provides tools for:
     - Cluster lifecycle management
@@ -58,17 +65,15 @@ class FederationCLI:
 
     def __init__(self) -> None:
         self.console = Console()
-        self.clusters: dict[str, FederatedTopicExchange] = {}
+        self.clusters: dict[str, ClusterRegistration] = {}
         self.resilience_systems: dict[str, EnhancedFederationResilience] = {}
         self.auto_discovery_service: AutoDiscoveryService | None = None
 
     async def discover_clusters(
         self, config_path: str | None = None
     ) -> list[CLIDiscoveredCluster]:
-        """Discover available federation clusters using auto-discovery."""
-        self.console.print(
-            "[bold blue]🔍 Discovering federation clusters...[/bold blue]"
-        )
+        """Discover available fabric clusters using auto-discovery."""
+        self.console.print("[bold blue]🔍 Discovering fabric clusters...[/bold blue]")
 
         discovered_clusters: list[CLIDiscoveredCluster] = []
 
@@ -182,7 +187,7 @@ class FederationCLI:
 
     def display_cluster_list(self, clusters: list[CLIDiscoveredCluster]) -> None:
         """Display discovered clusters in a rich table."""
-        table = Table(title="🌍 Federation Clusters")
+        table = Table(title="🌍 Fabric Clusters")
 
         table.add_column("Cluster ID", style="cyan", no_wrap=True)
         table.add_column("Name", style="magenta")
@@ -241,7 +246,7 @@ class FederationCLI:
         bridge_url: str,
         enable_resilience: bool = True,
     ) -> bool:
-        """Register a new federation cluster."""
+        """Register a new fabric federation cluster."""
         self.console.print(
             f"[bold green]📝 Registering cluster: {cluster_id}[/bold green]"
         )
@@ -264,19 +269,12 @@ class FederationCLI:
                     created_at=time.time(),
                 )
 
-                progress.update(task, description="Creating federated cluster...")
+                progress.update(task, description="Registering fabric cluster...")
 
-                # Create federated cluster
-                cluster = await create_federated_cluster(
+                self.clusters[cluster_id] = ClusterRegistration(
+                    cluster_identity=cluster_identity,
                     server_url=server_url,
-                    cluster_id=cluster_id,
-                    cluster_name=cluster_name,
-                    region=region,
-                    bridge_url=bridge_url,
-                    public_key_hash=cluster_identity.public_key_hash,
                 )
-
-                self.clusters[cluster_id] = cluster
 
                 if enable_resilience:
                     progress.update(
@@ -309,7 +307,7 @@ class FederationCLI:
             return False
 
     async def unregister_cluster(self, cluster_id: str) -> bool:
-        """Unregister a federation cluster."""
+        """Unregister a fabric federation cluster."""
         self.console.print(
             f"[bold yellow]🗑️ Unregistering cluster: {cluster_id}[/bold yellow]"
         )
@@ -322,9 +320,6 @@ class FederationCLI:
 
             # Disable federation
             if cluster_id in self.clusters:
-                cluster = self.clusters[cluster_id]
-                if cluster.federation_enabled:
-                    await cluster.disable_federation_async()
                 del self.clusters[cluster_id]
 
             self.console.print(
@@ -379,16 +374,13 @@ class FederationCLI:
                             else "unhealthy",
                         }
                     else:
-                        # Basic health check without resilience
+                        # Basic registration-only health
                         cluster = self.clusters[cluster_id]
-                        stats = cluster.get_stats()
-
                         health_results[cluster_id] = {
-                            "federation_enabled": cluster.federation_enabled,
-                            "stats": stats,
-                            "status": "active"
-                            if cluster.federation_enabled
-                            else "inactive",
+                            "status": "registered",
+                            "server_url": cluster.server_url,
+                            "bridge_url": cluster.cluster_identity.bridge_url,
+                            "region": cluster.cluster_identity.region,
                         }
 
                     progress.update(task, description=f"✅ {cluster_id} checked")
@@ -427,13 +419,13 @@ class FederationCLI:
 """
                 panel_style = "green" if health.healthy_clusters > 0 else "red"
             else:
-                # Basic status
-                fed_enabled = result.get("federation_enabled", False)
                 panel_content = f"""
-[bold]Federation:[/bold] {"✅ Enabled" if fed_enabled else "❌ Disabled"}
 [bold]Status:[/bold] {result.get("status", "unknown")}
+[bold]Server:[/bold] {result.get("server_url", "n/a")}
+[bold]Bridge:[/bold] {result.get("bridge_url", "n/a")}
+[bold]Region:[/bold] {result.get("region", "n/a")}
 """
-                panel_style = "green" if fed_enabled else "yellow"
+                panel_style = "yellow"
 
             panel = Panel(
                 panel_content.strip(),
@@ -454,39 +446,13 @@ class FederationCLI:
             self.console.print("[yellow]⚠️ No clusters available for metrics[/yellow]")
             return
 
-        for cluster_id in clusters_to_show:
-            cluster = self.clusters[cluster_id]
-            stats = cluster.get_stats()
-
-            # Create metrics table
-            table = Table(title=f"📊 Metrics: {cluster_id}")
-            table.add_column("Metric", style="cyan")
-            table.add_column("Value", style="magenta")
-
-            # Basic stats
-            table.add_row("Active Subscriptions", str(stats.active_subscriptions))
-            table.add_row("Active Subscribers", str(stats.active_subscribers))
-            table.add_row("Messages Published", str(stats.messages_published))
-            table.add_row("Messages Delivered", str(stats.messages_delivered))
-            table.add_row("Delivery Ratio", f"{stats.delivery_ratio:.2%}")
-            table.add_row("Remote Servers", str(stats.remote_servers))
-
-            # Federation stats
-            fed_stats = stats.federation
-            table.add_row("Federation Enabled", "✅" if fed_stats.enabled else "❌")
-            table.add_row("Connected Clusters", str(fed_stats.connected_clusters))
-            table.add_row(
-                "Cross-Cluster Messages", str(fed_stats.cross_cluster_messages)
-            )
-            table.add_row(
-                "Federation Latency", f"{fed_stats.federation_latency_ms:.2f}ms"
-            )
-            table.add_row("Federation Errors", str(fed_stats.federation_errors))
-
-            self.console.print(table)
+        self.console.print(
+            "[yellow]⚠️ Metrics collection requires live fabric telemetry; "
+            "no runtime clusters are attached in the CLI registry.[/yellow]"
+        )
 
     def generate_config_template(self, output_path: str) -> None:
-        """Generate a federation configuration template."""
+        """Generate a fabric federation configuration template."""
         config_template = {
             "version": "1.0",
             "federation": {
@@ -511,8 +477,8 @@ class FederationCLI:
                     "cluster_id": "production-primary",
                     "cluster_name": "Production Primary Cluster",
                     "region": "us-west-2",
-                    "server_url": "ws://cluster-primary.example.com:8000",
-                    "bridge_url": "ws://federation-primary.example.com:9000",
+                    "server_url": "ws://cluster-primary.example.com:<port>",
+                    "bridge_url": "ws://federation-primary.example.com:<port>",
                     "priority": 1,
                     "resources": ["compute", "storage", "networking"],
                     "tags": {"environment": "production", "tier": "primary"},
@@ -521,8 +487,8 @@ class FederationCLI:
                     "cluster_id": "production-secondary",
                     "cluster_name": "Production Secondary Cluster",
                     "region": "eu-central-1",
-                    "server_url": "ws://cluster-secondary.example.com:8000",
-                    "bridge_url": "ws://federation-secondary.example.com:9000",
+                    "server_url": "ws://cluster-secondary.example.com:<port>",
+                    "bridge_url": "ws://federation-secondary.example.com:<port>",
                     "priority": 2,
                     "resources": ["compute", "storage"],
                     "tags": {"environment": "production", "tier": "secondary"},
@@ -530,7 +496,7 @@ class FederationCLI:
             ],
             "monitoring": {
                 "enabled": True,
-                "metrics_port": 9090,
+                "metrics_port": 0,
                 "alert_endpoints": [
                     "http://prometheus.monitoring.svc.cluster.local:9093/api/v1/alerts"
                 ],
@@ -551,13 +517,13 @@ class FederationCLI:
 
         panel = Panel(
             config_syntax,
-            title="🔧 Federation Configuration Template",
+            title="🔧 Fabric Federation Configuration Template",
             border_style="blue",
         )
         self.console.print(panel)
 
     async def validate_config(self, config_path: str) -> bool:
-        """Validate federation configuration file."""
+        """Validate fabric federation configuration file."""
         self.console.print(
             f"[bold blue]🔍 Validating configuration: {config_path}[/bold blue]"
         )
@@ -643,7 +609,7 @@ class FederationCLI:
             return False
 
     async def deploy_from_config(self, config_path: str) -> bool:
-        """Deploy federation clusters from configuration file."""
+        """Deploy fabric federation clusters from configuration file."""
         if not await self.validate_config(config_path):
             self.console.print(
                 "[red]❌ Configuration validation failed, aborting deployment[/red]"
@@ -651,7 +617,7 @@ class FederationCLI:
             return False
 
         self.console.print(
-            f"[bold green]🚀 Deploying federation from: {config_path}[/bold green]"
+            f"[bold green]🚀 Deploying fabric federation from: {config_path}[/bold green]"
         )
 
         try:
@@ -729,26 +695,19 @@ class FederationCLI:
             return False
 
     def display_topology(self) -> None:
-        """Display federation topology as a tree."""
+        """Display fabric federation topology as a tree."""
         if not self.clusters:
             self.console.print("[yellow]⚠️ No clusters registered[/yellow]")
             return
 
-        tree = Tree("🌍 Federation Topology")
+        tree = Tree("🌍 Fabric Federation Topology")
 
         for cluster_id, cluster in self.clusters.items():
-            # Get cluster status
-            status_icon = "🟢" if cluster.federation_enabled else "🔴"
-            cluster_node = tree.add(f"{status_icon} {cluster_id}")
+            cluster_node = tree.add(f"🟢 {cluster_id}")
 
-            # Add cluster details
-            cluster_node.add(
-                f"📍 Region: {cluster.cluster_identity.region if cluster.cluster_identity else 'Unknown'}"
-            )
+            cluster_node.add(f"📍 Region: {cluster.cluster_identity.region}")
             cluster_node.add(f"🔗 Server: {cluster.server_url}")
-            cluster_node.add(
-                f"🌉 Bridge: {cluster.cluster_identity.bridge_url if cluster.cluster_identity else 'Unknown'}"
-            )
+            cluster_node.add(f"🌉 Bridge: {cluster.cluster_identity.bridge_url}")
 
             # Add resilience info if available
             if cluster_id in self.resilience_systems:
@@ -775,7 +734,7 @@ class FederationCLI:
             return
 
         self.console.print(
-            "[bold yellow]🧹 Cleaning up all federation resources...[/bold yellow]"
+            "[bold yellow]🧹 Cleaning up all fabric federation resources...[/bold yellow]"
         )
 
         with Progress(
@@ -805,9 +764,6 @@ class FederationCLI:
                     f"Disabling cluster: {cluster_id}...", total=None
                 )
                 try:
-                    cluster = self.clusters[cluster_id]
-                    if cluster.federation_enabled:
-                        await cluster.disable_federation_async()
                     del self.clusters[cluster_id]
                     progress.update(task, description=f"✅ {cluster_id} disabled")
                 except Exception as e:

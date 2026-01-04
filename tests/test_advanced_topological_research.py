@@ -15,6 +15,7 @@ This serves as both testing infrastructure and distributed systems research plat
 """
 
 import asyncio
+import contextlib
 import json
 import statistics
 import time
@@ -24,6 +25,7 @@ from typing import Any
 import pytest
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.port_allocator import get_port_allocator
 from mpreg.datastructures.federated_types import (
     DatacenterConfig,
     HierarchicalRegionData,
@@ -36,9 +38,10 @@ from mpreg.datastructures.federated_types import (
     TopologyComparisonConfig,
     TopologyComparisonResult,
 )
+
+pytestmark = pytest.mark.slow
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
-from tests.port_allocator import get_port_allocator
 
 @dataclass
 class PerformanceMetrics:
@@ -328,6 +331,7 @@ class AdvancedTopologyBuilder:
                     connect=connect_to,
                     advertised_urls=None,
                     gossip_interval=0.5,
+                    monitoring_enabled=False,
                 )
             )
 
@@ -366,6 +370,7 @@ class AdvancedTopologyBuilder:
                 connect=f"ws://127.0.0.1:{hub_port}",  # Connect to gossip cluster
                 advertised_urls=None,
                 gossip_interval=0.3,  # Faster federation gossip
+                monitoring_enabled=False,
             )
 
             bridge_server = MPREGServer(settings=bridge_settings)
@@ -774,6 +779,8 @@ class TestAdvancedTopologicalResearch:
                 start_time = time.time()
 
                 # Create single cluster with specified topology
+                tasks_start = len(test_context.tasks)
+                servers_start = len(test_context.servers)
                 ports = builder.port_allocator.allocate_port_range(size, "research")
                 servers = await builder._create_gossip_cluster(
                     ports, f"perf-test-{topology.lower()}", topology
@@ -831,6 +838,25 @@ class TestAdvancedTopologicalResearch:
                 print(f"     Propagation: {propagation_time:.0f}ms")
                 print(f"     Efficiency: {efficiency:.2%}")
                 print(f"     Success rate: {propagation_success_rate:.2%}")
+
+                # Explicitly shutdown this cluster before next iteration.
+                await asyncio.gather(
+                    *(server.shutdown_async() for server in servers),
+                    return_exceptions=True,
+                )
+                new_tasks = test_context.tasks[tasks_start:]
+                if new_tasks:
+                    await asyncio.wait(
+                        new_tasks, timeout=max(2.0, len(new_tasks) * 0.2)
+                    )
+                for task in new_tasks:
+                    if not task.done():
+                        task.cancel()
+                if new_tasks:
+                    await asyncio.gather(*new_tasks, return_exceptions=True)
+                del test_context.tasks[tasks_start:]
+                del test_context.servers[servers_start:]
+                await asyncio.sleep(0.1)
 
                 # Clean up for next test
                 for port in ports:
@@ -1104,6 +1130,19 @@ class TestAdvancedTopologicalResearch:
 
         print("✅ Multi-layer federation cascade research completed")
 
+        # Explicit cleanup to avoid socket leaks from layered clusters.
+        await asyncio.gather(
+            *(server.shutdown_async() for server in all_layer_servers),
+            return_exceptions=True,
+        )
+        for task in list(test_context.tasks):
+            if not task.done():
+                task.cancel()
+        if test_context.tasks:
+            await asyncio.gather(*test_context.tasks, return_exceptions=True)
+        test_context.servers.clear()
+        test_context.tasks.clear()
+
     async def test_dynamic_mesh_reconfiguration_research(
         self,
         test_context: AsyncTestContext,
@@ -1279,6 +1318,19 @@ class TestAdvancedTopologicalResearch:
         assert analysis_time < 1000, f"Analysis too slow: {analysis_time:.0f}ms"
 
         print("✅ Dynamic mesh reconfiguration research completed")
+
+        # Explicit cleanup to avoid leaking connections in this test.
+        await asyncio.gather(
+            *(server.shutdown_async() for server in servers),
+            return_exceptions=True,
+        )
+        for task in list(test_context.tasks):
+            if not task.done():
+                task.cancel()
+        if test_context.tasks:
+            await asyncio.gather(*test_context.tasks, return_exceptions=True)
+        test_context.servers.clear()
+        test_context.tasks.clear()
 
     async def test_byzantine_fault_tolerant_federation(
         self,
@@ -1628,12 +1680,14 @@ class TestAdvancedTopologicalResearch:
                         connect=connect_to,
                         advertised_urls=None,
                         gossip_interval=0.4,  # Fast gossip for load balancing
+                        monitoring_enabled=False,
                     )
 
                     server = MPREGServer(settings=settings)
                     region_servers.append(server)
                     tier_servers.append(server)
                     all_servers.append(server)
+                    test_context.servers.append(server)
 
                     # Start server
                     task = asyncio.create_task(server.server())
@@ -1771,7 +1825,7 @@ class TestAdvancedTopologicalResearch:
             for server in all_servers:
                 tier_function_count += sum(
                     1
-                    for func_name in server.cluster.funtimes.keys()
+                    for func_name in server.cluster.funtimes
                     if function_pattern in func_name
                 )
 
@@ -1923,6 +1977,24 @@ class TestAdvancedTopologicalResearch:
         print(
             "✅ Hierarchical regional federation with auto-balancing research completed"
         )
+
+        # Explicitly shutdown to avoid socket leaks in this long-running topology test.
+        await asyncio.gather(
+            *(server.shutdown_async() for server in all_servers),
+            return_exceptions=True,
+        )
+        pending_tasks = list(test_context.tasks)
+        if pending_tasks:
+            await asyncio.wait(
+                pending_tasks, timeout=max(2.0, len(pending_tasks) * 0.2)
+            )
+        for task in pending_tasks:
+            if not task.done():
+                task.cancel()
+        if pending_tasks:
+            await asyncio.gather(*pending_tasks, return_exceptions=True)
+        test_context.servers.clear()
+        test_context.tasks.clear()
 
     async def test_cross_datacenter_federation_with_latency_simulation(
         self,
@@ -2237,6 +2309,24 @@ class TestAdvancedTopologicalResearch:
 
         print("✅ Cross-datacenter federation with latency simulation completed")
 
+        # Explicit cleanup to avoid leaked sockets in cross-datacenter topology.
+        await asyncio.gather(
+            *(server.shutdown_async() for server in all_servers),
+            return_exceptions=True,
+        )
+        pending_tasks = list(test_context.tasks)
+        if pending_tasks:
+            await asyncio.wait(
+                pending_tasks, timeout=max(2.0, len(pending_tasks) * 0.2)
+            )
+        for task in pending_tasks:
+            if not task.done():
+                task.cancel()
+        if pending_tasks:
+            await asyncio.gather(*pending_tasks, return_exceptions=True)
+        test_context.servers.clear()
+        test_context.tasks.clear()
+
     async def test_comprehensive_topology_performance_comparison(
         self,
         test_context: AsyncTestContext,
@@ -2375,12 +2465,10 @@ class TestAdvancedTopologicalResearch:
                 # Create federation bridges
                 for i in range(len(regional_leaders)):
                     for j in range(i + 1, len(regional_leaders)):
-                        try:
+                        with contextlib.suppress(Exception):
                             await regional_leaders[i]._establish_peer_connection(
                                 f"ws://127.0.0.1:{regional_leaders[j].settings.port}"
                             )
-                        except Exception:
-                            pass
 
                 await asyncio.sleep(2.0)
 
@@ -3141,13 +3229,14 @@ class TestAdvancedTopologicalResearch:
 
         # Planet-scale federation configuration using proper dataclasses
         # RESTORED: Now using proper capability test sizes with scalability fix
+        continent_ports = builder.port_allocator.allocate_port_range(3, "research")
         planet_scale_config = PlanetScaleConfig(
             continents=(
                 ContinentalConfig(
                     name="North-America",
                     regions=("US-East", "US-West", "US-Central"),
                     nodes_per_region=4,  # Restored to full capability test size
-                    base_port=8000,
+                    base_port=continent_ports[0],
                     vector_clock_sync=True,
                     merkle_tree_verification=True,
                 ),
@@ -3155,7 +3244,7 @@ class TestAdvancedTopologicalResearch:
                     name="Europe",
                     regions=("EU-West", "EU-Central", "EU-North"),
                     nodes_per_region=3,  # Restored to full capability test size
-                    base_port=8030,
+                    base_port=continent_ports[1],
                     vector_clock_sync=True,
                     merkle_tree_verification=True,
                 ),
@@ -3163,7 +3252,7 @@ class TestAdvancedTopologicalResearch:
                     name="Asia-Pacific",
                     regions=("Asia-East", "Asia-Southeast"),
                     nodes_per_region=3,  # Restored to full capability test size
-                    base_port=8060,
+                    base_port=continent_ports[2],
                     vector_clock_sync=True,
                     merkle_tree_verification=True,
                 ),
@@ -3522,6 +3611,19 @@ class TestAdvancedTopologicalResearch:
         assert final_planet_metrics.merkle_trees_built >= 3  # One per continent
 
         print("✅ Planet-scale federation benchmarking suite completed")
+
+        # Explicit cleanup to prevent socket leaks in planet-scale topology.
+        await asyncio.gather(
+            *(server.shutdown_async() for server in all_servers),
+            return_exceptions=True,
+        )
+        for task in list(test_context.tasks):
+            if not task.done():
+                task.cancel()
+        if test_context.tasks:
+            await asyncio.gather(*test_context.tasks, return_exceptions=True)
+        test_context.servers.clear()
+        test_context.tasks.clear()
 
     async def test_dynamic_topology_reconfiguration(
         self,

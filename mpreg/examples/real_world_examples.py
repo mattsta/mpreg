@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 #!/usr/bin/env python3
 """Real-world examples demonstrating MPREG's practical applications.
 
-Run with: poetry run python mpreg/examples/real_world_examples.py
+Run with: uv run python mpreg/examples/real_world_examples.py
 """
 
 import asyncio
@@ -10,19 +12,24 @@ import time
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 from mpreg.core.model import RPCCommand
+from mpreg.core.port_allocator import port_range_context
 from mpreg.server import MPREGServer
 
 class DataPipelineExample:
     """Real-time data processing pipeline across specialized nodes."""
 
-    async def setup_pipeline_cluster(self):
+    async def setup_pipeline_cluster(self, ports: list[int]):
         """Setup a multi-node data processing cluster."""
+        if len(ports) < 4:
+            raise ValueError("Pipeline cluster requires four ports")
+
+        hub_url = f"ws://127.0.0.1:{ports[0]}"
         servers = []
 
         # Data Ingestion Node
         ingestion_server = MPREGServer(
             MPREGSettings(
-                port=9001,
+                port=ports[0],
                 name="Data-Ingestion",
                 resources={"ingestion", "raw-data", "sensors"},
                 log_level="INFO",
@@ -32,10 +39,10 @@ class DataPipelineExample:
         # Data Processing Node
         processing_server = MPREGServer(
             MPREGSettings(
-                port=9002,
+                port=ports[1],
                 name="Data-Processing",
                 resources={"processing", "etl", "validation"},
-                peers=["ws://127.0.0.1:9001"],
+                peers=[hub_url],
                 log_level="INFO",
             )
         )
@@ -43,10 +50,10 @@ class DataPipelineExample:
         # Analytics Node
         analytics_server = MPREGServer(
             MPREGSettings(
-                port=9003,
+                port=ports[2],
                 name="Analytics-Engine",
                 resources={"analytics", "ml", "insights"},
-                peers=["ws://127.0.0.1:9001"],
+                peers=[hub_url],
                 log_level="INFO",
             )
         )
@@ -54,10 +61,10 @@ class DataPipelineExample:
         # Storage Node
         storage_server = MPREGServer(
             MPREGSettings(
-                port=9004,
+                port=ports[3],
                 name="Data-Storage",
                 resources={"storage", "database", "persistence"},
-                peers=["ws://127.0.0.1:9001"],
+                peers=[hub_url],
                 log_level="INFO",
             )
         )
@@ -225,6 +232,7 @@ class DataPipelineExample:
             }
 
             return {
+                **data,
                 "storage_record": storage_record,
                 "stored": True,
                 "record_id": storage_record["record_id"],
@@ -256,127 +264,148 @@ class DataPipelineExample:
     async def run_pipeline_example(self):
         """Demonstrate the complete data pipeline."""
         print("🏭 Setting up real-time data processing pipeline...")
-        servers = await self.setup_pipeline_cluster()
+        with port_range_context(4, "servers") as ports:
+            servers: list[MPREGServer] = []
+            try:
+                servers = await self.setup_pipeline_cluster(ports)
+                async with MPREGClientAPI(f"ws://127.0.0.1:{ports[0]}") as client:
+                    print("📊 Processing sensor data through the pipeline...")
 
-        try:
-            async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
-                print("📊 Processing sensor data through the pipeline...")
+                    # Simulate processing multiple sensor streams
+                    sensor_data = [
+                        ("temp_sensor_01", [22.5, 23.1, 24.0, 25.2, 23.8]),
+                        (
+                            "pressure_sensor_02",
+                            [101.3, 101.1, 101.4, 102.8, 101.2],
+                        ),  # Anomalous reading
+                        ("humidity_sensor_03", [45.2, 46.1, 44.8, 45.5, 46.0]),
+                    ]
 
-                # Simulate processing multiple sensor streams
-                sensor_data = [
-                    ("temp_sensor_01", [22.5, 23.1, 24.0, 25.2, 23.8]),
-                    (
-                        "pressure_sensor_02",
-                        [101.3, 101.1, 101.4, 102.8, 101.2],
-                    ),  # Anomalous reading
-                    ("humidity_sensor_03", [45.2, 46.1, 44.8, 45.5, 46.0]),
-                ]
+                    pipeline_results = []
 
-                pipeline_results = []
+                    for sensor_id, readings in sensor_data:
+                        print(f"   Processing {sensor_id}...")
 
-                for sensor_id, readings in sensor_data:
-                    print(f"   Processing {sensor_id}...")
+                        # Complete pipeline workflow
+                        result = await client._client.request(
+                            [
+                                # Stage 1: Ingest raw data
+                                RPCCommand(
+                                    name="ingested",
+                                    fun="ingest_sensor_data",
+                                    args=(sensor_id, readings),
+                                    locs=frozenset(["ingestion", "raw-data"]),
+                                ),
+                                # Stage 2: Validate format
+                                RPCCommand(
+                                    name="validated",
+                                    fun="validate_format",
+                                    args=("ingested",),
+                                    locs=frozenset(["ingestion", "sensors"]),
+                                ),
+                                # Stage 3: Clean and normalize
+                                RPCCommand(
+                                    name="cleaned",
+                                    fun="clean_data",
+                                    args=("validated",),
+                                    locs=frozenset(["processing", "etl"]),
+                                ),
+                                # Stage 4: Calculate metrics
+                                RPCCommand(
+                                    name="aggregated",
+                                    fun="aggregate_metrics",
+                                    args=("cleaned",),
+                                    locs=frozenset(["processing", "validation"]),
+                                ),
+                                # Stage 5: Detect anomalies
+                                RPCCommand(
+                                    name="analyzed",
+                                    fun="detect_anomalies",
+                                    args=("aggregated",),
+                                    locs=frozenset(["analytics", "ml"]),
+                                ),
+                                # Stage 6: Generate insights
+                                RPCCommand(
+                                    name="insights",
+                                    fun="generate_insights",
+                                    args=("analyzed",),
+                                    locs=frozenset(["analytics", "insights"]),
+                                ),
+                                # Stage 7: Store data
+                                RPCCommand(
+                                    name="stored",
+                                    fun="store_data",
+                                    args=("insights",),
+                                    locs=frozenset(["storage", "database"]),
+                                ),
+                                # Stage 8: Create dashboard summary
+                                RPCCommand(
+                                    name="summary",
+                                    fun="create_summary",
+                                    args=("stored",),
+                                    locs=frozenset(["storage", "persistence"]),
+                                ),
+                            ]
+                        )
 
-                    # Complete pipeline workflow
-                    result = await client._client.request(
-                        [
-                            # Stage 1: Ingest raw data
-                            RPCCommand(
-                                name="ingested",
-                                fun="ingest_sensor_data",
-                                args=(sensor_id, readings),
-                                locs=frozenset(["ingestion", "raw-data"]),
-                            ),
-                            # Stage 2: Validate format
-                            RPCCommand(
-                                name="validated",
-                                fun="validate_format",
-                                args=("ingested",),
-                                locs=frozenset(["ingestion", "sensors"]),
-                            ),
-                            # Stage 3: Clean and normalize
-                            RPCCommand(
-                                name="cleaned",
-                                fun="clean_data",
-                                args=("validated",),
-                                locs=frozenset(["processing", "etl"]),
-                            ),
-                            # Stage 4: Calculate metrics
-                            RPCCommand(
-                                name="aggregated",
-                                fun="aggregate_metrics",
-                                args=("cleaned",),
-                                locs=frozenset(["processing", "validation"]),
-                            ),
-                            # Stage 5: Detect anomalies
-                            RPCCommand(
-                                name="analyzed",
-                                fun="detect_anomalies",
-                                args=("aggregated",),
-                                locs=frozenset(["analytics", "ml"]),
-                            ),
-                            # Stage 6: Generate insights
-                            RPCCommand(
-                                name="insights",
-                                fun="generate_insights",
-                                args=("analyzed",),
-                                locs=frozenset(["analytics", "insights"]),
-                            ),
-                            # Stage 7: Store data
-                            RPCCommand(
-                                name="stored",
-                                fun="store_data",
-                                args=("insights",),
-                                locs=frozenset(["storage", "database"]),
-                            ),
-                            # Stage 8: Create dashboard summary
-                            RPCCommand(
-                                name="summary",
-                                fun="create_summary",
-                                args=("stored",),
-                                locs=frozenset(["storage", "persistence"]),
-                            ),
-                        ]
-                    )
+                        pipeline_results.append(result)
 
-                    pipeline_results.append(result)
+                        # Show key results
+                        summary = result["summary"]["dashboard_summary"]
+                        if result["summary"].get("stored") is not True:
+                            raise RuntimeError("Pipeline demo: storage failed")
+                        if summary["reading_count"] > 0:
+                            if not summary.get("processing_complete"):
+                                raise RuntimeError(
+                                    "Pipeline demo: processing incomplete"
+                                )
+                        else:
+                            if result["summary"].get("outliers_removed", 0) <= 0:
+                                raise RuntimeError(
+                                    "Pipeline demo: invalid empty result"
+                                )
+                        print(f"      ✅ Processed {summary['reading_count']} readings")
+                        print(f"      ⚠️  Anomaly detected: {summary['has_anomaly']}")
+                        print(
+                            f"      💡 Insights generated: {summary['insight_count']}"
+                        )
+                        print(
+                            f"      ⏱️  Pipeline duration: {summary['pipeline_duration']:.3f}s"
+                        )
 
-                    # Show key results
-                    summary = result["summary"]["dashboard_summary"]
-                    print(f"      ✅ Processed {summary['reading_count']} readings")
-                    print(f"      ⚠️  Anomaly detected: {summary['has_anomaly']}")
-                    print(f"      💡 Insights generated: {summary['insight_count']}")
+                    print("\n🎯 Pipeline Demonstration Complete!")
+                    print("✨ This showcases MPREG's ability to:")
+                    print("   • Route data through specialized processing nodes")
+                    print("   • Handle complex multi-stage dependencies automatically")
                     print(
-                        f"      ⏱️  Pipeline duration: {summary['pipeline_duration']:.3f}s"
+                        "   • Provide real-time processing with millisecond latencies"
                     )
+                    print("   • Scale horizontally across different resource types")
 
-                print("\n🎯 Pipeline Demonstration Complete!")
-                print("✨ This showcases MPREG's ability to:")
-                print("   • Route data through specialized processing nodes")
-                print("   • Handle complex multi-stage dependencies automatically")
-                print("   • Provide real-time processing with millisecond latencies")
-                print("   • Scale horizontally across different resource types")
+                    return pipeline_results
 
-                return pipeline_results
-
-        finally:
-            print("\n🧹 Shutting down pipeline cluster...")
-            for server in servers:
-                if hasattr(server, "_shutdown_event"):
-                    server._shutdown_event.set()
-            await asyncio.sleep(0.5)
+            finally:
+                print("\n🧹 Shutting down pipeline cluster...")
+                for server in servers:
+                    if hasattr(server, "_shutdown_event"):
+                        server._shutdown_event.set()
+                await asyncio.sleep(0.5)
 
 class MLInferenceExample:
     """Distributed ML inference pipeline with model routing."""
 
-    async def setup_ml_cluster(self):
+    async def setup_ml_cluster(self, ports: list[int]):
         """Setup ML inference cluster with specialized model nodes."""
+        if len(ports) < 4:
+            raise ValueError("ML cluster requires four ports")
+
+        hub_url = f"ws://127.0.0.1:{ports[0]}"
         servers = []
 
         # Model Router / Load Balancer
         router = MPREGServer(
             MPREGSettings(
-                port=9001,
+                port=ports[0],
                 name="ML-Router",
                 resources={"routing", "orchestration"},
                 log_level="INFO",
@@ -386,10 +415,10 @@ class MLInferenceExample:
         # Vision Models Node
         vision_node = MPREGServer(
             MPREGSettings(
-                port=9002,
+                port=ports[1],
                 name="Vision-Models",
                 resources={"vision", "image-classification", "object-detection"},
-                peers=["ws://127.0.0.1:9001"],
+                peers=[hub_url],
                 log_level="INFO",
             )
         )
@@ -397,10 +426,10 @@ class MLInferenceExample:
         # NLP Models Node
         nlp_node = MPREGServer(
             MPREGSettings(
-                port=9003,
+                port=ports[2],
                 name="NLP-Models",
                 resources={"nlp", "text-analysis", "sentiment"},
-                peers=["ws://127.0.0.1:9001"],
+                peers=[hub_url],
                 log_level="INFO",
             )
         )
@@ -408,10 +437,10 @@ class MLInferenceExample:
         # Feature Processing Node
         feature_node = MPREGServer(
             MPREGSettings(
-                port=9004,
+                port=ports[3],
                 name="Feature-Processing",
                 resources={"preprocessing", "feature-extraction", "embeddings"},
-                peers=["ws://127.0.0.1:9001"],
+                peers=[hub_url],
                 log_level="INFO",
             )
         )
@@ -591,132 +620,155 @@ class MLInferenceExample:
     async def run_ml_inference_example(self):
         """Demonstrate distributed ML inference."""
         print("🤖 Setting up distributed ML inference cluster...")
-        servers = await self.setup_ml_cluster()
+        with port_range_context(4, "servers") as ports:
+            servers: list[MPREGServer] = []
+            try:
+                servers = await self.setup_ml_cluster(ports)
+                async with MPREGClientAPI(f"ws://127.0.0.1:{ports[0]}") as client:
+                    print("🔍 Running ML inference examples...")
 
-        try:
-            async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
-                print("🔍 Running ML inference examples...")
+                    # Vision inference pipeline
+                    print("   📸 Image Classification Pipeline:")
+                    vision_result = await client._client.request(
+                        [
+                            RPCCommand(
+                                name="routed_vision",
+                                fun="route_request",
+                                args=("image", "resnet50", "cat_photo.jpg"),
+                                locs=frozenset(["routing"]),
+                            ),
+                            RPCCommand(
+                                name="preprocessed_image",
+                                fun="preprocess_image",
+                                args=("routed_vision",),
+                                locs=frozenset(["preprocessing", "feature-extraction"]),
+                            ),
+                            RPCCommand(
+                                name="classified",
+                                fun="classify_image",
+                                args=("preprocessed_image",),
+                                locs=frozenset(["vision", "image-classification"]),
+                            ),
+                        ]
+                    )
 
-                # Vision inference pipeline
-                print("   📸 Image Classification Pipeline:")
-                vision_result = await client._client.request(
-                    [
-                        RPCCommand(
-                            name="routed_vision",
-                            fun="route_request",
-                            args=("image", "resnet50", "cat_photo.jpg"),
-                            locs=frozenset(["routing"]),
-                        ),
-                        RPCCommand(
-                            name="preprocessed_image",
-                            fun="preprocess_image",
-                            args=("routed_vision",),
-                            locs=frozenset(["preprocessing", "feature-extraction"]),
-                        ),
-                        RPCCommand(
-                            name="classified",
-                            fun="classify_image",
-                            args=("preprocessed_image",),
+                    classification = vision_result["classified"]
+                    top_pred = classification["top_prediction"]
+                    if not top_pred or top_pred[1] <= 0:
+                        raise RuntimeError("ML demo: invalid classification result")
+                    print(
+                        f"      🎯 Prediction: {top_pred[0]} (confidence: {top_pred[1]:.2f})"
+                    )
+                    print(
+                        f"      ⏱️  Total inference time: {classification['inference_time_ms']}ms"
+                    )
+
+                    # NLP inference pipeline
+                    print("\n   📝 Text Analysis Pipeline:")
+                    text_sample = "This product is absolutely amazing! Great quality and fantastic value."
+
+                    nlp_result = await client._client.request(
+                        [
+                            RPCCommand(
+                                name="routed_text",
+                                fun="route_request",
+                                args=("text", "bert-sentiment", text_sample),
+                                locs=frozenset(["routing"]),
+                            ),
+                            RPCCommand(
+                                name="text_features",
+                                fun="extract_text_features",
+                                args=("routed_text",),
+                                locs=frozenset(["preprocessing", "embeddings"]),
+                            ),
+                            RPCCommand(
+                                name="sentiment_analyzed",
+                                fun="analyze_sentiment",
+                                args=("text_features",),
+                                locs=frozenset(["nlp", "sentiment"]),
+                            ),
+                            RPCCommand(
+                                name="entities_extracted",
+                                fun="extract_entities",
+                                args=("text_features",),
+                                locs=frozenset(["nlp", "text-analysis"]),
+                            ),
+                        ]
+                    )
+
+                    sentiment = nlp_result["sentiment_analyzed"]
+                    entities = nlp_result["entities_extracted"]
+                    if entities["entity_count"] <= 0:
+                        raise RuntimeError("ML demo: missing entities")
+                    if sentiment["sentiment"] not in {
+                        "positive",
+                        "negative",
+                        "neutral",
+                    }:
+                        raise RuntimeError("ML demo: invalid sentiment")
+                    print(
+                        f"      😊 Sentiment: {sentiment['sentiment']} (confidence: {sentiment['confidence_score']:.2f})"
+                    )
+                    print(f"      🏷️  Entities found: {entities['entity_count']}")
+
+                    # Parallel inference for multiple models
+                    print("\n   ⚡ Parallel Multi-Model Inference:")
+                    parallel_tasks = [
+                        client.call(
+                            "classify_image",
+                            {"model_name": "mobilenet", "input_data": "dog_photo.jpg"},
                             locs=frozenset(["vision", "image-classification"]),
                         ),
-                    ]
-                )
-
-                classification = vision_result["classified"]
-                top_pred = classification["top_prediction"]
-                print(
-                    f"      🎯 Prediction: {top_pred[0]} (confidence: {top_pred[1]:.2f})"
-                )
-                print(
-                    f"      ⏱️  Total inference time: {classification['inference_time_ms']}ms"
-                )
-
-                # NLP inference pipeline
-                print("\n   📝 Text Analysis Pipeline:")
-                text_sample = "This product is absolutely amazing! Great quality and fantastic value."
-
-                nlp_result = await client._client.request(
-                    [
-                        RPCCommand(
-                            name="routed_text",
-                            fun="route_request",
-                            args=("text", "bert-sentiment", text_sample),
-                            locs=frozenset(["routing"]),
+                        client.call(
+                            "detect_objects",
+                            {"model_name": "yolo", "input_data": "street_scene.jpg"},
+                            locs=frozenset(["vision", "object-detection"]),
                         ),
-                        RPCCommand(
-                            name="text_features",
-                            fun="extract_text_features",
-                            args=("routed_text",),
-                            locs=frozenset(["preprocessing", "embeddings"]),
-                        ),
-                        RPCCommand(
-                            name="sentiment_analyzed",
-                            fun="analyze_sentiment",
-                            args=("text_features",),
+                        client.call(
+                            "analyze_sentiment",
+                            {
+                                "input_data": "The service was terrible and disappointing."
+                            },
                             locs=frozenset(["nlp", "sentiment"]),
                         ),
-                        RPCCommand(
-                            name="entities_extracted",
-                            fun="extract_entities",
-                            args=("text_features",),
-                            locs=frozenset(["nlp", "text-analysis"]),
-                        ),
                     ]
-                )
 
-                sentiment = nlp_result["sentiment_analyzed"]
-                entities = nlp_result["entities_extracted"]
-                print(
-                    f"      😊 Sentiment: {sentiment['sentiment']} (confidence: {sentiment['confidence_score']:.2f})"
-                )
-                print(f"      🏷️  Entities found: {entities['entity_count']}")
+                    start_time = time.time()
+                    parallel_results = await asyncio.gather(*parallel_tasks)
+                    parallel_time = time.time() - start_time
 
-                # Parallel inference for multiple models
-                print("\n   ⚡ Parallel Multi-Model Inference:")
-                parallel_tasks = [
-                    client.call(
-                        "classify_image",
-                        {"model_name": "mobilenet", "input_data": "dog_photo.jpg"},
-                        locs=frozenset(["vision", "image-classification"]),
-                    ),
-                    client.call(
-                        "detect_objects",
-                        {"model_name": "yolo", "input_data": "street_scene.jpg"},
-                        locs=frozenset(["vision", "object-detection"]),
-                    ),
-                    client.call(
-                        "analyze_sentiment",
-                        {"input_data": "The service was terrible and disappointing."},
-                        locs=frozenset(["nlp", "sentiment"]),
-                    ),
-                ]
+                    if len(parallel_results) != 3:
+                        raise RuntimeError("ML demo: parallel inference failed")
+                    print(
+                        f"      🏃 Processed 3 different models in {parallel_time:.3f}s"
+                    )
+                    print(f"      📊 Average per-model time: {parallel_time / 3:.3f}s")
 
-                start_time = time.time()
-                parallel_results = await asyncio.gather(*parallel_tasks)
-                parallel_time = time.time() - start_time
+                    print("\n🎯 ML Inference Demonstration Complete!")
+                    print("✨ This showcases MPREG's ability to:")
+                    print("   • Route inference requests to specialized model nodes")
+                    print("   • Handle complex ML pipelines with preprocessing steps")
+                    print("   • Execute multiple models in parallel across the cluster")
+                    print("   • Provide sub-100ms inference times for most models")
 
-                print(f"      🏃 Processed 3 different models in {parallel_time:.3f}s")
-                print(f"      📊 Average per-model time: {parallel_time / 3:.3f}s")
+                    return {
+                        "vision": vision_result,
+                        "nlp": nlp_result,
+                        "parallel": parallel_results,
+                    }
 
-                print("\n🎯 ML Inference Demonstration Complete!")
-                print("✨ This showcases MPREG's ability to:")
-                print("   • Route inference requests to specialized model nodes")
-                print("   • Handle complex ML pipelines with preprocessing steps")
-                print("   • Execute multiple models in parallel across the cluster")
-                print("   • Provide sub-100ms inference times for most models")
+            finally:
+                print("\n🧹 Shutting down ML cluster...")
+                for server in servers:
+                    if hasattr(server, "_shutdown_event"):
+                        server._shutdown_event.set()
+                await asyncio.sleep(0.5)
 
-                return {
-                    "vision": vision_result,
-                    "nlp": nlp_result,
-                    "parallel": parallel_results,
-                }
+async def full_system_expansion_example() -> None:
+    """Run the full-system expansion workflow (Tier 3)."""
+    from mpreg.examples.tier3_full_system_expansion import main as tier3_main
 
-        finally:
-            print("\n🧹 Shutting down ML cluster...")
-            for server in servers:
-                if hasattr(server, "_shutdown_event"):
-                    server._shutdown_event.set()
-            await asyncio.sleep(0.5)
+    await tier3_main()
 
 async def main():
     """Run all real-world examples."""
@@ -734,6 +786,11 @@ async def main():
     print("-" * 50)
     ml_inference = MLInferenceExample()
     await ml_inference.run_ml_inference_example()
+
+    # Full system expansion
+    print("\n🌐 Example 3: Full System Expansion (All Systems)")
+    print("-" * 50)
+    await full_system_expansion_example()
 
     print("\n" + "=" * 50)
     print("🎉 All examples completed successfully!")

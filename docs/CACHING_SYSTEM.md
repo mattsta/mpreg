@@ -5,6 +5,7 @@
 - [Purpose and Goals](#purpose-and-goals)
 - [Why This Caching System Exists](#why-this-caching-system-exists)
 - [Architecture Overview](#architecture-overview)
+- [Fabric Integration](#fabric-integration)
 - [Key Components](#key-components)
 - [Advanced Cache Operations](#advanced-cache-operations)
 - [Implementation Details](#implementation-details)
@@ -106,6 +107,44 @@ if config.should_evict(current_memory, current_count):
 # 3. Usage-Based Promotion (S4LRU)
 if frequent_access:
     promote_to_higher_segment()  # Better retention
+```
+
+## Fabric Integration
+
+The caching system is a core local component (L1), and the distributed and
+federated cache paths are implemented on top of the unified fabric control
+plane. The high-level integration looks like this:
+
+- **Local cache (L1)**: `SmartCacheManager` and `CacheConfiguration`.
+- **Distributed cache (L3)**: `GlobalCacheManager` + `FabricCacheProtocol`.
+- **Federated cache (L4)**: same fabric protocol, with cross-cluster scope
+  governed by federation policy.
+
+When enabled, the server wires `ServerCacheTransport` and `FabricCacheProtocol`
+automatically, and cache node profiles (region, latency, capacity) are
+advertised through the routing catalog for geo-aware replication decisions.
+
+See:
+
+- `docs/CACHE_FEDERATION_GUIDE.md`
+- `docs/ARCHITECTURE.md`
+
+## Persistence Modes
+
+L2 persistence is backed by the unified persistence layer. Configure the backend
+via `MPREGSettings.persistence_config`:
+
+```python
+from mpreg.core.config import MPREGSettings
+from mpreg.core.persistence.config import PersistenceConfig, PersistenceMode
+
+settings = MPREGSettings(
+    enable_default_cache=True,
+    enable_cache_federation=True,
+    persistence_config=PersistenceConfig(
+        mode=PersistenceMode.SQLITE,
+    ),
+)
 ```
 
 ## Key Components
@@ -1157,3 +1196,9 @@ The MPREG Smart Caching System represents a **production-ready solution** for th
 The system's design philosophy of **"measure everything, cache intelligently"** ensures that it can adapt to diverse workload characteristics while maintaining predictable performance and resource usage in production environments.
 
 Whether you're building AI inference services, data processing pipelines, or distributed research platforms, the MPREG caching system provides the tools and flexibility needed to optimize performance while respecting resource constraints.
+
+## See Also
+
+- `docs/CACHE_FEDERATION_GUIDE.md`
+- `docs/CACHE_FEDERATION_CONFLICT_RESOLUTION.md`
+- `docs/ARCHITECTURE.md`

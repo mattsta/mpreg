@@ -225,6 +225,7 @@ class UnifiedSystemMonitor:
     cache_monitor: MonitoringSystemProtocol | None = None
     federation_monitor: MonitoringSystemProtocol | None = None
     transport_monitor: MonitoringSystemProtocol | None = None
+    transport_adapter: Any | None = None
 
     # Event tracking with ULID-based stable tracking IDs
     event_history: deque[CrossSystemEvent] = field(
@@ -276,7 +277,7 @@ class UnifiedSystemMonitor:
             task = asyncio.create_task(self._health_monitoring_task())
             self._monitoring_tasks.append(task)
 
-        logger.info(
+        logger.debug(
             f"Unified system monitor started with {len(self._monitoring_tasks)} background tasks"
         )
 
@@ -295,7 +296,7 @@ class UnifiedSystemMonitor:
             await asyncio.gather(*self._monitoring_tasks, return_exceptions=True)
 
         self._monitoring_tasks.clear()
-        logger.info("Unified system monitor stopped")
+        logger.debug("Unified system monitor stopped")
 
     def generate_tracking_id(
         self, existing_id: str | None = None, namespace_prefix: str = "mon"
@@ -590,15 +591,36 @@ class UnifiedSystemMonitor:
         self,
     ) -> dict[EndpointUrl, TransportHealthSnapshot]:
         """Collect transport health snapshots from enhanced transport layer."""
-        # This would integrate with the enhanced transport monitoring
-        # For now, return empty dict as placeholder
-        return {}
+        if self.transport_adapter is None:
+            return {}
+
+        snapshots: dict[EndpointUrl, TransportHealthSnapshot] = {}
+        health_aggregators = getattr(self.transport_adapter, "health_aggregators", None)
+        if not isinstance(health_aggregators, dict):
+            return {}
+
+        for endpoint, aggregator in health_aggregators.items():
+            try:
+                snapshots[endpoint] = aggregator.get_transport_health_snapshot()
+            except Exception as e:
+                logger.debug(f"Failed to collect transport health for {endpoint}: {e}")
+
+        return snapshots
 
     async def _collect_transport_correlation_results(self) -> list[CorrelationResult]:
         """Collect transport correlation results from enhanced transport layer."""
-        # This would integrate with the enhanced transport correlation tracking
-        # For now, return empty list as placeholder
-        return []
+        if self.transport_adapter is None:
+            return []
+
+        tracker = getattr(self.transport_adapter, "correlation_tracker", None)
+        if tracker is None:
+            return []
+
+        history = getattr(tracker, "correlation_history", None)
+        if history is None:
+            return []
+
+        return list(history)
 
     def _calculate_correlation_metrics(
         self, transport_health: dict[EndpointUrl, TransportHealthSnapshot]
@@ -946,6 +968,10 @@ class UnifiedSystemMonitor:
         """Async context manager exit."""
         await self.stop()
 
+    def attach_transport_adapter(self, adapter: Any) -> None:
+        """Attach an enhanced transport adapter for monitoring."""
+        self.transport_adapter = adapter
+
 # Factory function for creating unified system monitors
 def create_unified_system_monitor(
     metrics_collection_interval_ms: float = 5000.0,
@@ -957,6 +983,7 @@ def create_unified_system_monitor(
     enable_federation_monitoring: bool = True,
     enable_cache_monitoring: bool = True,
     enable_cross_system_correlation: bool = True,
+    transport_adapter: Any | None = None,
 ) -> UnifiedSystemMonitor:
     """Create a unified system monitor with specified configuration."""
     config = MonitoringConfig(
@@ -971,4 +998,7 @@ def create_unified_system_monitor(
         enable_cross_system_correlation=enable_cross_system_correlation,
     )
 
-    return UnifiedSystemMonitor(config=config)
+    monitor = UnifiedSystemMonitor(config=config)
+    if transport_adapter is not None:
+        monitor.attach_transport_adapter(transport_adapter)
+    return monitor

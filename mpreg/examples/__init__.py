@@ -1,8 +1,9 @@
 """MPREG Examples Module
 
-This module contains comprehensive examples demonstrating MPREG's capabilities:
-- Production deployment patterns
-- Performance benchmarking tools
-- Federation system examples
-- Real-world workflow demonstrations
+Example tiers:
+- Tier 1: Full capability of a single system
+- Tier 2: Integration of two systems
+- Tier 3: Full system expansion across all systems
 """
+
+from __future__ import annotations

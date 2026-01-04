@@ -7,12 +7,12 @@ from collections.abc import AsyncGenerator
 
 import pytest
 import pytest_asyncio
-
-from tests.conftest import AsyncTestContext
 from tests.port_allocator import get_port_allocator
 
+from tests.conftest import AsyncTestContext
+
 @pytest_asyncio.fixture
-async def my_test_context() -> AsyncGenerator[AsyncTestContext, None]:
+async def my_test_context() -> AsyncGenerator[AsyncTestContext]:
     """Copy of the test_context fixture."""
     print("🔧 Setting up AsyncTestContext...")
     async with AsyncTestContext() as ctx:

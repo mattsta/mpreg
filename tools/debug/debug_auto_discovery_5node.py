@@ -5,6 +5,7 @@ This tests whether nodes auto-discover each other through gossip WITHOUT manual 
 """
 
 import asyncio
+import contextlib
 
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
@@ -121,10 +122,8 @@ async def test_auto_discovery_linear_chain():
     # Cleanup
     for task in tasks:
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
 
 if __name__ == "__main__":
     asyncio.run(test_auto_discovery_linear_chain())

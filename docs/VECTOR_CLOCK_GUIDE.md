@@ -292,7 +292,7 @@ def test_increment_monotonicity(clock, node_id):
 Run tests with:
 
 ```bash
-poetry run python -m pytest tests/test_datastructures_vector_clock.py -v
+uv run python -m pytest tests/test_datastructures_vector_clock.py -v
 ```
 
 ## Troubleshooting

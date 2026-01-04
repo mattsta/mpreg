@@ -658,6 +658,8 @@ class TestTrieProperties:
 class TestTrieStateMachine(RuleBasedStateMachine):
     """Stateful property-based testing using Hypothesis state machine."""
 
+    __test__ = False
+
     patterns = Bundle("patterns")
     subscriptions = Bundle("subscriptions")
 
@@ -729,9 +731,7 @@ class TestTrieStateMachine(RuleBasedStateMachine):
 
         if p_idx < len(pattern_segments):
             remaining = pattern_segments[p_idx:]
-            if len(remaining) == 1 and remaining[0] == "#":
-                return True
-            return False
+            return bool(len(remaining) == 1 and remaining[0] == "#")
 
         return k_idx == len(key_segments)
 

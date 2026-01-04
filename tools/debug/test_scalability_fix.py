@@ -7,9 +7,10 @@ Creates a larger cluster to test if the exponential explosion is fixed.
 import asyncio
 import logging
 
+from tests.port_allocator import PortAllocator
+
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
-from tests.port_allocator import PortAllocator
 
 # Suppress all logging to see just our output
 logging.getLogger().setLevel(logging.CRITICAL + 1)
