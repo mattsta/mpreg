@@ -561,8 +561,8 @@ class TestCacheStructuresExamples:
         meta4 = CacheMetadata(expiry_time=old_expiry)
         assert meta4.is_expired()
 
-    def test_global_cache_federation_keys(self):
-        """Test cache keys for federated scenarios."""
+    def test_global_cache_fabric_keys(self):
+        """Test cache keys for fabric-federated scenarios."""
         # Global cache key for different clusters
         key_us = CacheKey.global_key("us-west", "user:123", "global")
         key_eu = CacheKey.global_key("eu-central", "user:123", "global")

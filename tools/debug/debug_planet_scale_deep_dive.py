@@ -16,7 +16,7 @@ from loguru import logger
 
 from mpreg.core.config import MPREGSettings
 from mpreg.datastructures.vector_clock import VectorClock
-from mpreg.federation.federation_consensus import StateType, StateValue
+from mpreg.fabric.consensus import StateType, StateValue
 from mpreg.server import MPREGServer
 
 

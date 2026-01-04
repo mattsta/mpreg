@@ -1,6 +1,8 @@
 # MPREG Client Guide
 
 This guide covers the three main types of MPREG clients and how to use them over network protocols.
+Example URLs use placeholder ports; for live runs, allocate ports dynamically and share the
+resulting `MPREG_URL` with clients.
 
 ## Overview
 
@@ -11,6 +13,9 @@ MPREG provides three distinct client types, each optimized for different use cas
 3. **MPREG Cache Client** - For direct cache operations and data structures
 
 All clients operate over standard network protocols (WebSocket, TCP) and can be used from any programming language.
+For in-repo usage, prefer the unified `MPREGClientAPI` or the transport factory rather than
+opening raw sockets directly. External clients should follow the wire protocol described in
+`docs/MPREG_PROTOCOL_SPECIFICATION.md`.
 
 ---
 
@@ -18,16 +23,28 @@ All clients operate over standard network protocols (WebSocket, TCP) and can be 
 
 **Use Case**: Distributed computing, microservices, function orchestration
 
+Use `target_cluster` to constrain execution to a federated cluster and
+`routing_topic` to apply fabric routing policies when needed.
+
 ### Python Example
 
 ```python
 from mpreg.client.client_api import MPREGClientAPI
 
 async def main():
-    async with MPREGClientAPI("ws://cache-server:9001") as client:
+    async with MPREGClientAPI("ws://cache-server:<port>") as client:
         # Simple function call
         result = await client.call("fibonacci", 10)
         print(f"fib(10) = {result}")
+
+        # Function with identity + version constraints
+        result = await client.call(
+            "fibonacci",
+            10,
+            function_id="math.fibonacci",
+            version_constraint=">=1.0.0,<2.0.0",
+        )
+        print(f"fib(10) v1.x = {result}")
 
         # Function with caching
         ml_result = await client.call("ml_predict", "bert-large", [1.0, 2.0, 3.0])
@@ -36,49 +53,23 @@ async def main():
         # Dependency chain execution
         from mpreg.core.model import RPCCommand
         result = await client._client.request([
-            RPCCommand(name="step1", fun="process_data", args=(data,)),
+            RPCCommand(
+                name="step1",
+                fun="process_data",
+                args=(data,),
+                function_id="pipeline.process_data",
+                version_constraint=">=2.0.0,<3.0.0",
+            ),
             RPCCommand(name="step2", fun="analyze", args=("step1",)),  # Uses step1 result
             RPCCommand(name="final", fun="summarize", args=("step2",))
         ])
 ```
 
-### JavaScript Example
+### External Clients
 
-```javascript
-class MPREGRPCClient {
-  constructor(url) {
-    this.ws = new WebSocket(url);
-    this.requestId = 0;
-    this.pendingRequests = new Map();
-  }
-
-  async call(functionName, ...args) {
-    const requestId = `req-${++this.requestId}`;
-    const message = {
-      role: "rpc",
-      u: requestId,
-      cmds: [
-        {
-          name: "call",
-          fun: functionName,
-          args: args,
-          kwargs: {},
-          locs: [],
-        },
-      ],
-    };
-
-    return new Promise((resolve, reject) => {
-      this.pendingRequests.set(requestId, { resolve, reject });
-      this.ws.send(JSON.stringify(message));
-    });
-  }
-}
-
-// Usage
-const client = new MPREGRPCClient("ws://cache-server:9001");
-const result = await client.call("fibonacci", 10);
-```
+For JavaScript/Go/Rust/etc., implement the MPREG wire protocol and message
+envelopes. See `docs/MPREG_PROTOCOL_SPECIFICATION.md` for the exact payloads
+and framing details.
 
 ---
 
@@ -86,140 +77,83 @@ const result = await client.call("fibonacci", 10);
 
 **Use Case**: Event-driven architecture, real-time notifications, message routing
 
+Pub/sub integrates with the fabric control plane for discovery and
+cross-cluster forwarding; no separate pub/sub gossip plane exists.
+
 ### Python Example
 
 ```python
-from mpreg.core.model import PubSubMessage, PubSubSubscription
-from mpreg.core.topic_exchange import TopicExchange
+from mpreg.client.client_api import MPREGClientAPI
+from mpreg.client.pubsub_client import MPREGPubSubClient
 
 async def main():
-    exchange = TopicExchange("ws://cache-server:9001", "client_cluster")
+    base_client = MPREGClientAPI("ws://cache-server:<port>")
+    await base_client.connect()
+    pubsub = MPREGPubSubClient(base_client=base_client)
+    await pubsub.start()
 
     # Subscribe to cache events
-    subscription = PubSubSubscription(
-        subscription_id="cache-monitor",
-        patterns=[{
-            "pattern": "cache.events.#",  # All cache events
-            "exact_match": False
-        }],
-        subscriber="monitoring-client",
-        get_backlog=True
+    await pubsub.subscribe(
+        patterns=["cache.events.#"],
+        callback=handle_cache_event,
+        get_backlog=True,
     )
-
-    await exchange.subscribe(subscription, handle_cache_event)
 
     # Publish cache invalidation
-    message = PubSubMessage(
+    await pubsub.publish(
         topic="cache.invalidation.pattern.ml.*",
         payload={"pattern": "ml.*", "reason": "model_updated"},
-        publisher="admin-client"
     )
 
-    await exchange.publish(message)
+    await pubsub.stop()
+    await base_client.disconnect()
 
 async def handle_cache_event(message):
     print(f"Cache event: {message.topic}")
     print(f"Payload: {message.payload}")
 ```
 
-### Go Example
-
-```go
-package main
-
-import (
-    "encoding/json"
-    "log"
-    "github.com/gorilla/websocket"
-)
-
-type PubSubClient struct {
-    conn *websocket.Conn
-}
-
-func (c *PubSubClient) Subscribe(pattern string) error {
-    message := map[string]interface{}{
-        "role": "pubsub-subscribe",
-        "u":    "sub-12345",
-        "subscription": map[string]interface{}{
-            "subscription_id": "go-client",
-            "patterns": []map[string]interface{}{
-                {"pattern": pattern, "exact_match": false},
-            },
-            "subscriber": "go-client",
-            "get_backlog": true,
-        },
-    }
-
-    return c.conn.WriteJSON(message)
-}
-
-func (c *PubSubClient) Publish(topic string, payload interface{}) error {
-    message := map[string]interface{}{
-        "role": "pubsub-publish",
-        "u":    "pub-12345",
-        "message": map[string]interface{}{
-            "topic":     topic,
-            "payload":   payload,
-            "publisher": "go-client",
-        },
-    }
-
-    return c.conn.WriteJSON(message)
-}
-```
-
 ---
 
-## 3. MPREG Cache Client
+## 3. Global Cache Manager (In-Process)
 
-**Use Case**: Direct cache manipulation, data structures, atomic operations
+**Use Case**: Direct cache manipulation, cache federation, and cache-level control
 
 ### Python Example
 
 ```python
-from mpreg.examples.cache_client_server_demo import MPREGCacheClient
+from mpreg.fabric.cache_federation import FabricCacheProtocol
+from mpreg.fabric.cache_transport import InProcessCacheTransport
+from mpreg.core.global_cache import (
+    CacheLevel,
+    CacheMetadata,
+    CacheOptions,
+    GlobalCacheConfiguration,
+    GlobalCacheKey,
+    GlobalCacheManager,
+)
 
 async def main():
-    cache = MPREGCacheClient("ws://cache-server:9001")
-    await cache.connect()
+    cache_transport = InProcessCacheTransport()
+    cache_protocol = FabricCacheProtocol("node-a", transport=cache_transport)
 
-    try:
-        # Basic cache operations
-        await cache.put("user_sessions", "session_123", {
-            "user_id": "user_456",
-            "login_time": time.time(),
-            "permissions": ["read", "write"]
-        })
+    cache = GlobalCacheManager(
+        GlobalCacheConfiguration(
+            enable_l2_persistent=False,
+            enable_l3_distributed=True,
+            enable_l4_federation=True,
+            local_cluster_id="cluster-a",
+        ),
+        cache_protocol=cache_protocol,
+    )
 
-        session = await cache.get("user_sessions", "session_123")
-        print(f"Session: {session}")
+    key = GlobalCacheKey.from_data("user_sessions", {"session_id": "session_123"})
+    options = CacheOptions(cache_levels=frozenset([CacheLevel.L1, CacheLevel.L4]))
+    await cache.put(key, {"user_id": "user_456"}, CacheMetadata(ttl_seconds=300.0), options=options)
 
-        # Atomic operations for distributed locking
-        lock_acquired = await cache.atomic_test_and_set(
-            "locks", "resource_abc",
-            expected_value=None,  # Only acquire if not locked
-            new_value={"owner": "worker_001", "acquired_at": time.time()}
-        )
-
-        if lock_acquired:
-            print("🔒 Lock acquired, processing resource...")
-            # Do work...
-            await cache.put("locks", "resource_abc", None)  # Release lock
-
-        # Server-side data structures
-        await cache.set_add("user_permissions", "user_456", "admin")
-        await cache.set_add("user_permissions", "user_456", "moderator")
-
-        has_admin = await cache.set_contains("user_permissions", "user_456", "admin")
-        print(f"User has admin: {has_admin}")
-
-        # Namespace operations
-        cleared = await cache.clear_namespace("temp_data", pattern="expired_*")
-        print(f"Cleared {cleared} expired entries")
-
-    finally:
-        await cache.disconnect()
+    result = await cache.get(key, options=options)
+    print("Cache hit:", result.success)
+    await cache.shutdown()
 ```
 
 ### Cache Protocol Messages
@@ -329,65 +263,23 @@ For implementing cache clients in other languages, here are the key message form
 
 ---
 
-## Starting Cache-Enabled MPREG Server
+## Cache Demonstrations
 
-### Basic Server Setup
-
-```python
-from mpreg.examples.cache_client_server_demo import MPREGCacheServer
-
-async def main():
-    server = MPREGCacheServer(port=9001, cluster_id="cache-cluster-1")
-    await server.start()  # Runs until interrupted
-
-# Run with: python -m asyncio server_script.py
-```
-
-### Command Line
+Run the cache-focused demos:
 
 ```bash
-# Start cache server
-poetry run python mpreg/examples/cache_client_server_demo.py --mode server --port 9001
-
-# Run cache client demo
-poetry run python mpreg/examples/cache_client_server_demo.py --mode client --url ws://localhost:9001
-
-# Run integrated demo (server + client)
-poetry run python mpreg/examples/cache_client_server_demo.py --mode integrated
-```
-
-### Docker Deployment
-
-```dockerfile
-FROM python:3.11-slim
-
-RUN pip install poetry
-COPY . /app
-WORKDIR /app
-RUN poetry install
-
-EXPOSE 9001
-
-CMD ["poetry", "run", "python", "mpreg/examples/cache_client_server_demo.py", "--mode", "server", "--port", "9001"]
-```
-
-```bash
-# Build and run
-docker build -t mpreg-cache-server .
-docker run -p 9001:9001 mpreg-cache-server
-
-# Connect client from another container
-docker run --network host mpreg-cache-server poetry run python mpreg/examples/cache_client_server_demo.py --mode client --url ws://host.docker.internal:9001
+uv run python mpreg/examples/tier1_single_system_full.py --system cache
+uv run python mpreg/examples/tier2_integrations.py
 ```
 
 ---
 
 ## Client Comparison
 
-| Feature           | RPC Client              | PubSub Client         | Cache Client                   |
+| Feature           | RPC Client              | PubSub Client         | Cache Manager                  |
 | ----------------- | ----------------------- | --------------------- | ------------------------------ |
 | **Primary Use**   | Function calls          | Event messaging       | Data storage                   |
-| **Communication** | Request/Response        | Publish/Subscribe     | Request/Response               |
+| **Communication** | Request/Response        | Publish/Subscribe     | In-process API                 |
 | **Data Model**    | Function arguments      | Topic messages        | Key-value + structures         |
 | **Consistency**   | Per-function            | Eventually consistent | Configurable (eventual/strong) |
 | **Caching**       | Automatic (server-side) | Message backlog       | Direct control                 |
@@ -416,16 +308,16 @@ All MPREG clients support multiple transport protocols:
 
 ```python
 # WebSocket
-client = MPREGClientAPI("ws://cache-server:9001")
+client = MPREGClientAPI("ws://cache-server:<port>")
 
 # WebSocket with TLS
-client = MPREGClientAPI("wss://cache-server:9001")
+client = MPREGClientAPI("wss://cache-server:<port>")
 
 # TCP
-client = MPREGClientAPI("tcp://cache-server:9002")
+client = MPREGClientAPI("tcp://cache-server:<port>")
 
 # TCP with TLS
-client = MPREGClientAPI("tcps://cache-server:9002")
+client = MPREGClientAPI("tcps://cache-server:<port>")
 ```
 
 ---
@@ -437,16 +329,15 @@ client = MPREGClientAPI("tcps://cache-server:9002")
 ```python
 # Client with multiple server endpoints
 servers = [
-    "ws://cache-1.example.com:9001",
-    "ws://cache-2.example.com:9001",
-    "ws://cache-3.example.com:9001"
+    "ws://cache-1.example.com:<port>",
+    "ws://cache-2.example.com:<port>",
+    "ws://cache-3.example.com:<port>"
 ]
 
 for server_url in servers:
     try:
-        client = MPREGCacheClient(server_url)
-        await client.connect()
-        # Client connected successfully
+        async with MPREGClientAPI(server_url) as client:
+            await client.call("echo", "ping")
         break
     except ConnectionError:
         continue  # Try next server
@@ -457,11 +348,11 @@ for server_url in servers:
 ```python
 # Bearer token authentication
 headers = {"Authorization": "Bearer eyJhbGciOiJIUzI1NiIs..."}
-client = MPREGClientAPI("wss://secure-cache:9001", headers=headers)
+client = MPREGClientAPI("wss://secure-cache:<port>", headers=headers)
 
 # API key authentication
 headers = {"X-API-Key": "mpreg_api_key_abc123..."}
-client = MPREGClientAPI("wss://secure-cache:9001", headers=headers)
+client = MPREGClientAPI("wss://secure-cache:<port>", headers=headers)
 ```
 
 ### Connection Pooling
@@ -471,7 +362,7 @@ from mpreg.core.transport.factory import create_transport_pool
 
 # Create connection pool
 pool = create_transport_pool(
-    urls=["ws://cache-1:9001", "ws://cache-2:9001"],
+    urls=["ws://cache-1:<port>", "ws://cache-2:<port>"],
     pool_size=10,
     max_lifetime_seconds=3600
 )
@@ -484,15 +375,21 @@ async with pool.get_client() as client:
 ### Monitoring
 
 ```python
-# Enable client metrics
-client = MPREGCacheClient("ws://cache-server:9001")
-await client.connect()
+# Cross-system monitoring
+from mpreg.core.monitoring.unified_monitoring import (
+    EventType,
+    SystemType,
+    create_unified_system_monitor,
+)
 
-# Get connection statistics
-stats = client.get_statistics()
-print(f"Requests sent: {stats['requests_sent']}")
-print(f"Cache hits: {stats['cache_hits']}")
-print(f"Average latency: {stats['avg_latency_ms']}ms")
+monitor = create_unified_system_monitor()
+await monitor.start()
+tracking_id = await monitor.record_cross_system_event(
+    correlation_id="client-demo",
+    event_type=EventType.REQUEST_START,
+    source_system=SystemType.RPC,
+)
+await monitor.stop()
 ```
 
-This guide provides everything needed to start using MPREG's three client types for RPC, PubSub, and Cache operations over network protocols!
+This guide provides everything needed to start using MPREG's RPC and PubSub clients plus the in-process cache manager.

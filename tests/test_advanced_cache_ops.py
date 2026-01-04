@@ -437,9 +437,8 @@ class TestAdvancedCacheOperations:
         result = await advanced_ops.namespace_operation(clear_request)
 
         assert result.success
-        # Note: namespace clear is not yet fully implemented, so cleared_count is 0
-        assert result.cleared_count == 0
-        assert "not yet fully implemented" in result.error_message
+        assert result.cleared_count == 3
+        assert result.error_message is None
 
     @pytest.mark.asyncio
     async def test_error_handling_invalid_operation(self, advanced_ops):

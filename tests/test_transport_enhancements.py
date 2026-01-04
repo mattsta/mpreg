@@ -14,6 +14,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
+from mpreg.core.port_allocator import port_context
 from mpreg.core.transport.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
@@ -30,22 +31,29 @@ from mpreg.core.transport.enhanced_health import (
 )
 
 
+@pytest.fixture
+def endpoint_url():
+    """Provide a dynamic endpoint URL for transport tests."""
+    with port_context("testing") as port:
+        yield f"ws://test:{port}"
+
+
 class TestCircuitBreaker:
     """Test circuit breaker functionality."""
 
-    def test_circuit_breaker_creation(self):
+    def test_circuit_breaker_creation(self, endpoint_url):
         """Test circuit breaker creation and initial state."""
-        breaker = create_circuit_breaker("ws://test:8080")
+        breaker = create_circuit_breaker(endpoint_url)
 
-        assert breaker.endpoint == "ws://test:8080"
+        assert breaker.endpoint == endpoint_url
         assert breaker.state == CircuitBreakerState.CLOSED
         assert breaker.failure_count == 0
         assert breaker.success_count == 0
         assert breaker.can_execute() is True
 
-    def test_circuit_breaker_failure_threshold(self):
+    def test_circuit_breaker_failure_threshold(self, endpoint_url):
         """Test circuit breaker opens after failure threshold."""
-        breaker = create_circuit_breaker("ws://test:8080", failure_threshold=3)
+        breaker = create_circuit_breaker(endpoint_url, failure_threshold=3)
 
         # Should remain closed for failures under threshold
         for i in range(2):
@@ -58,10 +66,10 @@ class TestCircuitBreaker:
         assert breaker.state == CircuitBreakerState.OPEN
         assert breaker.can_execute() is False
 
-    def test_circuit_breaker_recovery(self):
+    def test_circuit_breaker_recovery(self, endpoint_url):
         """Test circuit breaker recovery process."""
         breaker = create_circuit_breaker(
-            "ws://test:8080",
+            endpoint_url,
             failure_threshold=2,
             recovery_timeout_ms=500.0,  # 500ms for stable testing
             success_threshold=2,
@@ -86,13 +94,13 @@ class TestCircuitBreaker:
         breaker.record_success()
         assert breaker.state == CircuitBreakerState.CLOSED
 
-    def test_circuit_breaker_config(self):
+    def test_circuit_breaker_config(self, endpoint_url):
         """Test circuit breaker configuration."""
         config = CircuitBreakerConfig(
             failure_threshold=10, recovery_timeout_ms=30000.0, success_threshold=5
         )
 
-        breaker = CircuitBreaker("ws://test:8080", config)
+        breaker = CircuitBreaker(endpoint_url, config)
 
         assert breaker.config.failure_threshold == 10
         assert breaker.config.recovery_timeout_ms == 30000.0
@@ -108,12 +116,14 @@ class TestCircuitBreaker:
         self, failure_threshold, recovery_timeout_ms, success_threshold
     ):
         """Property-based test for circuit breaker behavior."""
-        breaker = create_circuit_breaker(
-            "ws://test:8080",
-            failure_threshold=failure_threshold,
-            recovery_timeout_ms=recovery_timeout_ms,
-            success_threshold=success_threshold,
-        )
+        with port_context("testing") as port:
+            endpoint_url = f"ws://test:{port}"
+            breaker = create_circuit_breaker(
+                endpoint_url,
+                failure_threshold=failure_threshold,
+                recovery_timeout_ms=recovery_timeout_ms,
+                success_threshold=success_threshold,
+            )
 
         # Circuit breaker should start closed
         assert breaker.state == CircuitBreakerState.CLOSED
@@ -147,7 +157,7 @@ class TestCorrelationTracker:
         assert len(corr_id1) > 0
         assert len(corr_id2) > 0
 
-    def test_correlation_lifecycle(self):
+    def test_correlation_lifecycle(self, endpoint_url):
         """Test complete correlation lifecycle."""
         tracker = create_correlation_tracker()
 
@@ -159,7 +169,7 @@ class TestCorrelationTracker:
         result = tracker.complete_correlation(
             corr_id,
             response_data=b"test response",
-            endpoint="ws://test:8080",
+            endpoint=endpoint_url,
             connection_id="conn_123",
             success=True,
         )
@@ -192,7 +202,7 @@ class TestCorrelationTracker:
         assert corr_id1 not in tracker.active_correlations
         assert corr_id2 in tracker.active_correlations
 
-    def test_correlation_statistics(self):
+    def test_correlation_statistics(self, endpoint_url):
         """Test correlation statistics collection."""
         tracker = create_correlation_tracker()
 
@@ -203,7 +213,7 @@ class TestCorrelationTracker:
             tracker.complete_correlation(
                 corr_id,
                 response_data=b"test",
-                endpoint="ws://test:8080",
+                endpoint=endpoint_url,
                 connection_id=f"conn_{i}",
                 success=success,
             )
@@ -221,16 +231,18 @@ class TestCorrelationTracker:
         """Property-based test for correlation tracking."""
         tracker = create_correlation_tracker()
 
-        for i in range(num_correlations):
-            corr_id = tracker.start_correlation()
-            success = i < int(num_correlations * success_rate)
-            tracker.complete_correlation(
-                corr_id,
-                response_data=b"test",
-                endpoint="ws://test:8080",
-                connection_id=f"conn_{i}",
-                success=success,
-            )
+        with port_context("testing") as port:
+            endpoint_url = f"ws://test:{port}"
+            for i in range(num_correlations):
+                corr_id = tracker.start_correlation()
+                success = i < int(num_correlations * success_rate)
+                tracker.complete_correlation(
+                    corr_id,
+                    response_data=b"test",
+                    endpoint=endpoint_url,
+                    connection_id=f"conn_{i}",
+                    success=success,
+                )
 
         stats = tracker.get_correlation_statistics()
         assert stats["total_correlation_history"] == num_correlations
@@ -240,20 +252,20 @@ class TestCorrelationTracker:
 class TestConnectionHealthMonitor:
     """Test connection health monitoring functionality."""
 
-    def test_health_monitor_creation(self):
+    def test_health_monitor_creation(self, endpoint_url):
         """Test health monitor creation."""
-        monitor = create_connection_health_monitor("conn_123", "ws://test:8080")
+        monitor = create_connection_health_monitor("conn_123", endpoint_url)
 
         assert monitor.connection_id == "conn_123"
-        assert monitor.endpoint == "ws://test:8080"
+        assert monitor.endpoint == endpoint_url
         assert monitor.total_operations == 0
         assert (
             monitor.calculate_health_score() == 1.0
         )  # Perfect health when no operations
 
-    def test_health_score_calculation(self):
+    def test_health_score_calculation(self, endpoint_url):
         """Test health score calculation with operations."""
-        monitor = create_connection_health_monitor("conn_123", "ws://test:8080")
+        monitor = create_connection_health_monitor("conn_123", endpoint_url)
 
         # Record successful operations
         for _ in range(8):
@@ -270,9 +282,9 @@ class TestConnectionHealthMonitor:
         assert health_score < 1.0  # Not perfect due to failures
         assert health_score > 0.5  # Still reasonably healthy (80% success rate)
 
-    def test_health_trends(self):
+    def test_health_trends(self, endpoint_url):
         """Test health trend analysis."""
-        monitor = create_connection_health_monitor("conn_123", "ws://test:8080")
+        monitor = create_connection_health_monitor("conn_123", endpoint_url)
 
         # All successful operations should be stable/improving
         for _ in range(10):
@@ -288,9 +300,9 @@ class TestConnectionHealthMonitor:
         trend = monitor.get_health_trend()
         assert trend in [HealthTrend.DEGRADING, HealthTrend.CRITICAL]
 
-    def test_health_metrics(self):
+    def test_health_metrics(self, endpoint_url):
         """Test comprehensive health metrics."""
-        monitor = create_connection_health_monitor("conn_123", "ws://test:8080")
+        monitor = create_connection_health_monitor("conn_123", endpoint_url)
 
         # Record mixed operations
         for i in range(10):
@@ -301,7 +313,7 @@ class TestConnectionHealthMonitor:
         metrics = monitor.get_health_metrics()
 
         assert metrics.connection_id == "conn_123"
-        assert metrics.endpoint == "ws://test:8080"
+        assert metrics.endpoint == endpoint_url
         assert metrics.total_operations == 10
         assert metrics.success_rate_percent == 80.0
         assert 0.0 <= metrics.health_score <= 1.0
@@ -315,38 +327,40 @@ class TestConnectionHealthMonitor:
     @settings(max_examples=10, deadline=3000)
     def test_health_monitor_properties(self, num_operations, success_rate, avg_latency):
         """Property-based test for health monitoring."""
-        monitor = create_connection_health_monitor("conn_123", "ws://test:8080")
+        with port_context("testing") as port:
+            endpoint_url = f"ws://test:{port}"
+            monitor = create_connection_health_monitor("conn_123", endpoint_url)
 
-        for i in range(num_operations):
-            success = i < int(num_operations * success_rate)
-            monitor.record_operation(latency_ms=avg_latency, success=success)
+            for i in range(num_operations):
+                success = i < int(num_operations * success_rate)
+                monitor.record_operation(latency_ms=avg_latency, success=success)
 
-        metrics = monitor.get_health_metrics()
+            metrics = monitor.get_health_metrics()
 
-        # Invariants
-        assert metrics.total_operations == num_operations
-        assert 0.0 <= metrics.health_score <= 1.0
-        assert 0.0 <= metrics.success_rate_percent <= 100.0
-        assert metrics.average_latency_ms >= 0.0
+            # Invariants
+            assert metrics.total_operations == num_operations
+            assert 0.0 <= metrics.health_score <= 1.0
+            assert 0.0 <= metrics.success_rate_percent <= 100.0
+            assert metrics.average_latency_ms >= 0.0
 
 
 class TestTransportHealthAggregator:
     """Test transport health aggregation functionality."""
 
-    def test_aggregator_creation(self):
+    def test_aggregator_creation(self, endpoint_url):
         """Test health aggregator creation."""
-        aggregator = create_transport_health_aggregator("ws://test:8080")
+        aggregator = create_transport_health_aggregator(endpoint_url)
 
-        assert aggregator.endpoint == "ws://test:8080"
+        assert aggregator.endpoint == endpoint_url
         assert len(aggregator.connection_monitors) == 0
 
-    def test_aggregator_with_monitors(self):
+    def test_aggregator_with_monitors(self, endpoint_url):
         """Test aggregator with multiple connection monitors."""
-        aggregator = create_transport_health_aggregator("ws://test:8080")
+        aggregator = create_transport_health_aggregator(endpoint_url)
 
         # Add connection monitors
         for i in range(3):
-            monitor = create_connection_health_monitor(f"conn_{i}", "ws://test:8080")
+            monitor = create_connection_health_monitor(f"conn_{i}", endpoint_url)
 
             # Record different performance for each connection
             for j in range(10):
@@ -357,29 +371,29 @@ class TestTransportHealthAggregator:
 
         snapshot = aggregator.get_transport_health_snapshot()
 
-        assert snapshot.endpoint == "ws://test:8080"
+        assert snapshot.endpoint == endpoint_url
         assert snapshot.active_connections == 3
         assert snapshot.total_connections == 3
         assert 0.0 <= snapshot.overall_health_score <= 1.0
         assert snapshot.average_response_time_ms > 0.0
 
-    def test_aggregator_empty_state(self):
+    def test_aggregator_empty_state(self, endpoint_url):
         """Test aggregator with no connections."""
-        aggregator = create_transport_health_aggregator("ws://test:8080")
+        aggregator = create_transport_health_aggregator(endpoint_url)
 
         snapshot = aggregator.get_transport_health_snapshot()
 
-        assert snapshot.endpoint == "ws://test:8080"
+        assert snapshot.endpoint == endpoint_url
         assert snapshot.active_connections == 0
         assert snapshot.overall_health_score == 1.0
         assert snapshot.average_response_time_ms == 0.0
         assert snapshot.error_rate_percent == 0.0
 
-    def test_monitor_removal(self):
+    def test_monitor_removal(self, endpoint_url):
         """Test removing connection monitors."""
-        aggregator = create_transport_health_aggregator("ws://test:8080")
+        aggregator = create_transport_health_aggregator(endpoint_url)
 
-        monitor = create_connection_health_monitor("conn_123", "ws://test:8080")
+        monitor = create_connection_health_monitor("conn_123", endpoint_url)
         aggregator.add_connection_monitor(monitor)
 
         assert len(aggregator.connection_monitors) == 1
@@ -392,7 +406,7 @@ class TestTransportHealthAggregator:
 class TestTransportEnhancementIntegration:
     """Test integration scenarios with existing transport infrastructure."""
 
-    async def test_circuit_breaker_with_mock_transport(self):
+    async def test_circuit_breaker_with_mock_transport(self, endpoint_url):
         """Test circuit breaker integration with mock transport."""
         # Mock transport operation
         mock_transport = AsyncMock()
@@ -400,7 +414,7 @@ class TestTransportEnhancementIntegration:
         mock_transport.receive = AsyncMock(return_value=b"response")
 
         # Create circuit breaker
-        breaker = create_circuit_breaker("ws://test:8080", failure_threshold=2)
+        breaker = create_circuit_breaker(endpoint_url, failure_threshold=2)
 
         # Simulate operations with circuit breaker protection
         for i in range(5):
@@ -424,10 +438,10 @@ class TestTransportEnhancementIntegration:
         assert breaker.state == CircuitBreakerState.OPEN
         assert not breaker.can_execute()
 
-    async def test_correlation_with_health_monitoring(self):
+    async def test_correlation_with_health_monitoring(self, endpoint_url):
         """Test correlation tracking combined with health monitoring."""
         tracker = create_correlation_tracker()
-        monitor = create_connection_health_monitor("conn_123", "ws://test:8080")
+        monitor = create_connection_health_monitor("conn_123", endpoint_url)
 
         # Simulate correlated operations with health tracking
         for i in range(10):
@@ -443,7 +457,7 @@ class TestTransportEnhancementIntegration:
             tracker.complete_correlation(
                 corr_id,
                 response_data=b"response",
-                endpoint="ws://test:8080",
+                endpoint=endpoint_url,
                 connection_id="conn_123",
                 success=success,
             )
@@ -459,13 +473,13 @@ class TestTransportEnhancementIntegration:
             == correlation_stats["success_rate_percent"]
         )
 
-    def test_all_enhancements_together(self):
+    def test_all_enhancements_together(self, endpoint_url):
         """Test all transport enhancements working together."""
         # Create all enhancement components
-        breaker = create_circuit_breaker("ws://test:8080")
+        breaker = create_circuit_breaker(endpoint_url)
         tracker = create_correlation_tracker()
-        monitor = create_connection_health_monitor("conn_123", "ws://test:8080")
-        aggregator = create_transport_health_aggregator("ws://test:8080")
+        monitor = create_connection_health_monitor("conn_123", endpoint_url)
+        aggregator = create_transport_health_aggregator(endpoint_url)
 
         aggregator.add_connection_monitor(monitor)
 
@@ -483,7 +497,7 @@ class TestTransportEnhancementIntegration:
                 tracker.complete_correlation(
                     corr_id,
                     response_data=b"response",
-                    endpoint="ws://test:8080",
+                    endpoint=endpoint_url,
                     connection_id="conn_123",
                     success=success,
                 )

@@ -9,14 +9,15 @@ a centralized, lifecycle-aware task manager.
 from __future__ import annotations
 
 import asyncio
-import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from loguru import logger
+
+task_log = logger
 
 
 class TaskState(Enum):
@@ -40,7 +41,7 @@ class ManagedTask:
     created_at: float = field(default_factory=time.time)
     started_at: float | None = None
     stopped_at: float | None = None
-    failure_reason: Exception | None = None
+    failure_reason: BaseException | None = None
 
     def is_active(self) -> bool:
         """Check if task is actively running."""
@@ -172,8 +173,8 @@ class RaftTaskManager:
         group_name: str,
         task_name: str,
         coro_func: Callable[..., Any],
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> ManagedTask:
         """
         Create and register a new managed task.
@@ -193,7 +194,7 @@ class RaftTaskManager:
         # Cancel existing task with same name if it exists
         existing = self.task_groups[group_name].tasks.get(task_name)
         if existing and existing.is_active():
-            logger.warning(
+            task_log.warning(
                 f"[{self.node_id}] Duplicate task {group_name}.{task_name} detected - cancelling existing"
             )
             # Use immediate cancel to avoid blocking task creation
@@ -203,16 +204,38 @@ class RaftTaskManager:
 
         # Create new task
         managed_task = ManagedTask(name=task_name)
-        managed_task.task = asyncio.create_task(
-            coro_func(*args, **kwargs), name=f"{self.node_id}_{group_name}_{task_name}"
-        )
+        coro = coro_func(*args, **kwargs)
+        try:
+            managed_task.task = asyncio.create_task(
+                coro, name=f"{self.node_id}_{group_name}_{task_name}"
+            )
+        except RuntimeError:
+            # Avoid "coroutine was never awaited" when no loop is running.
+            coro.close()
+            raise
         managed_task.state = TaskState.RUNNING
         managed_task.started_at = time.time()
+
+        def _on_task_done(task: asyncio.Task[Any]) -> None:
+            if task.cancelled():
+                if managed_task.state in (TaskState.RUNNING, TaskState.CANCELLING):
+                    managed_task.state = TaskState.STOPPED
+                managed_task.stopped_at = time.time()
+                return
+            exc = task.exception()
+            if exc is not None:
+                managed_task.failure_reason = exc
+                managed_task.state = TaskState.FAILED
+            else:
+                managed_task.state = TaskState.STOPPED
+            managed_task.stopped_at = time.time()
+
+        managed_task.task.add_done_callback(_on_task_done)
 
         # Register with group
         self.task_groups[group_name].add_task(task_name, managed_task)
 
-        logger.debug(f"[{self.node_id}] Created task {group_name}.{task_name}")
+        task_log.debug(f"[{self.node_id}] Created task {group_name}.{task_name}")
         return managed_task
 
     async def stop_task_group(
@@ -229,7 +252,7 @@ class RaftTaskManager:
             return
 
         timeout = timeout or self.shutdown_timeout
-        logger.debug(
+        task_log.debug(
             f"[{self.node_id}] Stopping {len(active_tasks)} tasks in group {group_name}"
         )
 
@@ -243,7 +266,7 @@ class RaftTaskManager:
             try:
                 await self._graceful_cancel_task(managed_task, timeout=grace_timeout)
             except Exception as e:
-                logger.warning(
+                task_log.warning(
                     f"[{self.node_id}] Error cancelling task {managed_task.name}: {e}"
                 )
                 # Fall back to immediate cancellation
@@ -251,39 +274,41 @@ class RaftTaskManager:
                 managed_task.state = TaskState.STOPPED
                 managed_task.stopped_at = time.time()
 
-        logger.debug(f"[{self.node_id}] Group {group_name} shutdown complete")
+        task_log.debug(f"[{self.node_id}] Group {group_name} shutdown complete")
 
     async def stop_specific_task(
         self, group_name: str, task_name: str, timeout: float | None = None
     ) -> bool:
         """Stop a specific task by name within a group."""
         if group_name not in self.task_groups:
-            logger.debug(f"[{self.node_id}] Group {group_name} not found for task stop")
+            task_log.debug(
+                f"[{self.node_id}] Group {group_name} not found for task stop"
+            )
             return False
 
         group = self.task_groups[group_name]
         if task_name not in group.tasks:
-            logger.debug(f"[{self.node_id}] Task {group_name}.{task_name} not found")
+            task_log.debug(f"[{self.node_id}] Task {group_name}.{task_name} not found")
             return False
 
         managed_task = group.tasks[task_name]
         if not managed_task.is_active():
-            logger.debug(
+            task_log.debug(
                 f"[{self.node_id}] Task {group_name}.{task_name} already inactive"
             )
             return True
 
         timeout = timeout or self.shutdown_timeout
-        logger.debug(f"[{self.node_id}] Stopping task {group_name}.{task_name}")
+        task_log.debug(f"[{self.node_id}] Stopping task {group_name}.{task_name}")
 
         try:
             await self._graceful_cancel_task(managed_task, timeout=timeout)
-            logger.debug(
+            task_log.debug(
                 f"[{self.node_id}] Task {group_name}.{task_name} stopped successfully"
             )
             return True
         except Exception as e:
-            logger.warning(
+            task_log.warning(
                 f"[{self.node_id}] Error stopping task {group_name}.{task_name}: {e}"
             )
             # Fall back to immediate cancellation
@@ -301,7 +326,7 @@ class RaftTaskManager:
         timeout = timeout or self.shutdown_timeout
 
         try:
-            logger.info(f"[{self.node_id}] Stopping all task groups")
+            task_log.info(f"[{self.node_id}] Stopping all task groups")
 
             # Stop groups in order: maintenance -> replication -> core
             stop_order = ["maintenance", "replication", "core"]
@@ -317,7 +342,7 @@ class RaftTaskManager:
                 if group_name not in stop_order:
                     await self.stop_task_group(group_name, timeout=0.5)
 
-            logger.info(f"[{self.node_id}] All tasks stopped")
+            task_log.info(f"[{self.node_id}] All tasks stopped")
 
         finally:
             self._shutdown_in_progress = False
@@ -331,7 +356,9 @@ class RaftTaskManager:
             managed_task.stopped_at = time.time()
             return
 
-        logger.debug(f"[{self.node_id}] Gracefully cancelling task {managed_task.name}")
+        task_log.debug(
+            f"[{self.node_id}] Gracefully cancelling task {managed_task.name}"
+        )
         managed_task.state = TaskState.CANCELLING
         managed_task.task.cancel()
 
@@ -340,9 +367,9 @@ class RaftTaskManager:
             await asyncio.wait_for(managed_task.task, timeout=timeout)
         except (TimeoutError, asyncio.CancelledError):
             # Expected - task was cancelled or took too long
-            logger.debug(f"[{self.node_id}] Task {managed_task.name} cancelled")
+            task_log.debug(f"[{self.node_id}] Task {managed_task.name} cancelled")
         except Exception as e:
-            logger.warning(
+            task_log.warning(
                 f"[{self.node_id}] Task {managed_task.name} failed during cancellation: {e}"
             )
             managed_task.failure_reason = e
@@ -354,7 +381,7 @@ class RaftTaskManager:
             managed_task.stopped_at = time.time()
 
     def _cancel_task_immediate(self, managed_task: ManagedTask) -> None:
-        """Cancel a task immediately without waiting (legacy method)."""
+        """Cancel a task immediately without waiting."""
         if managed_task.task and not managed_task.task.done():
             managed_task.task.cancel()
             managed_task.state = TaskState.CANCELLING
@@ -420,7 +447,9 @@ class RaftTaskManager:
                 removed_count += 1
 
         if removed_count > 0:
-            logger.debug(f"[{self.node_id}] Cleaned up {removed_count} finished tasks")
+            task_log.debug(
+                f"[{self.node_id}] Cleaned up {removed_count} finished tasks"
+            )
 
         return removed_count
 
@@ -452,7 +481,7 @@ class RaftTaskManager:
         if self._shutdown_in_progress:
             return 0
 
-        logger.warning(
+        task_log.warning(
             f"[{self.node_id}] FORCE CLEANUP: Cancelling all tasks immediately"
         )
         cancelled_count = 0

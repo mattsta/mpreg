@@ -1,8 +1,8 @@
 """
-Comprehensive property-based tests for MPREG unified routing system.
+Comprehensive property-based tests for MPREG fabric routing system.
 
-This test suite uses Hypothesis to verify fundamental properties of the unified
-routing architecture with mathematically rigorous correctness guarantees.
+This test suite uses Hypothesis to verify fundamental properties of the routing
+fabric architecture with mathematically rigorous correctness guarantees.
 
 Property categories tested:
 1. Routing Consistency: Same inputs always produce consistent routing decisions
@@ -24,19 +24,24 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from mpreg.core.topic_taxonomy import TopicAccessLevel, TopicValidator
-from mpreg.core.unified_routing import (
+from mpreg.fabric.message import (
     DeliveryGuarantee,
     MessageHeaders,
     MessageType,
-    RouteResult,
-    RouteTarget,
-    RoutingPolicy,
     RoutingPriority,
     UnifiedMessage,
-    UnifiedRoutingConfig,
+)
+from mpreg.fabric.router import (
+    FabricRouteReason,
+    FabricRouteResult,
+    FabricRouteTarget,
+    FabricRoutingConfig,
+    FabricRoutingPolicy,
     create_correlation_id,
     create_route_id,
     extract_system_from_topic,
+    is_control_plane_message,
+    is_federation_message,
     is_internal_topic,
 )
 
@@ -114,7 +119,7 @@ def internal_topic_patterns(draw):
     base_topics = [
         "mpreg.rpc.command.{}.started",
         "mpreg.queue.{}.enqueued",
-        "mpreg.federation.cluster.{}.join",
+        "mpreg.fabric.cluster.{}.join",
         "mpreg.pubsub.subscription.{}.created",
         "mpreg.monitoring.metrics.{}.{}",
     ]
@@ -149,17 +154,13 @@ def message_headers(draw):
     """Generate valid message headers."""
     return MessageHeaders(
         correlation_id=draw(correlation_ids()),
-        source_system=draw(st.sampled_from(MessageType)),
-        target_system=draw(st.one_of(st.none(), st.sampled_from(MessageType))),
         priority=draw(st.sampled_from(RoutingPriority)),
-        federation_hop=draw(
-            st.one_of(st.none(), st.integers(min_value=0, max_value=10))
-        ),
         source_cluster=draw(st.one_of(st.none(), cluster_ids())),
         target_cluster=draw(st.one_of(st.none(), cluster_ids())),
-        routing_metadata=draw(
-            st.dictionaries(st.text(min_size=1, max_size=10), st.integers())
-        ),
+        hop_budget=draw(st.one_of(st.none(), st.integers(min_value=0, max_value=10))),
+        routing_path=tuple(draw(st.lists(node_ids(), min_size=0, max_size=5))),
+        federation_path=tuple(draw(st.lists(cluster_ids(), min_size=0, max_size=3))),
+        metadata=draw(st.dictionaries(st.text(min_size=1, max_size=10), st.integers())),
     )
 
 
@@ -167,12 +168,13 @@ def message_headers(draw):
 def unified_messages(draw):
     """Generate valid unified messages."""
     topic = draw(topic_patterns())
-    routing_type = draw(st.sampled_from(MessageType))
+    message_type = draw(st.sampled_from(MessageType))
 
     return UnifiedMessage(
+        message_id=draw(correlation_ids()),
         topic=topic,
-        routing_type=routing_type,
-        delivery_guarantee=draw(st.sampled_from(DeliveryGuarantee)),
+        message_type=message_type,
+        delivery=draw(st.sampled_from(DeliveryGuarantee)),
         payload=draw(
             st.one_of(
                 st.none(),
@@ -192,9 +194,10 @@ def internal_unified_messages(draw):
     topic = draw(internal_topic_patterns())
 
     return UnifiedMessage(
+        message_id=draw(correlation_ids()),
         topic=topic,
-        routing_type=MessageType.CONTROL_PLANE,
-        delivery_guarantee=draw(st.sampled_from(DeliveryGuarantee)),
+        message_type=MessageType.CONTROL,
+        delivery=draw(st.sampled_from(DeliveryGuarantee)),
         payload=draw(st.dictionaries(st.text(), st.integers())),
         headers=draw(message_headers()),
         timestamp=time.time(),
@@ -204,7 +207,7 @@ def internal_unified_messages(draw):
 @st.composite
 def route_targets(draw):
     """Generate valid route targets."""
-    return RouteTarget(
+    return FabricRouteTarget(
         system_type=draw(st.sampled_from(MessageType)),
         target_id=draw(st.text(min_size=1, max_size=20)),
         node_id=draw(st.one_of(st.none(), node_ids())),
@@ -220,7 +223,7 @@ def route_results(draw):
     routing_path = draw(st.lists(node_ids(), min_size=0, max_size=10))
     federation_path = draw(st.lists(cluster_ids(), min_size=0, max_size=5))
 
-    return RouteResult(
+    return FabricRouteResult(
         route_id=f"route_{draw(st.text(min_size=8, max_size=16))}",
         targets=targets,
         routing_path=routing_path,
@@ -229,13 +232,14 @@ def route_results(draw):
         route_cost=draw(st.floats(min_value=1.0, max_value=1000.0)),
         federation_required=len(federation_path) > 1,
         hops_required=len(routing_path),
+        reason=draw(st.sampled_from(FabricRouteReason)),
     )
 
 
 @st.composite
 def routing_policies(draw):
     """Generate valid routing policies."""
-    return RoutingPolicy(
+    return FabricRoutingPolicy(
         policy_id=f"policy_{draw(st.text(min_size=4, max_size=12))}",
         message_type_filter=draw(
             st.one_of(
@@ -264,12 +268,10 @@ def routing_configs(draw):
     """Generate valid routing configurations."""
     policies = draw(st.lists(routing_policies(), min_size=0, max_size=5))
 
-    return UnifiedRoutingConfig(
+    return FabricRoutingConfig(
         enable_topic_rpc=draw(st.booleans()),
         enable_queue_topics=draw(st.booleans()),
-        enable_cross_system_correlation=draw(st.booleans()),
         enable_federation_optimization=draw(st.booleans()),
-        federation_timeout_ms=draw(st.floats(min_value=1000.0, max_value=30000.0)),
         max_routing_hops=draw(st.integers(min_value=1, max_value=20)),
         routing_cache_ttl_ms=draw(st.floats(min_value=5000.0, max_value=300000.0)),
         max_cached_routes=draw(st.integers(min_value=100, max_value=50000)),
@@ -293,7 +295,13 @@ class TestUnifiedRoutingProperties:
         original_payload = message.payload
 
         # Apply routing metadata
-        modified_message = message.with_routing_metadata("test_key", "test_value")
+        modified_message = replace(
+            message,
+            headers=replace(
+                message.headers,
+                metadata={**message.headers.metadata, "test_key": "test_value"},
+            ),
+        )
 
         # Original message should be unchanged
         assert message.topic == original_topic
@@ -301,7 +309,7 @@ class TestUnifiedRoutingProperties:
         assert message.payload == original_payload
 
         # Modified message should have new metadata
-        assert modified_message.headers.routing_metadata["test_key"] == "test_value"
+        assert modified_message.headers.metadata["test_key"] == "test_value"
         assert modified_message.topic == original_topic
         assert modified_message.payload == original_payload
 
@@ -360,47 +368,47 @@ class TestUnifiedRoutingProperties:
             assert extracted_system == MessageType.QUEUE
         elif message.topic.startswith("mpreg.pubsub."):
             assert extracted_system == MessageType.PUBSUB
-        elif message.topic.startswith("mpreg.federation."):
-            assert extracted_system == MessageType.FEDERATION
-        elif message.topic.startswith("mpreg."):
-            assert extracted_system == MessageType.CONTROL_PLANE
+        elif message.topic.startswith("mpreg.fabric.") or message.topic.startswith(
+            "mpreg."
+        ):
+            assert extracted_system == MessageType.CONTROL
         else:
-            assert extracted_system == MessageType.DATA_PLANE
+            assert extracted_system == MessageType.DATA
 
     @given(unified_messages())
     @settings(max_examples=300, deadline=2000)
     def test_federation_detection_property(self, message: UnifiedMessage):
         """Property: Federation requirement detection is accurate."""
-        # Messages with federation hop should be detected as federation messages
-        if message.headers.federation_hop is not None:
-            assert message.is_federation_message
-
         # Messages with target cluster should be detected as federation messages
         if message.headers.target_cluster is not None:
-            assert message.is_federation_message
+            assert is_federation_message(message)
+
+        # Messages with federation path should be detected
+        if message.headers.federation_path:
+            assert is_federation_message(message)
 
         # Federation topic messages should be detected
-        if message.topic.startswith("mpreg.federation."):
-            assert message.is_federation_message
+        if message.topic.startswith("mpreg.fabric."):
+            assert is_federation_message(message)
 
         # Control plane detection should work correctly
         if (
             message.topic.startswith("mpreg.")
-            and message.routing_type == MessageType.CONTROL_PLANE
+            and message.message_type == MessageType.CONTROL
         ):
-            assert message.is_control_plane_message
+            assert is_control_plane_message(message)
 
     @given(routing_policies(), unified_messages())
     @settings(max_examples=400, deadline=3000)
     def test_policy_matching_consistency_property(
-        self, policy: RoutingPolicy, message: UnifiedMessage
+        self, policy: FabricRoutingPolicy, message: UnifiedMessage
     ):
         """Property: Policy matching is consistent and follows filter rules."""
         matches = policy.matches_message(message)
 
         # Check message type filter consistency
         if policy.message_type_filter is not None:
-            if message.routing_type not in policy.message_type_filter:
+            if message.message_type not in policy.message_type_filter:
                 assert not matches
             # If message type matches, continue checking other filters
 
@@ -411,14 +419,16 @@ class TestUnifiedRoutingProperties:
 
         # Check topic pattern filter (simplified check)
         if policy.topic_pattern_filter is not None:
-            import fnmatch
+            from mpreg.core.topic_taxonomy import TopicValidator
 
-            if not fnmatch.fnmatch(message.topic, policy.topic_pattern_filter):
+            if not TopicValidator.matches_pattern(
+                message.topic, policy.topic_pattern_filter
+            ):
                 assert not matches
 
     @given(route_results())
     @settings(max_examples=300, deadline=2000)
-    def test_route_result_consistency_property(self, route: RouteResult):
+    def test_route_result_consistency_property(self, route: FabricRouteResult):
         """Property: Route results maintain internal consistency."""
         # Local routing consistency
         if route.is_local_route:
@@ -440,11 +450,8 @@ class TestUnifiedRoutingProperties:
 
     @given(routing_configs())
     @settings(max_examples=200, deadline=2000)
-    def test_routing_config_validation_property(self, config: UnifiedRoutingConfig):
+    def test_routing_config_validation_property(self, config: FabricRoutingConfig):
         """Property: Routing configurations are valid and consistent."""
-        # Timeout should be positive
-        assert config.federation_timeout_ms > 0
-
         # Hop limits should be reasonable
         assert config.max_routing_hops > 0
         assert config.max_routing_hops <= 50  # Reasonable upper bound
@@ -455,13 +462,13 @@ class TestUnifiedRoutingProperties:
 
         # Policy application should work
         test_message = UnifiedMessage(
+            message_id="msg_test",
             topic="test.topic",
-            routing_type=MessageType.DATA_PLANE,
-            delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
+            message_type=MessageType.DATA,
+            delivery=DeliveryGuarantee.AT_LEAST_ONCE,
             payload={},
             headers=MessageHeaders(
                 correlation_id="test_corr",
-                source_system=MessageType.RPC,
                 priority=RoutingPriority.NORMAL,
             ),
         )
@@ -503,23 +510,21 @@ class TestUnifiedRoutingIntegration:
     """Integration tests for unified routing system components."""
 
     def test_message_header_federation_hop_immutability(self):
-        """Test that federation hop updates create new immutable headers."""
+        """Test that hop budget updates create new immutable headers."""
         original_headers = MessageHeaders(
             correlation_id="test_corr",
-            source_system=MessageType.RPC,
             priority=RoutingPriority.HIGH,
         )
 
-        # Add federation hop
-        new_headers = original_headers.with_federation_hop(3)
+        # Add hop budget
+        new_headers = replace(original_headers, hop_budget=3)
 
         # Original should be unchanged
-        assert original_headers.federation_hop is None
+        assert original_headers.hop_budget is None
 
-        # New headers should have federation hop
-        assert new_headers.federation_hop == 3
+        # New headers should have hop budget
+        assert new_headers.hop_budget == 3
         assert new_headers.correlation_id == "test_corr"
-        assert new_headers.source_system == MessageType.RPC
 
     def test_topic_pattern_wildcard_validation(self):
         """Test topic pattern validation with wildcards."""
@@ -529,6 +534,8 @@ class TestUnifiedRoutingIntegration:
             "app.#",
             "service.*.action.#",
             "mpreg.rpc.command.*.started",
+            "user.#.events",
+            "user.*.#.events",
         ]
 
         for pattern in valid_patterns:
@@ -539,8 +546,10 @@ class TestUnifiedRoutingIntegration:
         invalid_patterns = [
             "",
             "user.**.events",  # Double wildcard
-            "user.#.events",  # # not at end
-            "user.*.#.events",  # # not at end
+            "user.#suffix.events",  # # must be its own segment
+            "user.suffix#.events",  # # must be its own segment
+            "user.a*.events",  # * must be its own segment
+            "user.*suffix.events",  # * must be its own segment
         ]
 
         for pattern in invalid_patterns:
@@ -548,29 +557,39 @@ class TestUnifiedRoutingIntegration:
             assert not is_valid, f"Pattern {pattern} should be invalid"
             assert error_msg
 
+    def test_topic_pattern_matching_with_hash(self):
+        """Test wildcard matching with # in non-terminal positions."""
+        assert TopicValidator.matches_pattern("user.login.events", "user.#.events")
+        assert TopicValidator.matches_pattern("user.login.deep.events", "user.#.events")
+        assert TopicValidator.matches_pattern(
+            "user.login.deep.events", "user.*.#.events"
+        )
+        assert not TopicValidator.matches_pattern("admin.login.events", "user.#.events")
+
     def test_route_result_properties(self):
         """Test route result property calculations."""
         # Local route
-        local_route = RouteResult(
+        local_route = FabricRouteResult(
             route_id="route_local",
-            targets=[RouteTarget(MessageType.RPC, "test_function")],
+            targets=[FabricRouteTarget(MessageType.RPC, "test_function")],
             routing_path=["node1"],
             federation_path=["cluster1"],
             estimated_latency_ms=50.0,
             route_cost=10.0,
             federation_required=False,
             hops_required=1,
+            reason=FabricRouteReason.LOCAL,
         )
 
         assert local_route.is_local_route
         assert not local_route.is_multi_target
 
         # Federation route
-        federation_route = RouteResult(
+        federation_route = FabricRouteResult(
             route_id="route_fed",
             targets=[
-                RouteTarget(MessageType.QUEUE, "queue1"),
-                RouteTarget(MessageType.PUBSUB, "sub1"),
+                FabricRouteTarget(MessageType.QUEUE, "queue1"),
+                FabricRouteTarget(MessageType.PUBSUB, "sub1"),
             ],
             routing_path=["node1", "hub1", "node2"],
             federation_path=["cluster1", "cluster2"],
@@ -578,6 +597,7 @@ class TestUnifiedRoutingIntegration:
             route_cost=50.0,
             federation_required=True,
             hops_required=3,
+            reason=FabricRouteReason.FEDERATED,
         )
 
         assert not federation_route.is_local_route
@@ -586,23 +606,23 @@ class TestUnifiedRoutingIntegration:
     def test_routing_policy_complex_matching(self):
         """Test complex routing policy matching scenarios."""
         # Create a policy for high priority RPC messages
-        rpc_policy = RoutingPolicy(
+        rpc_policy = FabricRoutingPolicy(
             policy_id="high_priority_rpc",
             message_type_filter={MessageType.RPC},
             priority_filter={RoutingPriority.HIGH, RoutingPriority.CRITICAL},
-            topic_pattern_filter="mpreg.rpc.*",
+            topic_pattern_filter="mpreg.rpc.#",
             max_latency_ms=1000.0,
         )
 
         # Matching message
         matching_message = UnifiedMessage(
+            message_id="msg_test",
             topic="mpreg.rpc.command.123.started",
-            routing_type=MessageType.RPC,
-            delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
+            message_type=MessageType.RPC,
+            delivery=DeliveryGuarantee.AT_LEAST_ONCE,
             payload={},
             headers=MessageHeaders(
                 correlation_id="test",
-                source_system=MessageType.RPC,
                 priority=RoutingPriority.HIGH,
             ),
         )
@@ -610,7 +630,7 @@ class TestUnifiedRoutingIntegration:
         assert rpc_policy.matches_message(matching_message)
 
         # Non-matching message (wrong type)
-        non_matching_message = replace(matching_message, routing_type=MessageType.QUEUE)
+        non_matching_message = replace(matching_message, message_type=MessageType.QUEUE)
 
         assert not rpc_policy.matches_message(non_matching_message)
 

@@ -1,9 +1,9 @@
 """
 Enhanced RPC system with topic-aware capabilities for MPREG.
 
-This module extends MPREG's existing sophisticated RPC dependency resolution and
-execution system with topic-based progress monitoring, real-time result streaming,
-and cross-system coordination while maintaining full backward compatibility.
+This module extends MPREG's existing RPC dependency resolution and execution
+system with topic-based progress monitoring, real-time result streaming, and
+cross-system coordination.
 
 Key enhancements:
 - Topic-based RPC progress monitoring and lifecycle events
@@ -13,7 +13,7 @@ Key enhancements:
 - Cross-system correlation (RPC → Queue → PubSub coordination)
 
 Design principles:
-- Backward compatibility: Existing RPCRequest/RPCResponse unchanged
+- Base RPC envelopes remain unchanged
 - Progressive enhancement: Topic features are opt-in
 - Well-encapsulated: Proper dataclasses with type safety
 - Self-managing: Clean interfaces with automatic resource management
@@ -31,8 +31,8 @@ from typing import Any
 
 from mpreg.core.model import RPCCommand, RPCRequest, RPCResponse
 from mpreg.core.topic_taxonomy import TopicTemplateEngine
-from mpreg.core.unified_routing import RoutingPriority
 from mpreg.datastructures.type_aliases import CorrelationId
+from mpreg.fabric.message import RoutingPriority
 
 # Enhanced RPC type aliases following MPREG conventions
 type RPCRequestId = str
@@ -92,11 +92,6 @@ class TopicAwareRPCConfig:
     max_intermediate_results: int = 100
     result_stream_buffer_size: int = 1000
     subscription_timeout_ms: float = 30000.0  # 30 second subscription timeout
-
-    # Backward compatibility
-    fallback_to_legacy: bool = (
-        True  # Fall back to legacy RPC if topic system unavailable
-    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -252,7 +247,7 @@ class TopicAwareRPCCommand:
     def from_rpc_command(
         cls, command: RPCCommand, **kwargs: Any
     ) -> TopicAwareRPCCommand:
-        """Create topic-aware command from legacy RPCCommand."""
+        """Create topic-aware command from base RPCCommand."""
         return cls(
             name=command.name,
             fun=command.fun,
@@ -263,7 +258,7 @@ class TopicAwareRPCCommand:
         )
 
     def to_rpc_command(self) -> RPCCommand:
-        """Convert back to legacy RPCCommand for backward compatibility."""
+        """Convert back to RPCCommand."""
         return RPCCommand(
             name=self.name,
             fun=self.fun,
@@ -307,7 +302,7 @@ class TopicAwareRPCRequest:
     def from_rpc_request(
         cls, request: RPCRequest, **kwargs: Any
     ) -> TopicAwareRPCRequest:
-        """Create topic-aware request from legacy RPCRequest."""
+        """Create topic-aware request from base RPCRequest."""
         # Convert commands to topic-aware commands
         topic_aware_commands = tuple(
             TopicAwareRPCCommand.from_rpc_command(cmd) for cmd in request.cmds
@@ -316,11 +311,11 @@ class TopicAwareRPCRequest:
         return cls(role=request.role, cmds=topic_aware_commands, u=request.u, **kwargs)
 
     def to_rpc_request(self) -> RPCRequest:
-        """Convert back to legacy RPCRequest for backward compatibility."""
-        legacy_commands = tuple(cmd.to_rpc_command() for cmd in self.cmds)
+        """Convert back to RPCRequest."""
+        base_commands = tuple(cmd.to_rpc_command() for cmd in self.cmds)
         return RPCRequest(
             role="rpc",  # Fixed: Use literal "rpc" value
-            cmds=legacy_commands,
+            cmds=base_commands,
             u=self.u,
         )
 
@@ -360,7 +355,7 @@ class TopicAwareRPCResponse:
     def from_rpc_response(
         cls, response: RPCResponse, **kwargs: Any
     ) -> TopicAwareRPCResponse:
-        """Create topic-aware response from legacy RPCResponse."""
+        """Create topic-aware response from base RPCResponse."""
         error_dict = None
         if response.error:
             # Convert RPCError to dict if needed
@@ -373,7 +368,7 @@ class TopicAwareRPCResponse:
         return cls(r=response.r, error=error_dict, **kwargs)
 
     def to_rpc_response(self) -> RPCResponse:
-        """Convert back to legacy RPCResponse for backward compatibility."""
+        """Convert back to RPCResponse."""
         # Convert error dict back to RPCError if needed
         error_obj = None
         if self.error:
@@ -526,6 +521,8 @@ class TopicAwareRPCExecutor:
     total_commands_executed: int = 0
     total_progress_events_published: int = 0
     average_execution_time_ms: float = 0.0
+    total_requests_executed: int = 0
+    total_request_execution_time_ms: float = 0.0
 
     def __post_init__(self) -> None:
         """Initialize subscription manager if not provided."""
@@ -606,6 +603,12 @@ class TopicAwareRPCExecutor:
                 request_id,
                 RPCExecutionStage.REQUEST_COMPLETED,
                 f"All {len(commands)} commands completed successfully",
+            )
+
+            self.total_requests_executed += 1
+            self.total_request_execution_time_ms += total_execution_time
+            self.average_execution_time_ms = (
+                self.total_request_execution_time_ms / self.total_requests_executed
             )
 
             # Return proper dataclass result
@@ -868,16 +871,12 @@ class TopicAwareRPCExecutor:
         """Get execution statistics for monitoring."""
         active_count = len(self.active_commands)
 
-        # Calculate average execution time
-        if self.total_commands_executed > 0:
-            # This is a placeholder - would track actual execution times
-            self.average_execution_time_ms = 2000.0
-
         return {
             "total_commands_executed": self.total_commands_executed,
             "active_commands": active_count,
             "total_progress_events_published": self.total_progress_events_published,
             "average_execution_time_ms": self.average_execution_time_ms,
+            "total_requests_executed": self.total_requests_executed,
             "config": {
                 "enable_progress_publishing": self.config.enable_progress_publishing,
                 "enable_result_streaming": self.config.enable_result_streaming,
@@ -895,7 +894,7 @@ def create_topic_aware_command(
     enable_streaming: bool = False,
     **kwargs: Any,
 ) -> TopicAwareRPCCommand:
-    """Create a topic-aware RPC command from a legacy command."""
+    """Create a topic-aware RPC command from a base command."""
     return TopicAwareRPCCommand.from_rpc_command(
         command,
         publish_progress=enable_progress,
@@ -911,7 +910,7 @@ def create_topic_aware_request(
     priority: RoutingPriority = RoutingPriority.NORMAL,
     **kwargs: Any,
 ) -> TopicAwareRPCRequest:
-    """Create a topic-aware RPC request from a legacy request."""
+    """Create a topic-aware RPC request from a base request."""
     # Convert commands to topic-aware commands using the cmds field
     topic_aware_commands = tuple(
         create_topic_aware_command(

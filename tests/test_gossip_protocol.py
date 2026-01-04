@@ -24,7 +24,7 @@ import time
 import pytest
 
 from mpreg.datastructures.vector_clock import VectorClock
-from mpreg.federation.federation_gossip import (
+from mpreg.fabric.gossip import (
     GossipFilter,
     GossipMessage,
     GossipMessageType,
@@ -33,7 +33,8 @@ from mpreg.federation.federation_gossip import (
     GossipStrategy,
     NodeMetadata,
 )
-from mpreg.federation.federation_registry import HubRegistry
+from mpreg.fabric.gossip_transport import InProcessGossipTransport
+from mpreg.fabric.hub_registry import HubRegistry
 
 
 @pytest.fixture
@@ -92,10 +93,11 @@ def sample_hub_registry():
 
 
 @pytest.fixture
-def sample_gossip_protocol(sample_hub_registry):
+def sample_gossip_protocol(sample_hub_registry, gossip_transport):
     """Create a sample gossip protocol for testing."""
     return GossipProtocol(
         node_id="test_node_001",
+        transport=gossip_transport,
         hub_registry=sample_hub_registry,
         gossip_interval=0.1,  # Fast for testing
         fanout=2,
@@ -696,7 +698,7 @@ class TestGossipProtocol:
         protocol = sample_gossip_protocol
 
         # Create membership update message
-        from mpreg.federation.federation_gossip import MembershipUpdatePayload
+        from mpreg.fabric.gossip import MembershipUpdatePayload
 
         membership_message = GossipMessage(
             message_id="membership_update_001",
@@ -725,7 +727,7 @@ class TestGossipProtocol:
         protocol = sample_gossip_protocol
 
         # Add a known node first
-        from mpreg.federation.federation_gossip import HeartbeatPayload
+        from mpreg.fabric.gossip import HeartbeatPayload
 
         protocol.known_nodes["heartbeat_node"] = NodeMetadata(
             node_id="heartbeat_node", last_heartbeat=0
@@ -836,8 +838,13 @@ class TestEndToEndGossipScenarios:
     async def test_two_node_gossip_convergence(self):
         """Test gossip convergence between two nodes."""
         # Create two gossip protocol instances
-        protocol1 = GossipProtocol("node_1", gossip_interval=0.1, fanout=1)
-        protocol2 = GossipProtocol("node_2", gossip_interval=0.1, fanout=1)
+        transport = InProcessGossipTransport()
+        protocol1 = GossipProtocol(
+            "node_1", transport=transport, gossip_interval=0.1, fanout=1
+        )
+        protocol2 = GossipProtocol(
+            "node_2", transport=transport, gossip_interval=0.1, fanout=1
+        )
 
         # Add each other as known nodes
         protocol1.known_nodes["node_2"] = NodeMetadata(node_id="node_2", region="test")
@@ -867,10 +874,11 @@ class TestEndToEndGossipScenarios:
     async def test_multiple_node_gossip_propagation(self):
         """Test gossip propagation across multiple nodes."""
         # Create multiple gossip protocol instances
+        transport = InProcessGossipTransport()
         protocols = {}
         for i in range(5):
             protocols[f"node_{i}"] = GossipProtocol(
-                f"node_{i}", gossip_interval=0.1, fanout=2
+                f"node_{i}", transport=transport, gossip_interval=0.1, fanout=2
             )
 
         # Set up topology (each node knows about two others)
@@ -913,15 +921,22 @@ class TestEndToEndGossipScenarios:
     async def test_gossip_loop_prevention(self):
         """Test gossip loop prevention mechanisms."""
         # Create three nodes in a triangle
+        transport = InProcessGossipTransport()
         protocols = {
-            "node_a": GossipProtocol("node_a", gossip_interval=0.1),
-            "node_b": GossipProtocol("node_b", gossip_interval=0.1),
-            "node_c": GossipProtocol("node_c", gossip_interval=0.1),
+            "node_a": GossipProtocol(
+                "node_a", transport=transport, gossip_interval=0.1
+            ),
+            "node_b": GossipProtocol(
+                "node_b", transport=transport, gossip_interval=0.1
+            ),
+            "node_c": GossipProtocol(
+                "node_c", transport=transport, gossip_interval=0.1
+            ),
         }
 
         # Set up fully connected topology
         for node_id, protocol in protocols.items():
-            for other_id in protocols.keys():
+            for other_id in protocols:
                 if other_id != node_id:
                     protocol.known_nodes[other_id] = NodeMetadata(
                         node_id=other_id, region="test"
@@ -952,7 +967,10 @@ class TestGossipPerformanceAndScalability:
     @pytest.mark.asyncio
     async def test_gossip_protocol_performance(self):
         """Test gossip protocol performance with many messages."""
-        protocol = GossipProtocol("perf_test_node", gossip_interval=0.01)
+        transport = InProcessGossipTransport()
+        protocol = GossipProtocol(
+            "perf_test_node", transport=transport, gossip_interval=0.01
+        )
 
         # Create many unique messages (different message IDs and content)
         messages = []

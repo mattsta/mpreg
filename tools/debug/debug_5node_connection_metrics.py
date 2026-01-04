@@ -4,6 +4,7 @@ Debug script to check connection metrics in the 5-node cluster to verify N² gos
 """
 
 import asyncio
+import contextlib
 
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
@@ -107,10 +108,8 @@ async def test_5node_connection_metrics():
     # Cleanup
     for task in tasks:
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
 
 
 if __name__ == "__main__":

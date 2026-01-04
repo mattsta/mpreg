@@ -5,6 +5,8 @@ This package provides comprehensive CLI tools for managing MPREG federation
 clusters, monitoring health, and performing administrative operations.
 """
 
+from __future__ import annotations
+
 from .federation_cli import FederationCLI
 from .main import cli, main
 

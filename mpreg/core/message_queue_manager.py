@@ -5,6 +5,8 @@ This module provides a centralized manager for multiple message queues
 and integrates with MPREG's existing topic exchange system.
 """
 
+from __future__ import annotations
+
 import asyncio
 import time
 import uuid
@@ -21,8 +23,11 @@ from .message_queue import (
     QueueStatistics,
     QueueType,
 )
+from .persistence.registry import PersistenceRegistry
 from .task_manager import ManagedObject
 from .topic_exchange import TopicExchange
+
+queue_mgr_log = logger
 
 # Type aliases for semantic clarity
 type QueueName = str
@@ -87,10 +92,13 @@ class MessageQueueManager(ManagedObject):
         self,
         config: QueueManagerConfiguration,
         topic_exchange: TopicExchange | None = None,
+        *,
+        persistence_registry: PersistenceRegistry | None = None,
     ) -> None:
         super().__init__(name="MessageQueueManager")
         self.config = config
         self.topic_exchange = topic_exchange
+        self.persistence_registry = persistence_registry
 
         # Queue management
         self.queues: dict[QueueName, MessageQueue] = {}
@@ -105,18 +113,20 @@ class MessageQueueManager(ManagedObject):
         if topic_exchange and config.enable_topic_exchange_integration:
             self._setup_topic_exchange_integration()
 
-        logger.info("Message Queue Manager initialized")
+        queue_mgr_log.info("Message Queue Manager initialized")
 
     async def create_queue(
         self, name: str, config: QueueConfiguration | None = None
     ) -> bool:
         """Create a new message queue."""
         if name in self.queues:
-            logger.warning(f"Queue {name} already exists")
+            queue_mgr_log.warning(f"Queue {name} already exists")
             return False
 
         if len(self.queues) >= self.config.max_queues:
-            logger.error(f"Maximum queue limit reached: {self.config.max_queues}")
+            queue_mgr_log.error(
+                f"Maximum queue limit reached: {self.config.max_queues}"
+            )
             return False
 
         # Use provided config or create default
@@ -130,22 +140,48 @@ class MessageQueueManager(ManagedObject):
             )
 
         try:
-            queue = MessageQueue(config)
+            if self.persistence_registry is not None:
+                await self.persistence_registry.open()
+            queue_store = (
+                self.persistence_registry.queue_store(name)
+                if self.persistence_registry is not None
+                else None
+            )
+            queue = MessageQueue(
+                config,
+                queue_store=queue_store,
+                autostart=queue_store is None,
+            )
+            if queue_store is not None:
+                await queue.restore_from_store()
+                await queue_store.save_config(queue.config)
+                queue.start_workers()
             self.queues[name] = queue
-            self.queue_configs[name] = config
+            self.queue_configs[name] = queue.config
             self.statistics.total_queues += 1
 
-            logger.info(f"Created queue: {name}")
+            queue_mgr_log.info(f"Created queue: {name}")
             return True
 
         except Exception as e:
-            logger.error(f"Failed to create queue {name}: {e}")
+            queue_mgr_log.error(f"Failed to create queue {name}: {e}")
             return False
+
+    async def restore_persisted_queues(self) -> None:
+        """Restore queues persisted on disk."""
+        if self.persistence_registry is None:
+            return
+        await self.persistence_registry.open()
+        queue_names = await self.persistence_registry.list_queue_names()
+        for queue_name in queue_names:
+            if queue_name in self.queues:
+                continue
+            await self.create_queue(queue_name)
 
     async def delete_queue(self, name: str) -> bool:
         """Delete a message queue."""
         if name not in self.queues:
-            logger.warning(f"Queue {name} does not exist")
+            queue_mgr_log.warning(f"Queue {name} does not exist")
             return False
 
         try:
@@ -161,11 +197,11 @@ class MessageQueueManager(ManagedObject):
                 routing for routing in self.topic_routings if routing.queue_name != name
             ]
 
-            logger.info(f"Deleted queue: {name}")
+            queue_mgr_log.info(f"Deleted queue: {name}")
             return True
 
         except Exception as e:
-            logger.error(f"Failed to delete queue {name}: {e}")
+            queue_mgr_log.error(f"Failed to delete queue {name}: {e}")
             return False
 
     async def send_message(
@@ -203,7 +239,7 @@ class MessageQueueManager(ManagedObject):
             return result
 
         except Exception as e:
-            logger.error(f"Failed to send message to queue {queue_name}: {e}")
+            queue_mgr_log.error(f"Failed to send message to queue {queue_name}: {e}")
             return DeliveryResult(
                 success=False,
                 message_id=None,  # type: ignore
@@ -221,7 +257,7 @@ class MessageQueueManager(ManagedObject):
     ) -> str | None:
         """Subscribe to messages from a specific queue."""
         if queue_name not in self.queues:
-            logger.error(f"Cannot subscribe to non-existent queue: {queue_name}")
+            queue_mgr_log.error(f"Cannot subscribe to non-existent queue: {queue_name}")
             return None
 
         try:
@@ -235,12 +271,12 @@ class MessageQueueManager(ManagedObject):
             )
 
             self.statistics.active_subscriptions += 1
-            logger.info(f"Subscribed {subscriber_id} to queue {queue_name}")
+            queue_mgr_log.info(f"Subscribed {subscriber_id} to queue {queue_name}")
 
             return subscription_id
 
         except Exception as e:
-            logger.error(f"Failed to subscribe to queue {queue_name}: {e}")
+            queue_mgr_log.error(f"Failed to subscribe to queue {queue_name}: {e}")
             return None
 
     def unsubscribe_from_queue(self, queue_name: str, subscription_id: str) -> bool:
@@ -256,7 +292,7 @@ class MessageQueueManager(ManagedObject):
             return False
 
         except Exception as e:
-            logger.error(f"Failed to unsubscribe from queue {queue_name}: {e}")
+            queue_mgr_log.error(f"Failed to unsubscribe from queue {queue_name}: {e}")
             return False
 
     async def acknowledge_message(
@@ -271,7 +307,9 @@ class MessageQueueManager(ManagedObject):
             return await queue.acknowledge_message(message_id, subscriber_id)
 
         except Exception as e:
-            logger.error(f"Failed to acknowledge message in queue {queue_name}: {e}")
+            queue_mgr_log.error(
+                f"Failed to acknowledge message in queue {queue_name}: {e}"
+            )
             return False
 
     def get_queue_statistics(self, queue_name: str) -> QueueStatistics | None:
@@ -358,7 +396,7 @@ class MessageQueueManager(ManagedObject):
         # Subscribe to queue management topics
         management_topic = f"{self.config.integration_topic_prefix}.management.*"
         # Note: In a real implementation, we'd set up proper topic exchange subscriptions
-        logger.info(
+        queue_mgr_log.info(
             f"Set up topic exchange integration with prefix: {self.config.integration_topic_prefix}"
         )
 
@@ -370,7 +408,7 @@ class MessageQueueManager(ManagedObject):
     ) -> bool:
         """Publish a message to MPREG's topic exchange system."""
         if not self.topic_exchange:
-            logger.warning("Topic exchange not available")
+            queue_mgr_log.warning("Topic exchange not available")
             return False
 
         try:
@@ -388,11 +426,11 @@ class MessageQueueManager(ManagedObject):
             # Publish via topic exchange
             self.topic_exchange.publish_message(message)
 
-            logger.debug(f"Published message to topic exchange: {topic}")
+            queue_mgr_log.debug(f"Published message to topic exchange: {topic}")
             return True
 
         except Exception as e:
-            logger.error(f"Failed to publish to topic exchange: {e}")
+            queue_mgr_log.error(f"Failed to publish to topic exchange: {e}")
             return False
 
     async def route_topic_to_queue(
@@ -408,7 +446,7 @@ class MessageQueueManager(ManagedObject):
                 await self.create_queue(queue_name)
 
             if queue_name not in self.queues:
-                logger.error(f"Cannot route to non-existent queue: {queue_name}")
+                queue_mgr_log.error(f"Cannot route to non-existent queue: {queue_name}")
                 return False
 
             # Set up routing with proper dataclass
@@ -419,18 +457,18 @@ class MessageQueueManager(ManagedObject):
             )
             self.topic_routings.append(routing)
 
-            logger.info(
+            queue_mgr_log.info(
                 f"Set up routing from topic {topic_pattern} to queue {queue_name}"
             )
             return True
 
         except Exception as e:
-            logger.error(f"Failed to set up topic routing: {e}")
+            queue_mgr_log.error(f"Failed to set up topic routing: {e}")
             return False
 
     async def shutdown(self) -> None:
         """Shutdown all queues and cleanup resources."""
-        logger.info("Shutting down Message Queue Manager...")
+        queue_mgr_log.info("Shutting down Message Queue Manager...")
 
         # Shutdown all queues
         shutdown_tasks = []
@@ -448,7 +486,7 @@ class MessageQueueManager(ManagedObject):
         # Shutdown task manager
         await super().shutdown()
 
-        logger.info("Message Queue Manager shutdown complete")
+        queue_mgr_log.info("Message Queue Manager shutdown complete")
 
 
 # Factory functions for common configurations
@@ -456,14 +494,20 @@ class MessageQueueManager(ManagedObject):
 
 def create_standard_queue_manager(
     topic_exchange: TopicExchange | None = None,
+    *,
+    persistence_registry: PersistenceRegistry | None = None,
 ) -> MessageQueueManager:
     """Create a standard message queue manager."""
     config = QueueManagerConfiguration()
-    return MessageQueueManager(config, topic_exchange)
+    return MessageQueueManager(
+        config, topic_exchange, persistence_registry=persistence_registry
+    )
 
 
 def create_high_throughput_queue_manager(
     topic_exchange: TopicExchange | None = None,
+    *,
+    persistence_registry: PersistenceRegistry | None = None,
 ) -> MessageQueueManager:
     """Create a high-throughput optimized queue manager."""
     config = QueueManagerConfiguration(
@@ -472,11 +516,15 @@ def create_high_throughput_queue_manager(
         default_acknowledgment_timeout_seconds=60.0,
         max_queues=5000,
     )
-    return MessageQueueManager(config, topic_exchange)
+    return MessageQueueManager(
+        config, topic_exchange, persistence_registry=persistence_registry
+    )
 
 
 def create_reliable_queue_manager(
     topic_exchange: TopicExchange | None = None,
+    *,
+    persistence_registry: PersistenceRegistry | None = None,
 ) -> MessageQueueManager:
     """Create a reliability-focused queue manager."""
     config = QueueManagerConfiguration(
@@ -485,4 +533,6 @@ def create_reliable_queue_manager(
         default_acknowledgment_timeout_seconds=600.0,  # 10 minutes
         enable_auto_queue_creation=False,  # Explicit queue creation
     )
-    return MessageQueueManager(config, topic_exchange)
+    return MessageQueueManager(
+        config, topic_exchange, persistence_registry=persistence_registry
+    )

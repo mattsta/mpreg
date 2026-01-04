@@ -2,6 +2,7 @@
 """Debug gossip blocking behavior after GOODBYE."""
 
 import asyncio
+import contextlib
 
 from mpreg.core.config import MPREGSettings
 from mpreg.core.model import GoodbyeReason
@@ -148,12 +149,10 @@ async def debug_gossip_blocking():
         for task in [server1_task, server2_new_task, server3_task]:
             task.cancel()
 
-        try:
+        with contextlib.suppress(Exception):
             await asyncio.gather(
                 server1_task, server2_new_task, server3_task, return_exceptions=True
             )
-        except Exception:
-            pass
 
         port_manager.cleanup()
 

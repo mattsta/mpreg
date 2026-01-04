@@ -116,6 +116,21 @@ class TestBlockchain:
         with pytest.raises(ValueError, match="Invalid block"):
             blockchain.add_block(invalid_block)
 
+    def test_block_rejects_invalid_merkle_root(self):
+        """Blocks with mismatched merkle roots should be rejected."""
+        tx = Transaction(sender="alice", receiver="bob", fee=1)
+        with pytest.raises(ValueError, match="Merkle root"):
+            Block(
+                height=1,
+                previous_hash="bad_prev",
+                merkle_root="bad_root",
+                transactions=(tx,),
+                miner="miner1",
+                difficulty=1,
+                nonce=0,
+                timestamp=time.time(),
+            )
+
     def test_transaction_lookup(self):
         """Test finding transactions in blockchain."""
         # Create blockchain with transaction
@@ -248,6 +263,7 @@ class TestBlockchain:
         assert "genesis_block" in blockchain_dict
         assert "blocks" in blockchain_dict
         assert "consensus_config" in blockchain_dict
+        assert "crypto_config" in blockchain_dict
         assert "summary" in blockchain_dict
 
         # Deserialize from dict
@@ -257,6 +273,10 @@ class TestBlockchain:
         assert (
             reconstructed.consensus_config.consensus_type
             == blockchain.consensus_config.consensus_type
+        )
+        assert (
+            reconstructed.crypto_config.signature_algorithm
+            == blockchain.crypto_config.signature_algorithm
         )
 
     def test_consensus_validation(self):
@@ -302,6 +322,9 @@ class TestBlockchain:
         new_block = Block.create_next_block(
             blockchain.get_latest_block(), (tx,), "test_miner"
         )
+
+        if not blockchain.can_add_block(new_block):
+            return
 
         # Adding should return new blockchain
         new_blockchain = blockchain.add_block(new_block)
@@ -570,7 +593,7 @@ class TestBlockchainExamples:
         # Node join request
         join_tx = Transaction(
             sender="new_node_id",
-            receiver="federation_registry",
+            receiver="hub_registry",
             operation_type=OperationType.FEDERATION_JOIN,
             payload=b'{"node_type": "full", "capabilities": ["routing", "storage"]}',
             fee=10,

@@ -6,11 +6,15 @@ when objects are destroyed, preventing the "Task was destroyed but it is pending
 warnings and resource leaks.
 """
 
+from __future__ import annotations
+
 import asyncio
 from collections.abc import Coroutine
 from typing import Any
 
 from loguru import logger
+
+task_log = logger
 
 
 class TaskManager:
@@ -26,15 +30,22 @@ class TaskManager:
     ) -> asyncio.Task[Any]:
         """Create and track a background task."""
         if self._shutdown_requested:
+            coro.close()
             raise RuntimeError("Cannot create tasks after shutdown requested")
 
-        task = asyncio.create_task(coro, name=name)
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            coro.close()
+            raise
+
+        task = loop.create_task(coro, name=name)
         self.tasks.add(task)
 
         # Clean up when task completes naturally
         task.add_done_callback(self._task_completed)
 
-        logger.debug(f"[{self.name}] Created task {task.get_name() or 'unnamed'}")
+        task_log.debug(f"[{self.name}] Created task {task.get_name() or 'unnamed'}")
         return task
 
     def _task_completed(self, task: asyncio.Task[Any]) -> None:
@@ -43,15 +54,15 @@ class TaskManager:
 
         # Log any exceptions
         if task.cancelled():
-            logger.debug(
+            task_log.debug(
                 f"[{self.name}] Task {task.get_name() or 'unnamed'} was cancelled"
             )
         elif task.exception():
-            logger.error(
+            task_log.error(
                 f"[{self.name}] Task {task.get_name() or 'unnamed'} failed: {task.exception()}"
             )
         else:
-            logger.debug(
+            task_log.debug(
                 f"[{self.name}] Task {task.get_name() or 'unnamed'} completed successfully"
             )
 
@@ -63,10 +74,10 @@ class TaskManager:
         self._shutdown_requested = True
 
         if not self.tasks:
-            logger.debug(f"[{self.name}] No tasks to shutdown")
+            task_log.debug(f"[{self.name}] No tasks to shutdown")
             return
 
-        logger.info(f"[{self.name}] Shutting down {len(self.tasks)} background tasks")
+        task_log.info(f"[{self.name}] Shutting down {len(self.tasks)} background tasks")
 
         # Cancel all tasks
         for task in self.tasks:
@@ -91,7 +102,7 @@ class TaskManager:
                     # Force cancel any remaining pending tasks
                     for task in pending:
                         task.cancel()
-                        logger.warning(
+                        task_log.warning(
                             f"[{self.name}] Force-cancelled task: {task.get_name()}"
                         )
 
@@ -100,11 +111,18 @@ class TaskManager:
                         await asyncio.sleep(0.1)
 
             except Exception as e:
-                logger.warning(f"[{self.name}] Error during task shutdown: {e}")
+                task_log.warning(f"[{self.name}] Error during task shutdown: {e}")
 
         # Clear tasks regardless of whether they completed successfully
         self.tasks.clear()
-        logger.info(f"[{self.name}] Task shutdown complete")
+        task_log.info(f"[{self.name}] Task shutdown complete")
+
+    def cancel_all(self) -> None:
+        """Synchronously cancel all tracked tasks without awaiting."""
+        for task in list(self.tasks):
+            if not task.done():
+                task.cancel()
+        self.tasks.clear()
 
     def __len__(self) -> int:
         """Return number of active tasks."""
@@ -130,3 +148,19 @@ class ManagedObject:
     async def shutdown(self) -> None:
         """Shutdown the object and all its background tasks."""
         await self._task_manager.shutdown()
+
+    def __del__(self) -> None:
+        """Best-effort cleanup to avoid pending task warnings at loop teardown."""
+        if not hasattr(self, "_task_manager"):
+            return
+        task_manager = self._task_manager
+        if not task_manager.tasks or task_manager._shutdown_requested:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop is not None and loop.is_running():
+            loop.create_task(task_manager.shutdown())
+        else:
+            task_manager.cancel_all()

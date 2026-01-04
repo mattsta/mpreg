@@ -6,6 +6,8 @@ from statistics methods throughout the MPREG codebase. These dataclasses
 provide proper type safety and clear documentation of statistics structures.
 """
 
+from __future__ import annotations
+
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -374,22 +376,6 @@ class RemoteClusterInfo:
 
 
 @dataclass(frozen=True, slots=True)
-class FederationBridgeStatistics:
-    """Comprehensive statistics for federation bridge."""
-
-    cluster_info: ClusterInfo
-    routing_configuration: RoutingConfiguration
-    message_statistics: dict[str, int]
-    performance_metrics: dict[str, float]
-    graph_routing_stats: dict[str, int]
-    last_sync: float
-    uptime_seconds: float
-    remote_clusters: dict[str, RemoteClusterInfo]
-    graph_routing_performance: "GraphRouterStatistics | None" = None
-    monitoring: "GraphMonitoringStatistics | None" = None
-
-
-@dataclass(frozen=True, slots=True)
 class RoutingPerformance:
     """Performance metrics for routing operations."""
 
@@ -562,27 +548,6 @@ class BacklogStatistics:
 
 
 @dataclass(frozen=True, slots=True)
-class FederationInfo:
-    """Federation configuration and status information."""
-
-    enabled: bool = False
-    cluster_id: str = ""
-    cluster_name: str = ""
-    bridge_url: str = ""
-    connected_clusters: int = 0
-    cross_cluster_messages: int = 0
-    federation_latency_ms: float = 0.0
-    federated_messages_sent: int = 0
-    federated_messages_received: int = 0
-    federation_errors: int = 0
-    bloom_filter_memory_bytes: int = 0
-    local_patterns: int = 0
-    bloom_filter_fp_rate: float = 0.0
-    total_remote_subscriptions: int = 0
-    routing_table_size: int = 0
-
-
-@dataclass(frozen=True, slots=True)
 class ClusterHealthInfo:
     """Health information for a specific cluster."""
 
@@ -623,16 +588,9 @@ class TopicExchangeComprehensiveStats:
     messages_published: int
     messages_delivered: int
     delivery_ratio: float
-    trie_stats: "TrieStatistics"
+    trie_stats: TrieStatistics
     backlog_stats: BacklogStatistics
     remote_servers: int
-
-
-@dataclass(frozen=True, slots=True)
-class FederatedTopicExchangeStats(TopicExchangeComprehensiveStats):
-    """Comprehensive statistics for the federated TopicExchange."""
-
-    federation: FederationInfo
 
 
 @dataclass(frozen=True, slots=True)
@@ -891,7 +849,7 @@ class CLIDiscoveredCluster:
     health_score: float = 100.0
 
     @classmethod
-    def from_discovered_cluster(cls, cluster) -> "CLIDiscoveredCluster":
+    def from_discovered_cluster(cls, cluster) -> CLIDiscoveredCluster:
         """Create CLI cluster from auto-discovery DiscoveredCluster."""
         status = "active" if cluster.health_status.value == "healthy" else "degraded"
         if cluster.health_score < 25.0:
@@ -910,7 +868,7 @@ class CLIDiscoveredCluster:
         )
 
     @classmethod
-    def from_config_dict(cls, config_data: dict[str, Any]) -> "CLIDiscoveredCluster":
+    def from_config_dict(cls, config_data: dict[str, Any]) -> CLIDiscoveredCluster:
         """Create CLI cluster from configuration dictionary."""
         return cls(
             cluster_id=config_data["cluster_id"],

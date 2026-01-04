@@ -11,15 +11,30 @@ All tests use live MPREG servers with no mocking.
 """
 
 import asyncio
+import contextlib
 import time
+import uuid
 
 import pytest
 
 from mpreg.core.config import MPREGSettings
 from mpreg.core.model import GoodbyeReason, RPCServerGoodbye
+from mpreg.fabric.catalog import NodeDescriptor
+from mpreg.fabric.catalog_delta import RoutingCatalogDelta
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 from tests.test_helpers import TestPortManager
+
+
+def _peer_node_ids(server: MPREGServer) -> set[str]:
+    directory = server._peer_directory
+    if not directory:
+        return set()
+    return {node.node_id for node in directory.nodes()}
+
+
+def _peer_count(server: MPREGServer) -> int:
+    return len(_peer_node_ids(server))
 
 
 class TestGoodbyeProtocol:
@@ -30,18 +45,20 @@ class TestGoodbyeProtocol:
         """Test creating GOODBYE messages with proper fields."""
         from mpreg.core.model import GoodbyeReason, RPCServerGoodbye
 
-        goodbye = RPCServerGoodbye(
-            departing_node_url="ws://127.0.0.1:8000",
-            cluster_id="test-cluster",
-            reason=GoodbyeReason.GRACEFUL_SHUTDOWN,
-        )
+        with TestPortManager() as port_manager:
+            departing_url = port_manager.get_server_url()
+            goodbye = RPCServerGoodbye(
+                departing_node_url=departing_url,
+                cluster_id="test-cluster",
+                reason=GoodbyeReason.GRACEFUL_SHUTDOWN,
+            )
 
-        assert goodbye.what == "GOODBYE"
-        assert goodbye.departing_node_url == "ws://127.0.0.1:8000"
-        assert goodbye.cluster_id == "test-cluster"
-        assert goodbye.reason == GoodbyeReason.GRACEFUL_SHUTDOWN
-        assert isinstance(goodbye.timestamp, float)
-        assert goodbye.timestamp <= time.time()
+            assert goodbye.what == "GOODBYE"
+            assert goodbye.departing_node_url == departing_url
+            assert goodbye.cluster_id == "test-cluster"
+            assert goodbye.reason == GoodbyeReason.GRACEFUL_SHUTDOWN
+            assert isinstance(goodbye.timestamp, float)
+            assert goodbye.timestamp <= time.time()
 
     @pytest.mark.asyncio
     async def test_goodbye_reasons_enum(self):
@@ -94,8 +111,8 @@ class TestGoodbyeProtocol:
             await asyncio.sleep(2.0)
 
             # Verify cluster is formed (server1 should know about server2)
-            assert f"ws://127.0.0.1:{server2_port}" in server1.cluster.peers_info
-            assert len(server1.cluster.peers_info) == 2  # server1 + server2
+            assert f"ws://127.0.0.1:{server2_port}" in _peer_node_ids(server1)
+            assert _peer_count(server1) == 2  # server1 + server2
 
             # Send GOODBYE from server2
             await server2.send_goodbye(GoodbyeReason.GRACEFUL_SHUTDOWN)
@@ -104,10 +121,8 @@ class TestGoodbyeProtocol:
             await asyncio.sleep(2.0)
 
             # Verify server1 removed server2 from cluster
-            assert f"ws://127.0.0.1:{server2_port}" not in server1.cluster.peers_info
-            assert (
-                len(server1.cluster.peers_info) == 1
-            )  # server1 should still have itself
+            assert f"ws://127.0.0.1:{server2_port}" not in _peer_node_ids(server1)
+            assert _peer_count(server1) == 1  # server1 should still have itself
 
             # Verify server1 closed connection to server2
             assert f"ws://127.0.0.1:{server2_port}" not in server1.peer_connections
@@ -164,13 +179,9 @@ class TestGoodbyeProtocol:
             await asyncio.sleep(3.0)
 
             # Verify all nodes know each other (including themselves)
-            assert len(hub.cluster.peers_info) == 3  # hub knows itself, node1 and node2
-            assert (
-                len(node1.cluster.peers_info) >= 2
-            )  # node1 knows at least itself and hub
-            assert (
-                len(node2.cluster.peers_info) >= 2
-            )  # node2 knows at least itself and hub
+            assert _peer_count(hub) == 3  # hub knows itself, node1 and node2
+            assert _peer_count(node1) >= 2  # node1 knows at least itself and hub
+            assert _peer_count(node2) >= 2  # node2 knows at least itself and hub
 
             # Node1 sends GOODBYE
             await node1.send_goodbye(GoodbyeReason.MAINTENANCE)
@@ -179,9 +190,9 @@ class TestGoodbyeProtocol:
             await asyncio.sleep(1.5)
 
             # Verify hub removed node1
-            assert f"ws://127.0.0.1:{node1_port}" not in hub.cluster.peers_info
-            assert (
-                f"ws://127.0.0.1:{node2_port}" in hub.cluster.peers_info
+            assert f"ws://127.0.0.1:{node1_port}" not in _peer_node_ids(hub)
+            assert f"ws://127.0.0.1:{node2_port}" in _peer_node_ids(
+                hub
             )  # node2 still there
 
             # Verify hub closed connection to node1
@@ -229,7 +240,7 @@ class TestGoodbyeProtocol:
             await asyncio.sleep(2.0)
 
             # Verify cluster is formed
-            assert f"ws://127.0.0.1:{server2_port}" in server1.cluster.peers_info
+            assert f"ws://127.0.0.1:{server2_port}" in _peer_node_ids(server1)
 
             # Shutdown server2 manually (this should send GOODBYE)
             await server2.shutdown_async()
@@ -238,10 +249,8 @@ class TestGoodbyeProtocol:
             await asyncio.sleep(1.0)
 
             # Verify server1 removed server2 from cluster
-            assert f"ws://127.0.0.1:{server2_port}" not in server1.cluster.peers_info
-            assert (
-                len(server1.cluster.peers_info) == 1
-            )  # server1 should still have itself
+            assert f"ws://127.0.0.1:{server2_port}" not in _peer_node_ids(server1)
+            assert _peer_count(server1) == 1  # server1 should still have itself
 
     @pytest.mark.asyncio
     async def test_goodbye_unknown_peer(self):
@@ -267,21 +276,22 @@ class TestGoodbyeProtocol:
             await asyncio.sleep(1.0)
 
             # Create GOODBYE from unknown peer
+            fake_url = port_manager.get_server_url()
             fake_goodbye = RPCServerGoodbye(
-                departing_node_url="ws://127.0.0.1:99999",
+                departing_node_url=fake_url,
                 cluster_id="goodbye-unknown-test",
                 reason=GoodbyeReason.MANUAL_REMOVAL,
             )
 
             # Handle the GOODBYE (should not crash)
-            await server._handle_goodbye_message(fake_goodbye, "ws://127.0.0.1:99999")
+            await server._handle_goodbye_message(fake_goodbye, fake_url)
 
             # Verify cluster state unchanged (only server itself)
-            assert len(server.cluster.peers_info) == 1
+            assert _peer_count(server) == 1
 
     @pytest.mark.asyncio
-    async def test_cluster_remove_peer_functionality(self):
-        """Test the cluster remove_peer method directly."""
+    async def test_catalog_departure_removes_peer(self):
+        """Test removing a peer via catalog departure updates."""
         async with AsyncTestContext() as ctx:
             port_manager = TestPortManager()
 
@@ -302,33 +312,44 @@ class TestGoodbyeProtocol:
             ctx.tasks.append(server_task)
             await asyncio.sleep(1.0)
 
-            # Manually add a peer to cluster
-            from mpreg.core.model import PeerInfo
-
-            fake_peer = PeerInfo(
-                url="ws://127.0.0.1:99999",
-                funs=("test_func",),
-                locs=frozenset({"test-resource"}),
-                last_seen=time.time(),
+            fake_url = port_manager.get_server_url()
+            missing_url = port_manager.get_server_url()
+            now = time.time()
+            delta = RoutingCatalogDelta(
+                update_id=str(uuid.uuid4()),
                 cluster_id="remove-peer-test",
+                sent_at=now,
+                nodes=(
+                    NodeDescriptor(
+                        node_id=fake_url,
+                        cluster_id="remove-peer-test",
+                        resources=frozenset({"test-resource"}),
+                        capabilities=frozenset(),
+                        advertised_at=now,
+                        ttl_seconds=30.0,
+                    ),
+                ),
             )
-            server.cluster.peers_info["ws://127.0.0.1:99999"] = fake_peer
+            server._fabric_control_plane.applier.apply(delta, now=now)
 
-            # Verify peer is in cluster (plus server itself)
-            assert "ws://127.0.0.1:99999" in server.cluster.peers_info
-            assert len(server.cluster.peers_info) == 2
+            # Verify peer is in catalog (plus server itself)
+            assert fake_url in _peer_node_ids(server)
+            assert _peer_count(server) == 2
 
             # Remove peer
-            removed = await server.cluster.remove_peer("ws://127.0.0.1:99999")
+            server._apply_remote_departure(
+                server_url=fake_url, cluster_id="remove-peer-test"
+            )
 
             # Verify removal (server itself should still be there)
-            assert removed is True
-            assert "ws://127.0.0.1:99999" not in server.cluster.peers_info
-            assert len(server.cluster.peers_info) == 1
+            assert fake_url not in _peer_node_ids(server)
+            assert _peer_count(server) == 1
 
-            # Try to remove non-existent peer
-            removed_again = await server.cluster.remove_peer("ws://127.0.0.1:88888")
-            assert removed_again is False
+            # Try to remove non-existent peer (no-op)
+            server._apply_remote_departure(
+                server_url=missing_url, cluster_id="remove-peer-test"
+            )
+            assert _peer_count(server) == 1
 
     @pytest.mark.asyncio
     async def test_goodbye_all_reasons(self):
@@ -375,16 +396,14 @@ class TestGoodbyeProtocol:
                 await asyncio.sleep(1.5)
 
                 # Verify cluster formation
-                assert f"ws://127.0.0.1:{server2_port}" in server1.cluster.peers_info
+                assert f"ws://127.0.0.1:{server2_port}" in _peer_node_ids(server1)
 
                 # Send GOODBYE with specific reason
                 await server2.send_goodbye(reason)
                 await asyncio.sleep(0.5)
 
                 # Verify removal worked
-                assert (
-                    f"ws://127.0.0.1:{server2_port}" not in server1.cluster.peers_info
-                )
+                assert f"ws://127.0.0.1:{server2_port}" not in _peer_node_ids(server1)
 
                 # Clean shutdown
                 await server1.shutdown_async()
@@ -392,15 +411,13 @@ class TestGoodbyeProtocol:
                 server1_task.cancel()
                 server2_task.cancel()
 
-                try:
+                with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(
                         asyncio.gather(
                             server1_task, server2_task, return_exceptions=True
                         ),
                         timeout=2.0,
                     )
-                except TimeoutError:
-                    pass
 
     @pytest.mark.asyncio
     async def test_goodbye_prevents_reconnection_attempts(self):
@@ -442,7 +459,7 @@ class TestGoodbyeProtocol:
             await asyncio.sleep(2.0)
 
             # Verify cluster is formed
-            initial_peers = len(server1.cluster.peers_info)
+            initial_peers = _peer_count(server1)
             assert initial_peers > 0
 
             # Send GOODBYE from server2
@@ -452,11 +469,11 @@ class TestGoodbyeProtocol:
             await asyncio.sleep(1.0)
 
             # Verify server2 was removed from server1's peer list (server1 itself should remain)
-            assert len(server1.cluster.peers_info) == 1
+            assert _peer_count(server1) == 1
 
             # Wait additional time to see if reconnection attempts happen
             await asyncio.sleep(3.0)
 
             # Verify server2 is still not in peer list (no reconnection, only server1 itself)
-            assert len(server1.cluster.peers_info) == 1
-            assert f"ws://127.0.0.1:{server2_port}" not in server1.cluster.peers_info
+            assert _peer_count(server1) == 1
+            assert f"ws://127.0.0.1:{server2_port}" not in _peer_node_ids(server1)

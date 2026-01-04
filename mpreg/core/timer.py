@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 import time
 from dataclasses import dataclass, field
@@ -49,7 +51,7 @@ class Timer:
         if self.count % self.every == 0:
             self.log(self.count)
 
-    def __enter__(self) -> "Timer":
+    def __enter__(self) -> Timer:
         # Note: don't use time.clock() or time.process_time()
         #       because those don't record time during sleep calls,
         #       but we need to record sleeps for when we're waiting
@@ -62,11 +64,9 @@ class Timer:
         # calculate closing state
         self.end = time.perf_counter()
         self.interval = self.end - self.start
-
         # don't use .log() if we have no sub-step intervals
         if not self.count:
             return
-
         extrafmt = ""
         if extra:
             if isinstance(extra, int):
@@ -75,10 +75,8 @@ class Timer:
                 extrafmt = f" ({extra:,.4f})"
             else:
                 extrafmt = f" ({extra})"
-
         # re-set entry state in case we are looping again
         self.start = time.perf_counter()
-
         # Log current duration...
         # also: using "opt(depth=2)" so the CALLER's mod/func/line info is shown
         # instead of all logging show mutil.Timer.log as the log line.
@@ -91,10 +89,8 @@ class Timer:
         # print final particle rollup ONLY IF we have sub-steps
         if self.count:
             self.log(self.count)
-
         self.end = time.perf_counter()
         self.interval = self.end - self.start
-
         # always print final global time for entire duration
         global_interval = self.end - self.start_global
         logger.opt(depth=1).info("{}Duration: {:,.4f}", self.name, global_interval)

@@ -16,6 +16,7 @@ configurations to ensure robustness across the entire input space.
 """
 
 import time
+from dataclasses import dataclass
 
 import pytest
 from hypothesis import assume, given, settings
@@ -39,6 +40,8 @@ from mpreg.datastructures.graph_algorithms import (
 class TestNode:
     """Test implementation of GraphNode protocol."""
 
+    __test__ = False
+
     def __init__(self, node_id: str, weight: float = 1.0, healthy: bool = True):
         self.node_id = node_id
         self.weight = weight
@@ -58,6 +61,8 @@ class TestNode:
 class TestEdge:
     """Test implementation of GraphEdge protocol."""
 
+    __test__ = False
+
     def __init__(self, weight: float = 1.0, usable: bool = True):
         self.weight = weight
         self.usable = usable
@@ -69,12 +74,22 @@ class TestEdge:
         return self.usable
 
 
+@dataclass(frozen=True, slots=True)
+class EdgeKey:
+    """Typed edge key for test graphs."""
+
+    source: str
+    target: str
+
+
 class TestGraph:
     """Test implementation of Graph protocol."""
 
+    __test__ = False
+
     def __init__(self):
         self.nodes: dict[str, TestNode] = {}
-        self.edges: dict[tuple[str, str], TestEdge] = {}
+        self.edges: dict[EdgeKey, TestEdge] = {}
         self.adjacency: dict[str, list[str]] = {}
 
     def add_node(
@@ -101,7 +116,7 @@ class TestGraph:
     ) -> None:
         """Add an edge to the test graph."""
         edge = TestEdge(weight, usable)
-        self.edges[(source, target)] = edge
+        self.edges[EdgeKey(source=source, target=target)] = edge
 
         if source not in self.adjacency:
             self.adjacency[source] = []
@@ -109,7 +124,7 @@ class TestGraph:
             self.adjacency[source].append(target)
 
         if bidirectional:
-            self.edges[(target, source)] = TestEdge(weight, usable)
+            self.edges[EdgeKey(source=target, target=source)] = TestEdge(weight, usable)
             if target not in self.adjacency:
                 self.adjacency[target] = []
             if source not in self.adjacency[target]:
@@ -119,7 +134,7 @@ class TestGraph:
         return self.nodes.get(node_id)
 
     def get_edge(self, source: str, target: str) -> TestEdge | None:
-        return self.edges.get((source, target))
+        return self.edges.get(EdgeKey(source=source, target=target))
 
     def get_neighbors(self, node_id: str) -> list[str]:
         return self.adjacency.get(node_id, [])

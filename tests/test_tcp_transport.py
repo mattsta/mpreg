@@ -11,6 +11,7 @@ import struct
 
 import pytest
 
+from mpreg.core.port_allocator import port_context
 from mpreg.core.transport import (
     SecurityConfig,
     TransportConfig,
@@ -34,21 +35,23 @@ class TestTCPTransport:
     @pytest.mark.asyncio
     async def test_tcp_create_transport(self):
         """Test creating TCP transport via factory."""
-        transport = TransportFactory.create("tcp://localhost:6668")
-        assert isinstance(transport, TCPTransport)
-        assert transport.protocol == TransportProtocol.TCP
-        assert not transport.is_secure
-        assert not transport.connected
+        with port_context("testing") as port:
+            transport = TransportFactory.create(f"tcp://localhost:{port}")
+            assert isinstance(transport, TCPTransport)
+            assert transport.protocol == TransportProtocol.TCP
+            assert not transport.is_secure
+            assert not transport.connected
 
     @pytest.mark.asyncio
     async def test_tcp_secure_create_transport(self):
         """Test creating TCP secure transport via factory."""
         config = TransportConfig(security=SecurityConfig(verify_cert=False))
-        transport = TransportFactory.create("tcps://localhost:6669", config)
-        assert isinstance(transport, TCPTransport)
-        assert transport.protocol == TransportProtocol.TCP_SECURE
-        assert transport.is_secure
-        assert not transport.connected
+        with port_context("testing") as port:
+            transport = TransportFactory.create(f"tcps://localhost:{port}", config)
+            assert isinstance(transport, TCPTransport)
+            assert transport.protocol == TransportProtocol.TCP_SECURE
+            assert transport.is_secure
+            assert not transport.connected
 
     @pytest.mark.asyncio
     async def test_tcp_basic_communication(self, tcp_port):
@@ -290,22 +293,21 @@ class TestTCPTransport:
         """Test TCP connection error handling."""
         # Test connection to non-existent server
         config = TransportConfig(connect_timeout=2.0)
-        client = TransportFactory.create(
-            "tcp://127.0.0.1:1", config
-        )  # Port 1 is privileged
+        with port_context("testing") as port:
+            client = TransportFactory.create(f"tcp://127.0.0.1:{port}", config)
 
-        with pytest.raises(TransportConnectionError):
-            await client.connect()
+            with pytest.raises(TransportConnectionError):
+                await client.connect()
 
-        # Test operations on disconnected transport
-        with pytest.raises(TransportConnectionError):
-            await client.send(b"test")
+            # Test operations on disconnected transport
+            with pytest.raises(TransportConnectionError):
+                await client.send(b"test")
 
-        with pytest.raises(TransportConnectionError):
-            await client.receive()
+            with pytest.raises(TransportConnectionError):
+                await client.receive()
 
-        with pytest.raises(TransportConnectionError):
-            await client.ping()
+            with pytest.raises(TransportConnectionError):
+                await client.ping()
 
     @pytest.mark.asyncio
     async def test_tcp_timeout_errors(self, tcp_port):
@@ -380,6 +382,7 @@ class TestTCPTransport:
             writer.write(b"\x00\x00")  # Only 2 bytes instead of 4
             await writer.drain()
             writer.close()
+            await writer.wait_closed()
 
             # Server should get connection closed error
             with pytest.raises(TransportConnectionError):

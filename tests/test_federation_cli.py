@@ -1,7 +1,7 @@
 """
-Tests for Federation CLI functionality.
+Tests for Fabric Federation CLI functionality.
 
-These tests verify the command-line interface for federation management
+These tests verify the command-line interface for fabric federation management
 including cluster discovery, registration, health monitoring, and deployment.
 """
 
@@ -13,10 +13,11 @@ import pytest
 from click.testing import CliRunner
 
 from mpreg.cli.main import cli
+from tests.test_helpers import TestPortManager
 
 
 class TestFederationCLI:
-    """Test federation CLI commands."""
+    """Test fabric federation CLI commands."""
 
     def test_cli_help(self):
         """Test CLI help command."""
@@ -24,7 +25,7 @@ class TestFederationCLI:
         result = runner.invoke(cli, ["--help"])
 
         assert result.exit_code == 0
-        assert "MPREG Federation Management CLI" in result.output
+        assert "MPREG Fabric Federation Management CLI" in result.output
         assert "discover" in result.output
         assert "register" in result.output
         assert "health" in result.output
@@ -35,7 +36,7 @@ class TestFederationCLI:
         result = runner.invoke(cli, ["discover", "--help"])
 
         assert result.exit_code == 0
-        assert "Discover available federation clusters" in result.output
+        assert "Discover available fabric clusters" in result.output
 
     def test_discover_command(self):
         """Test discover command without config."""
@@ -43,8 +44,8 @@ class TestFederationCLI:
         result = runner.invoke(cli, ["discover"])
 
         assert result.exit_code == 0
-        # Should show federation clusters table
-        assert "Federation Clusters" in result.output
+        # Should show fabric clusters table
+        assert "Fabric Clusters" in result.output
         # The discovery system may return dns-cluster-1, dns-cluster-2 or no clusters
         # depending on DNS resolution, so just check for the table structure
 
@@ -100,33 +101,40 @@ class TestFederationCLI:
 
     def test_discover_with_config(self):
         """Test discover command with configuration file."""
-        # Create temporary config file
-        config_data = {
-            "clusters": [
-                {
-                    "cluster_id": "test-cluster",
-                    "cluster_name": "Test Cluster",
-                    "region": "test-region",
-                    "bridge_url": "ws://test.example.com:9000",
-                    "server_url": "ws://test.example.com:8000",
-                    "status": "active",
-                    "health": "healthy",
-                }
-            ]
-        }
+        with TestPortManager() as port_manager:
+            # Create temporary config file
+            config_data = {
+                "clusters": [
+                    {
+                        "cluster_id": "test-cluster",
+                        "cluster_name": "Test Cluster",
+                        "region": "test-region",
+                        "bridge_url": port_manager.get_server_url(
+                            category="federation", host="test.example.com"
+                        ),
+                        "server_url": port_manager.get_server_url(
+                            host="test.example.com"
+                        ),
+                        "status": "active",
+                        "health": "healthy",
+                    }
+                ]
+            }
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump(config_data, f)
-            config_path = f.name
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", delete=False
+            ) as f:
+                json.dump(config_data, f)
+                config_path = f.name
 
-        try:
-            runner = CliRunner()
-            result = runner.invoke(cli, ["discover", "--config", config_path])
+            try:
+                runner = CliRunner()
+                result = runner.invoke(cli, ["discover", "--config", config_path])
 
-            assert result.exit_code == 0
-            assert "test-cluster" in result.output
-        finally:
-            Path(config_path).unlink()
+                assert result.exit_code == 0
+                assert "test-cluster" in result.output
+            finally:
+                Path(config_path).unlink()
 
     def test_generate_config(self):
         """Test configuration template generation."""
@@ -170,33 +178,40 @@ class TestFederationCLI:
 
     def test_validate_config_valid(self):
         """Test config validation with valid configuration."""
-        config_data = {
-            "version": "1.0",
-            "federation": {"enabled": True},
-            "clusters": [
-                {
-                    "cluster_id": "test-cluster",
-                    "cluster_name": "Test Cluster",
-                    "region": "test-region",
-                    "server_url": "ws://test.example.com:8000",
-                    "bridge_url": "ws://test.example.com:9000",
-                }
-            ],
-        }
+        with TestPortManager() as port_manager:
+            config_data = {
+                "version": "1.0",
+                "federation": {"enabled": True},
+                "clusters": [
+                    {
+                        "cluster_id": "test-cluster",
+                        "cluster_name": "Test Cluster",
+                        "region": "test-region",
+                        "server_url": port_manager.get_server_url(
+                            host="test.example.com"
+                        ),
+                        "bridge_url": port_manager.get_server_url(
+                            category="federation", host="test.example.com"
+                        ),
+                    }
+                ],
+            }
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump(config_data, f)
-            config_path = f.name
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", delete=False
+            ) as f:
+                json.dump(config_data, f)
+                config_path = f.name
 
-        try:
-            runner = CliRunner()
-            result = runner.invoke(cli, ["validate-config", config_path])
+            try:
+                runner = CliRunner()
+                result = runner.invoke(cli, ["validate-config", config_path])
 
-            assert result.exit_code == 0
-            assert "Configuration validation passed" in result.output
+                assert result.exit_code == 0
+                assert "Configuration validation passed" in result.output
 
-        finally:
-            Path(config_path).unlink()
+            finally:
+                Path(config_path).unlink()
 
     def test_validate_config_invalid(self):
         """Test config validation with invalid configuration."""
@@ -222,34 +237,41 @@ class TestFederationCLI:
 
     def test_deploy_dry_run(self):
         """Test deployment dry run."""
-        config_data = {
-            "version": "1.0",
-            "federation": {"enabled": True},
-            "clusters": [
-                {
-                    "cluster_id": "test-cluster",
-                    "cluster_name": "Test Cluster",
-                    "region": "test-region",
-                    "server_url": "ws://test.example.com:8000",
-                    "bridge_url": "ws://test.example.com:9000",
-                }
-            ],
-        }
+        with TestPortManager() as port_manager:
+            config_data = {
+                "version": "1.0",
+                "federation": {"enabled": True},
+                "clusters": [
+                    {
+                        "cluster_id": "test-cluster",
+                        "cluster_name": "Test Cluster",
+                        "region": "test-region",
+                        "server_url": port_manager.get_server_url(
+                            host="test.example.com"
+                        ),
+                        "bridge_url": port_manager.get_server_url(
+                            category="federation", host="test.example.com"
+                        ),
+                    }
+                ],
+            }
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump(config_data, f)
-            config_path = f.name
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".json", delete=False
+            ) as f:
+                json.dump(config_data, f)
+                config_path = f.name
 
-        try:
-            runner = CliRunner()
-            result = runner.invoke(cli, ["deploy", config_path, "--dry-run"])
+            try:
+                runner = CliRunner()
+                result = runner.invoke(cli, ["deploy", config_path, "--dry-run"])
 
-            assert result.exit_code == 0
-            assert "dry-run mode" in result.output
-            assert "Configuration is valid" in result.output
+                assert result.exit_code == 0
+                assert "dry-run mode" in result.output
+                assert "Configuration is valid" in result.output
 
-        finally:
-            Path(config_path).unlink()
+            finally:
+                Path(config_path).unlink()
 
     def test_topology_empty(self):
         """Test topology display with no clusters."""
@@ -281,9 +303,28 @@ class TestFederationCLI:
         result = runner.invoke(cli, ["monitor", "--help"])
 
         assert result.exit_code == 0
-        assert "Federation monitoring commands" in result.output
-        assert "health-watch" in result.output
-        assert "metrics-watch" in result.output
+        assert "Fabric federation monitoring commands" in result.output
+        commands = set()
+        in_commands = False
+        for line in result.output.splitlines():
+            if line.strip() == "Commands:":
+                in_commands = True
+                continue
+            if not in_commands:
+                continue
+            if not line.strip():
+                continue
+            if not line.startswith("  "):
+                break
+            commands.add(line.strip().split()[0])
+        assert "health" in commands
+        assert "health-watch" in commands
+        assert "metrics" in commands
+        assert "metrics-watch" in commands
+        assert "persistence" in commands
+        assert "persistence-watch" in commands
+        assert "endpoints" in commands
+        assert "status" in commands
 
     def test_config_commands_help(self):
         """Test config subcommand help."""

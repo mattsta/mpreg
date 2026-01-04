@@ -117,7 +117,7 @@ class TestAsyncTestContextBasicFunctionality:
     @pytest.mark.asyncio
     async def test_server_management(self):
         """Test that server management still works."""
-        from tests.port_allocator import PortAllocator
+        from mpreg.core.port_allocator import PortAllocator
 
         port_allocator = PortAllocator()
         server_port = port_allocator.allocate_port("servers")

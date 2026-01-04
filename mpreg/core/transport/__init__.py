@@ -12,11 +12,11 @@ The transport layer is designed to be:
 
 Example Usage:
     # WebSocket transport
-    transport = TransportFactory.create("ws://localhost:6666")
+    transport = TransportFactory.create("ws://localhost:<port>")
     await transport.connect()
 
     # TCP with TLS transport
-    transport = TransportFactory.create("tcps://localhost:6666")
+    transport = TransportFactory.create("tcps://localhost:<port>")
     await transport.connect()
 
     # Send/receive messages
@@ -24,6 +24,14 @@ Example Usage:
     response = await transport.receive()
 """
 
+from __future__ import annotations
+
+from .adapter_registry import (
+    AdapterEndpointRegistry,
+    ProtocolPortAssignment,
+    ProtocolPortAssignmentCallback,
+    get_adapter_endpoint_registry,
+)
 from .factory import TransportFactory
 from .interfaces import (
     SecurityConfig,
@@ -44,6 +52,10 @@ __all__ = [
     "TransportTimeoutError",
     "SecurityConfig",
     "TransportFactory",
+    "AdapterEndpointRegistry",
+    "ProtocolPortAssignment",
+    "ProtocolPortAssignmentCallback",
+    "get_adapter_endpoint_registry",
     "WebSocketTransport",
     "TCPTransport",
 ]

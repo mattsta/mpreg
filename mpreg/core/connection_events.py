@@ -10,15 +10,18 @@ Architecture:
 - ConnectionEvent: Data class for connection state changes
 """
 
-import logging
+from __future__ import annotations
+
 import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Protocol
 
+from loguru import logger
+
 from ..datastructures.type_aliases import NodeURL
 
-logger = logging.getLogger(__name__)
+event_log = logger
 
 
 class ConnectionEventType(Enum):
@@ -42,7 +45,7 @@ class ConnectionEvent:
     @classmethod
     def established(
         cls, node_url: NodeURL, local_node_url: NodeURL | None = None
-    ) -> "ConnectionEvent":
+    ) -> ConnectionEvent:
         """Create a connection established event."""
         return cls(
             event_type=ConnectionEventType.ESTABLISHED,
@@ -54,7 +57,7 @@ class ConnectionEvent:
     @classmethod
     def lost(
         cls, node_url: NodeURL, local_node_url: NodeURL | None = None
-    ) -> "ConnectionEvent":
+    ) -> ConnectionEvent:
         """Create a connection lost event."""
         return cls(
             event_type=ConnectionEventType.LOST,
@@ -87,21 +90,21 @@ class ConnectionEventBus:
     def subscribe(self, component: ConnectionAwareComponent) -> None:
         """Subscribe a component to connection events."""
         self._subscribers.add(component)
-        logger.debug(
+        event_log.debug(
             f"Component {type(component).__name__} subscribed to connection events"
         )
 
     def unsubscribe(self, component: ConnectionAwareComponent) -> None:
         """Unsubscribe a component from connection events."""
         self._subscribers.discard(component)
-        logger.debug(
+        event_log.debug(
             f"Component {type(component).__name__} unsubscribed from connection events"
         )
 
     def publish(self, event: ConnectionEvent) -> None:
         """Publish a connection event to all subscribers."""
         # Only log at debug level instead of printing to console
-        logger.debug(
+        event_log.debug(
             f"Publishing connection event: {event.event_type.value} for {event.node_url} "
             f"to {len(self._subscribers)} subscribers"
         )
@@ -121,10 +124,10 @@ class ConnectionEventBus:
                 elif event.event_type == ConnectionEventType.LOST:
                     subscriber.on_connection_lost(event)
                 else:
-                    logger.warning(f"Unknown event type: {event.event_type}")
+                    event_log.warning(f"Unknown event type: {event.event_type}")
 
             except Exception as e:
-                logger.error(
+                event_log.error(
                     f"Error notifying subscriber {type(subscriber).__name__}: {e}"
                 )
 

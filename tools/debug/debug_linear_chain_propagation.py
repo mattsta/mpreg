@@ -4,6 +4,7 @@ Debug script to test function propagation in a linear chain topology.
 """
 
 import asyncio
+import contextlib
 
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
@@ -125,10 +126,8 @@ async def test_linear_chain_propagation():
     task_c.cancel()
 
     for task in [task_a, task_b, task_c]:
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
 
 
 if __name__ == "__main__":

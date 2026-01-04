@@ -65,7 +65,7 @@ async def focused_vote_debug():
                     terms[node_id] = node.persistent_state.current_term
 
                 print(f"\n📊 Round {round_num}:")
-                for node_id in nodes.keys():
+                for node_id in nodes:
                     print(
                         f"   {node_id}: {states[node_id]} (term={terms[node_id]}, votes={votes[node_id]})"
                     )

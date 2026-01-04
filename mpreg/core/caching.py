@@ -6,7 +6,10 @@ eviction policies, result lifecycle management, and performance monitoring.
 All data structures use dataclasses following MPREG's clean design principles.
 """
 
+from __future__ import annotations
+
 import asyncio
+import contextlib
 import hashlib
 import time
 from collections import defaultdict, deque
@@ -18,6 +21,8 @@ from loguru import logger
 from pympler import asizeof
 
 from .task_manager import ManagedObject
+
+cache_store_log = logger
 
 T = TypeVar("T")
 
@@ -56,7 +61,7 @@ class CacheKey:
     @classmethod
     def create(
         cls, function_name: str, args: tuple[Any, ...], kwargs: dict[str, Any]
-    ) -> "CacheKey":
+    ) -> CacheKey:
         """Create cache key from function call parameters."""
         args_hash = hashlib.sha256(str(args).encode()).hexdigest()[:16]
         kwargs_hash = hashlib.sha256(str(sorted(kwargs.items())).encode()).hexdigest()[
@@ -175,7 +180,7 @@ class EvictionCandidate:
     score: float
     reason: str
 
-    def __lt__(self, other: "EvictionCandidate") -> bool:
+    def __lt__(self, other: EvictionCandidate) -> bool:
         """Compare eviction candidates by score (lower = more likely to evict)."""
         return self.score < other.score
 
@@ -445,7 +450,7 @@ class S4LRUCache:
 
     def get_segment_stats(
         self, cache_entries: dict[CacheKey, Any] | None = None
-    ) -> list["S4LRUSegmentStats"]:
+    ) -> list[S4LRUSegmentStats]:
         """Get statistics for each segment with optional memory calculation."""
         stats = []
         for i, segment in enumerate(self.segments):
@@ -556,7 +561,7 @@ class SmartCacheManager[T](ManagedObject):
             self.create_task(self._periodic_cleanup(), name="periodic_cleanup")
         except RuntimeError:
             # No event loop running, skip background cleanup
-            logger.warning("No event loop running, skipping cleanup task")
+            cache_store_log.debug("No event loop running, skipping cleanup task")
 
     async def _periodic_cleanup(self) -> None:
         """Periodic cleanup of expired entries."""
@@ -573,25 +578,25 @@ class SmartCacheManager[T](ManagedObject):
                     for key in expired_keys:
                         self.evict(key, reason="TTL expired")
 
-                    logger.debug(
+                    cache_store_log.debug(
                         f"Cleaned up {len(expired_keys)} expired cache entries"
                     )
 
                 except asyncio.CancelledError:
                     break
                 except Exception as e:
-                    logger.error(f"Error in cache cleanup: {e}")
+                    cache_store_log.error(f"Error in cache cleanup: {e}")
                     # If event loop is gone, break the loop
                     if "no running event loop" in str(
                         e
                     ) or "Event loop is closed" in str(e):
                         break
         except asyncio.CancelledError:
-            logger.info("Cache cleanup task cancelled")
+            cache_store_log.debug("Cache cleanup task cancelled")
         except Exception as e:
-            logger.error(f"Cache cleanup task fatal error: {e}")
+            cache_store_log.error(f"Cache cleanup task fatal error: {e}")
         finally:
-            logger.info("Cache cleanup task stopped")
+            cache_store_log.debug("Cache cleanup task stopped")
 
     def put(
         self,
@@ -646,7 +651,7 @@ class SmartCacheManager[T](ManagedObject):
                     evicted_entry = self.l1_cache.pop(evicted_key)
                     self.statistics.evictions += 1
                     self.statistics.memory_bytes -= evicted_entry.size_bytes
-                    logger.debug(f"S4LRU evicted {evicted_key}")
+                    cache_store_log.debug(f"S4LRU evicted {evicted_key}")
         else:
             # Use traditional access order tracking
             self.access_order.append(key)
@@ -655,7 +660,7 @@ class SmartCacheManager[T](ManagedObject):
         self.statistics.entry_count = len(self.l1_cache)
         self.statistics.memory_bytes += size_bytes
 
-        logger.debug(
+        cache_store_log.debug(
             f"Cached {key} with cost {computation_cost_ms}ms, size {size_bytes} bytes"
         )
 
@@ -687,7 +692,7 @@ class SmartCacheManager[T](ManagedObject):
                     evicted_entry = self.l1_cache.pop(evicted_key)
                     self.statistics.evictions += 1
                     self.statistics.memory_bytes -= evicted_entry.size_bytes
-                    logger.debug(f"S4LRU evicted {evicted_key}")
+                    cache_store_log.debug(f"S4LRU evicted {evicted_key}")
         else:
             # Update LRU order for traditional policies
             try:
@@ -696,7 +701,7 @@ class SmartCacheManager[T](ManagedObject):
                 pass  # Key might not be in access order
             self.access_order.append(key)
 
-        logger.debug(f"Cache hit for {key}")
+        cache_store_log.debug(f"Cache hit for {key}")
         return entry.value
 
     def contains(self, key: CacheKey) -> bool:
@@ -723,10 +728,8 @@ class SmartCacheManager[T](ManagedObject):
             self.s4lru_cache.remove(key)
         else:
             # Remove from traditional access order
-            try:
+            with contextlib.suppress(ValueError):
                 self.access_order.remove(key)
-            except ValueError:
-                pass
 
         # Update statistics
         self.statistics.evictions += 1
@@ -737,7 +740,7 @@ class SmartCacheManager[T](ManagedObject):
         if self.config.enable_dependency_tracking:
             self._remove_dependencies(key)
 
-        logger.debug(f"Evicted {key}: {reason}")
+        cache_store_log.debug(f"Evicted {key}: {reason}")
         return True
 
     def invalidate_dependencies(self, key: CacheKey) -> int:
@@ -756,7 +759,7 @@ class SmartCacheManager[T](ManagedObject):
         self.dependency_graph.clear()
         self.reverse_deps.clear()
         self.statistics = CacheStatistics()
-        logger.info("Cache cleared")
+        cache_store_log.info("Cache cleared")
 
     def get_statistics(self) -> CacheStatistics:
         """Get cache performance statistics."""
@@ -804,7 +807,9 @@ class SmartCacheManager[T](ManagedObject):
         if self.config.eviction_policy == EvictionPolicy.S4LRU and self.s4lru_cache:
             # S4LRU handles eviction internally when new items are added
             # No explicit eviction needed here as it happens during access()
-            logger.debug("S4LRU policy handles eviction automatically during access")
+            cache_store_log.debug(
+                "S4LRU policy handles eviction automatically during access"
+            )
             return
 
         candidates = self._select_eviction_candidates()
@@ -816,7 +821,7 @@ class SmartCacheManager[T](ManagedObject):
             if self.evict(candidate.entry.key, candidate.reason):
                 evicted_count += 1
 
-        logger.info(
+        cache_store_log.info(
             f"Evicted {evicted_count} entries using {self.config.eviction_policy.value} policy"
         )
 
@@ -887,7 +892,9 @@ class SmartCacheManager[T](ManagedObject):
                 # Use pympler for accurate memory measurement
                 return asizeof.asizeof(value)
             except Exception as e:
-                logger.warning(f"Failed to calculate accurate size with pympler: {e}")
+                cache_store_log.warning(
+                    f"Failed to calculate accurate size with pympler: {e}"
+                )
                 # Fall back to simple estimation
                 pass
 
@@ -903,7 +910,7 @@ class SmartCacheManager[T](ManagedObject):
         await super().shutdown()
 
         self.clear()
-        logger.info("Cache manager shutdown complete")
+        cache_store_log.info("Cache manager shutdown complete")
 
     def shutdown_sync(self) -> None:
         """Shutdown cache manager and cleanup resources (sync version for compatibility)."""
@@ -917,10 +924,10 @@ class SmartCacheManager[T](ManagedObject):
                 self._task_manager.tasks.clear()
                 self._task_manager._shutdown_requested = True
         except Exception as e:
-            logger.warning(f"Error during sync task cancellation: {e}")
+            cache_store_log.warning(f"Error during sync task cancellation: {e}")
 
         self.clear()
-        logger.info("Cache manager sync shutdown complete")
+        cache_store_log.info("Cache manager sync shutdown complete")
 
 
 # Factory functions for common configurations

@@ -260,10 +260,7 @@ class Trie[T]:
 
         with self._lock:
             # Handle empty key as zero segments, not one empty segment
-            if key == "":
-                segments = []
-            else:
-                segments = key.split(self.config.segment_separator)
+            segments = [] if key == "" else key.split(self.config.segment_separator)
             matches: set[T] = set()
 
             # Recursive matching

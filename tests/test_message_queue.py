@@ -347,10 +347,14 @@ class TestMessageQueue:
         assert queue._topic_matches_pattern("user.login", "user.*")
         assert queue._topic_matches_pattern("user.logout", "user.*")
         assert queue._topic_matches_pattern("system.alert.critical", "*.alert.*")
+        assert queue._topic_matches_pattern("system.alert.critical", "system.#")
+        assert queue._topic_matches_pattern("system.alert.critical", "system.alert.#")
+        assert queue._topic_matches_pattern("system.alert.critical", "#")
 
         # Test non-matches
         assert not queue._topic_matches_pattern("admin.login", "user.*")
         assert not queue._topic_matches_pattern("user.settings", "user.login")
+        assert not queue._topic_matches_pattern("user.login", "system.#")
 
         queue.shutdown_sync()
 

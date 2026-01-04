@@ -49,7 +49,7 @@ async def test_duplicate_registration():
         "✅ RPC system setup completed during server __init__ without duplicate registration errors"
     )
     print(f"✅ Server has {len(server.registry._commands)} registered functions:")
-    for name in server.registry._commands.keys():
+    for name in server.registry._commands:
         print(f"   - {name}")
 
     print(

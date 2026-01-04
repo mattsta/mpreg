@@ -2,14 +2,16 @@
 Cache-PubSub Integration for MPREG.
 
 This module provides seamless integration between the advanced cache operations
-and the topic pub/sub mesh routing system, enabling:
+and the topic pub/sub fabric routing system, enabling:
 
 - Automatic pub/sub notifications on cache operations
 - Cache invalidation via pub/sub messages
-- Global cache consistency using pub/sub mesh
+- Global cache consistency using pub/sub fabric
 - Real-time cache events for monitoring and alerting
 - Distributed cache coordination
 """
+
+from __future__ import annotations
 
 import asyncio
 import time
@@ -21,7 +23,6 @@ from typing import Any
 
 from loguru import logger
 
-from ..federation.federated_topic_exchange import FederatedTopicExchange
 from .advanced_cache_ops import (
     AdvancedCacheOperations,
     AtomicOperationRequest,
@@ -96,7 +97,7 @@ class CacheEvent:
 
 class CachePubSubIntegration(ManagedObject):
     """
-    Integration layer between cache operations and pub/sub mesh.
+    Integration layer between cache operations and pub/sub fabric.
 
     Provides bidirectional integration:
     1. Cache operations → Pub/Sub notifications
@@ -107,7 +108,7 @@ class CachePubSubIntegration(ManagedObject):
         self,
         cache_manager: GlobalCacheManager,
         advanced_cache_ops: AdvancedCacheOperations,
-        topic_exchange: TopicExchange | FederatedTopicExchange,
+        topic_exchange: TopicExchange,
         cluster_id: str = "default",
     ):
         super().__init__(name=f"CachePubSubIntegration-{cluster_id}")
@@ -243,10 +244,10 @@ class CachePubSubIntegration(ManagedObject):
                             if not (value > op_value):
                                 return False
                         elif op == "$eq":
-                            if not (value == op_value):
+                            if value != op_value:
                                 return False
                         elif op == "$ne":
-                            if not (value != op_value):
+                            if value == op_value:
                                 return False
                         elif op == "$in":
                             # Check if value is in op_value, or if value is a list, if any item is in op_value
@@ -330,7 +331,7 @@ class CachePubSubIntegration(ManagedObject):
             )
         except RuntimeError:
             # No event loop running, skip background task
-            logger.warning("No event loop running, skipping notification processor")
+            logger.debug("No event loop running, skipping notification processor")
 
     async def _notification_processor(self) -> None:
         """Background task to process notification queue."""
@@ -361,11 +362,11 @@ class CachePubSubIntegration(ManagedObject):
                         break
 
         except asyncio.CancelledError:
-            logger.info("Cache notification processor cancelled")
+            logger.debug("Cache notification processor cancelled")
         except Exception as e:
             logger.error(f"Notification processor error: {e}")
         finally:
-            logger.info("Cache notification processor stopped")
+            logger.debug("Cache notification processor stopped")
 
     def _setup_cache_coordination_subscriptions(self) -> None:
         """Set up subscriptions for cache coordination messages."""

@@ -8,12 +8,13 @@ Raft distributed consensus algorithm with all safety and liveness guarantees.
 from __future__ import annotations
 
 import asyncio
-import logging
 import random
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
+
+from loguru import logger
 
 from .production_raft import (
     AppendEntriesRequest,
@@ -34,7 +35,7 @@ from .production_raft import (
 from .production_raft_rpcs import ProductionRaftRPCs
 from .raft_task_manager import RaftTaskManager
 
-logger = logging.getLogger(__name__)
+raft_log = logger
 
 
 class ContactStatus(Enum):
@@ -131,7 +132,7 @@ class ElectionCoordinator:
 
     async def stop_coordinator(self) -> None:
         """Stop the election coordinator cleanly."""
-        logger.debug("Stopping election coordinator")
+        raft_log.debug("Stopping election coordinator")
         self.stop_event.set()
 
         # If we have a task manager, ask it to stop just the coordinator task
@@ -140,7 +141,7 @@ class ElectionCoordinator:
                 "core", "election_coordinator", timeout=1.0
             )
 
-        logger.debug("Election coordinator stopped")
+        raft_log.debug("Election coordinator stopped")
 
     def trigger_election(self) -> None:
         """Trigger an election event."""
@@ -177,7 +178,7 @@ class ElectionCoordinator:
 
     async def _coordinator_loop(self, node_id: str, election_callback) -> None:
         """Main coordinator loop - simple election timer."""
-        logger.debug(f"[{node_id}] Election coordinator loop started")
+        raft_log.debug(f"[{node_id}] Election coordinator loop started")
 
         try:
             while not self.stop_event.is_set():
@@ -195,14 +196,14 @@ class ElectionCoordinator:
                     pass
                 except asyncio.CancelledError:
                     # Coordinator is being cancelled
-                    logger.debug(
+                    raft_log.debug(
                         f"[{node_id}] Election coordinator cancelled during wait"
                     )
                     break
 
                 # Check if we should stop before proceeding
                 if self.stop_event.is_set():
-                    logger.debug(
+                    raft_log.debug(
                         f"[{node_id}] Election coordinator received stop signal"
                     )
                     break
@@ -221,18 +222,18 @@ class ElectionCoordinator:
                             self._election_callback_wrapper(election_callback)
                         )
                     except Exception as e:
-                        logger.warning(
+                        raft_log.warning(
                             f"[{node_id}] Election callback creation error: {e}"
                         )
                         self.election_in_progress = False
 
         except asyncio.CancelledError:
-            logger.debug(f"[{node_id}] Election coordinator cancelled")
+            raft_log.debug(f"[{node_id}] Election coordinator cancelled")
             raise
         except Exception as e:
-            logger.error(f"[{node_id}] Election coordinator error: {e}")
+            raft_log.error(f"[{node_id}] Election coordinator error: {e}")
         finally:
-            logger.debug(f"[{node_id}] Election coordinator loop ended")
+            raft_log.debug(f"[{node_id}] Election coordinator loop ended")
             # Ensure we're not marked as in progress
             self.election_in_progress = False
 
@@ -241,7 +242,7 @@ class ElectionCoordinator:
         try:
             await election_callback()
         except Exception as e:
-            logger.warning(f"Election callback error: {e}")
+            raft_log.warning(f"Election callback error: {e}")
         finally:
             self.election_in_progress = False
 
@@ -430,7 +431,7 @@ class ProductionRaft(ProductionRaftRPCs):
         # Connect election coordinator to task manager
         self.election_coordinator.task_manager = self.task_manager
 
-        logger.info(
+        raft_log.info(
             f"Initialized Raft node {self.node_id} with cluster {self.cluster_members}"
         )
 
@@ -447,7 +448,7 @@ class ProductionRaft(ProductionRaftRPCs):
                 stored_state = await self.storage.load_persistent_state()
                 if stored_state:
                     self.persistent_state = stored_state
-                    logger.info(
+                    raft_log.info(
                         f"Loaded persistent state: term={stored_state.current_term}, "
                         f"log_entries={len(stored_state.log_entries)}"
                     )
@@ -456,7 +457,7 @@ class ProductionRaft(ProductionRaftRPCs):
                 snapshot = await self.storage.load_latest_snapshot()
                 if snapshot:
                     await self._apply_snapshot(snapshot)
-                    logger.info(
+                    raft_log.info(
                         f"Loaded snapshot up to index {snapshot.last_included_index}"
                     )
 
@@ -468,12 +469,12 @@ class ProductionRaft(ProductionRaftRPCs):
                 self.metrics.current_state = self.current_state
                 self.metrics.log_size = len(self.persistent_state.log_entries)
 
-                logger.info(
+                raft_log.info(
                     f"Raft node {self.node_id} started in {self.current_state.value} state"
                 )
 
             except Exception as e:
-                logger.error(f"Failed to start Raft node {self.node_id}: {e}")
+                raft_log.error(f"Failed to start Raft node {self.node_id}: {e}")
                 raise
 
     async def stop(self) -> None:
@@ -483,37 +484,42 @@ class ProductionRaft(ProductionRaftRPCs):
         This method cancels background tasks, saves persistent state,
         and performs cleanup.
         """
-        logger.debug(f"[{self.node_id}] stop() called")
+        raft_log.debug(f"[{self.node_id}] stop() called")
         async with self.state_lock:
             try:
-                logger.info(f"Stopping Raft node {self.node_id}")
+                raft_log.info(f"Stopping Raft node {self.node_id}")
 
                 # Cancel background tasks
-                logger.debug(f"[{self.node_id}] Stopping background tasks")
+                raft_log.debug(f"[{self.node_id}] Stopping background tasks")
                 await self._stop_background_tasks()
 
                 # Save final state
-                logger.debug(f"[{self.node_id}] Saving final state")
+                raft_log.debug(f"[{self.node_id}] Saving final state")
                 await self.storage.save_persistent_state(self.persistent_state)
 
                 # Reset state
-                logger.debug(f"[{self.node_id}] Resetting state")
+                raft_log.debug(f"[{self.node_id}] Resetting state")
                 self.current_state = RaftState.FOLLOWER
                 self.current_leader = None
                 self.leader_volatile_state = None
                 self.election_coordinator.election_in_progress = False
                 self.votes_received.clear()
 
-                logger.info(f"Raft node {self.node_id} stopped")
+                raft_log.info(f"Raft node {self.node_id} stopped")
 
             except Exception as e:
-                logger.error(f"[{self.node_id}] Error stopping Raft node: {e}")
+                raft_log.error(f"[{self.node_id}] Error stopping Raft node: {e}")
                 import traceback
 
-                logger.error(
+                raft_log.error(
                     f"[{self.node_id}] Stop traceback: {traceback.format_exc()}"
                 )
                 raise
+
+    async def step_down(self) -> None:
+        """Request this node to step down to follower state."""
+        async with self.state_lock:
+            await self._convert_to_follower(restart_timer=True, reset_backoff=True)
 
     async def submit_command(self, command: Any, client_id: str = "") -> Any | None:
         """
@@ -529,7 +535,7 @@ class ProductionRaft(ProductionRaftRPCs):
         # Create log entry first (with lock protection)
         async with self.state_lock:
             if self.current_state != RaftState.LEADER:
-                logger.warning(
+                raft_log.warning(
                     f"Node {self.node_id} is not leader, cannot submit command"
                 )
                 return None
@@ -566,7 +572,7 @@ class ProductionRaft(ProductionRaftRPCs):
             commit_start_time = time.time()
             while self.volatile_state.commit_index < entry.index:
                 if time.time() - commit_start_time > 5.0:  # 5 second timeout
-                    logger.warning(f"Command commit timeout for entry {entry.index}")
+                    raft_log.warning(f"Command commit timeout for entry {entry.index}")
                     return None
                 await asyncio.sleep(0.01)
 
@@ -577,11 +583,11 @@ class ProductionRaft(ProductionRaftRPCs):
             commit_latency = (time.time() - commit_start_time) * 1000
             self._update_command_commit_latency(commit_latency)
 
-            logger.info(f"Successfully committed command at index {entry.index}")
+            raft_log.info(f"Successfully committed command at index {entry.index}")
             return result
 
         except Exception as e:
-            logger.error(f"Error submitting command: {e}")
+            raft_log.error(f"Error submitting command: {e}")
             return None
 
     # Leader Election Implementation
@@ -589,12 +595,12 @@ class ProductionRaft(ProductionRaftRPCs):
     def _reset_election_backoff(self) -> None:
         """Reset election backoff after successful election or receiving valid leader."""
         self.election_coordinator.record_election_success()
-        logger.debug(f"[{self.node_id}] Election backoff reset")
+        raft_log.debug(f"[{self.node_id}] Election backoff reset")
 
     def _record_election_failure(self) -> None:
         """Record an election failure and increase backoff."""
         self.election_coordinator.record_election_failure()
-        logger.debug(
+        raft_log.debug(
             f"[{self.node_id}] Election failure recorded "
             f"(failures: {self.election_coordinator.consecutive_election_failures}, "
             f"backoff: {self.election_coordinator.election_backoff_multiplier:.2f}x)"
@@ -617,7 +623,7 @@ class ProductionRaft(ProductionRaftRPCs):
 
         Includes election backoff to prevent infinite election storms.
         """
-        logger.debug(
+        raft_log.debug(
             f"[{self.node_id}] _start_election called, current_state={self.current_state}"
         )
 
@@ -626,17 +632,17 @@ class ProductionRaft(ProductionRaftRPCs):
         # CRITICAL: Check if we should actually start an election
         # Only start if we're not a leader and haven't received recent heartbeats
         if self.current_state == RaftState.LEADER:
-            logger.debug(f"[{self.node_id}] Skipping election - already leader")
+            raft_log.debug(f"[{self.node_id}] Skipping election - already leader")
             return
 
         time_since_heartbeat = current_time - self.last_heartbeat_time
         if time_since_heartbeat <= self.config.election_timeout_max:
-            logger.debug(
+            raft_log.debug(
                 f"[{self.node_id}] Skipping election - recent heartbeat ({time_since_heartbeat:.3f}s ago)"
             )
             return
 
-        logger.info(
+        raft_log.info(
             f"[{self.node_id}] Starting election - heartbeat timeout exceeded ({time_since_heartbeat:.3f}s)"
         )
 
@@ -659,14 +665,16 @@ class ProductionRaft(ProductionRaftRPCs):
             self.current_leader = None
 
             self.metrics.elections_started += 1
-            logger.info(f"Starting election for term {new_term}")
+            raft_log.info(f"Starting election for term {new_term}")
 
             # Check if we're a single-node cluster (immediate leader)
             majority_threshold = len(self.cluster_members) // 2 + 1
 
             if len(self.cluster_members) == 1:
                 # Single node cluster - immediately become leader
-                logger.info(f"Single node cluster, becoming leader for term {new_term}")
+                raft_log.info(
+                    f"Single node cluster, becoming leader for term {new_term}"
+                )
                 await self._become_leader()
             else:
                 # Send RequestVote RPCs to all other nodes
@@ -690,26 +698,26 @@ class ProductionRaft(ProductionRaftRPCs):
                     )
 
                     # Process results - some may be exceptions but that's OK
-                    logger.info(
+                    raft_log.info(
                         f"Vote collection completed with {len(self.votes_received)} votes"
                     )
 
                 except TimeoutError:
-                    logger.warning(
+                    raft_log.warning(
                         f"Hard election timeout in term {new_term} with {len(self.votes_received)} votes"
                     )
 
                 # Check if we won the election (this could have been set by vote responses)
                 if self.current_state == RaftState.LEADER:
                     # Already became leader during vote collection
-                    logger.info("Already became leader during vote collection")
+                    raft_log.info("Already became leader during vote collection")
                 elif len(self.votes_received) >= majority_threshold:
-                    logger.info(
+                    raft_log.info(
                         f"Achieved majority after vote collection: {len(self.votes_received)}/{len(self.cluster_members)}"
                     )
                     await self._become_leader()
                 else:
-                    logger.info(
+                    raft_log.info(
                         f"Election failed in term {new_term}: got {len(self.votes_received)} votes, needed {majority_threshold}"
                     )
                     self.metrics.elections_lost += 1
@@ -717,7 +725,7 @@ class ProductionRaft(ProductionRaftRPCs):
                     await self._convert_to_follower()
 
         except Exception as e:
-            logger.error(f"Error during election: {e}")
+            raft_log.error(f"Error during election: {e}")
             self.metrics.elections_lost += 1
             self._record_election_failure()
             await self._convert_to_follower()
@@ -746,7 +754,7 @@ class ProductionRaft(ProductionRaftRPCs):
 
             if response:
                 async with self.state_lock:
-                    logger.debug(
+                    raft_log.debug(
                         f"Vote response from {target_node}: vote_granted={response.vote_granted}, response_term={response.term}, our_state={self.current_state}, our_term={self.persistent_state.current_term}"
                     )
 
@@ -763,33 +771,33 @@ class ProductionRaft(ProductionRaftRPCs):
                         and response.term == self.persistent_state.current_term
                     ):
                         self.votes_received.add(response.voter_id)
-                        logger.info(
+                        raft_log.info(
                             f"[{self.node_id}] COUNTED vote from {response.voter_id} for term {response.term}, total votes: {len(self.votes_received)}"
                         )
 
                         # Check if we now have enough votes to become leader
                         majority_threshold = len(self.cluster_members) // 2 + 1
                         if len(self.votes_received) >= majority_threshold:
-                            logger.info(
+                            raft_log.info(
                                 f"[{self.node_id}] ACHIEVED MAJORITY ({len(self.votes_received)}/{len(self.cluster_members)}), becoming leader"
                             )
                             await self._become_leader()
                             return
                     else:
-                        logger.debug(
+                        raft_log.debug(
                             f"[{self.node_id}] Vote NOT counted from {target_node}: vote_granted={response.vote_granted}, state={self.current_state}, response_term={response.term}, our_term={self.persistent_state.current_term}"
                         )
 
         except Exception as e:
-            logger.error(f"Exception in _request_vote_from_node({target_node}): {e}")
+            raft_log.error(f"Exception in _request_vote_from_node({target_node}): {e}")
             import traceback
 
-            logger.error(f"Traceback: {traceback.format_exc()}")
+            raft_log.error(f"Traceback: {traceback.format_exc()}")
             raise
 
     async def _become_leader(self) -> None:
         """Convert to leader state and initialize leader state."""
-        logger.info(f"Became leader for term {self.persistent_state.current_term}")
+        raft_log.info(f"Became leader for term {self.persistent_state.current_term}")
 
         # Reset election backoff on successful election
         self._reset_election_backoff()
@@ -851,7 +859,7 @@ class ProductionRaft(ProductionRaftRPCs):
         # Start heartbeat/replication
         await self._start_heartbeat()
 
-        logger.info(
+        raft_log.info(
             f"Leader initialization complete for term {self.persistent_state.current_term}"
         )
 
@@ -879,13 +887,13 @@ class ProductionRaft(ProductionRaftRPCs):
                 await asyncio.gather(*replication_coros)
             except asyncio.CancelledError:
                 # Heartbeat cancelled - stop replication immediately
-                logger.debug(
+                raft_log.debug(
                     f"[{self.node_id}] Heartbeat cancelled during concurrent replication"
                 )
                 raise
             except Exception as e:
                 # Log error - asyncio.gather will propagate the first exception
-                logger.warning(f"Failed during concurrent replication: {e}")
+                raft_log.warning(f"Failed during concurrent replication: {e}")
 
         # Update commit index after all replications complete
         # This ensures match_index values are consistent
@@ -895,7 +903,7 @@ class ProductionRaft(ProductionRaftRPCs):
         # CRITICAL: If commit_index advanced, immediately send another round of AppendEntries
         # to propagate the new commit_index to followers (RAFT SPEC requirement)
         if self.volatile_state.commit_index > old_commit_index:
-            logger.debug(
+            raft_log.debug(
                 f"Commit index advanced to {self.volatile_state.commit_index}, sending immediate commit propagation"
             )
 
@@ -911,7 +919,7 @@ class ProductionRaft(ProductionRaftRPCs):
                 try:
                     await asyncio.gather(*commit_propagation_coros)
                 except Exception as e:
-                    logger.warning(f"Failed during commit_index propagation: {e}")
+                    raft_log.warning(f"Failed during commit_index propagation: {e}")
 
     async def _replicate_to_follower(self, follower_id: str) -> None:
         """Replicate log entries to a specific follower."""
@@ -971,7 +979,7 @@ class ProductionRaft(ProductionRaftRPCs):
                     )
             else:
                 # No response received - this indicates communication failure
-                logger.warning(
+                raft_log.warning(
                     f"[{self.node_id}] No response from {follower_id} - communication failed (PARTITION?)"
                 )
                 # Track failed contact with this follower
@@ -980,7 +988,7 @@ class ProductionRaft(ProductionRaftRPCs):
                     contact_info.mark_failed_contact(time.time())
 
         except Exception as e:
-            logger.warning(f"Failed to replicate to {follower_id}: {e}")
+            raft_log.warning(f"Failed to replicate to {follower_id}: {e}")
 
     async def _send_append_entries_with_retry(
         self, follower_id: str, request: AppendEntriesRequest
@@ -1000,11 +1008,11 @@ class ProductionRaft(ProductionRaftRPCs):
                     return response
 
             except TimeoutError:
-                logger.debug(
+                raft_log.debug(
                     f"AppendEntries timeout to {follower_id}, attempt {attempt + 1}"
                 )
             except Exception as e:
-                logger.warning(f"AppendEntries error to {follower_id}: {e}")
+                raft_log.warning(f"AppendEntries error to {follower_id}: {e}")
 
             if attempt < self.config.max_retry_attempts - 1:
                 await asyncio.sleep(backoff_delay)
@@ -1053,7 +1061,7 @@ class ProductionRaft(ProductionRaftRPCs):
                     request.prev_log_index,
                 )
 
-            logger.debug(
+            raft_log.debug(
                 f"Successful replication to {follower_id}, match_index: "
                 f"{self.leader_volatile_state.match_index[follower_id]}"
             )
@@ -1082,7 +1090,7 @@ class ProductionRaft(ProductionRaftRPCs):
                     1, self.leader_volatile_state.next_index[follower_id] - 1
                 )
 
-            logger.debug(
+            raft_log.debug(
                 f"Replication failed to {follower_id}, next_index: "
                 f"{self.leader_volatile_state.next_index[follower_id]}"
             )
@@ -1117,7 +1125,7 @@ class ProductionRaft(ProductionRaftRPCs):
                 self.volatile_state.commit_index = new_commit_index
                 self.metrics.commit_index = new_commit_index
 
-                logger.debug(
+                raft_log.debug(
                     f"Updated commit index from {old_commit_index} to {new_commit_index}"
                 )
 
@@ -1134,7 +1142,7 @@ class ProductionRaft(ProductionRaftRPCs):
 
     async def _stop_background_tasks(self) -> None:
         """Stop all background tasks using centralized task manager."""
-        logger.debug(f"[{self.node_id}] _stop_background_tasks called")
+        raft_log.debug(f"[{self.node_id}] _stop_background_tasks called")
 
         # CLEAN ARCHITECTURE: Stop centralized coordinator
         await self.election_coordinator.stop_coordinator()
@@ -1148,7 +1156,7 @@ class ProductionRaft(ProductionRaftRPCs):
         if "core" in self.task_manager.task_groups:
             existing_task = self.task_manager.task_groups["core"].tasks.get("heartbeat")
             if existing_task and existing_task.is_active():
-                logger.debug(
+                raft_log.debug(
                     f"[{self.node_id}] Heartbeat task already running, not restarting"
                 )
                 return
@@ -1168,12 +1176,12 @@ class ProductionRaft(ProductionRaftRPCs):
                 try:
                     await self._check_leader_step_down()
                 except Exception as e:
-                    logger.error(
+                    raft_log.error(
                         f"[{self.node_id}] Error in _check_leader_step_down: {e}"
                     )
                     import traceback
 
-                    logger.error(
+                    raft_log.error(
                         f"[{self.node_id}] Step-down traceback: {traceback.format_exc()}"
                     )
 
@@ -1181,9 +1189,9 @@ class ProductionRaft(ProductionRaftRPCs):
                 await asyncio.sleep(self.config.heartbeat_interval)
 
         except asyncio.CancelledError:
-            logger.debug("Heartbeat task cancelled")
+            raft_log.debug("Heartbeat task cancelled")
         except Exception as e:
-            logger.error(f"Error in heartbeat loop: {e}")
+            raft_log.error(f"Error in heartbeat loop: {e}")
 
     async def _apply_committed_entries(self) -> None:
         """Apply committed entries to state machine."""
@@ -1204,9 +1212,9 @@ class ProductionRaft(ProductionRaftRPCs):
                                 entry.command, entry.index
                             )
                             self.metrics.commands_applied += 1
-                            logger.debug(f"Applied command at index {entry.index}")
+                            raft_log.debug(f"Applied command at index {entry.index}")
                         except Exception as e:
-                            logger.error(
+                            raft_log.error(
                                 f"Error applying command at index {entry.index}: {e}"
                             )
 
@@ -1214,11 +1222,11 @@ class ProductionRaft(ProductionRaftRPCs):
                     self.metrics.last_applied = next_index
                 else:
                     # Gap in log entries - this shouldn't happen
-                    logger.error(f"Gap in log entries at index {next_index}")
+                    raft_log.error(f"Gap in log entries at index {next_index}")
                     break
 
         except Exception as e:
-            logger.error(f"Error applying committed entries: {e}")
+            raft_log.error(f"Error applying committed entries: {e}")
 
     async def _check_majority_contact(self) -> None:
         """Check if we have majority contact and update last_majority_contact_time."""
@@ -1254,17 +1262,17 @@ class ProductionRaft(ProductionRaftRPCs):
                 else:
                     contact_details.append(f"{member_id}:missing(✗)")
 
-        logger.debug(
+        raft_log.debug(
             f"[{self.node_id}] Contact status: {','.join(contact_details)}, timeout={contact_timeout:.3f}s"
         )
 
         if reachable_count >= majority_threshold:
             self.last_majority_contact_time = current_time
-            logger.debug(
+            raft_log.debug(
                 f"[{self.node_id}] Majority contact maintained: {reachable_count}/{len(self.cluster_members)}"
             )
         else:
-            logger.warning(
+            raft_log.warning(
                 f"[{self.node_id}] Lost majority contact: only {reachable_count}/{len(self.cluster_members)} reachable (need {majority_threshold}) - "
                 f"last_majority_contact_time={self.last_majority_contact_time:.3f}, current_time={current_time:.3f}"
             )
@@ -1304,20 +1312,20 @@ class ProductionRaft(ProductionRaftRPCs):
         # Use smart step-down timeout calculation
         step_down_timeout = self._calculate_step_down_timeout(current_time)
 
-        logger.debug(
+        raft_log.debug(
             f"[{self.node_id}] Step-down check: {time_since_majority_contact:.3f}s since majority contact "
             f"(timeout: {step_down_timeout:.3f}s)"
         )
 
         if time_since_majority_contact > step_down_timeout:
-            logger.warning(
+            raft_log.warning(
                 f"[{self.node_id}] Stepping down as leader: no majority contact for {time_since_majority_contact:.3f}s "
                 f"(timeout: {step_down_timeout:.3f}s)"
             )
             await self._convert_to_follower(restart_timer=True)
             # Add backoff delay to prevent immediate re-election cycle
             backoff_delay = min(2.0, step_down_timeout)
-            logger.debug(
+            raft_log.debug(
                 f"[{self.node_id}] Adding {backoff_delay:.1f}s backoff after step-down"
             )
             await asyncio.sleep(backoff_delay)
@@ -1367,7 +1375,7 @@ class ProductionRaft(ProductionRaftRPCs):
                         await self._convert_to_follower()
                         return
                 else:
-                    logger.warning(f"Failed to send snapshot chunk to {follower_id}")
+                    raft_log.warning(f"Failed to send snapshot chunk to {follower_id}")
                     return
 
                 offset = chunk_end
@@ -1382,10 +1390,10 @@ class ProductionRaft(ProductionRaftRPCs):
                 )
 
             self.metrics.snapshots_created += 1
-            logger.info(f"Successfully sent snapshot to {follower_id}")
+            raft_log.info(f"Successfully sent snapshot to {follower_id}")
 
         except Exception as e:
-            logger.error(f"Error sending snapshot to {follower_id}: {e}")
+            raft_log.error(f"Error sending snapshot to {follower_id}: {e}")
 
     # Utility Methods
     def _last_log_index(self) -> int:
@@ -1407,7 +1415,7 @@ class ProductionRaft(ProductionRaftRPCs):
     async def _update_term(self, new_term: int) -> None:
         """Update current term and clear voted_for."""
         if new_term > self.persistent_state.current_term:
-            logger.info(
+            raft_log.info(
                 f"Updating term from {self.persistent_state.current_term} to {new_term}"
             )
 
@@ -1424,11 +1432,11 @@ class ProductionRaft(ProductionRaftRPCs):
         self, restart_timer: bool = True, reset_backoff: bool = False
     ) -> None:
         """Convert to follower state."""
-        logger.debug(
+        raft_log.debug(
             f"[{self.node_id}] _convert_to_follower called, restart_timer={restart_timer}, current_state={self.current_state}"
         )
         if self.current_state != RaftState.FOLLOWER:
-            logger.info(
+            raft_log.info(
                 f"[{self.node_id}] Converting from {self.current_state.value} to follower"
             )
 
@@ -1452,7 +1460,7 @@ class ProductionRaft(ProductionRaftRPCs):
                 await self.election_coordinator.start_coordinator(
                     self.node_id, self._start_election_with_semaphore
                 )
-                logger.info(
+                raft_log.info(
                     f"[{self.node_id}] Restarted election coordinator after stepping down from leader"
                 )
 
@@ -1517,11 +1525,11 @@ class ProductionRaft(ProductionRaftRPCs):
 
             await self.storage.save_persistent_state(self.persistent_state)
 
-            logger.info(
+            raft_log.info(
                 f"Applied snapshot up to index {snapshot.last_included_index}, "
                 f"trimmed log to {len(remaining_entries)} entries"
             )
 
         except Exception as e:
-            logger.error(f"Error applying snapshot: {e}")
+            raft_log.error(f"Error applying snapshot: {e}")
             raise

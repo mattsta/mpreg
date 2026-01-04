@@ -4,6 +4,7 @@ Debug script to test function propagation in the exact same 5-node linear chain 
 """
 
 import asyncio
+import contextlib
 
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
@@ -104,16 +105,14 @@ async def test_5node_chain_propagation():
     if not success:
         print("\n🔍 Debugging multi-hop propagation failure:")
         print("- Check if all servers can see the function in their funtimes")
-        print("- Verify HELLO message exchanges in 5-node chain")
+        print("- Verify STATUS + catalog propagation in 5-node chain")
         print("- Look for timing issues in longer chains")
 
     # Cleanup
     for task in tasks:
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
 
 
 if __name__ == "__main__":

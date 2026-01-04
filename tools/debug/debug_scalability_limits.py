@@ -15,10 +15,10 @@ import time
 from typing import Any, cast
 
 import psutil
+from tests.port_allocator import PortAllocator
 
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
-from tests.port_allocator import PortAllocator
 
 
 class ScalabilityAnalyzer:

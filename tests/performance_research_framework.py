@@ -30,6 +30,14 @@ from mpreg.server import MPREGServer
 
 
 @dataclass
+class TopologyEdge:
+    """Typed edge identifier for topology metrics."""
+
+    source_id: str
+    target_id: str
+
+
+@dataclass
 class NetworkTopologyMetrics:
     """Network topology analysis metrics."""
 
@@ -41,7 +49,7 @@ class NetworkTopologyMetrics:
     density: float  # Actual edges / possible edges
     centrality_scores: dict[str, float] = field(default_factory=dict)
     connected_components: int = 0
-    bridge_edges: list[tuple[str, str]] = field(default_factory=list)
+    bridge_edges: list[TopologyEdge] = field(default_factory=list)
     articulation_points: list[str] = field(default_factory=list)
 
 
@@ -175,7 +183,10 @@ class RealTimePerformanceMonitor:
         connected_components = nx.number_connected_components(G)
 
         # Find bridge edges and articulation points
-        bridge_edges = list(nx.bridges(G))
+        bridge_edges = [
+            TopologyEdge(source_id=source, target_id=target)
+            for source, target in nx.bridges(G)
+        ]
         articulation_points = list(nx.articulation_points(G))
 
         # Calculate centrality scores

@@ -2,7 +2,10 @@
 
 ## Overview
 
-This document outlines the design of blockchain datastructures for MPREG's federated system, combining our Vector Clock and Merkle Tree implementations with consensus mechanisms to create a distributed ledger suitable for federation coordination.
+This document outlines the design of blockchain datastructures for MPREG's
+fabric federation system, combining our Vector Clock and Merkle Tree
+implementations with consensus mechanisms to create a distributed ledger
+suitable for fabric coordination.
 
 ## Core Design Principles
 
@@ -10,7 +13,7 @@ This document outlines the design of blockchain datastructures for MPREG's feder
 2. **Cryptographic Integrity**: SHA-256 hashing throughout, with Merkle tree verification
 3. **Causal Consistency**: Vector clocks for distributed consensus and ordering
 4. **Property-Based Testing**: Comprehensive hypothesis testing for all components
-5. **Federation-First**: Designed specifically for MPREG's federated architecture
+5. **Fabric-First**: Designed specifically for MPREG's unified fabric architecture
 
 ## Architecture Components
 
@@ -32,7 +35,7 @@ Signature   Verification   Ordering
 1. **Transaction**: Individual operations with cryptographic signatures
 2. **Block**: Collection of transactions with Merkle root and vector clock
 3. **Blockchain**: Ordered chain of blocks with consensus mechanisms
-4. **Consensus**: Proof-of-stake/authority mechanisms for federation nodes
+4. **Consensus**: Proof-of-stake/authority mechanisms for fabric nodes
 
 ## Detailed Component Design
 
@@ -44,7 +47,7 @@ class Transaction:
     """
     Immutable transaction with cryptographic signature.
 
-    Represents a single operation in the federated system.
+    Represents a single operation in the fabric federation system.
     """
 
     transaction_id: TransactionId
@@ -78,7 +81,7 @@ class Block:
     Immutable block containing transactions with Merkle proof and vector clock.
 
     Combines MPREG's distributed time (Vector Clock) with cryptographic
-    verification (Merkle Tree) for federated consensus.
+    verification (Merkle Tree) for fabric consensus.
     """
 
     block_id: BlockId
@@ -104,7 +107,7 @@ class Block:
 **Key Features:**
 
 - Merkle tree of transactions for efficient verification
-- Vector clock for causal ordering across federation
+- Vector clock for causal ordering across fabric
 - Proof-of-work for consensus (adaptable to proof-of-stake)
 - Transaction inclusion proofs
 
@@ -117,7 +120,7 @@ class Blockchain:
     Immutable blockchain with consensus mechanisms.
 
     Maintains ordered chain of blocks with validation and
-    federation-specific consensus rules.
+    fabric-specific consensus rules.
     """
 
     chain_id: ChainId
@@ -144,17 +147,17 @@ class Blockchain:
 - Immutable chain operations
 - Fork resolution using total work
 - Transaction lookups across blocks
-- Balance calculation for federation nodes
+- Balance calculation for fabric nodes
 
 ## Consensus Mechanisms
 
-### Proof of Authority (Federation Consensus)
+### Proof of Authority (Fabric Consensus)
 
 ```python
 @dataclass(frozen=True, slots=True)
 class ProofOfAuthority:
     """
-    Federation-specific consensus where authorized nodes take turns mining.
+    Fabric-specific consensus where authorized nodes take turns mining.
 
     Uses vector clocks to determine mining order and prevent conflicts.
     """
@@ -174,7 +177,7 @@ class ProofOfAuthority:
 @dataclass(frozen=True, slots=True)
 class ProofOfStake:
     """
-    Stake-based consensus for larger federation networks.
+    Stake-based consensus for larger fabric networks.
     """
 
     stakes: dict[NodeId, int]
@@ -214,7 +217,7 @@ class BlockchainFederationRouter:
     """Federation routing with blockchain-verified node registry."""
 
     def register_node(self, node_info: NodeInfo, signature: DigitalSignature) -> Transaction:
-        """Register federation node on blockchain."""
+        """Register fabric node on blockchain."""
 
     def route_message(self, message: BaseMessage, target: NodeId) -> bool:
         """Route using blockchain-verified node information."""
@@ -239,7 +242,7 @@ class BlockchainRPC:
         """Execute RPC with optional blockchain consensus."""
 
     def submit_consensus_call(self, rpc_call: RPCCall) -> Transaction:
-        """Submit RPC call requiring federation consensus."""
+        """Submit RPC call requiring fabric consensus."""
 ```
 
 ## Type Aliases and Semantic Types
@@ -295,17 +298,17 @@ class SlashingConfig:
 
 ### Phase 2: Consensus Mechanisms
 
-1. Implement `ProofOfAuthority` for federation consensus
+1. Implement `ProofOfAuthority` for fabric consensus
 2. Add vector clock integration for causal ordering
 3. Implement fork resolution algorithms
 4. Test consensus under various scenarios
 
-### Phase 3: Federation Integration
+### Phase 3: Fabric Integration
 
 1. Integrate with existing message queue system
 2. Add blockchain routing verification
 3. Implement consensus-based RPC calls
-4. Create federation node registry on blockchain
+4. Create fabric node registry on blockchain
 
 ### Phase 4: Advanced Features
 
@@ -343,9 +346,9 @@ def test_blockchain_causality(chain):
 ### Integration Tests
 
 ```python
-def test_federation_consensus_scenario():
-    """Test complete federation consensus scenario."""
-    # Setup federation nodes
+def test_fabric_consensus_scenario():
+    """Test complete fabric consensus scenario."""
+    # Setup fabric nodes
     # Create transactions
     # Mine blocks with proof of authority
     # Verify consensus across nodes
@@ -386,32 +389,29 @@ def test_federation_consensus_scenario():
 
 ### Consensus Security
 
-- **51% Attack**: Mitigated by proof-of-authority in federation
+- **51% Attack**: Mitigated by proof-of-authority in fabric
 - **Nothing-at-Stake**: Not applicable with authorized miners
-- **Vector Clock Conflicts**: Resolved by federation consensus
+- **Vector Clock Conflicts**: Resolved by fabric consensus
 - **Fork Attacks**: Longest valid chain wins
 
-### Federation Security
+### Fabric Security
 
 - **Node Authentication**: Blockchain-verified node registry
-- **Message Integrity**: All federation messages on blockchain
+- **Message Integrity**: All fabric messages on blockchain
 - **Byzantine Tolerance**: Configurable fault tolerance
 - **Network Partitions**: Vector clock merge on reconnection
 
-## Migration and Compatibility
+## Migration Strategy
 
-### Backward Compatibility
-
-- Existing MPREG systems continue working
-- Blockchain features are opt-in
-- Gradual migration path for federation nodes
-- Legacy message formats supported
+- Blockchain features are opt-in per deployment.
+- Plan cutovers by enabling blockchain-backed queues first.
+- Use hub registry membership to gate new chains per cluster.
 
 ### Upgrade Strategy
 
 1. Deploy blockchain datastructures module
-2. Add blockchain support to new federation nodes
+2. Add blockchain support to new fabric nodes
 3. Migrate critical operations to blockchain consensus
 4. Phase out legacy consensus mechanisms
 
-This architecture provides a solid foundation for building blockchain functionality into MPREG's federated system while maintaining compatibility and leveraging our existing Vector Clock and Merkle Tree implementations.
+This architecture provides a solid foundation for building blockchain functionality into MPREG's fabric system while leveraging our existing Vector Clock and Merkle Tree implementations.

@@ -27,6 +27,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from loguru import logger
+
 from mpreg.core.enhanced_rpc import (
     RPCCommandId,
     RPCRequestId,
@@ -34,8 +36,8 @@ from mpreg.core.enhanced_rpc import (
     TopicSubscriptionId,
 )
 from mpreg.core.topic_taxonomy import TopicTemplateEngine
-from mpreg.core.unified_routing import MessageType
 from mpreg.datastructures.type_aliases import CorrelationId
+from mpreg.fabric.message import MessageType
 
 # Enhanced RPC dependency type aliases
 type DependencyId = str
@@ -448,8 +450,10 @@ class TopicDependencyResolver:
 
         except Exception as e:
             # Log error and continue - don't fail entire dependency setup
-            print(
-                f"Failed to create subscription for dependency {dep_spec.dependency_id}: {e}"
+            logger.warning(
+                "Failed to create subscription for dependency {}: {}",
+                dep_spec.dependency_id,
+                e,
             )
             return None
 
@@ -551,7 +555,10 @@ class TopicDependencyResolver:
         """Notify that commands are ready to execute due to dependency resolution."""
         # In a full implementation, this would integrate with the RPC executor
         # to trigger command execution
-        print(f"Commands ready for execution: {ready_commands}")
+        logger.debug(
+            "Commands ready for execution: {}",
+            sorted(ready_commands),
+        )
 
     async def _handle_dependency_failure(
         self,
@@ -563,8 +570,10 @@ class TopicDependencyResolver:
         dependent_commands = dependency_graph.dependency_edges.get(
             resolution_event.dependency_id, set()
         )
-        print(
-            f"Dependency {resolution_event.dependency_id} failed, affects commands: {dependent_commands}"
+        logger.debug(
+            "Dependency {} failed, affects commands: {}",
+            resolution_event.dependency_id,
+            sorted(dependent_commands),
         )
 
     async def cleanup_request_dependencies(self, request_id: RPCRequestId) -> bool:

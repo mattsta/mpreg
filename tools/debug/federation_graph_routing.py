@@ -22,7 +22,7 @@ class FederationGraphNode:
     coordinates: tuple[float, float]
     capacity: int
     current_load: float = 0.0
-    connections: dict[str, "FederationGraphEdge"] = field(default_factory=dict)
+    connections: dict[str, FederationGraphEdge] = field(default_factory=dict)
 
 
 @dataclass(slots=True)

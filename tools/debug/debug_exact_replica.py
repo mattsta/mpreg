@@ -4,9 +4,9 @@ DEBUG: Exact replica of the failing test structure
 """
 
 import pytest
+from tests.port_allocator import get_port_allocator
 
 from tests.conftest import AsyncTestContext
-from tests.port_allocator import get_port_allocator
 
 
 # EXACT copy of the fixtures from the failing test file

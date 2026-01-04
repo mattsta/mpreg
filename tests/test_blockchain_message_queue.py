@@ -12,7 +12,9 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
+from mpreg.core.blockchain_ledger import BlockchainLedger
 from mpreg.core.blockchain_message_queue import (
+    BlockchainMessageQueue,
     BlockchainMessageRouter,
     EquitablePriorityQueue,
     MessageQueueGovernance,
@@ -269,6 +271,7 @@ class TestEquitablePriorityQueue:
                 custom_parameters={
                     "max_messages_per_sender": 10,
                     "fairness_factor": 1.0,
+                    "max_consecutive_same_sender": 2,
                 }
             ),
             approved_by_dao=True,
@@ -299,8 +302,8 @@ class TestEquitablePriorityQueue:
         )
 
         # Should succeed
-        success = self.queue.enqueue(message)
-        assert success is True
+        queued = self.queue.enqueue(message)
+        assert queued.processing_fee >= 10
         assert len(self.queue.message_queue) == 1
 
         # Test insufficient fee
@@ -349,8 +352,8 @@ class TestEquitablePriorityQueue:
             processing_fee=10,
         )
 
-        success = self.queue.enqueue(other_message)
-        assert success is True
+        queued = self.queue.enqueue(other_message)
+        assert queued.sender_id == "charlie"
 
     def test_priority_ordering_with_fairness(self):
         """Test that messages are ordered by priority with fairness adjustments."""
@@ -429,6 +432,38 @@ class TestEquitablePriorityQueue:
         assert first is not None
         assert first.priority == MessagePriority.HIGH
 
+    def test_consecutive_sender_limit(self):
+        """Ensure consecutive sender limiting interleaves different senders."""
+        for idx in range(3):
+            self.queue.enqueue(
+                BlockchainMessage(
+                    sender_id="alice",
+                    recipient_id="bob",
+                    message_type=f"alice_{idx}",
+                    priority=MessagePriority.NORMAL,
+                    processing_fee=10,
+                )
+            )
+
+        self.queue.enqueue(
+            BlockchainMessage(
+                sender_id="charlie",
+                recipient_id="bob",
+                message_type="charlie_0",
+                priority=MessagePriority.LOW,
+                processing_fee=10,
+            )
+        )
+
+        first = self.queue.dequeue()
+        second = self.queue.dequeue()
+        third = self.queue.dequeue()
+
+        assert first is not None and second is not None and third is not None
+        assert first.sender_id == "alice"
+        assert second.sender_id == "alice"
+        assert third.sender_id == "charlie"
+
     def test_quota_reset(self):
         """Test periodic quota reset functionality."""
         # Fill quota for a sender
@@ -455,8 +490,8 @@ class TestEquitablePriorityQueue:
         )
 
         # Should succeed after quota reset
-        success = self.queue.enqueue(another_message)
-        assert success is True
+        queued = self.queue.enqueue(another_message)
+        assert queued.message_type == "after_reset"
 
     def test_dequeue_empty_queue(self):
         """Test dequeue from empty queue."""
@@ -472,13 +507,14 @@ class TestBlockchainMessageRouter:
         self.blockchain = Blockchain.create_new_chain(
             "message_router", "router_genesis"
         )
+        self.ledger = BlockchainLedger(self.blockchain)
 
         self.dao = DecentralizedAutonomousOrganization(
             name="Router DAO", description="Router governance"
         )
 
-        self.governance = MessageQueueGovernance(self.dao)
-        self.router = BlockchainMessageRouter(self.blockchain, self.governance)
+        self.governance = MessageQueueGovernance(self.dao, ledger=self.ledger)
+        self.router = BlockchainMessageRouter(self.ledger, self.governance)
 
     def test_register_route(self):
         """Test route registration with blockchain record."""
@@ -649,23 +685,81 @@ class TestBlockchainMessageQueue:
 
     def setup_method(self):
         """Set up complete test environment."""
-        # This will test the full integration when implemented
-        pass
+        self.queue = BlockchainMessageQueue(queue_id="test_queue")
+
+        self.route = MessageRoute(
+            route_id="test_route",
+            source_hub="hub_a",
+            destination_hub="hub_b",
+            path_hops=["hop1"],
+            latency_ms=50,
+            bandwidth_mbps=1000,
+            reliability_score=0.98,
+            cost_per_mb=1,
+        )
 
     def test_end_to_end_message_flow(self):
         """Test complete message flow from submission to delivery."""
-        # This will be implemented when the main class is complete
-        pass
+        initial_height = self.queue.blockchain.get_height()
+
+        self.queue.router.register_route(self.route, "operator")
+        assert self.queue.blockchain.get_height() == initial_height + 1
+
+        message = BlockchainMessage(
+            sender_id="alice",
+            recipient_id="bob",
+            message_type="test",
+            priority=MessagePriority.NORMAL,
+            processing_fee=10,
+        )
+        self.queue.submit_message(message)
+        assert self.queue.blockchain.get_height() == initial_height + 2
+
+        processed = self.queue.process_next_message()
+        assert processed is not None
+        assert processed.message_id == message.message_id
+        assert self.queue.blockchain.get_height() == initial_height + 4
+
+    def test_shared_ledger_consistency(self):
+        """Ensure queue components share the same ledger state."""
+        assert self.queue.ledger is self.queue.router.ledger
+        assert self.queue.ledger is self.queue.governance.ledger
 
     def test_dao_governance_integration(self):
         """Test DAO governance affecting queue behavior."""
-        # This will test governance decisions changing queue behavior
-        pass
+        self.queue.add_governance_member(
+            "member1", voting_power=1000, token_balance=5000
+        )
+        proposal_id = self.queue.governance.propose_priority_algorithm(
+            "member1",
+            {
+                "name": "Priority Test",
+                "description": "Enable fairness policy for testing",
+                "fairness": 0.9,
+            },
+        )
+
+        self.queue.governance.dao = self.queue.governance.dao.cast_vote(
+            "member1", proposal_id, VoteType.FOR
+        )
+        with patch("time.time", return_value=time.time() + 86400 * 8):
+            self.queue.governance.dao = self.queue.governance.dao.finalize_proposal(
+                proposal_id
+            )
+        self.queue.governance.ledger.replace(self.queue.governance.dao.blockchain)
+        policy = self.queue.governance.execute_governance_decision(proposal_id)
+
+        active = self.queue.governance.get_active_policies("prioritization")
+        assert policy.policy_id in {p.policy_id for p in active}
 
     def test_cross_chain_coordination(self):
         """Test cross-chain message coordination."""
-        # This will test multi-chain message routing
-        pass
+        other_chain = Blockchain.create_new_chain("secondary", "secondary_genesis")
+        other_ledger = BlockchainLedger(other_chain)
+        other_router = BlockchainMessageRouter(other_ledger, self.queue.governance)
+
+        assert other_router.blockchain.chain_id == "secondary"
+        assert self.queue.blockchain.chain_id != other_router.blockchain.chain_id
 
 
 # Property-based testing strategies

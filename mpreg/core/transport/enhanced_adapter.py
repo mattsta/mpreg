@@ -2,7 +2,7 @@
 Enhanced MultiProtocolAdapter with circuit breaker, correlation, and health monitoring.
 
 This module extends MPREG's existing MultiProtocolAdapter with enterprise-grade
-reliability features while maintaining full backward compatibility.
+reliability features while preserving the unified transport interface.
 
 Key enhancements:
 - Circuit breaker protection for connection resilience
@@ -34,6 +34,7 @@ from .factory import (
     ConnectionStats,
     MultiProtocolAdapter,
     MultiProtocolAdapterConfig,
+    ProtocolPortAssignmentCallback,
     TransportFactory,
 )
 from .interfaces import TransportInterface, TransportProtocol
@@ -91,8 +92,7 @@ class EnhancedMultiProtocolAdapter:
     Enhanced multi-protocol adapter with circuit breaker, correlation, and health monitoring.
 
     This adapter extends MPREG's existing MultiProtocolAdapter functionality with
-    enterprise-grade reliability features while maintaining full backward compatibility
-    with existing transport infrastructure.
+    enterprise-grade reliability features while preserving unified transport usage.
 
     Features:
     - Circuit breaker protection for connection resilience
@@ -506,7 +506,10 @@ class EnhancedMultiProtocolAdapter:
 def create_enhanced_multi_protocol_adapter(
     connection_type=None,
     host: str = "127.0.0.1",
-    base_port: int = 6666,
+    base_port: int = 0,
+    port_category: str | None = None,
+    port_assignment_callback: ProtocolPortAssignmentCallback | None = None,
+    port_release_callback: ProtocolPortAssignmentCallback | None = None,
     enable_circuit_breakers: bool = True,
     enable_correlation_tracking: bool = True,
     enable_health_monitoring: bool = True,
@@ -527,6 +530,9 @@ def create_enhanced_multi_protocol_adapter(
         connection_type=connection_type,
         host=host,
         base_port=base_port,
+        port_category=port_category,
+        port_assignment_callback=port_assignment_callback,
+        port_release_callback=port_release_callback,
         enable_circuit_breakers=enable_circuit_breakers,
         enable_correlation_tracking=enable_correlation_tracking,
         enable_health_monitoring=enable_health_monitoring,

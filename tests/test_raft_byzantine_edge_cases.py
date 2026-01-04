@@ -167,12 +167,10 @@ class ByzantineMockNetwork:
     ) -> bool:
         """Check if honest node should reject vote for Byzantine candidate."""
         # Honest nodes should not vote for known Byzantine nodes
-        if (
+        return bool(
             candidate_id in self.byzantine_nodes
             and voter_id not in self.byzantine_nodes
-        ):
-            return True
-        return False
+        )
 
 
 class ByzantineNetworkTransport:

@@ -4,6 +4,7 @@ Test script to verify PubSub notification delivery works properly.
 """
 
 import asyncio
+import contextlib
 import time
 
 from mpreg.client.pubsub_client import MPREGPubSubExtendedClient
@@ -114,10 +115,8 @@ async def test_basic_pubsub_notifications():
             # Client disconnection errors during cleanup are expected
             pass
         server_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await server_task
-        except asyncio.CancelledError:
-            pass
 
 
 if __name__ == "__main__":

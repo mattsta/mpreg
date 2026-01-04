@@ -24,10 +24,10 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from mpreg.federation.federation_consensus import ConsensusManager
-from mpreg.federation.federation_gossip import GossipProtocol
-from mpreg.federation.federation_graph import GeographicCoordinate
-from mpreg.federation.federation_membership import (
+from mpreg.fabric.consensus import ConsensusManager
+from mpreg.fabric.federation_graph import GeographicCoordinate
+from mpreg.fabric.gossip import GossipProtocol
+from mpreg.fabric.membership import (
     MembershipEvent,
     MembershipEventType,
     MembershipInfo,

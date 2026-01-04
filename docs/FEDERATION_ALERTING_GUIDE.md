@@ -1,13 +1,16 @@
-# Federation Alerting & Notification System Guide
+# Fabric Alerting & Notification System Guide
 
-The MPREG Federation Alerting System provides enterprise-grade notification capabilities with multiple backends, intelligent routing, escalation policies, and alert aggregation.
+The MPREG fabric alerting system provides enterprise-grade notification
+capabilities with multiple backends, intelligent routing, escalation policies,
+and alert aggregation. The implementation lives in
+`mpreg/fabric/federation_alerting.py` (historical name, fabric behavior).
 
 ## Quick Start
 
 ### 1. Basic Setup
 
 ```python
-from mpreg.federation.federation_alerting import (
+from mpreg.fabric.federation_alerting import (
     FederationAlertingService,
     create_console_channel,
     create_slack_channel,
@@ -36,7 +39,7 @@ alerting.add_routing_rule(prod_rule)
 ### 2. Integration with Performance Metrics
 
 ```python
-from mpreg.federation.performance_metrics import PerformanceMetricsService, create_performance_metrics_service
+from mpreg.fabric.performance_metrics import PerformanceMetricsService, create_performance_metrics_service
 
 # Create performance metrics service
 metrics = create_performance_metrics_service(collection_interval=30.0)
@@ -58,7 +61,7 @@ await metrics.start_collection()
 Perfect for development and debugging:
 
 ```python
-from mpreg.federation.federation_alerting import create_console_channel, AlertSeverity
+from mpreg.fabric.federation_alerting import create_console_channel, AlertSeverity
 
 channel = create_console_channel(
     channel_id="dev-console",
@@ -71,7 +74,7 @@ channel = create_console_channel(
 Rich integration with Slack workspaces:
 
 ```python
-from mpreg.federation.federation_alerting import create_slack_channel
+from mpreg.fabric.federation_alerting import create_slack_channel
 
 channel = create_slack_channel(
     channel_id="ops-slack",
@@ -85,7 +88,7 @@ channel = create_slack_channel(
 Generic HTTP endpoint integration:
 
 ```python
-from mpreg.federation.federation_alerting import create_webhook_channel
+from mpreg.fabric.federation_alerting import create_webhook_channel
 
 channel = create_webhook_channel(
     channel_id="monitoring-api",
@@ -100,7 +103,7 @@ channel = create_webhook_channel(
 ### Severity-Based Routing
 
 ```python
-from mpreg.federation.federation_alerting import create_severity_routing_rule
+from mpreg.fabric.federation_alerting import create_severity_routing_rule
 
 # Route critical alerts to multiple channels
 critical_rule = create_severity_routing_rule(
@@ -114,7 +117,7 @@ critical_rule = create_severity_routing_rule(
 ### Cluster-Based Routing
 
 ```python
-from mpreg.federation.federation_alerting import create_cluster_routing_rule
+from mpreg.fabric.federation_alerting import create_cluster_routing_rule
 
 # Route production cluster alerts differently
 prod_rule = create_cluster_routing_rule(
@@ -128,7 +131,7 @@ prod_rule = create_cluster_routing_rule(
 ### Custom Routing Rules
 
 ```python
-from mpreg.federation.federation_alerting import AlertRoutingRule
+from mpreg.fabric.federation_alerting import AlertRoutingRule
 
 # Complex rule with multiple conditions
 custom_rule = AlertRoutingRule(
@@ -150,7 +153,7 @@ custom_rule = AlertRoutingRule(
 ### Basic Escalation
 
 ```python
-from mpreg.federation.federation_alerting import (
+from mpreg.fabric.federation_alerting import (
     EscalationPolicy,
     EscalationLevel,
     create_basic_escalation_policy
@@ -199,7 +202,7 @@ critical_rule = AlertRoutingRule(
 ### Slack Templates
 
 ```python
-from mpreg.federation.federation_alerting import NotificationTemplate, NotificationBackend
+from mpreg.fabric.federation_alerting import NotificationTemplate, NotificationBackend
 
 slack_template = NotificationTemplate(
     template_id="custom_slack",
@@ -243,8 +246,8 @@ webhook_template = NotificationTemplate(
 
 ```python
 import asyncio
-from mpreg.federation.federation_alerting import *
-from mpreg.federation.performance_metrics import *
+from mpreg.fabric.federation_alerting import *
+from mpreg.fabric.performance_metrics import *
 
 async def setup_production_alerting():
     # 1. Create alerting service
@@ -381,7 +384,7 @@ print(f"Rate limited: {stats['delivery_stats']['rate_limited']}")
 
 ```python
 # Process a manual alert
-from mpreg.federation.performance_metrics import PerformanceAlert
+from mpreg.fabric.performance_metrics import PerformanceAlert
 
 manual_alert = PerformanceAlert(
     alert_id="manual-001",
@@ -500,9 +503,10 @@ async def check_alerting_health():
 ### Debug Mode
 
 ```python
-# Enable debug logging
-import logging
-logging.getLogger("mpreg.federation.federation_alerting").setLevel(logging.DEBUG)
+# Enable module-filtered debug logging for alerting
+from mpreg.core.logging import configure_logging
+
+configure_logging("INFO", debug_scopes=("fabric.alerting",))
 
 # Check delivery history
 recent_deliveries = [d for d in alerting.delivery_history if time.time() - d.timestamp < 3600]

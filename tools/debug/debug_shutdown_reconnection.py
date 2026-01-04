@@ -7,6 +7,7 @@ exactly when and why reconnection attempts happen during shutdown.
 """
 
 import asyncio
+import contextlib
 import logging
 import time
 from dataclasses import dataclass, field
@@ -95,17 +96,15 @@ class DebugNode:
 
         if self.server_task:
             self.server_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self.server_task
-            except asyncio.CancelledError:
-                pass
             self.server_task = None
 
         self.tracker.log_event(
             "NODE_SHUTDOWN_COMPLETE", self.name, "", "Node shutdown complete"
         )
 
-    async def connect_to(self, other_node: "DebugNode") -> None:
+    async def connect_to(self, other_node: DebugNode) -> None:
         """Connect this node to another node."""
         peer_url = f"ws://{other_node.mpreg_server.settings.host}:{other_node.mpreg_server.settings.port}"
         self.mpreg_server.settings.connect = peer_url

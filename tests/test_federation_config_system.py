@@ -8,7 +8,11 @@ gaps identified in comprehensive testing.
 
 import pytest
 
-from mpreg.federation.federation_config import (
+from mpreg.fabric.connection_manager import (
+    FederationConnectionManager,
+    should_allow_cross_federation_connection,
+)
+from mpreg.fabric.federation_config import (
     ConnectionAuthorizationResult,
     FederationBridgeConfig,
     FederationConfig,
@@ -19,10 +23,7 @@ from mpreg.federation.federation_config import (
     create_permissive_bridging_config,
     create_strict_isolation_config,
 )
-from mpreg.federation.federation_connection_manager import (
-    FederationConnectionManager,
-    should_allow_cross_federation_hello,
-)
+from tests.test_helpers import TestPortManager
 
 
 class TestFederationConfig:
@@ -128,30 +129,31 @@ class TestFederationConnectionManager:
         config = create_strict_isolation_config("main-cluster")
         manager = FederationConnectionManager(config)
 
-        # Should allow same-cluster connections
-        decision = manager.evaluate_connection_attempt(
-            remote_cluster_id="main-cluster",
-            remote_node_id="node-2",
-            remote_url="ws://node2:8080",
-            local_cluster_id="main-cluster",
-            local_node_id="node-1",
-        )
-        assert decision.allowed
-        assert not decision.should_log_warning
-        assert not decision.should_log_rejection
+        with TestPortManager() as port_manager:
+            # Should allow same-cluster connections
+            decision = manager.evaluate_connection_attempt(
+                remote_cluster_id="main-cluster",
+                remote_node_id="node-2",
+                remote_url=port_manager.get_server_url(host="node2"),
+                local_cluster_id="main-cluster",
+                local_node_id="node-1",
+            )
+            assert decision.allowed
+            assert not decision.should_log_warning
+            assert not decision.should_log_rejection
 
-        # Should reject cross-federation connections
-        decision = manager.evaluate_connection_attempt(
-            remote_cluster_id="other-cluster",
-            remote_node_id="remote-node",
-            remote_url="ws://remote:8080",
-            local_cluster_id="main-cluster",
-            local_node_id="node-1",
-        )
-        assert not decision.allowed
-        assert not decision.should_log_warning
-        assert decision.should_log_rejection
-        assert "cluster_id mismatch" in decision.error_message
+            # Should reject cross-federation connections
+            decision = manager.evaluate_connection_attempt(
+                remote_cluster_id="other-cluster",
+                remote_node_id="remote-node",
+                remote_url=port_manager.get_server_url(host="remote"),
+                local_cluster_id="main-cluster",
+                local_node_id="node-1",
+            )
+            assert not decision.allowed
+            assert not decision.should_log_warning
+            assert decision.should_log_rejection
+            assert "cluster_id mismatch" in decision.error_message
 
     def test_explicit_bridging_connection_manager(self):
         """Test connection manager with explicit bridging."""
@@ -163,65 +165,70 @@ class TestFederationConnectionManager:
         )
         manager = FederationConnectionManager(config)
 
-        # Should allow bridged connections
-        decision = manager.evaluate_connection_attempt(
-            remote_cluster_id="partner-cluster",
-            remote_node_id="partner-node",
-            remote_url="ws://partner:8080",
-            local_cluster_id="main-cluster",
-            local_node_id="main-node",
-        )
-        assert decision.allowed
-        assert decision.bridge_config is not None
-        assert decision.bridge_config.remote_cluster_id == "partner-cluster"
+        with TestPortManager() as port_manager:
+            # Should allow bridged connections
+            decision = manager.evaluate_connection_attempt(
+                remote_cluster_id="partner-cluster",
+                remote_node_id="partner-node",
+                remote_url=port_manager.get_server_url(host="partner"),
+                local_cluster_id="main-cluster",
+                local_node_id="main-node",
+            )
+            assert decision.allowed
+            assert decision.bridge_config is not None
+            assert decision.bridge_config.remote_cluster_id == "partner-cluster"
 
-        # Should reject non-bridged connections
-        decision = manager.evaluate_connection_attempt(
-            remote_cluster_id="unknown-cluster",
-            remote_node_id="unknown-node",
-            remote_url="ws://unknown:8080",
-            local_cluster_id="main-cluster",
-            local_node_id="main-node",
-        )
-        assert not decision.allowed
-        assert "not in allowed foreign clusters" in decision.error_message
+            # Should reject non-bridged connections
+            decision = manager.evaluate_connection_attempt(
+                remote_cluster_id="unknown-cluster",
+                remote_node_id="unknown-node",
+                remote_url=port_manager.get_server_url(host="unknown"),
+                local_cluster_id="main-cluster",
+                local_node_id="main-node",
+            )
+            assert not decision.allowed
+            assert "not in allowed foreign clusters" in decision.error_message
 
     def test_permissive_bridging_connection_manager(self):
         """Test connection manager with permissive bridging."""
         config = create_permissive_bridging_config("main-cluster")
         manager = FederationConnectionManager(config)
 
-        # Should allow all connections with warnings
-        decision = manager.evaluate_connection_attempt(
-            remote_cluster_id="any-cluster",
-            remote_node_id="any-node",
-            remote_url="ws://any:8080",
-            local_cluster_id="main-cluster",
-            local_node_id="main-node",
-        )
-        assert decision.allowed
-        assert decision.should_log_warning
-        assert not decision.should_log_rejection
+        with TestPortManager() as port_manager:
+            # Should allow all connections with warnings
+            decision = manager.evaluate_connection_attempt(
+                remote_cluster_id="any-cluster",
+                remote_node_id="any-node",
+                remote_url=port_manager.get_server_url(host="any"),
+                local_cluster_id="main-cluster",
+                local_node_id="main-node",
+            )
+            assert decision.allowed
+            assert decision.should_log_warning
+            assert not decision.should_log_rejection
 
     def test_connection_state_tracking(self):
         """Test connection state tracking and metrics."""
         config = create_permissive_bridging_config("main-cluster")
         manager = FederationConnectionManager(config)
 
-        # Establish connection
-        decision = manager.evaluate_connection_attempt(
-            remote_cluster_id="partner-cluster",
-            remote_node_id="partner-node",
-            remote_url="ws://partner:8080",
-            local_cluster_id="main-cluster",
-            local_node_id="main-node",
-        )
-        assert decision.allowed
+        with TestPortManager() as port_manager:
+            remote_url = port_manager.get_server_url(host="partner")
 
-        # Notify connection established
-        manager.notify_connection_established(
-            "partner-cluster", "partner-node", "ws://partner:8080"
-        )
+            # Establish connection
+            decision = manager.evaluate_connection_attempt(
+                remote_cluster_id="partner-cluster",
+                remote_node_id="partner-node",
+                remote_url=remote_url,
+                local_cluster_id="main-cluster",
+                local_node_id="main-node",
+            )
+            assert decision.allowed
+
+            # Notify connection established
+            manager.notify_connection_established(
+                "partner-cluster", "partner-node", remote_url
+            )
 
         # Simulate successful requests
         manager.notify_request_success("partner-cluster", "partner-node")
@@ -277,36 +284,37 @@ class TestFederationConnectionManager:
 class TestFederationIntegrationHelpers:
     """Test federation integration helper functions."""
 
-    def test_should_allow_cross_federation_hello(self):
-        """Test cross-federation HELLO authorization helper."""
+    def test_should_allow_cross_federation_connection(self):
+        """Test cross-federation connection authorization helper."""
         config = create_explicit_bridging_config("main-cluster", {"partner-cluster"})
         manager = FederationConnectionManager(config)
 
-        # Should allow authorized cluster
-        allowed, error = should_allow_cross_federation_hello(
-            manager,
-            remote_cluster_id="partner-cluster",
-            remote_node_id="partner-node",
-            remote_url="ws://partner:8080",
-            local_cluster_id="main-cluster",
-            local_node_id="main-node",
-            hello_data={"functions": ["test_func"]},
-        )
-        assert allowed
-        assert not error
+        with TestPortManager() as port_manager:
+            # Should allow authorized cluster
+            allowed, error = should_allow_cross_federation_connection(
+                manager,
+                remote_cluster_id="partner-cluster",
+                remote_node_id="partner-node",
+                remote_url=port_manager.get_server_url(host="partner"),
+                local_cluster_id="main-cluster",
+                local_node_id="main-node",
+                connection_data={"functions": ["test_func"]},
+            )
+            assert allowed
+            assert not error
 
-        # Should reject unauthorized cluster
-        allowed, error = should_allow_cross_federation_hello(
-            manager,
-            remote_cluster_id="unknown-cluster",
-            remote_node_id="unknown-node",
-            remote_url="ws://unknown:8080",
-            local_cluster_id="main-cluster",
-            local_node_id="main-node",
-            hello_data={"functions": ["test_func"]},
-        )
-        assert not allowed
-        assert "not in allowed foreign clusters" in error
+            # Should reject unauthorized cluster
+            allowed, error = should_allow_cross_federation_connection(
+                manager,
+                remote_cluster_id="unknown-cluster",
+                remote_node_id="unknown-node",
+                remote_url=port_manager.get_server_url(host="unknown"),
+                local_cluster_id="main-cluster",
+                local_node_id="main-node",
+                connection_data={"functions": ["test_func"]},
+            )
+            assert not allowed
+            assert "not in allowed foreign clusters" in error
 
 
 class TestFederationConfigIntegration:

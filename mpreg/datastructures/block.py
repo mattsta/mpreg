@@ -17,6 +17,7 @@ from .blockchain_types import (
     BlockHash,
     BlockHeight,
     BlockId,
+    CryptoConfig,
     Difficulty,
     MerkleHash,
     NodeId,
@@ -67,10 +68,15 @@ class Block:
             raise ValueError("Timestamp cannot be negative")
 
         # Validate merkle root matches transactions
+        expected_merkle_root = self._compute_merkle_root()
         if self.transactions:
-            expected_merkle_root = self._compute_merkle_root()
-            if self.merkle_root and self.merkle_root != expected_merkle_root:
+            if self.merkle_root != expected_merkle_root:
                 raise ValueError("Merkle root does not match transactions")
+        else:
+            if self.merkle_root:
+                raise ValueError(
+                    "Merkle root must be empty when there are no transactions"
+                )
 
     def _compute_merkle_root(self) -> MerkleHash:
         """Compute Merkle root for transactions."""
@@ -146,24 +152,30 @@ class Block:
             return False
 
         # Check timestamp progression
-        if self.timestamp <= previous_block.timestamp:
-            return False
+        return not self.timestamp <= previous_block.timestamp
 
-        return True
-
-    def validate_transactions(self, current_time: Timestamp | None = None) -> bool:
+    def validate_transactions(
+        self,
+        current_time: Timestamp | None = None,
+        *,
+        crypto_config: CryptoConfig | None = None,
+    ) -> bool:
         """Validate all transactions in the block."""
         if current_time is None:
             current_time = time.time()
 
         for tx in self.transactions:
-            if not tx.is_valid(current_time):
+            if not tx.is_valid(current_time, crypto_config=crypto_config):
                 return False
 
         return True
 
     def is_valid(
-        self, previous_block: Block | None = None, current_time: Timestamp | None = None
+        self,
+        previous_block: Block | None = None,
+        current_time: Timestamp | None = None,
+        *,
+        crypto_config: CryptoConfig | None = None,
     ) -> bool:
         """Comprehensive block validation."""
         if current_time is None:
@@ -180,14 +192,11 @@ class Block:
             return False
 
         # Transaction validation
-        if not self.validate_transactions(current_time):
+        if not self.validate_transactions(current_time, crypto_config=crypto_config):
             return False
 
         # Merkle root validation
-        if self.merkle_root != self._compute_merkle_root():
-            return False
-
-        return True
+        return self.merkle_root == self._compute_merkle_root()
 
     def with_nonce(self, nonce: Nonce) -> Block:
         """Create new block with specified nonce (for mining)."""
@@ -337,6 +346,12 @@ class Block:
             transaction_hashes = [tx.to_bytes() for tx in transactions]
             merkle_tree = MerkleTree.from_leaves(transaction_hashes)
             merkle_root = merkle_tree.root_hash()
+        latest_tx_timestamp = max((tx.timestamp for tx in transactions), default=0.0)
+        timestamp = max(
+            current_timestamp(),
+            latest_tx_timestamp,
+            previous_block.timestamp + 1e-6,
+        )
 
         return cls(
             height=previous_block.height + 1,
@@ -347,6 +362,7 @@ class Block:
             miner=miner,
             difficulty=difficulty,
             nonce=0,
+            timestamp=timestamp,
         )
 
     def __str__(self) -> str:
@@ -392,19 +408,35 @@ def block_strategy() -> st.SearchStrategy[Block]:
     """Generate valid Block instances for testing."""
     from .vector_clock import vector_clock_strategy
 
-    return st.builds(
-        Block,
-        block_id=block_id_strategy(),
-        height=st.integers(min_value=0, max_value=1000),
-        previous_hash=st.one_of(st.just(""), block_hash_strategy()),
-        merkle_root=st.one_of(st.just(""), merkle_hash_strategy()),
-        vector_clock=vector_clock_strategy(),
-        transactions=st.lists(transaction_strategy(), max_size=10).map(tuple),
-        miner=node_id_strategy(),
-        difficulty=st.integers(min_value=1, max_value=10),
-        nonce=st.integers(min_value=0, max_value=1000000),
-        timestamp=st.floats(min_value=0, max_value=1700000000),
-    )
+    @st.composite
+    def _block(draw):
+        transactions = draw(st.lists(transaction_strategy(), max_size=10).map(tuple))
+        merkle_root = ""
+        if transactions:
+            transaction_hashes = [tx.to_bytes() for tx in transactions]
+            merkle_tree = MerkleTree.from_leaves(transaction_hashes)
+            merkle_root = merkle_tree.root_hash()
+            latest_tx_timestamp = max(tx.timestamp for tx in transactions)
+        else:
+            latest_tx_timestamp = 0.0
+
+        timestamp = draw(st.floats(min_value=0, max_value=1700000000))
+        timestamp = max(timestamp, latest_tx_timestamp)
+
+        return Block(
+            block_id=draw(block_id_strategy()),
+            height=draw(st.integers(min_value=0, max_value=1000)),
+            previous_hash=draw(st.one_of(st.just(""), block_hash_strategy())),
+            merkle_root=merkle_root,
+            vector_clock=draw(vector_clock_strategy()),
+            transactions=transactions,
+            miner=draw(node_id_strategy()),
+            difficulty=draw(st.integers(min_value=1, max_value=10)),
+            nonce=draw(st.integers(min_value=0, max_value=1000000)),
+            timestamp=timestamp,
+        )
+
+    return _block()
 
 
 def genesis_block_strategy() -> st.SearchStrategy[Block]:

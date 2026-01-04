@@ -17,7 +17,7 @@ from mpreg.core.statistics import (
     CollectionStatus,
     PerformanceSummary,
 )
-from mpreg.federation.performance_metrics import (
+from mpreg.fabric.performance_metrics import (
     AlertSeverity,
     ClusterMetrics,
     PerformanceAlert,
@@ -389,6 +389,33 @@ class TestPerformanceMetricsService:
 
         # Check that callbacks were called
         assert alert_callback.call_count > 0
+
+    @pytest.mark.asyncio
+    async def test_throughput_alerts_wait_for_baseline(self):
+        """Throughput alerts should wait for a baseline before triggering."""
+        thresholds = PerformanceThresholds(
+            throughput_min_samples=3,
+            throughput_baseline_min_rps=5.0,
+        )
+        service = PerformanceMetricsService(thresholds=thresholds)
+
+        metrics = ClusterMetrics(
+            cluster_id="baseline-cluster",
+            cluster_name="Baseline Cluster",
+            region="local",
+            avg_latency_ms=10.0,
+            throughput_rps=2.0,
+            health_score=100.0,
+            error_rate_percent=0.0,
+        )
+
+        await service._update_cluster_metrics(metrics)
+        await service._check_thresholds()
+
+        assert not any(
+            alert.metric_name == "throughput_rps"
+            for alert in service.get_active_alerts()
+        )
 
     @pytest.mark.asyncio
     async def test_alert_resolution(self):

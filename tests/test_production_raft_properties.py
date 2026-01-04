@@ -27,7 +27,6 @@ Test Coverage:
 
 from __future__ import annotations
 
-import logging
 import random
 import time
 from dataclasses import dataclass, field
@@ -56,9 +55,6 @@ from mpreg.datastructures.production_raft import (
     RequestVoteRequest,
     RequestVoteResponse,
 )
-
-# Suppress verbose logging during tests
-logging.getLogger().setLevel(logging.WARNING)
 
 
 # Test Strategies for Hypothesis

@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 import pickle
 import tempfile
 import time
@@ -32,12 +31,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from loguru import logger
+
 try:
     import aiosqlite
 
     AIOSQLITE_AVAILABLE = True
 except ImportError:
     AIOSQLITE_AVAILABLE = False
+
 
 from .production_raft import (
     LogEntry,
@@ -47,7 +49,7 @@ from .production_raft import (
     RaftStorageProtocol,
 )
 
-logger = logging.getLogger(__name__)
+storage_log = logger
 
 
 # Enhanced Storage Protocol with Additional Methods
@@ -175,13 +177,13 @@ class InMemoryRaftStorage(BaseRaftStorage):
 
     async def initialize(self) -> None:
         """Initialize in-memory storage."""
-        logger.debug(f"Initialized in-memory storage: {self.storage_id}")
+        storage_log.debug(f"Initialized in-memory storage: {self.storage_id}")
 
     async def close(self) -> None:
         """Close in-memory storage."""
         self._persistent_state = None
         self._snapshots.clear()
-        logger.debug(f"Closed in-memory storage: {self.storage_id}")
+        storage_log.debug(f"Closed in-memory storage: {self.storage_id}")
 
     async def save_persistent_state(self, state: PersistentState) -> None:
         """Save persistent state to memory."""
@@ -251,7 +253,7 @@ class InMemoryRaftStorage(BaseRaftStorage):
                 created_at=self._metrics.created_at,
                 last_operation_at=time.time(),
             )
-            logger.debug(f"Cleaned up {removed_count} old snapshots from memory")
+            storage_log.debug(f"Cleaned up {removed_count} old snapshots from memory")
 
     async def save_log_entries_batch(
         self, entries: list[LogEntry], start_index: int
@@ -394,11 +396,11 @@ class FileBasedRaftStorage(BaseRaftStorage):
         """Initialize file-based storage."""
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.snapshots_dir.mkdir(exist_ok=True)
-        logger.debug(f"Initialized file storage at: {self.storage_dir}")
+        storage_log.debug(f"Initialized file storage at: {self.storage_dir}")
 
     async def close(self) -> None:
         """Close file-based storage."""
-        logger.debug(f"Closed file storage: {self.storage_dir}")
+        storage_log.debug(f"Closed file storage: {self.storage_dir}")
 
     async def _atomic_write_json(self, file_path: Path, data: Any) -> None:
         """Atomically write JSON data to file."""
@@ -469,7 +471,7 @@ class FileBasedRaftStorage(BaseRaftStorage):
 
                 # Verify checksum
                 if entry.checksum != entry_data["checksum"]:
-                    logger.error(f"Checksum mismatch for entry {entry.index}")
+                    storage_log.error(f"Checksum mismatch for entry {entry.index}")
                     return None
 
                 log_entries.append(entry)
@@ -484,7 +486,7 @@ class FileBasedRaftStorage(BaseRaftStorage):
             )
 
         except Exception as e:
-            logger.error(f"Error loading persistent state: {e}")
+            storage_log.error(f"Error loading persistent state: {e}")
             return None
 
     async def save_snapshot(self, snapshot: RaftSnapshot) -> None:
@@ -531,7 +533,7 @@ class FileBasedRaftStorage(BaseRaftStorage):
             return snapshot
 
         except Exception as e:
-            logger.error(f"Error loading snapshot: {e}")
+            storage_log.error(f"Error loading snapshot: {e}")
             return None
 
     async def cleanup_old_snapshots(self, keep_count: int = 3) -> None:
@@ -557,7 +559,7 @@ class FileBasedRaftStorage(BaseRaftStorage):
             removed_count += 1
 
         self._storage_stats["operations"] += 1
-        logger.debug(f"Cleaned up {removed_count} old snapshot files")
+        storage_log.debug(f"Cleaned up {removed_count} old snapshot files")
 
     async def get_storage_info(self) -> dict[str, Any]:
         """Get storage information."""
@@ -647,11 +649,11 @@ class SQLiteRaftStorage(BaseRaftStorage):
 
             await db.commit()
 
-        logger.debug(f"Initialized SQLite storage: {self.db_path}")
+        storage_log.debug(f"Initialized SQLite storage: {self.db_path}")
 
     async def close(self) -> None:
         """Close SQLite storage."""
-        logger.debug(f"Closed SQLite storage: {self.db_path}")
+        storage_log.debug(f"Closed SQLite storage: {self.db_path}")
 
     async def save_persistent_state(self, state: PersistentState) -> None:
         """Save persistent state to SQLite."""
@@ -701,7 +703,7 @@ class SQLiteRaftStorage(BaseRaftStorage):
 
             except Exception as e:
                 await db.rollback()
-                logger.error(f"Error saving persistent state to SQLite: {e}")
+                storage_log.error(f"Error saving persistent state to SQLite: {e}")
                 raise
 
     async def load_persistent_state(self) -> PersistentState | None:
@@ -753,7 +755,7 @@ class SQLiteRaftStorage(BaseRaftStorage):
 
                 # Verify checksum
                 if entry.checksum != checksum:
-                    logger.error(f"Checksum mismatch for entry {entry_index}")
+                    storage_log.error(f"Checksum mismatch for entry {entry_index}")
                     return None
 
                 log_entries.append(entry)

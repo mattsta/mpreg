@@ -11,6 +11,8 @@ from pathlib import Path
 
 sys.path.insert(0, "/Users/matt/repos/mpreg")
 
+import contextlib
+
 from mpreg.datastructures.production_raft_implementation import RaftState
 from tests.test_production_raft_integration import (
     MockNetwork,
@@ -190,10 +192,8 @@ async def debug_leader_failure_reelection():
         finally:
             # Cleanup
             for node in nodes.values():
-                try:
+                with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(node.stop(), timeout=1.0)
-                except TimeoutError:
-                    pass
 
 
 if __name__ == "__main__":

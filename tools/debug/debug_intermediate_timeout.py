@@ -4,6 +4,7 @@ Debug script for intermediate results timeout issue.
 """
 
 import asyncio
+import contextlib
 import logging
 
 from mpreg.client.client_api import MPREGClientAPI
@@ -95,10 +96,8 @@ async def test_minimal_intermediate_results():
         traceback.print_exc()
     finally:
         server_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await server_task
-        except asyncio.CancelledError:
-            pass
 
 
 if __name__ == "__main__":

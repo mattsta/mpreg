@@ -13,16 +13,17 @@ from loguru import logger
 
 from mpreg.core.config import MPREGSettings
 from mpreg.datastructures.vector_clock import VectorClock
-from mpreg.federation.federation_consensus import (
+from mpreg.fabric.consensus import (
     ConsensusManager,
     StateType,
     StateValue,
 )
-from mpreg.federation.federation_gossip import (
+from mpreg.fabric.gossip import (
     GossipProtocol,
     GossipStrategy,
 )
-from mpreg.federation.federation_registry import HubRegistry
+from mpreg.fabric.gossip_transport import InProcessGossipTransport
+from mpreg.fabric.hub_registry import HubRegistry
 from mpreg.server import MPREGServer
 
 from .conftest import AsyncTestContext
@@ -34,7 +35,7 @@ async def live_server_consensus_cluster(
     port_allocator,
 ):
     """Create a live cluster with server-integrated consensus."""
-    from .port_allocator import allocate_port_range
+    from mpreg.core.port_allocator import allocate_port_range
 
     # Allocate 3 ports for a simple cluster
     ports = allocate_port_range(3, "servers")
@@ -108,8 +109,8 @@ async def live_consensus_cluster(
     test_context: AsyncTestContext,
     port_allocator,
 ):
-    """Create a live cluster with consensus and gossip integration (legacy test)."""
-    from .port_allocator import allocate_port_range
+    """Create a live cluster with consensus and gossip integration."""
+    from mpreg.core.port_allocator import allocate_port_range
 
     # Allocate 3 ports for a simple cluster
     ports = allocate_port_range(3, "servers")
@@ -175,6 +176,7 @@ async def live_consensus_cluster(
     consensus_managers = []
     gossip_protocols = []
 
+    transport = InProcessGossipTransport()
     for i, server in enumerate(servers):
         node_id = f"consensus-node-{i + 1}"
 
@@ -191,6 +193,7 @@ async def live_consensus_cluster(
         # Create gossip protocol with consensus manager
         gossip_protocol = GossipProtocol(
             node_id=node_id,
+            transport=transport,
             hub_registry=hub_registry,
             consensus_manager=consensus_manager,
             gossip_interval=0.5,
@@ -211,7 +214,7 @@ async def live_consensus_cluster(
         gossip_protocols.append(gossip_protocol)
 
     # Connect gossip protocols to each other (simulate network topology)
-    from mpreg.federation.federation_gossip import NodeMetadata
+    from mpreg.fabric.gossip import NodeMetadata
 
     for i, gossip in enumerate(gossip_protocols):
         for j, other_gossip in enumerate(gossip_protocols):

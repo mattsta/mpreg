@@ -7,15 +7,16 @@ import asyncio
 import logging
 import time
 
+from mpreg.fabric.federation_bridge import GraphAwareFederationBridge
+
 from mpreg.core.config import MPREGSettings
 from mpreg.core.model import PubSubMessage
-from mpreg.federation.federation_bridge import GraphAwareFederationBridge
-from mpreg.federation.federation_optimized import ClusterIdentity
+from mpreg.fabric.federation_optimized import ClusterIdentity
 from mpreg.server import MPREGServer
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
-logging.getLogger("mpreg.federation").setLevel(logging.DEBUG)
+logging.getLogger("mpreg.fabric").setLevel(logging.DEBUG)
 
 
 async def test_simple_forward():
@@ -99,7 +100,7 @@ async def test_simple_forward():
 
         # Create and send a test federation message
         test_message = PubSubMessage(
-            topic="mpreg.federation.test.simple",
+            topic="mpreg.fabric.test.simple",
             payload={"test": "federation forwarding"},
             timestamp=time.time(),
             message_id="test-forward-001",

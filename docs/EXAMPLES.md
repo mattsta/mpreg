@@ -2,6 +2,10 @@
 
 This document showcases the comprehensive examples and test scenarios that demonstrate MPREG's unique capabilities in distributed computing environments.
 
+Note: Examples use dynamic port allocation (via `allocate_port("servers")`) to avoid collisions. If you copy snippets from other docs, treat port numbers as placeholders and allocate ports at runtime.
+
+For the full documentation index, see `docs/README.md`.
+
 ## 🎯 Quick Start Examples
 
 ### 1. Run the Quick Demo
@@ -9,7 +13,7 @@ This document showcases the comprehensive examples and test scenarios that demon
 The fastest way to see MPREG in action:
 
 ```bash
-poetry run python examples/quick_demo.py
+uv run python mpreg/examples/quick_demo.py
 ```
 
 This 3-minute demo shows:
@@ -24,22 +28,17 @@ This 3-minute demo shows:
 See MPREG's performance characteristics:
 
 ```bash
-poetry run python examples/benchmarks.py
+uv run python mpreg/examples/tier1_single_system_full.py --system rpc
 ```
 
-Typical results:
-
-- 🚀 **Latency**: Sub-millisecond local calls (0.87ms average)
-- ⚡ **Throughput**: 1500+ requests/second
-- 🔄 **Workflows**: Complex multi-step pipelines in milliseconds
-- ⚖️ **Load Balancing**: Efficient distribution across nodes
+Measure your own baseline with logging at INFO and a steady warm-up.
 
 ### 3. Real-World Applications
 
 Comprehensive production examples:
 
 ```bash
-poetry run python examples/real_world_examples.py
+uv run python mpreg/examples/real_world_examples.py
 ```
 
 Features:
@@ -49,60 +48,114 @@ Features:
 - 🔄 Event-driven architectures
 - 📈 Analytics and monitoring workflows
 
+### 4. Route Security + Policy Demo
+
+Minimal live demo showing route key rotation and neighbor policy filtering:
+
+```bash
+uv run python mpreg/examples/fabric_route_security_demo.py
+```
+
+### 5. Auto-Port Cluster Bootstrap Demo
+
+Auto-assign ports and capture endpoints via callbacks for cluster bootstrapping:
+
+```bash
+uv run python mpreg/examples/auto_port_cluster_bootstrap.py
+```
+
+### 6. Cache + Queue Integration Demo
+
+Fabric-native cache + queue workflows in one run:
+
+```bash
+uv run python mpreg/examples/tier2_integrations.py
+```
+
+Highlights:
+
+- RPC results cached and reused.
+- Pub/sub fan-out feeding a durable queue.
+- Cache federation using fabric transport.
+
+### 7. Persistence Restart Demo
+
+Unified persistence for cache + queue across restart:
+
+```bash
+uv run python mpreg/examples/persistence_restart_demo.py
+```
+
+Fabric catalog + route key snapshots across restart:
+
+```bash
+uv run python mpreg/examples/fabric_snapshot_restart_demo.py
+```
+
+This demo uses permissive federation bridging to allow a short-lived
+cross-cluster announcement.
+
+Use the settings file to launch a persistent server:
+
+```bash
+uv run mpreg server start-config mpreg/examples/persistence_settings.toml
+```
+
+## ⚙️ Performance and Correctness Tips
+
+- Reuse `MPREGClientAPI` connections to avoid setup overhead per request.
+- Use explicit `locs` to keep routing deterministic and reduce fan-out.
+- When validating fabric cache federation, pass `CacheOptions(cache_levels=...)` to target L4.
+- For queue demos, ensure enough subscribers exist before using `DeliveryGuarantee.QUORUM`.
+- Keep logging at INFO for cleaner benchmark signals.
+
+## 🔐 Optional Routing Controls
+
+- **Route security**: signed announcements + key rotation (`docs/FABRIC_ROUTE_SECURITY.md`).
+- **Route policies**: per-neighbor import filters and global export policy
+  (`docs/FABRIC_ROUTE_POLICIES.md`).
+- **Route trace**: debug next-hop selection via `RouteTable.explain_selection()`.
+
 ## 🧪 Comprehensive Test Suite
 
-MPREG includes **61+ comprehensive tests** covering all distributed computing scenarios:
+MPREG includes **2,000+ tests** covering unit, integration, and live topology
+scenarios across RPC, pub/sub, queues, cache, and the fabric control plane.
 
 ```bash
 # Run all tests
-poetry run pytest -v
+uv run pytest -v
 
 # Run specific test categories
-poetry run pytest tests/test_advanced_cluster_scenarios.py -v
-poetry run pytest tests/test_production_examples.py -v
-poetry run pytest tests/test_integration_examples.py -v
+uv run pytest tests/test_advanced_cluster_scenarios.py -v
+uv run pytest tests/test_production_examples.py -v
+uv run pytest tests/test_integration_examples.py -v
 ```
 
 ### Test Categories
 
-#### 1. **Basic Functionality Tests** (19 tests)
+#### 1. **Core Functionality**
 
 - Model validation and serialization
-- Command registry operations
-- Simple client-server integration
+- Function identity + version constraint matching
+- Dependency resolution and topological ordering
 
-#### 2. **Advanced Integration Tests** (18 tests)
+#### 2. **Fabric Control Plane**
 
-- Multi-step workflows with dependencies
-- Distributed function routing
-- Concurrent execution patterns
-- Error handling and timeout scenarios
-- Performance measurement
+- Catalog delta propagation and TTL expiry
+- Path-vector route announcements and loop prevention
+- Membership changes and GOODBYE handling
 
-#### 3. **Real-World Workflow Tests** (4 tests)
+#### 3. **System Integrations**
 
-- Complete data pipelines
+- RPC, pub/sub, queue, and cache federation flows
+- Multi-hop routing with hop budgets
+- Resource-based routing and policy enforcement
+
+#### 4. **Real-World Workflows**
+
+- End-to-end data pipelines
 - ML inference workflows
-- Business process automation
-- Monitoring and observability
-
-#### 4. **Advanced Cluster Scenarios** (7+ tests)
-
-- Heterogeneous 5-node clusters
-- Cross-cluster workflow coordination
-- Intelligent load balancing
-- Fault-tolerant routing
-- Dynamic resource discovery
-- Complex topological dependencies
-
-#### 5. **Production Examples** (12+ tests)
-
-- E-commerce workflow simulations
-- Microservice orchestration patterns
-- Saga pattern implementations
-- Circuit breaker behaviors
-- High-throughput scenarios
-- Mixed workload performance
+- Business process orchestration
 
 ## 🌟 Unique MPREG Capabilities Demonstrated
 
@@ -139,13 +192,19 @@ db_result = await client.call("store_results", combined_data,
 
 ```python
 # Servers automatically discover and join the cluster
-server1 = MPREGServer(MPREGSettings(port=9001, resources={"gpu"}))
-server2 = MPREGServer(MPREGSettings(port=9002, resources={"cpu"},
-                                   peers=["ws://127.0.0.1:9001"]))
-server3 = MPREGServer(MPREGSettings(port=9003, resources={"db"},
-                                   peers=["ws://127.0.0.1:9001"]))
+from mpreg.core.port_allocator import port_range_context
 
-# Gossip protocol handles membership automatically!
+with port_range_context(3, "servers") as ports:
+    server1 = MPREGServer(MPREGSettings(port=ports[0], resources={"gpu"}))
+    hub_url = f"ws://127.0.0.1:{ports[0]}"
+    server2 = MPREGServer(
+        MPREGSettings(port=ports[1], resources={"cpu"}, peers=[hub_url])
+    )
+    server3 = MPREGServer(
+        MPREGSettings(port=ports[2], resources={"db"}, peers=[hub_url])
+    )
+
+# Fabric catalog gossip handles membership and routing automatically.
 # Client connects to any node and accesses entire cluster
 ```
 
@@ -165,16 +224,12 @@ results = await asyncio.gather(*tasks)  # All execute in parallel
 
 ## 📊 Performance Characteristics
 
-Based on comprehensive benchmarking:
+Performance depends on workload, logging level, and network topology. For stable measurements:
 
-| Metric             | Performance       | Details                                 |
-| ------------------ | ----------------- | --------------------------------------- |
-| **Latency**        | 0.87ms avg        | P95: 1.24ms, P99: 2.60ms                |
-| **Throughput**     | 1,523 req/sec     | Single connection, concurrent execution |
-| **Workflow Speed** | 8 workflows/sec   | Complex multi-step dependencies         |
-| **Load Balancing** | 24+ mixed ops/sec | Heterogeneous workload distribution     |
-| **Scalability**    | Linear            | Tested up to 5-node clusters            |
-| **Memory**         | Low overhead      | Self-managing components                |
+- Warm up the cluster for 10-20 requests before sampling.
+- Keep logging at INFO or lower.
+- Reuse connections and batch RPC calls when possible.
+- Increase concurrency gradually to find saturation points.
 
 ## 🏗️ Architecture Patterns Demonstrated
 
@@ -254,24 +309,24 @@ Router → Vision Models → NLP Models → Feature Processing → Results Aggre
 1. **Quick Demo** (3 minutes):
 
    ```bash
-   poetry run python examples/quick_demo.py
+   uv run python mpreg/examples/quick_demo.py
    ```
 
 2. **Performance Testing**:
 
    ```bash
-   poetry run python examples/benchmarks.py
+   uv run python mpreg/examples/tier1_single_system_full.py --system rpc
    ```
 
 3. **Real-World Examples**:
 
    ```bash
-   poetry run python examples/real_world_examples.py
+   uv run python mpreg/examples/real_world_examples.py
    ```
 
 4. **Run Full Test Suite**:
    ```bash
-   poetry run pytest -v
+   uv run pytest -v
    ```
 
 ## 🛡️ Defensive Function Design Patterns

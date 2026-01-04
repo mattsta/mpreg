@@ -16,7 +16,7 @@ Key Features:
 
 Design Principles:
 - Leverages existing TopicTrie for pattern matching
-- Integrates with MessageQueueManager and UnifiedRouter
+- Integrates with MessageQueueManager and fabric routing index
 - Follows MPREG dataclass and semantic type patterns
 - Thread-safe and async-first design
 - Property-based testing for correctness
@@ -455,7 +455,7 @@ class TopicQueueRouter:
             for queue_name in selected_queues:
                 try:
                     result = await self.message_queue_manager.send_message(
-                        queue_name, message, delivery_guarantee
+                        queue_name, topic, message, delivery_guarantee
                     )
                     send_results.append(result)
                 except Exception as e:

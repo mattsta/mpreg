@@ -358,6 +358,7 @@ class TestIntermediateResultsDemonstration:
                 connect=f"ws://127.0.0.1:{port1}" if i > 0 else None,
                 advertised_urls=None,
                 gossip_interval=1.0,
+                monitoring_enabled=False,
             )
             servers.append(MPREGServer(settings=settings))
 

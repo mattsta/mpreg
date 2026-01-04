@@ -34,7 +34,7 @@ from mpreg.core.topic_dependency_resolver import (
     TopicDependencyResolver,
     create_topic_dependency_resolver,
 )
-from mpreg.core.unified_routing import RoutingPriority
+from mpreg.fabric.message import RoutingPriority
 from mpreg.server import MPREGServer
 
 
@@ -357,7 +357,6 @@ class TestRPCTopicErrorHandling:
         config = TopicAwareRPCConfig(
             enable_progress_publishing=True,
             enable_error_topics=True,
-            fallback_to_legacy=True,
         )
 
         topic_exchange = getattr(enhanced_server, "topic_exchange", None)
@@ -572,22 +571,22 @@ class TestComplexRPCTopicWorkflows:
         await resolver.cleanup_request_dependencies(request_id)
 
     @pytest.mark.asyncio
-    async def test_legacy_integration_compatibility(
+    async def test_base_integration_compatibility(
         self, enhanced_server: MPREGServer, client_factory: Callable[[int], Any]
     ) -> None:
-        """Test backward compatibility with legacy RPC systems using live server."""
+        """Test base RPC interop with topic-aware requests using live server."""
         client = await client_factory(enhanced_server.settings.port)
 
-        # Create legacy RPC commands using real functions
-        legacy_commands = [
+        # Create base RPC commands using real functions
+        base_commands = [
             RPCCommand(
-                name="legacy_fetch",
+                name="base_fetch",
                 fun="data_processing",
                 args=([1, 2, 3],),
                 locs=frozenset(["data-processor"]),
             ),
             RPCCommand(
-                name="legacy_process",
+                name="base_process",
                 fun="format_results",
                 args=({"data": "test"},),
                 kwargs={"format_type": "json"},
@@ -595,32 +594,32 @@ class TestComplexRPCTopicWorkflows:
             ),
         ]
 
-        # Create legacy request
-        legacy_request = RPCRequest(
-            role="rpc", cmds=tuple(legacy_commands), u="legacy_request_456"
+        # Create base request
+        base_request = RPCRequest(
+            role="rpc", cmds=tuple(base_commands), u="base_request_456"
         )
 
         # Convert to topic-aware
         from mpreg.core.enhanced_rpc import create_topic_aware_request
 
         topic_request = create_topic_aware_request(
-            legacy_request, enable_monitoring=True, priority=RoutingPriority.HIGH
+            base_request, enable_monitoring=True, priority=RoutingPriority.HIGH
         )
 
         # Verify conversion
         assert isinstance(topic_request, TopicAwareRPCRequest)
-        assert len(topic_request.cmds) == len(legacy_request.cmds)
-        assert topic_request.u == legacy_request.u
+        assert len(topic_request.cmds) == len(base_request.cmds)
+        assert topic_request.u == base_request.u
         assert topic_request.enable_topic_monitoring is True
 
-        # Convert back to legacy
+        # Convert back to base RPC
         converted_back = topic_request.to_rpc_request()
         assert isinstance(converted_back, RPCRequest)
-        assert len(converted_back.cmds) == len(legacy_request.cmds)
-        assert converted_back.u == legacy_request.u
+        assert len(converted_back.cmds) == len(base_request.cmds)
+        assert converted_back.u == base_request.u
 
         # Verify round-trip preservation
-        for original, converted in zip(legacy_request.cmds, converted_back.cmds):
+        for original, converted in zip(base_request.cmds, converted_back.cmds):
             assert original.name == converted.name
             assert original.fun == converted.fun
             assert original.args == converted.args
@@ -690,18 +689,18 @@ def test_rpc_topic_integration_properties(
     assert request.priority == priority
     assert len(request.request_id) > 0
 
-    # Test legacy conversion preservation
-    legacy_request = request.to_rpc_request()
-    assert len(legacy_request.cmds) == num_commands
-    assert legacy_request.role == "rpc"
+    # Test base conversion preservation
+    base_request = request.to_rpc_request()
+    assert len(base_request.cmds) == num_commands
+    assert base_request.role == "rpc"
 
     # Verify round-trip conversion
-    for original_cmd, legacy_cmd in zip(request.cmds, legacy_request.cmds):
-        assert original_cmd.name == legacy_cmd.name
-        assert original_cmd.fun == legacy_cmd.fun
-        assert original_cmd.args == legacy_cmd.args
-        assert original_cmd.kwargs == legacy_cmd.kwargs
-        assert original_cmd.locs == legacy_cmd.locs
+    for original_cmd, base_cmd in zip(request.cmds, base_request.cmds):
+        assert original_cmd.name == base_cmd.name
+        assert original_cmd.fun == base_cmd.fun
+        assert original_cmd.args == base_cmd.args
+        assert original_cmd.kwargs == base_cmd.kwargs
+        assert original_cmd.locs == base_cmd.locs
 
 
 @given(
@@ -710,7 +709,8 @@ def test_rpc_topic_integration_properties(
     timeout_ms=st.floats(min_value=1000.0, max_value=30000.0),
 )
 @settings(max_examples=15, deadline=5000)
-def test_dependency_graph_integration_properties(
+@pytest.mark.asyncio
+async def test_dependency_graph_integration_properties(
     dependency_complexity: int, cross_system_ratio: float, timeout_ms: float
 ) -> None:
     """Property test: Dependency graph creation maintains consistency."""
@@ -756,7 +756,6 @@ def test_dependency_graph_integration_properties(
         resolver = TopicDependencyResolver(topic_template_engine=template_engine)
 
         # Use asyncio.run for property tests (can't use async in hypothesis easily)
-        import asyncio
 
         async def test_dependency_analysis() -> None:
             dependency_graph = await resolver.create_dependency_graph(
@@ -779,8 +778,7 @@ def test_dependency_graph_integration_properties(
                 assert dependency_graph.resolution_progress == 100.0
                 assert dependency_graph.all_dependencies_resolved is True
 
-        # Run the async test
-        asyncio.run(test_dependency_analysis())
+        await test_dependency_analysis()
 
 
 @pytest.mark.asyncio

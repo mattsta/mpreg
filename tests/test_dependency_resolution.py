@@ -68,7 +68,7 @@ async def two_server_cluster():
         # Proper cleanup
         for server in servers:
             try:
-                server.shutdown()
+                await server.shutdown_async()
             except Exception as e:
                 print(f"Error shutting down server: {e}")
 
@@ -157,7 +157,7 @@ async def field_access_cluster():
         # Proper cleanup
         for server in servers:
             try:
-                server.shutdown()
+                await server.shutdown_async()
             except Exception as e:
                 print(f"Error shutting down server: {e}")
 
@@ -298,6 +298,9 @@ class TestComplexDependencyChains:
     async def test_four_step_dependency_chain(self, two_server_cluster):
         """Test a four-step dependency chain to find the breaking point."""
         servers = two_server_cluster
+        from mpreg.datastructures.function_identity import FunctionSelector
+        from mpreg.fabric.index import FunctionQuery
+        from tests.test_helpers import wait_for_condition
 
         # Add functions for steps 3 and 4
         def third_step(final_data: str, computed_val: int) -> dict:
@@ -311,6 +314,20 @@ class TestComplexDependencyChains:
 
         servers[0].register_command("third_step", third_step, ["step1"])
         servers[1].register_command("fourth_step", fourth_step, ["step2"])
+
+        await wait_for_condition(
+            lambda: bool(
+                servers[0]._fabric_control_plane
+                and servers[0]._fabric_control_plane.index.find_functions(
+                    FunctionQuery(
+                        selector=FunctionSelector(name="fourth_step"),
+                        resources=frozenset({"step2"}),
+                    )
+                )
+            ),
+            timeout=5.0,
+            error_message="fourth_step not propagated to coordinator",
+        )
 
         async with MPREGClientAPI(
             f"ws://127.0.0.1:{servers[0].settings.port}"

@@ -28,19 +28,12 @@ from mpreg.datastructures.leader_election import (
     RaftBasedLeaderElection,
 )
 from mpreg.datastructures.merkle_tree import MerkleTree
-from mpreg.federation.cache_federation_bridge import (
-    CacheFederationConfiguration,
-)
-from mpreg.federation.conflict_aware_cache_federation_bridge import (
-    ConflictAwareCacheFederationBridge,
-    ConflictResolutionConfiguration,
-)
 
 
 @contextlib.asynccontextmanager
 async def raft_instance_cleanup(
     cluster_id: str,
-) -> AsyncGenerator[RaftBasedLeaderElection, None]:
+) -> AsyncGenerator[RaftBasedLeaderElection]:
     """Context manager for RaftBasedLeaderElection with proper cleanup."""
     raft = RaftBasedLeaderElection(cluster_id=cluster_id)
     try:
@@ -326,47 +319,10 @@ class TestLeaderElectionCacheIntegration:
             )
             leader_election.update_metrics(cluster_id, metrics)
 
-        # Create conflict resolution configuration
-        conflict_config = ConflictResolutionConfiguration(
-            enable_merkle_verification=True,
-            enable_leader_election=True,
-            default_resolution_strategy=ConflictResolutionType.MERKLE_HASH_COMPARISON,
-            leader_election_timeout_seconds=5.0,
-        )
-
-        # Create basic federation configuration
-        federation_config = CacheFederationConfiguration(
-            cluster_id="fed-cluster-1",
-            invalidation_timeout_seconds=5.0,
-            replication_timeout_seconds=10.0,
-            enable_async_replication=True,
-            enable_sync_replication=True,
-        )
-
         # Create cache namespace leader
         namespace_leader = CacheNamespaceLeader(
             cluster_id="fed-cluster-1", leader_election=leader_election
         )
-
-        # Create conflict-aware cache federation bridge with real components
-        from mpreg.core.topic_exchange import TopicExchange
-
-        from .port_allocator import allocate_port
-
-        test_port = allocate_port("testing")
-        real_topic_exchange = TopicExchange(
-            server_url=f"test://localhost:{test_port}", cluster_id="fed-cluster-1"
-        )
-
-        bridge = ConflictAwareCacheFederationBridge(
-            config=federation_config,
-            topic_exchange=real_topic_exchange,
-            conflict_config=conflict_config,
-        )
-
-        # Test that the bridge was initialized correctly
-        assert bridge.config.cluster_id == "fed-cluster-1"
-        assert bridge.conflict_config.enable_leader_election is True
 
         # Elect leader for a cache namespace
         namespace = "distributed_cache"
@@ -454,15 +410,15 @@ class TestLeaderElectionCacheIntegration:
                     assert is_leader is True
 
                 # Verify leader is one of the known clusters
-                assert leader in cluster_metrics.keys()
+                assert leader in cluster_metrics
 
             # For metric-based election, should consistently choose best metrics (cluster-alpha)
             assert leaders["metric"] == "cluster-alpha"
 
             # Raft and Quorum may choose self or based on their internal logic
             # but should be consistent across runs
-            assert leaders["raft"] in cluster_metrics.keys()
-            assert leaders["quorum"] in cluster_metrics.keys()
+            assert leaders["raft"] in cluster_metrics
+            assert leaders["quorum"] in cluster_metrics
 
             # Test leadership queries work correctly
             for name, algorithm in algorithms:

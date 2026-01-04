@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -5,6 +7,8 @@ from loguru import logger
 
 from ..core.model import CommandNotFoundException, MPREGException, RPCCommand
 from .client import Client
+
+client_api_log = logger
 
 
 @dataclass(slots=True)
@@ -27,7 +31,7 @@ class MPREGClientAPI:
         if not self._connected:
             await self._client.connect()
             self._connected = True
-            logger.info("Connected to MPREG server at {}", self._client.url)
+            client_api_log.info("Connected to MPREG server at {}", self._client.url)
 
     async def disconnect(self) -> None:
         """Closes the connection to the MPREG server."""
@@ -40,6 +44,10 @@ class MPREGClientAPI:
         fun: str,
         *args: Any,
         locs: frozenset[str] | None = None,
+        function_id: str | None = None,
+        version_constraint: str | None = None,
+        target_cluster: str | None = None,
+        routing_topic: str | None = None,
         timeout: float | None = None,
         **kwargs: Any,
     ) -> Any:
@@ -49,6 +57,8 @@ class MPREGClientAPI:
             fun: The name of the RPC function to call.
             *args: Positional arguments for the RPC function.
             locs: Optional set of resource locations where the command can be executed.
+            target_cluster: Optional target cluster for federated routing.
+            routing_topic: Optional unified routing topic for policy-based routing.
             timeout: Optional timeout in seconds for the RPC call.
             **kwargs: Keyword arguments for the RPC function.
 
@@ -68,6 +78,10 @@ class MPREGClientAPI:
             fun=fun,
             args=tuple(args),
             locs=locs or frozenset(),
+            function_id=function_id,
+            version_constraint=version_constraint,
+            target_cluster=target_cluster,
+            routing_topic=routing_topic,
             kwargs=kwargs,
         )
         try:
@@ -79,15 +93,22 @@ class MPREGClientAPI:
         except CommandNotFoundException as e:
             raise e
         except MPREGException as e:
-            logger.error(
+            client_api_log.error(
                 "RPC Call Failed: {}: {}", e.rpc_error.code, e.rpc_error.message
             )
             raise e
         except Exception as e:
-            logger.error("RPC Call Failed: {}", e)
+            client_api_log.error("RPC Call Failed: {}", e)
             raise
 
-    async def __aenter__(self) -> "MPREGClientAPI":
+    async def list_peers(self) -> list[dict[str, Any]]:
+        """Return the cluster's current peer list."""
+        result = await self.call("list_peers")
+        if not isinstance(result, list):
+            raise TypeError(f"Expected peer list response, got {type(result).__name__}")
+        return result
+
+    async def __aenter__(self) -> MPREGClientAPI:
         await self.connect()
         return self
 

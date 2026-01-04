@@ -39,7 +39,7 @@ class TopicNamespace(Enum):
     RPC_NAMESPACE = "mpreg.rpc"
     QUEUE_NAMESPACE = "mpreg.queue"
     PUBSUB_NAMESPACE = "mpreg.pubsub"
-    FEDERATION_NAMESPACE = "mpreg.federation"
+    FEDERATION_NAMESPACE = "mpreg.fabric"
     GOSSIP_NAMESPACE = "mpreg.gossip"
     MONITORING_NAMESPACE = "mpreg.monitoring"
     SECURITY_NAMESPACE = "mpreg.security"
@@ -99,9 +99,7 @@ class TopicPattern:
 
     def matches_topic(self, topic: str) -> bool:
         """Check if this pattern matches a specific topic."""
-        import fnmatch
-
-        return fnmatch.fnmatch(topic, self.pattern)
+        return TopicValidator.matches_pattern(topic, self.pattern)
 
     def generate_example_topic(self, **kwargs: Any) -> str:
         """Generate a concrete topic from this pattern template."""
@@ -209,38 +207,45 @@ class TopicTaxonomy:
 
     # Federation System Topics
     FEDERATION_CLUSTER_JOIN = TopicPattern(
-        pattern="mpreg.federation.cluster.{cluster_id}.join",
+        pattern="mpreg.fabric.cluster.{cluster_id}.join",
         access_level=TopicAccessLevel.CONTROL_PLANE,
         description="Cluster joining federation",
-        example_topics=["mpreg.federation.cluster.west_coast.join"],
+        example_topics=["mpreg.fabric.cluster.west_coast.join"],
     )
 
     FEDERATION_CLUSTER_LEAVE = TopicPattern(
-        pattern="mpreg.federation.cluster.{cluster_id}.leave",
+        pattern="mpreg.fabric.cluster.{cluster_id}.leave",
         access_level=TopicAccessLevel.CONTROL_PLANE,
         description="Cluster leaving federation",
-        example_topics=["mpreg.federation.cluster.west_coast.leave"],
+        example_topics=["mpreg.fabric.cluster.west_coast.leave"],
     )
 
     FEDERATION_MESSAGE_FORWARD = TopicPattern(
-        pattern="mpreg.federation.forward.{source_cluster}.{target_cluster}.#",
+        pattern="mpreg.fabric.forward.{source_cluster}.{target_cluster}.#",
         access_level=TopicAccessLevel.CONTROL_PLANE,
         description="Message forwarded between clusters",
-        example_topics=["mpreg.federation.forward.west_coast.east_coast.user.order"],
+        example_topics=["mpreg.fabric.forward.west_coast.east_coast.user.order"],
     )
 
     FEDERATION_ROUTE_DISCOVERED = TopicPattern(
-        pattern="mpreg.federation.route.discovered.{target_cluster}",
+        pattern="mpreg.fabric.route.discovered.{target_cluster}",
         access_level=TopicAccessLevel.CONTROL_PLANE,
         description="New federation route discovered",
-        example_topics=["mpreg.federation.route.discovered.europe"],
+        example_topics=["mpreg.fabric.route.discovered.europe"],
     )
 
     FEDERATION_HEALTH_UPDATE = TopicPattern(
-        pattern="mpreg.federation.health.{cluster_id}",
+        pattern="mpreg.fabric.health.{cluster_id}",
         access_level=TopicAccessLevel.CONTROL_PLANE,
         description="Federation cluster health status update",
-        example_topics=["mpreg.federation.health.west_coast"],
+        example_topics=["mpreg.fabric.health.west_coast"],
+    )
+
+    RAFT_CONTROL_MESSAGE = TopicPattern(
+        pattern="mpreg.fabric.raft.rpc",
+        access_level=TopicAccessLevel.CONTROL_PLANE,
+        description="Raft control-plane RPC message over the fabric",
+        example_topics=["mpreg.fabric.raft.rpc"],
     )
 
     # Cache System Topics
@@ -258,11 +263,11 @@ class TopicTaxonomy:
         example_topics=["mpreg.cache.coordination.replication.global"],
     )
 
-    CACHE_GOSSIP_STATE = TopicPattern(
-        pattern="mpreg.cache.gossip.state.{node_id}",
+    CACHE_SYNC_STATE = TopicPattern(
+        pattern="mpreg.cache.sync.state.{node_id}",
         access_level=TopicAccessLevel.CONTROL_PLANE,
-        description="Cache state synchronization via gossip protocol",
-        example_topics=["mpreg.cache.gossip.state.node_west_1"],
+        description="Cache state synchronization via fabric cache sync",
+        example_topics=["mpreg.cache.sync.state.node_west_1"],
     )
 
     CACHE_FEDERATION_SYNC = TopicPattern(
@@ -432,14 +437,71 @@ class TopicValidator:
         if "##" in pattern or "**" in pattern:
             return False, "Invalid wildcard usage (double wildcards not allowed)"
 
-        # Check that # appears only at the end of the pattern or as the last segment
-        hash_positions = [i for i, char in enumerate(pattern) if char == "#"]
-        for pos in hash_positions:
-            # # must be at the very end of the pattern, or be followed by nothing (end of string)
-            if pos < len(pattern) - 1:
-                return False, "# wildcard must be at the very end of the pattern"
+        # Allow inline wildcards for single-segment patterns (non-dotted identifiers)
+        if "." not in pattern:
+            return True, ""
+
+        # Check that # appears only as a full segment
+        for segment in pattern.split("."):
+            if "#" in segment and segment != "#":
+                return False, "# wildcard must be its own segment"
+            if "*" in segment and segment != "*":
+                return False, "* wildcard must be its own segment"
 
         return True, ""
+
+    @staticmethod
+    def matches_pattern(topic: str, pattern: str) -> bool:
+        """Check if a topic matches a pattern supporting * and # wildcards."""
+        if not pattern:
+            return False
+        if pattern == topic:
+            return True
+
+        if "." not in pattern and "." not in topic:
+            # Single-segment glob semantics for identifiers like queue names.
+            glob_pattern = re.escape(pattern).replace(r"\*", ".*").replace(r"\#", ".*")
+            return bool(re.fullmatch(glob_pattern, topic))
+
+        pattern_parts = pattern.split(".")
+        topic_parts = topic.split(".")
+
+        def _match(i: int, j: int, memo: dict[tuple[int, int], bool]) -> bool:
+            key = (i, j)
+            if key in memo:
+                return memo[key]
+
+            if i == len(pattern_parts) and j == len(topic_parts):
+                memo[key] = True
+                return True
+            if i == len(pattern_parts):
+                memo[key] = False
+                return False
+
+            part = pattern_parts[i]
+            if part == "#":
+                if i == len(pattern_parts) - 1:
+                    memo[key] = True
+                    return True
+                for skip in range(j, len(topic_parts) + 1):
+                    if _match(i + 1, skip, memo):
+                        memo[key] = True
+                        return True
+                memo[key] = False
+                return False
+
+            if j == len(topic_parts):
+                memo[key] = False
+                return False
+
+            if part == "*" or part == topic_parts[j]:
+                memo[key] = _match(i + 1, j + 1, memo)
+                return memo[key]
+
+            memo[key] = False
+            return False
+
+        return _match(0, 0, {})
 
     @staticmethod
     def is_internal_topic(topic: str) -> bool:

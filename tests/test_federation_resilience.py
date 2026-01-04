@@ -13,8 +13,8 @@ import time
 
 import pytest
 
-from mpreg.federation.federation_optimized import ClusterIdentity
-from mpreg.federation.federation_resilience import (
+from mpreg.fabric.federation_optimized import ClusterIdentity
+from mpreg.fabric.federation_resilience import (
     AdaptiveCircuitBreaker,
     EnhancedFederationResilience,
     FederationAutoRecovery,
@@ -24,19 +24,24 @@ from mpreg.federation.federation_resilience import (
     RecoveryStrategy,
     RetryConfiguration,
 )
+from tests.test_helpers import TestPortManager
 
 
 @pytest.fixture
 def cluster_identity():
     """Create a test cluster identity."""
-    return ClusterIdentity(
-        cluster_id="test_cluster",
-        cluster_name="Test Cluster",
-        region="test_region",
-        bridge_url="ws://test.example.com:9000",
-        public_key_hash="test_hash",
-        created_at=time.time(),
-    )
+    with TestPortManager() as port_manager:
+        bridge_url = port_manager.get_server_url(
+            category="federation", host="test.example.com"
+        )
+        yield ClusterIdentity(
+            cluster_id="test_cluster",
+            cluster_name="Test Cluster",
+            region="test_region",
+            bridge_url=bridge_url,
+            public_key_hash="test_hash",
+            created_at=time.time(),
+        )
 
 
 @pytest.fixture
@@ -121,7 +126,7 @@ class TestAdaptiveCircuitBreaker:
 
     def test_adaptive_threshold_update(self):
         """Test adaptive threshold updates based on health."""
-        from mpreg.federation.federation_resilience import ClusterHealthMetrics
+        from mpreg.fabric.federation_resilience import ClusterHealthMetrics
 
         cb = AdaptiveCircuitBreaker(adaptive_thresholds=True, base_failure_threshold=5)
 
@@ -235,7 +240,7 @@ class TestFederationHealthMonitor:
         monitor.register_cluster(cluster_identity)
 
         # Simulate health check failure
-        from mpreg.federation.federation_resilience import HealthCheckResult
+        from mpreg.fabric.federation_resilience import HealthCheckResult
 
         failure_result = HealthCheckResult(
             cluster_id=cluster_identity.cluster_id,
@@ -326,7 +331,7 @@ class TestFederationAutoRecovery:
         ]
 
         for status, expected_strategy in test_cases:
-            from mpreg.federation.federation_resilience import AlertData
+            from mpreg.fabric.federation_resilience import AlertData
 
             # Trigger health alert
             alert_data = AlertData(

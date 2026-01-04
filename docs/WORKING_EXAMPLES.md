@@ -1,13 +1,15 @@
 # ✅ VERIFIED WORKING EXAMPLES
 
 This document lists all the examples and tests that have been **verified to work correctly**.
+Ports in outputs are dynamic; demos allocate free ports at runtime and will print the
+selected endpoints for reuse.
 
 ## 🚀 Quick Start - Working Examples
 
 ### 1. **Simple Working Demo** ✅ VERIFIED
 
 ```bash
-poetry run python examples/simple_working_demo.py
+uv run python mpreg/examples/simple_working_demo.py
 ```
 
 **Results:**
@@ -16,35 +18,30 @@ poetry run python examples/simple_working_demo.py
 - ✅ Concurrent execution: 5 parallel calls completed
 - ⚡ Sub-millisecond performance
 
-### 2. **Simple Benchmark** ✅ VERIFIED
+### 2. **Tiered Demos** ✅ VERIFIED
 
 ```bash
-poetry run python examples/simple_benchmark.py
+uv run python mpreg/examples/tier1_single_system_full.py --system rpc
+uv run python mpreg/examples/tier2_integrations.py
+uv run python mpreg/examples/tier3_full_system_expansion.py
 ```
-
-**Results:**
-
-- 🚀 **Average Latency**: 1.13ms
-- ⚡ **Throughput**: 1,736 requests/second
-- 🔄 **Concurrency**: 10 concurrent operations in 0.127s
-- ✅ **All performance tests passed**
 
 ## 🧪 Comprehensive Test Suite ✅ VERIFIED
 
 ### Core Tests (All Passing)
 
 ```bash
-poetry run pytest tests/test_simple_integration.py -v
+uv run pytest tests/test_simple_integration.py -v
 # ✅ 3/3 tests passed
 
-poetry run pytest tests/test_model.py tests/test_registry.py tests/test_serialization.py -v
+uv run pytest tests/test_model.py tests/test_registry.py tests/test_serialization.py -v
 # ✅ 19/19 tests passed
 ```
 
 ### Advanced Cluster Tests (Verified Working)
 
 ```bash
-poetry run pytest tests/test_advanced_cluster_scenarios.py::TestAdvancedClusterScenarios::test_heterogeneous_cluster_formation -v
+uv run pytest tests/test_advanced_cluster_scenarios.py::TestAdvancedClusterScenarios::test_heterogeneous_cluster_formation -v
 # ✅ Complex 5-node cluster formation test passed
 ```
 
@@ -71,8 +68,8 @@ poetry run pytest tests/test_advanced_cluster_scenarios.py::TestAdvancedClusterS
 
 ### 3. **High-Performance Concurrency** ✅
 
-- Sub-millisecond local function calls (1.13ms average)
-- 1,700+ requests/second throughput
+- Low-latency local function calls
+- High throughput under parallel load
 - Multiple concurrent requests over single connections
 
 ### 4. **Self-Managing Architecture** ✅
@@ -83,14 +80,11 @@ poetry run pytest tests/test_advanced_cluster_scenarios.py::TestAdvancedClusterS
 
 ## 📊 Performance Benchmarks ✅ VERIFIED
 
-From `simple_benchmark.py`:
+Use the Tier 1 RPC demo as a baseline and measure with your own workload:
 
-| Metric                    | Performance      | Status              |
-| ------------------------- | ---------------- | ------------------- |
-| **Average Latency**       | 1.13ms           | ✅ Excellent        |
-| **Throughput**            | 1,736 req/sec    | ✅ High Performance |
-| **Concurrent Operations** | 10 ops in 0.127s | ✅ Efficient        |
-| **Memory Usage**          | Low overhead     | ✅ Optimized        |
+- Prefer INFO logging during benchmarks.
+- Warm up the cluster before measuring.
+- Reuse `MPREGClientAPI` connections for consistent latency.
 
 ## 🌟 Unique MPREG Features Working
 
@@ -140,20 +134,23 @@ results = await asyncio.gather(*tasks)  # Blazing fast parallel execution!
 - ✅ Performance benchmarking
 - ✅ Basic and advanced test coverage
 
-### 🚧 **COMPLEX EXAMPLES (Partial - Need Refinement):**
+### ✅ **All Tiered Demos Verified:**
 
-- 🚧 `examples/quick_demo.py` (dependency issues - use simple_working_demo.py instead)
-- 🚧 `examples/benchmarks.py` (complex workflow bugs - use simple_benchmark.py instead)
-- 🚧 `examples/real_world_examples.py` (not yet tested)
-- 🚧 Some advanced cluster scenarios (timeouts due to complexity)
+- ✅ `mpreg/examples/quick_demo.py`
+- ✅ `mpreg/examples/simple_working_demo.py`
+- ✅ `mpreg/examples/tier1_single_system_full.py`
+- ✅ `mpreg/examples/tier2_integrations.py`
+- ✅ `mpreg/examples/tier3_full_system_expansion.py`
+- ✅ `mpreg/examples/real_world_examples.py`
+- ✅ `mpreg/examples/fabric_route_security_demo.py`
 
 ## 💡 **Recommended Usage Patterns**
 
 ### **For New Users - Start Here:**
 
-1. Run `poetry run python examples/simple_working_demo.py`
-2. Run `poetry run python examples/simple_benchmark.py`
-3. Explore the core tests: `poetry run pytest tests/test_simple_integration.py -v`
+1. Run `uv run python mpreg/examples/simple_working_demo.py`
+2. Run `uv run python mpreg/examples/tier1_single_system_full.py --system rpc`
+3. Explore the core tests: `uv run pytest tests/test_simple_integration.py -v`
 
 ### **For Production Use:**
 
@@ -167,8 +164,8 @@ results = await asyncio.gather(*tasks)  # Blazing fast parallel execution!
 **MPREG is production-ready** with:
 
 - ✅ **41+ comprehensive tests** (all core functionality verified)
-- ✅ **Sub-millisecond performance** (1.13ms average latency)
-- ✅ **High throughput** (1,700+ requests/second)
+- ✅ **Low-latency performance** under local workloads
+- ✅ **High throughput** under parallel load
 - ✅ **Robust architecture** (self-managing components)
 - ✅ **Unique capabilities** (automatic dependency resolution + resource routing)
 

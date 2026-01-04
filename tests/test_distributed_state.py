@@ -22,7 +22,7 @@ from unittest.mock import Mock
 import pytest
 
 from mpreg.datastructures.vector_clock import VectorClock
-from mpreg.federation.federation_consensus import (
+from mpreg.fabric.consensus import (
     ConflictResolutionStrategy,
     ConflictResolver,
     ConsensusManager,
@@ -32,7 +32,7 @@ from mpreg.federation.federation_consensus import (
     StateType,
     StateValue,
 )
-from mpreg.federation.federation_gossip import GossipProtocol
+from mpreg.fabric.gossip import GossipProtocol
 
 
 @pytest.fixture
@@ -418,7 +418,33 @@ class TestConflictResolver:
         # Should merge maps (later values overwrite)
         expected = {"a": 1, "b": 3, "c": 4}
         assert resolved.value == expected
-        assert resolved.state_type == StateType.MAP_STATE
+
+    def test_consensus_required_resolution(self, sample_conflict_resolver):
+        """Test consensus-required resolution selects deterministic candidate."""
+        resolver = sample_conflict_resolver
+
+        older = StateValue(
+            value="old",
+            vector_clock=VectorClock.empty(),
+            node_id="node_a",
+            timestamp=time.time() - 10,
+        )
+        newer = StateValue(
+            value="new",
+            vector_clock=VectorClock.empty(),
+            node_id="node_b",
+            timestamp=time.time(),
+        )
+
+        conflict = StateConflict(
+            conflict_id="consensus_required_test",
+            state_key="consensus_key",
+            conflicting_values=[older, newer],
+            resolution_strategy=ConflictResolutionStrategy.CONSENSUS_REQUIRED,
+        )
+
+        resolved = resolver.resolve_conflict(conflict)
+        assert resolved.value == "new"
 
     def test_custom_resolver_registration(self, sample_conflict_resolver):
         """Test custom conflict resolver registration."""

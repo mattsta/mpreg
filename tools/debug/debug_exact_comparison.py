@@ -6,11 +6,13 @@ This will create the EXACT same 13-node cluster using both approaches to identif
 """
 
 import asyncio
+import contextlib
+
+from tests.port_allocator import get_port_allocator
 
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
-from tests.port_allocator import get_port_allocator
 
 
 async def test_manual_approach():
@@ -76,10 +78,8 @@ async def test_manual_approach():
 
     # Cleanup
     for server in servers:
-        try:
+        with contextlib.suppress(Exception):
             await server.shutdown_async()
-        except Exception:
-            pass
 
     return success, discovered_counts
 

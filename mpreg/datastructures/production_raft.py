@@ -40,15 +40,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Protocol
 
 import ulid
-
-logger = logging.getLogger(__name__)
 
 
 # Core Raft State Enumerations

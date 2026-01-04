@@ -11,7 +11,7 @@ This is the result of Phase 1.1 implementation from the Planet-Scale Roadmap.
 
 import time
 
-from mpreg.federation.federation_graph import (
+from mpreg.fabric.federation_graph import (
     FederationGraphEdge,
     FederationGraphNode,
     GeographicCoordinate,

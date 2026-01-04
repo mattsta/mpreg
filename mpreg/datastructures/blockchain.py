@@ -20,6 +20,7 @@ from .blockchain_types import (
     ChainId,
     ConsensusConfig,
     ConsensusType,
+    CryptoConfig,
     Difficulty,
     NodeId,
     Timestamp,
@@ -51,6 +52,9 @@ class Blockchain:
             max_transactions_per_block=1000,
         )
     )
+    crypto_config: CryptoConfig = field(
+        default_factory=lambda: CryptoConfig(require_signatures=False)
+    )
 
     def __post_init__(self) -> None:
         """Validate blockchain structure."""
@@ -61,14 +65,16 @@ class Blockchain:
         if not self.genesis_block.is_valid():
             raise ValueError("Invalid genesis block")
 
-        # Validate chain continuity
+        # Validate chain continuity and block integrity
         if self.blocks:
             previous_block = self.genesis_block
             for block in self.blocks:
-                if not block.is_valid_successor(previous_block):
-                    raise ValueError(
-                        f"Invalid block succession at height {block.height}"
-                    )
+                if not block.is_valid(
+                    previous_block,
+                    current_time=block.timestamp,
+                    crypto_config=self.crypto_config,
+                ):
+                    raise ValueError(f"Invalid block at height {block.height}")
                 previous_block = block
 
     def get_height(self) -> BlockHeight:
@@ -106,13 +112,12 @@ class Blockchain:
                 return block
         return None
 
-    def add_block(self, new_block: Block) -> Blockchain:
+    def add_block(
+        self, new_block: Block, current_time: Timestamp | None = None
+    ) -> Blockchain:
         """Add new block to chain (if valid)."""
-        latest_block = self.get_latest_block()
-
-        # Validate new block
-        if not new_block.is_valid_successor(latest_block):
-            raise ValueError(f"Invalid block: cannot follow {latest_block.height}")
+        if not self.can_add_block(new_block, current_time=current_time):
+            raise ValueError("Invalid block: cannot be added to chain")
 
         # Create new chain with added block
         new_blocks = list(self.blocks)
@@ -123,6 +128,7 @@ class Blockchain:
             genesis_block=self.genesis_block,
             blocks=tuple(new_blocks),
             consensus_config=self.consensus_config,
+            crypto_config=self.crypto_config,
         )
 
     def validate_chain(self) -> bool:
@@ -267,7 +273,9 @@ class Blockchain:
         latest_block = self.get_latest_block()
 
         # Basic validation
-        if not block.is_valid(latest_block, current_time):
+        if not block.is_valid(
+            latest_block, current_time, crypto_config=self.crypto_config
+        ):
             return False
 
         # Consensus-specific validation
@@ -276,10 +284,10 @@ class Blockchain:
                 return False
 
         # Check transaction limit
-        if len(block.transactions) > self.consensus_config.max_transactions_per_block:
-            return False
-
-        return True
+        return (
+            not len(block.transactions)
+            > self.consensus_config.max_transactions_per_block
+        )
 
     def get_pending_transactions_limit(self) -> int:
         """Get maximum transactions for next block."""
@@ -319,6 +327,14 @@ class Blockchain:
                 "block_time_target": self.consensus_config.block_time_target,
                 "difficulty_adjustment_interval": self.consensus_config.difficulty_adjustment_interval,
                 "max_transactions_per_block": self.consensus_config.max_transactions_per_block,
+                "minimum_stake": self.consensus_config.minimum_stake,
+                "authority_threshold": self.consensus_config.authority_threshold,
+            },
+            "crypto_config": {
+                "hash_algorithm": self.crypto_config.hash_algorithm,
+                "signature_algorithm": self.crypto_config.signature_algorithm,
+                "key_length": self.crypto_config.key_length,
+                "require_signatures": self.crypto_config.require_signatures,
             },
             "summary": self.get_chain_summary(),
         }
@@ -335,6 +351,17 @@ class Blockchain:
             max_transactions_per_block=data["consensus_config"][
                 "max_transactions_per_block"
             ],
+            minimum_stake=data["consensus_config"].get("minimum_stake", 0),
+            authority_threshold=data["consensus_config"].get(
+                "authority_threshold", 0.67
+            ),
+        )
+        crypto_payload = data.get("crypto_config") or {}
+        crypto_config = CryptoConfig(
+            hash_algorithm=crypto_payload.get("hash_algorithm", "sha256"),
+            signature_algorithm=crypto_payload.get("signature_algorithm", "ed25519"),
+            key_length=crypto_payload.get("key_length", 256),
+            require_signatures=crypto_payload.get("require_signatures", False),
         )
 
         return cls(
@@ -342,6 +369,7 @@ class Blockchain:
             genesis_block=Block.from_dict(data["genesis_block"]),
             blocks=tuple(Block.from_dict(block) for block in data["blocks"]),
             consensus_config=consensus_config,
+            crypto_config=crypto_config,
         )
 
     @classmethod
@@ -350,6 +378,7 @@ class Blockchain:
         chain_id: ChainId,
         genesis_miner: NodeId,
         consensus_config: ConsensusConfig | None = None,
+        crypto_config: CryptoConfig | None = None,
         initial_transactions: tuple[Transaction, ...] = (),
     ) -> Blockchain:
         """Create new blockchain with genesis block."""
@@ -360,6 +389,8 @@ class Blockchain:
                 difficulty_adjustment_interval=100,
                 max_transactions_per_block=1000,
             )
+        if crypto_config is None:
+            crypto_config = CryptoConfig(require_signatures=False)
 
         genesis_block = Block.create_genesis(genesis_miner, initial_transactions)
 
@@ -368,6 +399,7 @@ class Blockchain:
             genesis_block=genesis_block,
             blocks=(),
             consensus_config=consensus_config,
+            crypto_config=crypto_config,
         )
 
     def __len__(self) -> int:

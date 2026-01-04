@@ -1,5 +1,9 @@
 # MPREG Protocol Specification v2.0
 
+Note: Example endpoints in this document use placeholder ports. For live runs,
+allocate ports dynamically (for example, via `allocate_port("servers")`) and
+propagate the chosen URLs to clients.
+
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -7,11 +11,11 @@
 3. [Message Format](#message-format)
 4. [RPC Protocol](#rpc-protocol)
 5. [Pub/Sub Protocol](#pubsub-protocol)
-6. [Gossip Protocol](#gossip-protocol)
-7. [Federation Protocol](#federation-protocol)
+6. [Fabric Gossip Protocol](#fabric-gossip-protocol)
+7. [Fabric Routing and Federation](#fabric-routing-and-federation)
 8. [Metrics Protocol](#metrics-protocol)
-9. [Global Distributed Caching Protocol](#global-distributed-caching-protocol)
-10. [Federated Message Queue Protocol](#federated-message-queue-protocol)
+9. [Fabric Cache Protocol](#fabric-cache-protocol)
+10. [Fabric Queue Protocol](#fabric-queue-protocol)
 11. [Security Model](#security-model)
 12. [Error Handling](#error-handling)
 13. [Client Implementation Guide](#client-implementation-guide)
@@ -21,30 +25,30 @@
 
 ## Overview
 
-MPREG (Multi-Provider REGistry) is a planet-scale distributed computing platform that provides:
+MPREG (Multi-Provider REGistry) is a distributed computing platform that provides:
 
-- **Multi-Protocol RPC**: Function calls across distributed clusters
+- **Dependency-Resolving RPC**: Function calls with topological execution across clusters
 - **Topic-Based Pub/Sub**: High-performance messaging with pattern matching
-- **Federated Message Queues**: SQS-like queuing with cross-cluster delivery guarantees
-- **Gossip-Based Clustering**: State synchronization and membership management
-- **Federation Routing**: Multi-hop message routing across global clusters
+- **Fabric Queues**: SQS-like queuing with cross-cluster delivery guarantees
+- **Fabric Control Plane**: Gossip + catalog propagation for discovery and membership
+- **Path-Vector Routing**: Multi-hop routing across federated clusters
 - **Distributed Caching**: Multi-tier caching with intelligent eviction
 - **Real-Time Metrics**: Comprehensive performance and health monitoring
 
 ### Protocol Stack
 
 ```
-┌─────────────────────────────────────────────────┐
-│  Application Layer (RPC, Pub/Sub, Queues, Cache)│
-├─────────────────────────────────────────────────┤
-│  Federation Layer (Graph Routing, Bridges)     │
-├─────────────────────────────────────────────────┤
-│  Gossip Layer (State Sync, Membership, Queues) │
-├─────────────────────────────────────────────────┤
-│  Message Layer (JSON/MessagePack Serialization)│
-├─────────────────────────────────────────────────┤
-│  Transport Layer (WebSocket, TCP, TLS)         │
-└─────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│  Application Layer (RPC, Pub/Sub, Queue, Cache)        │
+├────────────────────────────────────────────────────────┤
+│  Fabric Control Plane (Catalog + Route Control + Policy)│
+├────────────────────────────────────────────────────────┤
+│  Fabric Gossip Plane (Catalog/Route/Membership Deltas) │
+├────────────────────────────────────────────────────────┤
+│  Unified Message Envelope (UnifiedMessage + Headers)   │
+├────────────────────────────────────────────────────────┤
+│  Transport Layer (WebSocket, TCP, TLS)                 │
+└────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -55,10 +59,10 @@ MPREG (Multi-Provider REGistry) is a planet-scale distributed computing platform
 
 | Protocol         | URL Scheme | Default Port | Use Case          | Max Message Size |
 | ---------------- | ---------- | ------------ | ----------------- | ---------------- |
-| WebSocket        | `ws://`    | 6666         | Real-time clients | 20MB             |
-| WebSocket Secure | `wss://`   | 6667         | Secure real-time  | 20MB             |
-| TCP              | `tcp://`   | 6668         | High-performance  | 20MB             |
-| TCP Secure       | `tcps://`  | 6669         | Secure high-perf  | 20MB             |
+| WebSocket        | `ws://`    | `<port>`     | Real-time clients | 20MB             |
+| WebSocket Secure | `wss://`   | `<port>`     | Secure real-time  | 20MB             |
+| TCP              | `tcp://`   | `<port>`     | High-performance  | 20MB             |
+| TCP Secure       | `tcps://`  | `<port>`     | Secure high-perf  | 20MB             |
 
 ### Connection Types
 
@@ -71,14 +75,41 @@ MPREG (Multi-Provider REGistry) is a planet-scale distributed computing platform
 - **Streaming Support**: Large data transfers via chunked streaming
 - **Connection Pooling**: Efficient connection reuse
 - **Circuit Breakers**: Automatic fault tolerance
+- **Auto Port Assignment**: `base_port=0` uses the port allocator and reports
+  assigned endpoints via `port_assignment_callback`.
+
+Example (auto-assigned ports):
+
+```python
+from mpreg.core.transport.factory import (
+    MultiProtocolAdapter,
+    MultiProtocolAdapterConfig,
+)
+from mpreg.core.transport.interfaces import TransportProtocol
+
+assigned = []
+
+def on_assign(assignment):
+    assigned.append(assignment)
+    print(f"{assignment.protocol.value} -> {assignment.endpoint}")
+
+config = MultiProtocolAdapterConfig(
+    base_port=0,
+    port_assignment_callback=on_assign,
+)
+adapter = MultiProtocolAdapter(config)
+await adapter.start([TransportProtocol.WEBSOCKET])
+```
 
 ---
 
 ## Message Format
 
-### Base Message Structure
+### Base Message Structures
 
-All MPREG messages follow a consistent JSON structure:
+MPREG uses two canonical envelope shapes:
+
+1. **Client/Server envelopes** (RPC, pub/sub, cache):
 
 ```json
 {
@@ -90,7 +121,24 @@ All MPREG messages follow a consistent JSON structure:
 }
 ```
 
-#### Core Fields
+2. **Fabric envelopes** (node-to-node control/data):
+
+```json
+{
+  "role": "fabric-message",
+  "payload": {
+    "message_id": "msg-123",
+    "topic": "mpreg.rpc.execute.compute_fibonacci",
+    "message_type": "rpc",
+    "delivery": "at_least_once",
+    "payload": { "...": "message-specific data" },
+    "headers": { "...": "routing headers" },
+    "timestamp": 1700000000.0
+  }
+}
+```
+
+#### Core Fields (Client/Server)
 
 - `role`: Message type identifier (required)
 - `u`: Unique request/correlation ID (required)
@@ -99,20 +147,23 @@ All MPREG messages follow a consistent JSON structure:
 
 ### Message Types
 
-| Role                  | Purpose                 | Direction           |
-| --------------------- | ----------------------- | ------------------- |
-| `rpc`                 | Function call request   | Client → Server     |
-| `rpc-response`        | Function call response  | Server → Client     |
-| `internal-rpc`        | Internal RPC request    | Node → Node         |
-| `internal-answer`     | Internal RPC response   | Node → Node         |
-| `pubsub-publish`      | Publish message         | Client → Server     |
-| `pubsub-subscribe`    | Subscribe to topics     | Client → Server     |
-| `pubsub-notification` | Message delivery        | Server → Client     |
-| `gossip`              | Gossip protocol message | Node → Node         |
-| `federation`          | Cross-cluster message   | Cluster → Cluster   |
-| `metrics`             | Metrics reporting       | Component → Monitor |
-| `cache-request`       | Cache operation         | Client → Cache      |
-| `cache-response`      | Cache operation result  | Cache → Client      |
+| Role                  | Purpose                                | Direction           |
+| --------------------- | -------------------------------------- | ------------------- |
+| `rpc`                 | Function call request                  | Client → Server     |
+| `rpc-response`        | Function call response                 | Server → Client     |
+| `server`              | Server lifecycle/status events         | Node → Node         |
+| `fabric-message`      | Unified fabric envelope (data/control) | Node → Node         |
+| `fabric-gossip`       | Fabric gossip message envelope         | Node → Node         |
+| `pubsub-publish`      | Publish message                        | Client → Server     |
+| `pubsub-subscribe`    | Subscribe to topics                    | Client → Server     |
+| `pubsub-unsubscribe`  | Unsubscribe from topics                | Client → Server     |
+| `pubsub-notification` | Message delivery                       | Server → Client     |
+| `pubsub-ack`          | Pub/Sub acknowledgment                 | Client → Server     |
+| `consensus-proposal`  | Consensus proposal broadcast           | Node → Node         |
+| `consensus-vote`      | Consensus vote broadcast               | Node → Node         |
+| `metrics`             | Metrics reporting                      | Component → Monitor |
+| `cache-request`       | Cache operation                        | Client → Cache      |
+| `cache-response`      | Cache operation result                 | Cache → Client      |
 
 ---
 
@@ -181,44 +232,136 @@ All MPREG messages follow a consistent JSON structure:
 }
 ```
 
-### Internal RPC
+### Fabric RPC (UnifiedMessage)
 
-**Message Type**: `internal-rpc`
+**Message Type**: `fabric-message` (UnifiedMessage + FabricRPCRequest payload)
 
-Used for node-to-node communication within a cluster:
+Used for node-to-node RPC forwarding within and across clusters. Routing uses
+fabric headers (`routing_path`, `hop_budget`) and federation path tracking.
 
 ```json
 {
-  "role": "internal-rpc",
-  "u": "internal-67890",
-  "command": "execute_distributed_task",
-  "args": ["param1", "param2"],
-  "kwargs": { "option": "value" },
-  "results": { "partial": "data" }
+  "role": "fabric-message",
+  "payload": {
+    "message_id": "req-12345",
+    "topic": "mpreg.rpc.execute.execute_distributed_task",
+    "message_type": "rpc",
+    "delivery": "at_least_once",
+    "payload": {
+      "kind": "rpc-request",
+      "request_id": "req-12345",
+      "command": "execute_distributed_task",
+      "args": ["param1", "param2"],
+      "kwargs": { "option": "value" },
+      "resources": ["gpu", "region-us-east"],
+      "function_id": "func-exec-task",
+      "version_constraint": ">=1.0.0,<2.0.0",
+      "target_cluster": "cluster-b",
+      "target_node": "ws://node-b:<port>",
+      "reply_to": "ws://node-a:<port>",
+      "federation_path": ["cluster-a"],
+      "federation_remaining_hops": 3
+    },
+    "headers": {
+      "correlation_id": "req-12345",
+      "source_cluster": "cluster-a",
+      "routing_path": ["ws://node-a:<port>"],
+      "hop_budget": 3
+    },
+    "timestamp": 1700000000.0
+  }
 }
 ```
+
+### UnifiedMessage Envelope
+
+The routing fabric uses a single canonical envelope for all node-to-node traffic.
+The schema is defined in `mpreg/fabric/message.py` and is summarized here.
+
+- `message_id`: Unique message identifier (string).
+- `topic`: Routing topic (string).
+- `message_type`: `rpc` | `pubsub` | `queue` | `cache` | `control` | `data`.
+- `delivery`: `fire_and_forget` | `at_least_once` | `exactly_once` | `broadcast` | `quorum`.
+- `payload`: Message-specific payload (object).
+- `headers`: Routing headers (object, see below).
+- `timestamp`: Unix timestamp (float).
+
+#### Routing Headers
+
+- `correlation_id`: Correlates request/response chains (string).
+- `source_cluster`: Originating cluster id (string, optional).
+- `target_cluster`: Intended target cluster id (string, optional).
+- `routing_path`: Node ids traversed so far (list of strings).
+- `federation_path`: Cluster ids traversed so far (list of strings).
+- `hop_budget`: Remaining hop budget (int, optional).
+- `priority`: `critical` | `high` | `normal` | `low` | `bulk`.
+- `metadata`: Free-form metadata (object).
+
+### Topic Taxonomy (Canonical Namespaces)
+
+The platform uses a stable set of topic namespaces. The detailed patterns and
+examples live in `mpreg/core/topic_taxonomy.py` and should be treated as the
+source of truth.
+
+- `mpreg.rpc.*`: RPC execution, progress, and response events.
+  - Example: `mpreg.rpc.execute.compute_fibonacci`
+  - Example: `mpreg.rpc.response`
+- `mpreg.queue.*`: Queue delivery, acknowledgments, and consensus.
+  - Example: `mpreg.queue.orders`
+  - Example: `mpreg.queue.ack.orders`
+  - Example: `mpreg.queue.consensus.request`
+- `mpreg.pubsub.*`: Pub/Sub topics and subscription lifecycle.
+  - Example: `mpreg.pubsub.metrics.cpu`
+- `mpreg.cache.*`: Cache federation, sync, invalidation, and analytics.
+  - Example: `mpreg.cache.sync.operation`
+  - Example: `mpreg.cache.invalidation.user_data.user_123`
+- `mpreg.fabric.*`: Control plane, routing, and cluster-level events.
+  - Example: `mpreg.fabric.route.discovered.west_coast`
+  - Example: `mpreg.fabric.cluster.west_coast.join`
+  - Example: `mpreg.fabric.raft.rpc`
 
 ### Server Lifecycle Messages
 
-#### Hello Message
+#### Status Message
 
 ```json
 {
-  "what": "HELLO",
+  "what": "STATUS",
+  "server_url": "ws://node1:<port>",
+  "cluster_id": "cluster-abc123",
+  "status": "ok",
+  "active_clients": 42,
+  "peer_count": 5,
   "funs": ["function1", "function2"],
   "locs": ["location1", "location2"],
-  "cluster_id": "cluster-abc123",
-  "advertised_urls": ["ws://node1:6666", "tcp://node1:6668"]
+  "advertised_urls": ["ws://node1:<port>"]
 }
 ```
+
+Function discovery is propagated via fabric catalog gossip (`CATALOG_UPDATE`),
+not through server lifecycle messages.
 
 #### Goodbye Message
 
 ```json
 {
-  "what": "GOODBYE"
+  "what": "GOODBYE",
+  "departing_node_url": "ws://node1:<port>",
+  "cluster_id": "cluster-abc123",
+  "reason": "graceful_shutdown",
+  "timestamp": 1700000000.0
 }
 ```
+
+### Fabric Routing Extensions
+
+- **Enablement**: `fabric_routing_enabled` toggles the fabric routing plane.
+- **Identity**: RPCs can specify `function_id` and semantic `version_constraint`.
+- **Name uniqueness**: each function name maps to a single `function_id`.
+- **Resources**: `locs` must be a subset of advertised resources for a route.
+- **Hop budget**: `hop_budget` limits forwards; `routing_path` prevents loops.
+- **Federation security**: cross-cluster advertisements are filtered by
+  federation allow/block lists.
 
 ### Code References
 
@@ -336,59 +479,66 @@ The topic exchange maintains time-windowed message backlogs:
 
 ---
 
-## Gossip Protocol
+## Fabric Gossip Protocol
 
-### Gossip Message Structure
+The fabric control plane uses gossip to disseminate catalog deltas, route
+announcements, membership events, and consensus messages. Gossip always travels
+in the `fabric-gossip` envelope; the payload is a serialized `GossipMessage`.
 
-**Message Type**: `gossip`
+### Fabric Gossip Envelope
+
+**Message Type**: `fabric-gossip`
 
 ```json
 {
-  "role": "gossip",
-  "u": "gossip-44444",
-  "message_id": "gossip-abc123",
-  "message_type": "state_update",
-  "sender_id": "node-1",
+  "role": "fabric-gossip",
   "payload": {
-    "key": "cluster.node-2.status",
-    "value": "healthy",
-    "version": 15,
-    "timestamp": 1640995200.123,
-    "source_node": "node-2",
-    "ttl": 300
-  },
-  "vector_clock": {
-    "node-1": 42,
-    "node-2": 38,
-    "node-3": 51
-  },
-  "sequence_number": 1337,
-  "ttl": 5,
-  "hop_count": 0,
-  "max_hops": 3,
-  "digest": "sha256:abc123...",
-  "checksum": "crc32:def456",
-  "created_at": 1640995200.123,
-  "expires_at": 1640995500.123,
-  "propagation_path": ["node-1"],
-  "seen_by": ["node-1", "node-3"]
+    "message_id": "gossip-abc123",
+    "message_type": "catalog_update",
+    "sender_id": "node-1",
+    "payload": {
+      "delta": {
+        "additions": ["function endpoint(s)"],
+        "removals": [],
+        "timestamp": 1700000000.0
+      }
+    },
+    "vector_clock": {
+      "node-1": 42,
+      "node-2": 38,
+      "node-3": 51
+    },
+    "sequence_number": 1337,
+    "ttl": 5,
+    "hop_count": 0,
+    "max_hops": 3,
+    "created_at": 1640995200.123,
+    "expires_at": 1640995500.123,
+    "propagation_path": ["node-1"],
+    "seen_by": ["node-1", "node-3"]
+  }
 }
 ```
 
 ### Message Types
 
-| Type                 | Purpose                 | Payload                  |
-| -------------------- | ----------------------- | ------------------------ |
-| `state_update`       | State synchronization   | Key-value with version   |
-| `membership_update`  | Node join/leave/update  | Node info and event type |
-| `config_update`      | Configuration changes   | Config key-value         |
-| `heartbeat`          | Liveness indication     | Node health metrics      |
-| `anti_entropy`       | State reconciliation    | State digest             |
-| `rumor`              | Information propagation | Generic data             |
-| `consensus_proposal` | Distributed consensus   | Proposal data            |
-| `consensus_vote`     | Consensus voting        | Vote information         |
-| `membership_probe`   | Node health check       | Probe request            |
-| `membership_ack`     | Probe acknowledgment    | Health response          |
+| Type                        | Purpose                     | Payload                  |
+| --------------------------- | --------------------------- | ------------------------ |
+| `state_update`              | State synchronization       | Key-value with version   |
+| `membership_update`         | Node join/leave/update      | Node info and event type |
+| `config_update`             | Configuration changes       | Config key-value         |
+| `catalog_update`            | Routing catalog delta       | `RoutingCatalogDelta`    |
+| `route_advertisement`       | Path-vector route update    | `RouteAnnouncement`      |
+| `route_withdrawal`          | Path-vector route removal   | `RouteWithdrawal`        |
+| `link_state_update`         | Link-state adjacency update | `LinkStateUpdate`        |
+| `heartbeat`                 | Liveness indication         | Node health metrics      |
+| `anti_entropy`              | State reconciliation        | State digest             |
+| `rumor`                     | Information propagation     | Generic data             |
+| `consensus_proposal`        | Distributed consensus       | Proposal data            |
+| `consensus_vote`            | Consensus voting            | Vote information         |
+| `membership_probe`          | Node health check           | Probe request            |
+| `membership_ack`            | Probe acknowledgment        | Health response          |
+| `membership_indirect_probe` | Indirect health probe       | Relay probe              |
 
 ### Vector Clock
 
@@ -421,122 +571,201 @@ Periodic state reconciliation between nodes:
 
 ### Code References
 
-- **Generation**: `mpreg/federation/federation_gossip.py:_perform_gossip_cycle()`
-- **Processing**: `mpreg/federation/federation_gossip.py:_handle_*_update()`
-- **Models**: `mpreg/federation/federation_gossip.py:GossipMessage`
+- **Generation**: `mpreg/fabric/gossip.py:_perform_gossip_cycle()`
+- **Processing**: `mpreg/fabric/gossip.py:_handle_*_update()`
+- **Models**: `mpreg/fabric/gossip.py:GossipMessage`
 
 ---
 
-## Federation Protocol
+## Fabric Routing and Federation
 
-### Federation Architecture
+### Fabric Routing Overview
 
-MPREG federation enables planet-scale deployment through:
+The routing fabric provides a unified control plane for all cross-node traffic
+(RPC, pub/sub, queues, cache). Discovery is catalog-driven, and routing decisions
+are made using a path-vector route table with policy scoring.
 
-- **Graph-Based Routing**: Intelligent multi-hop message routing
-- **Hierarchical Structure**: Hub-spoke and mesh topologies
-- **Geographic Awareness**: Location-based optimization
-- **Fault Tolerance**: Redundant paths and circuit breakers
+### Routing Catalog NodeDescriptor
 
-### Cluster Identity
-
-```json
-{
-  "cluster_id": "us-west-1-prod",
-  "cluster_name": "US West Production",
-  "region": "us-west-1",
-  "bridge_url": "wss://us-west-1.mpreg.example.com:6667",
-  "public_key_hash": "sha256:abc123...",
-  "created_at": 1640995200.123,
-  "geographic_coordinates": [37.7749, -122.4194],
-  "network_tier": 1,
-  "max_bandwidth_mbps": 10000,
-  "preference_weight": 0.95
-}
-```
-
-### Federation Graph
-
-#### Node Types
-
-- **CLUSTER**: Computing cluster (leaf node)
-- **HUB**: Regional hub (aggregation point)
-- **RELAY**: Routing relay (forwarding only)
-
-#### Graph Node
+`NodeDescriptor` entries describe peer nodes for discovery and connection setup.
+They include advertised transport endpoints so peers can select the best
+internal connection target when multiple protocols are available.
 
 ```json
 {
-  "node_id": "hub-us-west",
-  "node_type": "HUB",
-  "region": "us-west",
-  "coordinates": [37.7749, -122.4194],
-  "max_capacity": 1000.0,
-  "current_load": 150.0,
-  "health_score": 0.98,
-  "processing_latency_ms": 5.2,
-  "bandwidth_mbps": 10000.0,
-  "reliability_score": 0.995
-}
-```
-
-#### Graph Edge
-
-```json
-{
-  "source_id": "cluster-sf-1",
-  "target_id": "hub-us-west",
-  "latency_ms": 15.3,
-  "bandwidth_mbps": 1000.0,
-  "reliability_score": 0.99,
-  "current_utilization": 0.25,
-  "priority_class": 1
-}
-```
-
-### Federation Message Flow
-
-**Message Type**: `federation`
-
-```json
-{
-  "role": "federation",
-  "u": "fed-55555",
-  "routing_header": {
-    "source_cluster": "us-west-1-prod",
-    "target_cluster": "eu-west-1-prod",
-    "message_type": "pubsub-notification",
-    "priority": "normal",
-    "max_hops": 5,
-    "current_hop": 2,
-    "routing_path": ["us-west-1-prod", "hub-us", "hub-eu"],
-    "quality_requirements": {
-      "max_latency_ms": 100,
-      "min_bandwidth_mbps": 10,
-      "min_reliability": 0.99
+  "node_id": "ws://127.0.0.1:12000",
+  "cluster_id": "cluster-a",
+  "resources": ["cpu", "gpu"],
+  "capabilities": ["rpc", "cache"],
+  "transport_endpoints": [
+    {
+      "connection_type": "internal",
+      "protocol": "ws",
+      "host": "127.0.0.1",
+      "port": 12000,
+      "endpoint": "ws://127.0.0.1:12000"
     }
-  },
-  "payload": {
-    "role": "pubsub-notification",
-    "message": {...},
-    "subscription_id": "global-alerts"
-  }
+  ],
+  "advertised_at": 1700000000.0,
+  "ttl_seconds": 30.0
 }
 ```
 
-### Routing Algorithm
+Endpoint selection rules (peer connections):
 
-1. **Destination Resolution**: Determine target cluster(s)
-2. **Path Planning**: Calculate optimal routes using Dijkstra/A\*
-3. **Quality Assessment**: Evaluate path quality (latency, bandwidth, reliability)
-4. **Load Balancing**: Distribute traffic across available paths
-5. **Circuit Breaking**: Avoid failed or overloaded paths
+- Prefer `connection_type=internal` endpoints.
+- Prefer secure protocols when available (`wss`/`tcps`), otherwise `ws`/`tcp`.
+- Fall back to `node_id` if no endpoints are advertised.
+
+### Route Control (Path-Vector)
+
+Route announcements are distributed via gossip and stored in a local route
+table. Each route is a path-vector record with TTL and quality metrics.
+Announcements may include optional `route_tags` for policy filtering and
+signature fields (`signature`, `public_key`, `signature_algorithm`) when
+route signing is enabled.
+
+```json
+{
+  "destination": { "cluster_id": "cluster-b" },
+  "path": { "hops": ["cluster-a", "cluster-b"] },
+  "metrics": {
+    "hop_count": 1,
+    "latency_ms": 18.4,
+    "bandwidth_mbps": 1000,
+    "reliability_score": 0.995,
+    "cost_score": 0.3
+  },
+  "advertiser": "cluster-a",
+  "advertised_at": 1700000000.0,
+  "ttl_seconds": 30.0,
+  "epoch": 3,
+  "route_tags": ["gold", "low-latency"],
+  "signature": "deadbeef...",
+  "public_key": "cafebabe...",
+  "signature_algorithm": "ed25519"
+}
+```
+
+Notes:
+
+- When a route key registry is configured, verifiers prioritize registry keys
+  and use the payload `public_key` only as a fallback.
+- Key rotation is supported by overlapping old/new public keys during a grace
+  window; both keys can validate the same announcement stream during rollover.
+
+#### Route Withdrawal
+
+Withdrawals are broadcast when a previously advertised path is no longer
+reachable. Withdrawals carry the path being removed along with optional
+signature metadata when route signing is enabled.
+
+```json
+{
+  "destination": { "cluster_id": "cluster-b" },
+  "path": { "hops": ["cluster-a", "cluster-b"] },
+  "advertiser": "cluster-a",
+  "withdrawn_at": 1700000010.0,
+  "epoch": 4,
+  "route_tags": ["gold", "low-latency"],
+  "signature": "deadbeef...",
+  "public_key": "cafebabe...",
+  "signature_algorithm": "ed25519"
+}
+```
+
+#### Link-State Updates (Optional)
+
+Link-state mode is an optional control-plane feature that advertises each
+cluster's direct neighbor set (adjacency list). When enabled, link-state
+updates are gossiped through the fabric and converted into a global graph for
+shortest-path routing.
+
+```json
+{
+  "origin": "cluster-a",
+  "area": "area-a",
+  "neighbors": [
+    {
+      "cluster_id": "cluster-b",
+      "latency_ms": 4.0,
+      "bandwidth_mbps": 1000,
+      "reliability_score": 0.99,
+      "cost_score": 0.1
+    }
+  ],
+  "advertised_at": 1700000020.0,
+  "ttl_seconds": 30.0,
+  "sequence": 12
+}
+```
+
+The optional `area` field scopes link-state updates to a named area. When
+configured, only updates from the same area are accepted and used for routing.
+
+Link-state routing is disabled by default. Enable it with:
+
+```python
+settings = MPREGSettings(
+    fabric_link_state_mode=LinkStateMode.PREFER,
+    fabric_link_state_ttl_seconds=30.0,
+    fabric_link_state_announce_interval_seconds=10.0,
+    fabric_link_state_ecmp_paths=1,
+    fabric_link_state_area=None,
+    fabric_link_state_area_policy=None,
+)
+```
+
+### UnifiedMessage Routing Headers
+
+The fabric uses routing headers on every `fabric-message` envelope:
+
+- `source_cluster`: Originating cluster id.
+- `target_cluster`: Intended destination cluster id.
+- `routing_path`: Node ids traversed (prevents node-level loops).
+- `federation_path`: Cluster ids traversed (prevents cluster-level loops).
+- `hop_budget`: Remaining hop budget for forwarding.
+- `priority`: Routing priority for policy selection.
+
+### Routing Flow (All Systems)
+
+1. **Resolve candidates** from the routing catalog using function identity,
+   version constraints, queue/topic names, and resource filters.
+2. **Select a route** from the path-vector table using policy weights.
+3. **Forward** using a `fabric-message` envelope and update routing headers.
+4. **Execute locally** when a matching endpoint exists on the current node.
+5. **Return replies** using the recorded `routing_path`, falling back to the
+   route table if a direct hop is unavailable.
+
+#### Deterministic Tie-Breakers (Example)
+
+Route selection first uses weighted metrics. When multiple routes produce the
+same score, deterministic tie-breakers are applied in order to keep selection
+stable across nodes. The default order is:
+
+1. Lowest `hop_count`
+2. Lowest `latency_ms`
+3. Highest `reliability_score`
+4. Stable `advertiser` ordering
+
+Example: two routes tie on score, both with `hop_count=1`, but one has
+`latency_ms=15` and the other `latency_ms=40`. The lower-latency route wins.
+If both latency and reliability are equal, the `advertiser` id is used to
+break the tie deterministically.
+
+### Failure Handling
+
+- **TTL expiry** removes stale routes and catalog entries.
+- **Hop budgets** bound propagation and prevent runaway forwarding.
+- **Path tracking** (`routing_path`, `federation_path`) prevents loops.
+- **Withdrawals** remove invalid paths before TTL expiry.
+- **Hold-down/suppression** dampens unstable routes when enabled.
 
 ### Code References
 
-- **Generation**: `mpreg/federation/federated_topic_exchange.py:publish_to_federation()`
-- **Processing**: `mpreg/federation/federation_bridge.py:route_message()`
-- **Models**: `mpreg/federation/federation_graph.py:FederationGraphNode`
+- **Routing core**: `mpreg/fabric/router.py` + `mpreg/fabric/route_control.py`
+- **Announcements**: `mpreg/fabric/route_announcer.py`
+- **Transport**: `mpreg/fabric/server_transport.py`
 
 ---
 
@@ -545,6 +774,9 @@ MPREG federation enables planet-scale deployment through:
 ### Metrics Collection
 
 **Message Type**: `metrics`
+
+Metrics payloads use `federation_*` field names to report fabric federation
+health and routing performance (cross-cluster latency, throughput, error rate).
 
 ```json
 {
@@ -609,6 +841,16 @@ MPREG federation enables planet-scale deployment through:
 }
 ```
 
+Route control metrics are included in server status payloads under
+`route_metrics` when the fabric control plane is enabled. The payload includes:
+
+- `routes_active_total`: total non-expired routes stored locally.
+- `destinations_tracked`: number of destinations with active routes.
+- `routes_per_destination`: map of destination cluster id to route count.
+- `convergence_seconds_avg`: average convergence duration per destination.
+- `convergence_seconds_max`: maximum convergence duration observed.
+- `hold_down_rejects`, `suppression_rejects`, `withdrawals_*` counters.
+
 ### Alerting Thresholds
 
 ```json
@@ -629,12 +871,12 @@ MPREG federation enables planet-scale deployment through:
 ### Code References
 
 - **Generation**: `mpreg/core/statistics.py:get_comprehensive_stats()`
-- **Processing**: `mpreg/federation/federation_graph_monitor.py:collect_metrics()`
+- **Processing**: `mpreg/fabric/federation_graph_monitor.py:collect_metrics()`
 - **Models**: `mpreg/core/statistics.py:FederationPerformanceMetrics`
 
 ---
 
-## Global Distributed Caching Protocol
+## Fabric Cache Protocol
 
 ### Cache Architecture
 
@@ -646,9 +888,9 @@ MPREG implements a sophisticated multi-tier caching system:
 ├─────────────────────────────────────────────────┤
 │  L2: Persistent Cache (SSD/NVMe Storage)       │
 ├─────────────────────────────────────────────────┤
-│  L3: Distributed Cache (Gossip-Based)          │
+│  L3: Distributed Cache (Fabric Gossip)        │
 ├─────────────────────────────────────────────────┤
-│  L4: Federation Cache (Global Replication)     │
+│  L4: Federation Cache (Fabric Replication)    │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -787,21 +1029,35 @@ MPREG implements a sophisticated multi-tier caching system:
 }
 ```
 
-#### Cache Gossip
+#### Cache Sync (Fabric)
 
-Cache state is synchronized using the gossip protocol:
+Cache state is synchronized over the routing fabric using the unified envelope:
 
 ```json
 {
-  "role": "gossip",
-  "message_type": "cache_update",
+  "role": "fabric-message",
   "payload": {
-    "operation": "put",
-    "key": {...},
-    "value_hash": "sha256:def456...",
-    "metadata": {...},
-    "vector_clock": {...},
-    "replication_sites": ["us-west-1", "eu-west-1"]
+    "message_id": "cache-op-123",
+    "topic": "mpreg.cache.sync.operation",
+    "message_type": "cache",
+    "delivery": "at_least_once",
+    "payload": {
+      "kind": "cache_operation",
+      "operation": {
+        "operation_type": "put",
+        "key": {...},
+        "value": {...},
+        "metadata": {...},
+        "vector_clock": {...}
+      }
+    },
+    "headers": {
+      "correlation_id": "cache-op-123",
+      "source_cluster": "cluster-a",
+      "routing_path": ["ws://cluster-a/node-1"],
+      "hop_budget": 4
+    },
+    "timestamp": 1700000000.0
   }
 }
 ```
@@ -1077,40 +1333,41 @@ When conditions are met, automatic pub/sub messages are published:
 ```python
 # mpreg/core/global_cache.py
 class GlobalCacheManager:
-    """Multi-tier global cache with gossip-based replication."""
+    """Multi-tier global cache with fabric-based L3 sync."""
 
     async def get(self, key: CacheKey, options: CacheOptions = None) -> CacheEntry | None
     async def put(self, key: CacheKey, value: Any, metadata: CacheMetadata = None) -> bool
     async def delete(self, key: CacheKey, options: CacheOptions = None) -> bool
     async def invalidate(self, pattern: str, options: CacheOptions = None) -> int
 
-# mpreg/core/cache_gossip.py
-class CacheGossipProtocol:
-    """Gossip-based cache state synchronization."""
+# mpreg/fabric/cache_federation.py
+class FabricCacheProtocol:
+    """Fabric cache protocol for L3/L4 distributed sync."""
 
-    async def propagate_cache_update(self, operation: str, key: CacheKey, metadata: dict)
-    async def handle_cache_gossip(self, message: GossipMessage)
-    async def sync_cache_state(self, peer_node: str)
+    async def propagate_cache_operation(self, operation_type: CacheOperationType, key: CacheKey, ...)
+    async def handle_cache_message(self, message: CacheOperationMessage) -> bool
+    async def sync_cache_state(self, peer_node: str) -> bool
 
-# mpreg/federation/global_cache_federation.py
-class GlobalCacheFederation:
-    """Federation-aware cache with geographic replication."""
+# mpreg/fabric/cache_transport.py
+class CacheTransport:
+    """Transport abstraction for cache federation."""
 
-    async def replicate_across_regions(self, key: CacheKey, value: Any, policy: ReplicationPolicy)
-    async def resolve_cache_conflicts(self, conflicting_entries: list[CacheEntry])
-    async def optimize_cache_placement(self, access_patterns: dict)
+    async def send_operation(self, peer_id: str, message: CacheOperationMessage) -> bool
+    async def fetch_digest(self, peer_id: str) -> CacheDigest | None
+    async def fetch_entry(self, peer_id: str, key: CacheKey) -> CacheEntry | None
+
 ```
 
 ---
 
-## Message Queue Protocol
+## Fabric Queue Protocol
 
 ### Overview
 
 MPREG provides comprehensive message queuing capabilities with two operational modes:
 
 1. **Local Message Queues**: SQS-like queuing within a single cluster
-2. **Federated Message Queues**: Cross-cluster queuing with federation-aware delivery guarantees
+2. **Fabric Queue Federation**: Cross-cluster queuing with fabric-aware delivery guarantees
 
 The federated protocol extends the local protocol with additional routing and consensus capabilities.
 
@@ -1198,304 +1455,6 @@ The federated protocol extends the local protocol with additional routing and co
 }
 ```
 
-#### Delivery Guarantees
-
-##### Fire-and-Forget
-
-```json
-{
-  "type": "message_delivered",
-  "payload": {
-    "message_id": "msg-660e8400-e29b-41d4-a716-446655440001",
-    "topic": "analytics.user_action",
-    "message_payload": {
-      "user_id": 12345,
-      "action": "page_view",
-      "page": "/products"
-    },
-    "delivery_guarantee": "fire_and_forget",
-    "delivered_to": ["analytics-processor-1", "analytics-processor-2"],
-    "delivery_timestamp": 1703001234.567
-  }
-}
-```
-
-##### At-Least-Once
-
-```json
-{
-  "type": "message_pending_ack",
-  "payload": {
-    "message_id": "msg-770e8400-e29b-41d4-a716-446655440002",
-    "topic": "payment.process",
-    "message_payload": {
-      "order_id": "ORD-123456",
-      "amount": 99.99,
-      "payment_method": "credit_card"
-    },
-    "delivery_guarantee": "at_least_once",
-    "delivered_to": ["payment-processor-1"],
-    "acknowledgment_timeout": 1703001534.567,
-    "retry_count": 0,
-    "max_retries": 3
-  }
-}
-```
-
-##### Broadcast
-
-```json
-{
-  "type": "broadcast_message",
-  "payload": {
-    "message_id": "msg-880e8400-e29b-41d4-a716-446655440003",
-    "topic": "system.config_update",
-    "message_payload": {
-      "config_key": "feature_flags",
-      "new_value": { "feature_x": true }
-    },
-    "delivery_guarantee": "broadcast",
-    "delivered_to": ["service-1", "service-2", "service-3", "service-4"],
-    "acknowledged_by": ["service-1", "service-2", "service-3"],
-    "pending_acknowledgments": ["service-4"]
-  }
-}
-```
-
-##### Quorum
-
-```json
-{
-  "type": "quorum_message",
-  "payload": {
-    "message_id": "msg-990e8400-e29b-41d4-a716-446655440004",
-    "topic": "consensus.leadership_election",
-    "message_payload": {
-      "candidate_id": "node-5",
-      "term": 42,
-      "vote_request": true
-    },
-    "delivery_guarantee": "quorum",
-    "delivered_to": ["node-1", "node-2", "node-3", "node-4", "node-5"],
-    "acknowledged_by": ["node-1", "node-3", "node-5"],
-    "required_acknowledgments": 3,
-    "quorum_reached": true
-  }
-}
-```
-
-#### Queue Statistics
-
-```json
-{
-  "type": "queue_statistics",
-  "payload": {
-    "queue_name": "orders-processing",
-    "messages_sent": 15420,
-    "messages_received": 15398,
-    "messages_acknowledged": 15390,
-    "messages_failed": 8,
-    "messages_expired": 0,
-    "messages_requeued": 22,
-    "current_queue_size": 145,
-    "current_in_flight_count": 8,
-    "success_rate": 0.9995,
-    "average_processing_time_seconds": 2.34
-  }
-}
-```
-
-## Federated Message Queue Protocol
-
-### Overview
-
-MPREG's Federated Message Queue Protocol extends the local protocol to work transparently across federated clusters with strong consistency guarantees:
-
-- **Cross-Cluster Queue Discovery**: Automatic discovery of queues across federation via gossip protocol
-- **Federation-Aware Delivery Guarantees**: Fire-and-forget, at-least-once, broadcast, and quorum across clusters
-- **Multi-Hop Acknowledgment Routing**: Acknowledgments traverse back through federation paths
-- **Byzantine Fault Tolerance**: Consensus operations handle Byzantine faults in federated clusters
-- **Causal Consistency**: Vector clock-based message ordering across distributed systems
-- **Circuit Breaker Protection**: Graceful degradation during federation failures
-
-### Queue Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Federated Queue Manager                     │
-├─────────────────┬─────────────────┬─────────────────┬───────────┤
-│  Local Queues   │ Remote Queues   │  Federation     │  Gossip   │
-│                 │                 │   Routing       │ Protocol  │
-│  ┌─────────────┐│ ┌─────────────┐ │ ┌─────────────┐ │ ┌───────┐ │
-│  │ FIFO Queue  ││ │Advertisement│ │ │Multi-hop    │ │ │Queue  │ │
-│  │Priority Q.  ││ │  Cache      │ │ │ Routing     │ │ │Ads    │ │
-│  │Delay Queue  ││ │Circuit      │ │ │ACK Routing  │ │ │Sync   │ │
-│  └─────────────┘│ │Breakers     │ │ │Consensus    │ │ │       │ │
-│                 │ └─────────────┘ │ └─────────────┘ │ └───────┘ │
-└─────────────────┴─────────────────┴─────────────────┴───────────┘
-```
-
-### Message Types
-
-#### Queue Advertisement Message
-
-Distributed via gossip protocol to advertise queue availability:
-
-```json
-{
-  "type": "queue_advertisement",
-  "payload": {
-    "advertisement_id": "ad-550e8400-e29b-41d4-a716-446655440000",
-    "cluster_id": "us-east-1",
-    "queue_name": "orders-processing",
-    "supported_guarantees": [
-      "fire_and_forget",
-      "at_least_once",
-      "broadcast",
-      "quorum"
-    ],
-    "current_subscribers": 12,
-    "queue_health": "healthy",
-    "advertised_at": 1703001234.567,
-    "ttl_seconds": 300.0,
-    "metadata": {
-      "queue_type": "priority",
-      "max_size": "50000"
-    }
-  },
-  "vector_clock": {
-    "us-east-1": 42,
-    "eu-central-1": 38
-  },
-  "sender_id": "us-east-1",
-  "timestamp": 1703001234.567
-}
-```
-
-#### Federated Message Delivery
-
-Cross-cluster message delivery with federation routing:
-
-```json
-{
-  "type": "federated_message",
-  "payload": {
-    "ack_token": "ack-660e8400-e29b-41d4-a716-446655440001",
-    "queue_name": "global-payments",
-    "message_topic": "payment.process",
-    "message_payload": {
-      "order_id": "ORD-123456",
-      "amount": 99.99,
-      "currency": "USD",
-      "payment_method": "credit_card"
-    },
-    "delivery_guarantee": "quorum",
-    "source_cluster": "us-west-2",
-    "target_cluster": "eu-central-1",
-    "federation_path": ["us-west-2", "us-east-1", "eu-central-1"],
-    "required_cluster_acks": 3,
-    "message_options": {
-      "priority": 10,
-      "max_retries": 5,
-      "acknowledgment_timeout_seconds": 300
-    }
-  },
-  "sender_id": "us-west-2",
-  "timestamp": 1703001235.123
-}
-```
-
-#### Federated Acknowledgment
-
-Acknowledgment routed back through federation path:
-
-```json
-{
-  "type": "federated_acknowledgment",
-  "payload": {
-    "ack_token": "ack-660e8400-e29b-41d4-a716-446655440001",
-    "message_id": "msg-770e8400-e29b-41d4-a716-446655440002",
-    "acknowledging_cluster": "eu-central-1",
-    "acknowledging_subscriber": "payment-processor-eu",
-    "return_path": ["eu-central-1", "us-east-1", "us-west-2"],
-    "vector_clock": {
-      "eu-central-1": 156,
-      "us-east-1": 89,
-      "us-west-2": 203
-    },
-    "success": true,
-    "ack_timestamp": 1703001236.789
-  },
-  "sender_id": "eu-central-1",
-  "timestamp": 1703001236.789
-}
-```
-
-#### Global Consensus Request
-
-Byzantine fault tolerant consensus for critical operations:
-
-```json
-{
-  "type": "global_consensus_request",
-  "payload": {
-    "consensus_id": "consensus-880e8400-e29b-41d4-a716-446655440003",
-    "initiating_cluster": "us-east-1",
-    "message_id": "msg-990e8400-e29b-41d4-a716-446655440004",
-    "message_topic": "payment.critical",
-    "message_payload": {
-      "transaction_id": "TXN-789012",
-      "amount": 50000.0,
-      "requires_consensus": true
-    },
-    "target_clusters": [
-      "us-east-1",
-      "us-west-2",
-      "eu-central-1",
-      "ap-southeast-1"
-    ],
-    "required_weight_threshold": 0.67,
-    "byzantine_fault_threshold": 1,
-    "timeout_seconds": 120.0,
-    "cluster_weights": {
-      "us-east-1": { "weight": 2.0, "reliability_score": 0.98 },
-      "us-west-2": { "weight": 2.0, "reliability_score": 0.95 },
-      "eu-central-1": { "weight": 1.5, "reliability_score": 0.92 },
-      "ap-southeast-1": { "weight": 1.0, "reliability_score": 0.88 }
-    }
-  },
-  "sender_id": "us-east-1",
-  "timestamp": 1703001237.456
-}
-```
-
-#### Consensus Vote Response
-
-Response to consensus request with vote and metadata:
-
-```json
-{
-  "type": "consensus_vote",
-  "payload": {
-    "consensus_id": "consensus-880e8400-e29b-41d4-a716-446655440003",
-    "voting_cluster": "eu-central-1",
-    "vote": true,
-    "vector_clock": {
-      "eu-central-1": 157,
-      "us-east-1": 90
-    },
-    "vote_metadata": {
-      "processing_time_ms": 45.2,
-      "local_queue_health": "healthy",
-      "resource_utilization": 0.72
-    },
-    "voter_signature": "eu-central-1-vote-hash-abc123"
-  },
-  "sender_id": "eu-central-1",
-  "timestamp": 1703001238.123
-}
-```
-
 ### Delivery Guarantees
 
 #### Fire-and-Forget
@@ -1503,181 +1462,72 @@ Response to consensus request with vote and metadata:
 Best-effort delivery with no acknowledgment tracking:
 
 ```python
-# Client sends message
-result = await federated_queue_manager.send_message_globally(
+result = await fabric_queue_federation.send_message_globally(
     queue_name="analytics-events",
     topic="user.action",
     payload={"user_id": 12345, "action": "page_view"},
-    delivery_guarantee=DeliveryGuarantee.FIRE_AND_FORGET
+    delivery_guarantee=DeliveryGuarantee.FIRE_AND_FORGET,
 )
-
-# No acknowledgment required - highest throughput
 ```
 
 #### At-Least-Once
 
-Guaranteed delivery with retry logic and acknowledgment:
+Guaranteed delivery with acknowledgment:
 
 ```python
-# Client sends with acknowledgment requirement
-result = await federated_queue_manager.send_message_globally(
+result = await fabric_queue_federation.send_message_globally(
     queue_name="order-processing",
     topic="order.new",
     payload={"order_id": "ORD-123", "amount": 99.99},
     delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
-    max_retries=5,
-    acknowledgment_timeout_seconds=300
 )
-
-# System automatically retries on failure until acknowledged
 ```
 
 #### Broadcast
 
-Delivery to all matching subscribers across federation:
+Delivered to all matching subscribers:
 
 ```python
-# Broadcast configuration update to all clusters
-result = await federated_queue_manager.send_message_globally(
+result = await fabric_queue_federation.send_message_globally(
     queue_name="system-config",
     topic="config.update",
     payload={"feature_flags": {"new_feature": True}},
-    delivery_guarantee=DeliveryGuarantee.BROADCAST
+    delivery_guarantee=DeliveryGuarantee.BROADCAST,
 )
-
-# Delivered to all subscribers in all federated clusters
 ```
 
-#### Quorum
+#### Global Quorum
 
-Requires N acknowledgments for consensus:
+Requires weighted quorum before delivery:
 
 ```python
-# Critical financial transaction requiring majority consensus
-result = await delivery_coordinator.deliver_with_global_quorum(
-    message=payment_message,
-    target_clusters={"us-east", "us-west", "eu-central", "ap-southeast"},
-    required_weight_threshold=0.67,  # 67% of total weight
-    byzantine_fault_threshold=1,     # Tolerate 1 Byzantine fault
-    timeout_seconds=120.0
+result = await fabric_queue_delivery.deliver_with_global_quorum(
+    queue_name="payments",
+    topic="payment.authorize",
+    payload={"payment_id": "pay-123"},
+    target_clusters={"us-east", "us-west", "eu-central"},
+    required_weight_threshold=0.67,
+    byzantine_fault_threshold=1,
+    timeout_seconds=120.0,
 )
-
-# Only succeeds if 67% of weighted clusters acknowledge
 ```
 
-### Queue Discovery Protocol
+### Queue Discovery
 
-#### Discovery Request
+Queue discovery is handled by the fabric catalog. The RoutingIndex is the
+canonical query surface for known queues:
 
-Gossip-based queue discovery across federation:
-
-```json
-{
-  "type": "queue_discovery_request",
-  "payload": {
-    "discovery_id": "disc-aa0e8400-e29b-41d4-a716-446655440005",
-    "requesting_cluster": "ap-southeast-1",
-    "queue_pattern": "orders-*",
-    "vector_clock": {
-      "ap-southeast-1": 45
-    }
-  },
-  "sender_id": "ap-southeast-1",
-  "timestamp": 1703001239.789
-}
-```
-
-#### Discovery Response
-
-Response with matching queue advertisements:
-
-```json
-{
-  "type": "queue_discovery_response",
-  "payload": {
-    "discovery_id": "disc-aa0e8400-e29b-41d4-a716-446655440005",
-    "responding_cluster": "us-east-1",
-    "matching_queues": [
-      {
-        "queue_name": "orders-us",
-        "cluster_id": "us-east-1",
-        "supported_guarantees": ["at_least_once", "broadcast"],
-        "current_subscribers": 8,
-        "queue_health": "healthy"
-      },
-      {
-        "queue_name": "orders-priority",
-        "cluster_id": "us-east-1",
-        "supported_guarantees": ["quorum", "at_least_once"],
-        "current_subscribers": 3,
-        "queue_health": "healthy"
-      }
-    ]
-  },
-  "sender_id": "us-east-1",
-  "timestamp": 1703001240.123
-}
+```python
+matches = fabric_control_plane.index.find_queues(QueueQuery(queue_name="orders-*"))
 ```
 
 ### Federation Routing
 
-Messages are automatically routed through the federation using optimal paths:
-
 ```
-Client (ap-southeast) → Target Queue (eu-central)
-
-Path Discovery:
-ap-southeast-1 → us-west-2 → us-east-1 → eu-central-1
-
-Message Flow:
-1. Client sends to local federated queue manager
-2. Manager discovers target cluster via gossip
-3. Message routed through optimal federation path
-4. Delivered to target queue in eu-central-1
-5. Acknowledgment routed back through same path
-```
-
-### Error Handling and Circuit Breakers
-
-#### Federation Failures
-
-```json
-{
-  "type": "federation_error",
-  "payload": {
-    "error_code": "CLUSTER_UNREACHABLE",
-    "message": "Target cluster eu-central-1 unreachable",
-    "failed_cluster": "eu-central-1",
-    "alternative_clusters": ["eu-west-1", "eu-north-1"],
-    "circuit_breaker_status": "OPEN",
-    "retry_after_seconds": 60
-  },
-  "sender_id": "us-east-1",
-  "timestamp": 1703001241.456
-}
-```
-
-#### Byzantine Fault Detection
-
-```json
-{
-  "type": "byzantine_fault_detected",
-  "payload": {
-    "consensus_id": "consensus-880e8400-e29b-41d4-a716-446655440003",
-    "suspected_clusters": ["malicious-cluster-1"],
-    "evidence": {
-      "conflicting_responses": 2,
-      "timing_anomalies": true,
-      "signature_validation_failed": false
-    },
-    "action_taken": "EXCLUDE_FROM_CONSENSUS",
-    "updated_cluster_weights": {
-      "malicious-cluster-1": { "weight": 0.0, "is_trusted": false }
-    }
-  },
-  "sender_id": "us-east-1",
-  "timestamp": 1703001242.789
-}
+1. Client sends to local FabricQueueFederationManager
+2. RoutingIndex selects cluster hosting the queue
+3. ClusterMessenger forwards UnifiedMessage (MessageType.QUEUE)
+4. QueueFederationAck returns to source cluster
 ```
 
 ### Client API Examples
@@ -1685,45 +1535,35 @@ Message Flow:
 #### Global Queue Subscription
 
 ```python
-# Subscribe to queues across entire federation
-subscription_id = await federated_queue_manager.subscribe_globally(
+subscription_id = await fabric_queue_federation.subscribe_globally(
     subscriber_id="payment-processor",
-    queue_pattern="payments-*",  # Matches any payment queue
-    topic_pattern="payment.*",   # Matches payment topics
+    queue_pattern="payments-*",
+    topic_pattern="payment.*",
     delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
-    target_clusters=None,        # Auto-discover all clusters
-    callback=process_payment_message
+    callback=process_payment_message,
 )
 ```
 
 #### Cross-Cluster Message Send
 
 ```python
-# Send message to any cluster hosting target queue
-result = await federated_queue_manager.send_message_globally(
+result = await fabric_queue_federation.send_message_globally(
     queue_name="inventory-updates",
     topic="inventory.sync",
     payload={"sku": "WIDGET-001", "quantity": 500},
     delivery_guarantee=DeliveryGuarantee.BROADCAST,
-    target_cluster=None  # Auto-discover optimal cluster
 )
 ```
 
-#### Federated Acknowledgment
+#### Acknowledgments
 
-```python
-# Acknowledge message received via federation
-success = await federated_queue_manager.acknowledge_federated_message(
-    ack_token="ack-660e8400-e29b-41d4-a716-446655440001",
-    subscriber_id="inventory-manager",
-    success=True
-)
-```
+Queue federation acknowledgments are automatic; there is no explicit client
+acknowledgment API for cross-cluster delivery.
 
 ### Performance Characteristics
 
 - **Queue Discovery**: O(log N) convergence via epidemic gossip
-- **Message Routing**: Optimal path selection through federation graph
+- **Message Routing**: Optimal path selection through the fabric route table
 - **Consensus Operations**: Byzantine fault tolerant with configurable thresholds
 - **Throughput**: 100K+ messages/second per cluster with federation overhead <10%
 - **Latency**: Cross-cluster delivery <100ms for single-hop, <300ms for multi-hop
@@ -1858,138 +1698,42 @@ For sensitive payloads:
 
 ## Client Implementation Guide
 
-### Python Client Example
+Internal Python usage should go through `MPREGClientAPI` or the transport factory
+(`mpreg.core.transport.TransportFactory`). The external protocol examples below
+use WebSocket framing and raw message envelopes.
+
+### Python Client Example (Recommended)
 
 ```python
-import asyncio
-import json
-import websockets
-from typing import Any, Dict
+from mpreg.client.client_api import MPREGClientAPI
+from mpreg.client.pubsub_client import MPREGPubSubClient
 
-class MPREGClient:
-    def __init__(self, url: str, auth_token: str = None):
-        self.url = url
-        self.auth_token = auth_token
-        self.websocket = None
-        self.request_id = 0
+async def handle_notification(message):
+    print(f"Received: {message.topic} -> {message.payload}")
 
-    async def connect(self):
-        headers = {}
-        if self.auth_token:
-            headers["Authorization"] = f"Bearer {self.auth_token}"
-
-        self.websocket = await websockets.connect(
-            self.url,
-            extra_headers=headers
-        )
-
-    async def call(self, function: str, *args, **kwargs) -> Any:
-        request_id = f"req-{self.request_id}"
-        self.request_id += 1
-
-        message = {
-            "role": "rpc",
-            "u": request_id,
-            "cmds": [{
-                "name": "call",
-                "fun": function,
-                "args": args,
-                "kwargs": kwargs,
-                "locs": []
-            }]
-        }
-
-        await self.websocket.send(json.dumps(message))
-
-        response = await self.websocket.recv()
-        data = json.loads(response)
-
-        if data.get("error"):
-            raise Exception(f"RPC Error: {data['error']}")
-
-        return data.get("r")
-
-    async def publish(self, topic: str, payload: Any, **headers) -> None:
-        request_id = f"pub-{self.request_id}"
-        self.request_id += 1
-
-        message = {
-            "role": "pubsub-publish",
-            "u": request_id,
-            "message": {
-                "topic": topic,
-                "payload": payload,
-                "timestamp": time.time(),
-                "message_id": f"msg-{uuid.uuid4()}",
-                "publisher": "python-client",
-                "headers": headers
-            }
-        }
-
-        await self.websocket.send(json.dumps(message))
-
-    async def subscribe(self, patterns: list[str], callback) -> str:
-        subscription_id = f"sub-{uuid.uuid4()}"
-        request_id = f"sub-{self.request_id}"
-        self.request_id += 1
-
-        message = {
-            "role": "pubsub-subscribe",
-            "u": request_id,
-            "subscription": {
-                "subscription_id": subscription_id,
-                "patterns": [
-                    {"pattern": p, "exact_match": False}
-                    for p in patterns
-                ],
-                "subscriber": "python-client",
-                "created_at": time.time(),
-                "get_backlog": True,
-                "backlog_seconds": 300
-            }
-        }
-
-        await self.websocket.send(json.dumps(message))
-
-        # Handle notifications in background
-        asyncio.create_task(self._notification_handler(callback))
-
-        return subscription_id
-
-    async def _notification_handler(self, callback):
-        async for message in self.websocket:
-            data = json.loads(message)
-            if data.get("role") == "pubsub-notification":
-                await callback(data["message"])
-
-# Usage example
 async def main():
-    client = MPREGClient("ws://localhost:6666", "your-auth-token")
-    await client.connect()
+    async with MPREGClientAPI("ws://localhost:<port>") as client:
+        result = await client.call(
+            "compute_fibonacci",
+            10,
+            function_id="math.fibonacci",
+            version_constraint=">=1.0.0,<2.0.0",
+        )
+        print(f"Fibonacci(10) = {result}")
 
-    # RPC call
-    result = await client.call("compute_fibonacci", 10)
-    print(f"Fibonacci(10) = {result}")
-
-    # Pub/Sub
-    await client.publish("events.user.login", {
-        "user_id": "user123",
-        "timestamp": time.time()
-    })
-
-    def handle_notification(message):
-        print(f"Received: {message}")
-
-    await client.subscribe(["events.user.*"], handle_notification)
-
-    # Keep connection alive
-    await asyncio.sleep(60)
-
-if __name__ == "__main__":
-    asyncio.run(main())
+        pubsub = MPREGPubSubClient(base_client=client)
+        await pubsub.start()
+        await pubsub.subscribe(["events.user.*"], handle_notification)
+        await pubsub.publish(
+            "events.user.login",
+            {"user_id": "user123"},
+        )
+        await pubsub.stop()
 ```
 
-### Go Client Example
+### External Protocol Examples (Reference)
+
+#### Go Client Example
 
 ```go
 package main
@@ -2016,11 +1760,13 @@ type RPCRequest struct {
 }
 
 type RPCCommand struct {
-    Name   string                 `json:"name"`
-    Fun    string                 `json:"fun"`
-    Args   []interface{}          `json:"args"`
-    Kwargs map[string]interface{} `json:"kwargs"`
-    Locs   []string               `json:"locs"`
+    Name          string                 `json:"name"`
+    Fun           string                 `json:"fun"`
+    Args          []interface{}          `json:"args"`
+    Kwargs        map[string]interface{} `json:"kwargs"`
+    Locs          []string               `json:"locs"`
+    TargetCluster string                 `json:"target_cluster,omitempty"`
+    RoutingTopic  string                 `json:"routing_topic,omitempty"`
 }
 
 type RPCResponse struct {
@@ -2060,11 +1806,13 @@ func (c *MPREGClient) Call(function string, args ...interface{}) (interface{}, e
         Role: "rpc",
         U:    requestID,
         Cmds: []RPCCommand{{
-            Name:   "call",
-            Fun:    function,
-            Args:   args,
-            Kwargs: make(map[string]interface{}),
-            Locs:   []string{},
+            Name:          "call",
+            Fun:           function,
+            Args:          args,
+            Kwargs:        make(map[string]interface{}),
+            Locs:          []string{},
+            TargetCluster: "cluster-b",
+            RoutingTopic:  "mpreg.rpc." + function,
         }},
     }
 
@@ -2085,7 +1833,7 @@ func (c *MPREGClient) Call(function string, args ...interface{}) (interface{}, e
 }
 
 func main() {
-    client, err := NewMPREGClient("ws://localhost:6666", "your-auth-token")
+    client, err := NewMPREGClient("ws://localhost:<port>", "your-auth-token")
     if err != nil {
         log.Fatal(err)
     }
@@ -2101,7 +1849,7 @@ func main() {
 }
 ```
 
-### JavaScript Client Example
+#### JavaScript Client Example
 
 ```javascript
 class MPREGClient {
@@ -2219,7 +1967,7 @@ class MPREGClient {
 
 // Usage example
 async function main() {
-  const client = new MPREGClient("ws://localhost:6666", "your-auth-token");
+  const client = new MPREGClient("ws://localhost:<port>", "your-auth-token");
   await client.connect();
 
   // RPC call
@@ -2250,16 +1998,22 @@ main().catch(console.error);
 
 ### Core Components
 
-| Component         | File                                    | Purpose                                 |
-| ----------------- | --------------------------------------- | --------------------------------------- |
-| Message Models    | `mpreg/core/model.py`                   | All message type definitions            |
-| Transport Layer   | `mpreg/core/transport/`                 | WebSocket/TCP transport implementations |
-| Topic Exchange    | `mpreg/core/topic_exchange.py`          | Pub/Sub message routing                 |
-| Gossip Protocol   | `mpreg/federation/federation_gossip.py` | State synchronization                   |
-| Federation Bridge | `mpreg/federation/federation_bridge.py` | Cross-cluster communication             |
-| Federation Graph  | `mpreg/federation/federation_graph.py`  | Graph-based routing                     |
-| Statistics        | `mpreg/core/statistics.py`              | Metrics collection                      |
-| Caching           | `mpreg/core/caching.py`                 | Multi-tier cache implementation         |
+| Component            | File                               | Purpose                                  |
+| -------------------- | ---------------------------------- | ---------------------------------------- |
+| Message Models       | `mpreg/core/model.py`              | External message envelopes               |
+| Fabric Envelope      | `mpreg/fabric/message.py`          | UnifiedMessage + routing headers         |
+| Fabric Router        | `mpreg/fabric/router.py`           | Routing decisions + forwarding           |
+| Fabric Control Plane | `mpreg/fabric/control_plane.py`    | Catalog + gossip + route control         |
+| Routing Catalog      | `mpreg/fabric/catalog.py`          | Function/queue/cache/topic registrations |
+| Route Control        | `mpreg/fabric/route_control.py`    | Path-vector route records                |
+| Gossip Protocol      | `mpreg/fabric/gossip.py`           | Control plane dissemination              |
+| Transport Layer      | `mpreg/core/transport/`            | WebSocket/TCP transport implementations  |
+| Fabric Transport     | `mpreg/fabric/server_transport.py` | Cross-cluster message delivery           |
+| Topic Exchange       | `mpreg/core/topic_exchange.py`     | Pub/Sub message routing                  |
+| Cache Protocol       | `mpreg/core/cache_protocol.py`     | Cache request/response models            |
+| Cache Federation     | `mpreg/fabric/cache_federation.py` | Cross-cluster cache synchronization      |
+| Queue Federation     | `mpreg/fabric/queue_federation.py` | Cross-cluster queue routing              |
+| Statistics           | `mpreg/core/statistics.py`         | Metrics collection                       |
 
 ### Client Components
 

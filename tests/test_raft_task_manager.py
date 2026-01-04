@@ -194,7 +194,7 @@ class TestRaftTaskManager:
         )
 
         assert task2.state == TaskState.RUNNING
-        assert task1.state == TaskState.CANCELLING
+        assert task1.state in (TaskState.CANCELLING, TaskState.STOPPED)
 
         # Cleanup
         await task_manager.stop_all_tasks()

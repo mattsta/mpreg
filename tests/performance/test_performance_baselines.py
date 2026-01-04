@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -28,6 +29,8 @@ from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 from mpreg.core.model import RPCCommand, RPCRequest
 from mpreg.server import MPREGServer
+
+pytestmark = pytest.mark.slow
 from tests.conftest import AsyncTestContext
 
 # Type aliases for performance testing

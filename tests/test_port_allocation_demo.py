@@ -6,6 +6,8 @@ to enable safe concurrent testing with pytest-xdist.
 """
 
 import asyncio
+import socket
+import time
 
 import pytest
 
@@ -38,6 +40,47 @@ def test_port_allocator_basic(port_allocator):
     assert "allocated_ports" in info
     assert port1 in info["allocated_ports"]
     assert port2 in info["allocated_ports"]
+
+
+@pytest.mark.unit
+def test_port_allocator_skips_in_use(port_allocator):
+    """Ensure allocator does not hand out ports already in use."""
+    port = port_allocator.allocate_port("testing")
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.bind(("127.0.0.1", port))
+        port_allocator.release_port(port)
+        allocated = port_allocator.allocate_port("testing", preferred_port=port)
+        assert allocated != port
+    finally:
+        sock.close()
+        if "allocated" in locals():
+            port_allocator.release_port(allocated)
+
+
+@pytest.mark.unit
+def test_port_callback_invoked_on_auto_assignment():
+    """Verify auto-assigned ports trigger the port callback."""
+    captured: dict[str, int] = {}
+
+    def _callback(port: int) -> None:
+        captured["port"] = port
+
+    settings = MPREGSettings(
+        port=None,
+        on_port_assigned=_callback,
+        monitoring_enabled=False,
+    )
+    server = MPREGServer(settings=settings)
+
+    try:
+        assert captured.get("port") == server.settings.port
+    finally:
+        if server._auto_allocated_port is not None:
+            from mpreg.core.port_allocator import release_port
+
+            release_port(server._auto_allocated_port)
+            server._auto_allocated_port = None
 
 
 @pytest.mark.unit
@@ -119,7 +162,14 @@ def test_category_isolation(port_allocator):
     """Test that different categories get non-overlapping ports."""
     # Allocate one port from each category
     allocated_ports = {}
-    categories = ["servers", "clients", "federation", "testing", "research"]
+    categories = [
+        "servers",
+        "clients",
+        "federation",
+        "testing",
+        "research",
+        "monitoring",
+    ]
 
     try:
         for category in categories:
@@ -232,18 +282,22 @@ async def test_concurrent_servers(test_context):
 
                 await asyncio.sleep(0.1)  # Stagger startup
 
-            # Wait for servers to start
-            await asyncio.sleep(1.0)
-
-            # Test that all servers are responsive
+            # Test that all servers are responsive with retries.
             for port in ports:
-                try:
-                    async with MPREGClientAPI(f"ws://127.0.0.1:{port}") as client:
-                        # Simple echo test
-                        result = await client.call("echo", "hello")
-                        assert result == "hello"
-                except Exception as e:
-                    pytest.fail(f"Server on port {port} not responsive: {e}")
+                deadline = time.time() + 5.0
+                last_error: Exception | None = None
+                while time.time() < deadline:
+                    try:
+                        async with MPREGClientAPI(f"ws://127.0.0.1:{port}") as client:
+                            result = await client.call("echo", "hello")
+                            assert result == "hello"
+                        last_error = None
+                        break
+                    except Exception as e:
+                        last_error = e
+                        await asyncio.sleep(0.2)
+                if last_error is not None:
+                    pytest.fail(f"Server on port {port} not responsive: {last_error}")
 
         except Exception as e:
             pytest.fail(f"Error in concurrent server test: {e}")

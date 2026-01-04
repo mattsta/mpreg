@@ -24,16 +24,16 @@ from mpreg.core.enhanced_rpc import (
     create_topic_aware_rpc_executor,
 )
 from mpreg.core.model import RPCCommand, RPCRequest
-from mpreg.core.unified_routing import RoutingPriority
+from mpreg.fabric.message import RoutingPriority
 
 
 class TestTopicAwareRPCDatastructures:
     """Test the topic-aware RPC datastructure conversions and functionality."""
 
     def test_topic_aware_command_creation(self) -> None:
-        """Test creating topic-aware commands from legacy commands."""
-        # Create legacy command
-        legacy_cmd = RPCCommand(
+        """Test creating topic-aware commands from base commands."""
+        # Create base command
+        base_cmd = RPCCommand(
             name="test_command",
             fun="echo",
             args=("hello", "world"),
@@ -43,26 +43,26 @@ class TestTopicAwareRPCDatastructures:
 
         # Convert to topic-aware command
         topic_cmd = TopicAwareRPCCommand.from_rpc_command(
-            legacy_cmd,
+            base_cmd,
             publish_progress=True,
             enable_result_streaming=True,
             estimated_duration_ms=2000.0,
         )
 
         # Verify conversion
-        assert topic_cmd.name == legacy_cmd.name
-        assert topic_cmd.fun == legacy_cmd.fun
-        assert topic_cmd.args == legacy_cmd.args
-        assert topic_cmd.kwargs == legacy_cmd.kwargs
-        assert topic_cmd.locs == legacy_cmd.locs
+        assert topic_cmd.name == base_cmd.name
+        assert topic_cmd.fun == base_cmd.fun
+        assert topic_cmd.args == base_cmd.args
+        assert topic_cmd.kwargs == base_cmd.kwargs
+        assert topic_cmd.locs == base_cmd.locs
         assert topic_cmd.publish_progress is True
         assert topic_cmd.enable_result_streaming is True
         assert topic_cmd.estimated_duration_ms == 2000.0
         assert isinstance(topic_cmd.command_id, str)
         assert len(topic_cmd.command_id) > 0
 
-    def test_topic_aware_command_to_legacy_conversion(self) -> None:
-        """Test converting topic-aware commands back to legacy format."""
+    def test_topic_aware_command_to_base_conversion(self) -> None:
+        """Test converting topic-aware commands back to base format."""
         # Create topic-aware command
         topic_cmd = TopicAwareRPCCommand(
             name="test_command",
@@ -74,19 +74,19 @@ class TestTopicAwareRPCDatastructures:
             estimated_duration_ms=5000.0,
         )
 
-        # Convert to legacy
-        legacy_cmd = topic_cmd.to_rpc_command()
+        # Convert to base RPC command
+        base_cmd = topic_cmd.to_rpc_command()
 
         # Verify conversion preserves core fields
-        assert legacy_cmd.name == topic_cmd.name
-        assert legacy_cmd.fun == topic_cmd.fun
-        assert legacy_cmd.args == topic_cmd.args
-        assert legacy_cmd.kwargs == topic_cmd.kwargs
-        assert legacy_cmd.locs == topic_cmd.locs
+        assert base_cmd.name == topic_cmd.name
+        assert base_cmd.fun == topic_cmd.fun
+        assert base_cmd.args == topic_cmd.args
+        assert base_cmd.kwargs == topic_cmd.kwargs
+        assert base_cmd.locs == topic_cmd.locs
 
     def test_topic_aware_request_creation(self) -> None:
-        """Test creating topic-aware requests from legacy requests."""
-        # Create legacy commands
+        """Test creating topic-aware requests from base requests."""
+        # Create base commands
         cmd1 = RPCCommand(
             name="step1",
             fun="load_data",
@@ -95,21 +95,21 @@ class TestTopicAwareRPCDatastructures:
         )
         cmd2 = RPCCommand(name="step2", fun="process", args=(), locs=frozenset(["cpu"]))
 
-        # Create legacy request
-        legacy_req = RPCRequest(role="rpc", cmds=(cmd1, cmd2), u="test_request_123")
+        # Create base request
+        base_req = RPCRequest(role="rpc", cmds=(cmd1, cmd2), u="test_request_123")
 
         # Convert to topic-aware request
         topic_req = TopicAwareRPCRequest.from_rpc_request(
-            legacy_req,
+            base_req,
             enable_topic_monitoring=True,
             enable_result_streaming=True,
             priority=RoutingPriority.HIGH,
         )
 
         # Verify conversion
-        assert topic_req.role == legacy_req.role
-        assert len(topic_req.cmds) == len(legacy_req.cmds)
-        assert topic_req.u == legacy_req.u
+        assert topic_req.role == base_req.role
+        assert len(topic_req.cmds) == len(base_req.cmds)
+        assert topic_req.u == base_req.u
         assert topic_req.enable_topic_monitoring is True
         assert topic_req.enable_result_streaming is True
         assert topic_req.priority == RoutingPriority.HIGH
@@ -117,13 +117,13 @@ class TestTopicAwareRPCDatastructures:
 
         # Verify commands were converted properly
         for i, topic_cmd in enumerate(topic_req.cmds):
-            original_cmd = legacy_req.cmds[i]
+            original_cmd = base_req.cmds[i]
             assert topic_cmd.name == original_cmd.name
             assert topic_cmd.fun == original_cmd.fun
             assert topic_cmd.args == original_cmd.args
 
-    def test_topic_aware_request_to_legacy_conversion(self) -> None:
-        """Test converting topic-aware requests back to legacy format."""
+    def test_topic_aware_request_to_base_conversion(self) -> None:
+        """Test converting topic-aware requests back to base format."""
         # Create topic-aware commands
         topic_cmd1 = TopicAwareRPCCommand(
             name="cmd1", fun="func1", args=("arg1",), locs=frozenset(["cpu"])
@@ -140,20 +140,20 @@ class TestTopicAwareRPCDatastructures:
             enable_topic_monitoring=True,
         )
 
-        # Convert to legacy
-        legacy_req = topic_req.to_rpc_request()
+        # Convert to base RPC request
+        base_req = topic_req.to_rpc_request()
 
         # Verify conversion
-        assert legacy_req.role == topic_req.role
-        assert len(legacy_req.cmds) == len(topic_req.cmds)
-        assert legacy_req.u == topic_req.u
+        assert base_req.role == topic_req.role
+        assert len(base_req.cmds) == len(topic_req.cmds)
+        assert base_req.u == topic_req.u
 
         # Verify commands were converted properly
-        for i, legacy_cmd in enumerate(legacy_req.cmds):
+        for i, base_cmd in enumerate(base_req.cmds):
             topic_cmd = topic_req.cmds[i]
-            assert legacy_cmd.name == topic_cmd.name
-            assert legacy_cmd.fun == topic_cmd.fun
-            assert legacy_cmd.args == topic_cmd.args
+            assert base_cmd.name == topic_cmd.name
+            assert base_cmd.fun == topic_cmd.fun
+            assert base_cmd.args == topic_cmd.args
 
 
 class TestTopicAwareRPCConfig:
@@ -171,7 +171,6 @@ class TestTopicAwareRPCConfig:
         assert config.heartbeat_interval_ms == 5000.0
         assert config.topic_prefix == "mpreg.rpc"
         assert config.use_correlation_ids is True
-        assert config.fallback_to_legacy is True
 
     def test_custom_config(self) -> None:
         """Test creating configuration with custom values."""
@@ -482,26 +481,26 @@ class TestFactoryFunctions:
 
     def test_create_topic_aware_command_factory(self) -> None:
         """Test the create_topic_aware_command factory function."""
-        legacy_cmd = RPCCommand(
+        base_cmd = RPCCommand(
             name="test", fun="echo", args=("hello",), kwargs={}, locs=frozenset(["cpu"])
         )
 
         topic_cmd = create_topic_aware_command(
-            legacy_cmd, enable_progress=True, enable_streaming=False
+            base_cmd, enable_progress=True, enable_streaming=False
         )
 
         assert isinstance(topic_cmd, TopicAwareRPCCommand)
-        assert topic_cmd.name == legacy_cmd.name
+        assert topic_cmd.name == base_cmd.name
         assert topic_cmd.publish_progress is True
         assert topic_cmd.enable_result_streaming is False
 
     def test_create_topic_aware_request_factory(self) -> None:
         """Test the create_topic_aware_request factory function."""
         cmd = RPCCommand(name="test", fun="echo", args=(), kwargs={}, locs=frozenset())
-        legacy_req = RPCRequest(role="rpc", cmds=(cmd,), u="test_u")
+        base_req = RPCRequest(role="rpc", cmds=(cmd,), u="test_u")
 
         topic_req = create_topic_aware_request(
-            legacy_req, enable_monitoring=True, priority=RoutingPriority.HIGH
+            base_req, enable_monitoring=True, priority=RoutingPriority.HIGH
         )
 
         assert isinstance(topic_req, TopicAwareRPCRequest)
@@ -540,8 +539,8 @@ def test_topic_aware_command_conversion_property(
     # Generate args tuple
     args = tuple(f"arg_{i}" for i in range(num_args))
 
-    # Create legacy command
-    legacy_cmd = RPCCommand(
+    # Create base command
+    base_cmd = RPCCommand(
         name=command_name.strip(),
         fun=function_name.strip(),
         args=args,
@@ -551,7 +550,7 @@ def test_topic_aware_command_conversion_property(
 
     # Convert to topic-aware and back
     topic_cmd = TopicAwareRPCCommand.from_rpc_command(
-        legacy_cmd,
+        base_cmd,
         publish_progress=enable_progress,
         enable_result_streaming=enable_streaming,
     )
@@ -559,11 +558,11 @@ def test_topic_aware_command_conversion_property(
     converted_back = topic_cmd.to_rpc_command()
 
     # Verify round-trip conversion preserves data
-    assert converted_back.name == legacy_cmd.name
-    assert converted_back.fun == legacy_cmd.fun
-    assert converted_back.args == legacy_cmd.args
-    assert converted_back.kwargs == legacy_cmd.kwargs
-    assert converted_back.locs == legacy_cmd.locs
+    assert converted_back.name == base_cmd.name
+    assert converted_back.fun == base_cmd.fun
+    assert converted_back.args == base_cmd.args
+    assert converted_back.kwargs == base_cmd.kwargs
+    assert converted_back.locs == base_cmd.locs
 
     # Verify topic-specific features
     assert topic_cmd.publish_progress == enable_progress
@@ -582,7 +581,7 @@ def test_topic_aware_request_conversion_property(
     num_commands: int, enable_monitoring: bool, enable_streaming: bool
 ) -> None:
     """Property test: Topic-aware request conversion preserves command data."""
-    # Create legacy commands
+    # Create base commands
     commands = [
         RPCCommand(
             name=f"cmd_{i}",
@@ -594,14 +593,14 @@ def test_topic_aware_request_conversion_property(
         for i in range(num_commands)
     ]
 
-    # Create legacy request
-    legacy_req = RPCRequest(
+    # Create base request
+    base_req = RPCRequest(
         role="rpc", cmds=tuple(commands), u=f"test_request_{num_commands}"
     )
 
     # Convert to topic-aware and back
     topic_req = TopicAwareRPCRequest.from_rpc_request(
-        legacy_req,
+        base_req,
         enable_topic_monitoring=enable_monitoring,
         enable_result_streaming=enable_streaming,
     )
@@ -609,14 +608,12 @@ def test_topic_aware_request_conversion_property(
     converted_back = topic_req.to_rpc_request()
 
     # Verify round-trip conversion preserves data
-    assert converted_back.role == legacy_req.role
-    assert len(converted_back.cmds) == len(legacy_req.cmds)
-    assert converted_back.u == legacy_req.u
+    assert converted_back.role == base_req.role
+    assert len(converted_back.cmds) == len(base_req.cmds)
+    assert converted_back.u == base_req.u
 
     # Verify each command was preserved
-    for i, (original, converted) in enumerate(
-        zip(legacy_req.cmds, converted_back.cmds)
-    ):
+    for i, (original, converted) in enumerate(zip(base_req.cmds, converted_back.cmds)):
         assert original.name == converted.name
         assert original.fun == converted.fun
         assert original.args == converted.args

@@ -8,9 +8,10 @@ InstallSnapshot, as well as the core state transition logic.
 from __future__ import annotations
 
 import asyncio
-import logging
 import time
 from typing import TYPE_CHECKING, Any
+
+from loguru import logger
 
 from .production_raft import (
     AppendEntriesRequest,
@@ -27,7 +28,7 @@ from .production_raft import (
 if TYPE_CHECKING:
     pass
 
-logger = logging.getLogger(__name__)
+rpc_log = logger
 
 
 # Extension of ProductionRaft class with RPC handlers
@@ -82,7 +83,7 @@ class ProductionRaftRPCs:
 
             # Rule 1: Reply false if term < currentTerm
             if request.term < self.persistent_state.current_term:
-                logger.debug(
+                rpc_log.debug(
                     f"Rejecting vote for {request.candidate_id}: stale term "
                     f"{request.term} < {self.persistent_state.current_term}"
                 )
@@ -129,17 +130,17 @@ class ProductionRaftRPCs:
                     # Reset election timer since we granted a vote
                     self.last_heartbeat_time = time.time()
 
-                    logger.info(
+                    rpc_log.info(
                         f"Granted vote to {request.candidate_id} for term {request.term}"
                     )
                 else:
-                    logger.debug(
+                    rpc_log.debug(
                         f"Rejecting vote for {request.candidate_id}: log not up-to-date. "
                         f"Candidate: term={request.last_log_term}, index={request.last_log_index}. "
                         f"Our: term={last_log_term}, index={last_log_index}"
                     )
             else:
-                logger.debug(
+                rpc_log.debug(
                     f"Rejecting vote for {request.candidate_id}: already voted for "
                     f"{self.persistent_state.voted_for}"
                 )
@@ -172,7 +173,7 @@ class ProductionRaftRPCs:
 
             # Rule 1: Reply false if term < currentTerm
             if request.term < self.persistent_state.current_term:
-                logger.debug(
+                rpc_log.debug(
                     f"Rejecting AppendEntries from {request.leader_id}: stale term "
                     f"{request.term} < {self.persistent_state.current_term}"
                 )
@@ -215,7 +216,7 @@ class ProductionRaftRPCs:
                             conflict_index - 1
                         ].term
 
-                    logger.debug(
+                    rpc_log.debug(
                         f"Log consistency check failed for AppendEntries from {request.leader_id}. "
                         f"prevLogIndex={request.prev_log_index}, prevLogTerm={request.prev_log_term}"
                     )
@@ -243,7 +244,7 @@ class ProductionRaftRPCs:
                     for entry in request.entries:
                         # Verify entry integrity
                         if not entry.verify_integrity():
-                            logger.error(
+                            rpc_log.error(
                                 f"Log entry {entry.index} failed integrity check"
                             )
                             success = False
@@ -264,12 +265,12 @@ class ProductionRaftRPCs:
                         await self.storage.save_persistent_state(self.persistent_state)
 
                         self.metrics.log_entries_replicated += len(request.entries)
-                        logger.debug(
+                        rpc_log.debug(
                             f"Appended {len(request.entries)} entries from {request.leader_id}"
                         )
 
                 except Exception as e:
-                    logger.error(f"Error processing log entries: {e}")
+                    rpc_log.error(f"Error processing log entries: {e}")
                     success = False
 
             # Rule 5: Update commit index
@@ -280,7 +281,7 @@ class ProductionRaftRPCs:
                 )
 
                 if self.volatile_state.commit_index > old_commit_index:
-                    logger.debug(
+                    rpc_log.debug(
                         f"Updated commit index from {old_commit_index} to {self.volatile_state.commit_index}"
                     )
 
@@ -341,7 +342,7 @@ class ProductionRaftRPCs:
                 # First chunk - initialize chunk storage
                 self.snapshot_chunks[snapshot_id] = []
                 self.installing_snapshot = True
-                logger.info(
+                rpc_log.info(
                     f"Starting snapshot installation from {request.leader_id}, "
                     f"last_included_index={request.last_included_index}"
                 )
@@ -354,7 +355,7 @@ class ProductionRaftRPCs:
                 if request.offset == expected_offset:
                     self.snapshot_chunks[snapshot_id].append(request.data)
                 else:
-                    logger.error(
+                    rpc_log.error(
                         f"Unexpected snapshot chunk offset: expected {expected_offset}, got {request.offset}"
                     )
                     # Reset snapshot installation
@@ -395,12 +396,12 @@ class ProductionRaftRPCs:
                 self.installing_snapshot = False
 
                 self.metrics.snapshots_installed += 1
-                logger.info(
+                rpc_log.info(
                     f"Successfully installed snapshot up to index {request.last_included_index}"
                 )
 
             except Exception as e:
-                logger.error(f"Error installing snapshot: {e}")
+                rpc_log.error(f"Error installing snapshot: {e}")
                 self.snapshot_chunks.pop(snapshot_id, None)
                 self.installing_snapshot = False
 
@@ -435,13 +436,13 @@ class ProductionRaftRPCs:
 
             await self.storage.save_persistent_state(self.persistent_state)
 
-            logger.info(
+            rpc_log.info(
                 f"Applied snapshot up to index {snapshot.last_included_index}, "
                 f"trimmed log to {len(remaining_entries)} entries"
             )
 
         except Exception as e:
-            logger.error(f"Error applying snapshot: {e}")
+            rpc_log.error(f"Error applying snapshot: {e}")
             raise
 
     def _update_exponential_average(

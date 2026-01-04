@@ -5,6 +5,8 @@ This module provides well-typed interfaces for cluster state management,
 replacing primitive types with semantic dataclasses for better encapsulation.
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
@@ -46,7 +48,7 @@ class ClusterConfiguration:
         advertised_urls: tuple[str, ...],
         local_url: str = "",
         dead_peer_timeout_seconds: float = 30.0,
-    ) -> "ClusterConfiguration":
+    ) -> ClusterConfiguration:
         """Create cluster configuration from primitive types."""
         return cls(
             cluster_id=cluster_id,
@@ -151,20 +153,6 @@ class ClusterFunctionRegistry:
         """Total number of known servers in the cluster."""
         return len(self.known_servers)
 
-    def get_legacy_funtimes(self) -> dict[str, dict[frozenset[str], set[str]]]:
-        """
-        Get the legacy funtimes format for backwards compatibility.
-
-        This should be used sparingly - prefer the typed methods above.
-        """
-        return {
-            str(func): {
-                frozenset(str(r) for r in resource_set): {str(s) for s in server_set}
-                for resource_set, server_set in resource_mapping.items()
-            }
-            for func, resource_mapping in self._function_mappings.items()
-        }
-
 
 @dataclass(slots=True)
 class ClusterState:
@@ -201,7 +189,7 @@ class ClusterState:
         advertised_urls: tuple[str, ...],
         local_url: str = "",
         dead_peer_timeout_seconds: float = 30.0,
-    ) -> "ClusterState":
+    ) -> ClusterState:
         """Create cluster state from primitive types."""
         return cls(
             cluster_id=cluster_id,

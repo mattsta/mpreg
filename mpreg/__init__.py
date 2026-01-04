@@ -1,32 +1,35 @@
 """
 MPREG - Massively Parallel Request/Response Exchange Gateway
 
-A high-performance, planet-scale federation system for distributed messaging
-with graph-based routing, hub architecture, gossip protocol, and failure detection.
+A high-performance, planet-scale fabric system for distributed messaging
+with graph-based routing, gossip-based discovery, and failure detection.
 
 ## Architecture
 
 MPREG is organized into several key modules:
 
 - **core**: Core functionality including models, registry, serialization
-- **federation**: Planet-scale federation with routing, gossip, consensus
+- **fabric**: Unified routing/control plane with gossip, routing, and consensus
 - **client**: Client-side APIs for connecting to federation systems
 
 ## Quick Start
 
 ```python
-from mpreg.federation import PlanetScaleFederationNode, GeographicCoordinate, HubTier
+from mpreg.core import MPREGSettings
+from mpreg.core.port_allocator import allocate_port
+from mpreg.server import MPREGServer
 
-# Create a federation node
-node = PlanetScaleFederationNode(
-    node_id="my-node",
-    coordinates=GeographicCoordinate(40.7128, -74.0060),
-    region="us-east",
-    hub_tier=HubTier.LOCAL
+server_port = allocate_port("servers")
+server = MPREGServer(
+    MPREGSettings(
+        host="127.0.0.1",
+        port=server_port,
+        name="example",
+        cluster_id="cluster-a",
+    )
 )
-
-# Start the node
-await node.start()
+print(f"MPREG_URL=ws://127.0.0.1:{server_port}")
+await server.server()
 ```
 
 ## Performance
@@ -36,6 +39,8 @@ await node.start()
 - **384 passing tests** with comprehensive coverage
 - **Production-ready** with deployment guides and examples
 """
+
+from __future__ import annotations
 
 # Core exports
 # Client exports
@@ -47,31 +52,31 @@ from .core import (
     TopicExchange,
 )
 
-# Federation exports (most commonly used)
-from .federation import (
-    # Consensus
-    ConsensusManager,
-    # Graph routing
+# Fabric exports (most commonly used)
+from .fabric import (
     FederationGraph,
     GeographicCoordinate,
-    GlobalHub,
+    GraphBasedFederationRouter,
+)
+from .fabric.consensus import ConsensusManager, StateType, StateValue
+from .fabric.gossip import (
     GossipMessage,
     GossipMessageType,
-    # Gossip protocol
     GossipProtocol,
-    GraphBasedFederationRouter,
-    HubRegistry,
+    GossipStrategy,
+    VectorClock,
+)
+from .fabric.hub_registry import HubRegistry
+from .fabric.hubs import (
+    GlobalHub,
     HubTier,
-    # Hub architecture
     LocalHub,
+    RegionalHub,
+)
+from .fabric.membership import (
     MembershipInfo,
-    # Membership
     MembershipProtocol,
     MembershipState,
-    RegionalHub,
-    StateType,
-    StateValue,
-    VectorClock,
 )
 
 # Version info
@@ -85,26 +90,27 @@ __all__ = [
     "JsonSerializer",
     "MPREGSettings",
     "TopicExchange",
-    # Federation - Graph
+    # Fabric - Graph
     "FederationGraph",
     "GraphBasedFederationRouter",
     "GeographicCoordinate",
-    # Federation - Hubs
+    # Fabric - Hubs
     "LocalHub",
     "RegionalHub",
     "GlobalHub",
     "HubTier",
     "HubRegistry",
-    # Federation - Gossip
+    # Fabric - Gossip
     "GossipProtocol",
     "GossipMessage",
     "GossipMessageType",
+    "GossipStrategy",
     "VectorClock",
-    # Federation - Consensus
+    # Fabric - Consensus
     "ConsensusManager",
     "StateValue",
     "StateType",
-    # Federation - Membership
+    # Fabric - Membership
     "MembershipProtocol",
     "MembershipInfo",
     "MembershipState",

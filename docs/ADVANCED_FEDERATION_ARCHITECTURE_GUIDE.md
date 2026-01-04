@@ -1,8 +1,14 @@
-# Advanced Federation Architecture Guide
+# Advanced Fabric Federation Architecture Guide
 
 ## Overview
 
-This guide provides comprehensive documentation for MPREG's advanced federation topologies, including real-world usage patterns, deployment guides, and architectural best practices. These patterns have been extensively tested and validated through our advanced topological research test suite.
+This guide provides comprehensive documentation for MPREG's advanced fabric
+topologies, including real-world usage patterns, deployment guides, and
+architectural best practices. These patterns have been validated through the
+advanced topological research test suite.
+
+Note: The code still uses some `federation_*` naming, but all behavior is the
+unified fabric control plane.
 
 ## Table of Contents
 
@@ -15,7 +21,23 @@ This guide provides comprehensive documentation for MPREG's advanced federation 
 
 ## Architecture Overview
 
-MPREG supports five advanced federation topology patterns, each optimized for different distributed system requirements:
+### Helper Utilities (Port Allocation)
+
+Avoid fixed ports in examples by allocating free ports per run:
+
+```python
+import socket
+
+def allocate_ports(count: int) -> list[int]:
+    ports: list[int] = []
+    for _ in range(count):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind(("127.0.0.1", 0))
+            ports.append(sock.getsockname()[1])
+    return ports
+```
+
+MPREG supports five advanced fabric topology patterns, each optimized for different distributed system requirements:
 
 ```
 ┌─────────────────────┬──────────────────┬─────────────────────┬─────────────────────┐
@@ -49,13 +71,15 @@ Node1 ─ Node2 ─ Node3 ─ Node4       Node1 ─┬─ Node2
 **Implementation Example**:
 
 ```python
+import asyncio
+
 from mpreg.server import MPREGServer
 from mpreg.core.config import MPREGSettings
 
 # Create dynamic mesh nodes
 async def create_dynamic_mesh(node_count=6):
     servers = []
-    ports = list(range(8000, 8000 + node_count))
+    ports = allocate_ports(node_count)
 
     for i, port in enumerate(ports):
         # Connect to previous node to form initial chain
@@ -75,9 +99,10 @@ async def create_dynamic_mesh(node_count=6):
         servers.append(server)
 
         # Start server
-        await server.start_async()
+        asyncio.create_task(server.server())
+        await asyncio.sleep(0.05)
 
-    # Nodes will automatically discover each other via gossip
+    # Nodes will automatically discover each other via fabric gossip
     return servers
 ```
 
@@ -94,10 +119,10 @@ async def create_dynamic_mesh(node_count=6):
 - Edge computing clusters
 - Disaster recovery networks
 
-### 2. Byzantine Fault Tolerant Federation
+### 2. Byzantine Fault Tolerant Fabric Federation
 
 **Use Case**: Financial systems, blockchain networks, critical infrastructure
-**Architecture**: Multi-regional federation with 33% Byzantine failure tolerance
+**Architecture**: Multi-regional fabric federation with 33% Byzantine failure tolerance
 
 ```
 Region A (3 nodes)    Region B (3 nodes)    Region C (3 nodes)
@@ -106,28 +131,28 @@ Region A (3 nodes)    Region B (3 nodes)    Region C (3 nodes)
 │   │       │     │    │   │       │     │    │   │       │     │
 │   └─ Node3 ─────┼────┼───└─ Node6 ─────┼────┼───└─ Node9     │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
-     Federation              Federation              Federation
+     Fabric                  Fabric                  Fabric
      Bridge                  Bridge                  Bridge
 ```
 
 **Implementation Example**:
 
 ```python
-async def create_byzantine_tolerant_federation():
+async def create_byzantine_tolerant_fabric():
     # Create 3 regions with 3 nodes each
     regions = []
     all_servers = []
 
     for region_id in range(3):
         region_servers = []
-        ports = list(range(8000 + region_id * 10, 8000 + region_id * 10 + 3))
+        ports = allocate_ports(3)
 
         for i, port in enumerate(ports):
             settings = MPREGSettings(
                 host="127.0.0.1",
                 port=port,
                 name=f"byzantine-region-{region_id}-node-{i}",
-                cluster_id="byzantine-federation",
+                cluster_id="byzantine-fabric",
                 resources={f"region-{region_id}-resource-{i}"},
                 connect=f"ws://127.0.0.1:{ports[0]}" if i > 0 else None,
                 gossip_interval=0.5,
@@ -136,11 +161,12 @@ async def create_byzantine_tolerant_federation():
             server = MPREGServer(settings=settings)
             region_servers.append(server)
             all_servers.append(server)
-            await server.start_async()
+            asyncio.create_task(server.server())
+            await asyncio.sleep(0.05)
 
         regions.append(region_servers)
 
-    # Create inter-regional federation bridges
+    # Create inter-regional fabric bridges
     for i in range(len(regions)):
         for j in range(i + 1, len(regions)):
             leader_i = regions[i][0]  # Regional leader
@@ -166,7 +192,7 @@ async def create_byzantine_tolerant_federation():
 - Healthcare data networks
 - Government/military systems
 
-### 3. Hierarchical Regional Federation with Auto-Balancing
+### 3. Hierarchical Regional Fabric Federation with Auto-Balancing
 
 **Use Case**: Large enterprise systems, multi-tenant architectures
 **Architecture**: 3-tier hierarchy (Local → Regional → Global) with intelligent load balancing
@@ -193,12 +219,12 @@ async def create_byzantine_tolerant_federation():
 **Implementation Example**:
 
 ```python
-async def create_hierarchical_federation():
+async def create_hierarchical_fabric():
     # 3-tier configuration: Local(4) → Regional(2) → Global(1)
     hierarchy_config = [
-        {"name": "Local", "nodes": 4, "base_port": 8000},
-        {"name": "Regional", "nodes": 2, "base_port": 8010},
-        {"name": "Global", "nodes": 1, "base_port": 8020},
+        {"name": "Local", "nodes": 4},
+        {"name": "Regional", "nodes": 2},
+        {"name": "Global", "nodes": 1},
     ]
 
     all_servers = []
@@ -207,17 +233,15 @@ async def create_hierarchical_federation():
     for tier_idx, tier_config in enumerate(hierarchy_config):
         tier_name = tier_config["name"]
         node_count = tier_config["nodes"]
-        base_port = tier_config["base_port"]
-
         tier_servers = []
-        ports = list(range(base_port, base_port + node_count))
+        ports = allocate_ports(node_count)
 
         for i, port in enumerate(ports):
             settings = MPREGSettings(
                 host="127.0.0.1",
                 port=port,
                 name=f"{tier_name}-Node-{i}",
-                cluster_id="hierarchical-federation",
+                cluster_id="hierarchical-fabric",
                 resources={f"{tier_name.lower()}-resource-{i}"},
                 connect=f"ws://127.0.0.1:{ports[0]}" if i > 0 else None,
                 gossip_interval=0.5,
@@ -226,12 +250,13 @@ async def create_hierarchical_federation():
             server = MPREGServer(settings=settings)
             tier_servers.append(server)
             all_servers.append(server)
-            await server.start_async()
+            asyncio.create_task(server.server())
+            await asyncio.sleep(0.05)
 
         # First node of each tier is the coordinator
         tier_coordinators.append(tier_servers[0])
 
-    # Create hierarchical bridges
+    # Create hierarchical fabric bridges
     for i in range(len(tier_coordinators) - 1):
         await tier_coordinators[i]._establish_peer_connection(
             f"ws://127.0.0.1:{tier_coordinators[i + 1].settings.port}"
@@ -253,7 +278,7 @@ async def create_hierarchical_federation():
 - Global content delivery networks
 - Large-scale microservices architectures
 
-### 4. Cross-Datacenter Federation with Latency Simulation
+### 4. Cross-Datacenter Fabric with Latency Simulation
 
 **Use Case**: Global applications, multi-region deployments
 **Architecture**: Geographic distribution with realistic network latency handling
@@ -269,17 +294,17 @@ async def create_hierarchical_federation():
                                            │
               ┌─────────────────────────────┘
               │
-    Cross-Datacenter Federation Bridges
+    Cross-Datacenter Fabric Routing Links
 ```
 
 **Implementation Example**:
 
 ```python
-async def create_cross_datacenter_federation():
+async def create_cross_datacenter_fabric():
     datacenter_configs = [
-        {"name": "US-East", "nodes": 3, "base_port": 8000, "latency_ms": 5},
-        {"name": "EU-West", "nodes": 3, "base_port": 8010, "latency_ms": 8},
-        {"name": "Asia-Pacific", "nodes": 2, "base_port": 8020, "latency_ms": 12},
+        {"name": "US-East", "nodes": 3, "latency_ms": 5},
+        {"name": "EU-West", "nodes": 3, "latency_ms": 8},
+        {"name": "Asia-Pacific", "nodes": 2, "latency_ms": 12},
     ]
 
     all_servers = []
@@ -288,14 +313,14 @@ async def create_cross_datacenter_federation():
     # Create datacenter clusters
     for dc_config in datacenter_configs:
         dc_servers = []
-        ports = list(range(dc_config["base_port"], dc_config["base_port"] + dc_config["nodes"]))
+        ports = allocate_ports(dc_config["nodes"])
 
         for i, port in enumerate(ports):
             settings = MPREGSettings(
                 host="127.0.0.1",
                 port=port,
                 name=f"{dc_config['name']}-Node-{i}",
-                cluster_id="cross-datacenter-federation",
+                cluster_id="cross-datacenter-fabric",
                 resources={f"{dc_config['name'].lower()}-resource-{i}"},
                 connect=f"ws://127.0.0.1:{ports[0]}" if i > 0 else None,
                 gossip_interval=0.5,
@@ -304,7 +329,8 @@ async def create_cross_datacenter_federation():
             server = MPREGServer(settings=settings)
             dc_servers.append(server)
             all_servers.append(server)
-            await server.start_async()
+            asyncio.create_task(server.server())
+            await asyncio.sleep(0.05)
 
         datacenter_leaders.append(dc_servers[0])
 
@@ -368,7 +394,7 @@ Normal Operation:                Network Partition:               Automatic Reco
 ```python
 async def create_self_healing_network():
     cluster_size = 10
-    ports = list(range(8000, 8000 + cluster_size))
+    ports = allocate_ports(cluster_size)
     servers = []
 
     # Create resilient star-hub topology for better recovery
@@ -385,7 +411,8 @@ async def create_self_healing_network():
 
         server = MPREGServer(settings=settings)
         servers.append(server)
-        await server.start_async()
+        asyncio.create_task(server.server())
+        await asyncio.sleep(0.05)
 
     # Test partition scenarios
     partition_scenarios = [
@@ -487,7 +514,7 @@ Based on extensive testing across all topology patterns:
 ### Docker Deployment Example
 
 ```dockerfile
-# Dockerfile for MPREG federation node
+# Dockerfile for MPREG fabric node
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -496,13 +523,13 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-# Environment variables for federation configuration
+# Environment variables for fabric configuration
 ENV MPREG_HOST=0.0.0.0
-ENV MPREG_PORT=8000
-ENV MPREG_CLUSTER_ID=production-federation
+ENV MPREG_PORT=<port>
+ENV MPREG_CLUSTER_ID=production-fabric
 ENV MPREG_TOPOLOGY=hierarchical
 
-CMD ["python", "-m", "mpreg.federation.deployment"]
+CMD ["python", "-m", "mpreg.fabric.deployment"]
 ```
 
 ### Kubernetes Deployment
@@ -511,27 +538,27 @@ CMD ["python", "-m", "mpreg.federation.deployment"]
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mpreg-federation
+  name: mpreg
 spec:
   replicas: 5
   selector:
     matchLabels:
-      app: mpreg-federation
+      app: mpreg
   template:
     metadata:
       labels:
-        app: mpreg-federation
+        app: mpreg
     spec:
       containers:
         - name: mpreg-node
           image: mpreg:latest
           ports:
-            - containerPort: 8000
+            - containerPort: <container-port>
           env:
             - name: MPREG_TOPOLOGY
               value: "hierarchical"
             - name: MPREG_CLUSTER_ID
-              value: "k8s-federation"
+              value: "k8s-fabric"
 ```
 
 ## Extension and Customization
@@ -606,7 +633,7 @@ GLOBAL_CONFIG = {
 
 ## Conclusion
 
-These advanced federation topologies provide battle-tested patterns for building robust, scalable distributed systems. Each pattern has been validated through comprehensive testing and provides specific benefits for different use cases.
+These advanced fabric topologies provide battle-tested patterns for building robust, scalable distributed systems. Each pattern has been validated through comprehensive testing and provides specific benefits for different use cases.
 
 Choose the topology that best matches your requirements:
 

@@ -21,17 +21,17 @@ from mpreg.datastructures import (
     DecentralizedAutonomousOrganization,
     VoteType,
 )
-from mpreg.federation.blockchain_message_federation import (
+from mpreg.fabric.blockchain_message_federation import (
     BlockchainFederationBridge,
     CrossRegionCoordinator,
     FederationMessageRoute,
     FederationRouteManager,
     HubMessageQueue,
 )
-from mpreg.federation.federation_graph import (
+from mpreg.fabric.federation_graph import (
     GeographicCoordinate,
 )
-from mpreg.federation.federation_hubs import (
+from mpreg.fabric.hubs import (
     GlobalHub,
     HubCapabilities,
     HubTier,
@@ -161,7 +161,7 @@ class TestHubMessageQueue:
         self.hub_queue.hub_state.add_connected_hub("hub_2")
 
         # Add some simulated metrics
-        from mpreg.federation.federation_types import HubPerformanceMetrics
+        from mpreg.fabric.federation_types import HubPerformanceMetrics
 
         test_metrics = HubPerformanceMetrics(
             hub_id="test_local_hub", messages_routed=100, cross_region_messages=25
@@ -404,7 +404,7 @@ class TestCrossRegionCoordinator:
     def test_cross_region_performance_metrics(self):
         """Test cross-region performance metrics collection."""
         # Create test metrics and add them
-        from mpreg.federation.federation_types import CrossRegionPerformanceMetrics
+        from mpreg.fabric.federation_types import CrossRegionPerformanceMetrics
 
         metrics_key = "us_west_us_east"
         test_metrics = CrossRegionPerformanceMetrics(
@@ -565,7 +565,7 @@ class TestBlockchainFederationBridge:
         await self.bridge.integrate_hub(self.local_hub)
 
         # Propose routing policy
-        from mpreg.federation.federation_types import FederationPolicySpec
+        from mpreg.fabric.federation_types import FederationPolicySpec
 
         policy_spec = FederationPolicySpec(
             policy_name="Federation Test Policy",

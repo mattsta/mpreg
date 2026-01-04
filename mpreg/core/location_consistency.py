@@ -16,7 +16,10 @@ The system ensures that cached data is properly replicated and consistent across
 multiple geographic locations while optimizing for network latency and bandwidth.
 """
 
+from __future__ import annotations
+
 import asyncio
+import contextlib
 import time
 import uuid
 from collections.abc import Callable
@@ -944,17 +947,13 @@ class LocationConsistencyManager:
         try:
             if self.replication_task and not self.replication_task.done():
                 self.replication_task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await self.replication_task
-                except asyncio.CancelledError:
-                    pass
 
             if self.heartbeat_task and not self.heartbeat_task.done():
                 self.heartbeat_task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await self.heartbeat_task
-                except asyncio.CancelledError:
-                    pass
 
             logger.info("Location consistency manager shut down successfully")
 

@@ -6,11 +6,14 @@ must follow, enabling pluggable transport protocols while maintaining a
 consistent API across the entire MPREG system.
 """
 
+from __future__ import annotations
+
 import ssl
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterable
 from dataclasses import dataclass, field
 from enum import Enum
+from types import TracebackType
 from typing import Any, Protocol, runtime_checkable
 from urllib.parse import ParseResult
 
@@ -136,11 +139,13 @@ class TransportConfig:
 
     def get_max_message_size(self) -> int:
         """Get maximum message size for this transport configuration."""
-        return self.protocol_options.get("max_message_size", DEFAULT_MAX_MESSAGE_SIZE)
+        value = self.protocol_options.get("max_message_size", DEFAULT_MAX_MESSAGE_SIZE)
+        return value if isinstance(value, int) else DEFAULT_MAX_MESSAGE_SIZE
 
     def get_max_stream_size(self) -> int:
         """Get maximum stream size for this transport configuration."""
-        return self.protocol_options.get("max_stream_size", DEFAULT_MAX_STREAM_SIZE)
+        value = self.protocol_options.get("max_stream_size", DEFAULT_MAX_STREAM_SIZE)
+        return value if isinstance(value, int) else DEFAULT_MAX_STREAM_SIZE
 
 
 class TransportInterface(ABC):
@@ -312,12 +317,17 @@ class TransportInterface(ABC):
         # Default implementation: receive normally
         return await self.receive()
 
-    async def __aenter__(self) -> "TransportInterface":
+    async def __aenter__(self) -> TransportInterface:
         """Async context manager entry."""
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Async context manager exit."""
         await self.disconnect()
 
@@ -384,11 +394,16 @@ class TransportListener(ABC):
         """
         pass
 
-    async def __aenter__(self) -> "TransportListener":
+    async def __aenter__(self) -> TransportListener:
         """Async context manager entry."""
         await self.start()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Async context manager exit."""
         await self.stop()

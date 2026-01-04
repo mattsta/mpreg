@@ -3,8 +3,8 @@ Comprehensive tests for MPREG Global Distributed Caching System.
 
 Tests cover:
 - GlobalCacheManager with multi-tier caching
-- CacheGossipProtocol for distributed synchronization
-- GlobalCacheFederation for geographic replication
+- FabricCacheProtocol for distributed synchronization
+- Fabric cache federation for cross-cluster replication
 - Cache protocol message handling
 - Integration with existing MPREG infrastructure
 - End-to-end cache workflows
@@ -17,12 +17,6 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-# Import existing MPREG components for integration tests
-from mpreg.core.cache_gossip import (
-    CacheGossipProtocol,
-    CacheOperationMessage,
-    CacheOperationType,
-)
 from mpreg.core.cache_protocol import (
     CacheKeyMessage,
     CacheOperation,
@@ -40,13 +34,15 @@ from mpreg.core.global_cache import (
     GlobalCacheEntry,
     GlobalCacheKey,
     GlobalCacheManager,
-    ReplicationStrategy,
 )
-from mpreg.federation.global_cache_federation import (
-    ClusterCacheInfo,
-    GeographicLocation,
-    GlobalCacheFederation,
+
+# Import existing MPREG components for integration tests
+from mpreg.fabric.cache_federation import (
+    CacheOperationMessage,
+    CacheOperationType,
+    FabricCacheProtocol,
 )
+from mpreg.fabric.cache_transport import InProcessCacheTransport
 
 
 class TestGlobalCacheKey:
@@ -121,6 +117,23 @@ class TestGlobalCacheManager:
         return CacheMetadata(
             computation_cost_ms=100.0, ttl_seconds=3600.0, quality_score=0.9
         )
+
+    @pytest.mark.asyncio
+    async def test_namespace_key_pattern_matching(self, cache_manager):
+        """Test namespace key listing uses wildcard pattern matching."""
+        keys = [
+            GlobalCacheKey(namespace="pattern.ns", identifier="alpha-1", version="v1"),
+            GlobalCacheKey(namespace="pattern.ns", identifier="alpha-2", version="v1"),
+            GlobalCacheKey(namespace="pattern.ns", identifier="beta-1", version="v1"),
+        ]
+        for key in keys:
+            await cache_manager.put(key, {"value": key.identifier})
+
+        alpha_keys = cache_manager.get_namespace_keys("pattern.ns", "alpha*")
+        assert len(alpha_keys) == 2
+
+        beta_keys = cache_manager.get_namespace_keys("pattern.ns", "beta#")
+        assert len(beta_keys) == 1
 
     @pytest.mark.asyncio
     async def test_put_and_get_l1_cache(self, cache_manager, test_key, test_metadata):
@@ -230,15 +243,25 @@ class TestGlobalCacheManager:
         assert "misses" in l1_stats
         assert "hit_rate" in l1_stats
 
+    def test_default_cache_options_include_l4(self):
+        """Ensure default cache options include L4 federation when available."""
+        options = CacheOptions()
+        assert CacheLevel.L4 in options.cache_levels
 
-class TestCacheGossipProtocol:
-    """Test CacheGossipProtocol functionality."""
+
+class TestFabricCacheProtocol:
+    """Test FabricCacheProtocol functionality."""
 
     @pytest.fixture
-    def gossip_protocol(self):
-        """Create test gossip protocol."""
-        return CacheGossipProtocol(
+    def cache_transport(self) -> InProcessCacheTransport:
+        return InProcessCacheTransport()
+
+    @pytest.fixture
+    def cache_protocol(self, cache_transport):
+        """Create test cache protocol."""
+        return FabricCacheProtocol(
             node_id="test_node_1",
+            transport=cache_transport,
             gossip_interval=1.0,  # Fast for testing
             anti_entropy_interval=5.0,
         )
@@ -247,16 +270,16 @@ class TestCacheGossipProtocol:
     def test_key(self):
         """Create test cache key."""
         return GlobalCacheKey(
-            namespace="gossip.test", identifier="key456", version="v1.0.0"
+            namespace="cache.test", identifier="key456", version="v1.0.0"
         )
 
     @pytest.mark.asyncio
-    async def test_propagate_cache_operation(self, gossip_protocol, test_key):
+    async def test_propagate_cache_operation(self, cache_protocol, test_key):
         """Test propagating cache operations."""
-        test_value = {"data": "gossiped_value"}
+        test_value = {"data": "propagated_value"}
         metadata = CacheMetadata(computation_cost_ms=50.0)
 
-        operation_id = await gossip_protocol.propagate_cache_operation(
+        operation_id = await cache_protocol.propagate_cache_operation(
             operation_type=CacheOperationType.PUT,
             key=test_key,
             value=test_value,
@@ -264,12 +287,12 @@ class TestCacheGossipProtocol:
         )
 
         assert operation_id is not None
-        assert operation_id in gossip_protocol.cache_operations
-        assert len(gossip_protocol.pending_operations) > 0
+        assert operation_id in cache_protocol.cache_operations
+        assert len(cache_protocol.pending_operations) > 0
 
     @pytest.mark.asyncio
-    async def test_handle_gossip_message(self, gossip_protocol, test_key):
-        """Test handling incoming gossip messages."""
+    async def test_handle_cache_message(self, cache_protocol, test_key):
+        """Test handling incoming cache messages."""
         message = CacheOperationMessage(
             operation_type=CacheOperationType.PUT,
             operation_id="remote_op_123",
@@ -281,14 +304,14 @@ class TestCacheGossipProtocol:
             metadata=CacheMetadata(),
         )
 
-        success = await gossip_protocol.handle_cache_gossip_message(message)
+        success = await cache_protocol.handle_cache_message(message)
 
         assert success
-        assert message.operation_id in gossip_protocol.cache_operations
-        assert str(test_key) in gossip_protocol.cache_entries
+        assert message.operation_id in cache_protocol.cache_operations
+        assert str(test_key) in cache_protocol.cache_entries
 
     @pytest.mark.asyncio
-    async def test_conflict_detection(self, gossip_protocol, test_key):
+    async def test_conflict_detection(self, cache_protocol, test_key):
         """Test cache conflict detection."""
         # Create local entry
         local_entry = GlobalCacheEntry(
@@ -298,7 +321,7 @@ class TestCacheGossipProtocol:
             creation_time=time.time() - 100,
             vector_clock={"test_node_1": 1},
         )
-        gossip_protocol.cache_entries[str(test_key)] = local_entry
+        cache_protocol.cache_entries[str(test_key)] = local_entry
 
         # Create conflicting remote entry
         remote_entry = GlobalCacheEntry(
@@ -309,158 +332,36 @@ class TestCacheGossipProtocol:
             vector_clock={"remote_node": 1},
         )
 
-        conflict = gossip_protocol._detect_conflict(local_entry, remote_entry)
+        conflict = cache_protocol._detect_conflict(local_entry, remote_entry)
 
         assert conflict is not None
         assert conflict.key == test_key
         assert conflict.conflict_type in ["value", "timestamp"]
 
-    def test_peer_management(self, gossip_protocol):
-        """Test peer node management."""
-        peer_id = "test_peer_1"
+    @pytest.mark.asyncio
+    async def test_peer_registration(self, cache_transport):
+        """Test peer registration with transport."""
+        protocol = FabricCacheProtocol(
+            node_id="test_peer",
+            transport=cache_transport,
+            gossip_interval=60.0,
+        )
 
-        # Add peer
-        gossip_protocol.add_peer(peer_id)
-        assert peer_id in gossip_protocol.known_peers
+        assert cache_transport.peer_ids() == ("test_peer",)
 
-        # Remove peer
-        gossip_protocol.remove_peer(peer_id)
-        assert peer_id not in gossip_protocol.known_peers
+        await protocol.shutdown()
 
-    def test_gossip_statistics(self, gossip_protocol):
-        """Test gossip statistics collection."""
-        stats = gossip_protocol.get_statistics()
+        assert cache_transport.peer_ids() == ()
+
+    def test_cache_statistics(self, cache_protocol):
+        """Test cache statistics collection."""
+        stats = cache_protocol.get_statistics()
 
         assert "node_id" in stats
         assert "operations" in stats
         assert "conflicts" in stats
         assert "cache_state" in stats
         assert stats["node_id"] == "test_node_1"
-
-
-class TestGlobalCacheFederation:
-    """Test GlobalCacheFederation functionality."""
-
-    @pytest.fixture
-    def location_us_west(self):
-        """Create US West location."""
-        return GeographicLocation(
-            latitude=37.7749,
-            longitude=-122.4194,
-            region="us-west",
-            availability_zone="us-west-1a",
-        )
-
-    @pytest.fixture
-    def location_eu_west(self):
-        """Create EU West location."""
-        return GeographicLocation(
-            latitude=51.5074,
-            longitude=-0.1278,
-            region="eu-west",
-            availability_zone="eu-west-1a",
-        )
-
-    @pytest.fixture
-    def federation(self, location_us_west):
-        """Create test federation cache."""
-        return GlobalCacheFederation(
-            local_cluster_id="cluster_us_west_1", local_location=location_us_west
-        )
-
-    @pytest.fixture
-    def cluster_info_eu(self, location_eu_west):
-        """Create EU cluster info."""
-        return ClusterCacheInfo(
-            cluster_id="cluster_eu_west_1",
-            cluster_name="EU West Production",
-            location=location_eu_west,
-            cache_capacity_mb=1000,
-            cache_utilization_percent=30.0,
-            average_latency_ms=50.0,
-            reliability_score=0.95,
-        )
-
-    def test_cluster_registration(self, federation, cluster_info_eu):
-        """Test cluster registration in federation."""
-        federation.register_cluster(cluster_info_eu)
-
-        assert cluster_info_eu.cluster_id in federation.known_clusters
-        assert federation.known_clusters[cluster_info_eu.cluster_id] == cluster_info_eu
-
-    def test_geographic_distance_calculation(self, location_us_west, location_eu_west):
-        """Test geographic distance calculation."""
-        distance = location_us_west.distance_to(location_eu_west)
-
-        assert distance > 0
-        assert distance > 50  # Should be significant distance between US and EU
-
-    def test_cluster_health_check(self, cluster_info_eu):
-        """Test cluster health evaluation."""
-        # Healthy cluster
-        assert cluster_info_eu.is_healthy()
-
-        # Unhealthy cluster (high latency)
-        cluster_info_eu.average_latency_ms = 200.0
-        assert not cluster_info_eu.is_healthy()
-
-    def test_capacity_score_calculation(self, cluster_info_eu):
-        """Test cluster capacity score calculation."""
-        score = cluster_info_eu.capacity_score()
-
-        assert 0.0 <= score <= 1.0
-
-        # High utilization should lower score
-        cluster_info_eu.cache_utilization_percent = 95.0
-        low_score = cluster_info_eu.capacity_score()
-        assert low_score < score
-
-    @pytest.mark.asyncio
-    async def test_replication_target_selection(self, federation, cluster_info_eu):
-        """Test replication target selection."""
-        federation.register_cluster(cluster_info_eu)
-
-        test_key = GlobalCacheKey(
-            namespace="federation.test", identifier="repl_key", version="v1.0.0"
-        )
-        metadata = CacheMetadata()
-
-        targets = federation._select_replication_targets(
-            test_key, metadata, ReplicationStrategy.GEOGRAPHIC
-        )
-
-        assert len(targets) <= federation.max_replication_targets
-        if targets:
-            assert cluster_info_eu.cluster_id in targets
-
-    def test_access_pattern_tracking(self, federation):
-        """Test access pattern tracking."""
-        test_key = GlobalCacheKey(
-            namespace="pattern.test", identifier="access_key", version="v1.0.0"
-        )
-
-        # Record multiple accesses
-        federation.record_access(test_key, "cluster_1")
-        federation.record_access(test_key, "cluster_2")
-        federation.record_access(test_key, "cluster_1")  # Duplicate
-
-        key_str = str(test_key)
-        assert key_str in federation.access_patterns
-
-        pattern = federation.access_patterns[key_str]
-        assert pattern.access_count == 3
-        assert "cluster_1" in pattern.accessing_clusters
-        assert "cluster_2" in pattern.accessing_clusters
-
-    def test_federation_statistics(self, federation):
-        """Test federation statistics collection."""
-        stats = federation.get_statistics()
-
-        assert "local_cluster" in stats
-        assert "operations" in stats
-        assert "replication" in stats
-        assert "clusters" in stats
-        assert stats["local_cluster"] == "cluster_us_west_1"
 
 
 class TestCacheProtocol:
@@ -522,6 +423,11 @@ class TestCacheProtocol:
         assert request_back.role == cache_request.role
         assert request_back.operation == cache_request.operation
         assert request_back.key.namespace == cache_request.key.namespace
+
+    def test_cache_options_message_defaults_include_l4(self):
+        """Ensure protocol cache options default to include L4 federation."""
+        options = CacheOptionsMessage()
+        assert "L4" in options.cache_levels
 
     def test_cache_response_serialization(self):
         """Test cache response message serialization."""
@@ -628,37 +534,46 @@ class TestCacheIntegration:
         await cache_manager.shutdown()
 
     @pytest.mark.asyncio
-    async def test_gossip_federation_integration(self):
-        """Test integration between gossip and federation components."""
-        # Create gossip protocol
-        gossip = CacheGossipProtocol("test_node")
+    async def test_fabric_federation_cache_flow(self):
+        """Ensure L4 cache operations flow through fabric cache protocol."""
+        transport = InProcessCacheTransport()
+        cache_protocol = FabricCacheProtocol(
+            "test_node", transport=transport, gossip_interval=60.0
+        )
+        cache_manager = GlobalCacheManager(
+            GlobalCacheConfiguration(
+                enable_l2_persistent=False,
+                enable_l3_distributed=False,
+                enable_l4_federation=True,
+            ),
+            cache_protocol=cache_protocol,
+        )
 
-        # Create federation
-        location = GeographicLocation(37.7749, -122.4194, "us-west")
-        federation = GlobalCacheFederation("test_cluster", location)
-
-        # Test that components can work together
-        test_key = GlobalCacheKey(
-            namespace="integration.gossip_federation",
+        key = GlobalCacheKey(
+            namespace="fabric.federation.cache",
             identifier="test_key",
             version="v1.0.0",
         )
+        value = {"data": "value"}
+        metadata = CacheMetadata()
 
-        # Simulate gossip operation
-        await gossip.propagate_cache_operation(
-            CacheOperationType.PUT, test_key, {"data": "test"}
+        result = await cache_manager.put(
+            key,
+            value,
+            metadata,
+            CacheOptions(cache_levels=frozenset([CacheLevel.L4])),
         )
+        assert result.success
+        assert str(key) in cache_protocol.cache_entries
 
-        # Simulate federation access tracking
-        federation.record_access(test_key, "remote_cluster")
+        get_result = await cache_manager.get(
+            key, CacheOptions(cache_levels=frozenset([CacheLevel.L4]))
+        )
+        assert get_result.success
+        assert get_result.cache_level == CacheLevel.L4
 
-        # Verify both components tracked the operation
-        assert len(gossip.pending_operations) > 0
-        assert str(test_key) in federation.access_patterns
-
-        # Cleanup
-        await gossip.shutdown()
-        await federation.shutdown()
+        await cache_manager.shutdown()
+        await cache_protocol.shutdown()
 
 
 # Performance and stress tests
@@ -841,15 +756,13 @@ class TestMPREGCacheIntegration:
         await cache_manager.shutdown()
 
     @pytest.mark.asyncio
-    async def test_distributed_cache_with_gossip(self):
-        """Test distributed cache coordination via gossip protocol."""
-        # Create two gossip nodes
-        node1 = CacheGossipProtocol("node1", gossip_interval=60.0)  # Disable background
-        node2 = CacheGossipProtocol("node2", gossip_interval=60.0)
-
-        # Add each other as peers
-        node1.add_peer("node2")
-        node2.add_peer("node1")
+    async def test_distributed_cache_with_fabric(self):
+        """Test distributed cache coordination via fabric cache protocol."""
+        transport = InProcessCacheTransport()
+        node1 = FabricCacheProtocol(
+            "node1", transport=transport, gossip_interval=60.0
+        )  # Disable background
+        node2 = FabricCacheProtocol("node2", transport=transport, gossip_interval=60.0)
 
         # Create test key
         test_key = GlobalCacheKey(
@@ -864,9 +777,9 @@ class TestMPREGCacheIntegration:
             CacheMetadata(computation_cost_ms=200.0),
         )
 
-        # Simulate gossip message from node1 to node2
+        # Simulate cache message from node1 to node2
         operation_msg = node1.cache_operations[op_id_1]
-        success = await node2.handle_cache_gossip_message(operation_msg)
+        success = await node2.handle_cache_message(operation_msg)
 
         assert success
         assert str(test_key) in node2.cache_entries
@@ -883,7 +796,7 @@ class TestMPREGCacheIntegration:
 
         # Apply node2's operation to node1 (should create conflict)
         operation_msg_2 = node2.cache_operations[op_id_2]
-        await node1.handle_cache_gossip_message(operation_msg_2)
+        await node1.handle_cache_message(operation_msg_2)
 
         # Check conflict was detected and resolved
         node1_stats = node1.get_statistics()
@@ -893,63 +806,6 @@ class TestMPREGCacheIntegration:
 
         await node1.shutdown()
         await node2.shutdown()
-
-    @pytest.mark.asyncio
-    async def test_federation_cache_replication(self):
-        """Test cache replication across federation clusters."""
-        # Create federation nodes
-        us_location = GeographicLocation(37.7749, -122.4194, "us-west")
-        eu_location = GeographicLocation(51.5074, -0.1278, "eu-west")
-
-        us_federation = GlobalCacheFederation("cluster_us", us_location)
-        eu_federation = GlobalCacheFederation("cluster_eu", eu_location)
-
-        # Register EU cluster in US federation
-        eu_cluster_info = ClusterCacheInfo(
-            cluster_id="cluster_eu",
-            cluster_name="EU Cluster",
-            location=eu_location,
-            cache_capacity_mb=1000,
-            cache_utilization_percent=25.0,
-            average_latency_ms=45.0,
-            reliability_score=0.98,
-        )
-        us_federation.register_cluster(eu_cluster_info)
-
-        # Test replication target selection
-        test_key = GlobalCacheKey(
-            namespace="federation.global",
-            identifier="replicated_data",
-            version="v1.0.0",
-        )
-
-        metadata = CacheMetadata(
-            computation_cost_ms=5000.0,  # Expensive computation
-            geographic_hints=["eu-west"],
-        )
-
-        # Test geographic replication strategy
-        targets = await us_federation.replicate_across_regions(
-            test_key,
-            {"global_data": "important_value", "computed_at": time.time()},
-            metadata,
-            ReplicationStrategy.GEOGRAPHIC,
-        )
-
-        assert len(targets) > 0
-        assert "cluster_eu" in targets
-
-        # Test access pattern tracking
-        us_federation.record_access(test_key, "cluster_eu")
-        us_federation.record_access(test_key, "cluster_eu")  # Multiple accesses from EU
-
-        key_str = str(test_key)
-        pattern = us_federation.access_patterns[key_str]
-        assert pattern.get_primary_region() == "eu-west"
-        assert pattern.should_replicate_to_region("eu-west", threshold=1)
-
-        await us_federation.shutdown()
-        await eu_federation.shutdown()
 
     @pytest.mark.asyncio
     async def test_end_to_end_mpreg_cache_workflow(self):
@@ -964,12 +820,10 @@ class TestMPREGCacheIntegration:
         )
         cache_manager = GlobalCacheManager(cache_config)
 
-        # Create gossip protocol for distributed caching
-        gossip = CacheGossipProtocol("test_node", gossip_interval=60.0)
-
-        # Create federation for geographic replication
-        location = GeographicLocation(37.7749, -122.4194, "us-west")
-        federation = GlobalCacheFederation("test_cluster_1", location)
+        transport = InProcessCacheTransport()
+        cache_protocol = FabricCacheProtocol(
+            "test_node", transport=transport, gossip_interval=60.0
+        )
 
         # Simulate complex data processing workflow
         workflows = [
@@ -1018,13 +872,10 @@ class TestMPREGCacheIntegration:
             result = await cache_manager.put(key, expected_output, metadata)
             assert result.success
 
-            # Record in gossip for distribution
-            await gossip.propagate_cache_operation(
+            # Record for distribution
+            await cache_protocol.propagate_cache_operation(
                 CacheOperationType.PUT, key, expected_output, metadata
             )
-
-            # Record access pattern for federation
-            federation.record_access(key, "test_cluster_1")
 
             cached_results[str(key)] = expected_output
 
@@ -1060,16 +911,12 @@ class TestMPREGCacheIntegration:
         assert cache_stats["l1_statistics"]["hits"] == len(workflows)
         assert cache_stats["l1_statistics"]["entry_count"] == len(workflows)
 
-        gossip_stats = gossip.get_statistics()
-        assert gossip_stats["operations"]["sent"] == len(workflows)
-
-        federation_stats = federation.get_statistics()
-        assert federation_stats["access_patterns"]["tracked_keys"] == len(workflows)
+        cache_stats = cache_protocol.get_statistics()
+        assert cache_stats["operations"]["sent"] == len(workflows)
 
         # Cleanup
         await cache_manager.shutdown()
-        await gossip.shutdown()
-        await federation.shutdown()
+        await cache_protocol.shutdown()
 
 
 # Performance benchmarks for real-world scenarios

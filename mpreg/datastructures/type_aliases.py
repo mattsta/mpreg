@@ -6,7 +6,9 @@ self-documenting and type-safe by replacing raw types like str, int, float
 with semantic aliases.
 """
 
-from collections.abc import Mapping
+from __future__ import annotations
+
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
 # Time and timestamp types
@@ -36,6 +38,7 @@ type CacheTagName = str
 
 # Message and queue types
 type QueueName = str
+type SubscriberId = str
 type TopicName = str
 type MessagePayload = Any
 type MessageHeaders = Mapping[str, str]
@@ -51,10 +54,16 @@ type CacheSize = int
 # Network and federation types
 type HostAddress = str
 type PortNumber = int
+type PortAssignmentCallback = Callable[[PortNumber], None | Awaitable[None]]
 type UrlString = str
-type NodeURL = str  # WebSocket URL for a node (e.g., ws://host:port)
+type TransportProtocolName = str
+type ConnectionTypeName = str
+type NodeURL = str  # WebSocket URL for a node (e.g., ws://host:<port>)
 type ClusterID = str  # Cluster identifier for federation
 type FunctionName = str  # Name of an RPC function
+type FunctionId = str  # Unique identifier for a function capability
+type FunctionVersion = str  # Semantic version string for a function
+type VersionConstraintSpec = str  # Constraint spec for function versions
 type ResourceName = str  # Name of a resource/location
 type ClusterWeight = float
 type NetworkLatencyMs = float
@@ -113,6 +122,7 @@ type TokenBalance = int
 # Federation and hub types
 type HubId = str
 type RegionName = str
+type AreaId = str
 type FederationRouteId = str
 type GeographicDistanceKm = float
 type HubTierName = str
@@ -139,6 +149,7 @@ type HopCount = int
 type PathLatencyMs = float
 type RouteCostScore = float
 type RouteReliability = float
+type RouteKeyId = str
 
 # Governance policy types
 type PolicyParameterName = str

@@ -7,6 +7,7 @@ to PROVE what works and what needs to be fixed.
 """
 
 import asyncio
+import contextlib
 
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
@@ -149,10 +150,8 @@ async def test_autodiscovery_cluster(
     # Cleanup
     for task in tasks:
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
 
     return result
 

@@ -6,6 +6,8 @@ to ensure uniform behavior and prevent configuration drift between different
 transport implementations.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -65,7 +67,7 @@ class TransportDefaults:
     retry_backoff: float = DEFAULT_RETRY_BACKOFF
 
     @classmethod
-    def for_client_connections(cls) -> "TransportDefaults":
+    def for_client_connections(cls) -> TransportDefaults:
         """Get defaults optimized for client connections.
 
         Client connections handle user data and may need to transfer
@@ -79,7 +81,7 @@ class TransportDefaults:
         )
 
     @classmethod
-    def for_internal_connections(cls) -> "TransportDefaults":
+    def for_internal_connections(cls) -> TransportDefaults:
         """Get defaults optimized for internal node-to-node connections.
 
         Internal connections handle gossip protocol, consensus, and

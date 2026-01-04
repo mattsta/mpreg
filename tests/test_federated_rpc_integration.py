@@ -22,7 +22,9 @@ import ulid
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 from mpreg.core.model import RPCCommand, RPCRequest
-from mpreg.federation.federation_config import create_permissive_bridging_config
+from mpreg.fabric.federation_config import (
+    create_explicit_bridging_config,
+)
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
@@ -180,11 +182,17 @@ class TestFederatedRPCIntegration:
 
         # Create a 5-cluster federation chain to test hop limiting
         # Each node is in its own cluster, connected in a federation chain
+        cluster_ids = [f"cluster-{i + 1}" for i in range(len(ports))]
         settings_list = []
         for i, port in enumerate(ports):
             connect_to = f"ws://127.0.0.1:{ports[i - 1]}" if i > 0 else None
 
-            cluster_id = f"cluster-{i + 1}"
+            cluster_id = cluster_ids[i]
+            allowed_clusters: set[str] = set()
+            if i > 0:
+                allowed_clusters.add(cluster_ids[i - 1])
+            if i < len(cluster_ids) - 1:
+                allowed_clusters.add(cluster_ids[i + 1])
             settings_list.append(
                 MPREGSettings(
                     host="127.0.0.1",
@@ -196,9 +204,10 @@ class TestFederatedRPCIntegration:
                     connect=connect_to,
                     advertised_urls=None,
                     gossip_interval=1.0,  # Normal gossip - federation boundaries prevent full mesh
-                    federation_config=create_permissive_bridging_config(
-                        cluster_id
-                    ),  # Allow cross-federation
+                    fabric_routing_max_hops=3,
+                    federation_config=create_explicit_bridging_config(
+                        cluster_id, allowed_clusters
+                    ),
                 )
             )
 
@@ -221,7 +230,7 @@ class TestFederatedRPCIntegration:
             "federation_origin_function", federation_origin_function, ["federation-1"]
         )
 
-        # Allow propagation with hop limits (default max_hops=3)
+        # Allow propagation with hop limits (max_hops=3)
         await asyncio.sleep(8.0)
 
         # Test from federation cluster within hop limit (Cluster 3, 2 hops away)
@@ -396,7 +405,7 @@ class TestFederatedRPCIntegration:
         # Verify deduplication worked (no errors, function found once)
         assert "dedup_test" in result
         final_result = result["dedup_test"]
-        assert "Origin function result: deduplication_test" == final_result
+        assert final_result == "Origin function result: deduplication_test"
 
         print("✅ Federated RPC deduplication: Diamond topology handled correctly")
         print("  Multiple announcement paths deduplicated successfully")
@@ -651,7 +660,7 @@ class TestFederatedRPCIntegration:
         )
 
         assert "hub2_test" in result
-        assert "Hub2 processed: resilience_test" == result["hub2_test"]
+        assert result["hub2_test"] == "Hub2 processed: resilience_test"
 
         print(
             "✅ Network resilience: Federated RPC system operational with redundant topology"

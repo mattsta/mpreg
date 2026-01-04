@@ -6,6 +6,8 @@ and propagation system, replacing primitive types with semantic type aliases
 and structured dataclasses for better type safety and code clarity.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 
 from .type_aliases import (
@@ -71,7 +73,7 @@ class FederatedPropagationInfo:
     @classmethod
     def create_initial(
         cls, original_source: NodeURL, max_hops: MaxHops = 3
-    ) -> "FederatedPropagationInfo":
+    ) -> FederatedPropagationInfo:
         """Create initial propagation info for a new announcement."""
         import time
 
@@ -83,7 +85,7 @@ class FederatedPropagationInfo:
             original_source=original_source,
         )
 
-    def create_forwarded(self) -> "FederatedPropagationInfo":
+    def create_forwarded(self) -> FederatedPropagationInfo:
         """Create propagation info for forwarding to next hop."""
         return FederatedPropagationInfo(
             hop_count=self.hop_count + 1,
@@ -129,7 +131,7 @@ class ServerCapabilities:
         resources: tuple[str, ...],
         cluster_id: str,
         advertised_urls: tuple[str, ...] = (),
-    ) -> "ServerCapabilities":
+    ) -> ServerCapabilities:
         """Create server capabilities from primitive types."""
         return ServerCapabilities(
             functions=tuple(f for f in functions),
@@ -523,7 +525,7 @@ class FederatedRPCAnnouncement:
         original_source: str,
         advertised_urls: tuple[str, ...] = (),
         max_hops: int = 3,
-    ) -> "FederatedRPCAnnouncement":
+    ) -> FederatedRPCAnnouncement:
         """Create an initial federated RPC announcement."""
         capabilities = ServerCapabilities.create(
             functions, resources, cluster_id, advertised_urls
@@ -531,7 +533,7 @@ class FederatedRPCAnnouncement:
         propagation = FederatedPropagationInfo.create_initial(original_source, max_hops)
         return cls(capabilities=capabilities, propagation=propagation)
 
-    def create_forwarded(self) -> "FederatedRPCAnnouncement":
+    def create_forwarded(self) -> FederatedRPCAnnouncement:
         """Create a forwarded version of this announcement for the next hop."""
         return FederatedRPCAnnouncement(
             capabilities=self.capabilities,

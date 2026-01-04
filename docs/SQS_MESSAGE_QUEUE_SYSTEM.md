@@ -2,7 +2,10 @@
 
 ## Overview
 
-MPREG includes a comprehensive SQS-like message queuing system that provides reliable, scalable message delivery with multiple delivery guarantees. The system is designed for distributed applications requiring robust message processing capabilities.
+MPREG includes a comprehensive SQS-like message queuing system that provides
+reliable, scalable message delivery with multiple delivery guarantees. Local
+queues run per cluster, while cross-cluster queue delivery is handled by the
+unified fabric control plane.
 
 ## Core Features
 
@@ -161,7 +164,7 @@ config = QueueConfiguration(
 from mpreg.core.message_queue import MessageQueue, QueueConfiguration, DeliveryGuarantee
 from mpreg.core.message_queue_manager import MessageQueueManager, QueueManagerConfiguration
 
-# Create queue manager
+# Create queue manager (local, per-cluster)
 config = QueueManagerConfiguration()
 manager = MessageQueueManager(config)
 
@@ -190,6 +193,78 @@ result = await manager.send_message(
 print(f"Message sent: {result.success}")
 ```
 
+## Fabric Federation (Cross-Cluster)
+
+For cross-cluster queue delivery, the fabric uses catalog discovery and the
+`FabricQueueFederationManager` to forward messages across clusters. Queue
+announcements and subscriptions are propagated via the fabric gossip plane.
+
+See `tests/integration/test_fabric_queue_federation.py` for a full wiring
+example and `mpreg/fabric/queue_federation.py` for the implementation.
+
+### Fabric Wiring Example
+
+The server can wire queue federation automatically when
+`enable_default_queue=True`.
+
+```python
+from mpreg.core.config import MPREGSettings
+from mpreg.core.message_queue import DeliveryGuarantee
+from mpreg.core.port_allocator import port_range_context
+from mpreg.examples.showcase_utils import run_with_servers
+from mpreg.fabric.federation_config import create_permissive_bridging_config
+
+async def demo() -> None:
+    with port_range_context(2, "servers") as ports:
+        settings = [
+            MPREGSettings(
+                port=ports[0],
+                name="Queue-A",
+                cluster_id="queue-a",
+                resources={"queue"},
+                enable_default_queue=True,
+                federation_config=create_permissive_bridging_config("queue-a"),
+            ),
+            MPREGSettings(
+                port=ports[1],
+                name="Queue-B",
+                cluster_id="queue-b",
+                resources={"queue"},
+                connect=f"ws://127.0.0.1:{ports[0]}",
+                enable_default_queue=True,
+                federation_config=create_permissive_bridging_config("queue-b"),
+            ),
+        ]
+
+        async def _run(servers) -> None:
+            server_a, server_b = servers
+            await server_b._fabric_queue_federation.create_queue("jobs")
+
+            def on_message(message) -> None:
+                print("Queue payload:", message.payload)
+
+            server_b._queue_manager.subscribe_to_queue(
+                "jobs", "worker-1", "jobs.*", on_message
+            )
+
+            await server_a._fabric_queue_federation.send_message_globally(
+                queue_name="jobs",
+                topic="jobs.created",
+                payload={"job": "run"},
+                delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
+                target_cluster="queue-b",
+            )
+
+        await run_with_servers(settings, _run)
+```
+
+### Fabric Integration Notes
+
+- Queue endpoints are advertised through the routing catalog.
+- Route selection uses the same fabric routing engine as RPC and pubsub.
+- Link-state (when enabled) can influence multi-hop queue routing decisions.
+- Federation scope is controlled by the same policy surface used elsewhere.
+
 ### Advanced Configuration
 
 ```python
@@ -214,6 +289,26 @@ config = QueueConfiguration(
 await manager.create_queue("critical-operations", config)
 ```
 
+## Persistence Modes
+
+The queue system can persist state through the unified persistence layer, so
+pending and in-flight messages can be restored after a restart.
+
+```python
+from mpreg.core.config import MPREGSettings
+from mpreg.core.persistence.config import PersistenceConfig, PersistenceMode
+
+settings = MPREGSettings(
+    enable_default_queue=True,
+    persistence_config=PersistenceConfig(
+        mode=PersistenceMode.SQLITE,
+    ),
+)
+```
+
+When persistence is enabled, `MessageQueueManager` restores stored queues on
+startup and replays pending/in-flight messages.
+
 ## Topic Patterns
 
 The system supports flexible topic pattern matching for message routing:
@@ -227,6 +322,12 @@ queue.subscribe("subscriber-1", "user.login", callback)
 # Will match: "user.login"
 # Will NOT match: "user.logout", "admin.login"
 ```
+
+## See Also
+
+- `docs/ARCHITECTURE.md`
+- `docs/MPREG_PROTOCOL_SPECIFICATION.md`
+- `docs/EXAMPLES.md`
 
 ### Wildcard Patterns
 
@@ -304,7 +405,28 @@ await manager.route_topic_to_queue(
 
 ### Federation Support
 
-Works with MPREG's federation system for distributed message processing across clusters.
+Uses the unified fabric control plane for cross-cluster queue delivery. Queue
+endpoints are advertised via the routing catalog, and forwarding decisions use
+the same routing engine as RPC and pub/sub. Federation scope is controlled by
+the fabric federation policy (strict isolation vs cross-cluster allowed).
+
+Server integration is automatic when the queue manager is enabled:
+
+```python
+from mpreg.core.config import MPREGSettings
+from mpreg.server import MPREGServer
+
+settings = MPREGSettings(
+    enable_default_queue=True,
+    fabric_routing_enabled=True,
+)
+server = MPREGServer(settings=settings)
+```
+
+Implementation references:
+
+- `mpreg/fabric/queue_federation.py`
+- `mpreg/fabric/queue_delivery.py`
 
 ## Error Handling
 
@@ -432,7 +554,7 @@ await manager.send_message(
 Experience all features with the comprehensive demo:
 
 ```bash
-poetry run mpreg-queue-demo
+uv run mpreg-queue-demo
 ```
 
 The demo showcases:

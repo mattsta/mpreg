@@ -25,36 +25,17 @@ from typing import Any
 
 import pytest
 
-from mpreg.datastructures.production_raft import (
-    RaftState,
-)
+from mpreg.core.config import MPREGSettings
+from mpreg.core.port_allocator import allocate_port_range, release_port
+from mpreg.datastructures.production_raft import RaftState
 from mpreg.datastructures.production_raft_implementation import (
     ProductionRaft,
     RaftConfiguration,
 )
 from mpreg.datastructures.raft_storage_adapters import RaftStorageFactory
+from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
-from tests.test_production_raft_integration import MockNetwork
-
-
-class LiveNetworkAdapter:
-    """Live network adapter using real TCP connections but simplified interface."""
-
-    def __init__(self, node_id: str, cluster_ports: dict[str, int]):
-        self.node_id = node_id
-        self.cluster_ports = cluster_ports
-
-    async def send_request_vote(self, target_node_id: str, request):
-        """Send RequestVote RPC - for now use direct method call."""
-        # TODO: Implement real TCP networking
-        # For now, this is a placeholder that allows tests to run
-        return None
-
-    async def send_append_entries(self, target_node_id: str, request):
-        """Send AppendEntries RPC - for now use direct method call."""
-        # TODO: Implement real TCP networking
-        # For now, this is a placeholder that allows tests to run
-        return None
+from tests.test_helpers import wait_for_condition
 
 
 class TestLiveRaftIntegration:
@@ -80,14 +61,9 @@ class TestLiveRaftIntegration:
         storage_type: str = "memory",
         fast_config: bool = True,
     ) -> dict[str, ProductionRaft]:
-        """Create a live Raft cluster with real port allocation."""
+        """Create a live Raft cluster backed by fabric transport."""
 
-        # Use existing MockNetwork for now but with port allocation
-        cluster_members = {f"node_{i}" for i in range(cluster_size)}
         nodes = {}
-
-        # Create network
-        network = MockNetwork()
 
         # Create configuration with concurrency-aware scaling
         concurrency_factor = 4.0 if os.environ.get("PYTEST_XDIST_WORKER") else 1.0
@@ -102,7 +78,43 @@ class TestLiveRaftIntegration:
         else:
             config = RaftConfiguration()  # Production settings
 
-        for i, node_id in enumerate(cluster_members):
+        ports = allocate_port_range(cluster_size, "servers")
+        test_context.tasks.append(
+            asyncio.create_task(self._release_ports_on_cancel(ports))
+        )
+
+        cluster_id = "raft-live"
+        settings = []
+        for idx, port in enumerate(ports):
+            connect = None if idx == 0 else f"ws://127.0.0.1:{ports[0]}"
+            settings.append(
+                MPREGSettings(
+                    host="127.0.0.1",
+                    port=port,
+                    name=f"Raft-Live-{idx}",
+                    cluster_id=cluster_id,
+                    connect=connect,
+                    gossip_interval=0.5,
+                    fabric_routing_enabled=True,
+                )
+            )
+
+        servers = [MPREGServer(settings=s) for s in settings]
+        test_context.servers.extend(servers)
+        test_context.tasks.extend(
+            [asyncio.create_task(server.server()) for server in servers]
+        )
+
+        await asyncio.sleep(1.5 * concurrency_factor)
+        if cluster_size > 1:
+            for server in servers:
+                await self._wait_for_peers(server, expected=cluster_size - 1)
+
+        node_ids = {server.cluster.local_url for server in servers}
+        cluster_members = set(node_ids)
+
+        for server in servers:
+            node_id = server.cluster.local_url
             # Create storage
             storage: Any  # Type annotation for mypy
             if storage_type == "memory":
@@ -114,15 +126,14 @@ class TestLiveRaftIntegration:
             else:
                 raise ValueError(f"Unknown storage type: {storage_type}")
 
-            # Create transport using existing pattern
-            from tests.test_production_raft_integration import NetworkAwareTransport
-
-            transport = NetworkAwareTransport(node_id, network)
-
             # Create testable state machine
             from tests.test_production_raft_integration import TestableStateMachine
 
             state_machine = TestableStateMachine()
+
+            transport = server.fabric_raft_transport()
+            if transport is None:
+                raise AssertionError("Fabric Raft transport not initialized")
 
             # Create Raft node
             node = ProductionRaft(
@@ -135,11 +146,39 @@ class TestLiveRaftIntegration:
             )
 
             nodes[node_id] = node
-            # Register node with network for communication
-            network.register_node(node_id, node)
-
+            server.register_raft_node(node)
         print(f"Created live Raft cluster with {cluster_size} nodes")
         return nodes
+
+    async def _release_ports_on_cancel(self, ports: list[int]) -> None:
+        try:
+            await asyncio.Event().wait()
+        finally:
+            for port in ports:
+                release_port(port)
+
+    async def _wait_for_peers(self, server: MPREGServer, expected: int) -> None:
+        concurrency_factor = 4.0 if os.environ.get("PYTEST_XDIST_WORKER") else 1.0
+        base_timeout = max(10.0, expected * 1.5)
+        try:
+            await wait_for_condition(
+                lambda: len(server.cluster.peer_neighbors()) >= expected,
+                timeout=base_timeout * concurrency_factor,
+                interval=0.2,
+                error_message=f"Server {server.settings.name} did not see {expected} peers",
+            )
+        except AssertionError as exc:
+            neighbors = server.cluster.peer_neighbors()
+            neighbor_ids = [neighbor.node_id for neighbor in neighbors]
+            directory = server.cluster.peer_directory
+            known_nodes = (
+                [node.node_id for node in directory.nodes()] if directory else []
+            )
+            message = (
+                f"Server {server.settings.name} did not see {expected} peers "
+                f"(saw={len(neighbors)} neighbors={neighbor_ids} known_nodes={known_nodes})"
+            )
+            raise AssertionError(message) from exc
 
     @pytest.mark.asyncio
     async def test_live_leader_election_golden_path(self, temp_dir, test_context):
@@ -806,6 +845,7 @@ class TestLiveRaftIntegration:
     async def test_live_concurrent_high_load(self, temp_dir, test_context):
         """Test high concurrent load across different cluster sizes."""
         print("\n=== LIVE CONCURRENT HIGH LOAD ===")
+        concurrency_factor = 4.0 if os.environ.get("PYTEST_XDIST_WORKER") else 1.0
 
         for cluster_size in [5, 7, 11]:
             print(f"\n--- High load test: {cluster_size} nodes ---")
@@ -820,31 +860,75 @@ class TestLiveRaftIntegration:
                     await node.start()
 
                 # Wait for leader
-                leader = None
-                for _ in range(100):
-                    await asyncio.sleep(0.1)
+                leader: ProductionRaft | None = None
+
+                def leader_ready() -> bool:
+                    nonlocal leader
                     leaders = [
                         n for n in nodes.values() if n.current_state == RaftState.LEADER
                     ]
                     if leaders:
                         leader = leaders[0]
-                        break
+                        return True
+                    return False
 
-                assert leader is not None, f"No leader in {cluster_size}-node cluster"
+                election_timeout = max(10.0, cluster_size * 2.0) * concurrency_factor
+                try:
+                    await wait_for_condition(
+                        leader_ready,
+                        timeout=election_timeout,
+                        interval=0.1,
+                        error_message=(
+                            f"No leader in {cluster_size}-node cluster "
+                            f"after {election_timeout:.1f}s"
+                        ),
+                    )
+                except AssertionError as exc:
+                    states = {
+                        node_id: node.current_state.value
+                        for node_id, node in nodes.items()
+                    }
+                    raise AssertionError(
+                        f"No leader in {cluster_size}-node cluster; states={states}"
+                    ) from exc
 
                 # Generate high concurrent load
                 concurrent_batches = cluster_size  # Scale with cluster size
                 commands_per_batch = 10
+
+                async def current_leader(timeout: float = 1.0) -> ProductionRaft | None:
+                    deadline = asyncio.get_running_loop().time() + timeout
+                    while asyncio.get_running_loop().time() < deadline:
+                        leaders = [
+                            n
+                            for n in nodes.values()
+                            if n.current_state == RaftState.LEADER
+                        ]
+                        if leaders:
+                            return leaders[0]
+                        await asyncio.sleep(0.05)
+                    return None
 
                 async def high_load_batch(batch_id: int):
                     """Submit a batch of commands concurrently."""
                     batch_results = []
                     for i in range(commands_per_batch):
                         try:
-                            result = await asyncio.wait_for(
-                                leader.submit_command(f"load_test_b{batch_id}_c{i}"),
-                                timeout=5.0,
-                            )
+                            attempt = 0
+                            result = None
+                            while attempt < 2:
+                                attempt += 1
+                                target = await current_leader(timeout=1.0)
+                                if not target:
+                                    continue
+                                result = await asyncio.wait_for(
+                                    target.submit_command(
+                                        f"load_test_b{batch_id}_c{i}"
+                                    ),
+                                    timeout=5.0,
+                                )
+                                if result is not None:
+                                    break
                             batch_results.append(result is not None)
                         except TimeoutError:
                             batch_results.append(False)
@@ -898,6 +982,9 @@ class TestLiveRaftIntegration:
                 await asyncio.sleep(2.0)
 
                 # Verify cluster consistency after high load
+                refreshed_leader = await current_leader(timeout=2.0)
+                if refreshed_leader:
+                    leader = refreshed_leader
                 leader_log_length = len(leader.persistent_state.log_entries)
                 consistency_errors = 0
 

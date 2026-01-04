@@ -22,6 +22,7 @@ from typing import Protocol
 from loguru import logger
 
 # Type aliases for circuit breaker semantics
+
 type EndpointUrl = str
 type FailureCount = int
 type SuccessCount = int

@@ -358,14 +358,68 @@ class TestTopicEnhancedMessageQueueManager:
         subscription_id = subscription.subscription_id
         assert subscription_id in manager.topic_subscriptions
 
-        # Unsubscribe
-        result = await manager.unsubscribe_from_topic_pattern(subscription_id)
-        assert result is True
-        assert subscription_id not in manager.topic_subscriptions
+    async def test_direct_queue_receive(self):
+        """Test direct queue receive via enhanced manager."""
+        manager = create_simple_topic_queue_manager()
+        await manager.base_manager.create_queue("direct-queue")
 
-        # Test unsubscribing non-existent subscription
-        result = await manager.unsubscribe_from_topic_pattern("non-existent")
-        assert result is False
+        try:
+            receive_task = asyncio.create_task(
+                manager.receive_message("direct-queue", timeout_seconds=1.0)
+            )
+            await asyncio.sleep(0)
+
+            await manager.send_message(
+                "direct-queue",
+                "direct.test",
+                {"payload": "hello"},
+                DeliveryGuarantee.AT_LEAST_ONCE,
+            )
+
+            message = await receive_task
+            assert message is not None
+            assert message.payload == {"payload": "hello"}
+        finally:
+            await manager.stop()
+
+    async def test_topic_message_consumption(self):
+        """Test topic pattern consumption yields routed messages."""
+        manager = create_simple_topic_queue_manager()
+
+        subscription = await manager.subscribe_to_topic_pattern(
+            pattern="orders.*.created",
+            consumer_id="consumer",
+        )
+
+        await manager.send_via_topic_pattern(
+            topic="orders.us.created",
+            payload={"order_id": "A100"},
+            delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
+        )
+
+        try:
+            received = []
+            async for message in manager.consume_topic_messages(
+                subscription_id=subscription.subscription_id,
+                max_messages=1,
+                timeout_seconds=1.0,
+            ):
+                received.append(message)
+
+            assert len(received) == 1
+            assert received[0].message.payload == {"order_id": "A100"}
+
+            # Unsubscribe
+            subscription_id = subscription.subscription_id
+            result = await manager.unsubscribe_from_topic_pattern(subscription_id)
+            assert result is True
+            assert subscription_id not in manager.topic_subscriptions
+
+            # Test unsubscribing non-existent subscription
+            result = await manager.unsubscribe_from_topic_pattern("non-existent")
+            assert result is False
+        finally:
+            await manager.stop()
 
     async def test_consumer_group_creation(self):
         """Test creating consumer groups with multiple patterns."""
@@ -539,7 +593,8 @@ class TestTopicQueueRoutingPropertyBased:
         deadline=None,
         suppress_health_check=[HealthCheck.filter_too_much],
     )
-    def test_topic_routing_consistency(self, topic_patterns, test_topics):
+    @pytest.mark.asyncio
+    async def test_topic_routing_consistency(self, topic_patterns, test_topics):
         """Property: Topic routing should be consistent and deterministic."""
 
         async def test_routing():
@@ -569,15 +624,15 @@ class TestTopicQueueRoutingPropertyBased:
             # Clean up
             await message_queue_manager.shutdown()
 
-        # Run the async test
-        asyncio.run(test_routing())
+        await test_routing()
 
     @given(
         num_queues=st.integers(min_value=1, max_value=10),
         routing_strategy=st.sampled_from(list(RoutingStrategy)),
     )
     @settings(max_examples=15, deadline=None)
-    def test_routing_strategy_properties(self, num_queues, routing_strategy):
+    @pytest.mark.asyncio
+    async def test_routing_strategy_properties(self, num_queues, routing_strategy):
         """Property: Routing strategies should behave consistently."""
 
         async def test_strategy():
@@ -620,7 +675,7 @@ class TestTopicQueueRoutingPropertyBased:
             # Clean up resources
             await message_queue_manager.shutdown()
 
-        asyncio.run(test_strategy())
+        await test_strategy()
 
 
 if __name__ == "__main__":

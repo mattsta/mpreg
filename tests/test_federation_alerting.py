@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from mpreg.federation.federation_alerting import (
+from mpreg.fabric.federation_alerting import (
     AlertRoutingRule,
     AlertSeverity,
     ConsoleNotificationBackend,
@@ -30,7 +30,7 @@ from mpreg.federation.federation_alerting import (
     create_slack_channel,
     create_webhook_channel,
 )
-from mpreg.federation.performance_metrics import PerformanceAlert
+from mpreg.fabric.performance_metrics import PerformanceAlert
 
 
 class TestNotificationChannels:

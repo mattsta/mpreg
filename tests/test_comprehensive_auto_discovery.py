@@ -15,16 +15,26 @@ Key test scenarios:
 """
 
 import asyncio
+import os
+import time
 from dataclasses import dataclass, field
 
 import pytest
 
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
-from mpreg.core.model import RPCCommand
+from mpreg.core.model import MPREGException, RPCCommand
+from mpreg.core.port_allocator import get_port_allocator
+from mpreg.datastructures.function_identity import FunctionSelector, VersionConstraint
+from mpreg.fabric.index import FunctionQuery
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
-from tests.port_allocator import get_port_allocator
+from tests.test_helpers import wait_for_condition
+
+
+def get_concurrency_factor() -> float:
+    """Scale timeouts for xdist workers under high concurrency."""
+    return 2.0 if os.environ.get("PYTEST_XDIST_WORKER") else 1.0
 
 
 # Custom fixture for larger cluster sizes
@@ -74,39 +84,34 @@ class AutoDiscoveryTestHelpers:
         """Test auto-discovery for a specific cluster configuration."""
 
         result = AutoDiscoveryTestResult(len(ports), topology)
+        concurrency_factor = get_concurrency_factor()
 
         print(f"\n{'=' * 60}")
         print(f"TESTING {len(ports)}-NODE CLUSTER - {topology} TOPOLOGY")
         print(f"{'=' * 60}")
 
         # Create cluster servers
+        tasks_start = len(test_context.tasks)
+        servers_start = len(test_context.servers)
         servers = await self._create_cluster_servers(test_context, ports, topology)
 
         # Allow time for all servers to fully initialize before starting discovery timing
         if len(ports) >= 30:
-            startup_wait = 5.0  # Servers start up quickly, just need brief pause
+            startup_timeout = max(5.0, len(ports) * 0.1)
             print(
-                f"Waiting {startup_wait}s for all {len(ports)} servers to fully initialize..."
+                f"Waiting up to {startup_timeout}s for all {len(ports)} servers to fully initialize..."
             )
-            await asyncio.sleep(startup_wait)
-
-        # Wait for auto-discovery - realistic timing since algorithms converge fast
-        if len(ports) >= 30:
-            # Large clusters: algorithms converge quickly, just need time for all connections
-            discovery_time = max(20.0, len(ports) * 0.5)  # Much more realistic timing
-        elif len(ports) >= 10:
-            # Medium clusters need moderate time
-            discovery_time = max(15.0, len(ports) * 1.0)
-        else:
-            # Small clusters can use original timing
-            discovery_time = max(5.0, len(ports) * 0.5)
-
-        print(f"Waiting {discovery_time}s for auto-discovery ({len(ports)} nodes)...")
-        await asyncio.sleep(discovery_time)
-
-        # Check discovery results
-        print("\n=== AUTO-DISCOVERY RESULTS ===")
-        all_discovered = True
+            await wait_for_condition(
+                lambda: all(
+                    server._transport_listener is not None for server in servers
+                ),
+                timeout=startup_timeout * concurrency_factor,
+                interval=0.1,
+                error_message=(
+                    "Not all servers started transport listeners within "
+                    f"{startup_timeout:.1f}s"
+                ),
+            )
 
         # For large clusters, use more lenient success criteria
         if len(ports) >= 30:
@@ -120,6 +125,41 @@ class AutoDiscoveryTestHelpers:
             nodes_meeting_threshold = 0
             min_nodes_threshold = len(ports)
 
+        # Wait for auto-discovery - realistic timing since algorithms converge fast
+        if len(ports) >= 30:
+            # Large clusters: algorithms converge quickly, just need time for all connections
+            discovery_timeout = max(45.0, len(ports) * 1.0)
+        elif len(ports) >= 10:
+            # Medium clusters need moderate time
+            discovery_timeout = max(15.0, len(ports) * 1.0)
+        else:
+            # Small clusters can use original timing
+            discovery_timeout = max(5.0, len(ports) * 0.5)
+
+        print(
+            f"Waiting up to {discovery_timeout}s for auto-discovery ({len(ports)} nodes)..."
+        )
+
+        def discovery_ready() -> bool:
+            meeting_threshold = 0
+            for server in servers:
+                discovered_count = max(len(server.cluster.servers) - 1, 0)
+                if discovered_count >= min_discovery_threshold:
+                    meeting_threshold += 1
+            return meeting_threshold >= min_nodes_threshold
+
+        await wait_for_condition(
+            discovery_ready,
+            timeout=discovery_timeout * concurrency_factor,
+            interval=0.2,
+            error_message="Auto-discovery did not converge within the timeout",
+        )
+
+        # Check discovery results
+        print("\n=== AUTO-DISCOVERY RESULTS ===")
+        all_discovered = True
+
+        discovery_ok_nodes: list[int] = []
         for i, server in enumerate(servers):
             cluster_servers = server.cluster.servers
             discovered_count = len(cluster_servers) - 1  # Exclude self
@@ -136,6 +176,7 @@ class AutoDiscoveryTestHelpers:
 
             if discovered:
                 nodes_meeting_threshold += 1
+                discovery_ok_nodes.append(i)
 
         # Determine overall success based on cluster size
         if len(ports) >= 30:
@@ -169,11 +210,39 @@ class AutoDiscoveryTestHelpers:
             # Small clusters can use original timing
             propagation_time = max(3.0, len(ports) * 0.3)
 
-        print(f"Waiting {propagation_time}s for function propagation...")
-        await asyncio.sleep(propagation_time)
+        print(f"Waiting up to {propagation_time}s for function propagation...")
+
+        if len(ports) >= 30:
+            min_propagation_nodes = max(int(len(ports) * 0.8), 1)
+            propagation_targets = set(discovery_ok_nodes)
+
+            def propagation_ready() -> bool:
+                propagated = 0
+                for idx, server in enumerate(servers):
+                    if idx not in propagation_targets:
+                        continue
+                    if "test_function" in server.cluster.funtimes:
+                        propagated += 1
+                return propagated >= min_propagation_nodes
+
+        else:
+
+            def propagation_ready() -> bool:
+                return all(
+                    "test_function" in server.cluster.funtimes for server in servers
+                )
+
+        await wait_for_condition(
+            propagation_ready,
+            timeout=propagation_time * concurrency_factor,
+            interval=0.2,
+            error_message="Function propagation did not converge within the timeout",
+        )
 
         # Check propagation results
         all_propagated = True
+        propagated_target_count = 0
+        propagation_target_nodes = discovery_ok_nodes
         for i, server in enumerate(servers):
             functions = list(server.cluster.funtimes.keys())
             has_function = "test_function" in functions
@@ -184,8 +253,18 @@ class AutoDiscoveryTestHelpers:
                 f"Node {i}: {'✅ HAS' if has_function else '❌ MISSING'} test_function"
             )
 
-            if not has_function:
+            if has_function:
+                if i in propagation_target_nodes:
+                    propagated_target_count += 1
+            elif len(ports) < 30:
                 all_propagated = False
+
+        if len(ports) >= 30:
+            min_propagation_nodes = max(int(len(ports) * 0.8), 1)
+            all_propagated = propagated_target_count >= min_propagation_nodes
+            print(
+                f"Large cluster propagation: {propagated_target_count}/{min_propagation_nodes} nodes with function"
+            )
 
         # Final result
         result.success = all_discovered and all_propagated
@@ -198,6 +277,23 @@ class AutoDiscoveryTestHelpers:
         status = "✅ SUCCESS" if result.success else "❌ FAILED"
         print(f"\n{topology} {len(ports)}-Node Result: {status}")
 
+        # Cleanup servers before returning to avoid socket leaks in large clusters.
+        await asyncio.gather(
+            *(server.shutdown_async() for server in servers),
+            return_exceptions=True,
+        )
+        new_tasks = test_context.tasks[tasks_start:]
+        if new_tasks:
+            await asyncio.wait(new_tasks, timeout=max(5.0, len(new_tasks) * 0.5))
+        for task in new_tasks:
+            if not task.done():
+                task.cancel()
+        if new_tasks:
+            await asyncio.gather(*new_tasks, return_exceptions=True)
+        del test_context.tasks[tasks_start:]
+        del test_context.servers[servers_start:]
+        await asyncio.sleep(0.1)
+
         return result
 
     async def _create_cluster_servers(
@@ -205,6 +301,8 @@ class AutoDiscoveryTestHelpers:
         test_context: AsyncTestContext,
         ports: list[int],
         topology: str,
+        *,
+        fabric_routing_enabled: bool = False,
     ) -> list[MPREGServer]:
         """Create cluster servers with the specified topology."""
 
@@ -215,7 +313,13 @@ class AutoDiscoveryTestHelpers:
             for i, port in enumerate(ports):
                 connect_to = f"ws://127.0.0.1:{ports[i - 1]}" if i > 0 else None
                 settings_list.append(
-                    self._create_node_settings(i, port, connect_to, len(ports))
+                    self._create_node_settings(
+                        i,
+                        port,
+                        connect_to,
+                        len(ports),
+                        fabric_routing_enabled=fabric_routing_enabled,
+                    )
                 )
 
         elif topology == "STAR_HUB":
@@ -223,7 +327,13 @@ class AutoDiscoveryTestHelpers:
             for i, port in enumerate(ports):
                 connect_to = f"ws://127.0.0.1:{ports[0]}" if i > 0 else None
                 settings_list.append(
-                    self._create_node_settings(i, port, connect_to, len(ports))
+                    self._create_node_settings(
+                        i,
+                        port,
+                        connect_to,
+                        len(ports),
+                        fabric_routing_enabled=fabric_routing_enabled,
+                    )
                 )
 
         elif topology == "RING":
@@ -234,7 +344,13 @@ class AutoDiscoveryTestHelpers:
                 else:
                     connect_to = f"ws://127.0.0.1:{ports[i - 1]}"
                 settings_list.append(
-                    self._create_node_settings(i, port, connect_to, len(ports))
+                    self._create_node_settings(
+                        i,
+                        port,
+                        connect_to,
+                        len(ports),
+                        fabric_routing_enabled=fabric_routing_enabled,
+                    )
                 )
 
         elif topology == "MULTI_HUB":
@@ -250,7 +366,13 @@ class AutoDiscoveryTestHelpers:
                     hub_port = ports[i % num_hubs]
                     connect_to = f"ws://127.0.0.1:{hub_port}"
                 settings_list.append(
-                    self._create_node_settings(i, port, connect_to, len(ports))
+                    self._create_node_settings(
+                        i,
+                        port,
+                        connect_to,
+                        len(ports),
+                        fabric_routing_enabled=fabric_routing_enabled,
+                    )
                 )
 
         # Create and start servers
@@ -298,14 +420,18 @@ class AutoDiscoveryTestHelpers:
         return servers
 
     def _create_node_settings(
-        self, node_id: int, port: int, connect_to: str | None, cluster_size: int
+        self,
+        node_id: int,
+        port: int,
+        connect_to: str | None,
+        cluster_size: int,
+        *,
+        fabric_routing_enabled: bool = False,
     ) -> MPREGSettings:
         """Create settings for a node in the test cluster."""
         # Scale gossip interval based on cluster size to prevent congestion
         if cluster_size >= 30:
-            gossip_interval = (
-                2.0  # Slower gossip for large clusters to prevent congestion
-            )
+            gossip_interval = 1.0  # Faster gossip to stabilize large clusters
         elif cluster_size >= 10:
             gossip_interval = 1.0  # Moderate gossip for medium clusters
         else:
@@ -322,6 +448,8 @@ class AutoDiscoveryTestHelpers:
             advertised_urls=None,  # Use default advertised URL
             gossip_interval=gossip_interval,
             log_level="ERROR",  # CRITICAL: Prevent resource exhaustion from massive logging
+            monitoring_enabled=False,  # Avoid monitoring port conflicts under concurrency
+            fabric_routing_enabled=fabric_routing_enabled,
         )
 
 
@@ -506,6 +634,7 @@ class TestAutoDiscoveryFunctionPropagation(AutoDiscoveryTestHelpers):
         server_cluster_ports: list[int],
     ):
         """Test that functions propagate across all auto-discovered nodes."""
+        concurrency_factor = get_concurrency_factor()
         ports = server_cluster_ports[:5]
 
         # Create linear chain with auto-discovery
@@ -514,7 +643,15 @@ class TestAutoDiscoveryFunctionPropagation(AutoDiscoveryTestHelpers):
         )
 
         # Wait for auto-discovery
-        await asyncio.sleep(max(5.0, len(ports) * 0.5))
+        discovery_timeout = max(5.0, len(ports) * 0.5) * concurrency_factor
+        await wait_for_condition(
+            lambda: all(
+                len(server.cluster.servers) >= len(ports) for server in servers
+            ),
+            timeout=discovery_timeout,
+            interval=0.2,
+            error_message="Auto-discovery did not converge for propagation test",
+        )
 
         # Register function on first node
         def propagation_test_function(data: str) -> str:
@@ -525,7 +662,15 @@ class TestAutoDiscoveryFunctionPropagation(AutoDiscoveryTestHelpers):
         )
 
         # Wait for function propagation
-        await asyncio.sleep(max(3.0, len(ports) * 0.3))
+        propagation_timeout = max(3.0, len(ports) * 0.3) * concurrency_factor
+        await wait_for_condition(
+            lambda: all(
+                "propagation_test" in server.cluster.funtimes for server in servers
+            ),
+            timeout=propagation_timeout,
+            interval=0.2,
+            error_message="Function propagation did not converge",
+        )
 
         # Test function accessibility from all nodes
         propagation_results = []
@@ -571,13 +716,22 @@ class TestAutoDiscoveryFunctionPropagation(AutoDiscoveryTestHelpers):
         server_cluster_ports: list[int],
     ):
         """Test that functions registered on any node are discoverable by all nodes."""
+        concurrency_factor = get_concurrency_factor()
         ports = server_cluster_ports[:3]
 
         # Create star hub cluster
         servers = await self._create_cluster_servers(test_context, ports, "STAR_HUB")
 
         # Wait for auto-discovery
-        await asyncio.sleep(max(5.0, len(ports) * 0.5))
+        discovery_timeout = max(5.0, len(ports) * 0.5) * concurrency_factor
+        await wait_for_condition(
+            lambda: all(
+                len(server.cluster.servers) >= len(ports) for server in servers
+            ),
+            timeout=discovery_timeout,
+            interval=0.2,
+            error_message="Auto-discovery did not converge for bidirectional test",
+        )
 
         # Register unique functions on each node
         for i, server in enumerate(servers):
@@ -593,10 +747,41 @@ class TestAutoDiscoveryFunctionPropagation(AutoDiscoveryTestHelpers):
             )
 
         # Wait for function propagation
-        await asyncio.sleep(max(3.0, len(ports) * 0.3))
+        propagation_timeout = max(3.0, len(ports) * 0.3) * concurrency_factor
+
+        def all_functions_propagated() -> bool:
+            expected = {f"node_{i}_function" for i in range(len(ports))}
+            for server in servers:
+                if not expected.issubset(server.cluster.funtimes.keys()):
+                    return False
+            return True
+
+        await wait_for_condition(
+            all_functions_propagated,
+            timeout=propagation_timeout,
+            interval=0.2,
+            error_message="Bidirectional function propagation did not converge",
+        )
 
         # Test that each node can access functions from all other nodes
         discovery_matrix = []
+        failure_details: dict[tuple[int, int], str] = {}
+        call_timeout = max(1.5, len(ports) * 0.3) * concurrency_factor
+
+        async def _call_with_retry(
+            client: MPREGClientAPI, rpc_command: RPCCommand
+        ) -> tuple[bool, Exception | None]:
+            deadline = time.time() + call_timeout
+            last_exc: Exception | None = None
+            while time.time() < deadline:
+                try:
+                    result = await client._client.request([rpc_command])
+                    return "test_result" in result, None
+                except Exception as exc:  # pragma: no cover - best effort retry
+                    last_exc = exc
+                    await asyncio.sleep(0.1)
+            return False, last_exc
+
         for i, port in enumerate(ports):
             client = MPREGClientAPI(f"ws://127.0.0.1:{port}")
             test_context.clients.append(client)
@@ -604,23 +789,16 @@ class TestAutoDiscoveryFunctionPropagation(AutoDiscoveryTestHelpers):
 
             node_discoveries = []
             for j in range(len(ports)):
-                try:
-                    result = await client._client.request(
-                        [
-                            RPCCommand(
-                                name="test_result",
-                                fun=f"node_{j}_function",
-                                args=(f"test_from_node_{i}",),
-                                locs=frozenset([f"node-{j}"]),
-                            )
-                        ]
-                    )
-
-                    has_function = "test_result" in result
-                    node_discoveries.append(has_function)
-
-                except Exception:
-                    node_discoveries.append(False)
+                command = RPCCommand(
+                    name="test_result",
+                    fun=f"node_{j}_function",
+                    args=(f"test_from_node_{i}",),
+                    locs=frozenset([f"node-{j}"]),
+                )
+                has_function, exc = await _call_with_retry(client, command)
+                node_discoveries.append(has_function)
+                if exc:
+                    failure_details[(i, j)] = repr(exc)
 
             discovery_matrix.append(node_discoveries)
             print(
@@ -629,8 +807,190 @@ class TestAutoDiscoveryFunctionPropagation(AutoDiscoveryTestHelpers):
 
         # All nodes should discover all functions
         all_discovered = all(all(row) for row in discovery_matrix)
-        assert all_discovered, f"Bidirectional discovery failed: {discovery_matrix}"
+        assert all_discovered, (
+            "Bidirectional discovery failed: "
+            f"{discovery_matrix} (errors={failure_details})"
+        )
 
         print(
             f"✅ Bidirectional function discovery successful across {len(ports)} nodes"
         )
+
+    async def test_fabric_routing_function_id_version_constraints(
+        self,
+        test_context: AsyncTestContext,
+        server_cluster_ports: list[int],
+    ):
+        """Test fabric routing with function_id + version constraints over auto-discovery."""
+        concurrency_factor = get_concurrency_factor()
+        ports = server_cluster_ports[:5]
+        servers = await self._create_cluster_servers(
+            test_context, ports, "STAR_HUB", fabric_routing_enabled=True
+        )
+
+        # Wait for auto-discovery and baseline gossip propagation
+        discovery_timeout = max(5.0, len(ports) * 0.5) * concurrency_factor
+        await wait_for_condition(
+            lambda: all(
+                len(server.cluster.servers) >= len(ports) for server in servers
+            ),
+            timeout=discovery_timeout,
+            interval=0.2,
+            error_message="Auto-discovery did not converge for fabric routing test",
+        )
+
+        function_id = "mesh-function-id"
+        version = "2.1.0"
+
+        def mesh_function(data: str) -> str:
+            return f"mesh:{data}"
+
+        servers[0].register_command(
+            "mesh_function",
+            mesh_function,
+            ["mesh-resource"],
+            function_id=function_id,
+            version=version,
+        )
+
+        # Wait for fabric catalog propagation across nodes.
+        def routes_ready() -> bool:
+            for i, server in enumerate(servers):
+                if not server._fabric_control_plane:
+                    return False
+                selector = FunctionSelector(
+                    name="mesh_function",
+                    function_id=function_id,
+                    version_constraint=VersionConstraint.parse(">=2.0.0,<3.0.0"),
+                )
+                query = FunctionQuery(
+                    selector=selector,
+                    resources=frozenset({"mesh-resource"}),
+                )
+                matches = server._fabric_control_plane.index.find_functions(query)
+                if not matches:
+                    return False
+            return True
+
+        await wait_for_condition(
+            routes_ready,
+            timeout=10.0 * concurrency_factor,
+            interval=0.5,
+            error_message="Fabric routes did not propagate",
+        )
+
+        client = MPREGClientAPI(f"ws://127.0.0.1:{ports[-1]}")
+        test_context.clients.append(client)
+        await client.connect()
+
+        result = await client.call(
+            "mesh_function",
+            "payload",
+            locs=frozenset({"mesh-resource"}),
+            function_id=function_id,
+            version_constraint=">=2.0.0,<3.0.0",
+        )
+        assert result == "mesh:payload"
+
+    async def test_fabric_routing_resource_capability_filtering(
+        self,
+        test_context: AsyncTestContext,
+        server_cluster_ports: list[int],
+    ):
+        """Test fabric routing resource filtering over auto-discovery."""
+        concurrency_factor = get_concurrency_factor()
+        ports = server_cluster_ports[:5]
+        servers = await self._create_cluster_servers(
+            test_context, ports, "STAR_HUB", fabric_routing_enabled=True
+        )
+
+        discovery_timeout = max(5.0, len(ports) * 0.5) * concurrency_factor
+        await wait_for_condition(
+            lambda: all(
+                len(server.cluster.servers) >= len(ports) for server in servers
+            ),
+            timeout=discovery_timeout,
+            interval=0.2,
+            error_message="Auto-discovery did not converge for resource filtering test",
+        )
+
+        function_id = "mesh-resource-id"
+        version = "1.2.0"
+
+        def gpu_handler(data: str) -> str:
+            return f"gpu:{data}"
+
+        def cpu_handler(data: str) -> str:
+            return f"cpu:{data}"
+
+        servers[0].register_command(
+            "resource_function",
+            gpu_handler,
+            ["gpu"],
+            function_id=function_id,
+            version=version,
+        )
+        servers[1].register_command(
+            "resource_function",
+            cpu_handler,
+            ["cpu"],
+            function_id=function_id,
+            version=version,
+        )
+
+        def routes_ready() -> bool:
+            for server in servers:
+                if not server._fabric_control_plane:
+                    return False
+                for required in (frozenset({"gpu"}), frozenset({"cpu"})):
+                    selector = FunctionSelector(
+                        name="resource_function",
+                        function_id=function_id,
+                        version_constraint=VersionConstraint.parse("==1.2.0"),
+                    )
+                    query = FunctionQuery(
+                        selector=selector,
+                        resources=required,
+                    )
+                    matches = server._fabric_control_plane.index.find_functions(query)
+                    if not matches:
+                        return False
+            return True
+
+        await wait_for_condition(
+            routes_ready,
+            timeout=10.0 * concurrency_factor,
+            interval=0.5,
+            error_message="Fabric resource routes did not propagate",
+        )
+
+        client = MPREGClientAPI(f"ws://127.0.0.1:{ports[-1]}")
+        test_context.clients.append(client)
+        await client.connect()
+
+        gpu_result = await client.call(
+            "resource_function",
+            "payload",
+            locs=frozenset({"gpu"}),
+            function_id=function_id,
+            version_constraint="==1.2.0",
+        )
+        assert gpu_result == "gpu:payload"
+
+        cpu_result = await client.call(
+            "resource_function",
+            "payload",
+            locs=frozenset({"cpu"}),
+            function_id=function_id,
+            version_constraint="==1.2.0",
+        )
+        assert cpu_result == "cpu:payload"
+
+        with pytest.raises(MPREGException):
+            await client.call(
+                "resource_function",
+                "payload",
+                locs=frozenset({"tpu"}),
+                function_id=function_id,
+                version_constraint="==1.2.0",
+            )

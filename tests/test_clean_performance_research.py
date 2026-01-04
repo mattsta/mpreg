@@ -12,9 +12,11 @@ from typing import Any
 import pytest
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.port_allocator import get_port_allocator
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
-from tests.port_allocator import get_port_allocator
+
+pytestmark = pytest.mark.slow
 
 
 class CleanPerformanceResearch:

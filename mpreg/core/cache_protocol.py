@@ -8,6 +8,8 @@ Implements the cache-request and cache-response message types with full
 compatibility with the existing MPREG message infrastructure.
 """
 
+from __future__ import annotations
+
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -19,7 +21,8 @@ from .advanced_cache_ops import (
     DataStructureOperation,
     NamespaceOperation,
 )
-from .global_cache import (
+from .cache_interfaces import CacheManagerProtocol
+from .cache_models import (
     CacheLevel,
     CacheMetadata,
     CacheOperationResult,
@@ -28,7 +31,7 @@ from .global_cache import (
     ConsistencyLevel,
     GlobalCacheEntry,
     GlobalCacheKey,
-    GlobalCacheManager,
+    ReplicationStrategy,
 )
 
 
@@ -81,13 +84,32 @@ class CacheKeyMessage:
     tags: list[str] = field(default_factory=list)
 
     @classmethod
-    def from_global_cache_key(cls, key: GlobalCacheKey) -> "CacheKeyMessage":
+    def from_global_cache_key(cls, key: GlobalCacheKey) -> CacheKeyMessage:
         """Convert GlobalCacheKey to message format."""
         return cls(
             namespace=key.namespace,
             identifier=key.identifier,
             version=key.version,
             tags=list(key.tags),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "namespace": self.namespace,
+            "identifier": self.identifier,
+            "version": self.version,
+            "tags": list(self.tags),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> CacheKeyMessage:
+        """Create from dictionary (JSON deserialization)."""
+        return cls(
+            namespace=str(payload.get("namespace", "")),
+            identifier=str(payload.get("identifier", "")),
+            version=str(payload.get("version", "v1.0.0")),
+            tags=list(payload.get("tags", [])),
         )
 
     def to_global_cache_key(self) -> GlobalCacheKey:
@@ -116,7 +138,7 @@ class AtomicOperationMessage:
     @classmethod
     def from_atomic_operation_request(
         cls, request: AtomicOperationRequest
-    ) -> "AtomicOperationMessage":
+    ) -> AtomicOperationMessage:
         """Convert AtomicOperationRequest to message format."""
         return cls(
             operation_type=request.operation.value,
@@ -148,7 +170,7 @@ class DataStructureOperationMessage:
     @classmethod
     def from_data_structure_operation(
         cls, operation: DataStructureOperation
-    ) -> "DataStructureOperationMessage":
+    ) -> DataStructureOperationMessage:
         """Convert DataStructureOperation to message format."""
         return cls(
             structure_type=operation.structure_type.value,
@@ -178,7 +200,7 @@ class NamespaceOperationMessage:
     @classmethod
     def from_namespace_operation(
         cls, operation: NamespaceOperation
-    ) -> "NamespaceOperationMessage":
+    ) -> NamespaceOperationMessage:
         """Convert NamespaceOperation to message format."""
         return cls(
             operation_type=operation.operation,
@@ -196,13 +218,13 @@ class CacheOptionsMessage:
     include_metadata: bool = True
     consistency_level: str = "eventual"  # ConsistencyLevel enum value
     timeout_ms: int = 5000
-    cache_levels: list[str] = field(default_factory=lambda: ["L1", "L2", "L3"])
+    cache_levels: list[str] = field(default_factory=lambda: ["L1", "L2", "L3", "L4"])
     replication_factor: int = 2
     prefer_local: bool = True
     max_staleness_seconds: float = 300.0
 
     @classmethod
-    def from_cache_options(cls, options: CacheOptions) -> "CacheOptionsMessage":
+    def from_cache_options(cls, options: CacheOptions) -> CacheOptionsMessage:
         """Convert CacheOptions to message format."""
         return cls(
             include_metadata=options.include_metadata,
@@ -242,7 +264,7 @@ class CacheMetadataMessage:
     size_estimate_bytes: int = 0
 
     @classmethod
-    def from_cache_metadata(cls, metadata: CacheMetadata) -> "CacheMetadataMessage":
+    def from_cache_metadata(cls, metadata: CacheMetadata) -> CacheMetadataMessage:
         """Convert CacheMetadata to message format."""
         return cls(
             computation_cost_ms=metadata.computation_cost_ms,
@@ -257,6 +279,57 @@ class CacheMetadataMessage:
             quality_score=metadata.quality_score,
             created_by=metadata.created_by,
             size_estimate_bytes=metadata.size_estimate_bytes,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "computation_cost_ms": self.computation_cost_ms,
+            "dependencies": [dep.to_dict() for dep in self.dependencies],
+            "ttl_seconds": self.ttl_seconds,
+            "replication_policy": self.replication_policy,
+            "access_patterns": self.access_patterns,
+            "geographic_hints": list(self.geographic_hints),
+            "quality_score": self.quality_score,
+            "created_by": self.created_by,
+            "size_estimate_bytes": self.size_estimate_bytes,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> CacheMetadataMessage:
+        """Create from dictionary (JSON deserialization)."""
+        dependencies = [
+            CacheKeyMessage.from_dict(item) for item in payload.get("dependencies", [])
+        ]
+        return cls(
+            computation_cost_ms=float(payload.get("computation_cost_ms", 0.0)),
+            dependencies=dependencies,
+            ttl_seconds=payload.get("ttl_seconds"),
+            replication_policy=str(payload.get("replication_policy", "geographic")),
+            access_patterns=dict(payload.get("access_patterns", {})),
+            geographic_hints=list(payload.get("geographic_hints", [])),
+            quality_score=float(payload.get("quality_score", 1.0)),
+            created_by=str(payload.get("created_by", "")),
+            size_estimate_bytes=int(payload.get("size_estimate_bytes", 0)),
+        )
+
+    def to_cache_metadata(self) -> CacheMetadata:
+        """Convert message metadata to CacheMetadata."""
+        try:
+            replication_policy = ReplicationStrategy(self.replication_policy)
+        except ValueError:
+            replication_policy = ReplicationStrategy.GEOGRAPHIC
+
+        return CacheMetadata(
+            computation_cost_ms=self.computation_cost_ms,
+            dependencies={dep.to_global_cache_key() for dep in self.dependencies},
+            ttl_seconds=self.ttl_seconds,
+            replication_policy=replication_policy,
+            access_patterns=self.access_patterns,
+            geographic_hints=self.geographic_hints,
+            quality_score=self.quality_score,
+            created_by=self.created_by,
+            size_estimate_bytes=self.size_estimate_bytes,
         )
 
 
@@ -275,7 +348,7 @@ class CacheEntryMessage:
     checksum: str = ""
 
     @classmethod
-    def from_global_cache_entry(cls, entry: GlobalCacheEntry) -> "CacheEntryMessage":
+    def from_global_cache_entry(cls, entry: GlobalCacheEntry) -> CacheEntryMessage:
         """Convert GlobalCacheEntry to message format."""
         return cls(
             key=CacheKeyMessage.from_global_cache_key(entry.key),
@@ -287,6 +360,51 @@ class CacheEntryMessage:
             replication_sites=list(entry.replication_sites),
             vector_clock=entry.vector_clock,
             checksum=entry.checksum,
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "key": self.key.to_dict(),
+            "value": self.value,
+            "metadata": self.metadata.to_dict(),
+            "creation_time": self.creation_time,
+            "last_access_time": self.last_access_time,
+            "access_count": self.access_count,
+            "replication_sites": list(self.replication_sites),
+            "vector_clock": dict(self.vector_clock),
+            "checksum": self.checksum,
+        }
+
+    @classmethod
+    def from_dict(cls, payload: dict[str, Any]) -> CacheEntryMessage:
+        """Create from dictionary (JSON deserialization)."""
+        key_payload = payload.get("key", {})
+        metadata_payload = payload.get("metadata", {})
+        return cls(
+            key=CacheKeyMessage.from_dict(key_payload),
+            value=payload.get("value"),
+            metadata=CacheMetadataMessage.from_dict(metadata_payload),
+            creation_time=float(payload.get("creation_time", 0.0)),
+            last_access_time=float(payload.get("last_access_time", 0.0)),
+            access_count=int(payload.get("access_count", 0)),
+            replication_sites=list(payload.get("replication_sites", [])),
+            vector_clock=dict(payload.get("vector_clock", {})),
+            checksum=str(payload.get("checksum", "")),
+        )
+
+    def to_global_cache_entry(self) -> GlobalCacheEntry:
+        """Convert message entry to GlobalCacheEntry."""
+        return GlobalCacheEntry(
+            key=self.key.to_global_cache_key(),
+            value=self.value,
+            metadata=self.metadata.to_cache_metadata(),
+            creation_time=self.creation_time,
+            last_access_time=self.last_access_time,
+            access_count=self.access_count,
+            replication_sites=set(self.replication_sites),
+            vector_clock=self.vector_clock,
+            checksum=self.checksum,
         )
 
 
@@ -303,7 +421,7 @@ class CachePerformanceMessage:
     @classmethod
     def from_cache_performance(
         cls, perf: CachePerformanceMetrics
-    ) -> "CachePerformanceMessage":
+    ) -> CachePerformanceMessage:
         """Convert CachePerformanceMetrics to message format."""
         return cls(
             lookup_time_ms=perf.lookup_time_ms,
@@ -395,7 +513,7 @@ class CacheRequestMessage:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "CacheRequestMessage":
+    def from_dict(cls, data: dict[str, Any]) -> CacheRequestMessage:
         """Create from dictionary (JSON deserialization)."""
         key_data = data["key"]
         key = CacheKeyMessage(
@@ -524,7 +642,7 @@ class CacheResponseMessage:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "CacheResponseMessage":
+    def from_dict(cls, data: dict[str, Any]) -> CacheResponseMessage:
         """Create from dictionary (JSON deserialization)."""
         entry = None
         if "entry" in data:
@@ -625,7 +743,9 @@ class CacheProtocolHandler:
     """Handler for cache protocol messages."""
 
     def __init__(
-        self, cache_manager: GlobalCacheManager | None = None, advanced_cache_ops=None
+        self,
+        cache_manager: CacheManagerProtocol | None = None,
+        advanced_cache_ops=None,
     ):
         self.cache_manager = cache_manager
         self.advanced_cache_ops = advanced_cache_ops
@@ -687,8 +807,7 @@ class CacheProtocolHandler:
                 # Convert metadata if present
                 metadata = None
                 if request.metadata:
-                    # TODO: Convert CacheMetadataMessage to CacheMetadata
-                    pass
+                    metadata = request.metadata.to_cache_metadata()
 
                 result = await self.cache_manager.put(
                     key, request.value, metadata, options
@@ -701,6 +820,28 @@ class CacheProtocolHandler:
                 result = await self.cache_manager.invalidate(
                     request.invalidation_pattern, options
                 )
+
+            elif request.operation == CacheOperation.QUERY.value:
+                pattern = request.invalidation_pattern or "*"
+                namespace = request.key.namespace
+                matched_keys = self.cache_manager.get_namespace_keys(
+                    namespace, pattern=pattern
+                )
+                result_entry = GlobalCacheEntry(
+                    key=key,
+                    value=[str(k) for k in matched_keys],
+                    metadata=CacheMetadata(),
+                )
+                result = CacheOperationResult(success=True, entry=result_entry)
+
+            elif request.operation == CacheOperation.STATS.value:
+                stats = self.cache_manager.get_statistics()
+                result_entry = GlobalCacheEntry(
+                    key=key,
+                    value=stats,
+                    metadata=CacheMetadata(),
+                )
+                result = CacheOperationResult(success=True, entry=result_entry)
 
             elif request.operation == CacheOperation.ATOMIC.value:
                 if not self.advanced_cache_ops or not request.atomic_operation:

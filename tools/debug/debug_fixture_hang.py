@@ -4,7 +4,6 @@ DEBUG: Test if the large_cluster_ports fixture hangs
 """
 
 import pytest
-
 from tests.port_allocator import get_port_allocator
 
 

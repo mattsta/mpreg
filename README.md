@@ -4,18 +4,24 @@
 
 Do you need results? Everywhere? Guaranteed? Then you need to MPREG!
 
-What started as my solution for coordinating ML models across servers has evolved into a **comprehensive distributed computing platform** with sophisticated capabilities:
+## What is it?
+
+`mpreg` allows you to define a distributed cluster multi-call function topology across multiple processes or servers so you can run your requests against one cluster endpoint and automatically receive results from your data anywhere in the cluster.
+
+Basically, `mpreg` helps you decouple "run function X against data Y" without needing to know where "function X" and "data Y" exists in your cluster.
+
+Why is this useful? I made this because I had some models with datasets I wanted to run across multiple servers/processes (they didn't work well multithreaded or forked due to GIL and COW issues), but then I had a problem where I needed 8 processes each with their own port numbers and datasets, but I didn't want to make a static mapping of "host, port, dataset, available functions" — so now, each process can register itself with (available functions, available datasets) and your clients just connect to the cluster and say "run function X on dataset Y" then the cluster auto-routes your requests to the processes having both the required data and functions available.
 
 ## Summary the First
 
 - **Dependency-resolving RPC** that figures out function call ordering automatically across servers
-- **Planet-scale federation** with gossip clustering and geographic routing (tested up to 100+ nodes)
+- **Unified fabric routing** with gossip control plane and path-vector federation
 - **AMQP-style topic exchange** for million+ message/second hierarchical pub/sub
 - **SQS-like message queues** with multiple delivery guarantees and dead letter handling
 - **Multi-tier caching** with intelligent eviction policies and dependency tracking
 - **Production Raft consensus** for distributed coordination and state management
 - **Blockchain components** for immutable state and transaction management
-- **1,800+ comprehensive tests** with property-based validation and type safety
+- **2,000+ comprehensive tests** with property-based validation and type safety
 
 ## Summary the Second
 
@@ -23,7 +29,7 @@ What started as my solution for coordinating ML models across servers has evolve
 - 🌐 Topic Exchange (AMQP-style pub/sub with million+ msg/sec)
 - 📬 Message Queues (SQS-like with multiple delivery guarantees)
 - 🗄️ Smart Caching (S4LRU, dependency-aware, cost-based eviction)
-- 🌍 Planet-Scale Federation (geographic routing, hub-and-spoke)
+- 🌍 Fabric Federation (path-vector routing, hub-and-spoke/mesh)
 - ⛓️ Blockchain & Consensus (production Raft, Byzantine fault tolerance)
 - 🏭 Real-World Examples (8-stage data pipelines, distributed ML inference)
 
@@ -55,7 +61,7 @@ What started as my solution for coordinating ML models across servers has evolve
 
 ### 📈 **Reliability & Monitoring**
 
-- ✅ **Comprehensive Testing**: 1,800+ tests with unit, integration, and property/hypothesis-based validation and type safety
+- ✅ **Comprehensive Testing**: 2,000+ tests with unit, integration, and property/hypothesis-based validation and type safety
 - 📊 **Real-Time Metrics**: Built-in monitoring endpoints with distributed tracing
 - 🚨 **Fault Tolerance**: Circuit breakers, split-brain prevention, and network partition handling
 
@@ -65,19 +71,7 @@ What started as my solution for coordinating ML models across servers has evolve
 - 🤖 **ML Inference**: Distributed model serving with preprocessing and post-processing chains
 - 🏢 **Enterprise Integration**: Federation CLI and a dozen monitoring endpoints for production deployment
 
-**Status**: This has evolved from a demo proof of concept into a **production-ready distributed computing platform** with comprehensive test coverage and robust architectural patterns. MPREG implements a network-enabled multi-function-call dependency resolver with custom function topologies on every request, now featuring concurrent request handling, self-managing components, automatic cluster discovery, and much more. I still haven't found anything else equivalent to the "gossip cluster group hierarchy low latency late-binding dependency resolution" approach explored here, plus all the additional distributed systems capabilities. A similar system is the nice https://github.com/pipefunc/pipefunc but it is designed around running local things or running in "big cluster mode" so it doesn't meet these distributed coordination ideas.
-
 🎯 **The big idea**: Write functions, not infrastructure. MPREG handles the distributed coordination across all these systems.
-
-## What is it?
-
-`mpreg` allows you to define a distributed cluster multi-call function topology across multiple processes or servers so you can run your requests against one cluster endpoint and automatically receive results from your data anywhere in the cluster.
-
-Basically, `mpreg` helps you decouple "run function X against data Y" without needing to know where "function X" and "data Y" exists in your cluster.
-
-Why is this useful? I made this because I had some models with datasets I wanted to run across multiple servers/processes (they didn't work well multithreaded or forked due to GIL and COW issues), but then I had a problem where I needed 8 processes each with their own port numbers and datasets, but I didn't want to make a static mapping of "host, port, dataset, available functions" — so now, each process can register itself with (available functions, available datasets) and your clients just connect to the cluster and say "run function X on dataset Y" then the cluster auto-routes your requests to the processes having both the required data and functions available.
-
-But it grew into much more than that. What started as simple RPC routing became a comprehensive distributed platform including pub/sub messaging, caching systems, message queues, federation capabilities, consensus mechanisms, and more — all working together seamlessly.
 
 ## The Magic: Dependency Resolution That Just Works
 
@@ -90,6 +84,10 @@ This is **dependency resolution at cluster scale** — you describe complex work
 ## Examples
 
 ### Simple Example: Call Things
+
+Note: Ports shown in examples are placeholders. For live runs, allocate ports
+dynamically (for example, via `allocate_port("servers")`) or omit `port` to let
+MPREG auto-assign one and emit `MPREG_URL`.
 
 ```python
 # Modern API
@@ -194,6 +192,22 @@ You may have noticed the `locs=frozenset()` parameter in all those `RPCCommand()
 ```python
 # Route to specific resources/datasets
 result = await client.call("train_model", training_data, locs=frozenset(["gpu-cluster", "dataset-v2"]))
+
+# Route to a specific federated cluster (fabric routing)
+result = await client.call(
+    "train_model",
+    training_data,
+    locs=frozenset(["gpu-cluster", "dataset-v2"]),
+    target_cluster="cluster-b",
+)
+
+# Optional: enable multi-hop forwarding when there is no direct peer
+settings = MPREGSettings(
+    host="127.0.0.1",
+    port=6666,
+    fabric_routing_enabled=True,
+    fabric_routing_max_hops=5,
+)
 ```
 
 When called fully with `(name, function, args, locs)`, the cluster routes your request to the best matching cluster nodes having `(function, resource)` matches (because you may have common functions like "run model" but the output changes depending on _which model/dataset_ you are running against).
@@ -222,7 +236,7 @@ exchange.add_subscription("orders", ["order.#", "payment.*.completed"])  # # = m
 exchange.publish_message("user.123.login", {"username": "alice", "ip": "192.168.1.100"})
 exchange.publish_message("order.us.12345.created", {"amount": 99.99, "region": "us"})
 
-# Try it: poetry run python mpreg/examples/topic_exchange_demo.py
+# Try it: uv run python mpreg/examples/tier1_single_system_full.py --system pubsub
 ```
 
 ### 📬 Message Queues (SQS-Like Reliability)
@@ -240,7 +254,7 @@ await manager.send_message("broadcast_queue", data, DeliveryGuarantee.BROADCAST)
 await manager.send_message("consensus_queue", data, DeliveryGuarantee.QUORUM)     # N acknowledgments
 
 # Supports FIFO, Priority, and Delay queues with dead letter handling
-# Try it: poetry run python mpreg/examples/message_queue_demo.py
+# Try it: uv run python mpreg/examples/tier1_single_system_full.py --system queue
 ```
 
 ### 🗄️ Smart Multi-Tier Caching
@@ -260,26 +274,40 @@ cache.configure(eviction_policy=EvictionPolicy.S4LRU)            # Segmented LRU
 key = CacheKey.create("expensive_function", args, kwargs)
 cache.put(key, result, dependencies=["data_source_1", "model_v2"])
 
-# Try it: poetry run python mpreg/examples/caching_demo.py
+# Try it: uv run python mpreg/examples/tier1_single_system_full.py --system cache
 ```
 
 ### 🌍 Planet-Scale Federation
 
 ```python
-# Geographic federation with gossip clustering and intelligent routing
-from mpreg.federation.federated_topic_exchange import create_federated_cluster, connect_clusters
+# Fabric-backed federation with unified routing + gossip catalog
+from mpreg.core.config import MPREGSettings
+from mpreg.fabric.federation_config import create_permissive_bridging_config
+from mpreg.server import MPREGServer
 
-# Create federated clusters across regions with automatic discovery
-us_cluster = await create_federated_cluster("ws://us-west.company.com:9001",
-                                            cluster_id="us-west-1", region="us-west")
-eu_cluster = await create_federated_cluster("ws://eu-central.company.com:9001",
-                                            cluster_id="eu-central-1", region="eu-central")
+us_config = create_permissive_bridging_config("us-west-1")
+eu_config = create_permissive_bridging_config("eu-central-1")
 
-# Connect via federation bridges (hub-and-spoke topology, not full mesh)
-await connect_clusters(us_cluster, eu_cluster)  # Cross-continental coordination
+us_settings = MPREGSettings(
+    host="0.0.0.0",
+    port=9001,
+    name="us-west",
+    cluster_id="us-west-1",
+    federation_config=us_config,
+    connect="ws://eu-central.company.com:9001",
+)
+eu_settings = MPREGSettings(
+    host="0.0.0.0",
+    port=9001,
+    name="eu-central",
+    cluster_id="eu-central-1",
+    federation_config=eu_config,
+)
 
-# Messages route intelligently across continents with bloom filter optimization
-# Try it: poetry run python mpreg/examples/federation_demo.py
+us_server = MPREGServer(settings=us_settings)
+eu_server = MPREGServer(settings=eu_settings)
+
+# Try it: uv run python mpreg/examples/tier1_single_system_full.py --system fabric
 ```
 
 ### ⛓️ Blockchain & Distributed Consensus
@@ -297,7 +325,7 @@ transaction = blockchain.create_transaction("sender_node", "receiver_node", amou
 raft = ProductionRaft(node_id="node1", cluster_nodes=["node1", "node2", "node3"])
 await raft.start()  # Handles leader election, log replication, membership changes
 
-# Try it: poetry run python mpreg/examples/planet_scale_integration_example.py
+# Try it: uv run python mpreg/examples/tier3_full_system_expansion.py
 ```
 
 ### 🏭 Real-World Usage Examples
@@ -327,7 +355,7 @@ result = await client._client.request([
 
 # MPREG automatically figures out the execution order and routes each
 # function to the optimal server based on resource requirements
-# Try it: poetry run python mpreg/examples/real_world_examples.py
+# Try it: uv run python mpreg/examples/real_world_examples.py
 ```
 
 ### 🤖 Distributed ML Inference
@@ -349,30 +377,55 @@ result = await client._client.request([
 ])
 
 # Client just describes the ML pipeline - MPREG routes to optimal servers
-# Try it: poetry run python mpreg/examples/real_world_examples.py
+# Try it: uv run python mpreg/examples/real_world_examples.py
 ```
 
 ## 📊 Additional Examples & Benchmarks
 
 Beyond the core examples above, MPREG includes comprehensive demonstrations and benchmarking tools:
 
-### 🎪 **Specialized Demos**
+### 🎪 **Tiered Demos**
 
 ```bash
-# Performance and monitoring demos
-poetry run python mpreg/examples/unified_monitoring_demo.py      # ULID-based cross-system tracking
-poetry run python mpreg/examples/benchmark_demo.py              # Performance benchmarking suite
-poetry run python mpreg/examples/intermediate_results_demo.py   # Intermediate result handling
+# Tier 1: Full capability of a single system
+uv run python mpreg/examples/tier1_single_system_full.py --system rpc
+uv run python mpreg/examples/tier1_single_system_full.py --system pubsub
+uv run python mpreg/examples/tier1_single_system_full.py --system queue
+uv run python mpreg/examples/tier1_single_system_full.py --system cache
+uv run python mpreg/examples/tier1_single_system_full.py --system fabric
+uv run python mpreg/examples/tier1_single_system_full.py --system monitoring
 
-# Advanced federation examples
-poetry run python mpreg/examples/federation_alerting_demo.py    # Federation alerting system
-poetry run python mpreg/examples/federated_queue_examples.py    # Cross-cluster message queues
-poetry run python mpreg/examples/planet_scale_integration_example.py # Complete planet-scale demo
+# Tier 2: Two-system integrations
+uv run python mpreg/examples/tier2_integrations.py
 
-# Specialized system demonstrations
-poetry run python mpreg/examples/cache_client_server_demo.py    # Cache client/server architecture
-poetry run python mpreg/examples/topic_exchange_benchmark.py   # Topic exchange performance testing
+# Tier 3: Full system expansion
+uv run python mpreg/examples/tier3_full_system_expansion.py
+
+# Unified CLI launcher
+uv run mpreg demo all
 ```
+
+### ✅ Demo Suite (CI Friendly)
+
+Run every demo with fail-fast validation:
+
+```bash
+scripts/run_demo_suite.sh
+```
+
+Quick smoke tier for CI:
+
+```bash
+scripts/run_demo_smoke.sh
+```
+
+### ⚙️ Performance and Correctness Tips
+
+- Reuse `MPREGClientAPI` connections for batch RPCs to avoid handshake overhead.
+- Provide precise `locs` to minimize routing fan-out and ensure deterministic placement.
+- Use `CacheOptions(cache_levels=...)` to target L3/L4 explicitly when validating federation.
+- Prefer `DeliveryGuarantee.AT_LEAST_ONCE` for durability; use `QUORUM` only when you can satisfy acknowledgments.
+- Keep logging at INFO or lower for benchmarks to avoid skewing latency numbers.
 
 ### 🔧 **Debug and Analysis Tools**
 
@@ -397,7 +450,7 @@ tools/debug/debug_leader_election_failures.py    # Leader election failure analy
 
 ## 🧪 Testing Infrastructure
 
-MPREG includes sophisticated testing infrastructure with 1,800+ tests supporting concurrent execution:
+MPREG includes sophisticated testing infrastructure with 2,000+ tests supporting concurrent execution:
 
 ### 🔄 **Concurrent Testing Support**
 
@@ -406,9 +459,9 @@ MPREG includes sophisticated testing infrastructure with 1,800+ tests supporting
 ./run_concurrent_tests.sh                          # Run concurrent test demos
 
 # Manual concurrent testing with pytest-xdist
-poetry run pytest -n auto                          # Auto-detect CPU cores
-poetry run pytest -n 20 -m "not slow"              # 20 workers, skip slow tests
-poetry run pytest tests/integration/ -n 15         # Integration tests with 15 workers
+uv run pytest -n auto                          # Auto-detect CPU cores
+uv run pytest -n 20 -m "not slow"              # 20 workers, skip slow tests
+uv run pytest tests/integration/ -n 15         # Integration tests with 15 workers
 ```
 
 ### 📚 **Testing Documentation**
@@ -423,11 +476,11 @@ poetry run pytest tests/integration/ -n 15         # Integration tests with 15 w
 
 ```bash
 # Run specific test categories
-poetry run pytest -m "unit"              # Unit tests only
-poetry run pytest -m "integration"       # Integration tests only
-poetry run pytest -m "property"          # Property-based tests only
-poetry run pytest -m "performance"       # Performance tests only
-poetry run pytest -m "federation"        # Federation system tests
+uv run pytest -m "unit"              # Unit tests only
+uv run pytest -m "integration"       # Integration tests only
+uv run pytest -m "property"          # Property-based tests only
+uv run pytest -m "performance"       # Performance tests only
+uv run pytest -m "federation"        # Federation system tests
 ```
 
 ## Quick Demo Running
@@ -435,18 +488,18 @@ poetry run pytest -m "federation"        # Federation system tests
 ### Intial Setup
 
 ```bash
-pip install poetry -U
+pip install uv -U
 
 [clone repo and use clone]
 
-poetry install
+uv sync
 ```
 
 ### Terminal 1 (Server 1)
 
 ```bash
 # Run a server with specific resources
-poetry run python -c "
+uv run python -c "
 from mpreg.server import MPREGServer
 from mpreg.core.config import MPREGSettings
 import asyncio
@@ -464,7 +517,7 @@ asyncio.run(server.server())
 
 ```bash
 # Run a second server that connects to the first
-poetry run python -c "
+uv run python -c "
 from mpreg.server import MPREGServer
 from mpreg.core.config import MPREGSettings
 import asyncio
@@ -511,23 +564,23 @@ MPREG includes a comprehensive command-line interface for managing federated clu
 
 ```bash
 # Discover available clusters
-poetry run mpreg-federation discover
+uv run mpreg discover
 
 # Generate configuration template
-poetry run mpreg-federation generate-config federation.json
+uv run mpreg generate-config federation.json
 
 # Validate configuration
-poetry run mpreg-federation validate-config federation.json
+uv run mpreg validate-config federation.json
 
 # Deploy federation from configuration
-poetry run mpreg-federation deploy federation.json
+uv run mpreg deploy federation.json
 
 # Monitor cluster health
-poetry run mpreg-federation health
-poetry run mpreg-federation monitor health-watch --interval 30
+uv run mpreg health
+uv run mpreg monitor health-watch --interval 30
 
 # Show federation topology
-poetry run mpreg-federation topology
+uv run mpreg topology
 ```
 
 ### Production Configuration Example
@@ -561,6 +614,7 @@ poetry run mpreg-federation topology
 
 ### Complete Documentation
 
+- **[Documentation Index](docs/README.md)** - Primary index of current docs and archives
 - **[Full CLI Documentation](docs/FEDERATION_CLI.md)** - Comprehensive guide with real-world scenarios
 - **[Quick Reference](docs/FEDERATION_CLI_QUICK_REFERENCE.md)** - Essential commands and templates
 
@@ -568,6 +622,7 @@ poetry run mpreg-federation topology
 
 ### 🏗️ **System Architecture & Deployment**
 
+- **[Architecture Overview](docs/ARCHITECTURE.md)** - Unified fabric architecture and control plane
 - **[Production Deployment Guide](docs/PRODUCTION_DEPLOYMENT.md)** - Complete production setup with system requirements, scaling, and operational procedures
 - **[Client Usage Guide](docs/MPREG_CLIENT_GUIDE.md)** - RPC, PubSub, and Cache clients with multi-language examples and protocol documentation
 - **[Caching System Guide](docs/CACHING_SYSTEM.md)** - Multi-tier caching with S4LRU and dependency-aware eviction
@@ -583,6 +638,11 @@ poetry run mpreg-federation topology
 
 - **[SQS Message Queue System](docs/SQS_MESSAGE_QUEUE_SYSTEM.md)** - Multiple delivery guarantees and dead letter handling
 - **[MPREG Protocol Specification](docs/MPREG_PROTOCOL_SPECIFICATION.md)** - Complete network protocol documentation
+
+### 🛠️ **Operations and Management**
+
+- **[Observability + Troubleshooting](docs/OBSERVABILITY_TROUBLESHOOTING.md)** - Logging scopes, debugging flow, and monitoring
+- **[Management UI + CLI Plan](docs/MANAGEMENT_UI_CLI_NEXT_STEPS.md)** - Full management plane spec and roadmap
 
 ### 🌐 **Federation System Documentation**
 
@@ -611,19 +671,18 @@ MPREG is organized into a clean, modular architecture with well-separated concer
 - **`enhanced_rpc.py`** - Advanced RPC features with circuit breakers
 - **`statistics.py`** - Performance metrics and monitoring data structures
 
-### 🌐 **Federation System (`mpreg.federation`)**
+### 🌐 **Fabric Federation System (`mpreg.fabric`)**
 
 Planet-scale distributed coordination with:
 
-- **`federation_graph.py`** - Graph-based routing with geographic optimization
-- **`federation_hubs.py`** - Hub-and-spoke architecture (Local → Regional → Global)
-- **`federation_gossip.py`** - Epidemic information propagation with vector clocks
-- **`federation_consensus.py`** - Distributed state management with conflict resolution
-- **`federation_membership.py`** - SWIM-based failure detection and membership
-- **`federation_alerting.py`** - Real-time federation health monitoring and alerting
-- **`auto_discovery.py`** - Automatic peer discovery and cluster formation
-- **`federation_bridge.py`** - Cross-cluster communication bridges
-- **`federation_registry.py`** - Federated service registry and discovery
+- **`mpreg/fabric/federation_graph.py`** - Graph-based routing with geographic optimization
+- **`mpreg/fabric/hubs.py`** - Hub-and-spoke architecture (Local → Regional → Global)
+- **`mpreg/fabric/gossip.py`** - Epidemic information propagation with vector clocks
+- **`mpreg/fabric/consensus.py`** - Distributed state management with conflict resolution
+- **`mpreg/fabric/membership.py`** - SWIM-based failure detection and membership
+- **`mpreg/fabric/federation_alerting.py`** - Real-time federation health monitoring and alerting
+- **`mpreg/fabric/auto_discovery.py`** - Automatic peer discovery and cluster formation
+- **`mpreg/fabric/hub_registry.py`** - Federated service registry and discovery
 
 ### 👥 **Client APIs (`mpreg.client`)**
 
@@ -676,12 +735,9 @@ from mpreg.core.topic_exchange import TopicExchange
 from mpreg.core.topic_dependency_resolver import TopicDependencyResolver
 
 # Federation system (for advanced use cases)
-from mpreg.federation import (
-    FederationGraph,
-    GeographicCoordinate,
-    GossipProtocol,
-    ConsensusManager
-)
+from mpreg.fabric import FederationGraph, GeographicCoordinate
+from mpreg.fabric.gossip import GossipProtocol
+from mpreg.fabric.consensus import ConsensusManager
 
 # Blockchain and consensus
 from mpreg.datastructures.blockchain import Blockchain, ConsensusType
@@ -689,13 +745,14 @@ from mpreg.datastructures.production_raft import ProductionRaft
 from mpreg.datastructures.dao import DAOGovernance, ProposalType
 
 # Federation and distributed coordination
-from mpreg.federation.federated_topic_exchange import create_federated_cluster
-from mpreg.federation.federation_graph import FederationGraph
-from mpreg.federation.auto_discovery import create_auto_discovery_service
+from mpreg.fabric.federation_config import create_permissive_bridging_config
+from mpreg.fabric.federation_graph import FederationGraph
+from mpreg.fabric.auto_discovery import create_auto_discovery_service
+from mpreg.fabric import RoutingCatalog, RoutingEngine
 
 # Monitoring and observability
 from mpreg.core.monitoring.unified_monitoring import create_unified_system_monitor
-from mpreg.federation.federation_alerting import FederationAlertingSystem
+from mpreg.fabric.federation_alerting import FederationAlertingService
 
 # Convenient top-level imports
 from mpreg import FederationGraph, GeographicCoordinate, MPREGClientAPI
@@ -705,7 +762,7 @@ from mpreg import FederationGraph, GeographicCoordinate, MPREGClientAPI
 
 The above demos all work! The system has evolved significantly since the early prototype days and now includes:
 
-✅ **Production-Ready**: Comprehensive test coverage (1,800+ tests) and robust error handling  
+✅ **Production-Ready**: Comprehensive test coverage (2,000+ tests) and robust error handling  
 ✅ **Modern Client API**: Easy-to-use `MPREGClientAPI` with context manager support  
 ✅ **Concurrent Requests**: Multiple simultaneous requests over single connections  
 ✅ **Self-Managing Components**: Automatic connection pooling, peer discovery, and cleanup  
@@ -797,7 +854,7 @@ MPREG has evolved from experimental prototype to **production-ready distributed 
 
 **🔐 Reliability & Safety**
 
-- ✅ **1,800+ comprehensive tests** covering edge cases and failure scenarios
+- ✅ **2,000+ comprehensive tests** covering edge cases and failure scenarios
 - ✅ **Byzantine fault tolerance** with production Raft consensus
 - ✅ **Circuit breaker patterns** for cascading failure prevention
 - ✅ **Graceful degradation** under high load and network stress

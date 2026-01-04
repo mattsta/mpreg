@@ -374,7 +374,7 @@ class TestBlockExamples:
         # Federation join transaction
         join_tx = Transaction(
             sender="new_node",
-            receiver="federation_registry",
+            receiver="hub_registry",
             operation_type=OperationType.FEDERATION_JOIN,
             payload=b'{"capabilities": "full_node"}',
             fee=10,

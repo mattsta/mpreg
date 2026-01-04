@@ -587,9 +587,9 @@ class TestRaftSafetyProperties:
             election_timeout = min(
                 3.0, cluster_size * 0.5
             )  # Scale timeout with cluster size
-            start_time = asyncio.get_event_loop().time()
+            start_time = asyncio.get_running_loop().time()
 
-            while asyncio.get_event_loop().time() - start_time < election_timeout:
+            while asyncio.get_running_loop().time() - start_time < election_timeout:
                 await asyncio.sleep(0.1)
 
                 # Check Election Safety Property at every point in time

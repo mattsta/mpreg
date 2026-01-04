@@ -1,27 +1,35 @@
+from __future__ import annotations
+
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from mpreg.datastructures.federated_types import (
-    AdvertisedURLs,
-    AnnouncementID,
-    FederatedPropagationInfo,
-    FunctionNames,
-    HopCount,
-    MaxHops,
-    ResourceNames,
-    ServerCapabilities,
-)
 from mpreg.datastructures.type_aliases import (
     ClusterID,
     DurationMilliseconds,
-    NodeURL,
+    FunctionId,
+    FunctionVersion,
     RequestId,
     Timestamp,
+    VersionConstraintSpec,
 )
+
+
+class RPCFunctionDescriptor(BaseModel):
+    """Describes a function capability with identity and version metadata."""
+
+    name: str = Field(description="Human-readable function name.")
+    function_id: FunctionId = Field(
+        description="Unique identifier for the function capability."
+    )
+    version: FunctionVersion = Field(description="Semantic version of the function.")
+    resources: tuple[str, ...] = Field(
+        default_factory=tuple,
+        description="Resources required to run this function.",
+    )
 
 
 class RPCCommand(BaseModel):
@@ -45,6 +53,22 @@ class RPCCommand(BaseModel):
     locs: frozenset[str] = Field(
         default_factory=frozenset,
         description="Resource locations where this command can be executed.",
+    )
+    function_id: FunctionId | None = Field(
+        default=None,
+        description="Optional unique function identifier for routing.",
+    )
+    version_constraint: VersionConstraintSpec | None = Field(
+        default=None,
+        description="Optional semantic version constraint for matching.",
+    )
+    target_cluster: ClusterID | None = Field(
+        default=None,
+        description="Optional target cluster identifier for federated routing.",
+    )
+    routing_topic: str | None = Field(
+        default=None,
+        description="Optional unified routing topic for policy-based routing.",
     )
 
 
@@ -78,123 +102,6 @@ class RPCRequest(BaseModel):
     )
 
 
-class RPCInternalRequest(BaseModel):
-    """
-    Represents an internal RPC request forwarded between servers.
-    """
-
-    role: Literal["internal-rpc"] = "internal-rpc"
-    command: str = Field(description="The name of the command to execute.")
-    args: tuple[Any, ...] = Field(
-        description="Positional arguments for the function call."
-    )
-    kwargs: dict[str, Any] = Field(
-        default_factory=dict, description="Keyword arguments for the function call."
-    )
-    results: dict[str, Any] = Field(
-        description="Intermediate results from previous RPC steps."
-    )
-    u: str = Field(description="A unique identifier for this internal request.")
-
-
-class RPCInternalAnswer(BaseModel):
-    """
-    Represents an answer to an internal RPC request.
-    """
-
-    role: Literal["internal-answer"] = "internal-answer"
-    answer: Any = Field(description="The result of the internal RPC call.")
-    u: str = Field(
-        description="The unique identifier of the internal request this is answering."
-    )
-
-
-class RPCServerHello(BaseModel):
-    """
-    Represents a server's hello message, advertising its capabilities.
-
-    Now uses properly typed federated RPC fields for better type safety
-    and semantic clarity.
-    """
-
-    what: Literal["HELLO"] = "HELLO"
-    funs: FunctionNames = Field(description="Functions provided by this server.")
-    locs: ResourceNames = Field(
-        description="Locations/resources associated with this server."
-    )
-    cluster_id: ClusterID = Field(
-        description="The ID of the cluster this server belongs to."
-    )
-    advertised_urls: AdvertisedURLs = Field(
-        default_factory=tuple,
-        description="List of URLs that this server advertises for inbound connections.",
-    )
-    # Federated propagation fields (now properly typed)
-    hop_count: HopCount = Field(
-        default=0, description="Number of hops from original source"
-    )
-    max_hops: MaxHops = Field(
-        default=3, description="Maximum hops before dropping message"
-    )
-    announcement_id: AnnouncementID = Field(
-        default="", description="Unique ID for deduplication"
-    )
-    original_source: NodeURL = Field(
-        default="", description="Original server that announced the function"
-    )
-
-    @classmethod
-    def create_from_capabilities(
-        cls,
-        capabilities: ServerCapabilities,
-        propagation: FederatedPropagationInfo | None = None,
-    ) -> "RPCServerHello":
-        """Create RPCServerHello from structured types."""
-        if propagation is None:
-            propagation = FederatedPropagationInfo.create_initial("")
-
-        return cls(
-            funs=capabilities.functions,
-            locs=capabilities.resources,
-            cluster_id=capabilities.cluster_id,
-            advertised_urls=capabilities.advertised_urls,
-            hop_count=propagation.hop_count,
-            max_hops=propagation.max_hops,
-            announcement_id=propagation.announcement_id,
-            original_source=propagation.original_source,
-        )
-
-    @property
-    def capabilities(self) -> ServerCapabilities:
-        """Extract server capabilities from this hello message."""
-        return ServerCapabilities(
-            functions=self.funs,
-            resources=self.locs,
-            cluster_id=self.cluster_id,
-            advertised_urls=self.advertised_urls,
-        )
-
-    @property
-    def propagation_info(self) -> FederatedPropagationInfo:
-        """Extract federated propagation info from this hello message."""
-        return FederatedPropagationInfo(
-            hop_count=self.hop_count,
-            max_hops=self.max_hops,
-            announcement_id=self.announcement_id,
-            original_source=self.original_source,
-        )
-
-    @property
-    def can_forward(self) -> bool:
-        """Check if this hello message can be forwarded to another hop."""
-        return self.propagation_info.can_forward
-
-    @property
-    def is_federated(self) -> bool:
-        """Check if this is a federated announcement (hop_count > 0)."""
-        return self.propagation_info.is_federated
-
-
 class GoodbyeReason(Enum):
     """Reasons for node departure."""
 
@@ -216,6 +123,10 @@ class RPCServerGoodbye(BaseModel):
     departing_node_url: str = Field(description="URL of the departing node")
     cluster_id: str = Field(description="Cluster the node is leaving")
     reason: GoodbyeReason = Field(description="Reason for departure")
+    instance_id: str = Field(
+        default="",
+        description="Unique instance ID for the departing server process.",
+    )
     timestamp: Timestamp = Field(
         default_factory=time.time, description="When this goodbye was sent"
     )
@@ -227,109 +138,102 @@ class RPCServerStatus(BaseModel):
     """
 
     what: Literal["STATUS"] = "STATUS"
-
-
-class RPCServerHelloAck(BaseModel):
-    """
-    Acknowledgment for a HELLO message, confirming function registration.
-
-    This message is sent in response to a HELLO to confirm that the receiving
-    server has successfully added the announced functions to its function map.
-    """
-
-    what: Literal["HELLO_ACK"] = "HELLO_ACK"
-    original_announcement_id: AnnouncementID = Field(
-        description="ID of the original HELLO announcement being acknowledged"
-    )
-    acknowledged_functions: FunctionNames = Field(
-        description="Functions successfully added to function map"
-    )
-    acknowledging_server: NodeURL = Field(
-        description="URL of the server sending this acknowledgment"
+    server_url: str = Field(description="URL of the reporting server")
+    cluster_id: str = Field(description="Cluster ID of the reporting server")
+    instance_id: str = Field(
+        default="",
+        description="Unique instance ID for the reporting server process.",
     )
     timestamp: Timestamp = Field(
-        default_factory=time.time, description="When this acknowledgment was sent"
+        default_factory=time.time, description="When this status was generated"
     )
-
-
-class RPCServerFunctionMapRequest(BaseModel):
-    """
-    Request for a server's current function map for verification.
-
-    Used to verify that remote servers have the expected functions in their
-    function maps, ensuring consistency across the federation.
-    """
-
-    what: Literal["FUNCTION_MAP_REQUEST"] = "FUNCTION_MAP_REQUEST"
-    requesting_server: NodeURL = Field(
-        description="URL of the server requesting the function map"
+    status: str = Field(default="ok", description="High-level status string")
+    active_clients: int = Field(default=0, description="Active client connections")
+    peer_count: int = Field(default=0, description="Known peers in cluster")
+    funs: tuple[str, ...] = Field(
+        default_factory=tuple, description="Known function names on this server"
     )
-
-
-class RPCServerFunctionMapResponse(BaseModel):
-    """
-    Response containing a server's current function map.
-
-    Provides the complete function map for verification purposes.
-    """
-
-    what: Literal["FUNCTION_MAP_RESPONSE"] = "FUNCTION_MAP_RESPONSE"
-    responding_server: NodeURL = Field(
-        description="URL of the server providing the function map"
-    )
-    function_map: dict[str, frozenset[str]] = Field(
-        description="Complete function map: function_name -> set of server URLs that provide it"
-    )
-    resources_map: dict[str, frozenset[str]] = Field(
-        description="Complete resources map: resource_name -> set of server URLs that have it"
-    )
-    timestamp: Timestamp = Field(
-        default_factory=time.time, description="When this function map was generated"
-    )
-
-
-type RPCServerMessage = (
-    RPCServerHello
-    | RPCServerGoodbye
-    | RPCServerStatus
-    | RPCServerHelloAck
-    | RPCServerFunctionMapRequest
-    | RPCServerFunctionMapResponse
-)
-
-
-class PeerInfo(BaseModel):
-    """Information about a peer in the cluster."""
-
-    url: str = Field(description="The URL of the peer.")
-    funs: tuple[str, ...] = Field(description="Functions provided by this peer.")
     locs: frozenset[str] = Field(
-        description="Locations/resources associated with this peer."
+        default_factory=frozenset,
+        description="Resource locations associated with this server",
     )
-    last_seen: float = Field(
-        description="Timestamp of when this peer was last seen alive."
+    function_catalog: tuple[RPCFunctionDescriptor, ...] = Field(
+        default_factory=tuple,
+        description="Detailed function descriptors for routing/identity.",
     )
-    cluster_id: str = Field(description="The ID of the cluster this peer belongs to.")
     advertised_urls: tuple[str, ...] = Field(
         default_factory=tuple,
-        description="List of URLs that this peer advertises for inbound connections.",
+        description="URLs advertised for inbound connections",
     )
-    # NEW: Logical clock for proper distributed ordering
-    logical_clock: dict[str, int] = Field(
-        default_factory=dict,
-        description="Vector clock for logical ordering of peer updates",
+    metrics: dict[str, Any] = Field(
+        default_factory=dict, description="Additional status metrics"
     )
 
 
-class GossipMessage(BaseModel):
-    """A message exchanged during the gossip protocol."""
+@dataclass(frozen=True, slots=True)
+class CacheStatusMetrics:
+    """Structured cache status metrics for server status payloads."""
 
-    role: Literal["gossip"] = "gossip"
-    peers: tuple[PeerInfo, ...] = Field(description="Information about known peers.")
-    u: str = Field(description="A unique identifier for this gossip message.")
-    cluster_id: str = Field(
-        description="The ID of the cluster this gossip message originates from."
-    )
+    cache_region: str
+    cache_latitude: float
+    cache_longitude: float
+    cache_capacity_mb: int
+    cache_utilization_percent: float
+    cache_avg_latency_ms: float
+    cache_reliability_score: float
+
+
+@dataclass(frozen=True, slots=True)
+class QueueStatusMetrics:
+    """Structured queue status metrics for server status payloads."""
+
+    total_queues: int
+    total_messages_sent: int
+    total_messages_received: int
+    total_messages_acknowledged: int
+    total_messages_failed: int
+    active_subscriptions: int
+    success_rate: float
+
+
+@dataclass(frozen=True, slots=True)
+class ServerStatusMetrics:
+    """Structured server status metrics with optional subsystem payloads."""
+
+    messages_processed: int
+    rpc_responses_skipped: int
+    server_messages: int
+    other_messages: int
+    cache_metrics: CacheStatusMetrics | None = None
+    queue_metrics: QueueStatusMetrics | None = None
+    route_metrics: dict[str, Any] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        payload = asdict(self)
+        if payload.get("cache_metrics") is None:
+            payload.pop("cache_metrics", None)
+        if payload.get("queue_metrics") is None:
+            payload.pop("queue_metrics", None)
+        if payload.get("route_metrics") is None:
+            payload.pop("route_metrics", None)
+        return payload
+
+
+type RPCServerMessage = RPCServerGoodbye | RPCServerStatus
+
+
+class FabricGossipEnvelope(BaseModel):
+    """Envelope for federation gossip messages transported over MPREG connections."""
+
+    role: Literal["fabric-gossip"] = "fabric-gossip"
+    payload: dict[str, Any] = Field(description="Serialized federation gossip message")
+
+
+class FabricMessageEnvelope(BaseModel):
+    """Envelope for unified fabric messages transported over MPREG connections."""
+
+    role: Literal["fabric-message"] = "fabric-message"
+    payload: dict[str, Any] = Field(description="Serialized unified fabric message")
 
 
 class RPCServerRequest(BaseModel):
@@ -372,11 +276,11 @@ class RPCResponse(BaseModel):
 
     # Enhanced debugging fields (optional, backward compatible)
     # Using forward references to avoid circular dependency issues
-    intermediate_results: tuple["RPCIntermediateResult", ...] = Field(
+    intermediate_results: tuple[RPCIntermediateResult, ...] = Field(
         default_factory=tuple,
         description="Intermediate results from each execution level",
     )
-    execution_summary: "RPCExecutionSummary | None" = Field(
+    execution_summary: RPCExecutionSummary | None = Field(
         default=None, description="Summary of execution performance and steps"
     )
 
@@ -560,20 +464,6 @@ class TopicAdvertisement(BaseModel):
     last_activity: float = Field(description="Last message activity timestamp.")
 
 
-class PubSubGossip(BaseModel):
-    """
-    Extended gossip message that includes topic routing information.
-    """
-
-    role: Literal["pubsub-gossip"] = "pubsub-gossip"
-    peers: tuple[PeerInfo, ...] = Field(description="Information about known peers.")
-    topics: tuple[TopicAdvertisement, ...] = Field(
-        description="Topic subscription advertisements."
-    )
-    u: str = Field(description="Unique identifier for this gossip message.")
-    cluster_id: str = Field(description="Cluster ID this gossip originates from.")
-
-
 class ConsensusProposalMessage(BaseModel):
     """
     Consensus proposal message for distributed state changes.
@@ -604,24 +494,11 @@ class ConsensusVoteMessage(BaseModel):
 
 
 type PubSubMessage_Union = (
-    PubSubPublish
-    | PubSubSubscribe
-    | PubSubUnsubscribe
-    | PubSubNotification
-    | PubSubAck
-    | PubSubGossip
+    PubSubPublish | PubSubSubscribe | PubSubUnsubscribe | PubSubNotification | PubSubAck
 )
 
 
-type RPCMessage = (
-    RPCRequest
-    | RPCInternalRequest
-    | RPCInternalAnswer
-    | RPCServerRequest
-    | GossipMessage
-    | RPCResponse
-    | PubSubMessage_Union
-)
+type RPCMessage = RPCRequest | RPCServerRequest | RPCResponse | PubSubMessage_Union
 
 
 @dataclass

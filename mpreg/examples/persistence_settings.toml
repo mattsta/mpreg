@@ -1,0 +1,14 @@
+[mpreg]
+host = "127.0.0.1"
+port = 0
+name = "persist-example"
+cluster_id = "persist-cluster"
+resources = ["cache", "queue"]
+monitoring_enabled = false
+enable_default_cache = true
+enable_default_queue = true
+enable_cache_federation = false
+
+[mpreg.persistence_config]
+mode = "sqlite"
+data_dir = "/tmp/mpreg_persist_demo"

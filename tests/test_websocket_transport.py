@@ -19,6 +19,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
+from mpreg.core.port_allocator import port_context
 from mpreg.core.transport import (
     SecurityConfig,
     TransportConfig,
@@ -41,35 +42,41 @@ class TestWebSocketTransportFactory:
 
     def test_websocket_create_transport(self):
         """Test creating WebSocket transport via factory."""
-        transport = TransportFactory.create("ws://localhost:8080")
-        assert isinstance(transport, WebSocketTransport)
-        assert transport.protocol == TransportProtocol.WEBSOCKET
-        assert not transport.is_secure
-        assert not transport.connected
+        with port_context("testing") as port:
+            transport = TransportFactory.create(f"ws://localhost:{port}")
+            assert isinstance(transport, WebSocketTransport)
+            assert transport.protocol == TransportProtocol.WEBSOCKET
+            assert not transport.is_secure
+            assert not transport.connected
 
     def test_websocket_secure_create_transport(self):
         """Test creating WebSocket Secure transport via factory."""
         config = TransportConfig(security=SecurityConfig(verify_cert=False))
-        transport = TransportFactory.create("wss://localhost:8443", config)
-        assert isinstance(transport, WebSocketTransport)
-        assert transport.protocol == TransportProtocol.WEBSOCKET_SECURE
-        assert transport.is_secure
-        assert not transport.connected
+        with port_context("testing") as port:
+            transport = TransportFactory.create(f"wss://localhost:{port}", config)
+            assert isinstance(transport, WebSocketTransport)
+            assert transport.protocol == TransportProtocol.WEBSOCKET_SECURE
+            assert transport.is_secure
+            assert not transport.connected
 
     def test_websocket_create_listener(self):
         """Test creating WebSocket listener via factory."""
         config = TransportConfig()
-        listener = TransportFactory.create_listener("ws", "127.0.0.1", 8080, config)
-        assert isinstance(listener, WebSocketListener)
-        assert listener.host == "127.0.0.1"
-        assert listener.port == 8080
+        with port_context("testing") as port:
+            listener = TransportFactory.create_listener("ws", "127.0.0.1", port, config)
+            assert isinstance(listener, WebSocketListener)
+            assert listener.host == "127.0.0.1"
+            assert listener.port == port
 
     def test_websocket_secure_create_listener(self):
         """Test creating WebSocket Secure listener via factory."""
         config = TransportConfig(security=SecurityConfig(cert_file="test.crt"))
-        listener = TransportFactory.create_listener("wss", "127.0.0.1", 8443, config)
-        assert isinstance(listener, WebSocketListener)
-        assert listener._get_protocol_scheme() == "wss"
+        with port_context("testing") as port:
+            listener = TransportFactory.create_listener(
+                "wss", "127.0.0.1", port, config
+            )
+            assert isinstance(listener, WebSocketListener)
+            assert listener._get_protocol_scheme() == "wss"
 
 
 class TestWebSocketTransportBasic:
@@ -343,19 +350,22 @@ class TestWebSocketTransportSecurity:
         """Test protocol scheme detection for security."""
         # Non-secure config
         config = TransportConfig()
-        listener = WebSocketListener("127.0.0.1", 8080, config)
-        assert listener._get_protocol_scheme() == "ws"
+        with port_context("testing") as port:
+            listener = WebSocketListener("127.0.0.1", port, config)
+            assert listener._get_protocol_scheme() == "ws"
 
         # Secure config with cert file
         secure_config = TransportConfig(security=SecurityConfig(cert_file="test.crt"))
-        secure_listener = WebSocketListener("127.0.0.1", 8443, secure_config)
-        assert secure_listener._get_protocol_scheme() == "wss"
+        with port_context("testing") as port:
+            secure_listener = WebSocketListener("127.0.0.1", port, secure_config)
+            assert secure_listener._get_protocol_scheme() == "wss"
 
         # Secure config with SSL context
         ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         ssl_config = TransportConfig(security=SecurityConfig(ssl_context=ssl_context))
-        ssl_listener = WebSocketListener("127.0.0.1", 8443, ssl_config)
-        assert ssl_listener._get_protocol_scheme() == "wss"
+        with port_context("testing") as port:
+            ssl_listener = WebSocketListener("127.0.0.1", port, ssl_config)
+            assert ssl_listener._get_protocol_scheme() == "wss"
 
 
 class TestWebSocketTransportErrorHandling:
@@ -366,40 +376,50 @@ class TestWebSocketTransportErrorHandling:
         """Test WebSocket connection failure to non-existent server."""
         config = TransportConfig(connect_timeout=0.1)  # Very short timeout
 
-        # Try to connect to non-existent server (use port 65534 which is valid but unlikely to be used)
-        client = WebSocketTransport("ws://127.0.0.1:65534", config)
+        # Try to connect to non-existent server on an allocated unused port.
+        with port_context("testing") as port:
+            client = WebSocketTransport(f"ws://127.0.0.1:{port}", config)
 
-        with pytest.raises(
-            TransportConnectionError, match="WebSocket connection failed"
-        ):
-            await client.connect()
+            with pytest.raises(
+                TransportConnectionError, match="WebSocket connection failed"
+            ):
+                await client.connect()
 
     @pytest.mark.asyncio
     async def test_websocket_send_without_connection(self):
         """Test sending without established connection."""
         config = TransportConfig()
-        client = WebSocketTransport("ws://127.0.0.1:8080", config)
+        with port_context("testing") as port:
+            client = WebSocketTransport(f"ws://127.0.0.1:{port}", config)
 
-        with pytest.raises(TransportConnectionError, match="WebSocket not connected"):
-            await client.send(b"test message")
+            with pytest.raises(
+                TransportConnectionError, match="WebSocket not connected"
+            ):
+                await client.send(b"test message")
 
     @pytest.mark.asyncio
     async def test_websocket_receive_without_connection(self):
         """Test receiving without established connection."""
         config = TransportConfig()
-        client = WebSocketTransport("ws://127.0.0.1:8080", config)
+        with port_context("testing") as port:
+            client = WebSocketTransport(f"ws://127.0.0.1:{port}", config)
 
-        with pytest.raises(TransportConnectionError, match="WebSocket not connected"):
-            await client.receive()
+            with pytest.raises(
+                TransportConnectionError, match="WebSocket not connected"
+            ):
+                await client.receive()
 
     @pytest.mark.asyncio
     async def test_websocket_ping_without_connection(self):
         """Test ping without established connection."""
         config = TransportConfig()
-        client = WebSocketTransport("ws://127.0.0.1:8080", config)
+        with port_context("testing") as port:
+            client = WebSocketTransport(f"ws://127.0.0.1:{port}", config)
 
-        with pytest.raises(TransportConnectionError, match="WebSocket not connected"):
-            await client.ping()
+            with pytest.raises(
+                TransportConnectionError, match="WebSocket not connected"
+            ):
+                await client.ping()
 
     @pytest.mark.asyncio
     async def test_websocket_send_timeout(self, test_port):
@@ -524,11 +544,12 @@ class TestWebSocketTransportErrorHandling:
     async def test_websocket_double_disconnect(self):
         """Test disconnecting when already disconnected."""
         config = TransportConfig()
-        client = WebSocketTransport("ws://127.0.0.1:8080", config)
+        with port_context("testing") as port:
+            client = WebSocketTransport(f"ws://127.0.0.1:{port}", config)
 
-        # Should not raise error
-        await client.disconnect()
-        await client.disconnect()
+            # Should not raise error
+            await client.disconnect()
+            await client.disconnect()
 
 
 class TestWebSocketTransportDataTypes:
@@ -752,48 +773,42 @@ class TestWebSocketTransportProtocolCompliance:
 
 @given(st.binary(min_size=0, max_size=1024))
 @settings(max_examples=20, deadline=5000)
-def test_websocket_property_based_messaging(message_data):
+@pytest.mark.asyncio
+async def test_websocket_property_based_messaging(message_data):
     """Property-based test for WebSocket messaging with various data."""
 
     async def test_message():
         config = TransportConfig()
 
-        # Use a fixed port for property testing to avoid port conflicts
-        test_port = 18080  # Fixed port for property tests
-
-        # Start listener
-        listener = WebSocketListener("127.0.0.1", test_port, config)
-        try:
+        with port_context("testing") as test_port:
+            # Start listener
+            listener = WebSocketListener("127.0.0.1", test_port, config)
             await listener.start()
-        except Exception:
-            # Port might be in use, skip this test iteration
-            return
 
-        try:
-            # Connect
-            client = WebSocketTransport(f"ws://127.0.0.1:{test_port}", config)
-            await client.connect()
+            try:
+                # Connect
+                client = WebSocketTransport(f"ws://127.0.0.1:{test_port}", config)
+                await client.connect()
 
-            server_task = asyncio.create_task(listener.accept())
-            server_transport = await asyncio.wait_for(server_task, timeout=2.0)
+                server_task = asyncio.create_task(listener.accept())
+                server_transport = await asyncio.wait_for(server_task, timeout=2.0)
 
-            # Test the message
-            await client.send(message_data)
-            received = await server_transport.receive()
+                # Test the message
+                await client.send(message_data)
+                received = await server_transport.receive()
 
-            # Message should be received exactly as sent
-            assert received == message_data
-            assert len(received) == len(message_data)
+                # Message should be received exactly as sent
+                assert received == message_data
+                assert len(received) == len(message_data)
 
-            # Cleanup
-            await client.disconnect()
-            await server_transport.disconnect()
+                # Cleanup
+                await client.disconnect()
+                await server_transport.disconnect()
 
-        finally:
-            await listener.stop()
+            finally:
+                await listener.stop()
 
-    # Run the async test
-    asyncio.run(test_message())
+    await test_message()
 
 
 if __name__ == "__main__":

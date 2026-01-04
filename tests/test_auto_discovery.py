@@ -17,7 +17,8 @@ from pathlib import Path
 
 import pytest
 
-from mpreg.federation.auto_discovery import (
+from mpreg.core.port_allocator import port_context, port_range_context
+from mpreg.fabric.auto_discovery import (
     AutoDiscoveryService,
     DiscoveredCluster,
     DiscoveryConfiguration,
@@ -31,57 +32,60 @@ from mpreg.federation.auto_discovery import (
     create_http_discovery_config,
     create_static_discovery_config,
 )
-from mpreg.federation.federation_resilience import HealthStatus
+from mpreg.fabric.federation_resilience import HealthStatus
 
 
 @pytest.fixture
 def sample_discovered_cluster():
     """Create a sample discovered cluster for testing."""
-    return DiscoveredCluster(
-        cluster_id="test-cluster-1",
-        cluster_name="Test Cluster 1",
-        region="us-west-2",
-        server_url="ws://test1.example.com:8000",
-        bridge_url="ws://test1.example.com:9000",
-        health_status=HealthStatus.HEALTHY,
-        health_score=95.0,
-        discovery_source="test",
-        metadata={"environment": "testing", "priority": "high"},
-    )
+    with port_range_context(2, "testing") as ports:
+        cluster = DiscoveredCluster(
+            cluster_id="test-cluster-1",
+            cluster_name="Test Cluster 1",
+            region="us-west-2",
+            server_url=f"ws://test1.example.com:{ports[0]}",
+            bridge_url=f"ws://test1.example.com:{ports[1]}",
+            health_status=HealthStatus.HEALTHY,
+            health_score=95.0,
+            discovery_source="test",
+            metadata={"environment": "testing", "priority": "high"},
+        )
+        yield cluster
 
 
 @pytest.fixture
 def static_config_file():
     """Create a temporary static configuration file."""
-    config_data = {
-        "clusters": [
-            {
-                "cluster_id": "static-cluster-1",
-                "cluster_name": "Static Cluster 1",
-                "region": "us-east-1",
-                "server_url": "ws://static1.example.com:8000",
-                "bridge_url": "ws://static1.example.com:9000",
-                "metadata": {"tier": "production"},
-            },
-            {
-                "cluster_id": "static-cluster-2",
-                "cluster_name": "Static Cluster 2",
-                "region": "eu-central-1",
-                "server_url": "ws://static2.example.com:8000",
-                "bridge_url": "ws://static2.example.com:9000",
-                "metadata": {"tier": "staging"},
-            },
-        ]
-    }
+    with port_range_context(4, "testing") as ports:
+        config_data = {
+            "clusters": [
+                {
+                    "cluster_id": "static-cluster-1",
+                    "cluster_name": "Static Cluster 1",
+                    "region": "us-east-1",
+                    "server_url": f"ws://static1.example.com:{ports[0]}",
+                    "bridge_url": f"ws://static1.example.com:{ports[1]}",
+                    "metadata": {"tier": "production"},
+                },
+                {
+                    "cluster_id": "static-cluster-2",
+                    "cluster_name": "Static Cluster 2",
+                    "region": "eu-central-1",
+                    "server_url": f"ws://static2.example.com:{ports[2]}",
+                    "bridge_url": f"ws://static2.example.com:{ports[3]}",
+                    "metadata": {"tier": "staging"},
+                },
+            ]
+        }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-        json.dump(config_data, f)
-        temp_path = f.name
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(config_data, f)
+            temp_path = f.name
 
-    yield temp_path
+        yield temp_path
 
-    # Cleanup
-    Path(temp_path).unlink(missing_ok=True)
+        # Cleanup
+        Path(temp_path).unlink(missing_ok=True)
 
 
 class TestDiscoveredCluster:
@@ -94,8 +98,8 @@ class TestDiscoveredCluster:
         assert cluster.cluster_id == "test-cluster-1"
         assert cluster.cluster_name == "Test Cluster 1"
         assert cluster.region == "us-west-2"
-        assert cluster.server_url == "ws://test1.example.com:8000"
-        assert cluster.bridge_url == "ws://test1.example.com:9000"
+        assert cluster.server_url.startswith("ws://test1.example.com:")
+        assert cluster.bridge_url.startswith("ws://test1.example.com:")
         assert cluster.health_status == HealthStatus.HEALTHY
         assert cluster.health_score == 95.0
         assert cluster.discovery_source == "test"
@@ -129,18 +133,19 @@ class TestDiscoveryConfiguration:
 
     def test_consul_configuration(self):
         """Test Consul-specific configuration."""
-        config = create_consul_discovery_config(
-            consul_host="consul.example.com",
-            consul_port=8501,
-            service_name="custom-mpreg",
-            datacenter="dc2",
-        )
+        with port_context("testing") as port:
+            config = create_consul_discovery_config(
+                consul_host="consul.example.com",
+                consul_port=port,
+                service_name="custom-mpreg",
+                datacenter="dc2",
+            )
 
-        assert config.protocol == DiscoveryProtocol.CONSUL
-        assert config.consul_host == "consul.example.com"
-        assert config.consul_port == 8501
-        assert config.consul_service == "custom-mpreg"
-        assert config.consul_datacenter == "dc2"
+            assert config.protocol == DiscoveryProtocol.CONSUL
+            assert config.consul_host == "consul.example.com"
+            assert config.consul_port == port
+            assert config.consul_service == "custom-mpreg"
+            assert config.consul_datacenter == "dc2"
 
     def test_static_configuration(self):
         """Test static file configuration."""
@@ -440,60 +445,61 @@ class TestAutoDiscoveryService:
         """Test cluster filtering and query methods."""
         service = AutoDiscoveryService(discovery_configs=discovery_configs)
 
-        # Add test clusters
-        cluster1 = DiscoveredCluster(
-            cluster_id="cluster-1",
-            cluster_name="Cluster 1",
-            region="us-west-2",
-            server_url="ws://cluster1.example.com:8000",
-            bridge_url="ws://cluster1.example.com:9000",
-            health_status=HealthStatus.HEALTHY,
-            health_score=95.0,
-        )
+        with port_range_context(6, "testing") as ports:
+            # Add test clusters
+            cluster1 = DiscoveredCluster(
+                cluster_id="cluster-1",
+                cluster_name="Cluster 1",
+                region="us-west-2",
+                server_url=f"ws://cluster1.example.com:{ports[0]}",
+                bridge_url=f"ws://cluster1.example.com:{ports[1]}",
+                health_status=HealthStatus.HEALTHY,
+                health_score=95.0,
+            )
 
-        cluster2 = DiscoveredCluster(
-            cluster_id="cluster-2",
-            cluster_name="Cluster 2",
-            region="us-east-1",
-            server_url="ws://cluster2.example.com:8000",
-            bridge_url="ws://cluster2.example.com:9000",
-            health_status=HealthStatus.DEGRADED,
-            health_score=60.0,
-        )
+            cluster2 = DiscoveredCluster(
+                cluster_id="cluster-2",
+                cluster_name="Cluster 2",
+                region="us-east-1",
+                server_url=f"ws://cluster2.example.com:{ports[2]}",
+                bridge_url=f"ws://cluster2.example.com:{ports[3]}",
+                health_status=HealthStatus.DEGRADED,
+                health_score=60.0,
+            )
 
-        cluster3 = DiscoveredCluster(
-            cluster_id="cluster-3",
-            cluster_name="Cluster 3",
-            region="us-west-2",
-            server_url="ws://cluster3.example.com:8000",
-            bridge_url="ws://cluster3.example.com:9000",
-            health_status=HealthStatus.UNHEALTHY,
-            health_score=20.0,
-        )
+            cluster3 = DiscoveredCluster(
+                cluster_id="cluster-3",
+                cluster_name="Cluster 3",
+                region="us-west-2",
+                server_url=f"ws://cluster3.example.com:{ports[4]}",
+                bridge_url=f"ws://cluster3.example.com:{ports[5]}",
+                health_status=HealthStatus.UNHEALTHY,
+                health_score=20.0,
+            )
 
-        service.discovered_clusters = {
-            cluster1.cluster_id: cluster1,
-            cluster2.cluster_id: cluster2,
-            cluster3.cluster_id: cluster3,
-        }
+            service.discovered_clusters = {
+                cluster1.cluster_id: cluster1,
+                cluster2.cluster_id: cluster2,
+                cluster3.cluster_id: cluster3,
+            }
 
-        # Test get all clusters
-        all_clusters = service.get_discovered_clusters()
-        assert len(all_clusters) == 3
+            # Test get all clusters
+            all_clusters = service.get_discovered_clusters()
+            assert len(all_clusters) == 3
 
-        # Test get by ID
-        found_cluster = service.get_cluster_by_id("cluster-1")
-        assert found_cluster == cluster1
+            # Test get by ID
+            found_cluster = service.get_cluster_by_id("cluster-1")
+            assert found_cluster == cluster1
 
-        # Test get by region
-        west_clusters = service.get_clusters_by_region("us-west-2")
-        assert len(west_clusters) == 2
-        assert all(c.region == "us-west-2" for c in west_clusters)
+            # Test get by region
+            west_clusters = service.get_clusters_by_region("us-west-2")
+            assert len(west_clusters) == 2
+            assert all(c.region == "us-west-2" for c in west_clusters)
 
-        # Test get healthy clusters
-        healthy_clusters = service.get_healthy_clusters()
-        assert len(healthy_clusters) == 1
-        assert healthy_clusters[0] == cluster1
+            # Test get healthy clusters
+            healthy_clusters = service.get_healthy_clusters()
+            assert len(healthy_clusters) == 1
+            assert healthy_clusters[0] == cluster1
 
     def test_discovery_statistics(self, discovery_configs):
         """Test discovery statistics collection."""
@@ -505,41 +511,42 @@ class TestAutoDiscoveryService:
         service.discovery_stats["dns_srv_errors"] = 1
         service.last_discovery[DiscoveryProtocol.STATIC_CONFIG] = time.time()
 
-        # Add test clusters
-        cluster1 = DiscoveredCluster(
-            cluster_id="cluster-1",
-            cluster_name="Cluster 1",
-            region="us-west-2",
-            server_url="ws://cluster1.example.com:8000",
-            bridge_url="ws://cluster1.example.com:9000",
-            health_status=HealthStatus.HEALTHY,
-        )
+        with port_range_context(4, "testing") as ports:
+            # Add test clusters
+            cluster1 = DiscoveredCluster(
+                cluster_id="cluster-1",
+                cluster_name="Cluster 1",
+                region="us-west-2",
+                server_url=f"ws://cluster1.example.com:{ports[0]}",
+                bridge_url=f"ws://cluster1.example.com:{ports[1]}",
+                health_status=HealthStatus.HEALTHY,
+            )
 
-        cluster2 = DiscoveredCluster(
-            cluster_id="cluster-2",
-            cluster_name="Cluster 2",
-            region="us-east-1",
-            server_url="ws://cluster2.example.com:8000",
-            bridge_url="ws://cluster2.example.com:9000",
-            health_status=HealthStatus.DEGRADED,
-        )
+            cluster2 = DiscoveredCluster(
+                cluster_id="cluster-2",
+                cluster_name="Cluster 2",
+                region="us-east-1",
+                server_url=f"ws://cluster2.example.com:{ports[2]}",
+                bridge_url=f"ws://cluster2.example.com:{ports[3]}",
+                health_status=HealthStatus.DEGRADED,
+            )
 
-        service.discovered_clusters = {
-            cluster1.cluster_id: cluster1,
-            cluster2.cluster_id: cluster2,
-        }
+            service.discovered_clusters = {
+                cluster1.cluster_id: cluster1,
+                cluster2.cluster_id: cluster2,
+            }
 
-        stats = service.get_discovery_statistics()
+            stats = service.get_discovery_statistics()
 
-        assert stats.total_clusters == 2
-        assert stats.clusters_by_region.region_counts["us-west-2"] == 1
-        assert stats.clusters_by_region.region_counts["us-east-1"] == 1
-        assert stats.clusters_by_health.healthy == 1
-        assert stats.clusters_by_health.degraded == 1
-        assert stats.discovery_backends == 2
-        assert "static_config" in stats.backend_statistics
-        assert stats.backend_statistics["static_config"].discoveries == 5
-        assert stats.local_cluster_registered is False
+            assert stats.total_clusters == 2
+            assert stats.clusters_by_region.region_counts["us-west-2"] == 1
+            assert stats.clusters_by_region.region_counts["us-east-1"] == 1
+            assert stats.clusters_by_health.healthy == 1
+            assert stats.clusters_by_health.degraded == 1
+            assert stats.discovery_backends == 2
+            assert "static_config" in stats.backend_statistics
+            assert stats.backend_statistics["static_config"].discoveries == 5
+            assert stats.local_cluster_registered is False
 
     def test_dynamic_configuration(self):
         """Test dynamic configuration management."""

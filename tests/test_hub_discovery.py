@@ -21,9 +21,9 @@ import time
 
 import pytest
 
-from mpreg.federation.federation_graph import GeographicCoordinate
-from mpreg.federation.federation_hierarchy import HubSelector, RoutingPolicy
-from mpreg.federation.federation_hubs import (
+from mpreg.fabric.federation_graph import GeographicCoordinate
+from mpreg.fabric.hub_hierarchy import HubSelector, RoutingPolicy
+from mpreg.fabric.hubs import (
     GlobalHub,
     HubCapabilities,
     HubTier,
@@ -78,8 +78,8 @@ def create_global_hub_capabilities():
     )
 
 
-from mpreg.federation.federation_optimized import ClusterIdentity
-from mpreg.federation.federation_registry import (
+from mpreg.fabric.federation_optimized import ClusterIdentity
+from mpreg.fabric.hub_registry import (
     BroadcastDiscoveryProtocol,
     ClusterRegistrar,
     ClusterRegistrationInfo,

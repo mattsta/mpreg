@@ -104,7 +104,7 @@ async def five_node_cluster():
         # Proper cleanup
         for server in servers:
             try:
-                server.shutdown()
+                await server.shutdown_async()
             except Exception as e:
                 print(f"Error shutting down server: {e}")
 
@@ -379,6 +379,9 @@ class TestAdvancedClusterScenarios:
     async def test_dynamic_resource_discovery(self, five_node_cluster):
         """Test that new functions are discoverable across the cluster."""
         servers = five_node_cluster
+        from mpreg.datastructures.function_identity import FunctionSelector
+        from mpreg.fabric.index import FunctionQuery
+        from tests.test_helpers import wait_for_condition
 
         # Add a new function to the GPU node at runtime
         def new_gpu_function(input_data: str) -> dict:
@@ -390,8 +393,19 @@ class TestAdvancedClusterScenarios:
 
         servers[1].register_command("new_function", new_gpu_function, ["gpu"])
 
-        # Give time for gossip to propagate
-        await asyncio.sleep(1.0)
+        await wait_for_condition(
+            lambda: bool(
+                servers[0]._fabric_control_plane
+                and servers[0]._fabric_control_plane.index.find_functions(
+                    FunctionQuery(
+                        selector=FunctionSelector(name="new_function"),
+                        resources=frozenset({"gpu"}),
+                    )
+                )
+            ),
+            timeout=5.0,
+            error_message="new_function not propagated to coordinator",
+        )
 
         async with MPREGClientAPI(
             f"ws://127.0.0.1:{five_node_cluster[0].settings.port}"

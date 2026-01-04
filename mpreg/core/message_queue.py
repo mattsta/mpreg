@@ -13,6 +13,8 @@ Delivery Guarantees Supported:
 All data structures use proper dataclasses following MPREG's clean design principles.
 """
 
+from __future__ import annotations
+
 import asyncio
 import time
 import uuid
@@ -20,13 +22,19 @@ from collections import defaultdict, deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 from sortedcontainers import SortedSet  # type: ignore
 
 from ..datastructures import MessageId
 from .task_manager import ManagedObject
+from .topic_taxonomy import TopicValidator
+
+if TYPE_CHECKING:
+    from .persistence.queue_store import QueueStore
+
+queue_log = logger
 
 # Type aliases for semantic clarity
 type TopicPattern = str
@@ -198,9 +206,17 @@ class MessageQueue(ManagedObject):
     - Quorum: Require N acknowledgments before considering delivered
     """
 
-    def __init__(self, config: QueueConfiguration) -> None:
+    def __init__(
+        self,
+        config: QueueConfiguration,
+        *,
+        queue_store: QueueStore | None = None,
+        autostart: bool = True,
+    ) -> None:
         super().__init__(name=f"MessageQueue-{config.name}")
         self.config = config
+        self._queue_store = queue_store
+        self._workers_started = False
 
         # Message storage
         self.pending_messages: deque[QueuedMessage] = deque()
@@ -223,20 +239,41 @@ class MessageQueue(ManagedObject):
         # Statistics
         self.statistics = QueueStatistics()
 
-        # Start background workers
-        self._start_workers()
+        # Start background workers if requested
+        if autostart:
+            self.start_workers()
 
-    def _start_workers(self) -> None:
+    def start_workers(self) -> None:
         """Start background worker tasks."""
+        if self._workers_started:
+            return
         try:
             self.create_task(self._delivery_worker(), name="delivery_worker")
             self.create_task(self._timeout_worker(), name="timeout_worker")
             self.create_task(self._cleanup_worker(), name="cleanup_worker")
-            logger.info(
+            queue_log.debug(
                 f"Started {len(self._task_manager)} workers for queue {self.config.name}"
             )
+            self._workers_started = True
         except RuntimeError:
-            logger.warning("No event loop running, skipping background workers")
+            queue_log.debug("No event loop running, skipping background workers")
+
+    async def restore_from_store(self) -> None:
+        """Restore queue state from persistence store."""
+        if self._queue_store is None:
+            return
+        state = await self._queue_store.load_state()
+        if state.config:
+            self.config = state.config
+        self.pending_messages = state.pending
+        self.in_flight_messages = state.in_flight
+        self.dead_letter_queue = state.dead_letter
+        if self.config.enable_deduplication:
+            self.fingerprint_history = SortedSet(state.fingerprints)
+            cutoff_time = time.time() - self.config.deduplication_window_seconds
+            old_entries = self.fingerprint_history.irange(maximum=(cutoff_time, ""))
+            for entry in list(old_entries):
+                self.fingerprint_history.remove(entry)
 
     async def send_message(
         self,
@@ -297,7 +334,7 @@ class MessageQueue(ManagedObject):
                     minimum=(cutoff_time, "")
                 ):
                     if fingerprint == message._fingerprint:
-                        logger.debug(f"Duplicate message detected: {message_id}")
+                        queue_log.debug(f"Duplicate message detected: {message_id}")
                         return DeliveryResult(
                             success=False,
                             message_id=message_id,
@@ -306,6 +343,10 @@ class MessageQueue(ManagedObject):
 
                 # Add new fingerprint with current timestamp
                 self.fingerprint_history.add((current_time, message._fingerprint))
+                if self._queue_store is not None:
+                    await self._queue_store.add_fingerprint(
+                        current_time, message._fingerprint
+                    )
 
             # Check queue capacity
             if len(self.pending_messages) >= self.config.max_size:
@@ -334,15 +375,18 @@ class MessageQueue(ManagedObject):
                 # FIFO or DELAY queue
                 self.pending_messages.append(message)
 
+            if self._queue_store is not None:
+                await self._queue_store.enqueue(message)
+
             self.statistics.messages_sent += 1
             self.statistics.current_queue_size = len(self.pending_messages)
 
-            logger.debug(f"Queued message {message_id} for topic {topic}")
+            queue_log.debug(f"Queued message {message_id} for topic {topic}")
 
             return DeliveryResult(success=True, message_id=message_id)
 
         except Exception as e:
-            logger.error(f"Failed to send message: {e}")
+            queue_log.error(f"Failed to send message: {e}")
             return DeliveryResult(
                 success=False, message_id=MessageId(), error_message=str(e)
             )
@@ -371,7 +415,7 @@ class MessageQueue(ManagedObject):
         self.subscriptions[subscription.subscription_id] = subscription
         self.topic_subscribers[topic_pattern].add(subscriber_id)
 
-        logger.info(
+        queue_log.info(
             f"Added subscription {subscription.subscription_id} for {subscriber_id} to {topic_pattern}"
         )
 
@@ -391,23 +435,23 @@ class MessageQueue(ManagedObject):
         if not self.topic_subscribers[subscription.topic_pattern]:
             del self.topic_subscribers[subscription.topic_pattern]
 
-        logger.info(f"Removed subscription {subscription_id}")
+        queue_log.info(f"Removed subscription {subscription_id}")
         return True
 
     async def acknowledge_message(self, message_id: str, subscriber_id: str) -> bool:
         """Acknowledge receipt of a message."""
         if message_id not in self.in_flight_messages:
-            logger.warning(f"Cannot acknowledge unknown message: {message_id}")
+            queue_log.warning(f"Cannot acknowledge unknown message: {message_id}")
             return False
 
         in_flight = self.in_flight_messages[message_id]
         in_flight.acknowledged_by.add(subscriber_id)
 
-        logger.debug(f"Message {message_id} acknowledged by {subscriber_id}")
+        queue_log.debug(f"Message {message_id} acknowledged by {subscriber_id}")
 
         # Check if fully acknowledged
         if in_flight.is_fully_acknowledged():
-            self._complete_message(message_id, success=True)
+            await self._complete_message(message_id, success=True)
             return True
 
         return True
@@ -427,7 +471,7 @@ class MessageQueue(ManagedObject):
 
             # For fire-and-forget, success even if no subscribers
             if not subscribers:
-                logger.debug(
+                queue_log.debug(
                     f"Fire-and-forget message {message.id} sent with no subscribers"
                 )
                 return DeliveryResult(
@@ -446,7 +490,7 @@ class MessageQueue(ManagedObject):
                         subscription.callback(message)
                         delivered_to.add(subscriber_id)
                     except Exception as e:
-                        logger.error(
+                        queue_log.error(
                             f"Fire-and-forget delivery failed to {subscriber_id}: {e}"
                         )
                         failed_deliveries.add(subscriber_id)
@@ -463,7 +507,7 @@ class MessageQueue(ManagedObject):
             )
 
         except Exception as e:
-            logger.error(f"Fire-and-forget delivery failed: {e}")
+            queue_log.error(f"Fire-and-forget delivery failed: {e}")
             return DeliveryResult(
                 success=False, message_id=message.id, error_message=str(e)
             )
@@ -498,15 +542,15 @@ class MessageQueue(ManagedObject):
                     await self._deliver_message(message)
 
                 except Exception as e:
-                    logger.error(f"Delivery worker error: {e}")
+                    queue_log.error(f"Delivery worker error: {e}")
                     await asyncio.sleep(1.0)
 
         except asyncio.CancelledError:
-            logger.info("Delivery worker cancelled")
+            queue_log.debug("Delivery worker cancelled")
         except Exception as e:
-            logger.error(f"Delivery worker fatal error: {e}")
+            queue_log.error(f"Delivery worker fatal error: {e}")
         finally:
-            logger.info("Delivery worker stopped")
+            queue_log.debug("Delivery worker stopped")
 
     async def _timeout_worker(self) -> None:
         """Background worker to handle message timeouts and retries."""
@@ -526,15 +570,15 @@ class MessageQueue(ManagedObject):
                         await self._handle_timeout(msg_id)
 
                 except Exception as e:
-                    logger.error(f"Timeout worker error: {e}")
+                    queue_log.error(f"Timeout worker error: {e}")
                     await asyncio.sleep(5.0)
 
         except asyncio.CancelledError:
-            logger.info("Timeout worker cancelled")
+            queue_log.debug("Timeout worker cancelled")
         except Exception as e:
-            logger.error(f"Timeout worker fatal error: {e}")
+            queue_log.error(f"Timeout worker fatal error: {e}")
         finally:
-            logger.info("Timeout worker stopped")
+            queue_log.debug("Timeout worker stopped")
 
     async def _cleanup_worker(self) -> None:
         """Background worker for cleanup and maintenance."""
@@ -569,20 +613,20 @@ class MessageQueue(ManagedObject):
                             expired_msg = self.pending_messages[i]
                             del self.pending_messages[i]
                             self.statistics.messages_expired += 1
-                            logger.debug(f"Expired pending message {expired_msg.id}")
+                            queue_log.debug(f"Expired pending message {expired_msg.id}")
 
-                    logger.debug(f"Queue cleanup completed for {self.config.name}")
+                    queue_log.debug(f"Queue cleanup completed for {self.config.name}")
 
                 except Exception as e:
-                    logger.error(f"Cleanup worker error: {e}")
+                    queue_log.error(f"Cleanup worker error: {e}")
                     await asyncio.sleep(60.0)
 
         except asyncio.CancelledError:
-            logger.info("Cleanup worker cancelled")
+            queue_log.debug("Cleanup worker cancelled")
         except Exception as e:
-            logger.error(f"Cleanup worker fatal error: {e}")
+            queue_log.error(f"Cleanup worker fatal error: {e}")
         finally:
-            logger.info("Cleanup worker stopped")
+            queue_log.debug("Cleanup worker stopped")
 
     async def _deliver_message(self, message: QueuedMessage) -> None:
         """Deliver a message based on its delivery guarantee."""
@@ -590,8 +634,8 @@ class MessageQueue(ManagedObject):
             subscribers = self._find_subscribers(message.topic)
 
             if not subscribers:
-                logger.warning(f"No subscribers found for topic {message.topic}")
-                self._move_to_dead_letter_queue(message, "No subscribers")
+                queue_log.warning(f"No subscribers found for topic {message.topic}")
+                await self._move_to_dead_letter_queue(message, "No subscribers")
                 return
 
             # Create in-flight tracking
@@ -622,27 +666,29 @@ class MessageQueue(ManagedObject):
                             in_flight.acknowledged_by.add(subscriber_id)
 
                     except Exception as e:
-                        logger.error(f"Delivery failed to {subscriber_id}: {e}")
+                        queue_log.error(f"Delivery failed to {subscriber_id}: {e}")
 
             if delivered_count == 0:
-                self._move_to_dead_letter_queue(message, "All deliveries failed")
+                await self._move_to_dead_letter_queue(message, "All deliveries failed")
                 return
 
             # Handle immediate completion for auto-acknowledged messages
             if in_flight.is_fully_acknowledged():
-                self._complete_message(str(message.id), success=True)
+                await self._complete_message(str(message.id), success=True)
             else:
                 # Track for acknowledgment
                 self.in_flight_messages[str(message.id)] = in_flight
+                if self._queue_store is not None:
+                    await self._queue_store.mark_in_flight(in_flight)
 
             self.statistics.messages_received += delivered_count
-            logger.debug(
+            queue_log.debug(
                 f"Delivered message {message.id} to {delivered_count} subscribers"
             )
 
         except Exception as e:
-            logger.error(f"Message delivery failed: {e}")
-            self._move_to_dead_letter_queue(message, str(e))
+            queue_log.error(f"Message delivery failed: {e}")
+            await self._move_to_dead_letter_queue(message, str(e))
 
     async def _handle_timeout(self, message_id: str) -> None:
         """Handle acknowledgment timeout for an in-flight message."""
@@ -658,36 +704,46 @@ class MessageQueue(ManagedObject):
             in_flight.delivery_attempt += 1
             message._delivery_attempt = in_flight.delivery_attempt
 
-            logger.info(
+            queue_log.info(
                 f"Retrying message {message_id} (attempt {in_flight.delivery_attempt})"
             )
 
             # Re-queue for delivery
             self.pending_messages.appendleft(message)
+            if self._queue_store is not None:
+                await self._queue_store.requeue(message)
             del self.in_flight_messages[message_id]
             self.statistics.messages_requeued += 1
 
         else:
             # Max retries exceeded
-            logger.warning(f"Message {message_id} exceeded max retries, moving to DLQ")
-            self._move_to_dead_letter_queue(message, "Max retries exceeded")
-            self._complete_message(message_id, success=False)
+            queue_log.warning(
+                f"Message {message_id} exceeded max retries, moving to DLQ"
+            )
+            await self._move_to_dead_letter_queue(message, "Max retries exceeded")
+            await self._complete_message(message_id, success=False)
 
-    def _complete_message(self, message_id: str, success: bool) -> None:
+    async def _complete_message(self, message_id: str, success: bool) -> None:
         """Complete processing of a message."""
         if message_id in self.in_flight_messages:
             del self.in_flight_messages[message_id]
+        if self._queue_store is not None:
+            await self._queue_store.ack(message_id)
 
         if success:
             self.statistics.messages_acknowledged += 1
         else:
             self.statistics.messages_failed += 1
 
-    def _move_to_dead_letter_queue(self, message: QueuedMessage, reason: str) -> None:
+    async def _move_to_dead_letter_queue(
+        self, message: QueuedMessage, reason: str
+    ) -> None:
         """Move a message to the dead letter queue."""
         if self.config.enable_dead_letter_queue:
             self.dead_letter_queue.append(message)
-            logger.warning(f"Moved message {message.id} to DLQ: {reason}")
+            queue_log.warning(f"Moved message {message.id} to DLQ: {reason}")
+            if self._queue_store is not None:
+                await self._queue_store.move_to_dead_letter(message)
 
     def _find_subscribers(self, topic: str) -> set[str]:
         """Find all subscribers for a given topic."""
@@ -713,14 +769,7 @@ class MessageQueue(ManagedObject):
 
     def _topic_matches_pattern(self, topic: str, pattern: str) -> bool:
         """Check if a topic matches a subscription pattern."""
-        # Enhanced wildcard matching with support for patterns like "*.alert.*"
-        if pattern == "*" or pattern == topic:
-            return True
-
-        # Convert pattern to regex-like matching
-        import fnmatch
-
-        return fnmatch.fnmatch(topic, pattern)
+        return TopicValidator.matches_pattern(topic, pattern)
 
     def _create_message_fingerprint(self, message: QueuedMessage) -> str:
         """Create a fingerprint for deduplication."""
@@ -731,7 +780,7 @@ class MessageQueue(ManagedObject):
 
     async def shutdown(self) -> None:
         """Async shutdown for proper task cleanup."""
-        logger.info(f"Shutting down MessageQueue {self.config.name}...")
+        queue_log.info(f"Shutting down MessageQueue {self.config.name}...")
 
         # Shutdown task manager (cancels all tasks)
         await super().shutdown()
@@ -744,7 +793,7 @@ class MessageQueue(ManagedObject):
         self.topic_subscribers.clear()
         self.fingerprint_history.clear()
 
-        logger.info(f"MessageQueue {self.config.name} shutdown complete")
+        queue_log.info(f"MessageQueue {self.config.name} shutdown complete")
 
     def shutdown_sync(self) -> None:
         """Synchronous shutdown for non-async contexts."""
@@ -763,4 +812,4 @@ class MessageQueue(ManagedObject):
             self.subscriptions.clear()
             self.topic_subscribers.clear()
             self.fingerprint_history.clear()
-            logger.info(f"MessageQueue {self.config.name} shutdown (sync)")
+            queue_log.info(f"MessageQueue {self.config.name} shutdown (sync)")

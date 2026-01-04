@@ -5,12 +5,26 @@ This module provides the central factory for creating transport instances
 and managing multiple protocol adapters simultaneously.
 """
 
+from __future__ import annotations
+
 import asyncio
+import contextlib
+import inspect
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urlparse
 
+from loguru import logger
+
+from mpreg.datastructures.type_aliases import PortNumber
+
+from ..port_allocator import allocate_port, release_port
+from .adapter_registry import (
+    ProtocolPortAssignment,
+    ProtocolPortAssignmentCallback,
+    get_adapter_endpoint_registry,
+)
 from .defaults import CLIENT_DEFAULTS, INTERNAL_DEFAULTS, ConnectionType
 from .interfaces import (
     TransportConfig,
@@ -40,6 +54,9 @@ class AdapterStatus:
     endpoints: dict[str, str]
     total_active_connections: int
     protocol_stats: list[ConnectionStats]
+
+
+adapter_endpoint_registry = get_adapter_endpoint_registry()
 
 
 @dataclass(slots=True)
@@ -263,7 +280,11 @@ class MultiProtocolAdapterConfig:
 
     # Binding configuration
     host: str = "127.0.0.1"
-    base_port: int = 6666
+    # Use 0 to auto-allocate per-protocol ports via the port allocator.
+    base_port: int = 0
+    port_category: str | None = None
+    port_assignment_callback: ProtocolPortAssignmentCallback | None = None
+    port_release_callback: ProtocolPortAssignmentCallback | None = None
     port_offset: dict[TransportProtocol, int] = field(
         default_factory=lambda: {
             TransportProtocol.WEBSOCKET: 0,  # port + 0
@@ -280,6 +301,48 @@ class MultiProtocolAdapterConfig:
 
     def __post_init__(self) -> None:
         """Initialize protocol configurations based on connection type."""
+
+        def _compose_callbacks(
+            primary: ProtocolPortAssignmentCallback,
+            secondary: ProtocolPortAssignmentCallback | None,
+        ) -> ProtocolPortAssignmentCallback:
+            if secondary is None or secondary is primary:
+                return primary
+
+            def _combined(assignment: ProtocolPortAssignment):
+                primary_result = primary(assignment)
+                secondary_result = secondary(assignment)
+                if inspect.isawaitable(primary_result) or inspect.isawaitable(
+                    secondary_result
+                ):
+
+                    async def _await_both():
+                        if inspect.isawaitable(primary_result):
+                            await primary_result
+                        if inspect.isawaitable(secondary_result):
+                            await secondary_result
+
+                    return _await_both()
+                return None
+
+            return _combined
+
+        if self.base_port < 0:
+            raise ValueError("base_port must be >= 0 (use 0 for auto-allocation)")
+        if not self.port_category:
+            self.port_category = (
+                "servers"
+                if self.connection_type == ConnectionType.CLIENT
+                else "federation"
+            )
+        self.port_assignment_callback = _compose_callbacks(
+            adapter_endpoint_registry.record,
+            self.port_assignment_callback,
+        )
+        self.port_release_callback = _compose_callbacks(
+            adapter_endpoint_registry.release,
+            self.port_release_callback,
+        )
         if not self.protocols:
             # Use appropriate defaults based on connection type
             base_defaults = (
@@ -311,25 +374,35 @@ class MultiProtocolAdapter:
     - Consistent defaults across all transports
 
     Example:
-        # Client connection adapter
+        def report_port(assignment: ProtocolPortAssignment) -> None:
+            logger.info(
+                "Assigned {} {} on {}",
+                assignment.connection_type.value,
+                assignment.protocol.value,
+                assignment.endpoint,
+            )
+
+        # Client connection adapter (auto-allocated ports)
         client_config = MultiProtocolAdapterConfig(
             connection_type=ConnectionType.CLIENT,
-            base_port=6666
+            base_port=0,
+            port_category="servers",
+            port_assignment_callback=report_port,
         )
         client_adapter = MultiProtocolAdapter(client_config, handle_client_connection)
         await client_adapter.start()
 
-        # Internal connection adapter
+        # Internal connection adapter (auto-allocated ports)
         internal_config = MultiProtocolAdapterConfig(
             connection_type=ConnectionType.INTERNAL,
-            base_port=7666
+            base_port=0,
+            port_category="federation",
+            port_assignment_callback=report_port,
         )
-        internal_adapter = MultiProtocolAdapter(internal_config, handle_internal_connection)
+        internal_adapter = MultiProtocolAdapter(
+            internal_config, handle_internal_connection
+        )
         await internal_adapter.start()
-
-        # Now running:
-        # CLIENT: WebSocket (6666), WebSocket Secure (6667), TCP (6668), TCP+TLS (6669)
-        # INTERNAL: WebSocket (7666), WebSocket Secure (7667), TCP (7668), TCP+TLS (7669)
     """
 
     def __init__(
@@ -349,6 +422,8 @@ class MultiProtocolAdapter:
         self._listen_tasks: dict[TransportProtocol, asyncio.Task] = {}
         self._active_connections: dict[TransportProtocol, list[TransportInterface]] = {}
         self._connection_stats: dict[TransportProtocol, int] = {}
+        self._protocol_ports: dict[TransportProtocol, PortNumber] = {}
+        self._auto_allocated_ports: set[TransportProtocol] = set()
         self._running = False
 
     @property
@@ -390,7 +465,7 @@ class MultiProtocolAdapter:
                 active_connections=len(self._active_connections.get(protocol, [])),
                 total_connections=self._connection_stats.get(protocol, 0),
             )
-            for protocol in self._listeners.keys()
+            for protocol in self._listeners
         ]
 
     def get_status(self) -> AdapterStatus:
@@ -403,6 +478,60 @@ class MultiProtocolAdapter:
             total_active_connections=self.active_connection_count,
             protocol_stats=self.connection_stats,
         )
+
+    def _resolve_protocol_port(self, protocol: TransportProtocol) -> PortNumber:
+        if protocol in self._protocol_ports:
+            return self._protocol_ports[protocol]
+
+        if self.config.base_port > 0:
+            port = self.config.base_port + self.config.port_offset.get(protocol, 0)
+            self._protocol_ports[protocol] = port
+            return port
+
+        port = allocate_port(self.config.port_category)
+        self._protocol_ports[protocol] = port
+        self._auto_allocated_ports.add(protocol)
+        return port
+
+    def _release_protocol_port(self, protocol: TransportProtocol) -> None:
+        if protocol not in self._protocol_ports:
+            return
+        port = self._protocol_ports.pop(protocol)
+        if protocol in self._auto_allocated_ports:
+            release_port(port)
+            self._auto_allocated_ports.discard(protocol)
+
+    async def _notify_port_assignment(
+        self, protocol: TransportProtocol, port: PortNumber
+    ) -> None:
+        callback = self.config.port_assignment_callback
+        if not callback:
+            return
+        assignment = ProtocolPortAssignment(
+            protocol=protocol,
+            host=self.config.host,
+            port=port,
+            connection_type=self.connection_type,
+        )
+        result = callback(assignment)
+        if inspect.isawaitable(result):
+            await result
+
+    async def _notify_port_release(
+        self, protocol: TransportProtocol, port: PortNumber
+    ) -> None:
+        callback = self.config.port_release_callback
+        if not callback:
+            return
+        assignment = ProtocolPortAssignment(
+            protocol=protocol,
+            host=self.config.host,
+            port=port,
+            connection_type=self.connection_type,
+        )
+        result = callback(assignment)
+        if inspect.isawaitable(result):
+            await result
 
     async def start(
         self,
@@ -440,13 +569,20 @@ class MultiProtocolAdapter:
             await asyncio.gather(*self._listen_tasks.values(), return_exceptions=True)
 
         # Stop all listeners
-        for listener in self._listeners.values():
+        for protocol, listener in list(self._listeners.items()):
             await listener.stop()
+            port = self._protocol_ports.get(protocol)
+            if port is not None:
+                await self._notify_port_release(protocol, port)
 
         # Clear all tracking data
         self._listeners.clear()
         self._listen_tasks.clear()
         self._active_connections.clear()
+        for protocol in list(self._protocol_ports.keys()):
+            self._release_protocol_port(protocol)
+        self._protocol_ports.clear()
+        self._auto_allocated_ports.clear()
         # Note: Don't clear connection_stats as they are historical
         self._running = False
 
@@ -473,29 +609,35 @@ class MultiProtocolAdapter:
         # Cancel listen task
         if protocol in self._listen_tasks:
             self._listen_tasks[protocol].cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._listen_tasks[protocol]
-            except asyncio.CancelledError:
-                pass
             del self._listen_tasks[protocol]
 
         # Stop listener
         await self._listeners[protocol].stop()
         del self._listeners[protocol]
+        port = self._protocol_ports.get(protocol)
+        if port is not None:
+            await self._notify_port_release(protocol, port)
+        self._release_protocol_port(protocol)
 
     async def _start_protocol(self, protocol: TransportProtocol) -> None:
         """Start listener for a specific protocol."""
-        port = self.config.base_port + self.config.port_offset.get(protocol, 0)
+        port = self._resolve_protocol_port(protocol)
         transport_config = self.config.protocols.get(protocol, TransportConfig())
 
-        # Create listener
         listener = TransportFactory.create_listener(
             protocol, self.config.host, port, transport_config
         )
 
-        # Start listener
-        await listener.start()
+        try:
+            await listener.start()
+        except Exception:
+            self._release_protocol_port(protocol)
+            raise
+
         self._listeners[protocol] = listener
+        await self._notify_port_assignment(protocol, port)
 
         # Start accept loop if we have a connection handler
         if self.connection_handler:
@@ -516,7 +658,11 @@ class MultiProtocolAdapter:
                     asyncio.create_task(self._handle_connection(protocol, transport))
                 except Exception as e:
                     # Log error but continue accepting
-                    print(f"Error accepting {protocol.value} connection: {e}")
+                    logger.warning(
+                        "Error accepting {} connection: {}",
+                        protocol.value,
+                        e,
+                    )
         except asyncio.CancelledError:
             pass
 
@@ -540,14 +686,18 @@ class MultiProtocolAdapter:
             if self.connection_handler:
                 await self.connection_handler(protocol, transport)
         except Exception as e:
-            print(f"Error handling {protocol.value} connection: {e}")
+            logger.warning(
+                "Error handling {} connection: {}",
+                protocol.value,
+                e,
+            )
         finally:
             # Clean up connection tracking
             if transport in self._active_connections[protocol]:
                 self._active_connections[protocol].remove(transport)
             await transport.disconnect()
 
-    async def __aenter__(self) -> "MultiProtocolAdapter":
+    async def __aenter__(self) -> MultiProtocolAdapter:
         """Async context manager entry."""
         await self.start()
         return self

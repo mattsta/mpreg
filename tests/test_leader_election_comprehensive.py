@@ -30,7 +30,7 @@ from mpreg.datastructures.type_aliases import ClusterId
 @contextlib.asynccontextmanager
 async def raft_instance_cleanup(
     cluster_id: ClusterId,
-) -> AsyncGenerator[RaftBasedLeaderElection, None]:
+) -> AsyncGenerator[RaftBasedLeaderElection]:
     """Context manager for RaftBasedLeaderElection with proper cleanup."""
     raft = RaftBasedLeaderElection(cluster_id=cluster_id)
     try:
@@ -251,16 +251,14 @@ class TestRaftBasedLeaderElection:
         raft = RaftBasedLeaderElection(cluster_id=cluster_id)
 
         assert raft.cluster_id == cluster_id
+        assert raft.node_id == cluster_id
+        assert cluster_id in raft.cluster_members
         assert raft.current_term == 0
         assert raft.voted_for is None
         assert raft.state == LeaderElectionState.FOLLOWER
-        assert len(raft.namespace_leaders) == 0
         assert len(raft.cluster_metrics) == 0
         assert cluster_id in raft.known_clusters
-        assert raft.base_election_timeout > 0
-        assert raft.heartbeat_interval > 0
-        assert raft.leader_lease_duration > 0
-        assert raft.max_cluster_silence > 0
+        assert raft.leader_wait_timeout > 0
 
     @pytest.mark.asyncio
     @given(cluster_id=cluster_id_strategy(), namespace=st.text(min_size=1, max_size=20))

@@ -8,9 +8,11 @@ Follows MPREG's testing patterns with live servers and AsyncTestContext.
 """
 
 import asyncio
+import contextlib
 
 import pytest
 
+from mpreg.core.port_allocator import port_context
 from mpreg.core.transport.enhanced_adapter import (
     EnhancedMultiProtocolAdapter,
     EnhancedMultiProtocolAdapterConfig,
@@ -331,6 +333,34 @@ class TestEnhancedMultiProtocolAdapterIntegration:
             raise
 
     @pytest.mark.asyncio
+    async def test_enhanced_adapter_auto_port_assignment(self, test_context):
+        """Ensure auto-allocated ports invoke the assignment callback."""
+        assigned = []
+
+        def _callback(assignment):
+            assigned.append(assignment)
+
+        adapter = create_enhanced_multi_protocol_adapter(
+            base_port=0,
+            port_category="testing",
+            port_assignment_callback=_callback,
+            enable_circuit_breakers=False,
+            enable_correlation_tracking=False,
+            enable_health_monitoring=False,
+        )
+
+        try:
+            await adapter.start([TransportProtocol.WEBSOCKET])
+
+            assert assigned, "Expected port assignment callback to run"
+            assignment = assigned[0]
+            assert assignment.protocol == TransportProtocol.WEBSOCKET
+            assert assignment.port > 0
+            assert assignment.endpoint.startswith("ws://")
+        finally:
+            await adapter.stop()
+
+    @pytest.mark.asyncio
     async def test_async_context_manager(self, test_context, port_pair):
         """Test enhanced adapter as async context manager with live adapter."""
         port1, port2 = port_pair
@@ -349,20 +379,21 @@ class TestEnhancedMultiProtocolAdapterIntegration:
 
     def test_factory_function_parameters(self):
         """Test factory function with various parameters."""
-        adapter = create_enhanced_multi_protocol_adapter(
-            host="192.168.1.100",
-            base_port=8080,
-            enable_circuit_breakers=False,
-            enable_correlation_tracking=False,
-            enable_health_monitoring=True,
-        )
+        with port_context("testing") as port:
+            adapter = create_enhanced_multi_protocol_adapter(
+                host="192.168.1.100",
+                base_port=port,
+                enable_circuit_breakers=False,
+                enable_correlation_tracking=False,
+                enable_health_monitoring=True,
+            )
 
-        assert adapter.config.host == "192.168.1.100"
-        assert adapter.config.base_port == 8080
-        assert adapter.config.enable_circuit_breakers is False
-        assert adapter.config.enable_correlation_tracking is False
-        assert adapter.config.enable_health_monitoring is True
-        assert adapter.correlation_tracker is None  # Should be None when disabled
+            assert adapter.config.host == "192.168.1.100"
+            assert adapter.config.base_port == port
+            assert adapter.config.enable_circuit_breakers is False
+            assert adapter.config.enable_correlation_tracking is False
+            assert adapter.config.enable_health_monitoring is True
+            assert adapter.correlation_tracker is None  # Should be None when disabled
 
     @pytest.mark.asyncio
     async def test_correlation_tracking_end_to_end(self, test_context, port_pair):
@@ -436,10 +467,8 @@ class TestEnhancedMultiProtocolAdapterIntegration:
             await listener.stop()
             if not echo_task.done():
                 echo_task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await echo_task
-                except asyncio.CancelledError:
-                    pass
 
     @pytest.mark.asyncio
     async def test_health_monitoring_integration(self, test_context, port_pair):
@@ -530,10 +559,8 @@ class TestEnhancedMultiProtocolAdapterIntegration:
             await listener.stop()
             if not echo_task.done():
                 echo_task.cancel()
-                try:
+                with contextlib.suppress(asyncio.CancelledError):
                     await echo_task
-                except asyncio.CancelledError:
-                    pass
 
 
 if __name__ == "__main__":

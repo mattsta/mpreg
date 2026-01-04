@@ -2,6 +2,8 @@
 Enhanced factory functions for caching with proper memory and count limits.
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 from mpreg.core.caching import (

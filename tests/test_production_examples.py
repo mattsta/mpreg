@@ -5,6 +5,7 @@ value proposition in distributed computing environments.
 """
 
 import asyncio
+import socket
 import time
 
 import pytest
@@ -13,7 +14,7 @@ from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 from mpreg.core.model import RPCCommand
 from mpreg.server import MPREGServer
-from tests.test_helpers import TestPortManager
+from tests.test_helpers import TestPortManager, wait_for_condition
 
 
 @pytest.fixture
@@ -96,7 +97,23 @@ async def production_cluster():
             tasks.append(task)
             await asyncio.sleep(0.1)
 
-        await asyncio.sleep(2.0)  # Cluster formation time
+        async def wait_for_port(port: int) -> None:
+            def port_open() -> bool:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                    sock.settimeout(0.2)
+                    return sock.connect_ex(("127.0.0.1", port)) == 0
+
+            await wait_for_condition(
+                port_open,
+                timeout=10.0,
+                interval=0.1,
+                error_message=f"Server port {port} did not open in time",
+            )
+
+        await asyncio.gather(
+            *(wait_for_port(server.settings.port) for server in servers)
+        )
+        await asyncio.sleep(1.0)  # Cluster formation time
 
         yield servers
 
@@ -104,7 +121,7 @@ async def production_cluster():
         # Proper cleanup
         for server in servers:
             try:
-                server.shutdown()
+                await server.shutdown_async()
             except Exception as e:
                 print(f"Error shutting down server: {e}")
 

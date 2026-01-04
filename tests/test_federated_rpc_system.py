@@ -5,108 +5,139 @@ This module tests individual components and functions of the federated RPC
 system using REAL servers with dynamic port assignment, focusing on correctness and edge cases.
 
 Key components tested:
-- RPCServerHello federated field validation
-- Hop count and max_hops logic
-- Announcement ID generation and deduplication
-- Original source preservation
-- Function broadcasting enhancements with real server communication
+- Fabric catalog propagation for function announcements
+- Hop budgets and propagation delays for cross-node discovery
+- Function catalog consistency across federated peers
 """
 
 import asyncio
 from collections.abc import Callable
 from typing import Any
 
-from mpreg.core.model import RPCServerHello
+from mpreg.datastructures.function_identity import (
+    FunctionIdentity,
+    FunctionSelector,
+    SemanticVersion,
+    VersionConstraint,
+)
+from mpreg.fabric.catalog import FunctionCatalog, FunctionEndpoint
+from mpreg.fabric.index import FunctionQuery
 from mpreg.server import MPREGServer
+from tests.test_helpers import wait_for_condition
 
 
-class TestRPCServerHelloFederatedFields:
-    """Test federated fields in RPCServerHello messages."""
+class TestFunctionCatalogIdentity:
+    """Validate function identity invariants in the fabric catalog."""
 
-    def test_federated_hello_creation(self):
-        """Test creation of RPCServerHello with federated fields."""
-        hello = RPCServerHello(
-            funs=("test_function", "another_function"),
-            locs=("resource1", "resource2"),
-            cluster_id="test_cluster",
-            hop_count=2,
-            max_hops=5,
-            announcement_id="test_announcement_123",
-            original_source="ws://127.0.0.1:8080",
+    def test_rejects_function_name_conflict(self):
+        catalog = FunctionCatalog()
+        endpoint = FunctionEndpoint(
+            identity=FunctionIdentity(
+                name="update",
+                function_id="func-A",
+                version=SemanticVersion.parse("1.0.0"),
+            ),
+            resources=frozenset({"resource-1"}),
+            node_id="node-1",
+            cluster_id="cluster-1",
         )
-
-        assert hello.hop_count == 2
-        assert hello.max_hops == 5
-        assert hello.announcement_id == "test_announcement_123"
-        assert hello.original_source == "ws://127.0.0.1:8080"
-        assert hello.funs == ("test_function", "another_function")
-        assert hello.locs == ("resource1", "resource2")
-        assert hello.cluster_id == "test_cluster"
-
-    def test_federated_hello_defaults(self):
-        """Test default values for federated fields."""
-        hello = RPCServerHello(
-            funs=("test_function",), locs=("resource1",), cluster_id="test_cluster"
+        assert catalog.register(endpoint, now=10.0)
+        conflicting = FunctionEndpoint(
+            identity=FunctionIdentity(
+                name="update",
+                function_id="func-B",
+                version=SemanticVersion.parse("1.0.0"),
+            ),
+            resources=frozenset({"resource-1"}),
+            node_id="node-2",
+            cluster_id="cluster-1",
         )
+        try:
+            catalog.register(conflicting, now=10.0)
+        except ValueError as exc:
+            assert "Function name conflict" in str(exc)
+            return
+        raise AssertionError("Expected function name conflict")
 
-        assert hello.hop_count == 0
-        assert hello.max_hops == 3
-        assert hello.announcement_id == ""
-        assert hello.original_source == ""
-
-    def test_hop_count_validation(self):
-        """Test hop count validation logic."""
-        # Test normal hop progression
-        hello = RPCServerHello(
-            funs=("test_function",),
-            locs=("resource1",),
-            cluster_id="test_cluster",
-            hop_count=1,
-            max_hops=3,
+    def test_rejects_function_id_conflict(self):
+        catalog = FunctionCatalog()
+        endpoint = FunctionEndpoint(
+            identity=FunctionIdentity(
+                name="update",
+                function_id="func-A",
+                version=SemanticVersion.parse("1.0.0"),
+            ),
+            resources=frozenset({"resource-1"}),
+            node_id="node-1",
+            cluster_id="cluster-1",
         )
-
-        assert hello.hop_count < hello.max_hops  # Should be forwardable
-
-        # Test at max hops
-        hello_max = RPCServerHello(
-            funs=("test_function",),
-            locs=("resource1",),
-            cluster_id="test_cluster",
-            hop_count=3,
-            max_hops=3,
+        assert catalog.register(endpoint, now=10.0)
+        conflicting = FunctionEndpoint(
+            identity=FunctionIdentity(
+                name="refresh",
+                function_id="func-A",
+                version=SemanticVersion.parse("1.0.0"),
+            ),
+            resources=frozenset({"resource-1"}),
+            node_id="node-2",
+            cluster_id="cluster-1",
         )
+        try:
+            catalog.register(conflicting, now=10.0)
+        except ValueError as exc:
+            assert "Function id conflict" in str(exc)
+            return
+        raise AssertionError("Expected function id conflict")
 
-        assert hello_max.hop_count >= hello_max.max_hops  # Should not be forwardable
-
-    def test_announcement_id_uniqueness(self):
-        """Test that different announcements have different IDs."""
-        hello1 = RPCServerHello(
-            funs=("function1",),
-            locs=("resource1",),
-            cluster_id="test_cluster",
-            announcement_id="id_123",
+    def test_selector_matches_version_constraints(self):
+        catalog = FunctionCatalog()
+        endpoint_v1 = FunctionEndpoint(
+            identity=FunctionIdentity(
+                name="update",
+                function_id="func-update",
+                version=SemanticVersion.parse("1.0.0"),
+            ),
+            resources=frozenset({"db"}),
+            node_id="node-1",
+            cluster_id="cluster-1",
         )
-
-        hello2 = RPCServerHello(
-            funs=("function2",),
-            locs=("resource2",),
-            cluster_id="test_cluster",
-            announcement_id="id_456",
+        endpoint_v2 = FunctionEndpoint(
+            identity=FunctionIdentity(
+                name="update",
+                function_id="func-update",
+                version=SemanticVersion.parse("2.1.0"),
+            ),
+            resources=frozenset({"db"}),
+            node_id="node-2",
+            cluster_id="cluster-1",
         )
+        assert catalog.register(endpoint_v1, now=10.0)
+        assert catalog.register(endpoint_v2, now=10.0)
 
-        assert hello1.announcement_id != hello2.announcement_id
-
-    def test_original_source_preservation(self):
-        """Test that original source is preserved correctly."""
-        original_url = "ws://127.0.0.1:9000"
-        hello = RPCServerHello(
-            funs=("test_function",),
-            locs=("resource1",),
-            cluster_id="test_cluster",
-            original_source=original_url,
+        selector = FunctionSelector(
+            name="update",
+            function_id="func-update",
+            version_constraint=VersionConstraint.parse(">=2.0.0,<3.0.0"),
         )
+        matches = catalog.find(selector, resources=frozenset({"db"}), now=10.0)
+        assert {entry.node_id for entry in matches} == {"node-2"}
 
-        assert hello.original_source == original_url
+    def test_expired_entries_are_ignored(self):
+        catalog = FunctionCatalog()
+        expired = FunctionEndpoint(
+            identity=FunctionIdentity(
+                name="update",
+                function_id="func-expired",
+                version=SemanticVersion.parse("1.0.0"),
+            ),
+            resources=frozenset({"db"}),
+            node_id="node-1",
+            cluster_id="cluster-1",
+            advertised_at=0.0,
+            ttl_seconds=1.0,
+        )
+        assert not catalog.register(expired, now=5.0)
+        assert catalog.entry_count() == 0
 
 
 class TestFederatedRPCBroadcasting:
@@ -183,9 +214,21 @@ class TestFederatedRPCBroadcasting:
         server1.register_command(
             "duplicate_test_function", duplicate_test_function, ["dedupe-resource"]
         )
-        # The system should deduplicate these internally
-
-        await asyncio.sleep(0.5)
+        # Wait for catalog propagation
+        await wait_for_condition(
+            lambda: bool(
+                server2.cluster.fabric_engine
+                and server2.cluster.fabric_engine.routing_index.find_functions(
+                    FunctionQuery(
+                        selector=FunctionSelector(name="duplicate_test_function"),
+                        resources=frozenset({"dedupe-resource"}),
+                    )
+                )
+            ),
+            timeout=8.0,
+            interval=0.1,
+            error_message="Duplicate function did not propagate to server2 catalog",
+        )
 
         # The function should be callable despite potential duplicate registrations
         client = await client_factory(server2.settings.port)
@@ -230,32 +273,32 @@ class TestFederatedRPCBroadcasting:
 class TestFederatedRPCMessageHandling:
     """Test federated RPC message handling and processing."""
 
-    async def test_hello_message_processing(
+    async def test_catalog_message_processing(
         self,
         cluster_2_servers: tuple[MPREGServer, MPREGServer],
         client_factory: Callable[[int], Any],
     ):
-        """Test processing of HELLO messages with federated fields using real servers."""
+        """Test function discovery propagation using real servers."""
         server1, server2 = cluster_2_servers
 
         # CRITICAL: Register function AFTER cluster formation
-        def hello_test_function(data: str) -> str:
-            return f"hello_processed: {data}"
+        def catalog_test_function(data: str) -> str:
+            return f"catalog_processed: {data}"
 
         server1.register_command(
-            "hello_test_function", hello_test_function, ["hello-resource"]
+            "catalog_test_function", catalog_test_function, ["catalog-resource"]
         )
 
-        # Wait for HELLO message propagation
+        # Wait for fabric catalog propagation
         await asyncio.sleep(7.0)
 
-        # Verify that server2 received and processed the HELLO message
+        # Verify that server2 received and processed the function announcement
         client = await client_factory(server2.settings.port)
         result = await client.call(
-            "hello_test_function", "test", locs=frozenset(["hello-resource"])
+            "catalog_test_function", "test", locs=frozenset(["catalog-resource"])
         )
 
-        assert result == "hello_processed: test"
+        assert result == "catalog_processed: test"
 
     async def test_function_mapping_consistency(
         self,
@@ -320,35 +363,39 @@ class TestFederatedRPCEdgeCases:
 
         assert result == "isolated: test"
 
-    def test_invalid_hop_parameters(self):
-        """Test handling of invalid hop count parameters."""
-        # Test hop count validation in RPCServerHello
-        hello = RPCServerHello(
-            funs=("test_function",),
-            locs=("test_resource",),
-            cluster_id="test_cluster",
-            hop_count=-1,  # Invalid negative hop count
-            max_hops=3,
-            announcement_id="test_123",
-            original_source="ws://127.0.0.1:8080",
+    def test_prune_expired_entries(self):
+        """Test pruning expired function catalog entries."""
+        catalog = FunctionCatalog()
+        active = FunctionEndpoint(
+            identity=FunctionIdentity(
+                name="active",
+                function_id="func-active",
+                version=SemanticVersion.parse("1.0.0"),
+            ),
+            resources=frozenset({"db"}),
+            node_id="node-active",
+            cluster_id="cluster-1",
+            advertised_at=0.0,
+            ttl_seconds=100.0,
         )
-
-        # Should still create the object (pydantic doesn't validate negative by default)
-        assert hello.hop_count == -1
-
-        # Test max_hops less than hop_count
-        hello2 = RPCServerHello(
-            funs=("test_function",),
-            locs=("test_resource",),
-            cluster_id="test_cluster",
-            hop_count=5,
-            max_hops=3,  # max_hops < hop_count
-            announcement_id="test_123",
-            original_source="ws://127.0.0.1:8080",
+        expired = FunctionEndpoint(
+            identity=FunctionIdentity(
+                name="expired",
+                function_id="func-expired",
+                version=SemanticVersion.parse("1.0.0"),
+            ),
+            resources=frozenset({"db"}),
+            node_id="node-expired",
+            cluster_id="cluster-1",
+            advertised_at=0.0,
+            ttl_seconds=1.0,
         )
+        assert catalog.register(active, now=10.0)
+        assert catalog.register(expired, now=0.5)
 
-        assert hello2.hop_count == 5
-        assert hello2.max_hops == 3
+        removed = catalog.prune_expired(now=5.0)
+        assert removed == 1
+        assert catalog.entry_count() == 1
 
     async def test_large_announcement_data(
         self,
@@ -371,8 +418,21 @@ class TestFederatedRPCEdgeCases:
                 f"large_function_{i}", make_function(i), [f"large_resource_{i}"]
             )
 
-        # Wait for propagation of all functions
-        await asyncio.sleep(1.0)
+        # Wait for propagation of the target function
+        await wait_for_condition(
+            lambda: bool(
+                server2.cluster.fabric_engine
+                and server2.cluster.fabric_engine.routing_index.find_functions(
+                    FunctionQuery(
+                        selector=FunctionSelector(name="large_function_5"),
+                        resources=frozenset({"large_resource_5"}),
+                    )
+                )
+            ),
+            timeout=8.0,
+            interval=0.1,
+            error_message="Large function catalog did not propagate to server2",
+        )
 
         # Test that we can call some of the functions from server2
         client = await client_factory(server2.settings.port)
@@ -423,31 +483,23 @@ class TestFederatedRPCEdgeCases:
         )
         assert result == "concurrent_2: test"
 
-    def test_malformed_announcement_data(self):
-        """Test handling of malformed announcement data."""
-        # Test empty announcement ID
-        hello1 = RPCServerHello(
-            funs=("test_function",),
-            locs=("test_resource",),
-            cluster_id="test_cluster",
-            hop_count=1,
-            max_hops=3,
-            announcement_id="",  # Empty announcement ID
-            original_source="ws://127.0.0.1:8080",
+    def test_endpoint_round_trip_serialization(self):
+        """Test FunctionEndpoint serialization round-trip."""
+        endpoint = FunctionEndpoint(
+            identity=FunctionIdentity(
+                name="update",
+                function_id="func-update",
+                version=SemanticVersion.parse("3.2.1"),
+            ),
+            resources=frozenset({"db", "cache"}),
+            node_id="node-1",
+            cluster_id="cluster-1",
+            advertised_at=12.5,
+            ttl_seconds=30.0,
         )
-        assert hello1.announcement_id == ""
-
-        # Test empty original source
-        hello2 = RPCServerHello(
-            funs=("test_function",),
-            locs=("test_resource",),
-            cluster_id="test_cluster",
-            hop_count=1,
-            max_hops=3,
-            announcement_id="test_123",
-            original_source="",  # Empty original source
-        )
-        assert hello2.original_source == ""
+        payload = endpoint.to_dict()
+        loaded = FunctionEndpoint.from_dict(payload)
+        assert loaded == endpoint
 
     async def test_announcement_id_collision_handling(
         self,

@@ -4,15 +4,16 @@ Every MPREG server instance in a cluster has "echo" and "echos" commands by defa
 where "echo" accepts 1 argument and "echos" accepts a list of arguments, so we can always
 test a cluster with echo commands for the processing/resolution/connection logic."""
 
+from __future__ import annotations
+
 import asyncio
+import contextlib
 import pprint as pp
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
 import ulid
-import websockets
-import websockets.client
 from loguru import logger
 
 from ..core.model import (
@@ -24,6 +25,14 @@ from ..core.model import (
 )
 from ..core.serialization import JsonSerializer
 from ..core.statistics import RawMessageDict
+from ..core.transport.factory import TransportFactory
+from ..core.transport.interfaces import (
+    TransportConfig,
+    TransportError,
+    TransportInterface,
+)
+
+client_log = logger
 
 try:
     loop = asyncio.get_running_loop()
@@ -35,15 +44,16 @@ except RuntimeError:
 
 @dataclass
 class Client:
-    # websocket URL like: ws://127.0.0.1:7773
+    # websocket URL like: ws://127.0.0.1:<port>
     url: str
 
     # optionally disable big log printing to get more accurate timing measurements
     full_log: bool = True
-
-    websocket: websockets.client.WebSocketClientProtocol | None = field(
-        default=None, init=False
+    transport_config: TransportConfig = field(
+        default_factory=TransportConfig, repr=False
     )
+
+    _transport: TransportInterface | None = field(default=None, init=False)
     serializer: JsonSerializer = field(default_factory=JsonSerializer, init=False)
     _pending_requests: dict[str, asyncio.Future[RPCResponse | RawMessageDict]] = field(
         default_factory=dict, init=False
@@ -78,18 +88,20 @@ class Client:
         send = req.model_dump_json()
 
         if self.full_log:
-            logger.info("====================== NEW REQUEST ======================")
-            logger.info("[{}] Sending:\n{}", req.u, pp.pformat(req.model_dump()))
+            client_log.info("====================== NEW REQUEST ======================")
+            client_log.info("[{}] Sending:\n{}", req.u, pp.pformat(req.model_dump()))
 
-        if self.websocket is None:
-            raise ConnectionError("WebSocket connection is not established.")
+        if not self._transport:
+            raise ConnectionError("Transport connection is not established.")
 
         # Create a future for this request's response
         response_future: asyncio.Future[RPCResponse | RawMessageDict] = asyncio.Future()
         self._pending_requests[req.u] = response_future
 
         try:
-            await self.websocket.send(send)
+            await self._transport.send(
+                send.encode("utf-8") if isinstance(send, str) else send
+            )
 
             # Wait for the response with timeout
             response = await asyncio.wait_for(response_future, timeout=timeout)
@@ -98,21 +110,21 @@ class Client:
             if not isinstance(response, RPCResponse):
                 raise Exception(f"Expected RPCResponse, got {type(response)}")
         except TimeoutError:
-            logger.error("[{}] Request timed out after {} seconds.", req.u, timeout)
+            client_log.error("[{}] Request timed out after {} seconds.", req.u, timeout)
             raise
         finally:
             # Clean up the pending request
             self._pending_requests.pop(req.u, None)
 
         if self.full_log:
-            logger.info(
+            client_log.info(
                 "[{}] Result:\n{}", response.u, pp.pformat(response.model_dump())
             )
 
         assert req.u == response.u
 
         if response.error:
-            logger.error(
+            client_log.error(
                 "RPC Error: {}: {}", response.error.code, response.error.message
             )
             raise MPREGException(rpc_error=response.error)
@@ -137,20 +149,22 @@ class Client:
         """
         send = request.model_dump_json()
         if self.full_log:
-            logger.info("================= NEW ENHANCED REQUEST =================")
-            logger.info(
+            client_log.info("================= NEW ENHANCED REQUEST =================")
+            client_log.info(
                 "[{}] Sending:\n{}", request.u, pp.pformat(request.model_dump())
             )
 
-        if self.websocket is None:
-            raise ConnectionError("WebSocket connection is not established.")
+        if not self._transport:
+            raise ConnectionError("Transport connection is not established.")
 
         # Create a future for this request's response
         response_future: asyncio.Future[RPCResponse | RawMessageDict] = asyncio.Future()
         self._pending_requests[request.u] = response_future
 
         # Send the request
-        await self.websocket.send(send)
+        await self._transport.send(
+            send.encode("utf-8") if isinstance(send, str) else send
+        )
 
         # Wait for the response with optional timeout
         try:
@@ -168,20 +182,20 @@ class Client:
             response = RPCResponse(**response)
 
         if self.full_log:
-            logger.info("[{}] Enhanced Response received", request.u)
+            client_log.info("[{}] Enhanced Response received", request.u)
             if response.intermediate_results:
-                logger.info(
+                client_log.info(
                     "  Intermediate results: {} levels",
                     len(response.intermediate_results),
                 )
             if response.execution_summary:
-                logger.info(
+                client_log.info(
                     "  Execution summary: {:.1f}ms total",
                     response.execution_summary.total_execution_time_ms,
                 )
 
         if response.error:
-            logger.error(
+            client_log.error(
                 "Enhanced RPC Error: {}: {}",
                 response.error.code,
                 response.error.message,
@@ -192,17 +206,14 @@ class Client:
 
     async def _listen_for_responses(self) -> None:
         """Listen for incoming responses and route them to the correct pending request."""
-        if not self.websocket:
+        if not self._transport:
             return
 
         try:
-            async for raw_message in self.websocket:
+            while self._transport and self._transport.connected:
                 try:
-                    message_data = self.serializer.deserialize(
-                        raw_message.encode("utf-8")
-                        if isinstance(raw_message, str)
-                        else raw_message
-                    )
+                    raw_message = await self._transport.receive()
+                    message_data = self.serializer.deserialize(raw_message)
 
                     # Check message type
                     message_role = message_data.get("role")
@@ -222,7 +233,7 @@ class Client:
                             if not future.done():
                                 future.set_result(RawMessageDict(message_data))
                         else:
-                            logger.warning(
+                            client_log.warning(
                                 "Received PubSub ack for unknown request: {}",
                                 request_id,
                             )
@@ -237,7 +248,7 @@ class Client:
                             if not future.done():
                                 future.set_result(response)
                         else:
-                            logger.warning(
+                            client_log.warning(
                                 "Received RPC response for unknown request: {}",
                                 response.u,
                             )
@@ -253,7 +264,7 @@ class Client:
                                 if not future.done():
                                     future.set_result(response)
                             else:
-                                logger.warning(
+                                client_log.warning(
                                     "Received response for unknown request: {}",
                                     response.u,
                                 )
@@ -268,15 +279,17 @@ class Client:
                                 if not future.done():
                                     future.set_result(RawMessageDict(message_data))
                             else:
-                                logger.warning(
+                                client_log.warning(
                                     "Received unknown message type: {}", message_data
                                 )
 
                 except Exception as e:
-                    logger.error("Failed to process message: {}", e)
+                    client_log.error("Failed to process message: {}", e)
 
+        except TransportError as e:
+            client_log.error("Transport receive error: {}", e)
         except Exception as e:
-            logger.error("Error in response listener: {}", e)
+            client_log.error("Error in response listener: {}", e)
         finally:
             # Cancel all pending requests
             for future in self._pending_requests.values():
@@ -284,25 +297,23 @@ class Client:
                     future.cancel()
 
     async def connect(self) -> None:
-        self.websocket = await websockets.connect(self.url, user_agent_header=None)
-        # Start the response listener
+        self._transport = TransportFactory.create(self.url, self.transport_config)
+        await self._transport.connect()
         self._listener_task = asyncio.create_task(self._listen_for_responses())
 
     async def disconnect(self) -> None:
         if self._listener_task:
             self._listener_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._listener_task
-            except asyncio.CancelledError:
-                pass
-        if self.websocket:
-            await self.websocket.close()
+        if self._transport:
+            await self._transport.disconnect()
         # Cancel any remaining pending requests
         for future in self._pending_requests.values():
             if not future.done():
                 future.cancel()
         self._pending_requests.clear()
-        self.websocket = None
+        self._transport = None
 
     def get_notification_queue(self) -> asyncio.Queue[PubSubNotification]:
         """Get the notification queue for PubSub clients."""
@@ -310,8 +321,11 @@ class Client:
 
     async def send_raw_message(self, message: dict[str, Any]) -> RawMessageDict:
         """Send a raw message and return the response."""
-        if not self.websocket:
+        if not self._transport:
             await self.connect()
+        transport = self._transport
+        if not transport:
+            raise ConnectionError("Transport is not established.")
 
         # Create a unique request ID if not present
         request_id = message.get("u", str(ulid.new()))
@@ -326,9 +340,7 @@ class Client:
         self._pending_requests[request_id] = response_future
 
         try:
-            # Send via websocket
-            assert self.websocket is not None
-            await self.websocket.send(serialized)
+            await transport.send(serialized)
 
             # Wait for response from the unified listener
             response_data = await asyncio.wait_for(response_future, timeout=10.0)
@@ -345,7 +357,7 @@ class Client:
                 {
                     "status": "sent",
                     "message_id": request_id,
-                    "timestamp": asyncio.get_event_loop().time(),
+                    "timestamp": asyncio.get_running_loop().time(),
                 }
             )
         finally:
@@ -353,7 +365,7 @@ class Client:
             self._pending_requests.pop(request_id, None)
 
 
-@logger.catch
+@client_log.catch
 def cmd() -> None:
     import jsonargparse
 

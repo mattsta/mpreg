@@ -2,6 +2,8 @@
 
 Welcome to **MPREG** (Matt's Protocol for Results Everywhere Guaranteed) - the distributed RPC system that makes complex distributed computing feel effortless. This guide will take you from zero to hero with comprehensive examples, performance insights, and architectural best practices.
 
+For the full documentation index, see `docs/README.md`.
+
 ## 📋 Table of Contents
 
 - [Quick Start](#-quick-start)
@@ -21,10 +23,10 @@ Welcome to **MPREG** (Matt's Protocol for Results Everywhere Guaranteed) - the d
 # Clone and install
 git clone <your-repo>
 cd mpreg
-poetry install
+uv sync
 
 # Verify installation
-poetry run pytest  # Should see 41 passing tests
+uv run pytest  # Should see 2,000+ passing tests
 ```
 
 ### Your First MPREG Application
@@ -32,26 +34,206 @@ poetry run pytest  # Should see 41 passing tests
 ```python
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.server import MPREGServer
+from pathlib import Path
+
 from mpreg.core.config import MPREGSettings
+from mpreg.core.port_allocator import allocate_port
 
 # Create a server
-server = MPREGServer(MPREGSettings(port=9001, resources={"compute"}))
+server_port = allocate_port("servers")
+server_url = f"ws://127.0.0.1:{server_port}"
+server = MPREGServer(MPREGSettings(port=server_port, resources={"compute"}))
 
-# Register a function
+# Register a function (name + unique function_id + version)
 def add_numbers(a: int, b: int) -> int:
     return a + b
 
-server.register_command("add", add_numbers, ["compute"])
+server.register_command(
+    "add",
+    add_numbers,
+    ["compute"],
+    function_id="math.add",
+    version="1.0.0",
+)
 
 # Use it
-async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
-    result = await client.call("add", 5, 10, locs=frozenset(["compute"]))
+print(f"MPREG_URL={server_url}")
+async with MPREGClientAPI(server_url) as client:
+    result = await client.call(
+        "add",
+        5,
+        10,
+        locs=frozenset(["compute"]),
+        function_id="math.add",
+        version_constraint=">=1.0.0,<2.0.0",
+    )
     print(f"Result: {result}")  # Result: 15
+```
+
+### Cache + Queue Quickstart
+
+These snippets are meant to run inside an async function or notebook cell.
+
+#### Cache federation (in-process demo)
+
+```python
+from mpreg.core.global_cache import (
+    CacheLevel,
+    CacheMetadata,
+    CacheOptions,
+    GlobalCacheConfiguration,
+    GlobalCacheKey,
+    GlobalCacheManager,
+    ReplicationStrategy,
+)
+from mpreg.fabric.cache_federation import FabricCacheProtocol
+from mpreg.fabric.cache_transport import InProcessCacheTransport
+
+transport = InProcessCacheTransport()
+cache_protocol_a = FabricCacheProtocol("node-a", transport=transport)
+cache_protocol_b = FabricCacheProtocol("node-b", transport=transport)
+
+cache_a = GlobalCacheManager(
+    GlobalCacheConfiguration(
+        enable_l2_persistent=False,
+        enable_l3_distributed=False,
+        enable_l4_federation=True,
+        local_cluster_id="cluster-a",
+    ),
+    cache_protocol=cache_protocol_a,
+)
+cache_b = GlobalCacheManager(
+    GlobalCacheConfiguration(
+        enable_l2_persistent=False,
+        enable_l3_distributed=False,
+        enable_l4_federation=True,
+        local_cluster_id="cluster-b",
+    ),
+    cache_protocol=cache_protocol_b,
+)
+
+key = GlobalCacheKey.from_data("orders", {"order_id": "A-100"})
+options = CacheOptions(cache_levels=frozenset([CacheLevel.L1, CacheLevel.L4]))
+await cache_a.put(
+    key,
+    {"status": "ready"},
+    CacheMetadata(
+        computation_cost_ms=5.0,
+        replication_policy=ReplicationStrategy.GEOGRAPHIC,
+        geographic_hints=["eu-west"],
+    ),
+    options=options,
+)
+result = await cache_b.get(key, options=options)
+print("Cache hit:", result.success)
+await cache_a.shutdown()
+await cache_b.shutdown()
+await cache_protocol_a.shutdown()
+await cache_protocol_b.shutdown()
+```
+
+For server-managed cache federation, set `enable_default_cache=True` and
+`enable_cache_federation=True` in `MPREGSettings`. The server wires
+`ServerCacheTransport` + `FabricCacheProtocol` automatically.
+
+#### Queue delivery (local, fabric-ready)
+
+```python
+from mpreg.core.message_queue import DeliveryGuarantee
+from mpreg.core.message_queue_manager import create_reliable_queue_manager
+
+manager = create_reliable_queue_manager()
+await manager.create_queue("notifications")
+
+def handler(message):
+    print("Queue payload:", message.payload)
+
+manager.subscribe_to_queue("notifications", "worker-1", "notifications.*", handler)
+
+result = await manager.send_message(
+    "notifications",
+    "notifications.user",
+    {"user": 42, "action": "signup"},
+    DeliveryGuarantee.AT_LEAST_ONCE,
+)
+print("Queued:", result.success)
+await manager.shutdown()
+```
+
+For cross-cluster queue federation, enable `enable_default_queue=True` on
+servers. The fabric control plane advertises queues and routes deliveries.
+
+See also:
+
+- `docs/CACHING_SYSTEM.md`
+- `docs/CACHE_FEDERATION_GUIDE.md`
+- `docs/SQS_MESSAGE_QUEUE_SYSTEM.md`
+
+### Persistence Configuration
+
+Enable the unified persistence layer to restore cache (L2) and queues across
+restarts; the fabric catalog + route key registry can snapshot metadata for
+faster discovery recovery:
+
+```python
+from mpreg.core.config import MPREGSettings
+from mpreg.core.persistence.config import PersistenceConfig, PersistenceMode
+
+settings = MPREGSettings(
+    enable_default_cache=True,
+    enable_default_queue=True,
+    persistence_config=PersistenceConfig(
+        mode=PersistenceMode.SQLITE,
+        data_dir=Path("/var/lib/mpreg"),
+    ),
+)
+```
+
+Snapshot lifecycle:
+
+```
+startup -> restore snapshots -> gossip refresh -> steady state -> shutdown -> save snapshots
+```
+
+CLI quickstart:
+
+```bash
+uv run mpreg server start --port 9000 --monitoring-port 9090 \
+  --persistence-mode sqlite --persistence-dir ./mpreg-data
+curl http://127.0.0.1:9090/metrics/persistence
+uv run mpreg monitor persistence --url http://127.0.0.1:9090
+uv run mpreg monitor metrics --system unified --url http://127.0.0.1:9090
+uv run mpreg monitor health --summary --url http://127.0.0.1:9090
+uv run mpreg monitor status --url http://127.0.0.1:9090
+```
+
+You can also start a server from a settings file:
+
+```bash
+uv run mpreg server start-config mpreg/examples/persistence_settings.toml
+```
+
+Example `server.toml`:
+
+```toml
+[mpreg]
+host = "127.0.0.1"
+port = 0
+name = "mpreg-node"
+cluster_id = "cluster-a"
+resources = ["cache", "queue"]
+monitoring_enabled = false
+enable_default_cache = true
+enable_default_queue = true
+
+[mpreg.persistence_config]
+mode = "sqlite"
+data_dir = "/var/lib/mpreg"
 ```
 
 ## 🎮 Demo Examples
 
-### 1. Quick Demo (`examples/quick_demo.py`)
+### 1. Quick Demo (`mpreg/examples/quick_demo.py`)
 
 **⏱️ Runtime: ~3 minutes**
 
@@ -59,25 +241,35 @@ Perfect for understanding MPREG's core capabilities:
 
 - **Automatic dependency resolution** with complex chains
 - **Resource-based routing** across specialized servers
-- **High-performance concurrency** with 200+ parallel operations
+- **High-performance concurrency** with parallel operations
 - **Zero-configuration clustering** with automatic peer discovery
 
+### 1b. Auto Port Cluster Bootstrap (`mpreg/examples/auto_port_cluster_bootstrap.py`)
+
+**⏱️ Runtime: ~1 minute**
+
+Shows how auto-assigned ports and callbacks can bootstrap a small cluster without
+fixed ports.
+
 ```bash
-poetry run python examples/quick_demo.py
+uv run python mpreg/examples/quick_demo.py
 ```
 
 **What you'll see:**
 
-- Sub-millisecond function calls
 - Automatic dependency chain resolution
 - Functions routing to optimal servers (CPU, GPU, Database)
-- 1,700+ requests/second throughput
+- Multi-node cluster coordination
 
-### 2. Simple Working Demo (`examples/simple_working_demo.py`)
+### 2. Simple Working Demo (`mpreg/examples/simple_working_demo.py`)
 
 **⏱️ Runtime: ~1 minute**
 
 Minimal example showing dependency resolution:
+
+```bash
+uv run python mpreg/examples/simple_working_demo.py
+```
 
 ```python
 # These execute in the correct order automatically
@@ -88,62 +280,52 @@ commands = [
 ]
 ```
 
-### 3. Benchmarks (`examples/benchmarks.py`)
+### 3. Tier 1 RPC Baseline (`mpreg/examples/tier1_single_system_full.py`)
 
 **⏱️ Runtime: ~2 minutes**
 
-Quick performance verification across a 3-node cluster:
+Quick baseline for RPC behavior and dependency routing:
 
-- **Latency testing**: Sub-millisecond response times
-- **Throughput testing**: 1,600+ RPS sustained
-- **Complex workflows**: Multi-step dependency chains
-- **Load balancing**: Automatic distribution across nodes
+- **Dependency resolution**: Multi-step workflows
+- **Resource routing**: Explicit `locs` matching
+- **Validation**: End-to-end request flow
+
+```bash
+uv run python mpreg/examples/tier1_single_system_full.py --system rpc
+```
 
 ## 🏭 Production Examples
 
-### 1. Production Deployment (`examples/production_deployment.py`)
+### 1. Full System Expansion (`mpreg/examples/tier3_full_system_expansion.py`)
 
 **⏱️ Runtime: ~3 minutes**
 
-Enterprise-grade microservices architecture:
+Full-system workflow that ties together RPC, cache (L1-L4), pub/sub, queueing,
+fabric federation, and monitoring in a sensor pipeline.
 
-```
-API Gateway (9001) → Auth Service (9002) → Business Logic (9003,9004) → Database (9005)
-```
-
-**Features demonstrated:**
-
-- **API Gateway patterns** with rate limiting
-- **Authentication & authorization** flows
-- **Microservice separation** of concerns
-- **Database persistence** layer
-- **690+ RPS** production throughput
-
-**Real API workflow:**
-
-```python
-# Complete API request chain
-result = await client.request([
-    RPCCommand(name="routed", fun="route_api_request", args=(...)),
-    RPCCommand(name="authed", fun="authenticate_user", args=("routed",)),
-    RPCCommand(name="processed", fun="get_user_profile", args=("authed",)),
-    RPCCommand(name="stored", fun="save_to_database", args=("processed",))
-])
+```bash
+uv run python mpreg/examples/tier3_full_system_expansion.py
 ```
 
-### 2. Real-World Examples (`examples/real_world_examples.py`)
+### 2. Real-World Examples (`mpreg/examples/real_world_examples.py`)
 
 **⏱️ Runtime: ~4 minutes**
 
 Two complete production scenarios:
 
+```bash
+uv run python mpreg/examples/real_world_examples.py
+```
+
 #### **Data Processing Pipeline**
 
 4-node ETL cluster with anomaly detection:
 
+Ports shown below are illustrative; allocate ports dynamically for live runs.
+
 ```
 Data Ingestion → Processing → Analytics → Storage
-     (9001)         (9002)      (9003)     (9004)
+   (<port-1>)     (<port-2>)   (<port-3>)  (<port-4>)
 ```
 
 #### **ML Inference Cluster**
@@ -152,68 +334,36 @@ Data Ingestion → Processing → Analytics → Storage
 
 ```
 ML Router → Vision Models → NLP Models → Feature Processing
-  (9001)       (9002)        (9003)         (9004)
+ (<port-1>)    (<port-2>)    (<port-3>)      (<port-4>)
 ```
 
 **What's impressive:**
 
-- **8-stage data pipeline** executing in <2 seconds
+- **Multi-stage data pipeline** across specialized servers
 - **Parallel model inference** across different AI models
 - **Automatic anomaly detection** with real-time alerts
-- **Sub-100ms inference times** for most models
+- **End-to-end visibility** via unified monitoring
 
-### 3. Comprehensive Performance Tests (`examples/comprehensive_performance_tests.py`)
+### 3. Performance Validation (Recommended)
 
-**⏱️ Runtime: ~2 minutes**
+Use the tiered demos plus your own workload generator:
 
-Scientific performance analysis across 5 dimensions:
-
-#### **Latency Tests**
-
-- **Instant operations**: 0.707ms average
-- **Light computation**: 0.745ms average
-- **Data processing**: 0.988ms average
-- **P95 latency**: <1.2ms across all operations
-
-#### **Throughput Tests**
-
-- **Peak concurrent**: 1,859 RPS at 20 concurrent requests
-- **Sustained load**: 89.9 RPS for 30+ seconds
-- **Scaling efficiency**: Linear scaling to 200+ concurrent
-
-#### **Memory Efficiency**
-
-- **Small datasets (1K)**: 1MB memory usage
-- **Large datasets (100K)**: 89MB memory usage
-- **Concurrent operations**: Efficient memory sharing
-
-#### **Edge Case Resilience**
-
-- **Error handling**: 594 ops/sec with 50% error rate
-- **Timeout resilience**: <30ms recovery time
-- **Network fault tolerance**: Automatic retry mechanisms
+- Run Tier 1 RPC for baseline request routing.
+- Run Tier 2 integrations to validate cross-system behavior.
+- Run Tier 3 to validate full-system coordination.
+- Measure latency and throughput with logging at INFO.
 
 ## 📊 Performance Baseline
 
-### **🏆 Key Metrics (Production Ready)**
+Capture your baseline by repeating the same workflow after a warm-up period,
+then increase concurrency gradually to find saturation points.
 
-| Metric                | Value                     | Notes                               |
-| --------------------- | ------------------------- | ----------------------------------- |
-| **Latency**           | 0.7-1.0ms avg             | Sub-millisecond for most operations |
-| **Throughput**        | 1,859 RPS peak            | 690+ RPS in production scenarios    |
-| **Concurrency**       | 200+ simultaneous         | Single WebSocket connection         |
-| **Memory**            | <100MB for large datasets | Efficient resource usage            |
-| **Cluster Formation** | <2 seconds                | Zero-configuration setup            |
-| **Error Recovery**    | <30ms                     | Automatic fault tolerance           |
+## ✅ Correctness Checklist
 
-### **🎯 Performance Characteristics**
-
-- **Local function calls**: 0.7ms average latency
-- **Remote function calls**: 1.0ms average latency
-- **Complex workflows**: 8 steps in <2 seconds
-- **Cluster scaling**: Linear performance improvement
-- **Memory efficiency**: Intelligent garbage collection
-- **Network resilience**: Sub-second recovery from failures
+- Use `mpreg/examples/tier1_single_system_full.py --system rpc` to validate routing.
+- Use `mpreg/examples/tier2_integrations.py` to validate cross-system flows.
+- Use `mpreg/examples/tier3_full_system_expansion.py` to validate fabric federation + monitoring.
+- For fabric federation cache validation, request L4 explicitly with `CacheOptions(cache_levels=...)`.
 
 ## 🔧 Common Usage Patterns
 
@@ -275,6 +425,37 @@ RPCCommand(name="gpu_work", fun="train_model", locs={"gpu", "ml"})
 RPCCommand(name="db_work", fun="complex_query", locs={"database", "analytics"})
 ```
 
+### 5. **Auto-Port Cluster Bootstrap Pattern**
+
+Use port callbacks to capture assigned endpoints and feed them into the next
+node’s `peers` list:
+
+```python
+from mpreg.core.config import MPREGSettings
+from mpreg.server import MPREGServer
+
+assigned = {}
+
+def _capture(name):
+    def _cb(port):
+        assigned[name] = port
+    return _cb
+
+server_a = MPREGServer(
+    MPREGSettings(name="node-a", port=None, on_port_assigned=_capture("a"))
+)
+server_a_url = f"ws://{server_a.settings.host}:{server_a.settings.port}"
+
+server_b = MPREGServer(
+    MPREGSettings(
+        name="node-b",
+        port=None,
+        peers=[server_a_url],
+        on_port_assigned=_capture("b"),
+    )
+)
+```
+
 ### 5. **High-Availability Pattern**
 
 Fault-tolerant operations with redundancy:
@@ -318,29 +499,73 @@ server.register_command("process_payment", process_payment, ["general"])
 #### **Hub-and-Spoke (Recommended for < 10 nodes)**
 
 ```python
+from mpreg.core.port_allocator import port_range_context
+
 # Central coordinator with specialized workers
-coordinator = MPREGServer(port=9001, resources={"coordinator"})
-worker1 = MPREGServer(port=9002, peers=["ws://127.0.0.1:9001"], resources={"worker", "cpu"})
-worker2 = MPREGServer(port=9003, peers=["ws://127.0.0.1:9001"], resources={"worker", "gpu"})
+with port_range_context(3, "servers") as ports:
+    coordinator = MPREGServer(port=ports[0], resources={"coordinator"})
+    coordinator_url = f"ws://127.0.0.1:{ports[0]}"
+    worker1 = MPREGServer(
+        port=ports[1],
+        peers=[coordinator_url],
+        resources={"worker", "cpu"},
+    )
+    worker2 = MPREGServer(
+        port=ports[2],
+        peers=[coordinator_url],
+        resources={"worker", "gpu"},
+    )
 ```
 
 #### **Mesh Network (Recommended for 10+ nodes)**
 
 ```python
+from mpreg.core.port_allocator import port_range_context
+
 # Each node connects to multiple peers
-node1 = MPREGServer(port=9001, peers=["ws://127.0.0.1:9002", "ws://127.0.0.1:9003"])
-node2 = MPREGServer(port=9002, peers=["ws://127.0.0.1:9001", "ws://127.0.0.1:9004"])
-# Creates redundant paths for fault tolerance
+with port_range_context(4, "servers") as ports:
+    node1 = MPREGServer(
+        port=ports[0],
+        peers=[
+            f"ws://127.0.0.1:{ports[1]}",
+            f"ws://127.0.0.1:{ports[2]}",
+        ],
+    )
+    node2 = MPREGServer(
+        port=ports[1],
+        peers=[
+            f"ws://127.0.0.1:{ports[0]}",
+            f"ws://127.0.0.1:{ports[3]}",
+        ],
+    )
+    # Creates redundant paths for fault tolerance
 ```
 
 #### **Hierarchical (Recommended for edge computing)**
 
 ```python
+from mpreg.core.port_allocator import port_range_context
+
 # Geographic/functional hierarchy
-cloud = MPREGServer(port=9001, resources={"cloud", "global"})
-edge_us = MPREGServer(port=9002, peers=["ws://cloud:9001"], resources={"edge", "us"})
-edge_eu = MPREGServer(port=9003, peers=["ws://cloud:9001"], resources={"edge", "eu"})
-device1 = MPREGServer(port=9004, peers=["ws://edge-us:9002"], resources={"device", "us-east"})
+with port_range_context(4, "servers") as ports:
+    cloud = MPREGServer(port=ports[0], resources={"cloud", "global"})
+    cloud_url = f"ws://127.0.0.1:{ports[0]}"
+    edge_us = MPREGServer(
+        port=ports[1],
+        peers=[cloud_url],
+        resources={"edge", "us"},
+    )
+    edge_us_url = f"ws://127.0.0.1:{ports[1]}"
+    edge_eu = MPREGServer(
+        port=ports[2],
+        peers=[cloud_url],
+        resources={"edge", "eu"},
+    )
+    device1 = MPREGServer(
+        port=ports[3],
+        peers=[edge_us_url],
+        resources={"device", "us-east"},
+    )
 ```
 
 ### **⚡ Performance Optimization**
@@ -349,13 +574,14 @@ device1 = MPREGServer(port=9004, peers=["ws://edge-us:9002"], resources={"device
 
 ```python
 # ✅ Reuse client connections
-async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+server_url = "ws://127.0.0.1:<port>"  # Use allocator output for live runs
+async with MPREGClientAPI(server_url) as client:
     for i in range(1000):
         await client.call("function", i)  # Same connection
 
 # ❌ Avoid creating new connections per request
 for i in range(1000):
-    async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
+    async with MPREGClientAPI(server_url) as client:
         await client.call("function", i)  # New connection each time
 ```
 
@@ -392,12 +618,17 @@ commands = [
 #### **Resource Isolation**
 
 ```python
-# Separate sensitive operations
-auth_server = MPREGServer(port=9001, resources={"auth", "secure", "isolated"})
-public_server = MPREGServer(port=9002, resources={"public", "api"})
+from mpreg.core.port_allocator import port_range_context
 
-# Auth functions only on secure server
-auth_server.register_command("validate_token", validate, ["auth", "secure"])
+# Separate sensitive operations
+with port_range_context(2, "servers") as ports:
+    auth_server = MPREGServer(
+        port=ports[0], resources={"auth", "secure", "isolated"}
+    )
+    public_server = MPREGServer(port=ports[1], resources={"public", "api"})
+
+    # Auth functions only on secure server
+    auth_server.register_command("validate_token", validate, ["auth", "secure"])
 ```
 
 #### **Error Handling Patterns**
@@ -724,12 +955,15 @@ async def process_large_dataset(client, data_size):
 #### **1. Advanced Monitoring & Observability**
 
 ```python
+from mpreg.core.port_allocator import allocate_port
+
 # Built-in metrics collection
 server = MPREGServer(
     settings=MPREGSettings(
-        port=9001,
-        metrics_enabled=True,
-        prometheus_port=8080  # Future feature
+        port=allocate_port("servers"),
+        monitoring_enabled=True,
+        monitoring_port=allocate_port("monitoring"),
+        monitoring_enable_cors=True,
     )
 )
 
@@ -743,10 +977,12 @@ server = MPREGServer(
 #### **2. Enhanced Security Features**
 
 ```python
+from mpreg.core.port_allocator import allocate_port
+
 # JWT-based authentication
 server = MPREGServer(
     settings=MPREGSettings(
-        port=9001,
+        port=allocate_port("servers"),
         auth_required=True,
         jwt_secret="your-secret",
         allowed_clients=["service-a", "service-b"]
@@ -901,21 +1137,9 @@ dependencies:
 
 #### **2. Language Bindings**
 
-```javascript
-// JavaScript/TypeScript client
-import { MPREGClient } from "@mpreg/client-js";
-
-const client = new MPREGClient("ws://localhost:9001");
-const result = await client.call("process_data", data, ["compute"]);
-```
-
-```go
-// Go client
-import "github.com/mpreg/go-client"
-
-client := mpreg.NewClient("ws://localhost:9001")
-result, err := client.Call("process_data", data, []string{"compute"})
-```
+MPREG's in-repo client is `MPREGClientAPI`. For external languages, implement
+the wire protocol described in `docs/MPREG_PROTOCOL_SPECIFICATION.md` and use
+the same message envelopes shown there.
 
 #### **3. Framework Integration**
 
@@ -925,7 +1149,8 @@ from fastapi import FastAPI
 from mpreg.integrations.fastapi import MPREGMiddleware
 
 app = FastAPI()
-app.add_middleware(MPREGMiddleware, cluster_url="ws://localhost:9001")
+cluster_url = "ws://localhost:<port>"
+app.add_middleware(MPREGMiddleware, cluster_url=cluster_url)
 
 @app.get("/process")
 async def process_endpoint(data: dict, mpreg: MPREGClient):
@@ -940,9 +1165,9 @@ MPREG gives you the power to build distributed systems that feel like single-mac
 
 ### **Start Your Journey:**
 
-1. **Begin with** `examples/quick_demo.py` to see the magic
-2. **Study** `examples/production_deployment.py` for real-world patterns
-3. **Benchmark** your use case with `examples/comprehensive_performance_tests.py`
+1. **Begin with** `mpreg/examples/quick_demo.py` to see the magic
+2. **Study** `mpreg/examples/tier3_full_system_expansion.py` for full-system patterns
+3. **Validate** with `mpreg/examples/tier2_integrations.py` for cross-system behavior
 4. **Build** your first distributed application
 5. **Scale** to production with confidence
 

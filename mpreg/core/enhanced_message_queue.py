@@ -49,6 +49,7 @@ from mpreg.core.topic_queue_routing import (
     TopicQueueRoutingConfig,
     TopicQueueRoutingStats,
     TopicRoutedQueue,
+    TopicRoutingMetadata,
 )
 from mpreg.datastructures.type_aliases import (
     CorrelationId,
@@ -176,6 +177,10 @@ class TopicEnhancedMessageQueueManager:
         # Background tasks
         self._background_tasks: set[asyncio.Task] = set()
         self._shutdown_event = asyncio.Event()
+
+    def _normalize_queue_pattern(self, pattern: str) -> str:
+        """Normalize queue pattern for topic matching."""
+        return pattern
 
     # Enhanced topic-based sending methods
 
@@ -310,6 +315,9 @@ class TopicEnhancedMessageQueueManager:
                 queue_name
                 or f"topic-queue-{pattern.replace('*', 'star').replace('#', 'hash')}"
             )
+
+            if actual_queue_name not in self.base_manager.queues:
+                await self.base_manager.create_queue(actual_queue_name)
 
             # Register the queue pattern with the topic router
             topic_routed_queue = TopicRoutedQueue(
@@ -450,12 +458,50 @@ class TopicEnhancedMessageQueueManager:
 
         # Consume from the underlying queue using subscription-based approach
         try:
-            # Note: This would need to be implemented using the subscription system
-            # MessageQueueManager doesn't have consume_messages - would use callbacks instead
-            raise NotImplementedError(
-                "Topic message consumption would use subscription callbacks"
+            delivery_queue: asyncio.Queue[QueuedMessage] = asyncio.Queue()
+
+            def _on_message(message: QueuedMessage) -> None:
+                delivery_queue.put_nowait(message)
+
+            subscription_id_local = self.base_manager.subscribe_to_queue(
+                queue_name=subscription.queue_name,
+                subscriber_id=f"topic-consumer-{subscription_id}",
+                topic_pattern=self._normalize_queue_pattern(subscription.topic_pattern),
+                callback=_on_message,
+                auto_acknowledge=True,
             )
-            yield  # Make this a generator (unreachable but needed for type)
+            if subscription_id_local is None:
+                raise RuntimeError("Failed to subscribe to queue for topic consumption")
+
+            try:
+                received = 0
+                while received < max_messages:
+                    message = await asyncio.wait_for(
+                        delivery_queue.get(), timeout=timeout_seconds
+                    )
+                    received += 1
+                    routing_metadata = TopicRoutingMetadata(
+                        routing_id=f"route-{str(ulid.new())}",
+                        matched_patterns=[subscription.topic_pattern],
+                        selected_queues=[subscription.queue_name],
+                        routing_strategy=RoutingStrategy.FANOUT_ALL,
+                        routing_latency_ms=0.0,
+                        pattern_match_count=1,
+                        timestamp=time.time(),
+                    )
+                    yield TopicQueueMessage(
+                        topic=message.topic,
+                        original_queue=subscription.queue_name,
+                        routed_queues=[subscription.queue_name],
+                        routing_metadata=routing_metadata,
+                        message=message,
+                    )
+            except TimeoutError:
+                return
+            finally:
+                self.base_manager.unsubscribe_from_queue(
+                    subscription.queue_name, subscription_id_local
+                )
 
         except Exception as e:
             self.error_counts["subscription_errors"] += 1
@@ -530,10 +576,27 @@ class TopicEnhancedMessageQueueManager:
         self, queue_name: QueueName, timeout_seconds: float = 30.0
     ) -> QueuedMessage | None:
         """Receive message from specific queue (backward compatibility)."""
-        # MessageQueueManager doesn't have receive_message - would need to be implemented
-        raise NotImplementedError(
-            "Direct message receiving not available on MessageQueueManager"
+        delivery_queue: asyncio.Queue[QueuedMessage] = asyncio.Queue()
+
+        def _on_message(message: QueuedMessage) -> None:
+            delivery_queue.put_nowait(message)
+
+        subscription_id = self.base_manager.subscribe_to_queue(
+            queue_name=queue_name,
+            subscriber_id=f"queue-receiver-{str(ulid.new())}",
+            topic_pattern="#",
+            callback=_on_message,
+            auto_acknowledge=True,
         )
+        if subscription_id is None:
+            return None
+
+        try:
+            return await asyncio.wait_for(delivery_queue.get(), timeout=timeout_seconds)
+        except TimeoutError:
+            return None
+        finally:
+            self.base_manager.unsubscribe_from_queue(queue_name, subscription_id)
 
     async def consume_messages(
         self,
@@ -542,12 +605,34 @@ class TopicEnhancedMessageQueueManager:
         timeout_seconds: float = 30.0,
     ) -> AsyncIterator[QueuedMessage]:
         """Consume messages from specific queue (backward compatibility)."""
-        # MessageQueueManager doesn't have consume_messages - would need to be implemented
-        raise NotImplementedError(
-            "Direct message consumption not available on MessageQueueManager"
+        delivery_queue: asyncio.Queue[QueuedMessage] = asyncio.Queue()
+
+        def _on_message(message: QueuedMessage) -> None:
+            delivery_queue.put_nowait(message)
+
+        subscription_id = self.base_manager.subscribe_to_queue(
+            queue_name=queue_name,
+            subscriber_id=f"queue-consumer-{str(ulid.new())}",
+            topic_pattern="#",
+            callback=_on_message,
+            auto_acknowledge=True,
         )
-        # The pattern would be to use the subscription-based model instead
-        yield  # Make this a generator (unreachable but needed for type)
+        if subscription_id is None:
+            return
+
+        try:
+            received = 0
+            while received < max_messages:
+                try:
+                    message = await asyncio.wait_for(
+                        delivery_queue.get(), timeout=timeout_seconds
+                    )
+                except TimeoutError:
+                    return
+                received += 1
+                yield message
+        finally:
+            self.base_manager.unsubscribe_from_queue(queue_name, subscription_id)
 
     async def acknowledge_message(self, queue_name: QueueName, message_id: str) -> bool:
         """Acknowledge message processing (backward compatibility)."""

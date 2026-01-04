@@ -4,9 +4,9 @@ DEBUG: Minimal version of the failing large cluster test
 """
 
 import pytest
+from tests.port_allocator import get_port_allocator
 
 from tests.conftest import AsyncTestContext
-from tests.port_allocator import get_port_allocator
 
 
 @pytest.fixture

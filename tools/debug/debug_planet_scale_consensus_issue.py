@@ -11,18 +11,18 @@ import asyncio
 import time
 
 from loguru import logger
+from mpreg.fabric.federation_registry import HubRegistry
 
-from mpreg.federation.federation_consensus import (
+from mpreg.fabric.consensus import (
     ConsensusManager,
     StateType,
     StateValue,
 )
-from mpreg.federation.federation_gossip import (
+from mpreg.fabric.gossip import (
     GossipProtocol,
     GossipStrategy,
     VectorClock,
 )
-from mpreg.federation.federation_registry import HubRegistry
 
 
 async def debug_standalone_gossip_isolation():

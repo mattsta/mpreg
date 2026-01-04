@@ -10,7 +10,7 @@ import asyncio
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 from mpreg.core.model import RPCCommand
-from mpreg.federation.federation_config import (
+from mpreg.fabric.federation_config import (
     FederationBridgeConfig,
     FederationMode,
     create_explicit_bridging_config,
@@ -610,7 +610,7 @@ class TestFederationSystemBackwardCompatibility:
         )
 
         assert "step2" in result
-        assert "Node2 processed node1_compatibility_test from node 1" == result["step2"]
+        assert result["step2"] == "Node2 processed node1_compatibility_test from node 1"
 
         print(
             "✅ Existing same-cluster behavior unchanged - backward compatibility maintained"

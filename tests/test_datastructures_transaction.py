@@ -10,6 +10,8 @@ import time
 import pytest
 from hypothesis import given
 
+from mpreg.datastructures.blockchain_crypto import generate_keypair
+from mpreg.datastructures.blockchain_types import CryptoConfig
 from mpreg.datastructures.transaction import (
     OperationType,
     Transaction,
@@ -90,21 +92,29 @@ class TestTransaction:
         )
 
         # Sign transaction
-        private_key = b"private_key_alice"
-        signed_tx = tx.sign(private_key)
+        keypair = generate_keypair()
+        signed_tx = tx.sign(keypair.private_key)
 
         assert signed_tx.signature != b""
-        assert len(signed_tx.signature) == 32  # SHA-256 digest
+        assert len(signed_tx.signature) == 64  # Ed25519 signature
+        assert signed_tx.public_key == keypair.public_key
 
         # Verify signature
-        public_key = (
-            b"private_key_alice"  # In real implementation, this would be derived
-        )
-        assert signed_tx.verify_signature(public_key)
+        assert signed_tx.verify_signature(keypair.public_key)
 
         # Wrong key should fail
-        wrong_key = b"wrong_key"
+        wrong_key = generate_keypair().public_key
         assert not signed_tx.verify_signature(wrong_key)
+
+    def test_transaction_signature_requirements(self):
+        """Ensure signature requirements are enforced when configured."""
+        tx = Transaction(sender="alice", receiver="bob")
+        keypair = generate_keypair()
+        signed_tx = tx.sign(keypair.private_key)
+
+        config = CryptoConfig(require_signatures=True)
+        assert signed_tx.is_valid(crypto_config=config)
+        assert not tx.is_valid(crypto_config=config)
 
     @given(transaction_strategy())
     def test_transaction_serialization(self, transaction: Transaction):
@@ -123,6 +133,8 @@ class TestTransaction:
         assert reconstructed.receiver == transaction.receiver
         assert reconstructed.operation_type == transaction.operation_type
         assert reconstructed.payload == transaction.payload
+        assert reconstructed.public_key == transaction.public_key
+        assert reconstructed.signature_algorithm == transaction.signature_algorithm
         assert reconstructed.get_hash() == transaction.get_hash()
 
     @given(transaction_strategy())
@@ -349,7 +361,9 @@ class TestTransactionProperties:
         new_nonce_tx = transaction.with_nonce(transaction.nonce + 1)
         assert id(new_nonce_tx) != original_id
 
-        new_sig_tx = transaction.with_signature(b"new_signature")
+        signature = b"\x00" * 64
+        public_key = b"\x01" * 32
+        new_sig_tx = transaction.with_signature(signature, public_key=public_key)
         assert id(new_sig_tx) != original_id
 
     def test_transaction_validation_edge_cases(self):
@@ -395,7 +409,7 @@ class TestTransactionExamples:
         """Test a federation join transaction."""
         tx = Transaction(
             sender="new_node",
-            receiver="federation_registry",
+            receiver="hub_registry",
             operation_type=OperationType.FEDERATION_JOIN,
             payload=b'{"node_info": "capabilities"}',
             fee=10,
@@ -431,13 +445,12 @@ class TestTransactionExamples:
         assert tx_with_nonce.nonce == 12345
 
         # Sign transaction
-        private_key = b"alice_private_key"
-        signed_tx = tx_with_nonce.sign(private_key)
+        keypair = generate_keypair()
+        signed_tx = tx_with_nonce.sign(keypair.private_key)
         assert signed_tx.signature != b""
 
         # Verify signature
-        public_key = b"alice_private_key"  # Simplified
-        assert signed_tx.verify_signature(public_key)
+        assert signed_tx.verify_signature(keypair.public_key)
 
         # Check final transaction is valid
         assert signed_tx.is_valid()

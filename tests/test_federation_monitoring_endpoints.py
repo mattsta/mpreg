@@ -15,10 +15,22 @@ from mpreg.core.monitoring.unified_monitoring import (
     MonitoringConfig,
     UnifiedSystemMonitor,
 )
-from mpreg.federation.federation_config import FederationConfig, FederationMode
-from mpreg.federation.federation_connection_manager import FederationConnectionManager
-from mpreg.federation.federation_monitoring_endpoints import (
+from mpreg.fabric.connection_manager import FederationConnectionManager
+from mpreg.fabric.federation_config import FederationConfig, FederationMode
+from mpreg.fabric.federation_graph import (
+    FederationGraph,
+    FederationGraphEdge,
+    FederationGraphNode,
+    GeographicCoordinate,
+    NodeType,
+)
+from mpreg.fabric.monitoring_endpoints import (
     create_federation_monitoring_system,
+)
+from mpreg.fabric.performance_metrics import (
+    ClusterMetrics,
+    PerformanceMetricsService,
+    PerformanceThresholds,
 )
 from tests.conftest import AsyncTestContext
 
@@ -198,6 +210,20 @@ class TestFederationMonitoringEndpoints:
 
                     print(f"Cluster {cluster_id} status: {cluster['status']}")
 
+                # Test unified metrics snapshot
+                async with session.get(f"{base_url}/metrics/unified") as response:
+                    assert response.status == 200
+                    data = await response.json()
+                    assert data["status"] == "ok"
+                    assert "unified_metrics" in data
+
+                # Test RPC metrics placeholder
+                async with session.get(f"{base_url}/metrics/rpc") as response:
+                    assert response.status == 200
+                    data = await response.json()
+                    assert data["status"] == "ok"
+                    assert data["system"] == "rpc"
+
                 # Test non-existent cluster
                 async with session.get(
                     f"{base_url}/health/clusters/non-existent"
@@ -312,6 +338,14 @@ class TestFederationMonitoringEndpoints:
 
                     print(f"Active connections: {connections['active_connections']}")
 
+                # Test /metrics/persistence endpoint
+                async with session.get(f"{base_url}/metrics/persistence") as response:
+                    assert response.status == 200
+                    data = await response.json()
+                    assert data["status"] == "ok"
+                    assert "persistence_snapshots" in data
+                    assert data["persistence_snapshots"]["enabled"] is False
+
                 # Test /metrics/timeseries endpoint
                 params = {"metric": "health_score", "duration": "1", "resolution": "1"}
                 async with session.get(
@@ -342,6 +376,100 @@ class TestFederationMonitoringEndpoints:
             await monitoring_system.stop()
 
         print("✅ Federation metrics endpoints test passed")
+
+    async def test_alerts_and_trends_endpoints(
+        self,
+        test_context: AsyncTestContext,
+        server_cluster_ports: list[int],
+    ):
+        """Test alerting and performance trend endpoints."""
+        port = server_cluster_ports[0]
+        monitoring_port = server_cluster_ports[1]
+
+        settings = MPREGSettings(
+            host="127.0.0.1",
+            port=port,
+            name="AlertsTest-Server",
+            cluster_id="alerts-test-cluster",
+            resources={"alerts"},
+            gossip_interval=1.0,
+        )
+
+        federation_config = FederationConfig(
+            federation_mode=FederationMode.PERMISSIVE_BRIDGING,
+            local_cluster_id=settings.cluster_id,
+        )
+
+        federation_manager = FederationConnectionManager(
+            federation_config=federation_config
+        )
+
+        monitoring_config = MonitoringConfig()
+        unified_monitor = UnifiedSystemMonitor(config=monitoring_config)
+        test_context.tasks.append(asyncio.create_task(unified_monitor.start()))
+
+        performance_service = PerformanceMetricsService(
+            thresholds=PerformanceThresholds(latency_warning=1.0)
+        )
+        await performance_service.ingest_cluster_metrics(
+            ClusterMetrics(
+                cluster_id=settings.cluster_id,
+                cluster_name=settings.name,
+                region=settings.cache_region,
+                avg_latency_ms=2.0,
+                throughput_rps=100.0,
+                error_rate_percent=0.1,
+                health_score=90.0,
+                cpu_usage_percent=50.0,
+            )
+        )
+
+        monitoring_system = create_federation_monitoring_system(
+            settings=settings,
+            federation_config=federation_config,
+            federation_manager=federation_manager,
+            unified_monitor=unified_monitor,
+            monitoring_port=monitoring_port,
+            performance_service=performance_service,
+        )
+
+        await monitoring_system.start()
+        base_url = f"http://{settings.host}:{monitoring_port}"
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{base_url}/alerts") as response:
+                    assert response.status == 200
+                    data = await response.json()
+                    assert data["status"] == "ok"
+                    assert data["alert_count"] == 1
+                    alert_id = data["active_alerts"][0]["alert_id"]
+
+                async with session.post(
+                    f"{base_url}/alerts/acknowledge", json={"alert_id": alert_id}
+                ) as response:
+                    assert response.status == 200
+                    data = await response.json()
+                    assert data["status"] == "ok"
+
+                async with session.get(f"{base_url}/alerts") as response:
+                    assert response.status == 200
+                    data = await response.json()
+                    assert data["alert_count"] == 0
+
+                async with session.get(f"{base_url}/performance/trends") as response:
+                    assert response.status == 200
+                    data = await response.json()
+                    trends = data["trends"]
+                    assert "latency_trend" in trends
+                    assert "throughput_trend" in trends
+                    assert "error_rate_trend" in trends
+                    assert "resource_utilization_trend" in trends
+
+        finally:
+            await monitoring_system.stop()
+
+        print("✅ Federation alert and trend endpoints test passed")
 
     async def test_topology_endpoints(
         self,
@@ -417,6 +545,30 @@ class TestFederationMonitoringEndpoints:
                         f"Clustering coefficient: {summary['clustering_coefficient']}"
                     )
 
+                # Test /topology/paths endpoint
+                async with session.get(f"{base_url}/topology/paths") as response:
+                    assert response.status == 200
+                    data = await response.json()
+
+                    assert data["status"] == "ok"
+                    paths = data["routing_paths"]
+                    assert "total_paths" in paths
+                    assert "average_path_length" in paths
+                    assert "path_efficiency" in paths
+                    assert "redundant_paths" in paths
+
+                # Test /topology/analysis endpoint
+                async with session.get(f"{base_url}/topology/analysis") as response:
+                    assert response.status == 200
+                    data = await response.json()
+
+                    assert data["status"] == "ok"
+                    analysis = data["analysis"]
+                    assert "cluster_connectivity" in analysis
+                    assert "network_health" in analysis
+                    assert "topology_score" in analysis
+                    assert "recommendations" in analysis
+
                     # Verify nodes structure
                     nodes = topology["nodes"]
                     assert isinstance(nodes, list)
@@ -442,6 +594,91 @@ class TestFederationMonitoringEndpoints:
             await monitoring_system.stop()
 
         print("✅ Federation topology endpoints test passed")
+
+    async def test_graph_topology_snapshot(
+        self,
+        test_context: AsyncTestContext,
+        server_cluster_ports: list[int],
+    ):
+        """Test topology snapshot when a federation graph is provided."""
+        port = server_cluster_ports[0]
+        monitoring_port = server_cluster_ports[1]
+
+        settings = MPREGSettings(
+            host="127.0.0.1",
+            port=port,
+            name="GraphTopology-Server",
+            cluster_id="graph-topology-cluster",
+            resources={"graph"},
+            gossip_interval=1.0,
+        )
+
+        federation_config = FederationConfig(
+            federation_mode=FederationMode.EXPLICIT_BRIDGING,
+            local_cluster_id=settings.cluster_id,
+        )
+
+        federation_manager = FederationConnectionManager(
+            federation_config=federation_config
+        )
+
+        monitoring_config = MonitoringConfig()
+        unified_monitor = UnifiedSystemMonitor(config=monitoring_config)
+        test_context.tasks.append(asyncio.create_task(unified_monitor.start()))
+
+        federation_graph = FederationGraph()
+        node_a = FederationGraphNode(
+            node_id="cluster-a",
+            node_type=NodeType.CLUSTER,
+            region="us-east",
+            coordinates=GeographicCoordinate(40.0, -74.0),
+            max_capacity=10,
+            health_score=1.0,
+        )
+        node_b = FederationGraphNode(
+            node_id="cluster-b",
+            node_type=NodeType.CLUSTER,
+            region="us-west",
+            coordinates=GeographicCoordinate(37.0, -122.0),
+            max_capacity=10,
+            health_score=0.9,
+        )
+        federation_graph.add_node(node_a)
+        federation_graph.add_node(node_b)
+        federation_graph.add_edge(
+            FederationGraphEdge(
+                source_id="cluster-a",
+                target_id="cluster-b",
+                latency_ms=15.0,
+                bandwidth_mbps=1000,
+                reliability_score=0.95,
+            )
+        )
+
+        monitoring_system = create_federation_monitoring_system(
+            settings=settings,
+            federation_config=federation_config,
+            federation_manager=federation_manager,
+            unified_monitor=unified_monitor,
+            monitoring_port=monitoring_port,
+            federation_graph=federation_graph,
+        )
+
+        await monitoring_system.start()
+        base_url = f"http://{settings.host}:{monitoring_port}"
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{base_url}/topology") as response:
+                    assert response.status == 200
+                    data = await response.json()
+                    summary = data["topology"]["summary"]
+                    assert summary["total_nodes"] == 2
+                    assert summary["total_edges"] == 1
+        finally:
+            await monitoring_system.stop()
+
+        print("✅ Federation graph topology snapshot test passed")
 
     async def test_configuration_endpoints(
         self,
@@ -621,13 +858,164 @@ class TestFederationMonitoringEndpoints:
 
                     # Verify expected endpoints are present
                     endpoint_paths = {ep["path"] for ep in endpoints}
-                    expected_paths = {"/health", "/metrics", "/topology", "/config"}
+                    expected_paths = {
+                        "/health",
+                        "/metrics",
+                        "/topology",
+                        "/config",
+                        "/transport/endpoints",
+                    }
                     assert expected_paths.issubset(endpoint_paths)
+
+                # Test /transport/endpoints endpoint
+                async with session.get(f"{base_url}/transport/endpoints") as response:
+                    assert response.status == 200
+                    data = await response.json()
+                    assert data["status"] == "ok"
+                    assert "transport_endpoints" in data
+                    assert "timestamp" in data
 
         finally:
             await monitoring_system.stop()
 
         print("✅ Federation utility endpoints test passed")
+
+    async def test_route_trace_endpoint(
+        self,
+        test_context: AsyncTestContext,
+        server_cluster_ports: list[int],
+    ):
+        """Test the routing trace monitoring endpoint."""
+        port = server_cluster_ports[0]
+        monitoring_port = server_cluster_ports[1]
+
+        settings = MPREGSettings(
+            host="127.0.0.1",
+            port=port,
+            name="RouteTrace-Server",
+            cluster_id="route-trace-cluster",
+            resources={"routing"},
+            gossip_interval=1.0,
+        )
+
+        federation_config = FederationConfig(
+            federation_mode=FederationMode.STRICT_ISOLATION,
+            local_cluster_id=settings.cluster_id,
+        )
+        federation_manager = FederationConnectionManager(
+            federation_config=federation_config
+        )
+
+        monitoring_config = MonitoringConfig()
+        unified_monitor = UnifiedSystemMonitor(config=monitoring_config)
+        test_context.tasks.append(asyncio.create_task(unified_monitor.start()))
+
+        captured: dict[str, object] = {}
+
+        def _route_trace(destination: str, avoid: tuple[str, ...]):
+            captured["destination"] = destination
+            captured["avoid"] = avoid
+            return {"selected": {"next_hop": destination}, "avoid": list(avoid)}
+
+        monitoring_system = create_federation_monitoring_system(
+            settings=settings,
+            federation_config=federation_config,
+            federation_manager=federation_manager,
+            unified_monitor=unified_monitor,
+            monitoring_port=monitoring_port,
+            route_trace_provider=_route_trace,
+        )
+
+        await monitoring_system.start()
+        base_url = f"http://{settings.host}:{monitoring_port}"
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{base_url}/routing/trace") as response:
+                    assert response.status == 400
+
+                async with session.get(
+                    f"{base_url}/routing/trace",
+                    params={
+                        "destination": "cluster-b",
+                        "avoid": "cluster-x,cluster-y",
+                    },
+                ) as response:
+                    assert response.status == 200
+                    data = await response.json()
+                    assert data["status"] == "ok"
+                    assert data["destination"] == "cluster-b"
+                    assert data["avoid_clusters"] == ["cluster-x", "cluster-y"]
+                    assert data["trace"]["selected"]["next_hop"] == "cluster-b"
+
+            assert captured["destination"] == "cluster-b"
+            assert captured["avoid"] == ("cluster-x", "cluster-y")
+        finally:
+            await monitoring_system.stop()
+
+        print("✅ Federation route trace endpoint test passed")
+
+    async def test_link_state_status_endpoint(
+        self,
+        test_context: AsyncTestContext,
+        server_cluster_ports: list[int],
+    ):
+        """Test the link-state status monitoring endpoint."""
+        port = server_cluster_ports[0]
+        monitoring_port = server_cluster_ports[1]
+
+        settings = MPREGSettings(
+            host="127.0.0.1",
+            port=port,
+            name="LinkState-Server",
+            cluster_id="link-state-cluster",
+            resources={"routing"},
+            gossip_interval=1.0,
+        )
+
+        federation_config = FederationConfig(
+            federation_mode=FederationMode.STRICT_ISOLATION,
+            local_cluster_id=settings.cluster_id,
+        )
+        federation_manager = FederationConnectionManager(
+            federation_config=federation_config
+        )
+
+        monitoring_config = MonitoringConfig()
+        unified_monitor = UnifiedSystemMonitor(config=monitoring_config)
+        test_context.tasks.append(asyncio.create_task(unified_monitor.start()))
+
+        def _link_state_status():
+            return {
+                "mode": "prefer",
+                "allowed_areas": ["area-a"],
+                "area_mismatch_rejects": 3,
+            }
+
+        monitoring_system = create_federation_monitoring_system(
+            settings=settings,
+            federation_config=federation_config,
+            federation_manager=federation_manager,
+            unified_monitor=unified_monitor,
+            monitoring_port=monitoring_port,
+            link_state_status_provider=_link_state_status,
+        )
+
+        await monitoring_system.start()
+        base_url = f"http://{settings.host}:{monitoring_port}"
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{base_url}/routing/link-state") as response:
+                    assert response.status == 200
+                    data = await response.json()
+                    assert data["status"] == "ok"
+                    assert data["link_state"]["mode"] == "prefer"
+                    assert data["link_state"]["area_mismatch_rejects"] == 3
+        finally:
+            await monitoring_system.stop()
+
+        print("✅ Federation link-state status endpoint test passed")
 
     async def test_middleware_and_cors(
         self,

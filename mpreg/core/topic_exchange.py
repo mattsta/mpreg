@@ -9,24 +9,24 @@ This module implements a trie-based topic matching engine that supports:
 - Integration with MPREG's gossip protocol
 """
 
+from __future__ import annotations
+
 import heapq
 import re
 import time
 from collections import defaultdict, deque
+from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from threading import RLock
 
 # Import for type annotations
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from mpreg.core.statistics import (
     BacklogStatistics,
     TopicExchangeComprehensiveStats,
 )
 from mpreg.datastructures.trie import TopicTrie
-
-if TYPE_CHECKING:
-    from mpreg.federation.federation_bridge import GraphAwareFederationBridge
 
 from .model import (
     PubSubMessage,
@@ -180,10 +180,10 @@ class TopicExchange:
     remote_topic_servers: dict[str, set[str]] = field(
         default_factory=lambda: defaultdict(set)
     )
+    internal_callbacks: dict[
+        str, Callable[[PubSubNotification], Coroutine[Any, Any, None] | None]
+    ] = field(default_factory=dict)
     _lock: RLock = field(default_factory=RLock)
-    federation_bridge: "GraphAwareFederationBridge | None" = field(
-        default=None, init=False
-    )
 
     def add_subscription(self, subscription: PubSubSubscription) -> None:
         """Add a new subscription."""
@@ -203,11 +203,15 @@ class TopicExchange:
 
             self.active_subscribers = len(self.client_subscriptions)
 
-    def set_federation_bridge(
-        self, federation_bridge: "GraphAwareFederationBridge"
+    def add_internal_subscription(
+        self,
+        subscription: PubSubSubscription,
+        callback: Callable[[PubSubNotification], Coroutine[Any, Any, None] | None],
     ) -> None:
-        """Set the federation bridge for this topic exchange."""
-        self.federation_bridge = federation_bridge
+        """Add an internal subscription with an in-process callback."""
+        self.add_subscription(subscription)
+        with self._lock:
+            self.internal_callbacks[subscription.subscription_id] = callback
 
     def remove_subscription(self, subscription_id: str) -> bool:
         """Remove a subscription."""
@@ -224,6 +228,7 @@ class TopicExchange:
             # Remove from tracking
             del self.subscriptions[subscription_id]
             self.client_subscriptions[subscription.subscriber].discard(subscription_id)
+            self.internal_callbacks.pop(subscription_id, None)
 
             # Clean up empty client entries
             if not self.client_subscriptions[subscription.subscriber]:
@@ -234,6 +239,12 @@ class TopicExchange:
 
     def publish_message(self, message: PubSubMessage) -> list[PubSubNotification]:
         """Publish a message and return notifications for subscribers."""
+        internal_deliveries: list[
+            tuple[
+                Callable[[PubSubNotification], Coroutine[Any, Any, None] | None],
+                PubSubNotification,
+            ]
+        ] = []
         with self._lock:
             # Store in backlog
             self.backlog.add_message(message)
@@ -251,32 +262,22 @@ class TopicExchange:
                         u=f"notification_{message.message_id}_{subscription_id}",
                     )
                     notifications.append(notification)
+                    callback = self.internal_callbacks.get(subscription_id)
+                    if callback is not None:
+                        internal_deliveries.append((callback, notification))
 
             self.messages_published += 1
             self.messages_delivered += len(notifications)
 
-            # If this is a federation message and we have a federation bridge, handle it
-            if (
-                message.topic.startswith("mpreg.federation.")
-                and self.federation_bridge is not None
-            ):
-                # If this message has federation_hop header, it came from a remote cluster
-                # and should be processed as an incoming federation message
-                if message.headers.get("federation_hop"):
-                    # Create a task to queue the message asynchronously to avoid blocking publish_message
-                    import asyncio
+        if internal_deliveries:
+            import asyncio
 
-                    asyncio.create_task(
-                        self.federation_bridge.queue_incoming_federation_message(
-                            message
-                        )
-                    )
-                else:
-                    # This is a locally published federation message that should be forwarded
-                    # to remote clusters
-                    self.federation_bridge._queue_message_for_forwarding(message)
+            for callback, notification in internal_deliveries:
+                result = callback(notification)
+                if asyncio.iscoroutine(result):
+                    asyncio.create_task(result)
 
-            return notifications
+        return notifications
 
     def _send_backlog(
         self, subscription: PubSubSubscription

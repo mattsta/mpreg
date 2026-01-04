@@ -45,7 +45,7 @@ class VectorClock:
 
     This implementation consolidates all VectorClock usage across MPREG:
     - Replaces type alias: `type VectorClock = dict[ClusterNodeId, int]`
-    - Replaces mutable class from federation_gossip.py
+    - Replaces mutable class from fabric gossip
     - Replaces immutable class from location_consistency.py
 
     Features:

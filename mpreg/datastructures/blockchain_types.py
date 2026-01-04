@@ -109,7 +109,7 @@ class CryptoConfig:
     hash_algorithm: str = "sha256"
     signature_algorithm: str = "ed25519"
     key_length: int = 256
-    require_signatures: bool = True
+    require_signatures: bool = False
 
 
 # Utility functions for type creation

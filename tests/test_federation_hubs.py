@@ -21,8 +21,8 @@ import time
 import pytest
 
 from mpreg.core.model import PubSubMessage
-from mpreg.federation.federation_graph import GeographicCoordinate
-from mpreg.federation.federation_hubs import (
+from mpreg.fabric.federation_graph import GeographicCoordinate
+from mpreg.fabric.hubs import (
     AggregatedSubscriptionState,
     GlobalHub,
     HubCapabilities,
@@ -79,7 +79,7 @@ def create_global_hub_capabilities():
     )
 
 
-from mpreg.federation.federation_optimized import ClusterIdentity, OptimizedClusterState
+from mpreg.fabric.federation_optimized import ClusterIdentity, OptimizedClusterState
 
 
 @pytest.fixture

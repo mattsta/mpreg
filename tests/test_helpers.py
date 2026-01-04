@@ -5,12 +5,15 @@ This module provides utility functions and fixtures to simplify
 test setup and ensure proper resource management during testing.
 """
 
+import asyncio
 import ssl
-from collections.abc import Iterator
+import time
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Protocol
 
-from .port_allocator import allocate_port, port_context, port_range_context
+from mpreg.core.port_allocator import allocate_port, port_context, port_range_context
 
 
 class Shutdownable(Protocol):
@@ -31,6 +34,14 @@ class Closeable(Protocol):
     async def close(self) -> None: ...
 
 
+@dataclass(frozen=True, slots=True)
+class ServerClientUrls:
+    """Pair of server/client URLs for tests."""
+
+    server_url: str
+    client_url: str
+
+
 def make_server_url(port: int, host: str = "127.0.0.1", protocol: str = "ws") -> str:
     """Create a server URL from a port number."""
     return f"{protocol}://{host}:{port}"
@@ -39,6 +50,23 @@ def make_server_url(port: int, host: str = "127.0.0.1", protocol: str = "ws") ->
 def make_client_url(port: int, host: str = "127.0.0.1", protocol: str = "ws") -> str:
     """Create a client connection URL from a port number."""
     return f"{protocol}://{host}:{port}"
+
+
+async def wait_for_condition(
+    predicate: Callable[[], bool],
+    *,
+    timeout: float = 5.0,
+    interval: float = 0.05,
+    error_message: str | None = None,
+) -> None:
+    """Poll a condition until it is true or a timeout is reached."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if predicate():
+            return
+        await asyncio.sleep(interval)
+    message = error_message or f"Condition not met within {timeout:.1f}s"
+    raise AssertionError(message)
 
 
 @contextmanager
@@ -55,6 +83,10 @@ def test_client_url(category: str = "clients") -> Iterator[str]:
         yield make_client_url(port)
 
 
+test_server_url.__test__ = False
+test_client_url.__test__ = False
+
+
 @contextmanager
 def server_cluster_urls(count: int, category: str = "servers") -> Iterator[list[str]]:
     """Context manager that provides multiple server URLs."""
@@ -63,12 +95,12 @@ def server_cluster_urls(count: int, category: str = "servers") -> Iterator[list[
 
 
 @contextmanager
-def server_client_pair() -> Iterator[tuple[str, str]]:
+def server_client_pair() -> Iterator[ServerClientUrls]:
     """Context manager that provides a server URL and client URL pair."""
     with port_range_context(2, "testing") as ports:
         server_url = make_server_url(ports[0])
         client_url = make_client_url(ports[0])  # Client connects to server
-        yield server_url, client_url
+        yield ServerClientUrls(server_url=server_url, client_url=client_url)
 
 
 class TestPortManager:
@@ -78,6 +110,8 @@ class TestPortManager:
     Useful for complex tests that need to manage many servers/clients
     with proper cleanup.
     """
+
+    __test__ = False
 
     def __init__(self):
         self._allocated_ports: list[int] = []
@@ -106,7 +140,7 @@ class TestPortManager:
 
     def get_port_range(self, count: int, category: str = "testing") -> list[int]:
         """Allocate a range of ports."""
-        from .port_allocator import allocate_port_range
+        from mpreg.core.port_allocator import allocate_port_range
 
         ports = allocate_port_range(count, category)
         self._allocated_ports.extend(ports)
@@ -119,7 +153,7 @@ class TestPortManager:
 
     def cleanup(self) -> None:
         """Release all allocated ports."""
-        from .port_allocator import release_port
+        from mpreg.core.port_allocator import release_port
 
         for port in self._allocated_ports:
             release_port(port)
@@ -147,7 +181,7 @@ def quick_client_url(category: str = "clients") -> str:
 
 def quick_server_cluster(count: int, category: str = "servers") -> list[str]:
     """Quickly allocate multiple server URLs (manual cleanup required)."""
-    from .port_allocator import allocate_port_range
+    from mpreg.core.port_allocator import allocate_port_range
 
     ports = allocate_port_range(count, category)
     return [make_server_url(port) for port in ports]
@@ -209,14 +243,15 @@ def create_test_ssl_context() -> ssl.SSLContext:
             ]
         )
 
+        now = datetime.datetime.now(datetime.UTC)
         cert = (
             x509.CertificateBuilder()
             .subject_name(subject)
             .issuer_name(issuer)
             .public_key(private_key.public_key())
             .serial_number(x509.random_serial_number())
-            .not_valid_before(datetime.datetime.utcnow())
-            .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=1))
+            .not_valid_before(now)
+            .not_valid_after(now + datetime.timedelta(days=1))
             .add_extension(
                 x509.SubjectAlternativeName(
                     [

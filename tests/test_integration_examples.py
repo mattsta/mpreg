@@ -307,7 +307,7 @@ class TestDistributedExamples:
         )
 
         assert "report" in result
-        assert "Final report: Analyzed 4 items, Total: 100" == result["report"]
+        assert result["report"] == "Final report: Analyzed 4 items, Total: 100"
 
 
 class TestConcurrencyExamples:

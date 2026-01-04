@@ -29,7 +29,7 @@ class TestDualRegistrationScenarios:
         """
         SCENARIO 1: Functions registered BEFORE cluster connection.
 
-        These functions should be included in the initial HELLO message
+        These functions should be announced via the fabric catalog
         when servers connect to each other.
         """
         port1, port2 = port_pair

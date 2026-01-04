@@ -12,9 +12,10 @@ This script tests ONLY the core components to isolate the problem:
 import asyncio
 import time
 
+from tests.port_allocator import PortAllocator
+
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
-from tests.port_allocator import PortAllocator
 
 
 class RootCauseInvestigator:

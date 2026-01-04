@@ -1,7 +1,6 @@
 from mpreg.core.model import (
     CommandNotFoundException,
-    GossipMessage,
-    PeerInfo,
+    FabricGossipEnvelope,
     RPCCommand,
     RPCError,
     RPCRequest,
@@ -45,31 +44,7 @@ def test_command_not_found_error_creation() -> None:
     assert error.command_name == "non_existent_cmd"
 
 
-def test_peer_info_creation() -> None:
-    peer = PeerInfo(
-        url="ws://localhost:8000",
-        funs=("echo",),
-        locs=frozenset(["loc1"]),
-        last_seen=123.45,
-        cluster_id="test_cluster",
-    )
-    assert peer.url == "ws://localhost:8000"
-    assert peer.funs == ("echo",)
-    assert peer.locs == frozenset(["loc1"])
-    assert peer.last_seen == 123.45
-    assert peer.cluster_id == "test_cluster"
-
-
-def test_gossip_message_creation() -> None:
-    peer = PeerInfo(
-        url="ws://localhost:8000",
-        funs=("echo",),
-        locs=frozenset(["loc1"]),
-        last_seen=123.45,
-        cluster_id="test_cluster",
-    )
-    gossip = GossipMessage(peers=(peer,), u="gossip_uuid", cluster_id="test_cluster")
-    assert gossip.role == "gossip"
-    assert gossip.peers == (peer,)
-    assert gossip.u == "gossip_uuid"
-    assert gossip.cluster_id == "test_cluster"
+def test_fabric_gossip_envelope_creation() -> None:
+    envelope = FabricGossipEnvelope(payload={"message_type": "catalog_update"})
+    assert envelope.role == "fabric-gossip"
+    assert envelope.payload["message_type"] == "catalog_update"

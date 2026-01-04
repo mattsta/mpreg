@@ -27,6 +27,8 @@ from mpreg.core.model import RPCCommand, RPCRequest
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+pytestmark = pytest.mark.slow
+
 
 class TestFederatedRPCPerformance:
     """Performance tests for federated RPC system."""

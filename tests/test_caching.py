@@ -405,61 +405,59 @@ class TestSmartCacheManager:
             memory_pressure_threshold=0.5,  # Trigger at 500 bytes
             eviction_batch_size=1,
         )
-        cache: SmartCacheManager[str] = SmartCacheManager(config)
+        with managed_cache(SmartCacheManager(config)) as cache:
+            # Add entries that exceed memory limit
+            for i in range(10):
+                key = CacheKey.create("func", (i,), {})
+                # Mock size estimation to return large size
+                with patch.object(cache, "_estimate_size", return_value=200):
+                    cache.put(key, f"large_value_{i}")
 
-        # Add entries that exceed memory limit
-        for i in range(10):
-            key = CacheKey.create("func", (i,), {})
-            # Mock size estimation to return large size
-            with patch.object(cache, "_estimate_size", return_value=200):
-                cache.put(key, f"large_value_{i}")
-
-        # Should have triggered evictions
-        assert cache.statistics.evictions > 0
+            # Should have triggered evictions
+            assert cache.statistics.evictions > 0
 
     def test_ttl_expiration(self):
         """Test TTL-based expiration."""
-        cache = create_default_cache_manager()
-        key = CacheKey.create("func", (), {})
+        with managed_cache(create_default_cache_manager()) as cache:
+            key = CacheKey.create("func", (), {})
 
-        # Store with short TTL
-        cache.put(key, "test_value", ttl_seconds=0.01)
+            # Store with short TTL
+            cache.put(key, "test_value", ttl_seconds=0.01)
 
-        # Should be available immediately
-        assert cache.get(key) == "test_value"
+            # Should be available immediately
+            assert cache.get(key) == "test_value"
 
-        # Wait for expiration
-        time.sleep(0.02)
+            # Wait for expiration
+            time.sleep(0.02)
 
-        # Should be expired and return None
-        assert cache.get(key) is None
-        assert not cache.contains(key)
+            # Should be expired and return None
+            assert cache.get(key) is None
+            assert not cache.contains(key)
 
     def test_dependency_tracking(self):
         """Test dependency tracking and invalidation."""
         config = CacheConfiguration(enable_dependency_tracking=True)
-        cache: SmartCacheManager[str] = SmartCacheManager(config)
+        with managed_cache(SmartCacheManager(config)) as cache:
+            # Create dependencies: result depends on inputs
+            input_key = CacheKey.create("get_input", (), {})
+            result_key = CacheKey.create("process", (), {})
 
-        # Create dependencies: result depends on inputs
-        input_key = CacheKey.create("get_input", (), {})
-        result_key = CacheKey.create("process", (), {})
+            # Store input
+            cache.put(input_key, "input_data")
 
-        # Store input
-        cache.put(input_key, "input_data")
+            # Store result with dependency on input
+            cache.put(result_key, "processed_data", dependencies={input_key})
 
-        # Store result with dependency on input
-        cache.put(result_key, "processed_data", dependencies={input_key})
+            assert cache.get(input_key) == "input_data"
+            assert cache.get(result_key) == "processed_data"
 
-        assert cache.get(input_key) == "input_data"
-        assert cache.get(result_key) == "processed_data"
+            # Invalidate input - should cascade to result
+            invalidated = cache.invalidate_dependencies(input_key)
+            assert invalidated == 1
 
-        # Invalidate input - should cascade to result
-        invalidated = cache.invalidate_dependencies(input_key)
-        assert invalidated == 1
-
-        # Result should be gone, but input still there
-        assert cache.get(input_key) == "input_data"
-        assert cache.get(result_key) is None
+            # Result should be gone, but input still there
+            assert cache.get(input_key) == "input_data"
+            assert cache.get(result_key) is None
 
     async def test_eviction_policies(self):
         """Test different eviction policies."""
@@ -499,96 +497,93 @@ class TestSmartCacheManager:
 
     def test_statistics_tracking(self):
         """Test comprehensive statistics tracking."""
-        cache = create_default_cache_manager()
+        with managed_cache(create_default_cache_manager()) as cache:
+            # Generate some cache activity
+            for i in range(10):
+                key = CacheKey.create("func", (i,), {})
+                cache.put(key, f"value_{i}", computation_cost_ms=float(i * 10))
 
-        # Generate some cache activity
-        for i in range(10):
-            key = CacheKey.create("func", (i,), {})
-            cache.put(key, f"value_{i}", computation_cost_ms=float(i * 10))
+            # Access some entries multiple times
+            for i in range(5):
+                key = CacheKey.create("func", (i,), {})
+                cache.get(key)
+                cache.get(key)  # Second access
 
-        # Access some entries multiple times
-        for i in range(5):
-            key = CacheKey.create("func", (i,), {})
-            cache.get(key)
-            cache.get(key)  # Second access
+            # Access non-existent entries
+            for i in range(10, 15):
+                key = CacheKey.create("func", (i,), {})
+                cache.get(key)  # Cache miss
 
-        # Access non-existent entries
-        for i in range(10, 15):
-            key = CacheKey.create("func", (i,), {})
-            cache.get(key)  # Cache miss
+            stats = cache.get_statistics()
 
-        stats = cache.get_statistics()
-
-        assert stats.hits == 10  # 5 entries accessed twice
-        assert stats.misses == 5  # 5 non-existent entries
-        assert stats.entry_count == 10
-        assert abs(stats.hit_rate() - (2 / 3)) < 0.01  # 10/(10+5) = 10/15 = 2/3
-        assert stats.avg_computation_cost_ms > 0
+            assert stats.hits == 10  # 5 entries accessed twice
+            assert stats.misses == 5  # 5 non-existent entries
+            assert stats.entry_count == 10
+            assert abs(stats.hit_rate() - (2 / 3)) < 0.01  # 10/(10+5) = 10/15 = 2/3
+            assert stats.avg_computation_cost_ms > 0
 
     def test_top_entries_analysis(self):
         """Test top entries analysis by cost-benefit."""
-        cache = create_default_cache_manager()
+        with managed_cache(create_default_cache_manager()) as cache:
+            # Add entries with different cost-benefit profiles
+            entries_data = [
+                ("cheap_unused", 10.0, 1),  # Low cost, low access
+                ("expensive_used", 1000.0, 10),  # High cost, high access
+                ("medium_medium", 100.0, 5),  # Medium cost, medium access
+            ]
 
-        # Add entries with different cost-benefit profiles
-        entries_data = [
-            ("cheap_unused", 10.0, 1),  # Low cost, low access
-            ("expensive_used", 1000.0, 10),  # High cost, high access
-            ("medium_medium", 100.0, 5),  # Medium cost, medium access
-        ]
+            for name, cost, access_count in entries_data:
+                key = CacheKey.create(name, (), {})
+                cache.put(key, f"value_{name}", computation_cost_ms=cost)
 
-        for name, cost, access_count in entries_data:
-            key = CacheKey.create(name, (), {})
-            cache.put(key, f"value_{name}", computation_cost_ms=cost)
+                # Simulate access pattern
+                for _ in range(access_count):
+                    cache.get(key)
 
-            # Simulate access pattern
-            for _ in range(access_count):
-                cache.get(key)
+            top_entries = cache.get_top_entries(limit=3)
 
-        top_entries = cache.get_top_entries(limit=3)
-
-        assert len(top_entries) == 3
-        # Should be sorted by cost-benefit score (highest first)
-        scores = [entry.cost_benefit_score() for entry in top_entries]
-        assert scores == sorted(scores, reverse=True)
+            assert len(top_entries) == 3
+            # Should be sorted by cost-benefit score (highest first)
+            scores = [entry.cost_benefit_score() for entry in top_entries]
+            assert scores == sorted(scores, reverse=True)
 
     def test_cache_clear(self):
         """Test cache clearing functionality."""
-        cache = create_default_cache_manager()
+        with managed_cache(create_default_cache_manager()) as cache:
+            # Add some entries
+            for i in range(5):
+                key = CacheKey.create("func", (i,), {})
+                cache.put(key, f"value_{i}")
 
-        # Add some entries
-        for i in range(5):
-            key = CacheKey.create("func", (i,), {})
-            cache.put(key, f"value_{i}")
+            assert len(cache.l1_cache) == 5
+            assert cache.statistics.entry_count == 5
 
-        assert len(cache.l1_cache) == 5
-        assert cache.statistics.entry_count == 5
+            # Clear cache
+            cache.clear()
 
-        # Clear cache
-        cache.clear()
-
-        assert len(cache.l1_cache) == 0
-        assert cache.statistics.entry_count == 0
-        assert cache.statistics.hits == 0
-        assert cache.statistics.misses == 0
+            assert len(cache.l1_cache) == 0
+            assert cache.statistics.entry_count == 0
+            assert cache.statistics.hits == 0
+            assert cache.statistics.misses == 0
 
     def test_manual_eviction(self):
         """Test manual eviction of specific entries."""
-        cache = create_default_cache_manager()
-        key = CacheKey.create("func", (), {})
+        with managed_cache(create_default_cache_manager()) as cache:
+            key = CacheKey.create("func", (), {})
 
-        # Store and verify
-        cache.put(key, "test_value")
-        assert cache.get(key) == "test_value"
+            # Store and verify
+            cache.put(key, "test_value")
+            assert cache.get(key) == "test_value"
 
-        # Manual eviction
-        evicted = cache.evict(key, reason="Manual test eviction")
-        assert evicted
-        assert cache.get(key) is None
-        assert cache.statistics.evictions == 1
+            # Manual eviction
+            evicted = cache.evict(key, reason="Manual test eviction")
+            assert evicted
+            assert cache.get(key) is None
+            assert cache.statistics.evictions == 1
 
-        # Evicting non-existent key should return False
-        not_evicted = cache.evict(key, reason="Already gone")
-        assert not not_evicted
+            # Evicting non-existent key should return False
+            not_evicted = cache.evict(key, reason="Already gone")
+            assert not not_evicted
 
     @pytest.mark.asyncio
     async def test_background_cleanup(self):
@@ -617,29 +612,28 @@ class TestCacheFactoryFunctions:
 
     def test_default_cache_manager(self):
         """Test default cache manager factory."""
-        cache = create_default_cache_manager()
-
-        assert isinstance(cache, SmartCacheManager)
-        assert cache.config.eviction_policy == EvictionPolicy.COST_BASED
-        assert cache.config.max_memory_bytes == 100 * 1024 * 1024
+        with managed_cache(create_default_cache_manager()) as cache:
+            assert isinstance(cache, SmartCacheManager)
+            assert cache.config.eviction_policy == EvictionPolicy.COST_BASED
+            assert cache.config.max_memory_bytes == 100 * 1024 * 1024
 
     def test_memory_optimized_cache_manager(self):
         """Test memory-optimized cache manager factory."""
-        cache = create_memory_optimized_cache_manager(max_memory_mb=25)
-
-        assert cache.config.max_memory_bytes == 25 * 1024 * 1024
-        assert cache.config.eviction_policy == EvictionPolicy.LRU
-        assert cache.config.memory_pressure_threshold == 0.9
-        assert cache.config.enable_compression
+        with managed_cache(
+            create_memory_optimized_cache_manager(max_memory_mb=25)
+        ) as cache:
+            assert cache.config.max_memory_bytes == 25 * 1024 * 1024
+            assert cache.config.eviction_policy == EvictionPolicy.LRU
+            assert cache.config.memory_pressure_threshold == 0.9
+            assert cache.config.enable_compression
 
     def test_performance_cache_manager(self):
         """Test performance-optimized cache manager factory."""
-        cache = create_performance_cache_manager()
-
-        assert cache.config.max_memory_bytes == 200 * 1024 * 1024
-        assert cache.config.max_entries == 50000
-        assert cache.config.eviction_policy == EvictionPolicy.COST_BASED
-        assert cache.config.enable_dependency_tracking
+        with managed_cache(create_performance_cache_manager()) as cache:
+            assert cache.config.max_memory_bytes == 200 * 1024 * 1024
+            assert cache.config.max_entries == 50000
+            assert cache.config.eviction_policy == EvictionPolicy.COST_BASED
+            assert cache.config.enable_dependency_tracking
 
 
 class TestCacheConfiguration:
@@ -1001,30 +995,31 @@ class TestS4LRUIntegration:
 
     def test_s4lru_statistics(self):
         """Test S4LRU specific statistics."""
-        cache = create_s4lru_cache_manager(max_entries=8, segments=4)
+        with managed_cache(
+            create_s4lru_cache_manager(max_entries=8, segments=4)
+        ) as cache:
+            # Add some entries and access them differently
+            key1 = CacheKey.create("func", (1,), {})
+            key2 = CacheKey.create("func", (2,), {})
 
-        # Add some entries and access them differently
-        key1 = CacheKey.create("func", (1,), {})
-        key2 = CacheKey.create("func", (2,), {})
+            cache.put(key1, "value1")
+            cache.put(key2, "value2")
 
-        cache.put(key1, "value1")
-        cache.put(key2, "value2")
+            # Access key1 multiple times to promote it
+            for _ in range(3):
+                cache.get(key1)
 
-        # Access key1 multiple times to promote it
-        for _ in range(3):
-            cache.get(key1)
+            # Access key2 once
+            cache.get(key2)
 
-        # Access key2 once
-        cache.get(key2)
+            # Get S4LRU specific stats
+            s4lru_stats = cache.get_s4lru_stats()
+            assert s4lru_stats is not None
+            assert len(s4lru_stats) == 4
 
-        # Get S4LRU specific stats
-        s4lru_stats = cache.get_s4lru_stats()
-        assert s4lru_stats is not None
-        assert len(s4lru_stats) == 4
-
-        # Verify different segment utilization
-        total_entries = sum(stat.current_size for stat in s4lru_stats)
-        assert total_entries == 2  # Two entries total
+            # Verify different segment utilization
+            total_entries = sum(stat.current_size for stat in s4lru_stats)
+            assert total_entries == 2  # Two entries total
 
     async def test_s4lru_factory_configuration(self):
         """Test S4LRU factory function configuration."""

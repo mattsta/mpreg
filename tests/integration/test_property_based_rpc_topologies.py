@@ -253,10 +253,7 @@ class TestPropertyBasedRPCTopologies:
                 resource = list(node["resources"])[0]  # Use first resource
                 func_name = f"process_step_{i}_0"
 
-                if prev_cmd_name:
-                    args = (prev_cmd_name,)
-                else:
-                    args = ("initial_data",)
+                args = (prev_cmd_name,) if prev_cmd_name else ("initial_data",)
 
                 commands.append(
                     RPCCommand(

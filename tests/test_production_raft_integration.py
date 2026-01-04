@@ -52,6 +52,8 @@ def get_concurrency_factor() -> float:
 class TestableStateMachine:
     """Testable state machine with deterministic behavior."""
 
+    __test__ = False
+
     def __init__(self):
         self.state: dict[str, int] = {}
         self.applied_commands: list[tuple] = []
@@ -70,8 +72,7 @@ class TestableStateMachine:
                 value = value.strip()
 
                 # Strip set_ prefix if present for cleaner state keys
-                if key.startswith("set_"):
-                    key = key[4:]
+                key = key.removeprefix("set_")
 
                 # Store the actual value, not just integers
                 if value.isdigit():
@@ -1057,13 +1058,21 @@ class TestProductionRaftIntegration:
             for node in nodes.values():
                 await node.start()
 
-            await asyncio.sleep(0.5)
-
-            leader = next(
-                node
-                for node in nodes.values()
-                if node.current_state == RaftState.LEADER
-            )
+            concurrency_factor = get_concurrency_factor()
+            leader = None
+            for _ in range(int(40 * concurrency_factor)):
+                await asyncio.sleep(0.1)
+                leaders = [
+                    node
+                    for node in nodes.values()
+                    if node.current_state == RaftState.LEADER
+                ]
+                if leaders:
+                    leader = leaders[0]
+                    break
+            if leader is None:
+                states = {nid: n.current_state.value for nid, n in nodes.items()}
+                pytest.fail(f"No leader elected within timeout: {states}")
 
             # Submit many commands concurrently
             async def submit_batch(start_idx, count):

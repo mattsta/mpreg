@@ -137,10 +137,7 @@ class QueueGovernancePolicy:
         if current_time < self.effective_from:
             return False
 
-        if self.effective_until and current_time > self.effective_until:
-            return False
-
-        return True
+        return not (self.effective_until and current_time > self.effective_until)
 
 
 @dataclass(frozen=True, slots=True)

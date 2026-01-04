@@ -13,11 +13,16 @@ Key datastructures:
 - DAO: Decentralized governance with voting and execution
 """
 
+from __future__ import annotations
+
 from .block import Block
 from .blockchain import Blockchain
+from .blockchain_crypto import CryptoKeyPair, TransactionSigner, generate_keypair
+from .blockchain_store import BlockchainStore
 from .blockchain_types import (
     ConsensusConfig,
     ConsensusType,
+    CryptoConfig,
     OperationType,
 )
 from .cache_structures import CacheEntry, CacheKey, CacheStatistics
@@ -59,6 +64,7 @@ from .graph_algorithms import (
 from .merkle_tree import MerkleNode, MerkleProof, MerkleTree
 from .message_structures import (
     BaseMessage,
+    MessageHeader,
     MessageHeaders,
     MessageId,
     MessagePriority,
@@ -77,6 +83,7 @@ __all__ = [
     "CacheStatistics",
     "MessageId",
     "MessagePriority",
+    "MessageHeader",
     "MessageHeaders",
     "BaseMessage",
     "QueuedMessage",
@@ -84,6 +91,11 @@ __all__ = [
     "TransactionPool",
     "Block",
     "Blockchain",
+    "BlockchainStore",
+    "CryptoConfig",
+    "CryptoKeyPair",
+    "TransactionSigner",
+    "generate_keypair",
     "OperationType",
     "ConsensusType",
     "ConsensusConfig",

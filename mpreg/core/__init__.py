@@ -5,15 +5,14 @@ Core functionality for the MPREG federation system including
 models, registry, serialization, and connection management.
 """
 
+from __future__ import annotations
+
 from .config import MPREGSettings
 from .connection import Connection
 from .model import (
     CommandNotFoundException,
-    GossipMessage,
     MPREGException,
-    PeerInfo,
     PubSubAck,
-    PubSubGossip,
     PubSubMessage,
     PubSubNotification,
     PubSubPublish,
@@ -22,12 +21,9 @@ from .model import (
     PubSubUnsubscribe,
     RPCCommand,
     RPCError,
-    RPCInternalAnswer,
-    RPCInternalRequest,
     RPCRequest,
     RPCResponse,
     RPCServerGoodbye,
-    RPCServerHello,
     RPCServerMessage,
     RPCServerRequest,
     RPCServerStatus,
@@ -49,9 +45,6 @@ __all__ = [
     "RPCRequest",
     "RPCResponse",
     "RPCError",
-    "RPCInternalRequest",
-    "RPCInternalAnswer",
-    "RPCServerHello",
     "RPCServerGoodbye",
     "RPCServerStatus",
     "RPCServerMessage",
@@ -64,12 +57,9 @@ __all__ = [
     "PubSubUnsubscribe",
     "PubSubNotification",
     "PubSubAck",
-    "PubSubGossip",
     # Model - Other
     "TopicPattern",
     "TopicAdvertisement",
-    "PeerInfo",
-    "GossipMessage",
     # Model - Exceptions
     "MPREGException",
     "CommandNotFoundException",

@@ -77,6 +77,14 @@ class MessageId:
 
 
 @dataclass(frozen=True, slots=True)
+class MessageHeader:
+    """Typed header entry for message metadata."""
+
+    key: str
+    value: str
+
+
+@dataclass(frozen=True, slots=True)
 class MessageHeaders:
     """
     Unified message headers implementation.
@@ -85,7 +93,7 @@ class MessageHeaders:
     instead of using raw dictionaries.
     """
 
-    _headers: frozenset[tuple[str, str]] = field(default_factory=frozenset)
+    _headers: frozenset[MessageHeader] = field(default_factory=frozenset)
 
     @classmethod
     def empty(cls) -> MessageHeaders:
@@ -95,46 +103,49 @@ class MessageHeaders:
     @classmethod
     def from_dict(cls, headers_dict: Mapping[str, str]) -> MessageHeaders:
         """Create headers from dictionary."""
-        return cls(_headers=frozenset(headers_dict.items()))
+        return cls(
+            _headers=frozenset(
+                MessageHeader(key=key, value=value)
+                for key, value in headers_dict.items()
+            )
+        )
 
     def to_dict(self) -> dict[str, str]:
         """Convert headers to dictionary."""
-        return dict(self._headers)
+        return {header.key: header.value for header in self._headers}
 
     def get(self, key: str, default: str = "") -> str:
         """Get header value by key."""
-        for header_key, header_value in self._headers:
-            if header_key == key:
-                return header_value
+        for header in self._headers:
+            if header.key == key:
+                return header.value
         return default
 
     def has(self, key: str) -> bool:
         """Check if header key exists."""
-        return any(header_key == key for header_key, _ in self._headers)
+        return any(header.key == key for header in self._headers)
 
     def with_header(self, key: str, value: str) -> MessageHeaders:
         """Create new headers with additional header."""
-        new_headers = set(self._headers)
-        # Remove existing header with same key
-        new_headers = {(k, v) for k, v in new_headers if k != key}
-        new_headers.add((key, value))
+        new_headers = {header for header in self._headers if header.key != key}
+        new_headers.add(MessageHeader(key=key, value=value))
         return MessageHeaders(_headers=frozenset(new_headers))
 
     def without_header(self, key: str) -> MessageHeaders:
         """Create new headers without specified header."""
-        new_headers = {(k, v) for k, v in self._headers if k != key}
+        new_headers = {header for header in self._headers if header.key != key}
         return MessageHeaders(_headers=frozenset(new_headers))
 
     def keys(self) -> frozenset[str]:
         """Get all header keys."""
-        return frozenset(key for key, _ in self._headers)
+        return frozenset(header.key for header in self._headers)
 
     def values(self) -> frozenset[str]:
         """Get all header values."""
-        return frozenset(value for _, value in self._headers)
+        return frozenset(header.value for header in self._headers)
 
-    def items(self) -> frozenset[tuple[str, str]]:
-        """Get all header items."""
+    def items(self) -> frozenset[MessageHeader]:
+        """Get all header entries."""
         return self._headers
 
     def __len__(self) -> int:
@@ -145,9 +156,9 @@ class MessageHeaders:
 
     def __getitem__(self, key: str) -> str:
         """Get header value by key, raises KeyError if not found."""
-        for header_key, header_value in self._headers:
-            if header_key == key:
-                return header_value
+        for header in self._headers:
+            if header.key == key:
+                return header.value
         raise KeyError(f"Header '{key}' not found")
 
 

@@ -15,6 +15,8 @@ All operations maintain ACID properties where applicable and integrate
 seamlessly with the existing multi-tier cache architecture.
 """
 
+from __future__ import annotations
+
 import asyncio
 import time
 import uuid
@@ -26,12 +28,8 @@ from typing import Any
 
 from loguru import logger
 
-from .global_cache import (
-    CacheMetadata,
-    CacheOptions,
-    GlobalCacheKey,
-    GlobalCacheManager,
-)
+from .cache_interfaces import CacheManagerProtocol
+from .cache_models import CacheMetadata, CacheOptions, GlobalCacheKey
 
 
 class AtomicOperation(Enum):
@@ -164,7 +162,7 @@ class AdvancedCacheOperations:
     that avoid the need for read-modify-write cycles and complex JSON manipulation.
     """
 
-    def __init__(self, cache_manager: GlobalCacheManager):
+    def __init__(self, cache_manager: CacheManagerProtocol):
         self.cache_manager = cache_manager
 
         # Operation locks for atomicity
@@ -1001,18 +999,28 @@ class AdvancedCacheOperations:
         self, operation: NamespaceOperation, options: CacheOptions | None
     ) -> NamespaceResult:
         """Clear all keys in namespace matching pattern."""
-        # This is a simplified implementation
-        # In production, this would integrate with the actual cache storage
-        # to efficiently iterate and delete keys
+        try:
+            keys = self.cache_manager.get_namespace_keys(
+                operation.namespace, operation.pattern
+            )
+            cleared = 0
+            for key in keys:
+                result = await self.cache_manager.delete(key, options)
+                if result.success:
+                    cleared += 1
 
-        # For now, return a placeholder result
-        self.operation_stats["namespace_clear"] += 1
-
-        return NamespaceResult(
-            success=True,
-            cleared_count=0,  # Would be actual count in real implementation
-            error_message="Namespace clear not yet fully implemented",
-        )
+            self.operation_stats["namespace_clear"] += 1
+            return NamespaceResult(
+                success=True,
+                cleared_count=cleared,
+                count=cleared,
+            )
+        except Exception as e:
+            logger.error(f"Failed to clear namespace {operation.namespace}: {e}")
+            return NamespaceResult(
+                success=False,
+                error_message=f"Namespace clear error: {e}",
+            )
 
     async def _list_namespace(
         self, operation: NamespaceOperation, options: CacheOptions | None
@@ -1041,26 +1049,42 @@ class AdvancedCacheOperations:
         self, operation: NamespaceOperation, options: CacheOptions | None
     ) -> NamespaceResult:
         """Count keys in namespace matching pattern."""
-        # Placeholder implementation
-        self.operation_stats["namespace_count"] += 1
-
-        return NamespaceResult(
-            success=True,
-            count=0,  # Would be actual count in real implementation
-        )
+        try:
+            namespace_keys = self.cache_manager.get_namespace_keys(
+                operation.namespace, operation.pattern
+            )
+            self.operation_stats["namespace_count"] += 1
+            return NamespaceResult(success=True, count=len(namespace_keys))
+        except Exception as e:
+            logger.error(f"Failed to count namespace {operation.namespace}: {e}")
+            return NamespaceResult(
+                success=False,
+                error_message=f"Namespace count error: {e}",
+            )
 
     async def _scan_namespace(
         self, operation: NamespaceOperation, options: CacheOptions | None
     ) -> NamespaceResult:
         """Scan keys in namespace with cursor-based pagination."""
-        # Placeholder implementation
-        self.operation_stats["namespace_scan"] += 1
+        try:
+            namespace_keys = self.cache_manager.get_namespace_keys(
+                operation.namespace, operation.pattern
+            )
+            sorted_keys = sorted(namespace_keys, key=str)
+            limited_keys = sorted_keys[: operation.limit]
 
-        return NamespaceResult(
-            success=True,
-            keys=[],  # Would be actual keys in real implementation
-            count=0,
-        )
+            self.operation_stats["namespace_scan"] += 1
+            return NamespaceResult(
+                success=True,
+                keys=limited_keys,
+                count=len(limited_keys),
+            )
+        except Exception as e:
+            logger.error(f"Failed to scan namespace {operation.namespace}: {e}")
+            return NamespaceResult(
+                success=False,
+                error_message=f"Namespace scan error: {e}",
+            )
 
     def get_statistics(self) -> dict[str, Any]:
         """Get comprehensive statistics for advanced cache operations."""

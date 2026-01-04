@@ -6,6 +6,7 @@ to the client through the WebSocket connection.
 """
 
 import asyncio
+import contextlib
 import time
 
 import pytest
@@ -19,11 +20,14 @@ class TestPubSubNotificationDelivery:
     """Test end-to-end notification delivery."""
 
     @pytest.mark.asyncio
-    async def test_basic_notification_delivery(self):
+    async def test_basic_notification_delivery(self, server_port):
         """Test that notifications are delivered to subscribers."""
         # Start server
         settings = MPREGSettings(
-            host="127.0.0.1", port=19100, name="TestServer", cluster_id="test-cluster"
+            host="127.0.0.1",
+            port=server_port,
+            name="TestServer",
+            cluster_id="test-cluster",
         )
         server = MPREGServer(settings=settings)
 
@@ -38,7 +42,9 @@ class TestPubSubNotificationDelivery:
                 received_messages.append(message)
 
             # Create and connect client
-            async with MPREGPubSubExtendedClient("ws://127.0.0.1:19100") as client:
+            async with MPREGPubSubExtendedClient(
+                f"ws://127.0.0.1:{server_port}"
+            ) as client:
                 # Subscribe to test topics
                 subscription_id = await client.subscribe(
                     patterns=["test.*"], callback=message_callback, get_backlog=False
@@ -69,17 +75,18 @@ class TestPubSubNotificationDelivery:
         finally:
             # Cleanup
             server_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await server_task
-            except asyncio.CancelledError:
-                pass
 
     @pytest.mark.asyncio
-    async def test_multiple_subscribers_same_topic(self):
+    async def test_multiple_subscribers_same_topic(self, server_port):
         """Test that multiple subscribers receive the same message."""
         # Start server
         settings = MPREGSettings(
-            host="127.0.0.1", port=19101, name="TestServer", cluster_id="test-cluster"
+            host="127.0.0.1",
+            port=server_port,
+            name="TestServer",
+            cluster_id="test-cluster",
         )
         server = MPREGServer(settings=settings)
 
@@ -98,63 +105,64 @@ class TestPubSubNotificationDelivery:
                 client2_messages.append(message)
 
             # Create two clients
-            async with MPREGPubSubExtendedClient("ws://127.0.0.1:19101") as client1:
-                async with MPREGPubSubExtendedClient("ws://127.0.0.1:19101") as client2:
-                    # Both subscribe to the same topic
-                    sub1 = await client1.subscribe(
-                        patterns=["broadcast.*"],
-                        callback=client1_callback,
-                        get_backlog=False,
-                    )
+            async with (
+                MPREGPubSubExtendedClient(f"ws://127.0.0.1:{server_port}") as client1,
+                MPREGPubSubExtendedClient(f"ws://127.0.0.1:{server_port}") as client2,
+            ):
+                # Both subscribe to the same topic
+                sub1 = await client1.subscribe(
+                    patterns=["broadcast.*"],
+                    callback=client1_callback,
+                    get_backlog=False,
+                )
 
-                    sub2 = await client2.subscribe(
-                        patterns=["broadcast.*"],
-                        callback=client2_callback,
-                        get_backlog=False,
-                    )
+                sub2 = await client2.subscribe(
+                    patterns=["broadcast.*"],
+                    callback=client2_callback,
+                    get_backlog=False,
+                )
 
-                    # Wait for subscriptions to be active
-                    await asyncio.sleep(0.2)
+                # Wait for subscriptions to be active
+                await asyncio.sleep(0.2)
 
-                    # Publish a broadcast message
-                    success = await client1.publish(
-                        "broadcast.announcement",
-                        {"message": "Important announcement!", "priority": "high"},
-                    )
-                    assert success
+                # Publish a broadcast message
+                success = await client1.publish(
+                    "broadcast.announcement",
+                    {"message": "Important announcement!", "priority": "high"},
+                )
+                assert success
 
-                    # Wait for delivery
-                    await asyncio.sleep(0.5)
+                # Wait for delivery
+                await asyncio.sleep(0.5)
 
-                    # Both clients should receive the message
-                    assert len(client1_messages) == 1
-                    assert len(client2_messages) == 1
+                # Both clients should receive the message
+                assert len(client1_messages) == 1
+                assert len(client2_messages) == 1
 
-                    # Verify message content
-                    assert client1_messages[0].topic == "broadcast.announcement"
-                    assert client2_messages[0].topic == "broadcast.announcement"
-                    assert (
-                        client1_messages[0].payload["message"]
-                        == "Important announcement!"
-                    )
-                    assert (
-                        client2_messages[0].payload["message"]
-                        == "Important announcement!"
-                    )
+                # Verify message content
+                assert client1_messages[0].topic == "broadcast.announcement"
+                assert client2_messages[0].topic == "broadcast.announcement"
+                assert (
+                    client1_messages[0].payload["message"] == "Important announcement!"
+                )
+                assert (
+                    client2_messages[0].payload["message"] == "Important announcement!"
+                )
 
         finally:
             server_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await server_task
-            except asyncio.CancelledError:
-                pass
 
     @pytest.mark.asyncio
-    async def test_wildcard_pattern_matching(self):
+    async def test_wildcard_pattern_matching(self, server_port):
         """Test that wildcard patterns work correctly for notifications."""
         # Start server
         settings = MPREGSettings(
-            host="127.0.0.1", port=19102, name="TestServer", cluster_id="test-cluster"
+            host="127.0.0.1",
+            port=server_port,
+            name="TestServer",
+            cluster_id="test-cluster",
         )
         server = MPREGServer(settings=settings)
 
@@ -172,7 +180,9 @@ class TestPubSubNotificationDelivery:
             def multi_wildcard_callback(message):
                 multi_wildcard_messages.append(message)
 
-            async with MPREGPubSubExtendedClient("ws://127.0.0.1:19102") as client:
+            async with MPREGPubSubExtendedClient(
+                f"ws://127.0.0.1:{server_port}"
+            ) as client:
                 # Subscribe with different wildcard patterns
                 sub1 = await client.subscribe(
                     patterns=["user.*.login"],  # Single wildcard
@@ -236,17 +246,18 @@ class TestPubSubNotificationDelivery:
 
         finally:
             server_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await server_task
-            except asyncio.CancelledError:
-                pass
 
     @pytest.mark.asyncio
-    async def test_subscription_cleanup_on_disconnect(self):
+    async def test_subscription_cleanup_on_disconnect(self, server_port):
         """Test that subscriptions are cleaned up when client disconnects."""
         # Start server
         settings = MPREGSettings(
-            host="127.0.0.1", port=19103, name="TestServer", cluster_id="test-cluster"
+            host="127.0.0.1",
+            port=server_port,
+            name="TestServer",
+            cluster_id="test-cluster",
         )
         server = MPREGServer(settings=settings)
 
@@ -255,7 +266,7 @@ class TestPubSubNotificationDelivery:
 
         try:
             # Create a client and subscription, then disconnect
-            client = MPREGPubSubExtendedClient("ws://127.0.0.1:19103")
+            client = MPREGPubSubExtendedClient(f"ws://127.0.0.1:{server_port}")
             await client.connect()
 
             received_messages = []
@@ -279,7 +290,9 @@ class TestPubSubNotificationDelivery:
 
             # Server should still have the subscription (cleanup happens on actual disconnect)
             # But publishing a message shouldn't crash
-            publisher_client = MPREGPubSubExtendedClient("ws://127.0.0.1:19103")
+            publisher_client = MPREGPubSubExtendedClient(
+                f"ws://127.0.0.1:{server_port}"
+            )
             await publisher_client.connect()
 
             success = await publisher_client.publish("cleanup.test", {"data": "test"})
@@ -294,17 +307,18 @@ class TestPubSubNotificationDelivery:
 
         finally:
             server_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await server_task
-            except asyncio.CancelledError:
-                pass
 
     @pytest.mark.asyncio
-    async def test_unsubscribe_functionality(self):
+    async def test_unsubscribe_functionality(self, server_port):
         """Test that unsubscribing works correctly."""
         # Start server
         settings = MPREGSettings(
-            host="127.0.0.1", port=19104, name="TestServer", cluster_id="test-cluster"
+            host="127.0.0.1",
+            port=server_port,
+            name="TestServer",
+            cluster_id="test-cluster",
         )
         server = MPREGServer(settings=settings)
 
@@ -317,7 +331,9 @@ class TestPubSubNotificationDelivery:
             def callback(message):
                 received_messages.append(message)
 
-            async with MPREGPubSubExtendedClient("ws://127.0.0.1:19104") as client:
+            async with MPREGPubSubExtendedClient(
+                f"ws://127.0.0.1:{server_port}"
+            ) as client:
                 # Subscribe to topic
                 subscription_id = await client.subscribe(
                     patterns=["unsub.test"], callback=callback, get_backlog=False
@@ -348,7 +364,5 @@ class TestPubSubNotificationDelivery:
 
         finally:
             server_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await server_task
-            except asyncio.CancelledError:
-                pass

@@ -9,10 +9,11 @@ in the multi-layer federation cascade test.
 import asyncio
 from typing import Any
 
+from tests.port_allocator import get_port_allocator
+
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
-from tests.port_allocator import get_port_allocator
 
 
 async def debug_multi_layer_federation():

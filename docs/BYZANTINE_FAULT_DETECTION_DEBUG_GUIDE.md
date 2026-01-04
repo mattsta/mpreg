@@ -36,7 +36,7 @@ This document details a critical bug discovered in the Byzantine fault detection
 
 #### The Flawed Logic
 
-**Location**: `mpreg/core/federated_delivery_guarantees.py:469-484`
+**Location**: `mpreg/fabric/queue_delivery.py`
 
 **Original Broken Code**:
 
@@ -51,7 +51,7 @@ else:
 **Detection Logic**:
 
 ```python
-def detect_byzantine_faults(self) -> set[ClusterNodeId]:
+def detect_byzantine_faults(self) -> set[ClusterId]:
     byzantine_clusters = set()
     for cluster_id, responses in self.conflicting_responses.items():
         if len(responses) > 1:  # ❌ Every cluster had at least 1 response
@@ -88,7 +88,7 @@ else:
 #### Enhanced Detection Logic
 
 ```python
-def detect_byzantine_faults(self) -> set[ClusterNodeId]:
+def detect_byzantine_faults(self) -> set[ClusterId]:
     byzantine_clusters = set()
 
     # Only clusters in conflicting_responses have actually sent conflicting data
@@ -170,7 +170,7 @@ logger.info(f"Total weight: {consensus_round.total_weight()}")
 
 ```python
 def test_byzantine_detection_false_positives():
-    consensus_round = GlobalConsensusRound(...)
+    consensus_round = QueueConsensusRound(...)
 
     # Simulate normal voting (should NOT be detected as Byzantine)
     consensus_round.votes_received["cluster-1"] = True
@@ -283,9 +283,10 @@ if consensus_success_rate < 0.95:  # Less than 95% success
 
 **Files that must be consistent**:
 
-- `mpreg/core/federated_delivery_guarantees.py` (main consensus logic)
-- `mpreg/federation/federation_bridge.py` (vote routing)
-- `tests/test_federated_message_queue_live.py` (integration tests)
+- `mpreg/fabric/queue_delivery.py` (main consensus logic)
+- `mpreg/server.py` (control message handling)
+- `mpreg/fabric/cluster_messenger.py` (hop-aware forwarding)
+- `tests/integration/test_fabric_queue_federation.py` (integration tests)
 
 **Configuration dependencies**:
 

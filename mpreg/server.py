@@ -1,67 +1,101 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import inspect
 import pprint as pp
-import random
 import sys
 import time
 import traceback
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from graphlib import TopologicalSorter
-from typing import Any
+from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 
 import ulid
-import websockets.client
-import websockets.server
 from loguru import logger
 
 from .core.config import MPREGSettings
 from .core.connection import Connection
-
-# Federated RPC now uses enhanced _broadcast_new_function with existing MPREG infrastructure
 from .core.connection_events import ConnectionEvent, ConnectionEventBus
+from .core.logging import configure_logging
 from .core.model import (
+    CacheStatusMetrics,
     CommandNotFoundException,
     ConsensusProposalMessage,
     ConsensusVoteMessage,
+    FabricGossipEnvelope,
     GoodbyeReason,
-    GossipMessage,
     MPREGException,
-    PeerInfo,
     PubSubAck,
-    PubSubGossip,
+    PubSubMessage,
     # Pub/Sub message types
     PubSubNotification,
     PubSubPublish,
     PubSubSubscribe,
     PubSubUnsubscribe,
+    QueueStatusMetrics,
     RPCCommand,
     RPCError,
     RPCExecutionSummary,
+    RPCFunctionDescriptor,
     RPCIntermediateResult,
-    RPCInternalAnswer,
-    RPCInternalRequest,
     RPCRequest,
     RPCResponse,
     RPCServerGoodbye,
-    RPCServerHello,
-    RPCServerMessage,
     RPCServerRequest,
+    RPCServerStatus,
+    ServerStatusMetrics,
 )
+from .core.monitoring import create_unified_system_monitor
+from .core.monitoring.server_monitoring import (
+    ServerMetricsTracker,
+    ServerSystemMonitor,
+)
+from .core.monitoring.system_adapters import FederationSystemMonitor
+from .core.monitoring.unified_monitoring import SystemType
+from .core.persistence.config import PersistenceMode
 from .core.registry import Command, CommandRegistry
 from .core.serialization import JsonSerializer
 from .core.topic_exchange import TopicExchange
-from .datastructures.cluster_types import ClusterState
-from .datastructures.federated_types import (
-    AnnouncementID,
-    FederatedRPCAnnouncement,
-    FunctionNames,
-    ServerCapabilities,
-    create_federated_propagation_from_primitives,
+from .core.transport.factory import TransportFactory
+from .core.transport.interfaces import (
+    TransportConfig,
+    TransportConnectionError,
+    TransportInterface,
+    TransportListener,
 )
-from .datastructures.type_aliases import NodeURL, Timestamp
-from .datastructures.vector_clock import VectorClock
+from .datastructures.cluster_types import ClusterState
+from .datastructures.function_identity import (
+    FunctionIdentity,
+    FunctionSelector,
+    SemanticVersion,
+    VersionConstraint,
+)
+from .fabric.federation_graph import (
+    FederationGraphEdge,
+    FederationGraphNode,
+    GeographicCoordinate,
+    GraphBasedFederationRouter,
+    NodeType,
+)
+from .fabric.federation_planner import FabricFederationPlanner
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from mpreg.core.model import FabricMessageEnvelope, PubSubSubscription
+    from mpreg.datastructures.type_aliases import PortAssignmentCallback
+    from mpreg.fabric.catalog import CacheNodeProfile, NodeDescriptor, TransportEndpoint
+    from mpreg.fabric.function_registry import LocalFunctionRegistration
+    from mpreg.fabric.message import MessageHeaders, UnifiedMessage
+    from mpreg.fabric.message_codec import unified_message_to_dict
+    from mpreg.fabric.route_control import RoutePolicy
+    from mpreg.fabric.route_keys import RouteKeyRegistry
+    from mpreg.fabric.route_policy_directory import RoutePolicyDirectory
+    from mpreg.fabric.route_security import (
+        RouteAnnouncementSigner,
+        RouteSecurityConfig,
+    )
 
 ############################################
 #
@@ -88,6 +122,26 @@ class MessageStats:
     rpc_responses_skipped: int = 0
     server_messages: int = 0
     other_messages: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class DepartedPeer:
+    node_url: str
+    instance_id: str
+    cluster_id: str
+    reason: GoodbyeReason
+    departed_at: float
+    ttl_seconds: float
+
+    def is_expired(self, now: float | None = None) -> bool:
+        timestamp = now if now is not None else time.time()
+        return timestamp > (self.departed_at + self.ttl_seconds)
+
+
+@dataclass(frozen=True, slots=True)
+class CommandExecutionResult:
+    name: str
+    value: Any
 
 
 def rpc_command(
@@ -228,6 +282,7 @@ class Cluster:
 
     # Configuration
     config: ClusterState = field()
+    settings: MPREGSettings | None = field(init=False, default=None)
 
     # Server infrastructure
     registry: CommandRegistry = field(init=False)
@@ -241,12 +296,16 @@ class Cluster:
     # Connection event system
     connection_event_bus: ConnectionEventBus = field(init=False)
 
-    # Internal storage for peers info
-    _peers_info: dict[str, PeerInfo] = field(default_factory=dict, init=False)
-
-    # Track peers that have sent GOODBYE to prevent gossip re-adding them
-    # Format: {peer_url: departure_timestamp}
-    _departed_peers: dict[str, float] = field(default_factory=dict, init=False)
+    peer_directory: PeerDirectory | None = field(init=False, default=None)
+    fabric_engine: RoutingEngine | None = field(init=False, default=None)
+    fabric_graph_router: GraphBasedFederationRouter | None = field(
+        init=False, default=None
+    )
+    fabric_link_state_router: GraphBasedFederationRouter | None = field(
+        init=False, default=None
+    )
+    fabric_router: Any = field(init=False, default=None)
+    _server: MPREGServer | None = field(init=False, default=None, repr=False)
 
     @classmethod
     def create(
@@ -266,8 +325,10 @@ class Cluster:
         return cls(config=config)
 
     def __post_init__(self) -> None:
-        print(
-            f"🏗️ CLUSTER CREATE: New Cluster instance {id(self)} for {self.config.local_url}"
+        logger.trace(
+            "Cluster created: id={} local_url={}",
+            id(self),
+            self.config.local_url,
         )
 
         self.waitingFor: dict[str, asyncio.Event] = dict()
@@ -300,297 +361,86 @@ class Cluster:
 
     @property
     def funtimes(self) -> dict[str, dict[frozenset[str], set[str]]]:
-        """Get funtimes using the function registry."""
-        return self.config.function_registry.get_legacy_funtimes()
+        """Get funtimes using the fabric catalog."""
+        engine = self.fabric_engine
+        if not engine:
+            return {}
+        catalog = engine.routing_index.catalog
+        funtimes: dict[str, dict[frozenset[str], set[str]]] = {}
+        for endpoint in catalog.functions.entries():
+            fun_name = endpoint.identity.name
+            funtimes.setdefault(fun_name, {}).setdefault(endpoint.resources, set()).add(
+                endpoint.node_id
+            )
+        return funtimes
 
     @property
     def servers(self) -> set[str]:
-        """Get all known servers."""
-        return {str(server) for server in self.config.function_registry.known_servers}
-
-    @property
-    def peers_info(self) -> dict[str, PeerInfo]:
-        """Get peers info."""
-        return self._peers_info
-
-    @peers_info.setter
-    def peers_info(self, value: dict[str, PeerInfo]) -> None:
-        """Set peers info."""
-        self._peers_info = value
+        """Get all known servers with advertised functions."""
+        engine = self.fabric_engine
+        if not engine:
+            return set()
+        entries = engine.routing_index.catalog.functions.entries()
+        return {endpoint.node_id for endpoint in entries}
 
     @property
     def dead_peer_timeout(self) -> float:
         """Get dead peer timeout."""
         return self.config.dead_peer_timeout_seconds
 
-    @property
-    def seen_announcements(self) -> dict[str, float]:
-        """Get seen announcements."""
-        return {
-            str(aid): float(timestamp)
-            for aid, timestamp in self.config.announcement_tracker.seen_announcements.items()
-        }
+    def _cluster_id_for_server(self, server_url: str) -> str | None:
+        """Resolve cluster_id for a server URL, considering advertised URLs."""
+        if server_url == self.local_url or server_url in self.advertised_urls:
+            return self.cluster_id
+        directory = self.peer_directory
+        if directory:
+            return directory.cluster_id_for_node(server_url)
+        return None
 
-    @property
-    def announcement_ttl(self) -> float:
-        """Get announcement TTL."""
-        return float(self.config.announcement_tracker.ttl_seconds)
+    def cluster_id_for_node_url(self, node_url: str) -> str | None:
+        """Public resolver for cluster IDs by node URL."""
+        return self._cluster_id_for_server(node_url)
 
-    def add_fun_ability(self, peer_info: PeerInfo) -> None:
-        """Add a new function and resource(s) to a server mapping.
+    def peer_urls_for_cluster(self, cluster_id: str) -> list[str]:
+        """Return known peer URLs for a given cluster ID."""
+        directory = self.peer_directory
+        if not directory:
+            return []
+        return directory.peers_for_cluster(cluster_id, connected_only=True)
 
-        This method updates the cluster's knowledge of which functions are available
-        on which servers and with what resources.
-        """
-        logger.info(
-            "Adding peer {} with functions {} and locs {}",
-            peer_info.url,
-            peer_info.funs,
-            peer_info.locs,
-        )
+    def peer_neighbors(self) -> list[PeerNeighbor]:
+        """Return known peer neighbor references for reachable peers."""
+        directory = self.peer_directory
+        if not directory:
+            return []
+        return directory.neighbors(connected_only=True)
 
-        # Add functions to the type-safe registry
-        for fun in peer_info.funs:
-            self.config.add_function(fun, tuple(peer_info.locs), peer_info.url)
-            logger.info(
-                "Registered function '{}' with locs {} on server {}",
-                fun,
-                peer_info.locs,
-                peer_info.url,
-            )
+    def _fabric_allowed_clusters(self) -> frozenset[str] | None:
+        settings = self.settings
+        if not settings or settings.federation_config is None:
+            return frozenset({self.cluster_id})
+        from mpreg.fabric.federation_config import FederationMode
 
-        # Update peers_info
-        self.peers_info[peer_info.url] = peer_info
-        logger.info(
-            "Cluster now has {} servers and {} functions",
-            self.config.function_registry.server_count,
-            self.config.function_registry.function_count,
-        )
-
-    def remove_server(self, server: Connection) -> None:
-        """If server disconnects, remove it from ALL fun mappings.
-
-        Note: this may leave some empty {fun: {resource: set()}} but it's okay"""
-
-        # Use the type-safe function registry to remove server functions
-        server_url: NodeURL = server.url
-        self.config.function_registry.remove_server_functions(server_url)
-
-        # Also remove from peers_info
-        self.peers_info.pop(server.url, None)
-
-    async def remove_peer(self, peer_url: str) -> bool:
-        """Remove peer from cluster with proper cleanup (used by GOODBYE protocol).
-
-        Args:
-            peer_url: URL of the peer to remove
-
-        Returns:
-            True if peer was removed, False if peer was not in cluster
-        """
-        if peer_url not in self.peers_info:
-            return False
-
-        # Remove from peers_info
-        peer_info = self.peers_info.pop(peer_url)
-        logger.info(f"Removed peer {peer_url} from cluster")
-
-        # Add to departed peers to prevent gossip re-adding
-        self._departed_peers[peer_url] = time.time()
-        logger.debug(f"Added {peer_url} to departed peers list")
-
-        # Remove from function registry
-        self.config.function_registry.remove_server_functions(peer_url)
-
-        logger.info(
-            f"Cleaned up functions for departing peer {peer_url}. "
-            f"Cluster now has {self.config.function_registry.server_count} servers "
-            f"and {self.config.function_registry.function_count} functions"
-        )
-
-        return True
-
-    def server_cmd(
-        self, server_connection: Connection, cmd: RPCServerMessage
-    ) -> RPCResponse:
-        """A remote server is telling us about itself.
-
-        This method processes incoming server-to-server messages, such as HELLO,
-        GOODBYE, or STATUS updates, and updates the cluster's state accordingly.
-        """
-        # logger.info("New command here too: {}", cmd)
-        match cmd.what:
-            case "HELLO":
-                # A new server is announcing its capabilities.
-                # Add its functions and locations to the cluster's funtimes mapping.
-                # Note: logical_clock operations are handled by MPREGServer, not Cluster
-
-                peer_info = PeerInfo(
-                    url=server_connection.url,
-                    funs=cmd.funs,
-                    locs=frozenset(cmd.locs),
-                    last_seen=time.time(),
-                    cluster_id=cmd.cluster_id,
-                    advertised_urls=cmd.advertised_urls,
-                    logical_clock={},  # Empty clock for Cluster-level operations
-                )
-                self.add_fun_ability(peer_info)
-                return RPCResponse(r="ADDED", u=str(ulid.new()))
-            case "GOODBYE":
-                # TODO: also remove on any error/disconnect in other places.......
-                self.remove_server(server_connection)
-                return RPCResponse(r="GONE", u=str(ulid.new()))
-            case "STATUS":
-                ...
-                return RPCResponse(r="STATUS", u=str(ulid.new()))
-            case _:
-                assert None
-
-    def process_gossip_message(self, gossip_message: GossipMessage) -> None:
-        """Processes an incoming gossip message using vector clocks for proper ordering.
-
-        ALGORITHMIC FIX: Uses vector clocks instead of timestamps to prevent infinite
-        gossip loops caused by clock synchronization issues in distributed systems.
-        """
-        updates_made = 0
-
-        for peer_info in gossip_message.peers:
-            # Only process if the cluster_id matches
-            if peer_info.cluster_id != self.cluster_id:
-                logger.warning(
-                    "Received gossip from different cluster ID: Expected {}, Got {}",
-                    self.cluster_id,
-                    peer_info.cluster_id,
-                )
-                continue
-
-            # Handle departed peers: Check if this is a peer re-entry broadcast
-            if peer_info.url in self._departed_peers:
-                departure_time = self._departed_peers[peer_info.url]
-                # If the peer's last_seen is after the departure time, it's a re-entry
-                if peer_info.last_seen > departure_time:
-                    logger.info(
-                        f"Peer {peer_info.url} re-entered after GOODBYE - clearing from departed peers"
-                    )
-                    del self._departed_peers[peer_info.url]
-                    # Continue processing to add the peer back
-                else:
-                    logger.debug(
-                        f"Skipping old gossip about departed peer {peer_info.url}"
-                    )
-                    continue
-
-            should_update = False
-            reason = ""
-
-            if peer_info.url not in self.peers_info:
-                # New peer - always add
-                should_update = True
-                reason = "new peer"
-            else:
-                existing_peer = self.peers_info[peer_info.url]
-
-                # VECTOR CLOCK COMPARISON: Use logical clocks for proper ordering
-                existing_clock = VectorClock.from_dict(existing_peer.logical_clock)
-                incoming_clock = VectorClock.from_dict(peer_info.logical_clock)
-
-                comparison = existing_clock.compare(incoming_clock)
-
-                if comparison == "before":
-                    # Existing happens before incoming - update
-                    should_update = True
-                    reason = "vector clock ordering (incoming after existing)"
-                elif comparison == "concurrent":
-                    # Concurrent updates - use deterministic resolution
-                    should_update = self._resolve_concurrent_peer_update(
-                        existing_peer, peer_info
-                    )
-                    reason = f"concurrent update resolution ({should_update})"
-                else:
-                    # Incoming is equal or before existing - skip
-                    should_update = False
-                    reason = f"vector clock ordering (incoming {comparison} existing)"
-
-            if should_update:
-                logger.debug(
-                    "Updating peer info for {}: reason={}", peer_info.url, reason
-                )
-                self.peers_info[peer_info.url] = peer_info
-                updates_made += 1
-
-        # Only log if substantial updates were made
-        if updates_made > 0:
-            logger.debug("Processed gossip: {} peer updates", updates_made)
-
-        # Prune dead peers - use more conservative approach for large clusters
-        self._prune_dead_peers()
-
-    def _resolve_concurrent_peer_update(self, existing: Any, incoming: Any) -> bool:
-        """Resolve concurrent peer updates deterministically."""
-        # Use deterministic tie-breaking for concurrent updates
-        if existing.funs != incoming.funs:
-            return tuple(sorted(incoming.funs)) > tuple(sorted(existing.funs))
-        elif existing.locs != incoming.locs:
-            return tuple(sorted(incoming.locs)) > tuple(sorted(existing.locs))
-        elif existing.advertised_urls != incoming.advertised_urls:
-            return tuple(sorted(incoming.advertised_urls)) > tuple(
-                sorted(existing.advertised_urls)
-            )
-        else:
-            return incoming.url > existing.url
-
-    def _prune_dead_peers(self) -> None:
-        """Remove dead peers with cluster-size-aware timeouts."""
-        current_time = time.time()
-        cluster_size = len(self.peers_info)
-
-        # Scale timeout based on cluster size and gossip characteristics
-        if cluster_size >= 30:
-            effective_timeout = self.dead_peer_timeout * 4  # 120 seconds
-        elif cluster_size >= 10:
-            effective_timeout = self.dead_peer_timeout * 3  # 90 seconds
-        else:
-            effective_timeout = self.dead_peer_timeout * 2  # 60 seconds
-
-        peers_to_remove = [
-            url
-            for url, info in self.peers_info.items()
-            if current_time - info.last_seen > effective_timeout
-        ]
-
-        if peers_to_remove:
-            logger.debug(
-                "Removing {} stale peers (timeout: {}s)",
-                len(peers_to_remove),
-                effective_timeout,
-            )
-            for url in peers_to_remove:
-                del self.peers_info[url]
-
-        # Clean up departed peers that are old enough (prevent memory leak)
-        # Remove from blocklist after 5 minutes - by then all gossip should have stopped
-        departed_timeout = 300.0  # 5 minutes
-        departed_to_remove = [
-            url
-            for url, departure_time in self._departed_peers.items()
-            if current_time - departure_time > departed_timeout
-        ]
-
-        if departed_to_remove:
-            logger.debug(
-                f"Cleaning up {len(departed_to_remove)} old departed peers from blocklist"
-            )
-            for url in departed_to_remove:
-                del self._departed_peers[url]
+        config = settings.federation_config
+        if config.federation_mode is FederationMode.STRICT_ISOLATION:
+            return frozenset({self.cluster_id})
+        return None
 
     def server_for(
-        self, fun: str, locs: frozenset[str]
+        self,
+        fun: str,
+        locs: frozenset[str],
+        *,
+        function_id: str | None = None,
+        version_constraint: str | None = None,
+        target_cluster: str | None = None,
     ) -> str | None:  # Changed return type
         """Finds a suitable server for a given function and location.
 
         Args:
             fun: The name of the function to find a server for.
             locs: The frozenset of locations/resources required by the function.
+            target_cluster: Optional cluster ID constraint for routing.
 
         Returns:
             A Connection object to the suitable server, or None if no server is found.
@@ -599,58 +449,126 @@ class Cluster:
 
         function_name: FunctionName = fun
         resource_requirements = frozenset(loc for loc in locs) if locs else None
+        cluster_constraint = target_cluster
 
         logger.info("Looking for function '{}' with locs={}", fun, locs)
-        logger.info("Available servers: {}", self.config.function_registry.server_count)
-        logger.info(
-            "Available functions: {}", self.config.function_registry.get_all_functions()
+        selector = FunctionSelector(
+            name=function_name,
+            function_id=function_id,
+            version_constraint=VersionConstraint.parse(version_constraint)
+            if version_constraint
+            else None,
         )
 
-        # Check if the function exists in our registry
-        if not self.config.function_registry.has_function(function_name):
-            logger.warning("Function '{}' not found in registry", fun)
+        if not self.fabric_engine:
             return None
+        from .fabric.index import FunctionQuery
 
-        # If no servers exist, we can't find anything anywhere.
-        if self.config.function_registry.server_count == 0:
-            logger.warning("No servers available!")
-            return None
-
-        # Use type-safe function registry to find servers
-        available_servers = self.config.function_registry.get_servers_for_function(
-            function_name, resource_requirements
+        query = FunctionQuery(
+            selector=selector,
+            resources=resource_requirements or frozenset(),
+            cluster_id=cluster_constraint,
         )
-
-        # Convert back to strings for compatibility
-        available_server_strings = {str(server) for server in available_servers}
-
-        if available_server_strings:
-            selected_server = random.choice(tuple(available_server_strings))
-            # Check if the selected server is ourselves
-            if selected_server == self.local_url:
+        plan = self.fabric_engine.plan_function_route(
+            query,
+            routing_path=tuple(),
+            hop_budget=self.settings.fabric_routing_max_hops if self.settings else None,
+        )
+        if plan.selected_target:
+            allowed_clusters = self._fabric_allowed_clusters()
+            if allowed_clusters is not None:
+                next_cluster = (
+                    plan.forwarding.next_cluster
+                    if plan.forwarding and plan.forwarding.next_cluster
+                    else plan.selected_target.cluster_id
+                )
+                if next_cluster not in allowed_clusters:
+                    return None
+            target_node = plan.selected_target.node_id
+            if target_node == self.local_url:
                 return "self"
-            return selected_server
-
-        # If no exact match, try to find servers with compatible resources (supersets)
-        if resource_requirements is not None:
-            # Get all servers for this function and check for compatible resources
-            all_function_servers = (
-                self.config.function_registry.get_servers_for_function(function_name)
-            )
-
-            if all_function_servers:
-                # Fall back to legacy funtimes logic for subset matching
-                legacy_funtimes = self.config.function_registry.get_legacy_funtimes()
-                for funlocs, srvs in legacy_funtimes[fun].items():
-                    if locs.issubset(funlocs):
-                        # We found a match for ALL our requested resources (even if the target has MORE).
-                        selected_server = random.choice(tuple(srvs))
-                        if selected_server == self.local_url:
-                            return "self"
-                        return selected_server
-
-        # Else, we tried everything and no matches were found.
+            if plan.forwarding and plan.forwarding.can_forward:
+                return plan.forwarding.next_peer_url
+            return target_node
         return None
+
+    async def _plan_rpc_via_fabric_router(
+        self, rpc_command: RPCCommand
+    ) -> tuple[
+        FabricRouteResult | None,
+        FabricRouteTarget | None,
+        ClusterRoutePlan | None,
+        str | None,
+    ]:
+        if not self.fabric_router:
+            return None, None, None, None
+        from mpreg.fabric.message import (
+            DeliveryGuarantee,
+            MessageHeaders,
+            MessageType,
+            UnifiedMessage,
+        )
+        from mpreg.fabric.rpc_messages import FabricRPCRequest
+
+        correlation_id = str(ulid.new())
+        headers = MessageHeaders(
+            correlation_id=correlation_id,
+            source_cluster=self.settings.cluster_id if self.settings else None,
+            target_cluster=rpc_command.target_cluster,
+            routing_path=tuple(),
+            federation_path=tuple(),
+            hop_budget=(
+                self.settings.fabric_routing_max_hops if self.settings else None
+            ),
+        )
+        payload = FabricRPCRequest(
+            request_id=correlation_id,
+            command=rpc_command.fun,
+            args=rpc_command.args,
+            kwargs=rpc_command.kwargs,
+            resources=tuple(sorted(rpc_command.locs)),
+            function_id=rpc_command.function_id,
+            version_constraint=rpc_command.version_constraint,
+            target_cluster=rpc_command.target_cluster,
+            reply_to=self.local_url,
+        ).to_dict()
+        message = UnifiedMessage(
+            message_id=correlation_id,
+            topic=f"mpreg.rpc.execute.{rpc_command.fun}",
+            message_type=MessageType.RPC,
+            delivery=DeliveryGuarantee.AT_LEAST_ONCE,
+            payload=payload,
+            headers=headers,
+            timestamp=time.time(),
+        )
+        route = await self.fabric_router.route_message(message)
+        if not route.targets:
+            return route, None, None, None
+        target = route.targets[0]
+        allowed_clusters = self._fabric_allowed_clusters()
+        if (
+            allowed_clusters is not None
+            and target.cluster_id
+            and target.cluster_id not in allowed_clusters
+        ):
+            return route, None, None, None
+        cluster_plan = (
+            route.cluster_routes.get(target.cluster_id) if target.cluster_id else None
+        )
+        forwarding = cluster_plan.forwarding if cluster_plan else None
+        if forwarding and not forwarding.can_forward:
+            return route, target, cluster_plan, None
+        connections = self.peer_connections
+        next_hop: str | None = None
+        if target.node_id and target.node_id in connections:
+            connection = connections[target.node_id]
+            if connection and connection.is_connected:
+                next_hop = target.node_id
+        if next_hop is None and forwarding and forwarding.next_peer_url:
+            next_hop = forwarding.next_peer_url
+        if next_hop is None:
+            next_hop = target.node_id
+        return route, target, cluster_plan, next_hop
 
     async def answerFor(self, rid: str, timeout: float = 30.0) -> None:
         """Wait for a reply on unique id 'rid' then return the answer."""
@@ -767,8 +685,42 @@ class Cluster:
         command = self.registry.get(rpc_command.fun)
         return await command.call_async(*resolved_args, **resolved_kwargs)
 
+    async def _get_or_open_peer_connection(
+        self,
+        peer_url: str,
+        *,
+        fast_connect: bool = True,
+    ) -> Connection:
+        connection = self.peer_connections.get(peer_url)
+        if connection and connection.is_connected:
+            return connection
+
+        server = self._server
+        if server is not None:
+            await server._establish_peer_connection(peer_url, fast_connect=fast_connect)
+            connection = self.peer_connections.get(peer_url)
+            if connection and connection.is_connected:
+                return connection
+
+        connection = Connection(url=peer_url)
+        connection.cluster = self
+        await connection.connect()
+        self.peer_connections[peer_url] = connection
+        return connection
+
     async def _execute_remote_command(
-        self, rpc_step: RPCCommand, results: dict[str, Any], where: Connection
+        self,
+        rpc_step: RPCCommand,
+        results: dict[str, Any],
+        where: Connection,
+        *,
+        routing_path: tuple[str, ...] | None = None,
+        remaining_hops: int | None = None,
+        target_cluster: str | None = None,
+        target_node: str | None = None,
+        federation_path: tuple[str, ...] | None = None,
+        federation_remaining_hops: int | None = None,
+        retry_remaining: int = 1,
     ) -> Any:
         """Sends a command to a remote server and waits for the response.
 
@@ -789,51 +741,174 @@ class Cluster:
         )
 
         localrid = str(ulid.new())
-        body = self.serializer.serialize(  # Access serializer via self.serializer
-            RPCInternalRequest(
-                command=rpc_step.fun,
-                args=resolved_args,
-                kwargs=resolved_kwargs,
-                results=results,
-                u=localrid,
-            ).model_dump()
+        wait_event = asyncio.Event()
+        self.waitingFor[localrid] = wait_event
+        from mpreg.core.model import FabricMessageEnvelope
+        from mpreg.fabric.message import (
+            DeliveryGuarantee,
+            MessageHeaders,
+            MessageType,
+            UnifiedMessage,
         )
+        from mpreg.fabric.message_codec import unified_message_to_dict
+        from mpreg.fabric.rpc_messages import FabricRPCRequest
 
+        headers = MessageHeaders(
+            correlation_id=localrid,
+            source_cluster=self.settings.cluster_id if self.settings else None,
+            target_cluster=target_cluster,
+            routing_path=routing_path or (self.local_url,),
+            federation_path=federation_path or tuple(),
+            hop_budget=remaining_hops,
+        )
+        rpc_payload = FabricRPCRequest(
+            request_id=localrid,
+            command=rpc_step.fun,
+            args=resolved_args,
+            kwargs=resolved_kwargs,
+            resources=tuple(sorted(rpc_step.locs)),
+            function_id=rpc_step.function_id,
+            version_constraint=rpc_step.version_constraint,
+            target_cluster=target_cluster,
+            target_node=target_node,
+            reply_to=self.local_url,
+            federation_path=federation_path or tuple(),
+            federation_remaining_hops=federation_remaining_hops,
+        )
+        message = UnifiedMessage(
+            message_id=localrid,
+            topic=f"mpreg.rpc.execute.{rpc_step.fun}",
+            message_type=MessageType.RPC,
+            delivery=DeliveryGuarantee.AT_LEAST_ONCE,
+            payload=rpc_payload.to_dict(),
+            headers=headers,
+            timestamp=time.time(),
+        )
+        envelope = FabricMessageEnvelope(payload=unified_message_to_dict(message))
+        body = self.serializer.serialize(envelope.model_dump())
+
+        connection = where
+        if not connection.is_connected:
+            connection = self.peer_connections.get(where.url, connection)
+        if not connection.is_connected:
+            server = self._server
+            if server is not None:
+                await server._establish_peer_connection(where.url, fast_connect=True)
+                connection = self.peer_connections.get(where.url, connection)
+        if not connection.is_connected:
+            sent_via_fabric = False
+            server = self._server
+            if server is not None and server._fabric_transport:
+                if server._get_all_peer_connections():
+                    await server._send_fabric_message(
+                        message,
+                        target_nodes=(where.url,),
+                    )
+                    sent_via_fabric = True
+            if not sent_via_fabric:
+                await connection.connect()
+                self.peer_connections[where.url] = connection
+                if server is not None:
+                    server._track_background_task(
+                        asyncio.create_task(
+                            server._handle_peer_connection_messages(
+                                connection, where.url
+                            )
+                        )
+                    )
         try:
             logger.info(
-                "Sending internal-rpc request: command={}, u={}, to={}",
+                "Sending fabric rpc request: command={}, u={}, to={}",
                 rpc_step.fun,
                 localrid,
-                where.url,
+                connection.url,
             )
-            await where.send(body)
-            logger.info(
-                "Internal-rpc request sent successfully, waiting for response..."
-            )
+            if connection.is_connected:
+                await connection.send(body)
+            logger.info("Fabric rpc request sent successfully, waiting for response...")
         except ConnectionError:
+            self.waitingFor.pop(localrid, None)
             logger.error(
                 "[{}] Connection to remote server closed. Removing from services for now...",
-                where.url,
+                connection.url,
             )
-            self.remove_server(where)
+            self.remove_server(connection)
             # Retry if the server was removed, as another might be available
             # This is a form of self-healing for the cluster.
-            new_where = self.server_for(rpc_step.fun, rpc_step.locs)
+            new_where = self.server_for(
+                rpc_step.fun,
+                rpc_step.locs,
+                function_id=rpc_step.function_id,
+                version_constraint=rpc_step.version_constraint,
+                target_cluster=target_cluster,
+            )
             if new_where:
                 return await self._execute_remote_command(
-                    rpc_step, results, Connection(url=new_where)
+                    rpc_step,
+                    results,
+                    Connection(url=new_where),
+                    routing_path=routing_path,
+                    remaining_hops=remaining_hops,
+                    target_cluster=target_cluster,
+                    target_node=target_node,
+                    federation_path=federation_path,
+                    federation_remaining_hops=federation_remaining_hops,
+                    retry_remaining=retry_remaining,
                 )  # Changed new_where to where
             else:
                 raise ConnectionError(
                     f"No alternative server found for: {rpc_step.fun} at {rpc_step.locs}"
                 )
 
-        logger.info("Waiting for answer with rid={}", localrid)
-        await asyncio.create_task(self.answerFor(localrid))
-        logger.info("Received answer for rid={}", localrid)
-        got = self.answer[localrid]
-        del self.answer[localrid]
+        try:
+            logger.info("Waiting for answer with rid={}", localrid)
+            await asyncio.wait_for(wait_event.wait(), timeout=30.0)
+            logger.info("Received answer for rid={}", localrid)
+        except TimeoutError:
+            logger.debug(
+                "Timeout waiting for fabric rpc response (rid={}, retries_left={})",
+                localrid,
+                retry_remaining,
+            )
+            if retry_remaining > 0:
+                new_where = self.server_for(
+                    rpc_step.fun,
+                    rpc_step.locs,
+                    function_id=rpc_step.function_id,
+                    version_constraint=rpc_step.version_constraint,
+                    target_cluster=target_cluster,
+                )
+                if new_where:
+                    return await self._execute_remote_command(
+                        rpc_step,
+                        results,
+                        Connection(url=new_where),
+                        routing_path=routing_path,
+                        remaining_hops=remaining_hops,
+                        target_cluster=target_cluster,
+                        target_node=target_node,
+                        federation_path=federation_path,
+                        federation_remaining_hops=federation_remaining_hops,
+                        retry_remaining=retry_remaining - 1,
+                    )
+            raise
+        finally:
+            self.waitingFor.pop(localrid, None)
+        got = self.answer.get(localrid)
+        if localrid in self.answer:
+            del self.answer[localrid]
         logger.info("Remote command completed: got={}", got)
+        try:
+            approx_size = sys.getsizeof(got)
+            if approx_size >= 100 * 1024 * 1024:
+                logger.warning(
+                    "[{}] Large RPC payload buffered (~{} bytes) for {}",
+                    self.settings.name,
+                    approx_size,
+                    rpc_step.fun,
+                )
+        except Exception:
+            pass
         return got
 
     async def run(self, rpc: RPC, timeout: float = 30.0) -> Any:
@@ -854,7 +929,7 @@ class Cluster:
 
         async def runner(
             rpc_command: RPCCommand, results: dict[str, Any]
-        ) -> dict[str, Any]:
+        ) -> CommandExecutionResult:
             """Executes a single RPC command, either locally or remotely.
 
             Args:
@@ -867,30 +942,39 @@ class Cluster:
             logger.info(
                 "Executing command '{}' with locs={}", rpc_command.fun, rpc_command.locs
             )
-
-            where = self.server_for(rpc_command.fun, rpc_command.locs)
-            logger.info(
-                "server_for('{}', {}) returned: {}",
-                rpc_command.fun,
-                rpc_command.locs,
-                where,
+            route, target, cluster_plan, where = await self._plan_rpc_via_fabric_router(
+                rpc_command
             )
-
-            if not where:
+            forwarding = cluster_plan.forwarding if cluster_plan else None
+            if forwarding and not forwarding.can_forward:
+                return CommandExecutionResult(
+                    name=rpc_command.name,
+                    value={
+                        "error": "fabric_forward_failed",
+                        "command": rpc_command.fun,
+                        "target_cluster": target.cluster_id if target else None,
+                        "reason": forwarding.reason.value,
+                    },
+                )
+            if not route or not target:
                 logger.error(
-                    "No server found for command '{}' with locs={}",
+                    "No fabric route for command '{}' with locs={}",
                     rpc_command.fun,
                     rpc_command.locs,
                 )
-                logger.info(
-                    "Available functions in cluster: {}", list(self.funtimes.keys())
-                )
                 raise CommandNotFoundException(command_name=rpc_command.fun)
 
-            if where == "self":
+            if target.node_id == self.local_url:
                 logger.info("Executing '{}' locally", rpc_command.fun)
                 got = await self._execute_local_command(rpc_command, results)
             else:
+                if not where:
+                    logger.error(
+                        "No fabric next hop for command '{}' with locs={}",
+                        rpc_command.fun,
+                        rpc_command.locs,
+                    )
+                    raise CommandNotFoundException(command_name=rpc_command.fun)
                 logger.info("Executing '{}' remotely on {}", rpc_command.fun, where)
                 # Use persistent connection if available, else create new one
                 logger.debug(
@@ -901,23 +985,36 @@ class Cluster:
                 connection = self.peer_connections.get(where)
                 if not connection or not connection.is_connected:
                     logger.info(
-                        "Creating new connection to {} (existing: {}, connected: {})",
+                        "Establishing peer connection to {} (existing: {}, connected: {})",
                         where,
                         connection is not None,
                         connection.is_connected if connection else False,
                     )
-                    # Create new connection if none exists or is dead
-                    connection = Connection(url=where)
-                    connection.cluster = (
-                        self  # Set cluster reference for response handling
+                    connection = await self._get_or_open_peer_connection(
+                        where, fast_connect=True
                     )
-                    await connection.connect()
-                    self.peer_connections[where] = connection
                 else:
                     logger.info("Using existing connection to {}", where)
-
+                routing_path = (self.local_url,)
+                remaining_hops = (
+                    self.settings.fabric_routing_max_hops if self.settings else None
+                )
+                federation_path = forwarding.federation_path if forwarding else None
+                federation_remaining_hops = (
+                    forwarding.remaining_hops if forwarding else None
+                )
+                target_cluster = target.cluster_id if target else None
+                target_node = target.node_id if target else None
                 got = await self._execute_remote_command(
-                    rpc_command, results, connection
+                    rpc_command,
+                    results,
+                    connection,
+                    routing_path=routing_path,
+                    remaining_hops=remaining_hops,
+                    target_cluster=target_cluster,
+                    target_node=target_node,
+                    federation_path=federation_path,
+                    federation_remaining_hops=federation_remaining_hops,
                 )
 
             logger.info(
@@ -927,8 +1024,7 @@ class Cluster:
             )
             results[rpc_command.name] = got
 
-            # TODO: this should return a STABLE DATACLASS OBJECT and not just a generic dict
-            return {rpc_command.name: got}
+            return CommandExecutionResult(name=rpc_command.name, value=got)
 
         results: dict[str, Any] = {}  # Added type hint
         # Cache the levels to avoid consuming generator multiple times
@@ -969,7 +1065,7 @@ class Cluster:
 
         result = {}
         for g in got:
-            result.update(g)
+            result[g.name] = g.value
             logger.debug("Merged result: {}", g)
 
         logger.info(
@@ -1008,43 +1104,80 @@ class Cluster:
 
         async def enhanced_runner(
             rpc_command: RPCCommand, results: dict[str, Any]
-        ) -> dict[str, Any]:
+        ) -> CommandExecutionResult:
             """Enhanced runner that tracks cross-cluster execution."""
             nonlocal cross_cluster_hops
 
             logger.info(
                 "Executing command '{}' with locs={}", rpc_command.fun, rpc_command.locs
             )
-
-            where = self.server_for(rpc_command.fun, rpc_command.locs)
-            if not where:
+            route, target, cluster_plan, where = await self._plan_rpc_via_fabric_router(
+                rpc_command
+            )
+            forwarding = cluster_plan.forwarding if cluster_plan else None
+            if forwarding and not forwarding.can_forward:
+                got = {
+                    "error": "fabric_forward_failed",
+                    "command": rpc_command.fun,
+                    "target_cluster": target.cluster_id if target else None,
+                    "reason": forwarding.reason.value,
+                }
+                results[rpc_command.name] = got
+                return CommandExecutionResult(name=rpc_command.name, value=got)
+            if not route or not target:
                 logger.error(
-                    "No server found for command '{}' with locs={}",
+                    "No fabric route for command '{}' with locs={}",
                     rpc_command.fun,
                     rpc_command.locs,
                 )
                 raise CommandNotFoundException(command_name=rpc_command.fun)
 
-            if where != "self":
-                cross_cluster_hops += 1
+            if target.node_id != self.local_url:
+                target_cluster = target.cluster_id
+                if target_cluster and target_cluster != self.settings.cluster_id:
+                    cross_cluster_hops += 1
 
             # Use existing execution logic
-            if where == "self":
+            if target.node_id == self.local_url:
                 got = await self._execute_local_command(rpc_command, results)
             else:
+                if not where:
+                    logger.error(
+                        "No fabric next hop for command '{}' with locs={}",
+                        rpc_command.fun,
+                        rpc_command.locs,
+                    )
+                    raise CommandNotFoundException(command_name=rpc_command.fun)
                 connection = self.peer_connections.get(where)
                 if not connection or not connection.is_connected:
-                    connection = Connection(url=where)
-                    connection.cluster = self
-                    await connection.connect()
-                    self.peer_connections[where] = connection
+                    connection = await self._get_or_open_peer_connection(
+                        where, fast_connect=True
+                    )
+                routing_path = (self.local_url,)
+                remaining_hops = (
+                    self.settings.fabric_routing_max_hops if self.settings else None
+                )
+                federation_path = forwarding.federation_path if forwarding else None
+                federation_remaining_hops = (
+                    forwarding.remaining_hops if forwarding else None
+                )
+                target_node = target.node_id if target else None
+                target_cluster = target.cluster_id if target else None
                 got = await self._execute_remote_command(
-                    rpc_command, results, connection
+                    rpc_command,
+                    results,
+                    connection,
+                    routing_path=routing_path,
+                    remaining_hops=remaining_hops,
+                    target_cluster=target_cluster,
+                    target_node=target_node,
+                    federation_path=federation_path,
+                    federation_remaining_hops=federation_remaining_hops,
                 )
 
             # Update results dictionary
             results[rpc_command.name] = got
-            return {rpc_command.name: got}
+            return CommandExecutionResult(name=rpc_command.name, value=got)
 
         results: dict[str, Any] = {}
         # Cache the levels to avoid consuming generator multiple times
@@ -1081,9 +1214,7 @@ class Cluster:
                 # Capture intermediate results if requested
                 if request.return_intermediate_results:
                     # Build level results from this level only
-                    level_results = {}
-                    for g in got:
-                        level_results.update(g)
+                    level_results = {g.name: g.value for g in got}
 
                     intermediate_result = RPCIntermediateResult(
                         request_id=request.u,
@@ -1100,11 +1231,19 @@ class Cluster:
 
                     # Optional: Stream to topic if configured
                     if request.intermediate_result_callback_topic:
-                        # TODO: Implement topic streaming when topic system is integrated
-                        logger.debug(
-                            "Would publish intermediate result to topic: {}",
-                            request.intermediate_result_callback_topic,
+                        pubsub_message = PubSubMessage(
+                            message_id=f"rpc_intermediate_{request.u}_{level_idx}",
+                            topic=request.intermediate_result_callback_topic,
+                            payload=asdict(intermediate_result),
+                            publisher=self.settings.name,
+                            headers={"event": "rpc.intermediate_result"},
+                            timestamp=time.time(),
                         )
+                        notifications = self.topic_exchange.publish_message(
+                            pubsub_message
+                        )
+                        for notification in notifications:
+                            await self._send_notification_to_client(notification)
 
             return got
 
@@ -1123,7 +1262,7 @@ class Cluster:
         # Build final result
         result = {}
         for g in got:
-            result.update(g)
+            result[g.name] = g.value
 
         # Create execution summary if requested
         execution_summary = None
@@ -1168,26 +1307,20 @@ class MPREGServer:
     )
 
     # Fields assigned in __post_init__
+    _auto_allocated_port: int | None = field(init=False, default=None)
+    _auto_allocated_monitoring_port: int | None = field(init=False, default=None)
     registry: CommandRegistry = field(init=False)
     serializer: JsonSerializer = field(init=False)
     cluster: Cluster = field(init=False)
     clients: set[Connection] = field(init=False)
     peer_connections: dict[str, Connection] = field(init=False)
+    _inbound_peer_connections: dict[str, Connection] = field(init=False)
     _shutdown_event: asyncio.Event = field(init=False)
-    _pending_confirmations: dict[str, dict[str, asyncio.Future[bool]]] = field(
-        init=False
-    )
     topic_exchange: TopicExchange = field(init=False)
-    _logger_handler_id: int = field(init=False)
+    _logger_handler_ids: tuple[int, ...] = field(init=False)
     # PubSub client tracking
-    pubsub_clients: dict[str, websockets.server.WebSocketServerProtocol] = field(
-        init=False
-    )
-    # Function announcement acknowledgment tracking via pub/sub topics
-    # Maps announcement_id -> subscription_id for cleanup
-    function_confirmation_subscriptions: dict[AnnouncementID, str] = field(
-        init=False, default_factory=dict
-    )
+    pubsub_clients: dict[str, TransportInterface] = field(init=False)
+    peer_status: dict[str, RPCServerStatus] = field(default_factory=dict)
     subscription_to_client: dict[str, str] = field(init=False)
     # Federation management
     federation_manager: Any = field(init=False)  # FederationConnectionManager
@@ -1195,20 +1328,65 @@ class MPREGServer:
     consensus_manager: Any = field(init=False)  # ConsensusManager
     # Message statistics tracking
     _msg_stats: MessageStats = field(default_factory=MessageStats)
-
+    _metrics_tracker: ServerMetricsTracker = field(init=False)
+    _unified_monitor: Any = field(init=False, default=None)
+    _monitoring_system: Any = field(init=False, default=None)
+    _cache_manager: Any = field(init=False, default=None)
+    _queue_manager: Any = field(init=False, default=None)
+    _cache_fabric_protocol: Any = field(init=False, default=None)
+    _cache_fabric_transport: Any = field(init=False, default=None)
+    _persistence_registry: Any = field(init=False, default=None)
+    _fabric_control_plane: Any = field(init=False, default=None)
+    _peer_directory: Any = field(init=False, default=None)
+    _fabric_gossip_transport: Any = field(init=False, default=None)
+    _fabric_transport: Any = field(init=False, default=None)
+    _fabric_topic_announcer: Any = field(init=False, default=None)
+    _fabric_router: Any = field(init=False, default=None)
+    _fabric_federation_planner: Any = field(init=False, default=None)
+    _fabric_queue_federation: Any = field(init=False, default=None)
+    _fabric_queue_delivery: Any = field(init=False, default=None)
+    _fabric_raft_transport: Any = field(init=False, default=None)
+    _fabric_catalog_refresh_task: asyncio.Task[None] | None = field(
+        init=False, default=None
+    )
+    _fabric_route_key_refresh_task: asyncio.Task[None] | None = field(
+        init=False, default=None
+    )
+    _local_function_registry: Any = field(init=False, default=None)
+    _fabric_snapshot_last_saved_at: float | None = field(init=False, default=None)
+    _fabric_snapshot_last_restored_at: float | None = field(init=False, default=None)
+    _fabric_snapshot_last_saved_counts: dict[str, int] = field(
+        init=False, default_factory=dict
+    )
+    _fabric_snapshot_last_restored_counts: dict[str, int] = field(
+        init=False, default_factory=dict
+    )
+    _fabric_snapshot_last_route_keys_saved: int | None = field(init=False, default=None)
+    _fabric_snapshot_last_route_keys_restored: int | None = field(
+        init=False, default=None
+    )
     # Task tracking for proper cleanup
     _background_tasks: set[asyncio.Task[Any]] = field(init=False, default_factory=set)
-    _websocket_server: Any = field(
-        init=False, default=None
-    )  # websockets.server.WebSocketServer
-    # Vector clock for logical ordering of peer updates (will be properly initialized in __post_init__)
-    logical_clock: VectorClock = field(default_factory=VectorClock)
+    _transport_listener: TransportListener | None = field(init=False, default=None)
+    _instance_id: str = field(init=False)
+    _peer_instance_ids: dict[str, str] = field(init=False)
+    _departed_peers: dict[str, DepartedPeer] = field(init=False, default_factory=dict)
+    _peer_connection_locks: dict[str, asyncio.Lock] = field(init=False)
 
     def __post_init__(self) -> None:
         """Initializes the MPREGServer instance.
 
         Sets up the cluster, command registry, and client tracking.
         """
+        if self.settings.port in (None, 0):
+            from .core.port_allocator import allocate_port
+
+            selected_port = allocate_port("servers")
+            self.settings.port = selected_port
+            self._auto_allocated_port = selected_port
+            self._invoke_port_callback(
+                self.settings.on_port_assigned, selected_port, label="server"
+            )
         self.registry = CommandRegistry()  # Moved registry initialization here
         self.serializer = JsonSerializer()  # Moved serializer initialization here
         self.cluster = Cluster.create(
@@ -1216,22 +1394,24 @@ class MPREGServer:
             advertised_urls=tuple(self.settings.advertised_urls or []),
             local_url=f"ws://{self.settings.host}:{self.settings.port}",
         )
+        self.cluster.settings = self.settings
         self.cluster.registry = self.registry
         self.cluster.serializer = self.serializer
 
-        # Update vector clock with proper local URL (VectorClock instance created by default_factory)
-        self.logical_clock = VectorClock.single_entry(self.cluster.local_url, 0)
+        self._instance_id = str(ulid.new())
+        self._peer_instance_ids = {self.cluster.local_url: self._instance_id}
+        self._peer_connection_locks = {}
         self.clients: set[Connection] = set()  # Added type hint
         self.peer_connections: dict[
             str, Connection
         ] = {}  # Persistent connections to peers
+        self.cluster.peer_connections = self.peer_connections
+        self.cluster._server = self
+        self._inbound_peer_connections = {}
         self._shutdown_event = asyncio.Event()  # Event to signal server shutdown
 
-        # Initialize function confirmation tracking system
-        self._pending_confirmations = {}
-
         # Initialize federation connection manager
-        from mpreg.federation.federation_connection_manager import (
+        from mpreg.fabric.connection_manager import (
             FederationConnectionManager,
         )
 
@@ -1244,18 +1424,29 @@ class MPREGServer:
         )
 
         # Initialize intra-cluster consensus manager
-        from mpreg.federation.federation_consensus import ConsensusManager
+        from mpreg.fabric.consensus import ConsensusManager
 
         self.consensus_manager = ConsensusManager(
             node_id=self.cluster.local_url,  # Use server URL as node ID
             gossip_protocol=None,  # We'll use the server's own gossip system
             message_broadcast_callback=self._broadcast_consensus_message_unified,
+            node_count_provider=self._consensus_node_count,
             default_consensus_threshold=0.6,
         )
 
-        # Configure logging level - store handler ID for proper cleanup
-        logger.remove()  # Remove default handler
-        self._logger_handler_id = logger.add(sys.stderr, level=self.settings.log_level)
+        # Configure logging - store handler IDs for proper cleanup
+        self._logger_handler_ids = configure_logging(
+            self.settings.log_level,
+            debug_scopes=self.settings.log_debug_scopes,
+            colorize=False,
+        )
+
+        if self.settings.persistence_config is not None:
+            from mpreg.core.persistence.registry import PersistenceRegistry
+
+            self._persistence_registry = PersistenceRegistry(
+                self.settings.persistence_config
+            )
 
         # Initialize topic exchange system
         self.topic_exchange = TopicExchange(
@@ -1263,14 +1454,1738 @@ class MPREGServer:
         )
 
         # Initialize PubSub client tracking
-        self.pubsub_clients: dict[str, websockets.server.WebSocketServerProtocol] = {}
+        self.pubsub_clients = {}
         self.subscription_to_client: dict[str, str] = {}
+
+        # Metrics tracking for monitoring endpoints
+        self._metrics_tracker = ServerMetricsTracker()
+        from mpreg.fabric.function_registry import LocalFunctionRegistry
+
+        self._local_function_registry = LocalFunctionRegistry(
+            node_id=self.cluster.local_url,
+            cluster_id=self.settings.cluster_id,
+            ttl_seconds=self.settings.fabric_catalog_ttl_seconds,
+        )
+        self._initialize_fabric_control_plane()
 
         # TopicExchange will create notifications, we'll send them in the message handler
 
         # Register default commands and any commands decorated with @rpc_command
         self._register_default_commands()
         self._discover_and_register_rpc_commands()
+
+    def _invoke_port_callback(
+        self,
+        callback: PortAssignmentCallback | None,
+        port: int,
+        *,
+        label: str,
+    ) -> None:
+        if callback is None:
+            return
+        try:
+            result = callback(port)
+        except Exception as exc:
+            logger.warning("Port callback {} failed for {}: {}", label, port, exc)
+            return
+        if inspect.isawaitable(result):
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                try:
+                    asyncio.run(result)
+                except Exception as exc:
+                    logger.warning(
+                        "Async port callback {} failed for {}: {}", label, port, exc
+                    )
+            else:
+
+                async def _runner() -> None:
+                    try:
+                        await result
+                    except Exception as exc:
+                        logger.warning(
+                            "Async port callback {} failed for {}: {}",
+                            label,
+                            port,
+                            exc,
+                        )
+
+                loop.create_task(_runner())
+
+    def __del__(self) -> None:
+        if self._auto_allocated_monitoring_port is not None:
+            try:
+                from .core.port_allocator import release_port
+
+                release_port(self._auto_allocated_monitoring_port)
+            except Exception:
+                pass
+            finally:
+                self._auto_allocated_monitoring_port = None
+
+        if self._auto_allocated_port is not None:
+            try:
+                from .core.port_allocator import release_port
+
+                release_port(self._auto_allocated_port)
+            except Exception:
+                pass
+            finally:
+                self._auto_allocated_port = None
+
+    def _initialize_fabric_control_plane(self) -> None:
+        """Initialize the unified fabric control plane."""
+        from mpreg.fabric.adapters.topic_exchange import TopicExchangeCatalogAdapter
+        from mpreg.fabric.announcers import FabricTopicAnnouncer
+        from mpreg.fabric.control_plane import FabricControlPlane
+        from mpreg.fabric.gossip import GossipProtocol
+        from mpreg.fabric.peer_directory import PeerDirectory
+        from mpreg.fabric.server_gossip_transport import ServerGossipTransport
+        from mpreg.fabric.server_transport import ServerFabricTransport
+
+        self._peer_directory = PeerDirectory(
+            local_node_id=self.cluster.local_url,
+            local_cluster_id=self.settings.cluster_id,
+        )
+        self.cluster.peer_directory = self._peer_directory
+        self.cluster.connection_event_bus.subscribe(self._peer_directory)
+
+        transport = ServerGossipTransport(server=self, serializer=self.serializer)
+        gossip = GossipProtocol(
+            node_id=self.cluster.local_url,
+            transport=transport,
+            gossip_interval=self.settings.gossip_interval,
+        )
+        link_state_router = None
+        if self.settings.fabric_link_state_mode is not None:
+            from mpreg.fabric.link_state import LinkStateMode
+
+            if self.settings.fabric_link_state_mode is not LinkStateMode.DISABLED:
+                link_state_router = self._ensure_fabric_link_state_router()
+        self._fabric_control_plane = FabricControlPlane.create(
+            local_cluster=self.settings.cluster_id,
+            gossip=gossip,
+            catalog_policy=self._fabric_catalog_policy(),
+            catalog_observers=(self._peer_directory,),
+            catalog_max_hops=self.settings.fabric_routing_max_hops,
+            sender_cluster_resolver=self.cluster.cluster_id_for_node_url,
+            route_policy=self.settings.fabric_route_policy,
+            route_export_policy=self.settings.fabric_route_export_policy,
+            route_neighbor_policy_resolver=(
+                self.settings.fabric_route_neighbor_policies.resolver()
+                if self.settings.fabric_route_neighbor_policies
+                else None
+            ),
+            route_export_neighbor_policy_resolver=(
+                self.settings.fabric_route_export_neighbor_policies.resolver()
+                if self.settings.fabric_route_export_neighbor_policies
+                else None
+            ),
+            route_security_config=self.settings.fabric_route_security_config,
+            route_signer=self.settings.fabric_route_signer,
+            route_public_key_resolver=(
+                self.settings.fabric_route_key_registry.resolver()
+                if self.settings.fabric_route_key_registry
+                else None
+            ),
+            route_key_registry=self.settings.fabric_route_key_registry,
+            route_key_ttl_seconds=self.settings.fabric_route_key_ttl_seconds,
+            route_key_announce_interval=self.settings.fabric_route_key_announce_interval_seconds,
+            route_ttl_seconds=self.settings.fabric_route_ttl_seconds,
+            route_announce_interval=self.settings.fabric_route_announce_interval_seconds,
+            link_state_mode=self.settings.fabric_link_state_mode,
+            link_state_neighbor_locator=self.cluster.peer_neighbors,
+            link_state_router=link_state_router,
+            link_state_ttl_seconds=self.settings.fabric_link_state_ttl_seconds,
+            link_state_announce_interval=self.settings.fabric_link_state_announce_interval_seconds,
+            link_state_area=self.settings.fabric_link_state_area,
+            link_state_area_policy=self.settings.fabric_link_state_area_policy,
+        )
+        if self._fabric_control_plane.route_withdrawal_coordinator:
+            self.cluster.connection_event_bus.subscribe(
+                self._fabric_control_plane.route_withdrawal_coordinator
+            )
+        self._fabric_gossip_transport = transport
+        self._fabric_transport = ServerFabricTransport(
+            server=self, serializer=self.serializer
+        )
+        self.cluster.fabric_engine = self._fabric_control_plane.engine
+        topic_adapter = TopicExchangeCatalogAdapter.for_exchange(self.topic_exchange)
+        self._fabric_topic_announcer = FabricTopicAnnouncer(
+            adapter=topic_adapter,
+            broadcaster=self._fabric_control_plane.broadcaster,
+        )
+        self._initialize_fabric_federation_planner()
+        self._initialize_fabric_router()
+        self._initialize_fabric_queue_federation()
+        self._initialize_fabric_raft_transport()
+
+    def _initialize_fabric_router(self) -> None:
+        if not self._fabric_control_plane:
+            return
+        from mpreg.fabric.pubsub_router import PubSubRoutingPlanner
+        from mpreg.fabric.router import FabricRouter, FabricRoutingConfig
+
+        pubsub_planner = PubSubRoutingPlanner(
+            routing_index=self._fabric_control_plane.index,
+            local_node_id=self.cluster.local_url,
+            allowed_clusters=self._fabric_allowed_clusters(),
+        )
+        config = FabricRoutingConfig(
+            local_cluster_id=self.settings.cluster_id,
+            local_node_id=self.cluster.local_url,
+        )
+        self._fabric_router = FabricRouter(
+            config=config,
+            routing_index=self._fabric_control_plane.index,
+            routing_engine=self._fabric_control_plane.engine,
+            pubsub_planner=pubsub_planner,
+            message_queue=self._queue_manager,
+        )
+        self.cluster.fabric_router = self._fabric_router
+
+    def _initialize_fabric_queue_federation(self) -> None:
+        if (
+            self._queue_manager is None
+            or self._fabric_control_plane is None
+            or self._fabric_transport is None
+        ):
+            return
+        from mpreg.fabric.cluster_messenger import ClusterMessenger
+        from mpreg.fabric.queue_delivery import FabricQueueDeliveryCoordinator
+        from mpreg.fabric.queue_federation import FabricQueueFederationManager
+
+        queue_announcer = self._fabric_control_plane.queue_announcer()
+        messenger = ClusterMessenger(
+            cluster_id=self.settings.cluster_id,
+            node_id=self.cluster.local_url,
+            transport=self._fabric_transport,
+            peer_locator=self.cluster.peer_urls_for_cluster,
+            hop_planner=self._fabric_federation_planner,
+            max_hops=self.settings.fabric_routing_max_hops,
+        )
+        self._fabric_queue_federation = FabricQueueFederationManager(
+            cluster_id=self.settings.cluster_id,
+            node_id=self.cluster.local_url,
+            routing_index=self._fabric_control_plane.index,
+            queue_manager=self._queue_manager,
+            queue_announcer=queue_announcer,
+            messenger=messenger,
+            allowed_clusters=self._fabric_allowed_clusters(),
+        )
+        self._fabric_queue_delivery = FabricQueueDeliveryCoordinator(
+            cluster_id=self.settings.cluster_id,
+            queue_federation=self._fabric_queue_federation,
+            allowed_clusters=self._fabric_allowed_clusters(),
+        )
+
+    def _initialize_fabric_raft_transport(self) -> None:
+        if not self._fabric_transport or not self.settings.fabric_routing_enabled:
+            return
+        from mpreg.fabric.cluster_messenger import ClusterMessenger
+        from mpreg.fabric.raft_transport import (
+            FabricRaftTransport,
+            FabricRaftTransportConfig,
+            FabricRaftTransportHooks,
+        )
+
+        messenger = ClusterMessenger(
+            cluster_id=self.settings.cluster_id,
+            node_id=self.cluster.local_url,
+            transport=self._fabric_transport,
+            peer_locator=self.cluster.peer_urls_for_cluster,
+            hop_planner=self._fabric_federation_planner,
+            max_hops=self.settings.fabric_routing_max_hops,
+        )
+        hooks = FabricRaftTransportHooks(
+            send_direct=self._fabric_transport.send_message,
+            send_to_cluster=lambda cluster_id,
+            message,
+            source_peer_url: messenger.send_to_cluster(
+                message, cluster_id, source_peer_url
+            ),
+            resolve_cluster=self.cluster.cluster_id_for_node_url,
+        )
+        self._fabric_raft_transport = FabricRaftTransport(
+            config=FabricRaftTransportConfig(
+                node_id=self.cluster.local_url,
+                cluster_id=self.settings.cluster_id,
+                request_timeout_seconds=self.settings.fabric_raft_request_timeout_seconds,
+                max_hops=self.settings.fabric_routing_max_hops,
+            ),
+            hooks=hooks,
+        )
+
+    def register_raft_node(self, node: Any) -> None:
+        if not self._fabric_raft_transport:
+            raise RuntimeError("Fabric raft transport is not initialized")
+        self._fabric_raft_transport.register_node(node)
+
+    def fabric_raft_transport(self) -> Any | None:
+        return self._fabric_raft_transport
+
+    def _initialize_fabric_federation_planner(self) -> None:
+        """Initialize the fabric federation planner for multi-hop routing."""
+        if not self.settings.fabric_routing_enabled:
+            return
+        graph_router = self._ensure_fabric_graph_router()
+        self._fabric_federation_planner = FabricFederationPlanner(
+            local_cluster=self.settings.cluster_id,
+            graph_router=graph_router,
+            link_state_router=self.cluster.fabric_link_state_router,
+            link_state_mode=self.settings.fabric_link_state_mode,
+            link_state_ecmp_paths=self.settings.fabric_link_state_ecmp_paths,
+            peer_locator=self.cluster.peer_urls_for_cluster,
+            neighbor_locator=self.cluster.peer_neighbors,
+            default_max_hops=self.settings.fabric_routing_max_hops,
+            route_table=(
+                self._fabric_control_plane.route_table
+                if self._fabric_control_plane
+                else None
+            ),
+        )
+        if self._fabric_control_plane:
+            self._fabric_control_plane.engine.federation_planner = (
+                self._fabric_federation_planner
+            )
+
+    def _fabric_node_capabilities(self) -> frozenset[str]:
+        capabilities = {"rpc"}
+        if self._queue_manager is not None:
+            capabilities.add("queue")
+        if self._cache_manager is not None:
+            capabilities.add("cache")
+        return frozenset(capabilities)
+
+    def _link_state_neighbor_clusters(self) -> frozenset[str]:
+        try:
+            from mpreg.fabric.link_state import LinkStateMode
+
+            if self.settings.fabric_link_state_mode is LinkStateMode.DISABLED:
+                return frozenset()
+        except Exception:
+            return frozenset()
+        if not self._fabric_control_plane:
+            return frozenset()
+        table = self._fabric_control_plane.link_state_table
+        if table is None:
+            return frozenset()
+        return table.neighbor_clusters(self.settings.cluster_id)
+
+    def _iter_peer_nodes_for_connection(self) -> list[NodeDescriptor]:
+        if not self._peer_directory:
+            return []
+        nodes = [
+            node
+            for node in self._peer_directory.nodes()
+            if node.node_id != self.cluster.local_url
+        ]
+        neighbor_clusters = self._link_state_neighbor_clusters()
+        if neighbor_clusters:
+            return sorted(
+                nodes,
+                key=lambda node: (
+                    0 if node.cluster_id in neighbor_clusters else 1,
+                    node.cluster_id,
+                    node.node_id,
+                ),
+            )
+        return sorted(nodes, key=lambda node: (node.cluster_id, node.node_id))
+
+    def _select_peer_dial_url(self, node: NodeDescriptor) -> str:
+        endpoints = list(node.transport_endpoints)
+        if not endpoints:
+            return node.node_id
+        try:
+            from mpreg.core.transport.defaults import ConnectionType
+
+            internal_type = ConnectionType.INTERNAL.value
+        except Exception:
+            internal_type = "internal"
+        candidates = [
+            endpoint
+            for endpoint in endpoints
+            if endpoint.connection_type == internal_type
+        ]
+        if not candidates:
+            candidates = endpoints
+        protocol_preference = ("wss", "ws", "tcps", "tcp")
+        for protocol in protocol_preference:
+            for endpoint in candidates:
+                if endpoint.protocol == protocol and endpoint.host and endpoint.port:
+                    return endpoint.endpoint
+        for endpoint in candidates:
+            if endpoint.host and endpoint.port:
+                return endpoint.endpoint
+        return node.node_id
+
+    def _fabric_transport_endpoints(self) -> tuple[TransportEndpoint, ...]:
+        from mpreg.core.transport.defaults import ConnectionType
+        from mpreg.fabric.catalog import TransportEndpoint
+
+        endpoints: set[TransportEndpoint] = set()
+        urls = (self.cluster.local_url, *self.cluster.advertised_urls)
+        for url in urls:
+            parsed = urlparse(url)
+            if not parsed.scheme or not parsed.hostname or not parsed.port:
+                continue
+            endpoints.add(
+                TransportEndpoint(
+                    connection_type=ConnectionType.INTERNAL.value,
+                    protocol=parsed.scheme,
+                    host=parsed.hostname,
+                    port=parsed.port,
+                )
+            )
+        if not endpoints:
+            return ()
+        return tuple(
+            sorted(
+                endpoints,
+                key=lambda endpoint: (
+                    endpoint.connection_type,
+                    endpoint.protocol,
+                    endpoint.host,
+                    endpoint.port,
+                ),
+            )
+        )
+
+    def _fabric_allowed_clusters(self) -> frozenset[str] | None:
+        config = self.settings.federation_config
+        if config is None:
+            return frozenset({self.settings.cluster_id})
+        from mpreg.fabric.federation_config import FederationMode
+
+        if config.federation_mode is FederationMode.STRICT_ISOLATION:
+            return frozenset({self.settings.cluster_id})
+        return None
+
+    def _fabric_catalog_policy(self):
+        from mpreg.fabric.catalog_policy import CatalogFilterPolicy
+
+        config = self.settings.federation_config
+        allowed_clusters = self._fabric_allowed_clusters()
+        if config is None:
+            return CatalogFilterPolicy(
+                local_cluster=self.settings.cluster_id,
+                allowed_clusters=allowed_clusters,
+                node_filter=self._fabric_allows_node,
+            )
+        security_policy = config.security_policy
+        return CatalogFilterPolicy(
+            local_cluster=self.settings.cluster_id,
+            allowed_clusters=allowed_clusters,
+            allowed_functions=security_policy.allowed_functions_cross_federation,
+            blocked_functions=security_policy.blocked_functions_cross_federation,
+            node_filter=self._fabric_allows_node,
+        )
+
+    def _fabric_allows_node(self, node_id: str, cluster_id: str) -> bool:
+        if self._is_peer_departed(node_id):
+            logger.debug(
+                "[{}] Catalog filter rejected departed node: node_id={} cluster_id={}",
+                self.settings.name,
+                node_id,
+                cluster_id,
+            )
+            return False
+        return True
+
+    async def _announce_fabric_functions(self) -> None:
+        if not self._fabric_control_plane or not self._local_function_registry:
+            return
+        from mpreg.fabric.adapters.function_registry import LocalFunctionCatalogAdapter
+        from mpreg.fabric.announcers import FabricFunctionAnnouncer
+
+        adapter = LocalFunctionCatalogAdapter(
+            registry=self._local_function_registry,
+            node_resources=frozenset(self.settings.resources or set()),
+            node_capabilities=self._fabric_node_capabilities(),
+            transport_endpoints=self._fabric_transport_endpoints(),
+        )
+        announcer = FabricFunctionAnnouncer(
+            adapter=adapter, broadcaster=self._fabric_control_plane.broadcaster
+        )
+        await announcer.announce()
+
+    def _publish_fabric_function_update(
+        self, registration: LocalFunctionRegistration
+    ) -> None:
+        if not self._fabric_control_plane or not self._local_function_registry:
+            return
+        import uuid
+
+        from mpreg.fabric.catalog import NodeDescriptor
+        from mpreg.fabric.catalog_delta import RoutingCatalogDelta
+
+        now = time.time()
+        endpoint = registration.to_endpoint(
+            node_id=self.cluster.local_url,
+            cluster_id=self.settings.cluster_id,
+            ttl_seconds=self._local_function_registry.ttl_seconds,
+            advertised_at=now,
+        )
+        node = NodeDescriptor(
+            node_id=self.cluster.local_url,
+            cluster_id=self.settings.cluster_id,
+            resources=frozenset(self.settings.resources or set()),
+            capabilities=self._fabric_node_capabilities(),
+            transport_endpoints=self._fabric_transport_endpoints(),
+            advertised_at=now,
+            ttl_seconds=self._local_function_registry.ttl_seconds,
+        )
+        delta = RoutingCatalogDelta(
+            update_id=str(uuid.uuid4()),
+            cluster_id=self.settings.cluster_id,
+            sent_at=now,
+            functions=(endpoint,),
+            nodes=(node,),
+        )
+        self._fabric_control_plane.applier.apply(delta, now=now)
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        self._track_background_task(
+            loop.create_task(
+                self._fabric_control_plane.broadcaster.publisher.publish(delta)
+            )
+        )
+
+    async def _announce_fabric_cache_role(self) -> None:
+        if not self._fabric_control_plane or not self._cache_fabric_protocol:
+            return
+        from mpreg.fabric.adapters.cache_federation import CacheFederationCatalogAdapter
+        from mpreg.fabric.announcers import FabricCacheRoleAnnouncer
+
+        adapter = CacheFederationCatalogAdapter(
+            node_id=self.cluster.local_url,
+            cluster_id=self.settings.cluster_id,
+            ttl_seconds=self.settings.fabric_catalog_ttl_seconds,
+        )
+        announcer = FabricCacheRoleAnnouncer(
+            adapter=adapter, broadcaster=self._fabric_control_plane.broadcaster
+        )
+        await announcer.announce()
+
+    async def _announce_fabric_topics(self) -> None:
+        if not self._fabric_topic_announcer:
+            return
+        await self._fabric_topic_announcer.announce_all(self.topic_exchange)
+
+    async def _announce_fabric_subscription(
+        self, subscription: PubSubSubscription
+    ) -> None:
+        if not self._fabric_topic_announcer:
+            return
+        await self._fabric_topic_announcer.announce_subscription(subscription)
+
+    async def _remove_fabric_subscription(self, subscription_id: str) -> None:
+        if not self._fabric_topic_announcer:
+            return
+        await self._fabric_topic_announcer.remove_subscription(subscription_id)
+
+    async def _forward_pubsub_publish(
+        self,
+        message: PubSubMessage,
+        *,
+        source_peer_url: str | None = None,
+    ) -> None:
+        await self._forward_fabric_pubsub_message(
+            message, headers=None, source_peer_url=source_peer_url
+        )
+
+    def _next_fabric_headers(
+        self,
+        correlation_id: str,
+        headers: MessageHeaders | None,
+        *,
+        max_hops: int | None,
+    ) -> MessageHeaders | None:
+        from mpreg.fabric.message import MessageHeaders
+
+        if headers is None:
+            return MessageHeaders(
+                correlation_id=correlation_id,
+                source_cluster=self.settings.cluster_id,
+                routing_path=(self.cluster.local_url,),
+                federation_path=(self.settings.cluster_id,),
+                hop_budget=max_hops,
+            )
+
+        if self.cluster.local_url in headers.routing_path:
+            return None
+
+        hop_budget = headers.hop_budget
+        if hop_budget is None:
+            hop_budget = max_hops
+        elif max_hops is not None:
+            hop_budget = min(hop_budget, max_hops)
+
+        routing_path = headers.routing_path
+        if not routing_path or routing_path[-1] != self.cluster.local_url:
+            routing_path = (*routing_path, self.cluster.local_url)
+
+        federation_path = headers.federation_path
+        if not federation_path or federation_path[-1] != self.settings.cluster_id:
+            federation_path = (*federation_path, self.settings.cluster_id)
+
+        hop_count = max(0, len(routing_path) - 1)
+        if hop_budget is not None and hop_count > hop_budget:
+            return None
+
+        return MessageHeaders(
+            correlation_id=headers.correlation_id or correlation_id,
+            source_cluster=headers.source_cluster or self.settings.cluster_id,
+            target_cluster=headers.target_cluster,
+            routing_path=routing_path,
+            federation_path=federation_path,
+            hop_budget=hop_budget,
+            priority=headers.priority,
+            metadata=dict(headers.metadata),
+        )
+
+    def _fabric_next_hop_for_cluster(
+        self, cluster_id: str, *, headers: MessageHeaders
+    ) -> str | None:
+        if not self._fabric_federation_planner:
+            return None
+        plan = self._fabric_federation_planner.plan_next_hop(
+            target_cluster=cluster_id,
+            visited_clusters=headers.federation_path,
+            remaining_hops=headers.hop_budget,
+        )
+        if plan.can_forward and plan.next_peer_url:
+            return plan.next_peer_url
+        return None
+
+    def _fabric_next_hop_for_node(
+        self, node_id: str, *, headers: MessageHeaders
+    ) -> str | None:
+        cluster_id = self.cluster.cluster_id_for_node_url(node_id)
+        if not cluster_id:
+            return None
+        return self._fabric_next_hop_for_cluster(cluster_id, headers=headers)
+
+    def _next_pubsub_headers(
+        self, correlation_id: str, headers: MessageHeaders | None
+    ) -> MessageHeaders | None:
+        return self._next_fabric_headers(
+            correlation_id,
+            headers,
+            max_hops=self.settings.fabric_routing_max_hops,
+        )
+
+    async def _forward_fabric_pubsub_message(
+        self,
+        message: PubSubMessage,
+        *,
+        headers: MessageHeaders | None,
+        source_peer_url: str | None = None,
+    ) -> None:
+        if (
+            not self._fabric_router
+            or not self._fabric_transport
+            or not self.settings.fabric_routing_enabled
+        ):
+            return
+        from mpreg.fabric.message import (
+            DeliveryGuarantee,
+            MessageType,
+            UnifiedMessage,
+        )
+
+        next_headers = self._next_pubsub_headers(message.message_id, headers)
+        if next_headers is None:
+            return
+
+        unified_message = UnifiedMessage(
+            message_id=message.message_id,
+            topic=message.topic,
+            message_type=MessageType.PUBSUB,
+            delivery=DeliveryGuarantee.BROADCAST,
+            payload=message.model_dump(),
+            headers=next_headers,
+            timestamp=message.timestamp,
+        )
+        route = await self._fabric_router.route_message(unified_message)
+        if not route.targets:
+            return
+
+        connections = {
+            url: connection
+            for url, connection in self._get_all_peer_connections().items()
+            if connection.is_connected
+        }
+        target_nodes: set[str] = set()
+        for target in route.targets:
+            node_id = target.node_id
+            if not node_id or node_id == self.cluster.local_url:
+                continue
+            if node_id in connections:
+                target_nodes.add(node_id)
+                continue
+            if not target.cluster_id:
+                continue
+            plan = route.cluster_routes.get(target.cluster_id)
+            if plan and plan.forwarding and plan.forwarding.can_forward:
+                if plan.forwarding.next_peer_url:
+                    target_nodes.add(plan.forwarding.next_peer_url)
+
+        if not target_nodes:
+            return
+
+        await self._send_fabric_message(
+            unified_message,
+            target_nodes=tuple(sorted(target_nodes)),
+            source_peer_url=source_peer_url,
+        )
+
+    async def _send_fabric_message(
+        self,
+        message: UnifiedMessage,
+        *,
+        target_nodes: tuple[str, ...],
+        source_peer_url: str | None = None,
+        allow_routing_path_targets: bool = False,
+    ) -> None:
+        if not self._fabric_transport:
+            return
+        connections = {
+            url: connection
+            for url, connection in self._get_all_peer_connections().items()
+            if connection.is_connected
+        }
+        if not connections:
+            return
+
+        target_nodes_set = set(target_nodes)
+        direct_targets = {
+            node_id for node_id in target_nodes_set if node_id in connections
+        }
+        send_to: set[str] = set()
+        if direct_targets:
+            send_to.update(direct_targets)
+            if target_nodes_set - direct_targets:
+                send_to.update(connections.keys())
+        else:
+            send_to.update(connections.keys())
+
+        if source_peer_url:
+            send_to.discard(source_peer_url)
+        if not allow_routing_path_targets:
+            for visited in message.headers.routing_path:
+                send_to.discard(visited)
+
+        if not send_to:
+            return
+
+        tasks = [
+            self._fabric_transport.send_message(peer_id, message)
+            for peer_id in sorted(send_to)
+        ]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for peer_id, result in zip(sorted(send_to), results):
+            if isinstance(result, Exception):
+                logger.warning(
+                    "[{}] Fabric message forward to {} failed: {}",
+                    self.settings.name,
+                    peer_id,
+                    result,
+                )
+
+    async def _send_fabric_rpc_response(
+        self,
+        *,
+        request_id: str,
+        reply_to: str,
+        reply_cluster: str | None = None,
+        success: bool,
+        result: Any | None = None,
+        error: dict[str, Any] | None = None,
+        routing_path: tuple[str, ...] = (),
+    ) -> None:
+        if not reply_to:
+            return
+        from mpreg.core.model import FabricMessageEnvelope
+        from mpreg.fabric.message import (
+            DeliveryGuarantee,
+            MessageHeaders,
+            MessageType,
+            UnifiedMessage,
+        )
+        from mpreg.fabric.message_codec import unified_message_to_dict
+        from mpreg.fabric.rpc_messages import FabricRPCResponse
+
+        response_path = tuple(routing_path)
+        if not response_path:
+            response_path = (self.cluster.local_url,)
+        elif response_path[-1] != self.cluster.local_url:
+            response_path = (*response_path, self.cluster.local_url)
+
+        response_route = (self.cluster.local_url,)
+
+        next_hop = reply_to
+        if len(response_path) > 1:
+            next_hop = response_path[-2]
+
+        headers = MessageHeaders(
+            correlation_id=request_id,
+            source_cluster=self.settings.cluster_id,
+            target_cluster=reply_cluster,
+            routing_path=response_route,
+            federation_path=(self.settings.cluster_id,),
+            hop_budget=self.settings.fabric_routing_max_hops,
+        )
+        response = FabricRPCResponse(
+            request_id=request_id,
+            success=success,
+            result=result,
+            error=error,
+            responder=self.cluster.local_url,
+            reply_to=reply_to,
+            reply_cluster=reply_cluster,
+            routing_path=response_path,
+        )
+        message = UnifiedMessage(
+            message_id=request_id,
+            topic="mpreg.rpc.response",
+            message_type=MessageType.RPC,
+            delivery=DeliveryGuarantee.AT_LEAST_ONCE,
+            payload=response.to_dict(),
+            headers=headers,
+        )
+        if next_hop and self._is_peer_departed(next_hop, None):
+            next_hop = None
+
+        if next_hop:
+            connections = self._get_all_peer_connections()
+            connection = connections.get(next_hop)
+            if not connection or not connection.is_connected:
+                next_hop = None
+
+        if next_hop and self._fabric_transport:
+            if await self._fabric_transport.send_message(next_hop, message):
+                return
+            connection = self._get_all_peer_connections().get(next_hop)
+            if connection and connection.is_connected:
+                envelope = FabricMessageEnvelope(
+                    payload=unified_message_to_dict(message)
+                )
+                data = self.serializer.serialize(envelope.model_dump())
+                try:
+                    await connection.send(data)
+                    return
+                except Exception:
+                    pass
+            next_hop = None
+
+        if not next_hop and reply_cluster and self._fabric_federation_planner:
+            visited_clusters = tuple(
+                cluster_id
+                for cluster_id in (
+                    self.cluster._cluster_id_for_server(node) for node in response_path
+                )
+                if cluster_id and cluster_id != self.settings.cluster_id
+            )
+            plan = self._fabric_federation_planner.plan_next_hop(
+                target_cluster=reply_cluster,
+                visited_clusters=visited_clusters,
+                remaining_hops=self.settings.fabric_routing_max_hops,
+            )
+            if plan.can_forward and plan.next_peer_url:
+                await self._send_fabric_message(
+                    message,
+                    target_nodes=(plan.next_peer_url,),
+                    allow_routing_path_targets=True,
+                )
+                return
+
+        if not next_hop and reply_to:
+            await self._send_fabric_message(
+                message,
+                target_nodes=(reply_to,),
+                allow_routing_path_targets=True,
+            )
+            await self._establish_peer_connection(reply_to, fast_connect=True)
+            connection = self._get_all_peer_connections().get(reply_to)
+            if connection and connection.is_connected:
+                envelope = FabricMessageEnvelope(
+                    payload=unified_message_to_dict(message)
+                )
+                data = self.serializer.serialize(envelope.model_dump())
+                try:
+                    await connection.send(data)
+                    return
+                except Exception:
+                    pass
+
+        if not next_hop:
+            return
+
+    async def _handle_fabric_rpc_request(
+        self,
+        message: UnifiedMessage,
+        *,
+        source_peer_url: str | None = None,
+    ) -> None:
+        from mpreg.fabric.index import FunctionQuery
+        from mpreg.fabric.message import (
+            DeliveryGuarantee,
+            MessageType,
+            UnifiedMessage,
+        )
+        from mpreg.fabric.rpc_messages import FabricRPCRequest
+
+        payload = FabricRPCRequest.from_dict(message.payload)
+        if message.message_type is not MessageType.RPC:
+            return
+
+        selector = FunctionSelector(
+            name=payload.command,
+            function_id=payload.function_id,
+            version_constraint=VersionConstraint.parse(payload.version_constraint)
+            if payload.version_constraint
+            else None,
+        )
+        requested_resources = frozenset(payload.resources)
+        if (
+            payload.target_cluster
+            and payload.target_cluster != self.settings.cluster_id
+        ):
+            local_matches: list[Any] = []
+        elif payload.target_node and payload.target_node != self.cluster.local_url:
+            local_matches = []
+        elif self._fabric_control_plane:
+            local_query = FunctionQuery(
+                selector=selector,
+                resources=requested_resources,
+                cluster_id=self.settings.cluster_id,
+                node_id=self.cluster.local_url,
+            )
+            local_matches = self._fabric_control_plane.index.find_functions(local_query)
+        else:
+            local_matches = []
+
+        if local_matches:
+            try:
+                command_obj = self.registry.get(payload.command)
+                answer_payload = await command_obj.call_async(
+                    *payload.args, **payload.kwargs
+                )
+                await self._send_fabric_rpc_response(
+                    request_id=payload.request_id,
+                    reply_to=payload.reply_to,
+                    reply_cluster=message.headers.source_cluster,
+                    success=True,
+                    result=answer_payload,
+                    routing_path=message.headers.routing_path,
+                )
+            except Exception as e:
+                await self._send_fabric_rpc_response(
+                    request_id=payload.request_id,
+                    reply_to=payload.reply_to,
+                    reply_cluster=message.headers.source_cluster,
+                    success=False,
+                    error={
+                        "error": str(e),
+                        "command": payload.command,
+                        "error_type": type(e).__name__,
+                    },
+                    routing_path=message.headers.routing_path,
+                )
+            return
+
+        if not self._fabric_control_plane:
+            await self._send_fabric_rpc_response(
+                request_id=payload.request_id,
+                reply_to=payload.reply_to,
+                reply_cluster=message.headers.source_cluster,
+                success=False,
+                error={
+                    "error": "fabric_routing_disabled",
+                    "command": payload.command,
+                },
+                routing_path=message.headers.routing_path,
+            )
+            return
+
+        if not self._fabric_router:
+            await self._send_fabric_rpc_response(
+                request_id=payload.request_id,
+                reply_to=payload.reply_to,
+                reply_cluster=message.headers.source_cluster,
+                success=False,
+                error={
+                    "error": "fabric_routing_disabled",
+                    "command": payload.command,
+                },
+                routing_path=message.headers.routing_path,
+            )
+            return
+
+        route = await self._fabric_router.route_message(message)
+        if not route.targets:
+            await self._send_fabric_rpc_response(
+                request_id=payload.request_id,
+                reply_to=payload.reply_to,
+                reply_cluster=message.headers.source_cluster,
+                success=False,
+                error={
+                    "error": "fabric_route_not_found",
+                    "command": payload.command,
+                },
+                routing_path=message.headers.routing_path,
+            )
+            return
+
+        target = route.targets[0]
+        allowed_clusters = self._fabric_allowed_clusters()
+        if (
+            allowed_clusters is not None
+            and target.cluster_id
+            and target.cluster_id not in allowed_clusters
+        ):
+            await self._send_fabric_rpc_response(
+                request_id=payload.request_id,
+                reply_to=payload.reply_to,
+                reply_cluster=message.headers.source_cluster,
+                success=False,
+                error={
+                    "error": "fabric_route_not_found",
+                    "command": payload.command,
+                },
+                routing_path=message.headers.routing_path,
+            )
+            return
+
+        forward_plan = (
+            route.cluster_routes.get(target.cluster_id) if target.cluster_id else None
+        )
+        forwarding = forward_plan.forwarding if forward_plan else None
+        if forwarding and not forwarding.can_forward:
+            await self._send_fabric_rpc_response(
+                request_id=payload.request_id,
+                reply_to=payload.reply_to,
+                reply_cluster=message.headers.source_cluster,
+                success=False,
+                error={
+                    "error": "fabric_forward_failed",
+                    "command": payload.command,
+                    "target_cluster": target.cluster_id,
+                    "reason": forwarding.reason.value,
+                },
+                routing_path=message.headers.routing_path,
+            )
+            return
+
+        connections = self._get_all_peer_connections()
+        next_hop: str | None = None
+        if target.node_id and target.node_id in connections:
+            connection = connections[target.node_id]
+            if connection and connection.is_connected:
+                next_hop = target.node_id
+        if next_hop is None and forwarding and forwarding.next_peer_url:
+            next_hop = forwarding.next_peer_url
+        if next_hop is None:
+            next_hop = target.node_id
+        if not next_hop:
+            await self._send_fabric_rpc_response(
+                request_id=payload.request_id,
+                reply_to=payload.reply_to,
+                reply_cluster=message.headers.source_cluster,
+                success=False,
+                error={
+                    "error": "fabric_route_not_found",
+                    "command": payload.command,
+                },
+                routing_path=message.headers.routing_path,
+            )
+            return
+        if next_hop in message.headers.routing_path:
+            await self._send_fabric_rpc_response(
+                request_id=payload.request_id,
+                reply_to=payload.reply_to,
+                reply_cluster=message.headers.source_cluster,
+                success=False,
+                error={
+                    "error": "fabric_route_loop",
+                    "command": payload.command,
+                },
+                routing_path=message.headers.routing_path,
+            )
+            return
+
+        next_headers = self._next_fabric_headers(
+            payload.request_id,
+            message.headers,
+            max_hops=self.settings.fabric_routing_max_hops,
+        )
+        if next_headers is None:
+            await self._send_fabric_rpc_response(
+                request_id=payload.request_id,
+                reply_to=payload.reply_to,
+                reply_cluster=message.headers.source_cluster,
+                success=False,
+                error={
+                    "error": "fabric_hop_budget_exhausted",
+                    "command": payload.command,
+                },
+                routing_path=message.headers.routing_path,
+            )
+            return
+
+        updated_payload = FabricRPCRequest(
+            request_id=payload.request_id,
+            command=payload.command,
+            args=payload.args,
+            kwargs=payload.kwargs,
+            resources=payload.resources,
+            function_id=payload.function_id,
+            version_constraint=payload.version_constraint,
+            target_cluster=target.cluster_id,
+            target_node=target.node_id,
+            reply_to=payload.reply_to,
+            federation_path=(
+                forwarding.federation_path if forwarding else payload.federation_path
+            ),
+            federation_remaining_hops=(
+                forwarding.remaining_hops
+                if forwarding
+                else payload.federation_remaining_hops
+            ),
+        )
+        forward_message = UnifiedMessage(
+            message_id=payload.request_id,
+            topic=f"mpreg.rpc.execute.{payload.command}",
+            message_type=MessageType.RPC,
+            delivery=DeliveryGuarantee.AT_LEAST_ONCE,
+            payload=updated_payload.to_dict(),
+            headers=next_headers,
+            timestamp=message.timestamp,
+        )
+        await self._send_fabric_message(
+            forward_message,
+            target_nodes=(next_hop,),
+            source_peer_url=source_peer_url,
+        )
+
+    async def _handle_fabric_rpc_response(self, message: UnifiedMessage) -> None:
+        from mpreg.fabric.message import UnifiedMessage
+        from mpreg.fabric.rpc_messages import FabricRPCResponse
+
+        response = FabricRPCResponse.from_dict(message.payload)
+        if response.request_id in self.cluster.waitingFor:
+            if response.success:
+                self.cluster.answer[response.request_id] = response.result
+            else:
+                self.cluster.answer[response.request_id] = response.error or {
+                    "error": "fabric_rpc_failed",
+                    "request_id": response.request_id,
+                }
+            self.cluster.waitingFor[response.request_id].set()
+            return
+
+        connections = self._get_all_peer_connections()
+        previous_hop: str | None = None
+        if response.routing_path:
+            try:
+                index = response.routing_path.index(self.cluster.local_url)
+            except ValueError:
+                index = -1
+            if index > 0:
+                candidate = response.routing_path[index - 1]
+                connection = connections.get(candidate)
+                if connection and connection.is_connected:
+                    previous_hop = candidate
+
+        next_headers = self._next_fabric_headers(
+            response.request_id,
+            message.headers,
+            max_hops=self.settings.fabric_routing_max_hops,
+        )
+        if next_headers is None:
+            return
+
+        forward_message = UnifiedMessage(
+            message_id=message.message_id,
+            topic=message.topic,
+            message_type=message.message_type,
+            delivery=message.delivery,
+            payload=message.payload,
+            headers=next_headers,
+            timestamp=message.timestamp,
+        )
+
+        if previous_hop:
+            await self._send_fabric_message(
+                forward_message,
+                target_nodes=(previous_hop,),
+                allow_routing_path_targets=True,
+            )
+            return
+
+        reply_cluster = response.reply_cluster or message.headers.target_cluster
+        if reply_cluster and self._fabric_federation_planner:
+            plan = self._fabric_federation_planner.plan_next_hop(
+                target_cluster=reply_cluster,
+                visited_clusters=message.headers.federation_path,
+                remaining_hops=message.headers.hop_budget,
+            )
+            if plan.can_forward and plan.next_peer_url:
+                await self._send_fabric_message(
+                    forward_message,
+                    target_nodes=(plan.next_peer_url,),
+                )
+                return
+
+        if response.reply_to:
+            await self._establish_peer_connection(response.reply_to, fast_connect=True)
+            connection = self._get_all_peer_connections().get(response.reply_to)
+            if connection and connection.is_connected:
+                envelope = FabricMessageEnvelope(
+                    payload=unified_message_to_dict(forward_message)
+                )
+                data = self.serializer.serialize(envelope.model_dump())
+                with contextlib.suppress(Exception):
+                    await connection.send(data)
+            return
+
+        reply_cluster = response.reply_cluster
+        if not reply_cluster and response.reply_to:
+            reply_cluster = self.cluster._cluster_id_for_server(response.reply_to)
+        if not reply_cluster or not self._fabric_federation_planner:
+            return
+
+        visited_clusters = tuple(
+            cluster_id
+            for cluster_id in (
+                self.cluster._cluster_id_for_server(node)
+                for node in next_headers.routing_path
+            )
+            if cluster_id and cluster_id != self.settings.cluster_id
+        )
+        plan = self._fabric_federation_planner.plan_next_hop(
+            target_cluster=reply_cluster,
+            visited_clusters=visited_clusters,
+            remaining_hops=next_headers.hop_budget,
+        )
+        if not plan.can_forward or not plan.next_peer_url:
+            return
+        await self._send_fabric_message(
+            forward_message,
+            target_nodes=(plan.next_peer_url,),
+        )
+
+    async def _handle_fabric_message(
+        self,
+        message: UnifiedMessage,
+        *,
+        source_peer_url: str | None = None,
+    ) -> None:
+        from mpreg.fabric.message import MessageType
+
+        if message.message_type is MessageType.PUBSUB:
+            pubsub_message = PubSubMessage.model_validate(message.payload)
+            notifications = self.topic_exchange.publish_message(pubsub_message)
+            for notification in notifications:
+                await self._send_notification_to_client(notification)
+            await self._forward_fabric_pubsub_message(
+                pubsub_message,
+                headers=message.headers,
+                source_peer_url=source_peer_url,
+            )
+            return
+        if message.message_type is MessageType.QUEUE:
+            if self._fabric_queue_federation:
+                await self._fabric_queue_federation.handle_fabric_message(
+                    message, source_peer_url=source_peer_url
+                )
+            else:
+                logger.debug(
+                    "[{}] Ignoring fabric queue message; no queue federation manager",
+                    self.settings.name,
+                )
+            return
+        if message.message_type is MessageType.CACHE:
+            if self._cache_fabric_transport:
+                await self._cache_fabric_transport.handle_message(
+                    message, source_peer_url=source_peer_url
+                )
+            else:
+                logger.debug(
+                    "[{}] Ignoring fabric cache message; cache federation disabled",
+                    self.settings.name,
+                )
+            return
+        if message.message_type is MessageType.RPC:
+            kind = (
+                message.payload.get("kind")
+                if isinstance(message.payload, dict)
+                else None
+            )
+            from mpreg.fabric.rpc_messages import (
+                FABRIC_RPC_REQUEST_KIND,
+                FABRIC_RPC_RESPONSE_KIND,
+            )
+
+            if kind == FABRIC_RPC_REQUEST_KIND:
+                await self._handle_fabric_rpc_request(
+                    message, source_peer_url=source_peer_url
+                )
+                return
+            if kind == FABRIC_RPC_RESPONSE_KIND:
+                await self._handle_fabric_rpc_response(message)
+                return
+        if message.message_type is MessageType.CONTROL:
+            if self._fabric_raft_transport:
+                handled = await self._fabric_raft_transport.handle_message(
+                    message, source_peer_url=source_peer_url
+                )
+                if handled:
+                    return
+            if self._fabric_queue_delivery:
+                from mpreg.fabric.queue_delivery import is_queue_consensus_message
+
+                if is_queue_consensus_message(message):
+                    await self._fabric_queue_delivery.handle_control_message(
+                        message, source_peer_url=source_peer_url
+                    )
+                    return
+
+        logger.debug(
+            "[{}] Unhandled fabric message type: {}",
+            self.settings.name,
+            message.message_type.value,
+        )
+
+    async def _start_fabric_control_plane(self) -> None:
+        if not self._fabric_control_plane:
+            return
+        await self._restore_fabric_snapshots()
+        await self._fabric_control_plane.gossip.start()
+        if self._fabric_control_plane.route_announcer:
+            await self._fabric_control_plane.route_announcer.start()
+        if self._fabric_control_plane.route_key_announcer:
+            await self._fabric_control_plane.route_key_announcer.start()
+        if self._fabric_control_plane.link_state_announcer:
+            await self._fabric_control_plane.link_state_announcer.start()
+        await self._announce_fabric_functions()
+        await self._announce_fabric_cache_role()
+        await self._announce_fabric_topics()
+        if self._fabric_queue_federation:
+            await self._fabric_queue_federation.advertise_existing_queues()
+        await self._start_fabric_catalog_refresh()
+        await self._start_fabric_route_key_refresh()
+
+    async def _restore_fabric_snapshots(self) -> None:
+        if not self._persistence_registry or not self._fabric_control_plane:
+            return
+        from mpreg.fabric.persistence import FabricSnapshotStore
+
+        store = FabricSnapshotStore(
+            self._persistence_registry.key_value_store("fabric")
+        )
+        snapshot_time = time.time()
+        try:
+            counts = await store.load_catalog(
+                self._fabric_control_plane.catalog, now=snapshot_time
+            )
+            self._fabric_snapshot_last_restored_counts = dict(counts)
+            self._fabric_snapshot_last_restored_at = snapshot_time
+            if counts:
+                logger.debug(
+                    "[{}] Restored fabric catalog snapshot: {}",
+                    self.settings.name,
+                    counts,
+                )
+        except Exception as exc:
+            logger.warning(
+                "[{}] Fabric catalog snapshot restore failed: {}",
+                self.settings.name,
+                exc,
+            )
+        if self._fabric_control_plane.route_key_registry:
+            try:
+                restored = await store.load_route_keys(
+                    self._fabric_control_plane.route_key_registry, now=snapshot_time
+                )
+                self._fabric_snapshot_last_route_keys_restored = restored
+                if self._fabric_snapshot_last_restored_at is None:
+                    self._fabric_snapshot_last_restored_at = snapshot_time
+                if restored:
+                    logger.debug(
+                        "[{}] Restored {} fabric route keys from snapshot",
+                        self.settings.name,
+                        restored,
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "[{}] Fabric route key snapshot restore failed: {}",
+                    self.settings.name,
+                    exc,
+                )
+
+    async def _save_fabric_snapshots(self) -> None:
+        if not self._persistence_registry or not self._fabric_control_plane:
+            return
+        from mpreg.fabric.persistence import FabricSnapshotStore
+
+        store = FabricSnapshotStore(
+            self._persistence_registry.key_value_store("fabric")
+        )
+        snapshot_time = time.time()
+        try:
+            catalog = self._fabric_control_plane.catalog
+            self._fabric_snapshot_last_saved_counts = {
+                "functions": catalog.functions.entry_count(),
+                "topics": catalog.topics.entry_count(),
+                "queues": catalog.queues.entry_count(),
+                "caches": catalog.caches.entry_count(),
+                "cache_profiles": catalog.cache_profiles.entry_count(),
+                "nodes": catalog.nodes.entry_count(),
+            }
+            await store.save_catalog(
+                self._fabric_control_plane.catalog, now=snapshot_time
+            )
+            self._fabric_snapshot_last_saved_at = snapshot_time
+        except Exception as exc:
+            logger.warning(
+                "[{}] Fabric catalog snapshot save failed: {}",
+                self.settings.name,
+                exc,
+            )
+        if self._fabric_control_plane.route_key_registry:
+            try:
+                route_registry = self._fabric_control_plane.route_key_registry
+                route_registry.purge_expired(now=snapshot_time)
+                self._fabric_snapshot_last_route_keys_saved = sum(
+                    len(key_set.keys) for key_set in route_registry.key_sets.values()
+                )
+                await store.save_route_keys(route_registry, now=snapshot_time)
+                if self._fabric_snapshot_last_saved_at is None:
+                    self._fabric_snapshot_last_saved_at = snapshot_time
+            except Exception as exc:
+                logger.warning(
+                    "[{}] Fabric route key snapshot save failed: {}",
+                    self.settings.name,
+                    exc,
+                )
+
+    async def _start_fabric_catalog_refresh(self) -> None:
+        if (
+            not self._fabric_control_plane
+            or not self._local_function_registry
+            or self._shutdown_event.is_set()
+        ):
+            return
+        if (
+            self._fabric_catalog_refresh_task
+            and not self._fabric_catalog_refresh_task.done()
+        ):
+            return
+        refresh_interval = max(1.0, self.settings.fabric_catalog_ttl_seconds * 0.5)
+
+        async def _refresh_loop() -> None:
+            while not self._shutdown_event.is_set():
+                try:
+                    await self._announce_fabric_functions()
+                except Exception as exc:
+                    logger.warning(
+                        "[{}] Fabric catalog refresh failed: {}",
+                        self.settings.name,
+                        exc,
+                    )
+                try:
+                    await asyncio.wait_for(
+                        self._shutdown_event.wait(), timeout=refresh_interval
+                    )
+                except TimeoutError:
+                    continue
+
+        self._fabric_catalog_refresh_task = asyncio.create_task(_refresh_loop())
+        self._track_background_task(self._fabric_catalog_refresh_task)
+
+    async def _start_fabric_route_key_refresh(self) -> None:
+        if (
+            not self.settings.fabric_route_key_provider
+            or not self.settings.fabric_route_key_registry
+            or self._shutdown_event.is_set()
+        ):
+            return
+        if (
+            self._fabric_route_key_refresh_task
+            and not self._fabric_route_key_refresh_task.done()
+        ):
+            return
+        refresh_interval = max(
+            1.0, float(self.settings.fabric_route_key_refresh_interval_seconds)
+        )
+
+        async def _refresh_loop() -> None:
+            while not self._shutdown_event.is_set():
+                try:
+                    from mpreg.fabric.route_keys import refresh_route_keys
+
+                    await refresh_route_keys(
+                        self.settings.fabric_route_key_provider,
+                        self.settings.fabric_route_key_registry,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "[{}] Fabric route key refresh failed: {}",
+                        self.settings.name,
+                        exc,
+                    )
+                try:
+                    await asyncio.wait_for(
+                        self._shutdown_event.wait(), timeout=refresh_interval
+                    )
+                except TimeoutError:
+                    continue
+
+        self._fabric_route_key_refresh_task = asyncio.create_task(_refresh_loop())
+        self._track_background_task(self._fabric_route_key_refresh_task)
+
+    def _ensure_fabric_graph_router(self) -> GraphBasedFederationRouter:
+        """Ensure a fabric graph router is available for routing."""
+        graph_router = self.cluster.fabric_graph_router
+        if graph_router is None:
+            graph_router = GraphBasedFederationRouter(
+                cache_ttl_seconds=30.0,
+                max_cache_size=10000,
+            )
+            self.cluster.fabric_graph_router = graph_router
+        self._ensure_fabric_graph_node(
+            cluster_id=self.settings.cluster_id,
+            region=self.settings.cache_region,
+            latitude=self.settings.cache_latitude,
+            longitude=self.settings.cache_longitude,
+        )
+        return graph_router
+
+    def _ensure_fabric_link_state_router(self) -> GraphBasedFederationRouter:
+        """Ensure a link-state graph router is available for optional routing."""
+        router = self.cluster.fabric_link_state_router
+        if router is None:
+            router = GraphBasedFederationRouter(
+                cache_ttl_seconds=30.0,
+                max_cache_size=10000,
+            )
+            self.cluster.fabric_link_state_router = router
+        return router
+
+    def reload_fabric_route_config(
+        self,
+        *,
+        route_policy: RoutePolicy | None = None,
+        export_policy: RoutePolicy | None = None,
+        neighbor_policies: RoutePolicyDirectory | None = None,
+        export_neighbor_policies: RoutePolicyDirectory | None = None,
+        security_config: RouteSecurityConfig | None = None,
+        key_registry: RouteKeyRegistry | None = None,
+        signer: RouteAnnouncementSigner | None = None,
+    ) -> None:
+        """Reload fabric route configuration without dropping existing routes."""
+        if not self._fabric_control_plane:
+            return
+
+        if route_policy is not None:
+            self.settings.fabric_route_policy = route_policy
+        if export_policy is not None:
+            self.settings.fabric_route_export_policy = export_policy
+        if neighbor_policies is not None:
+            self.settings.fabric_route_neighbor_policies = neighbor_policies
+        if export_neighbor_policies is not None:
+            self.settings.fabric_route_export_neighbor_policies = (
+                export_neighbor_policies
+            )
+        if security_config is not None:
+            self.settings.fabric_route_security_config = security_config
+        if key_registry is not None:
+            self.settings.fabric_route_key_registry = key_registry
+        if signer is not None:
+            self.settings.fabric_route_signer = signer
+
+        neighbor_resolver = (
+            self.settings.fabric_route_neighbor_policies.resolver()
+            if self.settings.fabric_route_neighbor_policies
+            else None
+        )
+        export_neighbor_resolver = (
+            self.settings.fabric_route_export_neighbor_policies.resolver()
+            if self.settings.fabric_route_export_neighbor_policies
+            else None
+        )
+        public_key_resolver = (
+            self.settings.fabric_route_key_registry.resolver()
+            if self.settings.fabric_route_key_registry
+            else None
+        )
+        self._fabric_control_plane.update_route_configuration(
+            route_policy=self.settings.fabric_route_policy,
+            export_policy=self.settings.fabric_route_export_policy,
+            neighbor_policy_resolver=neighbor_resolver,
+            export_neighbor_policy_resolver=export_neighbor_resolver,
+            security_config=self.settings.fabric_route_security_config,
+            public_key_resolver=public_key_resolver,
+            signer=self.settings.fabric_route_signer,
+            force=True,
+        )
+
+    def _ensure_fabric_graph_node(
+        self,
+        *,
+        cluster_id: str,
+        region: str,
+        latitude: float,
+        longitude: float,
+    ) -> None:
+        """Ensure a fabric graph node exists for a cluster."""
+        router = self.cluster.fabric_graph_router
+        if router is None:
+            return
+        if cluster_id in router.graph.nodes:
+            return
+        node = FederationGraphNode(
+            node_id=cluster_id,
+            node_type=NodeType.CLUSTER,
+            region=region,
+            coordinates=GeographicCoordinate(latitude, longitude),
+            max_capacity=1000,
+            current_load=0.0,
+            health_score=1.0,
+            processing_latency_ms=1.0,
+            bandwidth_mbps=1000,
+            reliability_score=1.0,
+        )
+        router.add_node(node)
+
+    def _register_fabric_graph_peer(self, peer_cluster_id: str) -> None:
+        """Register a peer cluster in the fabric graph."""
+        router = self.cluster.fabric_graph_router
+        if router is None:
+            return
+        if peer_cluster_id == self.settings.cluster_id:
+            return
+        self._ensure_fabric_graph_node(
+            cluster_id=self.settings.cluster_id,
+            region=self.settings.cache_region,
+            latitude=self.settings.cache_latitude,
+            longitude=self.settings.cache_longitude,
+        )
+        self._ensure_fabric_graph_node(
+            cluster_id=peer_cluster_id,
+            region="unknown",
+            latitude=0.0,
+            longitude=0.0,
+        )
+        router.add_edge(
+            FederationGraphEdge(
+                source_id=self.settings.cluster_id,
+                target_id=peer_cluster_id,
+                latency_ms=5.0,
+                bandwidth_mbps=1000,
+                reliability_score=0.99,
+            )
+        )
+
+    def _remove_fabric_graph_peer(self, peer_cluster_id: str) -> None:
+        """Remove fabric graph entry when a peer cluster disconnects."""
+        router = self.cluster.fabric_graph_router
+        if router is None:
+            return
+        if peer_cluster_id == self.settings.cluster_id:
+            return
+        still_present = False
+        if self._peer_directory:
+            still_present = any(
+                node.cluster_id == peer_cluster_id
+                for node in self._peer_directory.nodes()
+            )
+        if still_present:
+            return
+        router.remove_edge(self.settings.cluster_id, peer_cluster_id)
+        router.remove_node(peer_cluster_id)
+
+    async def _initialize_default_systems(self) -> None:
+        """Initialize optional cache/queue systems for unified deployments."""
+        if self._persistence_registry is not None:
+            await self._persistence_registry.open()
+
+        if self.settings.enable_default_cache:
+            from mpreg.fabric.cache_federation import FabricCacheProtocol
+            from mpreg.fabric.cache_transport import ServerCacheTransport
+
+            from .core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
+
+            cache_config = GlobalCacheConfiguration(
+                enable_l4_federation=self.settings.enable_cache_federation,
+                local_cluster_id=self.settings.cluster_id,
+                local_region=self.settings.cache_region,
+            )
+
+            cache_protocol = None
+            cache_transport = None
+            if cache_config.enable_l3_distributed or cache_config.enable_l4_federation:
+                allowed_clusters = (
+                    self._fabric_allowed_clusters()
+                    if cache_config.enable_l4_federation
+                    else frozenset({self.settings.cluster_id})
+                )
+                from mpreg.fabric.cache_selection import CachePeerSelector
+                from mpreg.fabric.federation_graph import GeographicCoordinate
+
+                peer_selector = CachePeerSelector(
+                    local_region=self.settings.cache_region,
+                    local_coordinates=GeographicCoordinate(
+                        latitude=self.settings.cache_latitude,
+                        longitude=self.settings.cache_longitude,
+                    ),
+                )
+                cache_transport = ServerCacheTransport(
+                    server=self,
+                    serializer=self.serializer,
+                    routing_index=(
+                        self._fabric_control_plane.index
+                        if self._fabric_control_plane
+                        else None
+                    ),
+                    allowed_clusters=allowed_clusters,
+                    peer_selector=peer_selector,
+                )
+                cache_protocol = FabricCacheProtocol(
+                    node_id=self.cluster.local_url,
+                    transport=cache_transport,
+                    gossip_interval=cache_config.gossip_interval_seconds,
+                )
+
+            cache_manager = GlobalCacheManager(
+                cache_config,
+                cache_protocol=cache_protocol,
+                persistence_registry=self._persistence_registry,
+            )
+
+            self._cache_manager = cache_manager
+            self._cache_fabric_protocol = cache_protocol
+            self._cache_fabric_transport = cache_transport
+            self.attach_cache_manager(cache_manager)
+
+        if self.settings.enable_default_queue:
+            from .core.message_queue_manager import create_reliable_queue_manager
+
+            queue_manager = create_reliable_queue_manager(
+                persistence_registry=self._persistence_registry
+            )
+            self._queue_manager = queue_manager
+            self.attach_queue_manager(queue_manager)
+            if self._persistence_registry is not None:
+                await queue_manager.restore_persisted_queues()
+            if self._fabric_router:
+                self._fabric_router.message_queue = queue_manager
+            self._initialize_fabric_queue_federation()
 
     async def stop(self) -> None:
         """Stop the server gracefully."""
@@ -1300,42 +3215,66 @@ class MPREGServer:
         logger.info(f"[{self.settings.name}] Starting complete async shutdown...")
 
         # Send GOODBYE to all peers FIRST, before shutdown signal
-        try:
-            from .core.model import GoodbyeReason
+        if not self._shutdown_event.is_set():
+            try:
+                from .core.model import GoodbyeReason
 
-            if self.peer_connections:  # Only send if we have peers
-                await self.send_goodbye(GoodbyeReason.GRACEFUL_SHUTDOWN)
-                # Brief pause to let GOODBYE messages propagate
-                await asyncio.sleep(0.5)
-        except Exception as e:
-            logger.warning(
-                f"[{self.settings.name}] Error sending GOODBYE during shutdown: {e}"
-            )
+                if self.peer_connections:  # Only send if we have peers
+                    await self.send_goodbye(GoodbyeReason.GRACEFUL_SHUTDOWN)
+                    # Brief pause to let GOODBYE messages propagate
+                    await asyncio.sleep(0.5)
+            except Exception as e:
+                logger.warning(
+                    f"[{self.settings.name}] Error sending GOODBYE during shutdown: {e}"
+                )
 
         # Signal shutdown - this allows background tasks to exit gracefully
         self._shutdown_event.set()
 
-        # CRITICAL: Close connections FIRST to allow tasks to exit gracefully
-        logger.info(f"[{self.settings.name}] Closing peer connections...")
-        for peer_url, connection in self.peer_connections.items():
+        if self._fabric_control_plane:
             try:
-                await connection.disconnect()
-                logger.debug(f"[{self.settings.name}] Closed connection to {peer_url}")
+                if self._fabric_control_plane.route_announcer:
+                    await self._fabric_control_plane.route_announcer.stop()
+                if self._fabric_control_plane.route_key_announcer:
+                    await self._fabric_control_plane.route_key_announcer.stop()
+                if self._fabric_control_plane.link_state_announcer:
+                    await self._fabric_control_plane.link_state_announcer.stop()
+                await self._fabric_control_plane.gossip.stop()
             except Exception as e:
                 logger.warning(
-                    f"[{self.settings.name}] Error closing connection to {peer_url}: {e}"
+                    f"[{self.settings.name}] Error stopping fabric gossip: {e}"
                 )
 
-        # Close client connections
-        logger.info(f"[{self.settings.name}] Closing client connections...")
-        for client in self.clients.copy():
+        try:
+            await self._save_fabric_snapshots()
+        except Exception as e:
+            logger.warning(f"[{self.settings.name}] Error saving fabric snapshots: {e}")
+
+        # CRITICAL: Close connections FIRST to allow tasks to exit gracefully
+        logger.info(f"[{self.settings.name}] Closing peer connections...")
+        connections_to_close = set(self.peer_connections.values())
+        connections_to_close.update(self._inbound_peer_connections.values())
+        connections_to_close.update(self.clients)
+        for connection in connections_to_close:
             try:
-                await client.disconnect()
-                logger.debug(f"[{self.settings.name}] Closed client connection")
+                await connection.disconnect()
             except Exception as e:
-                logger.warning(
-                    f"[{self.settings.name}] Error closing client connection: {e}"
-                )
+                logger.warning(f"[{self.settings.name}] Error closing connection: {e}")
+        self.peer_connections.clear()
+        self._inbound_peer_connections.clear()
+        self.clients.clear()
+
+        # Close any tracked PubSub clients
+        if self.pubsub_clients:
+            for client_id, transport in list(self.pubsub_clients.items()):
+                try:
+                    await transport.disconnect()
+                except Exception as e:
+                    logger.debug(
+                        f"[{self.settings.name}] Error closing pubsub client {client_id}: {e}"
+                    )
+            self.pubsub_clients.clear()
+            self.subscription_to_client.clear()
 
         # Stop consensus manager
         try:
@@ -1351,20 +3290,20 @@ class MPREGServer:
             logger.info(
                 f"[{self.settings.name}] Performing cleanup of {len(self._background_tasks)} background tasks..."
             )
+            cleanup_rounds = 0
+            while self._background_tasks and cleanup_rounds < 3:
+                cleanup_rounds += 1
+                # Create a copy of the task set to avoid set size changes during iteration
+                tasks_to_cleanup = list(self._background_tasks)
 
-            # Create a copy of the task set to avoid set size changes during iteration
-            tasks_to_cleanup = list(self._background_tasks)
+                # Clear the set immediately to capture any new tasks in the next round
+                self._background_tasks.clear()
 
-            # Clear the set immediately to prevent any new additions
-            self._background_tasks.clear()
-
-            # Give tasks a brief moment to respond to shutdown event (already set at line 1205)
-            if tasks_to_cleanup:
                 try:
-                    # Short grace period for tasks to respond to shutdown event
+                    grace_period = max(0.2, min(1.0, len(tasks_to_cleanup) * 0.05))
                     done, pending = await asyncio.wait(
                         tasks_to_cleanup,
-                        timeout=0.1,  # Very brief - just one event loop cycle
+                        timeout=grace_period,
                         return_when=asyncio.ALL_COMPLETED,
                     )
 
@@ -1377,10 +3316,6 @@ class MPREGServer:
                         # Wait for cancelled tasks to complete
                         await asyncio.gather(*pending, return_exceptions=True)
 
-                    logger.debug(
-                        f"[{self.settings.name}] All {len(tasks_to_cleanup)} background tasks cleaned up"
-                    )
-
                 except Exception as e:
                     logger.warning(
                         f"[{self.settings.name}] Error during task cleanup: {e}"
@@ -1391,22 +3326,91 @@ class MPREGServer:
                             task.cancel()
                     await asyncio.gather(*tasks_to_cleanup, return_exceptions=True)
 
-        # Close WebSocket server
-        if self._websocket_server:
+            # Final pass for any tasks added during shutdown
+            if self._background_tasks:
+                leftover_tasks = list(self._background_tasks)
+                self._background_tasks.clear()
+                for task in leftover_tasks:
+                    if not task.done():
+                        task.cancel()
+                await asyncio.gather(*leftover_tasks, return_exceptions=True)
+
+        if self._cache_manager is not None:
             try:
-                self._websocket_server.close()
-                await self._websocket_server.wait_closed()
-                logger.debug(f"[{self.settings.name}] Closed WebSocket server")
+                await self._cache_manager.shutdown()
             except Exception as e:
                 logger.warning(
-                    f"[{self.settings.name}] Error closing WebSocket server: {e}"
+                    f"[{self.settings.name}] Error shutting down cache manager: {e}"
                 )
+
+        if self._fabric_queue_delivery is not None:
+            try:
+                await self._fabric_queue_delivery.shutdown()
+            except Exception as e:
+                logger.warning(
+                    f"[{self.settings.name}] Error shutting down fabric queue delivery: {e}"
+                )
+
+        if self._queue_manager is not None:
+            try:
+                await self._queue_manager.shutdown()
+            except AttributeError:
+                pass
+            except Exception as e:
+                logger.warning(
+                    f"[{self.settings.name}] Error shutting down queue manager: {e}"
+                )
+
+        if self._persistence_registry is not None:
+            try:
+                await self._persistence_registry.close()
+            except Exception as e:
+                logger.warning(
+                    f"[{self.settings.name}] Error shutting down persistence registry: {e}"
+                )
+
+        # Close transport listener
+        if self._transport_listener:
+            try:
+                await self._transport_listener.stop()
+                logger.debug(f"[{self.settings.name}] Closed transport listener")
+            except Exception as e:
+                logger.warning(
+                    f"[{self.settings.name}] Error closing transport listener: {e}"
+                )
+
+        await self._stop_monitoring_services()
+
+        if self._auto_allocated_monitoring_port is not None:
+            try:
+                from .core.port_allocator import release_port
+
+                release_port(self._auto_allocated_monitoring_port)
+            except Exception as e:
+                logger.warning(
+                    f"[{self.settings.name}] Error releasing monitoring port: {e}"
+                )
+            finally:
+                self._auto_allocated_monitoring_port = None
+
+        if self._auto_allocated_port is not None:
+            try:
+                from .core.port_allocator import release_port
+
+                release_port(self._auto_allocated_port)
+            except Exception as e:
+                logger.warning(
+                    f"[{self.settings.name}] Error releasing server port: {e}"
+                )
+            finally:
+                self._auto_allocated_port = None
 
         logger.info(f"[{self.settings.name}] Async shutdown completed")
 
         # Clean up logger handler to prevent event loop errors
         try:
-            logger.remove(self._logger_handler_id)
+            for handler_id in self._logger_handler_ids:
+                logger.remove(handler_id)
         except ValueError:
             # Handler already removed
             pass
@@ -1418,17 +3422,378 @@ class MPREGServer:
         # logger.info("Funs: {}", pp.pformat(self.settings.funs)) # Removed as funs is no longer in settings
         logger.info("Clients: {}", pp.pformat(self.clients))
 
+    def _get_peers_snapshot(self) -> list[dict[str, Any]]:
+        """Return a JSON-safe snapshot of current peer info."""
+        peers = []
+        if not self._peer_directory:
+            return peers
+        for node in self._peer_directory.nodes():
+            if node.node_id == self.cluster.local_url:
+                continue
+            status = self.peer_status.get(node.node_id)
+            funs, locs = self._peer_function_snapshot(node.node_id)
+            peers.append(
+                {
+                    "url": node.node_id,
+                    "funs": list(funs),
+                    "locs": sorted(locs),
+                    "last_seen": node.advertised_at,
+                    "cluster_id": node.cluster_id,
+                    "advertised_urls": [],
+                    "status": status.status if status else "unknown",
+                    "status_timestamp": status.timestamp if status else None,
+                }
+            )
+        return sorted(peers, key=lambda peer: peer["url"])
+
+    def _current_function_catalog(self) -> tuple[RPCFunctionDescriptor, ...]:
+        if not self._local_function_registry:
+            return tuple()
+        catalog: list[RPCFunctionDescriptor] = []
+        for registration in self._local_function_registry.registrations():
+            catalog.append(
+                RPCFunctionDescriptor(
+                    name=registration.identity.name,
+                    function_id=registration.identity.function_id,
+                    version=str(registration.identity.version),
+                    resources=tuple(sorted(registration.resources)),
+                )
+            )
+        return tuple(catalog)
+
+    def _register_cache_fabric_peer(self, peer_url: str) -> None:
+        # Cache federation peer coordination is handled by the transport layer.
+        return
+
+    def _remove_cache_fabric_peer(self, peer_url: str) -> None:
+        # Cache federation peer coordination is handled by the transport layer.
+        return
+
+    def _track_inbound_peer_connection(
+        self, peer_url: str, connection: Connection
+    ) -> None:
+        if peer_url == self.cluster.local_url:
+            return
+        existing = self._inbound_peer_connections.get(peer_url)
+        if existing is connection:
+            return
+        self._inbound_peer_connections[peer_url] = connection
+        event = ConnectionEvent.established(peer_url, self.cluster.local_url)
+        self.cluster.connection_event_bus.publish(event)
+        self._schedule_catalog_snapshot(peer_url)
+
+    def _drop_inbound_peer_connection(
+        self, peer_url: str, connection: Connection
+    ) -> None:
+        existing = self._inbound_peer_connections.get(peer_url)
+        if existing is connection:
+            del self._inbound_peer_connections[peer_url]
+            event = ConnectionEvent.lost(peer_url, self.cluster.local_url)
+            self.cluster.connection_event_bus.publish(event)
+
+    def _schedule_catalog_snapshot(self, peer_url: str) -> None:
+        if not self._fabric_control_plane or not self._fabric_gossip_transport:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        self._track_background_task(
+            loop.create_task(self._send_catalog_snapshot_to_peer(peer_url))
+        )
+
+    async def _send_catalog_snapshot_to_peer(self, peer_url: str) -> None:
+        if (
+            not self._fabric_control_plane
+            or not self._fabric_gossip_transport
+            or peer_url == self.cluster.local_url
+        ):
+            return
+        import uuid
+
+        from mpreg.fabric.catalog_delta import RoutingCatalogDelta
+        from mpreg.fabric.gossip import GossipMessage, GossipMessageType
+
+        now = time.time()
+        catalog = self._fabric_control_plane.catalog
+        delta = RoutingCatalogDelta(
+            update_id=f"catalog-snapshot:{uuid.uuid4()}",
+            cluster_id=self.settings.cluster_id,
+            sent_at=now,
+            functions=catalog.functions.entries(now=now),
+            topics=tuple(catalog.topics.entries(now=now)),
+            queues=tuple(catalog.queues.entries(now=now)),
+            caches=tuple(catalog.caches.entries(now=now)),
+            cache_profiles=tuple(catalog.cache_profiles.entries(now=now)),
+            nodes=tuple(catalog.nodes.entries(now=now)),
+        )
+        if not (
+            delta.functions
+            or delta.topics
+            or delta.queues
+            or delta.caches
+            or delta.cache_profiles
+            or delta.nodes
+        ):
+            return
+        gossip = self._fabric_control_plane.gossip
+        message = GossipMessage(
+            message_id=f"{gossip.node_id}:snapshot:{uuid.uuid4()}",
+            message_type=GossipMessageType.CATALOG_UPDATE,
+            sender_id=gossip.node_id,
+            payload=delta.to_dict(),
+            vector_clock=gossip.vector_clock.copy(),
+            sequence_number=gossip.protocol_stats.messages_created,
+            ttl=0,
+            max_hops=0,
+        )
+        gossip.protocol_stats.messages_created += 1
+        await self._fabric_gossip_transport.send_message(peer_url, message)
+
+    def _get_all_peer_connections(self) -> dict[str, Connection]:
+        connections = dict(self.peer_connections)
+        for peer_url, connection in self._inbound_peer_connections.items():
+            if peer_url not in connections or not connections[peer_url].is_connected:
+                connections[peer_url] = connection
+        return connections
+
+    async def _close_peer_connection(self, peer_url: str) -> None:
+        for connection_map in (self.peer_connections, self._inbound_peer_connections):
+            connection = connection_map.get(peer_url)
+            if not connection:
+                continue
+            try:
+                await connection.disconnect()
+                logger.info(
+                    f"[{self.settings.name}] Closed connection to peer {peer_url}"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"[{self.settings.name}] Error closing connection to {peer_url}: {e}"
+                )
+            finally:
+                if peer_url in connection_map:
+                    del connection_map[peer_url]
+
+    def _peer_function_snapshot(
+        self, peer_url: str
+    ) -> tuple[tuple[str, ...], frozenset[str]]:
+        functions: set[str] = set()
+        resources: set[str] = set()
+        if self._fabric_control_plane:
+            catalog = self._fabric_control_plane.index.catalog
+            for endpoint in catalog.functions.entries():
+                if endpoint.node_id == peer_url:
+                    functions.add(endpoint.identity.name)
+                    resources.update(endpoint.resources)
+        if self._peer_directory:
+            node = self._peer_directory.node_for_id(peer_url)
+            if node:
+                resources.update(node.resources)
+        return tuple(sorted(functions)), frozenset(resources)
+
+    def _record_departed_peer(self, goodbye: RPCServerGoodbye) -> None:
+        ttl = self.settings.goodbye_reconnect_grace_seconds
+        if ttl <= 0:
+            return
+        self._departed_peers[goodbye.departing_node_url] = DepartedPeer(
+            node_url=goodbye.departing_node_url,
+            instance_id=goodbye.instance_id or "",
+            cluster_id=goodbye.cluster_id,
+            reason=goodbye.reason,
+            departed_at=goodbye.timestamp,
+            ttl_seconds=ttl,
+        )
+        logger.debug(
+            "[{}] Recorded departed peer: node_url={} cluster_id={} reason={} ttl={}",
+            self.settings.name,
+            goodbye.departing_node_url,
+            goodbye.cluster_id,
+            goodbye.reason.value,
+            ttl,
+        )
+
+    def _record_and_apply_departure(self, goodbye: RPCServerGoodbye) -> None:
+        goodbye_log = logger
+        before_nodes = ()
+        if self._peer_directory:
+            before_nodes = tuple(node.node_id for node in self._peer_directory.nodes())
+        self._record_departed_peer(goodbye)
+        self._apply_remote_departure(
+            server_url=goodbye.departing_node_url,
+            cluster_id=goodbye.cluster_id,
+        )
+        if self._peer_directory:
+            self._peer_directory.remove_node_by_id(goodbye.departing_node_url)
+            after_nodes = tuple(node.node_id for node in self._peer_directory.nodes())
+            goodbye_log.debug(
+                "[{}] Applied departure cleanup: node_url={} before={} after={} nodes={}",
+                self.settings.name,
+                goodbye.departing_node_url,
+                len(before_nodes),
+                len(after_nodes),
+                after_nodes,
+            )
+
+    def _prune_departed_peers(self, now: float | None = None) -> None:
+        timestamp = now if now is not None else time.time()
+        expired = [
+            node_url
+            for node_url, record in self._departed_peers.items()
+            if record.is_expired(timestamp)
+        ]
+        for node_url in expired:
+            self._departed_peers.pop(node_url, None)
+
+    def _is_peer_departed(self, peer_url: str, instance_id: str | None = None) -> bool:
+        record = self._departed_peers.get(peer_url)
+        if record is None:
+            return False
+        if record.is_expired():
+            self._departed_peers.pop(peer_url, None)
+            return False
+        if instance_id and record.instance_id and instance_id != record.instance_id:
+            self._departed_peers.pop(peer_url, None)
+            return False
+        return True
+
+    def _handle_remote_status(
+        self, status: RPCServerStatus, *, connection: Connection | None = None
+    ) -> bool:
+        if self._is_peer_departed(status.server_url, status.instance_id or None):
+            if connection is not None:
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    loop = None
+                if loop is not None:
+                    self._track_background_task(
+                        asyncio.create_task(
+                            self._close_peer_connection(status.server_url)
+                        )
+                    )
+            return False
+        self.peer_status[status.server_url] = status
+        if status.instance_id:
+            self._peer_instance_ids[status.server_url] = status.instance_id
+        return True
+
+    def _apply_remote_departure(self, *, server_url: str, cluster_id: str) -> None:
+        if not self._fabric_control_plane:
+            return
+        from mpreg.fabric.catalog import NodeKey
+        from mpreg.fabric.catalog_delta import RoutingCatalogDelta
+
+        timestamp = time.time()
+        catalog = self._fabric_control_plane.index.catalog
+        cluster_ids = {cluster_id}
+        if self._peer_directory:
+            node = self._peer_directory.node_for_id(server_url)
+            if node:
+                cluster_ids.add(node.cluster_id)
+        for node in catalog.nodes.entries():
+            if node.node_id == server_url:
+                cluster_ids.add(node.cluster_id)
+
+        function_removals = []
+        topic_removals = []
+        queue_removals = []
+        cache_removals = []
+        cache_profile_removals = []
+
+        for endpoint in catalog.functions.entries():
+            if endpoint.node_id == server_url:
+                cluster_ids.add(endpoint.cluster_id)
+                function_removals.append(endpoint.key())
+        for subscription in catalog.topics.entries():
+            if subscription.node_id == server_url:
+                cluster_ids.add(subscription.cluster_id)
+                topic_removals.append(subscription.subscription_id)
+        for endpoint in catalog.queues.entries():
+            if endpoint.node_id == server_url:
+                cluster_ids.add(endpoint.cluster_id)
+                queue_removals.append(endpoint.key())
+        for entry in catalog.caches.entries():
+            if entry.node_id == server_url:
+                cluster_ids.add(entry.cluster_id)
+                cache_removals.append(entry.key())
+        for profile in catalog.cache_profiles.entries():
+            if profile.node_id == server_url:
+                cluster_ids.add(profile.cluster_id)
+                cache_profile_removals.append(profile.key())
+
+        delta = RoutingCatalogDelta(
+            update_id=str(ulid.new()),
+            cluster_id=cluster_id,
+            sent_at=timestamp,
+            function_removals=tuple(function_removals),
+            topic_removals=tuple(topic_removals),
+            queue_removals=tuple(queue_removals),
+            cache_removals=tuple(cache_removals),
+            cache_profile_removals=tuple(cache_profile_removals),
+            node_removals=(
+                tuple(
+                    NodeKey(cluster_id=cid, node_id=server_url)
+                    for cid in sorted(cluster_ids)
+                )
+                or (NodeKey(cluster_id=cluster_id, node_id=server_url),)
+            ),
+        )
+        counts = self._fabric_control_plane.applier.apply(delta, now=timestamp)
+        logger.debug(
+            "[{}] Applied catalog departure delta: node_url={} counts={}",
+            self.settings.name,
+            server_url,
+            counts,
+        )
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        self._track_background_task(
+            loop.create_task(
+                self._fabric_control_plane.broadcaster.publisher.publish(delta)
+            )
+        )
+
+    def _mark_peer_disconnected(self, peer_url: str) -> None:
+        funs, locs = self._peer_function_snapshot(peer_url)
+        cluster_id = (
+            self._peer_directory.cluster_id_for_node(peer_url)
+            if self._peer_directory
+            else None
+        )
+        self.peer_status[peer_url] = RPCServerStatus(
+            server_url=peer_url,
+            cluster_id=cluster_id or self.settings.cluster_id,
+            status="disconnected",
+            active_clients=0,
+            peer_count=len(self._peer_directory.nodes()) if self._peer_directory else 0,
+            funs=funs,
+            locs=locs,
+            advertised_urls=tuple(),
+            metrics={"disconnected": True},
+        )
+
+    def _track_background_task(self, task: asyncio.Task[Any]) -> None:
+        """Track background tasks for shutdown cleanup."""
+        if self._shutdown_event.is_set():
+            task.cancel()
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+
     def _register_default_commands(self) -> None:
         """Registers the default RPC commands (echo, echos).
 
         NOTE: These functions are also decorated with @rpc_command, so we skip
         manual registration to avoid duplicates. They will be auto-discovered.
         """
-        logger.info(
+        logger.debug(
             f"🚀 {self.settings.name}: _register_default_commands() called - skipping echo/echos (auto-discovered)"
         )
         # Skip manual registration - echo and echos are @rpc_command decorated
         # and will be automatically discovered by _discover_and_register_rpc_commands()
+        self.register_command("list_peers", self._get_peers_snapshot, [])
 
     def _discover_and_register_rpc_commands(self) -> None:
         """Discovers and registers RPC commands defined using the @rpc_command decorator.
@@ -1436,7 +3801,7 @@ class MPREGServer:
         This method inspects the current module's global namespace for functions
         that have been decorated with @rpc_command and registers them with the server.
         """
-        logger.info(
+        logger.debug(
             f"🔍 {self.settings.name}: _discover_and_register_rpc_commands() called"
         )
         for name in dir(sys.modules[__name__]):
@@ -1445,7 +3810,7 @@ class MPREGServer:
                 rpc_name = obj._rpc_command_name
                 rpc_resources = obj._rpc_command_resources
                 self.register_command(rpc_name, obj, rpc_resources)
-                logger.info(
+                logger.debug(
                     "Registered RPC command: {} with resources {}",
                     rpc_name,
                     rpc_resources,
@@ -1459,136 +3824,33 @@ class MPREGServer:
         """Run a server-to-server command in the cluster.
 
         This method handles incoming server-to-server communication, such as
-        new server announcements (HELLO), graceful shutdowns (GOODBYE), or
-        status updates (STATUS).
+        graceful shutdowns (GOODBYE) or status updates (STATUS).
         """
         try:
             # The 'what' field in the server message determines the action.
             # This uses Pydantic's validation to ensure the message structure is correct.
             match req.server.what:
-                case "HELLO":
-                    # A new server is announcing its capabilities.
-                    # Add its functions and locations to the cluster's funtimes mapping.
-                    # Use the server's advertised URL instead of the connection's remote address
-                    # For federated announcements, use original_source as the server URL
-                    if req.server.hop_count > 0 and req.server.original_source:
-                        server_url = req.server.original_source
-                    else:
-                        server_url = (
-                            req.server.advertised_urls[0]
-                            if req.server.advertised_urls
-                            else server_connection.url
-                        )
-                    # Increment our logical clock for this peer update
-                    self.logical_clock = self.logical_clock.increment(
-                        self.cluster.local_url
-                    )
-
-                    peer_info = PeerInfo(
-                        url=server_url,
-                        funs=req.server.funs,
-                        locs=frozenset(req.server.locs),
-                        last_seen=time.time(),
-                        cluster_id=req.server.cluster_id,
-                        advertised_urls=req.server.advertised_urls,
-                        logical_clock=self.logical_clock.to_dict(),
-                    )
-
-                    # GOODBYE Protocol: Allow immediate re-entry with new HELLO
-                    # Remove from departed peers list if this peer is reconnecting
-                    was_departed = server_url in self.cluster._departed_peers
-                    if was_departed:
-                        del self.cluster._departed_peers[server_url]
-                        logger.info(
-                            f"[{self.settings.name}] Allowing re-entry for previously departed peer {server_url} via new HELLO"
-                        )
-                        # Broadcast this re-entry to all other nodes via gossip
-                        asyncio.create_task(self._broadcast_peer_reentry(peer_info))
-
-                    self.cluster.add_fun_ability(peer_info)
-
-                    # Schedule function confirmation publishing as background task
-                    asyncio.create_task(
-                        self._publish_function_confirmation(
-                            req.server.funs, req.server.announcement_id
-                        )
-                    )
-
-                    # Handle federated forwarding for each function if this has hop information
-                    if req.server.hop_count is not None and req.server.announcement_id:
-                        for fun_name in req.server.funs:
-                            # Forward to other peers if within hop limit and not looping back
-                            # Only forward across federation boundaries (different cluster_id)
-                            should_forward = (
-                                req.server.hop_count < req.server.max_hops
-                                and req.server.original_source != self.cluster.local_url
-                                and req.server.cluster_id != self.settings.cluster_id
-                            )
-
-                            # Debug logging removed - hop count limiting now working correctly
-
-                            if should_forward:
-                                try:
-                                    # Create forwarding task for each function
-                                    task = asyncio.create_task(
-                                        self._broadcast_new_function(
-                                            fun_name,
-                                            req.server.locs,
-                                            hop_count=req.server.hop_count + 1,
-                                            max_hops=req.server.max_hops,
-                                            announcement_id=req.server.announcement_id,
-                                            original_source=req.server.original_source,
-                                        )
-                                    )
-                                    self._background_tasks.add(task)
-                                    # Remove task from tracking when it completes
-                                    task.add_done_callback(
-                                        self._background_tasks.discard
-                                    )
-                                    logger.info(
-                                        f"Forwarding federated announcement: {fun_name} (hop {req.server.hop_count + 1})"
-                                    )
-                                except RuntimeError:
-                                    # No event loop - this is normal during initialization
-                                    pass
-
-                    # 🔥 BIDIRECTIONAL HELLO: Send our own HELLO back to the connecting server
-                    # This ensures PRE-CONNECTION functions are shared when cluster forms
-                    try:
-                        if (
-                            req.server.hop_count == 0
-                        ):  # Only respond to direct connections, not forwarded announcements
-                            logger.info(
-                                f"📡 Sending bidirectional HELLO back to {server_url}"
-                            )
-                            asyncio.create_task(
-                                self._send_hello_response(server_connection)
-                            )
-                    except RuntimeError:
-                        # No event loop during initialization - skip bidirectional response
-                        pass
-
-                    return RPCResponse(r="ADDED", u=req.u)
                 case "GOODBYE":
                     # A server is gracefully shutting down.
                     # Handle the GOODBYE message properly with cleanup
                     sender_url = req.server.departing_node_url
 
                     # Process GOODBYE message asynchronously
-                    asyncio.create_task(
-                        self._handle_goodbye_message(req.server, sender_url)
+                    self._record_and_apply_departure(req.server)
+                    self._track_background_task(
+                        asyncio.create_task(
+                            self._handle_goodbye_message(
+                                req.server, sender_url, record_departure=False
+                            )
+                        )
                     )
 
                     return RPCResponse(r="GOODBYE_PROCESSED", u=req.u)
                 case "STATUS":
                     # A server is sending a status update (e.g., for gossip protocol).\
-                    # TODO: Implement actual status processing.
+                    status = req.server
+                    self._handle_remote_status(status)
                     return RPCResponse(r="STATUS", u=req.u)
-                case "HELLO_ACK":
-                    # A server is acknowledging receipt and processing of a HELLO message
-                    ack = req.server  # This is an RPCServerHelloAck
-                    asyncio.create_task(self._handle_function_confirmation(ack))
-                    return RPCResponse(r="ACK_RECEIVED", u=req.u)
                 case _:
                     # Handle unknown server message types.
                     return RPCResponse(
@@ -1621,6 +3883,8 @@ class MPREGServer:
         Supports enhanced debugging features including intermediate results
         and execution summaries based on request parameters.
         """
+        start_time = time.time()
+        success = False
         try:
             # Create an RPC object from the incoming request. This handles
             # the topological sorting of commands.
@@ -1640,6 +3904,7 @@ class MPREGServer:
                     execution_summary,
                 ) = await self.cluster.run_with_intermediate_results(rpc, req)
 
+                success = True
                 return RPCResponse(
                     r=result,
                     u=req.u,
@@ -1648,7 +3913,9 @@ class MPREGServer:
                 )
             else:
                 # Use standard execution for backward compatibility
-                return RPCResponse(r=await self.cluster.run(rpc), u=req.u)
+                response = RPCResponse(r=await self.cluster.run(rpc), u=req.u)
+                success = True
+                return response
 
         except Exception as e:
             # Catch any exceptions during RPC execution and return an error response.
@@ -1662,253 +3929,190 @@ class MPREGServer:
                 ),
                 u=req.u,
             )
+        finally:
+            duration_ms = (time.time() - start_time) * 1000.0
+            self._metrics_tracker.record_rpc(duration_ms, success)
 
     @logger.catch
-    async def opened(
-        self, websocket: websockets.server.WebSocketServerProtocol
-    ) -> None:
-        """Handles a new incoming websocket connection.
+    async def opened(self, transport: TransportInterface) -> None:
+        """Handles a new incoming transport connection.
 
         This method is the entry point for all incoming messages, routing them
         to the appropriate handler based on their 'role'.
         """
-        # Create a Connection object for the incoming websocket.
-        # Construct proper WebSocket URL from remote address
-        remote_host, remote_port = websocket.remote_address
-        connection = Connection(url=f"ws://{remote_host}:{remote_port}")
-        connection.websocket = (
-            websocket  # Assign the raw websocket to the connection object
-        )
+        peer_label = transport.url
+        connection = Connection.from_transport(transport, url=peer_label)
+        peer_url: str | None = None
+        peer_cluster_id: str | None = None
+        peer_node_id: str | None = None
+        is_server_connection = False
 
         try:
             self.clients.add(connection)
-            async for msg in websocket:
+            while not self._shutdown_event.is_set():
+                try:
+                    msg = await transport.receive()
+                except TransportConnectionError:
+                    break
+                except Exception as exc:
+                    logger.warning(
+                        "[{}] Transport receive failed: {}",
+                        peer_label,
+                        exc,
+                    )
+                    break
+                if msg is None:
+                    break
                 # Attempt to parse the incoming message into a Pydantic model.
                 # This provides automatic validation and type conversion.
                 parsed_msg = self.serializer.deserialize(
                     msg.encode("utf-8") if isinstance(msg, str) else msg
                 )
 
-                # logger.info("[{}:{}] Received: {}", websocket.host, websocket.port, parsed_msg)
+                # logger.info("[{}] Received: {}", peer_label, parsed_msg)
 
-                response_model: RPCResponse | RPCInternalAnswer | PubSubAck | None = (
-                    None
-                )
+                response_model: RPCResponse | PubSubAck | None = None
+                close_connection = False
                 match parsed_msg.get("role"):
                     case "server":
                         # SERVER-TO-SERVER communications packet
                         # (joining/leaving cluster, gossip updates of servers attached to other servers)
                         server_request = RPCServerRequest.model_validate(parsed_msg)
-                        logger.info(
-                            "[{}:{}] Server message: {}",
-                            *websocket.remote_address,
+                        logger.debug(
+                            "[{}] Server message: {}",
+                            peer_label,
                             server_request.model_dump_json(),
                         )
-                        # Use federation manager for HELLO message authorization
-                        if server_request.server.what == "HELLO":
+                        remote_cluster_id = None
+                        remote_node_id = None
+                        peer_url = None
+                        status_data: dict[str, Any] = {}
+
+                        if isinstance(server_request.server, RPCServerStatus):
                             remote_cluster_id = server_request.server.cluster_id
-                            remote_node_id = (
-                                websocket.remote_address[0]
-                                if websocket.remote_address
-                                else "unknown"
-                            )
-                            remote_url = (
-                                f"ws://{remote_node_id}:{websocket.remote_address[1]}"
-                                if websocket.remote_address
-                                else "unknown"
-                            )
+                            peer_url = server_request.server.server_url
+                            remote_node_id = peer_url
+                            status_data = {
+                                "functions": list(server_request.server.funs),
+                                "locations": list(server_request.server.locs),
+                            }
+                        elif isinstance(server_request.server, RPCServerGoodbye):
+                            remote_cluster_id = server_request.server.cluster_id
+                            peer_url = server_request.server.departing_node_url
+                            remote_node_id = peer_url
 
-                            decision = self.federation_manager.handle_connection_hello(
-                                remote_cluster_id=remote_cluster_id,
-                                remote_node_id=remote_node_id,
-                                remote_url=remote_url,
-                                local_cluster_id=self.settings.cluster_id,
-                                local_node_id=self.settings.name,
-                                hello_data={
-                                    "functions": list(server_request.server.funs),
-                                    "locations": list(server_request.server.locs),
-                                    "advertised_urls": list(
-                                        server_request.server.advertised_urls
-                                    ),
-                                },
-                            )
-
-                            if not decision.allowed:
-                                logger.info(
-                                    "[{}:{}] Rejected HELLO from cluster '{}': {}",
-                                    *websocket.remote_address,
-                                    remote_cluster_id,
-                                    decision.error_message,
-                                )
+                        if peer_url and not is_server_connection:
+                            if isinstance(
+                                server_request.server, RPCServerStatus
+                            ) and self._is_peer_departed(
+                                peer_url,
+                                server_request.server.instance_id or None,
+                            ):
                                 response_model = RPCResponse(
                                     r=None,
                                     error=RPCError(
                                         code=1003,
-                                        message=decision.error_message,
+                                        message="Peer is marked departed",
                                     ),
                                     u=server_request.u,
                                 )
+                                close_connection = True
                             else:
-                                # Process the HELLO normally
-                                response_model = self.run_server(
-                                    connection, server_request
-                                )
-
-                                # Notify federation manager of successful connection
-                                if remote_cluster_id != self.settings.cluster_id:
-                                    self.federation_manager.notify_connection_established(
-                                        remote_cluster_id, remote_node_id, remote_url
+                                decision = (
+                                    self.federation_manager.handle_connection_status(
+                                        remote_cluster_id=remote_cluster_id or "",
+                                        remote_node_id=remote_node_id or peer_url,
+                                        remote_url=peer_url,
+                                        local_cluster_id=self.settings.cluster_id,
+                                        local_node_id=self.settings.name,
+                                        status_data=status_data,
                                     )
-                        else:
-                            # Non-HELLO server messages processed normally
+                                )
+                                if not decision.allowed:
+                                    logger.info(
+                                        "[{}] Rejected server message from cluster '{}': {}",
+                                        peer_label,
+                                        remote_cluster_id,
+                                        decision.error_message,
+                                    )
+                                    response_model = RPCResponse(
+                                        r=None,
+                                        error=RPCError(
+                                            code=1003,
+                                            message=decision.error_message,
+                                        ),
+                                        u=server_request.u,
+                                    )
+                                    close_connection = True
+                                else:
+                                    peer_cluster_id = remote_cluster_id
+                                    peer_node_id = remote_node_id
+                                    connection.url = peer_url
+                                    is_server_connection = True
+                                    self._track_inbound_peer_connection(
+                                        peer_url, connection
+                                    )
+                                    self._register_cache_fabric_peer(peer_url)
+
+                                    if (
+                                        remote_cluster_id
+                                        and remote_cluster_id
+                                        != self.settings.cluster_id
+                                    ):
+                                        self.federation_manager.notify_connection_established(
+                                            remote_cluster_id,
+                                            remote_node_id or peer_url,
+                                            peer_url,
+                                        )
+                                        self._register_fabric_graph_peer(
+                                            remote_cluster_id
+                                        )
+                                    if isinstance(
+                                        server_request.server, RPCServerStatus
+                                    ):
+                                        await self._send_status_to_connection(
+                                            connection
+                                        )
+
+                        if response_model is None:
                             response_model = self.run_server(connection, server_request)
 
                     case "rpc":
                         # CLIENT request
                         rpc_request = RPCRequest.model_validate(parsed_msg)
-                        logger.info(
-                            "[{}:{} :: {}] Running request...",
-                            *websocket.remote_address,
+                        logger.debug(
+                            "[{} :: {}] Running request...",
+                            peer_label,
                             rpc_request.u,
                         )
                         response_model = await self.run_rpc(rpc_request)
-                    case "internal-answer":
-                        # REPLY from a previous INTERNAL-RPC request
-                        internal_answer = RPCInternalAnswer.model_validate(parsed_msg)
+                    case "fabric-gossip":
+                        envelope = FabricGossipEnvelope.model_validate(parsed_msg)
+                        if self._fabric_control_plane:
+                            from mpreg.fabric.gossip import (
+                                GossipMessage as FabricGossipMessage,
+                            )
 
-                        # add answer globally for the consumer to read again
-                        self.cluster.answer[internal_answer.u] = internal_answer.answer
-
-                        # notify the waiting process we have an answer now
-                        self.cluster.waitingFor[internal_answer.u].set()
-
-                        # logger.info("[{}] Processed Internal Answer: {}", internal_answer.u, internal_answer.answer)
-
-                        # no result here, this is returned upstream elsewhere
-                        continue
-                    case "internal-rpc":
-                        # FORWARDED REQUEST from ANOTHER SERVER in MID-RPC mode.
-                        # We know this request is FOR US since it was sent TO US directly.
-                        internal_rpc = RPCInternalRequest.model_validate(parsed_msg)
-                        command = internal_rpc.command
-                        args = internal_rpc.args
-                        kwargs = internal_rpc.kwargs
-                        results = internal_rpc.results
-                        u = internal_rpc.u
-
-                        logger.info(
-                            "Received internal-rpc request: command={}, u={}, args={}",
-                            command,
-                            u,
-                            args,
-                        )
-
-                        # Resolve arguments using available results (though they should already be resolved)
-                        resolved_args, resolved_kwargs = (
-                            self.cluster._resolve_arguments(args, kwargs, results)
-                        )
-
-                        # Validate argument types for common problematic patterns
-                        for i, arg in enumerate(resolved_args):
-                            if isinstance(arg, dict | list) and len(str(arg)) > 200:
-                                logger.warning(
-                                    "Large complex object passed to function: command={}, arg[{}]={}, type={}. "
-                                    "Consider if function expects simple values instead of complex objects.",
-                                    command,
-                                    i,
-                                    type(arg).__name__,
-                                    type(arg).__name__,
+                            message = FabricGossipMessage.from_dict(envelope.payload)
+                            if not is_server_connection and message.sender_id:
+                                peer_url = message.sender_id
+                                peer_node_id = message.sender_id
+                                connection.url = peer_url
+                                is_server_connection = True
+                                self._track_inbound_peer_connection(
+                                    peer_url, connection
                                 )
-
-                        # Generate RESULT PAYLOAD
-                        try:
-                            command_obj = self.registry.get(command)
-                            answer_payload = await command_obj.call_async(
-                                *resolved_args, **resolved_kwargs
-                            )
-                        except Exception as e:
-                            logger.error(
-                                "Function execution failed: command={}, u={}, error={}, args_types={}",
-                                command,
-                                u,
-                                str(e),
-                                [type(arg).__name__ for arg in resolved_args],
-                            )
-                            # Send a detailed error response instead of hanging
-                            response_model = RPCInternalAnswer(
-                                answer={
-                                    "error": str(e),
-                                    "command": command,
-                                    "arg_types": [
-                                        type(arg).__name__ for arg in resolved_args
-                                    ],
-                                    "error_type": type(e).__name__,
-                                },
-                                u=u,
-                            )
-                            continue
-                        response_model = RPCInternalAnswer(answer=answer_payload, u=u)
-
-                        logger.info(
-                            "Generated internal answer: u={}, answer={}",
-                            u,
-                            answer_payload,
-                        )
-
-                    case "gossip":
-                        # Incoming gossip message from a peer.
-                        gossip_message = GossipMessage.model_validate(parsed_msg)
-                        # Use federation manager to determine if gossip should be processed
-                        if gossip_message.cluster_id != self.settings.cluster_id:
-                            # Check if cross-federation gossip is allowed
-                            auth_result = self.federation_manager.federation_manager.config.is_cross_federation_connection_allowed(
-                                gossip_message.cluster_id
-                            )
-                            if auth_result.name.startswith("REJECTED"):
-                                logger.debug(
-                                    "[{}:{}] Ignoring gossip from different cluster ID '{}' (federation policy: {})",
-                                    *websocket.remote_address,
-                                    gossip_message.cluster_id,
-                                    self.federation_manager.federation_manager.config.federation_mode.value,
+                                peer_cluster_id = self.cluster.cluster_id_for_node_url(
+                                    peer_url
                                 )
-                                continue  # Ignore gossip from different cluster per federation policy
-                            else:
-                                logger.debug(
-                                    "[{}:{}] Processing cross-federation gossip from cluster '{}'",
-                                    *websocket.remote_address,
-                                    gossip_message.cluster_id,
-                                )
-                        self.cluster.process_gossip_message(gossip_message)
-                        # Update consensus manager with new peer information
-                        self._update_consensus_known_nodes()
-                        # Gossip messages do not typically require a direct response.
-                        continue
-
-                    case "pubsub-gossip":
-                        # Handle pub/sub gossip messages with topic advertisements
-                        pubsub_gossip = PubSubGossip.model_validate(parsed_msg)
-                        # Enforce cluster_id matching for pub/sub gossip messages
-                        if pubsub_gossip.cluster_id != self.settings.cluster_id:
-                            logger.warning(
-                                "[{}:{}] Received pub/sub gossip from different cluster ID: Expected {}, Got {}",
-                                *websocket.remote_address,
-                                self.cluster.cluster_id,
-                                pubsub_gossip.cluster_id,
+                                if (
+                                    peer_cluster_id
+                                    and peer_cluster_id != self.settings.cluster_id
+                                ):
+                                    self._register_fabric_graph_peer(peer_cluster_id)
+                            await self._fabric_control_plane.gossip.handle_received_message(
+                                message
                             )
-                            continue  # Ignore gossip from different cluster
-
-                        # Process regular gossip information
-                        self.cluster.process_gossip_message(
-                            GossipMessage(
-                                peers=pubsub_gossip.peers,
-                                u=pubsub_gossip.u,
-                                cluster_id=pubsub_gossip.cluster_id,
-                            )
-                        )
-                        # Update topic advertisements
-                        self.topic_exchange.update_remote_topics(
-                            list(pubsub_gossip.topics)
-                        )
                         continue
 
                     case "consensus-proposal":
@@ -1919,8 +4123,8 @@ class MPREGServer:
                         # Enforce cluster_id matching for consensus messages
                         if proposal_msg.cluster_id != self.settings.cluster_id:
                             logger.warning(
-                                "[{}:{}] Received consensus proposal from different cluster ID: Expected {}, Got {}",
-                                *websocket.remote_address,
+                                "[{}] Received consensus proposal from different cluster ID: Expected {}, Got {}",
+                                peer_label,
                                 self.settings.cluster_id,
                                 proposal_msg.cluster_id,
                             )
@@ -1928,13 +4132,18 @@ class MPREGServer:
 
                         # Process consensus proposal via consensus manager
                         logger.info(
-                            f"🏛️ [{self.settings.name}] RECEIVED consensus proposal {proposal_msg.proposal_id} from {websocket.remote_address}"
+                            "[{}] Received consensus proposal {} from {}",
+                            self.settings.name,
+                            proposal_msg.proposal_id,
+                            peer_label,
                         )
                         await self.consensus_manager.handle_proposal_message(
                             proposal_msg.model_dump()
                         )
                         logger.info(
-                            f"✅ [{self.settings.name}] PROCESSED consensus proposal {proposal_msg.proposal_id}"
+                            "[{}] Processed consensus proposal {}",
+                            self.settings.name,
+                            proposal_msg.proposal_id,
                         )
                         continue
 
@@ -1944,8 +4153,8 @@ class MPREGServer:
                         # Enforce cluster_id matching for consensus messages
                         if vote_msg.cluster_id != self.settings.cluster_id:
                             logger.warning(
-                                "[{}:{}] Received consensus vote from different cluster ID: Expected {}, Got {}",
-                                *websocket.remote_address,
+                                "[{}] Received consensus vote from different cluster ID: Expected {}, Got {}",
+                                peer_label,
                                 self.settings.cluster_id,
                                 vote_msg.cluster_id,
                             )
@@ -1953,13 +4162,18 @@ class MPREGServer:
 
                         # Process consensus vote via consensus manager
                         logger.info(
-                            f"🗳️ [{self.settings.name}] RECEIVED consensus vote for {vote_msg.proposal_id} from {websocket.remote_address}"
+                            "[{}] Received consensus vote for {} from {}",
+                            self.settings.name,
+                            vote_msg.proposal_id,
+                            peer_label,
                         )
                         await self.consensus_manager.handle_vote_message(
                             vote_msg.model_dump()
                         )
                         logger.info(
-                            f"✅ [{self.settings.name}] PROCESSED consensus vote for {vote_msg.proposal_id}"
+                            "[{}] Processed consensus vote for {}",
+                            self.settings.name,
+                            vote_msg.proposal_id,
                         )
                         continue
 
@@ -1969,8 +4183,8 @@ class MPREGServer:
                         # Enforce cluster_id matching for consensus messages
                         if vote_msg.cluster_id != self.settings.cluster_id:
                             logger.warning(
-                                "[{}:{}] Received consensus vote from different cluster ID: Expected {}, Got {}",
-                                *websocket.remote_address,
+                                "[{}] Received consensus vote from different cluster ID: Expected {}, Got {}",
+                                peer_label,
                                 self.settings.cluster_id,
                                 vote_msg.cluster_id,
                             )
@@ -1985,81 +4199,185 @@ class MPREGServer:
                         )
                         continue
 
+                    case "fabric-message":
+                        from mpreg.core.model import FabricMessageEnvelope
+                        from mpreg.fabric.message_codec import unified_message_from_dict
+
+                        envelope = FabricMessageEnvelope.model_validate(parsed_msg)
+                        try:
+                            fabric_message = unified_message_from_dict(envelope.payload)
+                        except Exception as e:
+                            logger.warning(
+                                "[{}] Invalid fabric message payload: {}",
+                                peer_label,
+                                e,
+                            )
+                            continue
+                        if not is_server_connection:
+                            sender_id = (
+                                fabric_message.headers.routing_path[-1]
+                                if fabric_message.headers.routing_path
+                                else None
+                            )
+                            if sender_id:
+                                peer_url = sender_id
+                                peer_node_id = sender_id
+                                connection.url = peer_url
+                                is_server_connection = True
+                                self._track_inbound_peer_connection(
+                                    peer_url, connection
+                                )
+                                peer_cluster_id = fabric_message.headers.source_cluster
+                                if (
+                                    peer_cluster_id
+                                    and peer_cluster_id != self.settings.cluster_id
+                                ):
+                                    self._register_fabric_graph_peer(peer_cluster_id)
+                        await self._handle_fabric_message(
+                            fabric_message,
+                            source_peer_url=peer_url if is_server_connection else None,
+                        )
+                        continue
+
                     case "pubsub-publish":
                         # Handle message publication
-                        publish_req = PubSubPublish.model_validate(parsed_msg)
-                        notifications = self.topic_exchange.publish_message(
-                            publish_req.message
-                        )
+                        publish_start = time.time()
+                        publish_success = False
+                        try:
+                            publish_req = PubSubPublish.model_validate(parsed_msg)
+                            notifications = self.topic_exchange.publish_message(
+                                publish_req.message
+                            )
 
-                        # Send notifications to local subscribers
-                        for notification in notifications:
-                            await self._send_notification_to_client(notification)
+                            # Send notifications to local subscribers
+                            for notification in notifications:
+                                await self._send_notification_to_client(notification)
+                            try:
+                                self._track_background_task(
+                                    asyncio.create_task(
+                                        self._forward_pubsub_publish(
+                                            publish_req.message,
+                                            source_peer_url=(
+                                                peer_url
+                                                if is_server_connection
+                                                else None
+                                            ),
+                                        )
+                                    )
+                                )
+                            except RuntimeError:
+                                await self._forward_pubsub_publish(
+                                    publish_req.message,
+                                    source_peer_url=(
+                                        peer_url if is_server_connection else None
+                                    ),
+                                )
 
-                        # Send acknowledgment
-                        response_model = PubSubAck(
-                            operation_id=publish_req.u,
-                            success=True,
-                            u=f"ack_{publish_req.u}",
-                        )
+                            # Send acknowledgment
+                            response_model = PubSubAck(
+                                operation_id=publish_req.u,
+                                success=True,
+                                u=f"ack_{publish_req.u}",
+                            )
+                            publish_success = True
+                        finally:
+                            publish_duration_ms = (time.time() - publish_start) * 1000.0
+                            self._metrics_tracker.record_pubsub(
+                                publish_duration_ms, publish_success
+                            )
 
                     case "pubsub-subscribe":
                         # Handle subscription request
-                        subscribe_req = PubSubSubscribe.model_validate(parsed_msg)
-                        self.topic_exchange.add_subscription(subscribe_req.subscription)
+                        subscribe_start = time.time()
+                        subscribe_success = False
+                        try:
+                            subscribe_req = PubSubSubscribe.model_validate(parsed_msg)
+                            self.topic_exchange.add_subscription(
+                                subscribe_req.subscription
+                            )
+                            await self._announce_fabric_subscription(
+                                subscribe_req.subscription
+                            )
 
-                        # Track which client made this subscription
-                        client_id = f"client_{id(websocket)}"
-                        self.pubsub_clients[client_id] = websocket
-                        self.subscription_to_client[
-                            subscribe_req.subscription.subscription_id
-                        ] = client_id
+                            # Track which client made this subscription
+                            client_id = f"client_{id(transport)}"
+                            self.pubsub_clients[client_id] = transport
+                            self.subscription_to_client[
+                                subscribe_req.subscription.subscription_id
+                            ] = client_id
 
-                        # Send acknowledgment
-                        response_model = PubSubAck(
-                            operation_id=subscribe_req.u,
-                            success=True,
-                            u=f"ack_{subscribe_req.u}",
-                        )
+                            # Send acknowledgment
+                            response_model = PubSubAck(
+                                operation_id=subscribe_req.u,
+                                success=True,
+                                u=f"ack_{subscribe_req.u}",
+                            )
+                            subscribe_success = True
+                            self._metrics_tracker.record_pubsub_subscription()
+                        finally:
+                            subscribe_duration_ms = (
+                                time.time() - subscribe_start
+                            ) * 1000.0
+                            self._metrics_tracker.record_pubsub(
+                                subscribe_duration_ms, subscribe_success
+                            )
 
                     case "pubsub-unsubscribe":
                         # Handle unsubscription request
-                        unsubscribe_req = PubSubUnsubscribe.model_validate(parsed_msg)
-                        success = self.topic_exchange.remove_subscription(
-                            unsubscribe_req.subscription_id
-                        )
-
-                        # Clean up client tracking
-                        if (
-                            unsubscribe_req.subscription_id
-                            in self.subscription_to_client
-                        ):
-                            client_id = self.subscription_to_client.pop(
+                        unsubscribe_start = time.time()
+                        unsubscribe_success = False
+                        try:
+                            unsubscribe_req = PubSubUnsubscribe.model_validate(
+                                parsed_msg
+                            )
+                            success = self.topic_exchange.remove_subscription(
                                 unsubscribe_req.subscription_id
                             )
-                            # Check if client has any remaining subscriptions
-                            remaining_subs = [
-                                sid
-                                for sid, cid in self.subscription_to_client.items()
-                                if cid == client_id
-                            ]
-                            if not remaining_subs:
-                                self.pubsub_clients.pop(client_id, None)
+                            if success:
+                                await self._remove_fabric_subscription(
+                                    unsubscribe_req.subscription_id
+                                )
 
-                        # Send acknowledgment
-                        response_model = PubSubAck(
-                            operation_id=unsubscribe_req.u,
-                            success=success,
-                            u=f"ack_{unsubscribe_req.u}",
-                        )
+                            # Clean up client tracking
+                            if (
+                                unsubscribe_req.subscription_id
+                                in self.subscription_to_client
+                            ):
+                                client_id = self.subscription_to_client.pop(
+                                    unsubscribe_req.subscription_id
+                                )
+                                # Check if client has any remaining subscriptions
+                                remaining_subs = [
+                                    sid
+                                    for sid, cid in self.subscription_to_client.items()
+                                    if cid == client_id
+                                ]
+                                if not remaining_subs:
+                                    self.pubsub_clients.pop(client_id, None)
 
-                    # Removed "rpc-announcement" case - federated RPC now uses enhanced HELLO messages
+                            # Send acknowledgment
+                            response_model = PubSubAck(
+                                operation_id=unsubscribe_req.u,
+                                success=success,
+                                u=f"ack_{unsubscribe_req.u}",
+                            )
+                            unsubscribe_success = success
+                            self._metrics_tracker.record_pubsub_unsubscription()
+                        finally:
+                            unsubscribe_duration_ms = (
+                                time.time() - unsubscribe_start
+                            ) * 1000.0
+                            self._metrics_tracker.record_pubsub(
+                                unsubscribe_duration_ms, unsubscribe_success
+                            )
+
+                    # Removed "rpc-announcement" case - federated RPC now uses fabric catalog gossip
 
                     case _:
                         # Handle unknown message roles.
                         logger.error(
-                            "[{}:{}] Invalid RPC request role: {}",
-                            *websocket.remote_address,
+                            "[{}] Invalid RPC request role: {}",
+                            peer_label,
                             parsed_msg.get("role"),
                         )
                         response_model = RPCResponse(
@@ -2073,32 +4391,48 @@ class MPREGServer:
 
                 # If a response model was generated, send it back to the client.
                 if response_model:
-                    logger.info(
+                    logger.debug(
                         "Sending response: type={}, u={}",
                         type(response_model).__name__,
                         response_model.u,
                     )
                     try:
-                        await websocket.send(
+                        await transport.send(
                             self.serializer.serialize(response_model.model_dump())
                         )
-                        logger.info("Response sent successfully")
+                        logger.debug("Response sent successfully")
                     except Exception:
                         logger.error(
-                            "[{}:{}] Client connection error! Dropping reply.",
-                            *websocket.remote_address,
+                            "[{}] Client connection error! Dropping reply.",
+                            peer_label,
                         )
+                if close_connection:
+                    await connection.disconnect()
+                    break
         finally:
-            # TODO: if this was a SERVER, we need to clean up the server resources.
-            # TODO: if this was a CLIENT, we need to cancel any oustanding requests/subscriptions too.
+            try:
+                await connection.disconnect()
+            except Exception as e:
+                logger.debug(
+                    f"[{self.settings.name}] Error closing inbound connection: {e}"
+                )
             try:
                 self.clients.remove(connection)
             except KeyError:
                 # Connection might have already been removed
                 pass
 
+            if is_server_connection and peer_url:
+                self._drop_inbound_peer_connection(peer_url, connection)
+                self._mark_peer_disconnected(peer_url)
+                self._remove_cache_fabric_peer(peer_url)
+                if peer_cluster_id and peer_node_id:
+                    self.federation_manager.notify_connection_closed(
+                        peer_cluster_id, peer_node_id
+                    )
+
             # Clean up PubSub client tracking when client disconnects
-            client_id = f"client_{id(websocket)}"
+            client_id = f"client_{id(transport)}"
             if client_id in self.pubsub_clients:
                 del self.pubsub_clients[client_id]
                 # Remove all subscriptions for this client
@@ -2108,6 +4442,8 @@ class MPREGServer:
                     if cid == client_id
                 ]
                 for sub_id in subs_to_remove:
+                    self.topic_exchange.remove_subscription(sub_id)
+                    await self._remove_fabric_subscription(sub_id)
                     del self.subscription_to_client[sub_id]
 
     async def _send_notification_to_client(
@@ -2128,11 +4464,13 @@ class MPREGServer:
             )
             return
 
-        websocket = self.pubsub_clients[client_id]
+        transport = self.pubsub_clients[client_id]
 
+        notification_start = time.time()
+        notification_success = False
         try:
-            # Send the notification as a WebSocket message
-            await websocket.send(self.serializer.serialize(notification.model_dump()))
+            await transport.send(self.serializer.serialize(notification.model_dump()))
+            notification_success = True
             logger.debug(
                 f"Sent notification to client {client_id} for subscription {subscription_id}"
             )
@@ -2147,9 +4485,23 @@ class MPREGServer:
                     if cid == client_id
                 ]
                 for sub_id in subs_to_remove:
+                    self.topic_exchange.remove_subscription(sub_id)
+                    await self._remove_fabric_subscription(sub_id)
                     del self.subscription_to_client[sub_id]
+        finally:
+            self._metrics_tracker.record_pubsub_notification()
+            notification_duration_ms = (time.time() - notification_start) * 1000.0
+            self._metrics_tracker.record_pubsub(
+                notification_duration_ms, notification_success
+            )
 
-    async def _establish_peer_connection(self, peer_url: str) -> None:
+    async def _establish_peer_connection(
+        self,
+        peer_url: str,
+        *,
+        fast_connect: bool = False,
+        dial_url: str | None = None,
+    ) -> None:
         """Establishes a persistent connection to a peer for RPC forwarding.
 
         Args:
@@ -2157,91 +4509,137 @@ class MPREGServer:
         """
         # Do not establish new connections during shutdown
         if self._shutdown_event.is_set():
-            logger.info(
+            logger.debug(
                 f"[{self.settings.name}] Skipping peer connection to {peer_url} - shutdown in progress"
             )
             return
-        if peer_url in self.peer_connections:
-            # Check if existing connection is still valid
-            if self.peer_connections[peer_url].is_connected:
-                logger.debug(
-                    "[{}] Already connected to peer: {}", self.settings.name, peer_url
-                )
+        lock = self._peer_connection_locks.get(peer_url)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._peer_connection_locks[peer_url] = lock
+        async with lock:
+            if self._shutdown_event.is_set():
                 return
+            if peer_url in self.peer_connections:
+                # Check if existing connection is still valid
+                if self.peer_connections[peer_url].is_connected:
+                    logger.debug(
+                        "[{}] Already connected to peer: {}",
+                        self.settings.name,
+                        peer_url,
+                    )
+                    return
+                else:
+                    # Clean up dead connection
+                    # Publish connection lost event
+                    event = ConnectionEvent.lost(peer_url, self.cluster.local_url)
+                    self.cluster.connection_event_bus.publish(event)
+
+                    self._remove_cache_fabric_peer(peer_url)
+
+                    del self.peer_connections[peer_url]
+
+            target_url = dial_url or peer_url
+            if target_url != peer_url:
+                logger.debug(
+                    "[{}] Establishing persistent connection to peer: {} (dial={})",
+                    self.settings.name,
+                    peer_url,
+                    target_url,
+                )
             else:
-                # Clean up dead connection
-                # Publish connection lost event
-                event = ConnectionEvent.lost(peer_url, self.cluster.local_url)
+                logger.debug(
+                    "[{}] Establishing persistent connection to peer: {}",
+                    self.settings.name,
+                    peer_url,
+                )
+            try:
+                # Create persistent connection for RPC forwarding
+                # Adjust connection parameters based on cluster size for better scalability
+                cluster_size = (
+                    len(self._peer_directory.nodes()) + 1 if self._peer_directory else 1
+                )
+                if fast_connect:
+                    connection = Connection(
+                        url=target_url,
+                        max_retries=1,
+                        base_delay=0.1,
+                        open_timeout=0.5,
+                        connect_timeout=0.8,
+                    )
+                elif cluster_size >= 50:
+                    # For very large clusters: fewer retries, longer delays to reduce connection storms
+                    connection = Connection(
+                        url=target_url, max_retries=3, base_delay=2.0
+                    )
+                elif cluster_size >= 20:
+                    # For medium clusters: moderate parameters
+                    connection = Connection(
+                        url=target_url, max_retries=4, base_delay=1.5
+                    )
+                else:
+                    # For small clusters: default aggressive parameters
+                    connection = Connection(url=target_url)
+
+                await connection.connect()
+                self.peer_connections[peer_url] = connection
+
+                # Publish connection established event
+                logger.debug(
+                    "Publishing connection established event for {}",
+                    peer_url,
+                )
+                event = ConnectionEvent.established(peer_url, self.cluster.local_url)
                 self.cluster.connection_event_bus.publish(event)
+                logger.debug("Connection event published for {}", peer_url)
 
-                del self.peer_connections[peer_url]
+                self._register_cache_fabric_peer(peer_url)
 
-        logger.info(
-            "[{}] Establishing persistent connection to peer: {}",
-            self.settings.name,
-            peer_url,
-        )
-        try:
-            # Create persistent connection for RPC forwarding
-            # Adjust connection parameters based on cluster size for better scalability
-            cluster_size = len(self.cluster.peers_info) + 1  # +1 for self
-            if cluster_size >= 50:
-                # For very large clusters: fewer retries, longer delays to reduce connection storms
-                connection = Connection(url=peer_url, max_retries=3, base_delay=2.0)
-            elif cluster_size >= 20:
-                # For medium clusters: moderate parameters
-                connection = Connection(url=peer_url, max_retries=4, base_delay=1.5)
-            else:
-                # For small clusters: default aggressive parameters
-                connection = Connection(url=peer_url)
+                await self._send_status_to_connection(connection)
+                self._schedule_catalog_snapshot(peer_url)
 
-            await connection.connect()
-            self.peer_connections[peer_url] = connection
+                # Start message reading task for peer connection.
+                # This ensures we can receive STATUS/GOODBYE and fabric messages.
+                self._track_background_task(
+                    asyncio.create_task(
+                        self._handle_peer_connection_messages(connection, peer_url)
+                    )
+                )
 
-            # Publish connection established event
-            logger.info(f"Publishing connection established event for {peer_url}")
-            event = ConnectionEvent.established(peer_url, self.cluster.local_url)
-            self.cluster.connection_event_bus.publish(event)
-            logger.info(f"Connection event published for {peer_url}")
+                logger.debug(
+                    "[{}] Successfully connected to peer: {}",
+                    self.settings.name,
+                    peer_url,
+                )
+            except Exception as e:
+                logger.error(
+                    "[{}] Failed to connect to peer {}: {}",
+                    self.settings.name,
+                    peer_url,
+                    e,
+                )
 
-            # Send HELLO message to announce ourselves
-            # Get all registered functions for HELLO message
-            registered_functions = tuple(self.registry._commands.keys())
-            logger.info(f"📤 Sending HELLO with functions: {registered_functions}")
+    async def _bootstrap_seed_peers(self) -> None:
+        """Quickly retry seed peers during startup to avoid missing early status."""
+        seed_peers = set(self.settings.peers or [])
+        if self.settings.connect:
+            seed_peers.add(self.settings.connect)
+        if not seed_peers:
+            return
 
-            capabilities = ServerCapabilities.create(
-                functions=registered_functions,
-                resources=tuple(self.settings.resources or []),
-                cluster_id=self.settings.cluster_id,
-                advertised_urls=tuple(
-                    self.settings.advertised_urls
-                    or [f"ws://{self.settings.host}:{self.settings.port}"]
-                ),
-            )
-
-            hello_message = RPCServerRequest(
-                server=RPCServerHello.create_from_capabilities(capabilities),
-                u=str(ulid.new()),
-            )
-
-            await connection.send(self.serializer.serialize(hello_message.model_dump()))
-
-            # 🔥 CRITICAL FIX: Start message reading task for peer connection
-            # This ensures we can receive bidirectional HELLO messages and other responses
-            task = asyncio.create_task(
-                self._handle_peer_connection_messages(connection, peer_url)
-            )
-            self._background_tasks.add(task)
-            # Remove task from tracking when it completes
-            task.add_done_callback(self._background_tasks.discard)
-
-            logger.info(
-                "[{}] Successfully connected to peer: {}", self.settings.name, peer_url
-            )
-        except Exception as e:
-            logger.error(
-                "[{}] Failed to connect to peer {}: {}", self.settings.name, peer_url, e
-            )
+        deadline = time.time() + max(2.5, self.settings.gossip_interval)
+        while time.time() < deadline and not self._shutdown_event.is_set():
+            pending = [
+                peer_url
+                for peer_url in seed_peers
+                if peer_url not in self.peer_connections
+                or not self.peer_connections[peer_url].is_connected
+            ]
+            if not pending:
+                return
+            for peer_url in pending:
+                await self._establish_peer_connection(peer_url, fast_connect=True)
+            await asyncio.sleep(0.2)
 
     async def _handle_peer_connection_messages(
         self, connection: Connection, peer_url: str
@@ -2256,7 +4654,7 @@ class MPREGServer:
             peer_url: The URL of the peer we're connected to
         """
         try:
-            logger.info(
+            logger.debug(
                 f"🔄 Starting message reading loop for peer connection: {peer_url}"
             )
 
@@ -2281,62 +4679,66 @@ class MPREGServer:
                         self._msg_stats.rpc_responses_skipped += 1
                         # Log every 10th skipped RPC response to prove we're actually skipping them
                         if self._msg_stats.rpc_responses_skipped % 10 == 1:
-                            logger.info(
+                            logger.debug(
                                 f"🔄 SKIP: RPC response #{self._msg_stats.rpc_responses_skipped} - Type: {parsed_msg.get('r')} - PREVENTING INFINITE LOOP"
                             )
                         # Log summary every 50 messages
                         if self._msg_stats.total_processed % 50 == 0:
-                            logger.info(
+                            logger.debug(
                                 f"📊 MESSAGE STATS: Total={self._msg_stats.total_processed}, RPC_Skipped={self._msg_stats.rpc_responses_skipped}, Servers={self._msg_stats.server_messages}, Others={self._msg_stats.other_messages}"
                             )
                         continue
 
-                    logger.info(f"📥 Received message from peer {peer_url}: {msg!r}")
+                    logger.debug(f"📥 Received message from peer {peer_url}: {msg!r}")
 
                     # Process the message using the same logic as the opened() method
+                    if parsed_msg.get("role") == "fabric-message":
+                        from mpreg.core.model import FabricMessageEnvelope
+                        from mpreg.fabric.message_codec import unified_message_from_dict
+
+                        envelope = FabricMessageEnvelope.model_validate(parsed_msg)
+                        try:
+                            fabric_message = unified_message_from_dict(envelope.payload)
+                        except Exception as e:
+                            logger.warning(
+                                "Invalid fabric message from {}: {}",
+                                peer_url,
+                                e,
+                            )
+                            continue
+                        await self._handle_fabric_message(
+                            fabric_message, source_peer_url=peer_url
+                        )
+                        continue
+                    if parsed_msg.get("role") == "fabric-gossip":
+                        envelope = FabricGossipEnvelope.model_validate(parsed_msg)
+                        if self._fabric_control_plane:
+                            from mpreg.fabric.gossip import (
+                                GossipMessage as FabricGossipMessage,
+                            )
+
+                            message = FabricGossipMessage.from_dict(envelope.payload)
+                            await self._fabric_control_plane.gossip.handle_received_message(
+                                message
+                            )
+                        continue
+
                     if parsed_msg.get("role") == "server":
                         self._msg_stats.server_messages += 1
                         # Convert to proper Pydantic model
                         server_request = RPCServerRequest.model_validate(parsed_msg)
-                        logger.info(
-                            f"🔥 Processing server message from peer {peer_url}: {server_request.server.what}"
+                        logger.debug(
+                            "Processing server message from peer {}: {}",
+                            peer_url,
+                            server_request.server.what,
                         )
 
-                        if server_request.server.what == "HELLO":
-                            # Process bidirectional HELLO - add functions to our cluster
-                            logger.info(
-                                f"📨 Processing bidirectional HELLO from {peer_url} with functions: {server_request.server.funs}"
-                            )
-
-                            # Register the functions in our cluster - create proper PeerInfo object
-                            import time
-
-                            # Increment our logical clock for this peer update
-                            self.logical_clock = self.logical_clock.increment(
-                                self.cluster.local_url
-                            )
-
-                            peer_info = PeerInfo(
-                                url=peer_url,
-                                funs=tuple(server_request.server.funs),
-                                locs=frozenset(server_request.server.locs),
-                                advertised_urls=tuple(
-                                    server_request.server.advertised_urls
-                                ),
-                                last_seen=time.time(),
-                                cluster_id=server_request.server.cluster_id,
-                                logical_clock=self.logical_clock.to_dict(),
-                            )
-                            self.cluster.add_fun_ability(peer_info)
-
-                            logger.info(
-                                f"✅ Successfully processed bidirectional HELLO from {peer_url}"
-                            )
-
-                        elif server_request.server.what == "GOODBYE":
+                        if server_request.server.what == "GOODBYE":
                             # Process GOODBYE message - remove peer from cluster
                             logger.info(
-                                f"👋 Processing GOODBYE from {peer_url} (reason: {server_request.server.reason.value})"
+                                "Processing GOODBYE from {} (reason: {})",
+                                peer_url,
+                                server_request.server.reason.value,
                             )
 
                             await self._handle_goodbye_message(
@@ -2344,62 +4746,73 @@ class MPREGServer:
                             )
 
                             logger.info(
-                                f"✅ Successfully processed GOODBYE from {peer_url}"
+                                "Successfully processed GOODBYE from {}",
+                                peer_url,
                             )
+                        elif server_request.server.what == "STATUS":
+                            status = server_request.server
+                            accepted = self._handle_remote_status(
+                                status, connection=connection
+                            )
+                            if accepted:
+                                logger.debug(
+                                    "Successfully processed STATUS from {}",
+                                    peer_url,
+                                )
+                            else:
+                                logger.debug(
+                                    "Ignoring STATUS from departed peer {}",
+                                    peer_url,
+                                )
+                                break
 
                 except TimeoutError:
                     # Timeout is normal - just continue
                     continue
                 except Exception as e:
                     logger.warning(
-                        f"❌ Error processing message from peer {peer_url}: {e}"
+                        "Error processing message from peer {}: {}",
+                        peer_url,
+                        e,
                     )
                     break
 
         except asyncio.CancelledError:
             logger.debug(
-                f"🛑 Peer connection message handler cancelled for {peer_url} (clean shutdown)"
+                "Peer connection message handler cancelled for {} (clean shutdown)",
+                peer_url,
             )
             # Re-raise to properly handle cancellation
             raise
         except Exception as e:
             logger.error(
-                f"💥 Fatal error in peer connection message handler for {peer_url}: {e}"
+                "Fatal error in peer connection message handler for {}: {}",
+                peer_url,
+                e,
             )
         finally:
-            logger.info(
-                f"🔚 Message reading loop ended for peer connection: {peer_url}"
+            logger.debug(
+                "Message reading loop ended for peer connection: {}",
+                peer_url,
             )
-
-    async def _broadcast_peer_reentry(self, peer_info: PeerInfo) -> None:
-        """Broadcast peer re-entry to all connected peers via gossip.
-
-        This ensures all nodes clear the departed peer from their blocklists
-        when a peer sends a new HELLO after GOODBYE.
-        """
-        # Create a special gossip message containing just the re-entering peer
-        reentry_gossip = GossipMessage(
-            peers=(peer_info,),  # Use tuple not list
-            u=str(ulid.new()),
-            cluster_id=self.settings.cluster_id,
-        )
-
-        # Send to all connected peers
-        for peer_url, connection in list(self.peer_connections.items()):
             try:
-                # Gossip messages are sent as regular RPC messages, not server messages
-                message_bytes = self.serializer.serialize(reentry_gossip.model_dump())
-                await connection.send(message_bytes)
-                logger.info(
-                    f"[{self.settings.name}] Broadcast peer re-entry for {peer_info.url} to {peer_url}"
-                )
+                if connection.is_connected:
+                    await connection.disconnect()
             except Exception as e:
-                logger.warning(
-                    f"[{self.settings.name}] Failed to broadcast peer re-entry to {peer_url}: {e}"
+                logger.debug(
+                    f"[{self.settings.name}] Error closing peer connection {peer_url}: {e}"
                 )
+            if self.peer_connections.get(peer_url) is connection:
+                del self.peer_connections[peer_url]
+                self._remove_cache_fabric_peer(peer_url)
+                self._mark_peer_disconnected(peer_url)
 
     async def _handle_goodbye_message(
-        self, goodbye: RPCServerGoodbye, sender_url: str
+        self,
+        goodbye: RPCServerGoodbye,
+        sender_url: str,
+        *,
+        record_departure: bool = True,
     ) -> None:
         """Handle GOODBYE message from departing peer.
 
@@ -2412,33 +4825,13 @@ class MPREGServer:
             f"[{self.settings.name}] Received GOODBYE from {goodbye.departing_node_url} "
             f"(reason: {goodbye.reason.value}, cluster: {goodbye.cluster_id})"
         )
-
-        # Remove from cluster immediately
-        removed = await self.cluster.remove_peer(goodbye.departing_node_url)
-        if removed:
-            logger.info(
-                f"[{self.settings.name}] Removed peer {goodbye.departing_node_url} from cluster"
-            )
-        else:
-            logger.warning(
-                f"[{self.settings.name}] Peer {goodbye.departing_node_url} was not in cluster"
-            )
-
-        # Close connection to departing node if we have one
-        if goodbye.departing_node_url in self.peer_connections:
-            try:
-                await self.peer_connections[goodbye.departing_node_url].disconnect()
-                del self.peer_connections[goodbye.departing_node_url]
-                logger.info(
-                    f"[{self.settings.name}] Closed connection to departing peer {goodbye.departing_node_url}"
-                )
-            except Exception as e:
-                logger.warning(
-                    f"[{self.settings.name}] Error closing connection to {goodbye.departing_node_url}: {e}"
-                )
-
-        # TODO: Propagate GOODBYE via gossip (Phase 2)
-        # await self._propagate_goodbye_via_gossip(goodbye)
+        if record_departure:
+            self._record_and_apply_departure(goodbye)
+        self._remove_fabric_graph_peer(goodbye.cluster_id)
+        self._remove_cache_fabric_peer(goodbye.departing_node_url)
+        await self._close_peer_connection(goodbye.departing_node_url)
+        if sender_url != goodbye.departing_node_url:
+            await self._close_peer_connection(sender_url)
 
     async def send_goodbye(self, reason: GoodbyeReason) -> None:
         """Send GOODBYE to all peers before departure.
@@ -2456,12 +4849,19 @@ class MPREGServer:
             departing_node_url=departing_url,
             cluster_id=self.settings.cluster_id,
             reason=reason,
+            instance_id=self._instance_id,
         )
 
         goodbye_request = RPCServerRequest(server=goodbye, u=str(ulid.new()))
 
+        all_connections = self._get_all_peer_connections()
+        peer_urls = set(all_connections.keys())
+        if self._peer_directory:
+            for node in self._peer_directory.nodes():
+                peer_urls.add(node.node_id)
+        peer_urls.discard(self.cluster.local_url)
         logger.info(
-            f"[{self.settings.name}] Sending GOODBYE to {len(self.peer_connections)} peers "
+            f"[{self.settings.name}] Sending GOODBYE to {len(peer_urls)} peers "
             f"(reason: {reason.value})"
         )
 
@@ -2469,7 +4869,29 @@ class MPREGServer:
         message_bytes = self.serializer.serialize(goodbye_request.model_dump())
         successful_sends = 0
 
-        for peer_url, connection in list(self.peer_connections.items()):
+        for peer_url in sorted(peer_urls):
+            connection = all_connections.get(peer_url)
+            if connection is None or not connection.is_connected:
+                try:
+                    temp_connection = Connection(
+                        url=peer_url,
+                        max_retries=1,
+                        base_delay=0.1,
+                        open_timeout=0.5,
+                        connect_timeout=0.8,
+                    )
+                    await temp_connection.connect()
+                    await temp_connection.send(message_bytes)
+                    await temp_connection.disconnect()
+                    successful_sends += 1
+                    logger.debug(
+                        f"[{self.settings.name}] Sent GOODBYE to {peer_url} (temp)"
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"[{self.settings.name}] Failed to send GOODBYE to {peer_url}: {e}"
+                    )
+                continue
             try:
                 await connection.send(message_bytes)
                 successful_sends += 1
@@ -2480,58 +4902,32 @@ class MPREGServer:
                 )
 
         logger.info(
-            f"[{self.settings.name}] Successfully sent GOODBYE to {successful_sends}/{len(self.peer_connections)} peers"
+            f"[{self.settings.name}] Successfully sent GOODBYE to {successful_sends}/{len(peer_urls)} peers"
         )
 
-    async def _send_hello_response(self, server_connection: Connection) -> None:
-        """Send our own HELLO message back to a server that just connected to us.
+        if self._fabric_control_plane:
+            from mpreg.fabric.catalog import NodeKey
+            from mpreg.fabric.catalog_delta import RoutingCatalogDelta
 
-        This implements bidirectional HELLO exchange, ensuring that when Server2 connects
-        to Server1, Server1 also sends its functions (including PRE-CONNECTION functions)
-        back to Server2.
-
-        Args:
-            server_connection: The connection to the server that sent us a HELLO
-        """
-        try:
-            # Get all our registered functions (including PRE-CONNECTION functions)
-            registered_functions = tuple(self.registry._commands.keys())
-            logger.info(
-                f"📤 Sending bidirectional HELLO with functions: {registered_functions}"
-            )
-
-            # Create our server capabilities
-            capabilities = ServerCapabilities.create(
-                functions=registered_functions,
-                resources=tuple(self.settings.resources or []),
+            timestamp = time.time()
+            removals = []
+            catalog = self._fabric_control_plane.index.catalog
+            for endpoint in catalog.functions.entries():
+                if endpoint.node_id == self.cluster.local_url:
+                    removals.append(endpoint.key())
+            delta = RoutingCatalogDelta(
+                update_id=str(ulid.new()),
                 cluster_id=self.settings.cluster_id,
-                advertised_urls=tuple(
-                    self.settings.advertised_urls
-                    or [f"ws://{self.settings.host}:{self.settings.port}"]
+                sent_at=timestamp,
+                function_removals=tuple(removals),
+                node_removals=(
+                    NodeKey(
+                        cluster_id=self.settings.cluster_id,
+                        node_id=self.cluster.local_url,
+                    ),
                 ),
             )
-
-            # Create HELLO message
-            hello_message = RPCServerRequest(
-                server=RPCServerHello.create_from_capabilities(capabilities),
-                u=str(ulid.new()),
-            )
-
-            # Send our HELLO back via the existing connection
-            if server_connection.is_connected:
-                await server_connection.send(
-                    self.serializer.serialize(hello_message.model_dump())
-                )
-                logger.info(f"✅ Sent bidirectional HELLO to {server_connection.url}")
-            else:
-                logger.warning(
-                    f"❌ Cannot send bidirectional HELLO - connection to {server_connection.url} is not connected"
-                )
-
-        except Exception as e:
-            logger.error(
-                f"❌ Error sending bidirectional HELLO to {server_connection.url}: {e}"
-            )
+            await self._fabric_control_plane.broadcaster.broadcast(delta, now=timestamp)
 
     async def _manage_peer_connections(self) -> None:
         """Periodically checks for new peers and maintains connections.
@@ -2540,41 +4936,55 @@ class MPREGServer:
         connections to all known peers in the cluster.
         """
         while not self._shutdown_event.is_set():
-            # Iterate through known peers and establish connections if needed
-            for peer_url, peer_info in list(
-                self.cluster.peers_info.items()
-            ):  # Use list to avoid RuntimeError during dict modification
-                # Check for shutdown before each connection attempt
+            self._prune_departed_peers()
+            seed_peers = set(self.settings.peers or [])
+            if self.settings.connect:
+                seed_peers.add(self.settings.connect)
+            for peer_url in seed_peers:
                 if self._shutdown_event.is_set():
-                    logger.info(
-                        f"[{self.settings.name}] Stopping peer connection loop - shutdown in progress"
-                    )
                     return
+                if self._is_peer_departed(peer_url, None):
+                    continue
+                await self._establish_peer_connection(peer_url, fast_connect=True)
 
-                if peer_url != f"ws://{self.settings.host}:{self.settings.port}":
-                    # Use federation manager to determine if peer connection should be established
+            if self._peer_directory:
+                for node in self._iter_peer_nodes_for_connection():
+                    if self._shutdown_event.is_set():
+                        logger.info(
+                            f"[{self.settings.name}] Stopping peer connection loop - shutdown in progress"
+                        )
+                        return
+                    peer_url = node.node_id
+                    if peer_url == self.cluster.local_url:
+                        continue
+                    if self._is_peer_departed(
+                        peer_url, self._peer_instance_ids.get(peer_url)
+                    ):
+                        continue
                     auth_result = self.federation_manager.federation_manager.config.is_cross_federation_connection_allowed(
-                        peer_info.cluster_id
+                        node.cluster_id
                     )
-
                     if (
-                        peer_info.cluster_id == self.settings.cluster_id
+                        node.cluster_id == self.settings.cluster_id
                         or not auth_result.name.startswith("REJECTED")
                     ):
-                        await self._establish_peer_connection(peer_url)
-                        if peer_info.cluster_id != self.settings.cluster_id:
+                        dial_url = self._select_peer_dial_url(node)
+                        await self._establish_peer_connection(
+                            peer_url, dial_url=dial_url
+                        )
+                        if node.cluster_id != self.settings.cluster_id:
                             logger.debug(
                                 "[{}] Establishing cross-federation connection to peer {} (cluster: {})",
                                 self.settings.name,
                                 peer_url,
-                                peer_info.cluster_id,
+                                node.cluster_id,
                             )
                     else:
                         logger.debug(
                             "[{}] Skipping peer {} due to federation policy (cluster: {}, mode: {})",
                             self.settings.name,
                             peer_url,
-                            peer_info.cluster_id,
+                            node.cluster_id,
                             self.federation_manager.federation_manager.config.federation_mode.value,
                         )
 
@@ -2593,10 +5003,12 @@ class MPREGServer:
                     event = ConnectionEvent.lost(url, self.cluster.local_url)
                     self.cluster.connection_event_bus.publish(event)
 
+                    self._mark_peer_disconnected(url)
+                    self._remove_cache_fabric_peer(url)
+
                     del self.peer_connections[url]
 
-            # 🔥 GOSSIP PROTOCOL: Send peer metadata to all connected peers
-            await self._send_gossip_messages()
+            await self._broadcast_status()
 
             # Periodically check for new peers.
             try:
@@ -2612,81 +5024,430 @@ class MPREGServer:
                 # Task was cancelled - exit immediately
                 break
 
-    async def _send_gossip_messages(self) -> None:
-        """Send gossip messages with peer metadata to all connected peers.
+    def _build_cache_metrics_and_profile(
+        self, *, now: float | None = None
+    ) -> tuple[CacheStatusMetrics | None, CacheNodeProfile | None]:
+        if self._cache_manager is None:
+            return None, None
+        stats = self._cache_manager.get_statistics()
+        l1_stats = stats.get("l1_statistics", {})
+        memory_bytes = float(l1_stats.get("memory_bytes", 0.0))
+        capacity_bytes = max(self.settings.cache_capacity_mb, 1) * 1024 * 1024
+        utilization = min((memory_bytes / capacity_bytes) * 100.0, 100.0)
+        perf_stats = stats.get("performance_metrics", {})
+        latencies = [
+            level_stats.get("avg_time_ms", 0.0)
+            for level_stats in perf_stats.values()
+            if isinstance(level_stats, dict)
+        ]
+        average_latency_ms = sum(latencies) / len(latencies) if latencies else 0.0
+        cache_metrics = CacheStatusMetrics(
+            cache_region=self.settings.cache_region,
+            cache_latitude=self.settings.cache_latitude,
+            cache_longitude=self.settings.cache_longitude,
+            cache_capacity_mb=self.settings.cache_capacity_mb,
+            cache_utilization_percent=utilization,
+            cache_avg_latency_ms=average_latency_ms,
+            cache_reliability_score=1.0,
+        )
+        from mpreg.fabric.catalog import CacheNodeProfile
 
-        This implements a scalable gossip protocol with exponential backoff for large clusters
-        to prevent gossip storms while maintaining eventual consistency.
-        """
-        # Get all known peers (including self)
-        all_known_peers = list(self.cluster.peers_info.values())
+        profile = CacheNodeProfile(
+            node_id=self.cluster.local_url,
+            cluster_id=self.settings.cluster_id,
+            region=self.settings.cache_region,
+            coordinates=GeographicCoordinate(
+                latitude=self.settings.cache_latitude,
+                longitude=self.settings.cache_longitude,
+            ),
+            capacity_mb=self.settings.cache_capacity_mb,
+            utilization_percent=utilization,
+            avg_latency_ms=average_latency_ms,
+            reliability_score=1.0,
+            advertised_at=now if now is not None else time.time(),
+            ttl_seconds=self.settings.fabric_catalog_ttl_seconds,
+        )
+        return cache_metrics, profile
 
-        if not all_known_peers:
-            # No peers to gossip about
-            return
+    def _build_status_message(
+        self,
+        *,
+        cache_metrics: CacheStatusMetrics | None = None,
+        queue_metrics: QueueStatusMetrics | None = None,
+    ) -> RPCServerStatus:
+        """Build a status message with current server state."""
+        functions = tuple(sorted(self.registry.keys()))
+        resources = frozenset(self.settings.resources or set())
+        if cache_metrics is None:
+            cache_metrics, _ = self._build_cache_metrics_and_profile()
+        if queue_metrics is None and self._queue_manager is not None:
+            queue_stats = self._queue_manager.get_global_statistics()
+            queue_metrics = QueueStatusMetrics(
+                total_queues=queue_stats.total_queues,
+                total_messages_sent=queue_stats.total_messages_sent,
+                total_messages_received=queue_stats.total_messages_received,
+                total_messages_acknowledged=queue_stats.total_messages_acknowledged,
+                total_messages_failed=queue_stats.total_messages_failed,
+                active_subscriptions=queue_stats.active_subscriptions,
+                success_rate=queue_stats.overall_success_rate(),
+            )
+        status_metrics = ServerStatusMetrics(
+            messages_processed=self._msg_stats.total_processed,
+            rpc_responses_skipped=self._msg_stats.rpc_responses_skipped,
+            server_messages=self._msg_stats.server_messages,
+            other_messages=self._msg_stats.other_messages,
+            cache_metrics=cache_metrics,
+            queue_metrics=queue_metrics,
+            route_metrics=(
+                self._fabric_control_plane.route_table.metrics_snapshot()
+                if self._fabric_control_plane
+                else None
+            ),
+        )
+        return RPCServerStatus(
+            server_url=self.cluster.local_url,
+            cluster_id=self.settings.cluster_id,
+            instance_id=self._instance_id,
+            status="ok",
+            active_clients=len(self.clients),
+            peer_count=len(self._peer_directory.nodes()) if self._peer_directory else 0,
+            funs=functions,
+            locs=resources,
+            function_catalog=self._current_function_catalog(),
+            advertised_urls=tuple(
+                self.settings.advertised_urls
+                or [f"ws://{self.settings.host}:{self.settings.port}"]
+            ),
+            metrics=status_metrics.to_dict(),
+        )
 
-        # Get active connections
+    async def _broadcast_status(self) -> None:
+        """Broadcast a status update to connected peers."""
         active_connections = [
             (url, conn)
             for url, conn in self.peer_connections.items()
             if conn.is_connected
         ]
+        cache_metrics, cache_profile = self._build_cache_metrics_and_profile(
+            now=time.time()
+        )
+        if cache_profile is not None and self._fabric_control_plane is not None:
+            from mpreg.fabric.adapters.cache_profile import (
+                CacheProfileCatalogAdapter,
+            )
+
+            adapter = CacheProfileCatalogAdapter(
+                node_id=cache_profile.node_id,
+                cluster_id=cache_profile.cluster_id,
+                region=cache_profile.region,
+                coordinates=cache_profile.coordinates,
+                capacity_mb=cache_profile.capacity_mb,
+                utilization_percent=cache_profile.utilization_percent,
+                avg_latency_ms=cache_profile.avg_latency_ms,
+                reliability_score=cache_profile.reliability_score,
+                ttl_seconds=cache_profile.ttl_seconds,
+            )
+            announcer = self._fabric_control_plane.cache_profile_announcer(
+                cache_profile_adapter=adapter
+            )
+            await announcer.announce(now=cache_profile.advertised_at)
 
         if not active_connections:
-            logger.debug(
-                f"[{self.settings.name}] No active peer connections for gossip"
-            )
             return
 
-        # SCALABILITY FIX: Implement gossip rate limiting for large clusters
-        cluster_size = len(all_known_peers)
-        if cluster_size >= 30:
-            # Large clusters: Use probabilistic gossip to reduce message volume
-            # Only gossip to a random subset of peers to prevent gossip storms
-            import random
-
-            max_gossip_targets = min(10, len(active_connections))  # Cap at 10 peers
-            active_connections = random.sample(active_connections, max_gossip_targets)
-
-            # Also implement gossip dampening - skip gossip cycles randomly
-            gossip_probability = max(
-                0.3, 1.0 / (cluster_size / 20)
-            )  # Reduce frequency for large clusters
-            if random.random() > gossip_probability:
-                logger.debug(
-                    f"[{self.settings.name}] Skipping gossip cycle (dampening for large cluster)"
-                )
-                return
-
-        # Create gossip message with all known peer metadata
-        # CRITICAL FIX: Update vector clocks before gossiping to reflect our logical time advancement
-        # Increment our logical clock once for this gossip event
-        self.logical_clock = self.logical_clock.increment(self.cluster.local_url)
-        current_logical_clock = self.logical_clock.to_dict()
-
-        # Update logical clocks in place for all peers
-        for peer_info in all_known_peers:
-            peer_info.logical_clock = current_logical_clock
-
-        gossip_message = GossipMessage(
-            peers=tuple(all_known_peers),
+        status_message = RPCServerRequest(
+            server=self._build_status_message(cache_metrics=cache_metrics),
             u=str(ulid.new()),
-            cluster_id=self.settings.cluster_id,
         )
-
-        logger.debug(
-            f"🗣️ [{self.settings.name}] Sending gossip with {len(all_known_peers)} peers to {len(active_connections)} connections"
-        )
-
-        # Send gossip message to selected peer connections
-        gossip_data = self.serializer.serialize(gossip_message.model_dump())
+        status_data = self.serializer.serialize(status_message.model_dump())
 
         for peer_url, connection in active_connections:
             try:
-                await connection.send(gossip_data)
-                logger.debug(f"📤 Sent gossip to {peer_url}")
+                await connection.send(status_data)
+                logger.debug(
+                    "Sent STATUS to {}",
+                    peer_url,
+                )
             except Exception as e:
-                logger.warning(f"❌ Failed to send gossip to {peer_url}: {e}")
+                logger.warning(
+                    "Failed to send STATUS to {}: {}",
+                    peer_url,
+                    e,
+                )
+
+    async def _send_status_to_connection(self, connection: Connection) -> None:
+        """Send an immediate STATUS update to a newly connected peer."""
+        status_message = RPCServerRequest(
+            server=self._build_status_message(),
+            u=str(ulid.new()),
+        )
+        status_data = self.serializer.serialize(status_message.model_dump())
+        try:
+            await connection.send(status_data)
+        except Exception as e:
+            logger.warning(
+                "Failed to send STATUS to {}: {}",
+                connection.url,
+                e,
+            )
+
+    async def _start_monitoring_services(self) -> None:
+        """Start unified monitoring and HTTP endpoints if enabled."""
+        if not self.settings.monitoring_enabled:
+            return
+
+        if self.settings.monitoring_port in (None, 0):
+            from .core.port_allocator import allocate_port
+
+            monitoring_port = allocate_port("monitoring")
+            self.settings.monitoring_port = monitoring_port
+            self._auto_allocated_monitoring_port = monitoring_port
+            self._invoke_port_callback(
+                self.settings.on_monitoring_port_assigned,
+                monitoring_port,
+                label="monitoring",
+            )
+        else:
+            monitoring_port = self.settings.monitoring_port
+        monitoring_host = self.settings.monitoring_host or self.settings.host
+
+        self._unified_monitor = create_unified_system_monitor()
+        self._unified_monitor.rpc_monitor = ServerSystemMonitor(
+            system_type=SystemType.RPC,
+            system_name=self.settings.name,
+            tracker=self._metrics_tracker,
+            active_connections_provider=lambda: len(self.clients),
+        )
+        self._unified_monitor.pubsub_monitor = ServerSystemMonitor(
+            system_type=SystemType.PUBSUB,
+            system_name=self.settings.name,
+            tracker=self._metrics_tracker,
+            active_connections_provider=lambda: len(self.pubsub_clients),
+        )
+        self._unified_monitor.federation_monitor = FederationSystemMonitor(
+            federation_manager=self.federation_manager,
+            system_name=self.settings.name,
+        )
+
+        if self._cache_manager is not None:
+            from .core.monitoring.system_adapters import CacheSystemMonitor
+
+            self._unified_monitor.cache_monitor = CacheSystemMonitor(
+                cache_manager=self._cache_manager,
+                system_name=self.settings.name,
+            )
+        if self._queue_manager is not None:
+            from .core.monitoring.system_adapters import QueueSystemMonitor
+
+            self._unified_monitor.queue_monitor = QueueSystemMonitor(
+                queue_manager=self._queue_manager,
+                system_name=self.settings.name,
+            )
+
+        await self._unified_monitor.start()
+
+        from .core.transport.adapter_registry import get_adapter_endpoint_registry
+        from .fabric.monitoring_endpoints import create_federation_monitoring_system
+
+        route_trace_provider = None
+        link_state_status_provider = None
+        if self._fabric_control_plane is not None:
+            from mpreg.fabric.route_control import RouteDestination
+
+            route_table = self._fabric_control_plane.route_table
+            link_state_table = self._fabric_control_plane.link_state_table
+            link_state_processor = self._fabric_control_plane.link_state_processor
+
+            def _route_trace(
+                destination: str, avoid: tuple[str, ...]
+            ) -> dict[str, Any]:
+                trace = route_table.explain_selection(
+                    RouteDestination(cluster_id=destination),
+                    avoid_clusters=avoid,
+                )
+                payload = trace.to_dict()
+                if link_state_table is not None:
+                    stats = link_state_table.stats.to_dict()
+                    payload["link_state_hint"] = {
+                        "mode": self.settings.fabric_link_state_mode.value,
+                        "area": self.settings.fabric_link_state_area,
+                        "allowed_areas": (
+                            sorted(link_state_processor.allowed_areas)
+                            if link_state_processor
+                            and link_state_processor.allowed_areas
+                            else None
+                        ),
+                        "area_mismatch_rejects": stats.get("updates_filtered", 0),
+                    }
+                return payload
+
+            route_trace_provider = _route_trace
+            if link_state_table is not None:
+
+                def _link_state_status() -> dict[str, Any]:
+                    stats = link_state_table.stats.to_dict()
+                    area_policy = self.settings.fabric_link_state_area_policy
+                    summary_filters: list[dict[str, Any]] = []
+                    area_hierarchy: dict[str, str] = {}
+                    if area_policy:
+                        area_hierarchy = {
+                            key: value
+                            for key, value in area_policy.area_hierarchy.items()
+                        }
+                        for pair, summary in area_policy.summary_filters.items():
+                            summary_filters.append(
+                                {
+                                    "source_area": pair.source_area,
+                                    "target_area": pair.target_area,
+                                    "allowed_neighbors": (
+                                        sorted(summary.allowed_neighbors)
+                                        if summary.allowed_neighbors is not None
+                                        else None
+                                    ),
+                                    "denied_neighbors": (
+                                        sorted(summary.denied_neighbors)
+                                        if summary.denied_neighbors is not None
+                                        else None
+                                    ),
+                                }
+                            )
+                    entry_areas = sorted(
+                        {
+                            entry.area
+                            for entry in link_state_table.entries.values()
+                            if entry.area is not None
+                        }
+                    )
+                    return {
+                        "mode": self.settings.fabric_link_state_mode.value,
+                        "area": self.settings.fabric_link_state_area,
+                        "area_hierarchy": area_hierarchy,
+                        "summary_filters": summary_filters,
+                        "allowed_areas": (
+                            sorted(link_state_processor.allowed_areas)
+                            if link_state_processor
+                            and link_state_processor.allowed_areas
+                            else None
+                        ),
+                        "entries": len(link_state_table.entries),
+                        "entry_areas": entry_areas,
+                        "area_mismatch_rejects": stats.get("updates_filtered", 0),
+                        "stats": stats,
+                    }
+
+                link_state_status_provider = _link_state_status
+
+        self._monitoring_system = create_federation_monitoring_system(
+            settings=self.settings,
+            federation_config=self.settings.federation_config,
+            federation_manager=self.federation_manager,
+            unified_monitor=self._unified_monitor,
+            monitoring_port=monitoring_port,
+            monitoring_host=monitoring_host,
+            enable_cors=self.settings.monitoring_enable_cors,
+            route_trace_provider=route_trace_provider,
+            link_state_status_provider=link_state_status_provider,
+            adapter_endpoint_registry=get_adapter_endpoint_registry(),
+            persistence_snapshot_provider=self._persistence_snapshot_metrics,
+        )
+        try:
+            await self._monitoring_system.start()
+        except OSError as e:
+            logger.warning(
+                f"[{self.settings.name}] Monitoring port {monitoring_port} unavailable: {e}. Falling back to an ephemeral port."
+            )
+            self._monitoring_system.monitoring_port = 0
+            await self._monitoring_system.start()
+
+        effective_port = self._monitoring_system.monitoring_port
+        logger.debug(
+            f"[{self.settings.name}] Monitoring endpoints available at http://{monitoring_host}:{effective_port}"
+        )
+
+    async def _persistence_snapshot_metrics(self) -> dict[str, Any]:
+        config = self.settings.persistence_config
+        if config is None:
+            return {"enabled": False}
+
+        payload: dict[str, Any] = {
+            "enabled": True,
+            "mode": config.mode.value,
+            "data_dir": str(config.data_dir),
+        }
+        if config.mode is PersistenceMode.SQLITE:
+            payload["sqlite_path"] = str(config.sqlite_path())
+
+        if self._persistence_registry is not None:
+            payload["registry_open"] = getattr(
+                self._persistence_registry, "_opened", False
+            )
+
+        catalog_counts: dict[str, int] = {}
+        route_key_info: dict[str, Any] = {}
+        if self._fabric_control_plane is not None:
+            catalog = self._fabric_control_plane.catalog
+            catalog_counts = {
+                "functions": catalog.functions.entry_count(),
+                "topics": catalog.topics.entry_count(),
+                "queues": catalog.queues.entry_count(),
+                "caches": catalog.caches.entry_count(),
+                "cache_profiles": catalog.cache_profiles.entry_count(),
+                "nodes": catalog.nodes.entry_count(),
+            }
+            if self._fabric_control_plane.route_key_registry is not None:
+                registry = self._fabric_control_plane.route_key_registry
+                registry.purge_expired()
+                route_key_info = {
+                    "clusters": len(registry.key_sets),
+                    "active_keys": sum(
+                        len(key_set.keys) for key_set in registry.key_sets.values()
+                    ),
+                }
+
+        payload["fabric"] = {
+            "catalog_entries": catalog_counts,
+            "route_keys": route_key_info,
+            "snapshot_last_saved_at": self._fabric_snapshot_last_saved_at,
+            "snapshot_last_restored_at": self._fabric_snapshot_last_restored_at,
+            "snapshot_saved_counts": self._fabric_snapshot_last_saved_counts,
+            "snapshot_restored_counts": self._fabric_snapshot_last_restored_counts,
+            "snapshot_saved_route_keys": self._fabric_snapshot_last_route_keys_saved,
+            "snapshot_restored_route_keys": self._fabric_snapshot_last_route_keys_restored,
+        }
+        return payload
+
+    def attach_cache_manager(self, cache_manager: Any) -> None:
+        """Attach a cache manager to the monitoring system."""
+        self._cache_manager = cache_manager
+        if self._unified_monitor is not None:
+            from .core.monitoring.system_adapters import CacheSystemMonitor
+
+            self._unified_monitor.cache_monitor = CacheSystemMonitor(
+                cache_manager=cache_manager,
+                system_name=self.settings.name,
+            )
+
+    def attach_queue_manager(self, queue_manager: Any) -> None:
+        """Attach a queue manager to the monitoring system."""
+        self._queue_manager = queue_manager
+        self._initialize_fabric_queue_federation()
+        if self._unified_monitor is not None:
+            from .core.monitoring.system_adapters import QueueSystemMonitor
+
+            self._unified_monitor.queue_monitor = QueueSystemMonitor(
+                queue_manager=queue_manager,
+                system_name=self.settings.name,
+            )
+
+    async def _stop_monitoring_services(self) -> None:
+        """Stop monitoring services cleanly."""
+        if self._monitoring_system is not None:
+            await self._monitoring_system.stop()
+            self._monitoring_system = None
+
+        if self._unified_monitor is not None:
+            await self._unified_monitor.stop()
+            self._unified_monitor = None
 
     async def _broadcast_consensus_message_unified(
         self, message_data: dict[str, Any]
@@ -2721,8 +5482,10 @@ class MPREGServer:
         Args:
             proposal_data: Consensus proposal data from ConsensusManager
         """
-        logger.info(
-            f"🎯 [{self.settings.name}] _broadcast_consensus_message CALLED with proposal: {proposal_data.get('proposal_id', 'UNKNOWN')}"
+        logger.debug(
+            "[{}] Broadcasting consensus proposal {}",
+            self.settings.name,
+            proposal_data.get("proposal_id", "UNKNOWN"),
         )
         # Get active connections for intra-cluster broadcast
         active_connections = [
@@ -2752,7 +5515,10 @@ class MPREGServer:
         )
 
         logger.info(
-            f"🏛️ [{self.settings.name}] Broadcasting consensus proposal {proposal_data['proposal_id']} to {len(active_connections)} peers"
+            "[{}] Broadcasting consensus proposal {} to {} peers",
+            self.settings.name,
+            proposal_data["proposal_id"],
+            len(active_connections),
         )
 
         # Serialize and send to all cluster peers concurrently
@@ -2761,10 +5527,15 @@ class MPREGServer:
         async def send_to_peer(peer_url: str, connection) -> None:
             try:
                 await connection.send(proposal_data_bytes)
-                logger.info(f"📤 Sent consensus proposal to {peer_url}")
+                logger.info(
+                    "Sent consensus proposal to {}",
+                    peer_url,
+                )
             except Exception as e:
                 logger.warning(
-                    f"❌ Failed to send consensus proposal to {peer_url}: {e}"
+                    "Failed to send consensus proposal to {}: {}",
+                    peer_url,
+                    e,
                 )
 
         # Send to all peers concurrently
@@ -2788,8 +5559,12 @@ class MPREGServer:
             vote: The vote (True for accept, False for reject)
             voter_id: ID of the node casting the vote
         """
-        logger.info(
-            f"🗳️ [{self.settings.name}] _broadcast_consensus_vote CALLED for proposal {proposal_id}, vote={vote}, voter={voter_id}"
+        logger.debug(
+            "[{}] Broadcasting consensus vote for proposal {} (vote={}, voter={})",
+            self.settings.name,
+            proposal_id,
+            vote,
+            voter_id,
         )
 
         # Get active connections for intra-cluster broadcast
@@ -2817,7 +5592,10 @@ class MPREGServer:
         )
 
         logger.info(
-            f"🗳️ [{self.settings.name}] Broadcasting consensus vote for {proposal_id} to {len(active_connections)} peers"
+            "[{}] Broadcasting consensus vote for {} to {} peers",
+            self.settings.name,
+            proposal_id,
+            len(active_connections),
         )
 
         # Serialize and send to all cluster peers concurrently
@@ -2826,9 +5604,16 @@ class MPREGServer:
         async def send_vote_to_peer(peer_url: str, connection) -> None:
             try:
                 await connection.send(vote_data_bytes)
-                logger.info(f"📤 Sent consensus vote to {peer_url}")
+                logger.info(
+                    "Sent consensus vote to {}",
+                    peer_url,
+                )
             except Exception as e:
-                logger.warning(f"❌ Failed to send consensus vote to {peer_url}: {e}")
+                logger.warning(
+                    "Failed to send consensus vote to {}: {}",
+                    peer_url,
+                    e,
+                )
 
         # Send to all peers concurrently
         await asyncio.gather(
@@ -2841,21 +5626,42 @@ class MPREGServer:
 
     def _update_consensus_known_nodes(self) -> None:
         """Update consensus manager with current cluster peer information."""
-        all_known_peers = list(self.cluster.peers_info.values())
-
         # Clear existing known nodes
         self.consensus_manager.known_nodes.clear()
 
         # Add all known peers (including self)
-        for peer_info in all_known_peers:
-            self.consensus_manager.known_nodes.add(peer_info.url)
+        if self._peer_directory:
+            for node in self._peer_directory.nodes():
+                self.consensus_manager.known_nodes.add(node.node_id)
+        self.consensus_manager.known_nodes.add(self.cluster.local_url)
 
         logger.debug(
             f"Updated consensus known_nodes with {len(self.consensus_manager.known_nodes)} peers"
         )
 
+    def _consensus_node_count(self) -> int:
+        """Estimate consensus node count from catalog or active connections."""
+        directory = self._peer_directory
+        if directory:
+            node_ids = {node.node_id for node in directory.nodes()}
+            node_ids.add(self.cluster.local_url)
+            return max(1, len(node_ids))
+
+        connected_peers = [
+            peer_id
+            for peer_id, conn in self._get_all_peer_connections().items()
+            if conn.is_connected
+        ]
+        return max(1, 1 + len(connected_peers))
+
     def register_command(
-        self, name: str, func: Callable[..., Any], resources: Iterable[str]
+        self,
+        name: str,
+        func: Callable[..., Any],
+        resources: Iterable[str],
+        *,
+        function_id: str | None = None,
+        version: str = "1.0.0",
     ) -> None:
         """Register a command with the server.
 
@@ -2868,6 +5674,8 @@ class MPREGServer:
             ValueError: If the command name is already registered on this server.
         """
         # Check for duplicate registration on this server
+        resolved_function_id = function_id or name
+        parsed_version = SemanticVersion.parse(version)
         if name in self.registry:
             import traceback
 
@@ -2875,7 +5683,8 @@ class MPREGServer:
             caller = stack_trace[-2].strip()
 
             logger.error(
-                f"🚨 DUPLICATE FUNCTION REGISTRATION DETECTED: {self.settings.name}"
+                "Duplicate function registration detected on {}",
+                self.settings.name,
             )
             logger.error(f"   Function '{name}' is already registered on this server")
             logger.error(f"   Registration attempted from: {caller}")
@@ -2889,382 +5698,35 @@ class MPREGServer:
                 f"Check for duplicate @rpc_command decorations or manual registrations."
             )
 
-        logger.info(
-            f"✅ {self.settings.name}: Registering function '{name}' with resources {list(resources)}"
+        logger.debug(
+            "[{}] Registering function '{}' with resources {}",
+            self.settings.name,
+            name,
+            list(resources),
         )
+        identity = FunctionIdentity(
+            name=name,
+            function_id=resolved_function_id,
+            version=parsed_version,
+        )
+        if self._fabric_control_plane:
+            self._fabric_control_plane.catalog.functions.validate_identity(identity)
+        registration = None
+        if self._local_function_registry:
+            self._local_function_registry.validate_identity(identity)
+            registration = self._local_function_registry.register(
+                identity, frozenset(resources)
+            )
         self.registry.register(Command(name, func))
-        # Update local vector clock for this peer info change
-        self.logical_clock = self.logical_clock.increment(self.cluster.local_url)
 
-        peer_info = PeerInfo(
-            url=f"ws://{self.settings.host}:{self.settings.port}",
-            funs=(name,),
-            locs=frozenset(resources),
-            last_seen=time.time(),
-            cluster_id=self.settings.cluster_id,
-            advertised_urls=tuple(
-                self.settings.advertised_urls
-                or [f"ws://{self.settings.host}:{self.settings.port}"]
-            ),
-            logical_clock=self.logical_clock.to_dict(),
-        )
-        self.cluster.add_fun_ability(peer_info)
-
-        # Immediately broadcast the new function to all connected peers (if event loop is running)
-        try:
-            # Use enhanced federated broadcast instead of separate system
-            task = asyncio.create_task(self._broadcast_new_function(name, resources))
-            self._background_tasks.add(task)
-            # Remove task from tracking when it completes
-            task.add_done_callback(self._background_tasks.discard)
-            logger.info(f"Federated function announcement initiated for: {name}")
-        except RuntimeError:
-            # No event loop running - this is normal during server initialization
-            pass
-
-    async def _broadcast_new_function(
-        self,
-        name: str,
-        resources: Iterable[str],
-        hop_count: int = 0,
-        max_hops: int = 3,
-        announcement_id: str = "",
-        original_source: str = "",
-    ) -> None:
-        """Broadcast a newly registered function to all connected peers with federated propagation.
-
-        Args:
-            name: The name of the newly registered function.
-            resources: The resources associated with the function.
-            hop_count: Number of hops from original source (for federated propagation).
-            max_hops: Maximum hops before dropping message.
-            announcement_id: Unique ID for deduplication.
-            original_source: Original server that announced the function.
-        """
-        import time
-
-        logger.info(
-            f"🔥 _broadcast_new_function CALLED for {name} (hop={hop_count}) - peer_connections: {len(self.peer_connections)} = {list(self.peer_connections.keys())}"
-        )
-
-        # Create type-safe federated announcement
-        try:
-            effective_original_source = original_source or self.cluster.local_url
-            announcement = FederatedRPCAnnouncement.create_initial(
-                functions=(name,),
-                resources=tuple(resources),
-                cluster_id=self.settings.cluster_id,
-                original_source=effective_original_source,
-                advertised_urls=self.settings.advertised_urls
-                or (f"ws://{self.settings.host}:{self.settings.port}",),
-                max_hops=max_hops,
-            )
-
-            # If this is a forwarded announcement, update hop count
-            if hop_count > 0:
-                # Create forwarded version with proper hop count
-                forwarded_propagation = create_federated_propagation_from_primitives(
-                    hop_count=hop_count,
-                    max_hops=max_hops,
-                    announcement_id=announcement_id,
-                    original_source=effective_original_source,  # FIX: Use effective_original_source, not original_source
-                )
-                announcement = FederatedRPCAnnouncement(
-                    capabilities=announcement.capabilities,
-                    propagation=forwarded_propagation,
-                )
-        except Exception as e:
-            logger.error(f"Failed to create federated announcement: {e}")
-            return
-
-        # Check if we should process this announcement
-        current_time: Timestamp = time.time()
-        local_node: NodeURL = self.cluster.local_url
-
-        if not announcement.should_process(
-            local_node, self.cluster.config.announcement_tracker
-        ):
-            logger.warning(
-                f"⏭️  SKIPPING announcement processing for {name}: {announcement.propagation.announcement_id} (already seen or loop detected)"
-            )
-            return
-
-        # Mark announcement as seen
-        self.cluster.config.mark_announcement_seen(
-            str(announcement.propagation.announcement_id)
-        )
-
-        # Clean up expired announcements
-        self.cluster.config.cleanup_expired_announcements()
-
-        logger.info(
-            f"Processing federated announcement: {name} from {str(announcement.propagation.original_source)} (hop {announcement.propagation.hop_count}/{announcement.propagation.max_hops})"
-        )
-
-        # Create RPCServerHello using the structured announcement
-        hello_message = RPCServerRequest(
-            server=RPCServerHello.create_from_capabilities(
-                announcement.capabilities, announcement.propagation
-            ),
-            u=str(ulid.new()),
-        )
-
-        # Send to all connected peers concurrently using existing pub/sub system for acknowledgments
-        async def send_to_peer(connection: Connection) -> None:
-            try:
-                if connection.is_connected:
-                    await connection.send(
-                        self.serializer.serialize(hello_message.model_dump())
-                    )
-                    logger.debug(
-                        "[{}] Broadcasted new function '{}' to peer {}",
-                        self.settings.name,
-                        name,
-                        connection.url,
-                    )
-            except Exception as e:
-                logger.warning(
-                    "[{}] Failed to broadcast new function to peer {}: {}",
-                    self.settings.name,
-                    connection.url,
-                    e,
-                )
-
-        # Get all known peers from both peer_connections and cluster.peers_info
-        all_peer_urls = set(self.peer_connections.keys())
-        for peer_url in self.cluster.peers_info.keys():
-            if (
-                peer_url != f"ws://{self.settings.host}:{self.settings.port}"
-            ):  # Don't send to ourselves
-                all_peer_urls.add(peer_url)
-
-        # Gather all send operations for concurrent execution
-        if all_peer_urls:
-            logger.info(
-                f"🚀 BROADCASTING {name} to {len(all_peer_urls)} peers: {list(all_peer_urls)}"
-            )
-
-            async def send_to_peer_url(peer_url: str) -> None:
-                """Send to a peer, creating connection if needed."""
-                try:
-                    # Use existing connection if available
-                    if (
-                        peer_url in self.peer_connections
-                        and self.peer_connections[peer_url].is_connected
-                    ):
-                        connection = self.peer_connections[peer_url]
-                    else:
-                        # Create on-demand connection for broadcasting
-                        logger.debug(
-                            f"Creating on-demand connection to {peer_url} for broadcast"
-                        )
-                        connection = Connection(url=peer_url)
-                        await connection.connect()
-                        # Don't store in peer_connections - this is just for broadcasting
-
-                    if connection.is_connected:
-                        await connection.send(
-                            self.serializer.serialize(hello_message.model_dump())
-                        )
-                        logger.debug(f"📤 Sent HELLO to {peer_url}")
-                    else:
-                        logger.warning(
-                            f"❌ Failed to connect to {peer_url} for broadcast"
-                        )
-                except Exception as e:
-                    logger.warning(f"❌ Error sending to {peer_url}: {e}")
-
-            send_tasks = [send_to_peer_url(peer_url) for peer_url in all_peer_urls]
-            await asyncio.gather(*send_tasks, return_exceptions=True)
-
-            # Use existing pub/sub system to wait for function registration confirmations
-            await self._wait_for_function_confirmation(
-                name, announcement.propagation.announcement_id, list(all_peer_urls)
-            )
-
-            logger.info(f"✅ BROADCAST COMPLETE for {name}")
-        else:
-            logger.warning(f"❌ NO KNOWN PEERS - Cannot broadcast {name}")
-
-    async def _wait_for_function_confirmation(
-        self,
-        function_name: str,
-        announcement_id: AnnouncementID,
-        peer_urls: list[NodeURL],
-    ) -> None:
-        """
-        Wait for function registration confirmation from peers using existing server-to-server messaging.
-
-        This leverages the existing peer connection infrastructure to wait for HELLO_ACK
-        messages that confirm peers have successfully registered the function.
-        """
-        if not peer_urls:
-            return
-
-        expected_confirmations = set(peer_urls)
-        received_confirmations: set[str] = set()
-
-        logger.info(
-            f"🔔 Waiting for function confirmation from {len(expected_confirmations)} peers: {list(expected_confirmations)}"
-        )
-
-        # Store confirmation tracking for this announcement
-        if announcement_id not in self._pending_confirmations:
-            self._pending_confirmations[announcement_id] = {}
-
-        # Create futures for each expected peer
-        for peer_url in expected_confirmations:
-            self._pending_confirmations[announcement_id][peer_url] = asyncio.Future[
-                bool
-            ]()
-
-        try:
-            # Wait for confirmations with timeout
-            confirmation_futures = list(
-                self._pending_confirmations[announcement_id].values()
-            )
-            await asyncio.wait_for(
-                asyncio.gather(*confirmation_futures, return_exceptions=True),
-                timeout=2.0,
-            )
-
-            # Count successful confirmations
-            successful_confirmations = 0
-            for peer_url, future in self._pending_confirmations[
-                announcement_id
-            ].items():
-                if future.done() and not future.exception():
-                    try:
-                        if future.result():
-                            successful_confirmations += 1
-                            logger.info(
-                                f"✅ Function {function_name} confirmed by {peer_url}"
-                            )
-                    except Exception:
-                        pass
-
-            if successful_confirmations == len(expected_confirmations):
-                logger.info(
-                    f"🎉 All {successful_confirmations} peers confirmed function {function_name}"
-                )
-            else:
-                logger.warning(
-                    f"⚠️ Only {successful_confirmations}/{len(expected_confirmations)} peers confirmed function {function_name}"
-                )
-
-        except TimeoutError:
-            confirmed_peers = []
-            missing_peers = []
-            for peer_url, future in self._pending_confirmations[
-                announcement_id
-            ].items():
-                if future.done() and not future.exception():
-                    try:
-                        if future.result():
-                            confirmed_peers.append(peer_url)
-                        else:
-                            missing_peers.append(peer_url)
-                    except Exception:
-                        missing_peers.append(peer_url)
-                else:
-                    missing_peers.append(peer_url)
-
-            logger.warning(
-                f"⏰ Timeout waiting for function confirmation: confirmed={confirmed_peers}, missing={missing_peers}"
-            )
-
-        except Exception as e:
-            logger.error(f"Error in function confirmation system: {e}")
-        finally:
-            # Clean up confirmation tracking
-            if announcement_id in self._pending_confirmations:
-                del self._pending_confirmations[announcement_id]
-
-    async def _publish_function_confirmation(
-        self, functions: FunctionNames, announcement_id: AnnouncementID
-    ) -> None:
-        """
-        Send function registration confirmation using existing server-to-server messaging.
-
-        This sends HELLO_ACK messages back to the announcing server to confirm
-        that functions have been successfully added to this server's function map.
-        """
-        if not announcement_id:
-            return
-
-        # Find the original announcing server from the announcement_id or peer connections
-        # For now, we'll send confirmations to ALL connected peers who might be waiting
-        try:
-            import time
-
-            from mpreg.core.model import RPCServerHelloAck, RPCServerRequest
-
-            # Create HELLO_ACK message
-            hello_ack = RPCServerHelloAck(
-                original_announcement_id=announcement_id,
-                acknowledged_functions=functions,
-                acknowledging_server=self.cluster.local_url,
-                timestamp=time.time(),
-            )
-
-            # Wrap in server request
-            ack_message = RPCServerRequest(server=hello_ack, u=str(ulid.new()))
-
-            # Send to all connected peers (the announcing server will filter)
-            for peer_url, connection in self.peer_connections.items():
-                try:
-                    if connection.is_connected:
-                        await connection.send(
-                            self.serializer.serialize(ack_message.model_dump())
-                        )
-                        logger.debug(
-                            f"📤 Sent HELLO_ACK for {list(functions)} to {peer_url}"
-                        )
-                except Exception as e:
-                    logger.warning(f"Failed to send HELLO_ACK to {peer_url}: {e}")
-
-            logger.info(
-                f"📡 Sent function confirmation for {list(functions)} (announcement {announcement_id})"
-            )
-
-        except Exception as e:
-            logger.error(f"Failed to send function confirmation: {e}")
-
-    async def _handle_function_confirmation(self, ack: Any) -> None:
-        """
-        Handle incoming HELLO_ACK messages to complete function confirmation cycle.
-
-        This processes acknowledgments from peers confirming they have successfully
-        registered functions, allowing the broadcast system to verify success.
-        """
-        try:
-            announcement_id = ack.original_announcement_id
-            acknowledging_server = ack.acknowledging_server
-            acknowledged_functions = ack.acknowledged_functions
-
-            logger.info(
-                f"📨 Received HELLO_ACK from {acknowledging_server} for {acknowledged_functions} (announcement {announcement_id})"
-            )
-
-            # Complete the confirmation future if we're waiting for it
-            if announcement_id in self._pending_confirmations:
-                if acknowledging_server in self._pending_confirmations[announcement_id]:
-                    future = self._pending_confirmations[announcement_id][
-                        acknowledging_server
-                    ]
-                    if not future.done():
-                        future.set_result(True)
-                        logger.debug(
-                            f"✅ Marked confirmation complete for {acknowledging_server}"
-                        )
-
-        except Exception as e:
-            logger.error(f"Error handling function confirmation: {e}")
+        if registration is not None:
+            self._publish_fabric_function_update(registration)
+        # Catalog delta already published for this registration.
 
     async def server(self) -> None:
         """Starts the MPREG server and handles incoming and outgoing connections.
 
-        This method sets up the websocket server, registers default commands,
+        This method sets up the transport listener, registers default commands,
         and manages connections to other peers if specified in the settings.
         """
         logger.info(
@@ -3277,12 +5739,35 @@ class MPREGServer:
         # Default commands and RPC commands are already registered in __init__
         # No need to register them again here
 
-        # Start a background task to manage peer connections based on gossip.
+        transport_config = TransportConfig(
+            protocol_options={"max_message_size": MPREG_DATA_MAX}
+        )
+        self._transport_listener = TransportFactory.create_listener(
+            "ws",
+            self.settings.host,
+            self.settings.port,
+            transport_config,
+        )
+        await self._transport_listener.start()
+        self._track_background_task(asyncio.create_task(self._accept_connections()))
+        # Trigger initial connections to configured peers immediately.
+        if self.settings.peers:
+            for peer_url in self.settings.peers:
+                await self._establish_peer_connection(peer_url, fast_connect=True)
+        if self.settings.connect:
+            await self._establish_peer_connection(
+                self.settings.connect, fast_connect=True
+            )
+
+        # Start a background task to manage peer connections based on the catalog.
         # Use the proper task management system for consistent cleanup
-        peer_task = asyncio.create_task(self._manage_peer_connections())
-        self._background_tasks.add(peer_task)
-        # Remove task from tracking when it completes
-        peer_task.add_done_callback(self._background_tasks.discard)
+        self._track_background_task(
+            asyncio.create_task(self._manage_peer_connections())
+        )
+
+        self._track_background_task(asyncio.create_task(self._bootstrap_seed_peers()))
+
+        await self._start_monitoring_services()
 
         # Start consensus manager for intra-cluster consensus
         await self.consensus_manager.start()
@@ -3290,19 +5775,13 @@ class MPREGServer:
         # Populate consensus manager with known cluster peers
         self._update_consensus_known_nodes()
 
+        # Initialize optional cache/queue systems with live event loop
+        await self._initialize_default_systems()
+        await self._start_fabric_control_plane()
+
         # Initialize federated RPC system
         # Federated RPC now uses enhanced MPREG infrastructure - no separate initialization needed
         logger.info("Enhanced federated RPC ready via MPREG message bus")
-
-        self._websocket_server = await websockets.server.serve(
-            self.opened,
-            self.settings.host,
-            self.settings.port,
-            max_size=None,
-            max_queue=None,
-            read_limit=MPREG_DATA_MAX,
-            write_limit=MPREG_DATA_MAX,
-        )
 
         try:
             # If no external connection requested, wait for shutdown signal
@@ -3311,28 +5790,53 @@ class MPREGServer:
                 await self._shutdown_event.wait()
                 return
 
-            # If static peers are configured, establish initial connections.
-            if self.settings.peers:
-                for peer_url in self.settings.peers:
-                    await self._establish_peer_connection(peer_url)
-
-            # If a specific connect URL is configured, connect to it.
-            if self.settings.connect:
-                await self._establish_peer_connection(self.settings.connect)
-
             # Keep the server running until shutdown signal.
             await self._shutdown_event.wait()
+        except asyncio.CancelledError:
+            # Ensure background tasks are cancelled even if the server task is cancelled.
+            try:
+                await asyncio.shield(self.shutdown_async())
+            except Exception as e:
+                logger.warning(
+                    f"[{self.settings.name}] Error during cancelled server shutdown: {e}"
+                )
+            raise
         finally:
             # Clean up WebSocket server
-            if self._websocket_server:
-                self._websocket_server.close()
-                await self._websocket_server.wait_closed()
+            if self._transport_listener:
+                await self._transport_listener.stop()
+            await self._stop_monitoring_services()
+            try:
+                await self.consensus_manager.stop()
+            except Exception as e:
+                logger.warning(
+                    f"[{self.settings.name}] Error stopping consensus manager in server shutdown: {e}"
+                )
 
     def start(self) -> None:
         try:
             asyncio.run(self.server())
         except KeyboardInterrupt:
             logger.warning("Thanks for playing!")
+
+    async def _accept_connections(self) -> None:
+        listener = self._transport_listener
+        if not listener:
+            return
+        while not self._shutdown_event.is_set():
+            try:
+                transport = await listener.accept()
+            except Exception as exc:
+                if self._shutdown_event.is_set():
+                    return
+                logger.warning(
+                    "[{}] Transport accept failed: {}",
+                    self.settings.name,
+                    exc,
+                )
+                await asyncio.sleep(0.05)
+                continue
+            self._track_background_task(asyncio.create_task(self.opened(transport)))
 
 
 @logger.catch

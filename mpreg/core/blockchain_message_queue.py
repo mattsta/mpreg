@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass, field
+from collections import deque
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from ..datastructures import (
@@ -23,6 +24,9 @@ from ..datastructures import (
     ProposalType,
     Transaction,
 )
+from ..datastructures.blockchain_crypto import TransactionSigner
+from ..datastructures.blockchain_types import CryptoConfig
+from .blockchain_ledger import BlockchainLedger
 from .blockchain_message_queue_types import (
     BlockchainMessage,
     DeliveryGuarantee,
@@ -42,16 +46,42 @@ from .blockchain_message_queue_types import (
 class MessageQueueGovernance:
     """DAO governance for message queue operations."""
 
-    def __init__(self, dao: DecentralizedAutonomousOrganization):
+    def __init__(
+        self,
+        dao: DecentralizedAutonomousOrganization,
+        *,
+        ledger: BlockchainLedger | None = None,
+        signer: TransactionSigner | None = None,
+    ):
+        self.ledger = ledger or BlockchainLedger(dao.blockchain)
+        if dao.blockchain != self.ledger.blockchain:
+            dao = replace(dao, blockchain=self.ledger.blockchain)
         self.dao = dao
+        self.signer = signer
         self.active_policies: dict[str, QueueGovernancePolicy] = {}
         self.route_registry: dict[RouteId, MessageRoute] = {}
         self.performance_history: list[QueueMetrics] = []
+
+    def _sync_dao_from_ledger(self) -> None:
+        if self.dao.blockchain != self.ledger.blockchain:
+            self.dao = replace(self.dao, blockchain=self.ledger.blockchain)
+
+    def _sync_ledger_from_dao(self) -> None:
+        if self.dao.blockchain != self.ledger.blockchain:
+            self.ledger.replace(self.dao.blockchain)
+
+    def _sign_transaction(self, transaction: Transaction) -> Transaction:
+        if self.signer is None:
+            if self.ledger.blockchain.crypto_config.require_signatures:
+                raise ValueError("Signer required when signatures are enforced")
+            return transaction
+        return self.signer.sign(transaction)
 
     def propose_routing_policy(
         self, proposer_id: str, policy_spec: dict[str, Any]
     ) -> str:
         """Propose new routing policy through DAO governance."""
+        self._sync_dao_from_ledger()
 
         proposal = DaoProposal(
             proposer_id=proposer_id,
@@ -68,12 +98,14 @@ class MessageQueueGovernance:
         )
 
         self.dao = self.dao.create_proposal(proposer_id, proposal)
+        self._sync_ledger_from_dao()
         return list(self.dao.proposals.keys())[-1]
 
     def propose_fee_structure(
         self, proposer_id: str, fee_structure: dict[str, Any]
     ) -> str:
         """Propose fee structure changes through DAO."""
+        self._sync_dao_from_ledger()
 
         proposal = DaoProposal(
             proposer_id=proposer_id,
@@ -88,12 +120,14 @@ class MessageQueueGovernance:
         )
 
         self.dao = self.dao.create_proposal(proposer_id, proposal)
+        self._sync_ledger_from_dao()
         return list(self.dao.proposals.keys())[-1]
 
     def propose_priority_algorithm(
         self, proposer_id: str, algorithm_spec: dict[str, Any]
     ) -> str:
         """Propose message prioritization algorithm."""
+        self._sync_dao_from_ledger()
 
         proposal = DaoProposal(
             proposer_id=proposer_id,
@@ -108,11 +142,13 @@ class MessageQueueGovernance:
         )
 
         self.dao = self.dao.create_proposal(proposer_id, proposal)
+        self._sync_ledger_from_dao()
         return list(self.dao.proposals.keys())[-1]
 
     def execute_governance_decision(self, proposal_id: str) -> QueueGovernancePolicy:
         """Execute DAO decision to update queue governance."""
 
+        self._sync_dao_from_ledger()
         if proposal_id not in self.dao.proposals:
             raise ValueError(f"Proposal {proposal_id} not found")
 
@@ -190,6 +226,7 @@ class MessageQueueGovernance:
 
         # Record on blockchain
         self._record_policy_change(policy)
+        self._sync_dao_from_ledger()
 
         return policy
 
@@ -250,9 +287,29 @@ class MessageQueueGovernance:
 
     def _record_policy_change(self, policy: QueueGovernancePolicy) -> None:
         """Record policy change on blockchain."""
-        # This would record the policy change on the DAO's blockchain
-        # Implementation depends on blockchain integration
-        pass
+        policy_tx = Transaction(
+            sender=policy.created_by or "governance",
+            receiver="message_queue_governance",
+            operation_type=OperationType.SMART_CONTRACT,
+            payload=json.dumps(
+                {
+                    "action": "policy_change",
+                    "policy_id": policy.policy_id,
+                    "policy_name": policy.policy_name,
+                    "policy_type": policy.policy_type,
+                    "approved": policy.approved_by_dao,
+                    "effective_from": policy.effective_from,
+                }
+            ).encode(),
+            fee=0,
+        )
+        policy_tx = self._sign_transaction(policy_tx)
+        new_block = Block.create_next_block(
+            previous_block=self.ledger.blockchain.get_latest_block(),
+            transactions=(policy_tx,),
+            miner="queue_governance",
+        )
+        self.ledger.add_block(new_block)
 
 
 class EquitablePriorityQueue:
@@ -263,8 +320,9 @@ class EquitablePriorityQueue:
         self.message_queue: list[BlockchainMessage] = []
         self.sender_quotas: dict[str, int] = {}
         self.last_quota_reset: float = time.time()
+        self.recent_senders: deque[str] = deque(maxlen=20)
 
-    def enqueue(self, message: BlockchainMessage) -> bool:
+    def enqueue(self, message: BlockchainMessage) -> BlockchainMessage:
         """Add message to queue with fairness checks."""
 
         # Check sender quotas to prevent spam/monopolization
@@ -303,7 +361,7 @@ class EquitablePriorityQueue:
         # Update sender quota
         self._update_sender_quota(message.sender_id)
 
-        return True
+        return updated_message
 
     def dequeue(self) -> BlockchainMessage | None:
         """Remove highest priority message considering fairness."""
@@ -415,10 +473,21 @@ class EquitablePriorityQueue:
                 else 5
             )
 
-            # TODO: Implement consecutive sender limiting logic
-            # This would track recent dequeued messages and occasionally
-            # skip the top message if same sender has had too many consecutive
+            consecutive_count = 0
+            for sender_id in reversed(self.recent_senders):
+                if sender_id == message.sender_id:
+                    consecutive_count += 1
+                else:
+                    break
 
+            if consecutive_count >= max_consecutive_from_sender:
+                for idx, candidate in enumerate(self.message_queue):
+                    if candidate.sender_id != message.sender_id:
+                        self.message_queue.insert(0, message)
+                        message = self.message_queue.pop(idx + 1)
+                        break
+
+        self.recent_senders.append(message.sender_id)
         return message
 
     def _update_sender_quota(self, sender_id: str) -> None:
@@ -438,11 +507,29 @@ class EquitablePriorityQueue:
 class BlockchainMessageRouter:
     """Message router with blockchain audit trail."""
 
-    def __init__(self, blockchain: Blockchain, governance: MessageQueueGovernance):
-        self.blockchain = blockchain
+    def __init__(
+        self,
+        ledger: BlockchainLedger,
+        governance: MessageQueueGovernance,
+        *,
+        signer: TransactionSigner | None = None,
+    ):
+        self.ledger = ledger
         self.governance = governance
+        self.signer = signer
         self.active_routes: dict[RouteId, MessageRoute] = {}
         self.message_history: dict[str, list[str]] = {}  # message_id -> route_path
+
+    def _sign_transaction(self, transaction: Transaction) -> Transaction:
+        if self.signer is None:
+            if self.ledger.blockchain.crypto_config.require_signatures:
+                raise ValueError("Signer required when signatures are enforced")
+            return transaction
+        return self.signer.sign(transaction)
+
+    @property
+    def blockchain(self) -> Blockchain:
+        return self.ledger.blockchain
 
     def register_route(self, route: MessageRoute, registrar_id: str) -> RouteId:
         """Register new route with blockchain record."""
@@ -469,15 +556,16 @@ class BlockchainMessageRouter:
             ).encode(),
             fee=10,
         )
+        registration_tx = self._sign_transaction(registration_tx)
 
         # Add to blockchain
         new_block = Block.create_next_block(
-            previous_block=self.blockchain.get_latest_block(),
+            previous_block=self.ledger.blockchain.get_latest_block(),
             transactions=(registration_tx,),
             miner="message_queue_manager",
         )
 
-        self.blockchain = self.blockchain.add_block(new_block)
+        self.ledger.add_block(new_block)
         self.active_routes[route.route_id] = route
 
         return route.route_id
@@ -510,15 +598,16 @@ class BlockchainMessageRouter:
             ).encode(),
             fee=message.processing_fee,
         )
+        routing_tx = self._sign_transaction(routing_tx)
 
         # Add to blockchain
         new_block = Block.create_next_block(
-            previous_block=self.blockchain.get_latest_block(),
+            previous_block=self.ledger.blockchain.get_latest_block(),
             transactions=(routing_tx,),
             miner="message_queue_manager",
         )
 
-        self.blockchain = self.blockchain.add_block(new_block)
+        self.ledger.add_block(new_block)
 
         # Track message routing history
         if message.message_id not in self.message_history:
@@ -600,10 +689,7 @@ class BlockchainMessageRouter:
         total_cost = route.cost_per_mb * message_size_mb
 
         # Ensure affordable routing for small messages
-        if message_size_mb < 0.1 and total_cost > message.processing_fee * 0.5:
-            return False
-
-        return True
+        return not (message_size_mb < 0.1 and total_cost > message.processing_fee * 0.5)
 
     def _calculate_route_score(
         self, route: MessageRoute, message: BlockchainMessage, criteria: RoutingCriteria
@@ -655,15 +741,16 @@ class BlockchainMessageRouter:
             ).encode(),
             fee=1,
         )
+        metrics_tx = self._sign_transaction(metrics_tx)
 
         # Add to blockchain
         new_block = Block.create_next_block(
-            previous_block=self.blockchain.get_latest_block(),
+            previous_block=self.ledger.blockchain.get_latest_block(),
             transactions=(metrics_tx,),
             miner="message_queue_manager",
         )
 
-        self.blockchain = self.blockchain.add_block(new_block)
+        self.ledger.add_block(new_block)
 
 
 @dataclass(frozen=True, slots=True)
@@ -673,18 +760,22 @@ class BlockchainMessageQueue:
     queue_id: MessageQueueId = field(
         default_factory=lambda: f"queue_{int(time.time())}"
     )
-    blockchain: Blockchain = field(
-        default_factory=lambda: Blockchain.create_new_chain(
-            chain_id="message_queue",
-            genesis_miner="queue_genesis",
-            consensus_config=ConsensusConfig(
-                consensus_type=ConsensusType.PROOF_OF_AUTHORITY,
-                block_time_target=10,  # 10-second blocks for messaging
-                difficulty_adjustment_interval=144,
-                max_transactions_per_block=1000,
-            ),
+    ledger: BlockchainLedger = field(
+        default_factory=lambda: BlockchainLedger(
+            Blockchain.create_new_chain(
+                chain_id="message_queue",
+                genesis_miner="queue_genesis",
+                consensus_config=ConsensusConfig(
+                    consensus_type=ConsensusType.PROOF_OF_AUTHORITY,
+                    block_time_target=10,  # 10-second blocks for messaging
+                    difficulty_adjustment_interval=144,
+                    max_transactions_per_block=1000,
+                ),
+                crypto_config=CryptoConfig(require_signatures=True),
+            )
         )
     )
+    signer: TransactionSigner | None = None
     governance: MessageQueueGovernance = field(init=False)
     priority_queue: EquitablePriorityQueue = field(init=False)
     router: BlockchainMessageRouter = field(init=False)
@@ -692,33 +783,46 @@ class BlockchainMessageQueue:
 
     def __post_init__(self) -> None:
         """Initialize queue components."""
+        # Use object.__setattr__ for frozen dataclass
+        signer = self.signer or TransactionSigner.create()
+        object.__setattr__(self, "signer", signer)
+
         # Create default DAO for governance
         default_dao = DecentralizedAutonomousOrganization(
             name=f"Message Queue {self.queue_id} DAO",
             description=f"Governance for message queue {self.queue_id}",
-            blockchain=self.blockchain,
+            blockchain=self.ledger.blockchain,
+            signer=signer,
         )
-
-        # Use object.__setattr__ for frozen dataclass
-        object.__setattr__(self, "governance", MessageQueueGovernance(default_dao))
+        object.__setattr__(
+            self,
+            "governance",
+            MessageQueueGovernance(default_dao, ledger=self.ledger, signer=self.signer),
+        )
         object.__setattr__(
             self, "priority_queue", EquitablePriorityQueue(self.governance)
         )
         object.__setattr__(
-            self, "router", BlockchainMessageRouter(self.blockchain, self.governance)
+            self,
+            "router",
+            BlockchainMessageRouter(self.ledger, self.governance, signer=self.signer),
         )
+
+    @property
+    def blockchain(self) -> Blockchain:
+        return self.ledger.blockchain
 
     def submit_message(self, message: BlockchainMessage) -> bool:
         """Submit message to queue with full processing."""
         try:
             # Enqueue with fairness checks
-            success = self.priority_queue.enqueue(message)
+            stored_message = self.priority_queue.enqueue(message)
 
-            if success and message.blockchain_record:
+            if stored_message.blockchain_record:
                 # Record submission on blockchain
-                self._record_message_submission(message)
+                self._record_message_submission(stored_message)
 
-            return success
+            return True
         except Exception as e:
             # Record failure for monitoring
             self._record_submission_failure(message, str(e))
@@ -726,9 +830,13 @@ class BlockchainMessageQueue:
 
     def process_next_message(self) -> BlockchainMessage | None:
         """Process next message from queue."""
-        message = self.priority_queue.dequeue()
-
-        if message:
+        while True:
+            message = self.priority_queue.dequeue()
+            if message is None:
+                return None
+            if message.expires_at and message.expires_at < time.time():
+                self._record_processing_failure(message, "expired")
+                continue
             # Route the message
             try:
                 route = self.router.route_message(message)
@@ -760,11 +868,13 @@ class BlockchainMessageQueue:
                         blockchain_record=message.blockchain_record,
                         metadata=message.metadata,
                     )
-                    self.priority_queue.enqueue(retry_message)
+                    if (
+                        retry_message.expires_at is None
+                        or retry_message.expires_at >= time.time()
+                    ):
+                        self.priority_queue.enqueue(retry_message)
 
                 raise
-
-        return None
 
     def get_queue_metrics(self) -> QueueMetrics:
         """Get current queue performance metrics."""
@@ -788,6 +898,14 @@ class BlockchainMessageQueue:
         )
 
         self.governance.dao = self.governance.dao.add_member(member)
+        self.governance.ledger.replace(self.governance.dao.blockchain)
+
+    def _sign_transaction(self, transaction: Transaction) -> Transaction:
+        if self.signer is None:
+            if self.ledger.blockchain.crypto_config.require_signatures:
+                raise ValueError("Signer required when signatures are enforced")
+            return transaction
+        return self.signer.sign(transaction)
 
     def _record_message_submission(self, message: BlockchainMessage) -> None:
         """Record message submission on blockchain."""
@@ -806,14 +924,15 @@ class BlockchainMessageQueue:
             ).encode(),
             fee=1,
         )
+        submission_tx = self._sign_transaction(submission_tx)
 
         new_block = Block.create_next_block(
-            previous_block=self.blockchain.get_latest_block(),
+            previous_block=self.ledger.blockchain.get_latest_block(),
             transactions=(submission_tx,),
             miner="queue_manager",
         )
 
-        object.__setattr__(self, "blockchain", self.blockchain.add_block(new_block))
+        self.ledger.add_block(new_block)
 
     def _record_message_processing(
         self, message: BlockchainMessage, route: MessageRoute
@@ -833,25 +952,68 @@ class BlockchainMessageQueue:
             ).encode(),
             fee=0,
         )
+        processing_tx = self._sign_transaction(processing_tx)
 
         new_block = Block.create_next_block(
-            previous_block=self.blockchain.get_latest_block(),
+            previous_block=self.ledger.blockchain.get_latest_block(),
             transactions=(processing_tx,),
             miner="queue_manager",
         )
 
-        object.__setattr__(self, "blockchain", self.blockchain.add_block(new_block))
+        self.ledger.add_block(new_block)
 
     def _record_submission_failure(
         self, message: BlockchainMessage, error: str
     ) -> None:
         """Record message submission failure."""
-        # Implementation for failure logging
-        pass
+        if not message.blockchain_record:
+            return
+        failure_tx = Transaction(
+            sender=message.sender_id,
+            receiver=self.queue_id,
+            operation_type=OperationType.MESSAGE,
+            payload=json.dumps(
+                {
+                    "action": "submit_failed",
+                    "message_id": message.message_id,
+                    "error": error,
+                    "timestamp": time.time(),
+                }
+            ).encode(),
+            fee=0,
+        )
+        failure_tx = self._sign_transaction(failure_tx)
+        new_block = Block.create_next_block(
+            previous_block=self.ledger.blockchain.get_latest_block(),
+            transactions=(failure_tx,),
+            miner="queue_manager",
+        )
+        self.ledger.add_block(new_block)
 
     def _record_processing_failure(
         self, message: BlockchainMessage, error: str
     ) -> None:
         """Record message processing failure."""
-        # Implementation for failure logging
-        pass
+        if not message.blockchain_record:
+            return
+        failure_tx = Transaction(
+            sender=self.queue_id,
+            receiver=message.recipient_id,
+            operation_type=OperationType.MESSAGE,
+            payload=json.dumps(
+                {
+                    "action": "process_failed",
+                    "message_id": message.message_id,
+                    "error": error,
+                    "timestamp": time.time(),
+                }
+            ).encode(),
+            fee=0,
+        )
+        failure_tx = self._sign_transaction(failure_tx)
+        new_block = Block.create_next_block(
+            previous_block=self.ledger.blockchain.get_latest_block(),
+            transactions=(failure_tx,),
+            miner="queue_manager",
+        )
+        self.ledger.add_block(new_block)

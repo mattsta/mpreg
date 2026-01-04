@@ -75,7 +75,7 @@ class CoordinateMap:
     def from_tuples(
         cls, coord_dict: dict[NodeId, tuple[float, float]]
     ) -> CoordinateMap:
-        """Create from a dictionary of (x, y) tuples - for legacy compatibility."""
+        """Create from a dictionary of (x, y) tuples."""
         coordinates = {
             node_id: Coordinate(x, y) for node_id, (x, y) in coord_dict.items()
         }
@@ -261,14 +261,17 @@ class DijkstraAlgorithm:
             visited.add(current_node)
             self._nodes_explored += 1
 
-            # Early termination if target reached
-            if self.config.early_termination and current_node == target:
-                break
-
             # Check hop limit
             current_path_length = self._count_hops_to_node(
                 previous, source, current_node
             )
+            if current_path_length > self.config.max_hops:
+                continue
+
+            # Early termination if target reached within hop budget
+            if self.config.early_termination and current_node == target:
+                break
+
             if current_path_length >= self.config.max_hops:
                 continue
 
@@ -371,6 +374,8 @@ class DijkstraAlgorithm:
             current_path_length = self._count_hops_to_node(
                 previous, source, current_node
             )
+            if current_path_length > self.config.max_hops:
+                continue
             if current_path_length >= self.config.max_hops:
                 continue
 
@@ -453,7 +458,7 @@ class DijkstraAlgorithm:
         current: NodeId | None = node
 
         while (
-            current is not None and current != source and count < self.config.max_hops
+            current is not None and current != source and count <= self.config.max_hops
         ):
             current = previous.get(current)
             count += 1
@@ -539,7 +544,14 @@ class AStarAlgorithm:
         while open_set:
             current_f, current_node = heapq.heappop(open_set)
 
-            # Target reached
+            # Check hop limit
+            current_path_length = self._count_hops_astar(
+                came_from, source, current_node
+            )
+            if current_path_length > self.config.max_hops:
+                continue
+
+            # Target reached within hop budget
             if current_node == target:
                 path = self._reconstruct_path_astar(came_from, source, target)
                 computation_time = (time.time() - start_time) * 1000
@@ -555,10 +567,6 @@ class AStarAlgorithm:
             closed_set.add(current_node)
             self._nodes_explored += 1
 
-            # Check hop limit
-            current_path_length = self._count_hops_astar(
-                came_from, source, current_node
-            )
             if current_path_length >= self.config.max_hops:
                 continue
 
@@ -635,7 +643,7 @@ class AStarAlgorithm:
         current: NodeId | None = node
 
         while (
-            current is not None and current != source and count < self.config.max_hops
+            current is not None and current != source and count <= self.config.max_hops
         ):
             current = came_from.get(current)
             count += 1

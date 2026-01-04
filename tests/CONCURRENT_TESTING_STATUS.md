@@ -82,27 +82,27 @@ async def test_custom_setup():
 
 ```bash
 # These work with concurrent testing:
-poetry run pytest tests/test_model.py tests/test_serialization.py -n 4  # ✅ Works
-poetry run pytest tests/test_hub_discovery.py -n 2                     # ✅ Works
-poetry run pytest tests/test_graph_integration.py -n 2                 # ✅ Works
-poetry run pytest tests/test_port_allocation_demo.py -n 4              # ✅ Works
+uv run pytest tests/test_model.py tests/test_serialization.py -n 4  # ✅ Works
+uv run pytest tests/test_hub_discovery.py -n 2                     # ✅ Works
+uv run pytest tests/test_graph_integration.py -n 2                 # ✅ Works
+uv run pytest tests/test_port_allocation_demo.py -n 4              # ✅ Works
 
 # These still have port conflicts:
-poetry run pytest tests/test_dependency_resolution.py -n 2             # ❌ Connection refused
-poetry run pytest tests/test_production_examples.py -n 2               # ❌ Connection refused
+uv run pytest tests/test_dependency_resolution.py -n 2             # ❌ Connection refused
+uv run pytest tests/test_production_examples.py -n 2               # ❌ Connection refused
 ```
 
 ### Recommended Testing Approach
 
 ```bash
 # Run safe tests concurrently (fast)
-poetry run pytest -n auto -m "not slow" --ignore=tests/test_dependency_resolution.py --ignore=tests/test_production_examples.py --ignore=tests/test_advanced_cluster_scenarios.py
+uv run pytest -n auto -m "not slow" --ignore=tests/test_dependency_resolution.py --ignore=tests/test_production_examples.py --ignore=tests/test_advanced_cluster_scenarios.py
 
 # Run problematic tests sequentially (slower but works)
-poetry run pytest tests/test_dependency_resolution.py tests/test_production_examples.py tests/test_advanced_cluster_scenarios.py
+uv run pytest tests/test_dependency_resolution.py tests/test_production_examples.py tests/test_advanced_cluster_scenarios.py
 
 # Or run individual problem tests to avoid conflicts
-poetry run pytest tests/test_dependency_resolution.py::TestDependencyResolution::test_simple_dependency_chain
+uv run pytest tests/test_dependency_resolution.py::TestDependencyResolution::test_simple_dependency_chain
 ```
 
 ## 📋 Migration Checklist
@@ -110,12 +110,12 @@ poetry run pytest tests/test_dependency_resolution.py::TestDependencyResolution:
 For each test file with hardcoded ports:
 
 - [ ] **test_dependency_resolution.py**
-  - [ ] Replace `port=9001` with `port=port_manager.get_server_port()`
-  - [ ] Replace `"ws://127.0.0.1:9001"` with `f"ws://127.0.0.1:{port1}"`
+  - [ ] Replace `port=<fixed>` with `port=port_manager.get_server_port()`
+  - [ ] Replace `"ws://127.0.0.1:<fixed>"` with `f"ws://127.0.0.1:{port1}"`
   - [ ] Add `TestPortManager` context or use fixtures
 
 - [ ] **test_production_examples.py**
-  - [ ] Replace hardcoded ports 9001-9005
+  - [ ] Replace hardcoded ports with dynamic allocation
   - [ ] Update client URLs to use dynamic ports
   - [ ] Add proper port cleanup
 
@@ -123,14 +123,14 @@ For each test file with hardcoded ports:
   - [ ] Similar updates to production examples
 
 - [ ] **test_real_world_workflows.py**
-  - [ ] Replace ports 9021-9033 (lower priority)
+  - [ ] Replace hardcoded ports with dynamic allocation (lower priority)
 
 ## 📚 Resources
 
 - **Port Migration Guide**: `tests/README_PORT_MIGRATION.md`
 - **Working Examples**: `tests/test_port_allocation_demo.py`
 - **Helper Classes**: `tests/test_helpers.py`
-- **Port Allocator**: `tests/port_allocator.py`
+- **Port Allocator**: `mpreg/core/port_allocator.py`
 
 ## 🎯 Current Test Results
 

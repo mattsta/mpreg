@@ -7,14 +7,23 @@ signatures and comprehensive validation for distributed federation operations.
 
 from __future__ import annotations
 
-import hashlib
 import time
 from dataclasses import dataclass, field
 from typing import Any
 
 from hypothesis import strategies as st
 
+from .blockchain_crypto import (
+    derive_public_key,
+    public_key_length,
+    sign_payload,
+    signature_length,
+)
+from .blockchain_crypto import (
+    verify_signature as verify_payload_signature,
+)
 from .blockchain_types import (
+    CryptoConfig,
     DigitalSignature,
     NodeId,
     Nonce,
@@ -49,6 +58,8 @@ class Transaction:
     fee: TransactionFee = 1
     nonce: Nonce = 0
     signature: DigitalSignature = b""
+    public_key: PublicKey = b""
+    signature_algorithm: str = "ed25519"
 
     def __post_init__(self) -> None:
         """Validate transaction fields."""
@@ -64,6 +75,17 @@ class Transaction:
             raise ValueError("Nonce cannot be negative")
         if self.timestamp < 0:
             raise ValueError("Timestamp cannot be negative")
+        _ = signature_length(self.signature_algorithm)
+        if self.signature and not self.public_key:
+            raise ValueError("Public key required when signature is present")
+        if self.public_key:
+            expected_public_key_length = public_key_length(self.signature_algorithm)
+            if len(self.public_key) != expected_public_key_length:
+                raise ValueError("Public key length is invalid")
+        if self.signature:
+            expected_signature_length = signature_length(self.signature_algorithm)
+            if len(self.signature) != expected_signature_length:
+                raise ValueError("Signature length is invalid")
 
     def get_hash(self) -> TransactionHash:
         """Compute deterministic hash of transaction data (excluding signature)."""
@@ -93,11 +115,11 @@ class Transaction:
         data_str = ":".join(f"{k}={v}" for k, v in sorted_items)
         return data_str.encode("utf-8")
 
-    def sign(self, private_key: bytes) -> Transaction:
+    def sign(self, private_key: bytes, *, algorithm: str | None = None) -> Transaction:
         """Create new transaction with cryptographic signature."""
-        # Simple signature simulation (in production, use proper crypto library)
-        message = self.to_bytes()
-        signature = hashlib.sha256(message + private_key).digest()
+        selected_algorithm = algorithm or self.signature_algorithm
+        signature = sign_payload(self.to_bytes(), private_key, selected_algorithm)
+        public_key = derive_public_key(private_key, selected_algorithm)
 
         return Transaction(
             transaction_id=self.transaction_id,
@@ -109,19 +131,34 @@ class Transaction:
             fee=self.fee,
             nonce=self.nonce,
             signature=signature,
+            public_key=public_key,
+            signature_algorithm=selected_algorithm,
         )
 
-    def verify_signature(self, public_key: PublicKey) -> bool:
+    def verify_signature(
+        self,
+        public_key: PublicKey | None = None,
+        *,
+        algorithm: str | None = None,
+    ) -> bool:
         """Verify transaction signature against public key."""
         if not self.signature:
             return False
+        key = public_key or self.public_key
+        if not key:
+            return False
+        selected_algorithm = algorithm or self.signature_algorithm
+        return verify_payload_signature(
+            self.to_bytes(), self.signature, key, selected_algorithm
+        )
 
-        # Simple signature verification (in production, use proper crypto library)
-        message = self.to_bytes()
-        expected_signature = hashlib.sha256(message + public_key).digest()
-        return self.signature == expected_signature
-
-    def is_valid(self, current_time: Timestamp | None = None) -> bool:
+    def is_valid(
+        self,
+        current_time: Timestamp | None = None,
+        *,
+        crypto_config: CryptoConfig | None = None,
+        public_key: PublicKey | None = None,
+    ) -> bool:
         """Check if transaction is valid."""
         if current_time is None:
             current_time = time.time()
@@ -138,13 +175,40 @@ class Transaction:
         if self.timestamp > current_time + 300:  # 5 minutes tolerance
             return False
 
-        # Signature validation (if signature present)
-        if self.signature and len(self.signature) != 32:  # SHA-256 length
-            return False
+        selected_algorithm = (
+            crypto_config.signature_algorithm
+            if crypto_config is not None
+            else self.signature_algorithm
+        )
+        require_signatures = (
+            crypto_config.require_signatures if crypto_config is not None else False
+        )
+        if require_signatures:
+            if not self.signature:
+                return False
+            key = public_key or self.public_key
+            if not key:
+                return False
+            if not verify_payload_signature(
+                self.to_bytes(), self.signature, key, selected_algorithm
+            ):
+                return False
+        elif self.signature:
+            key = public_key or self.public_key
+            if not key:
+                return False
+            if not verify_payload_signature(
+                self.to_bytes(), self.signature, key, selected_algorithm
+            ):
+                return False
 
         return True
 
-    def with_signature(self, signature: DigitalSignature) -> Transaction:
+    def with_signature(
+        self,
+        signature: DigitalSignature,
+        public_key: PublicKey | None = None,
+    ) -> Transaction:
         """Create new transaction with specified signature."""
         return Transaction(
             transaction_id=self.transaction_id,
@@ -156,6 +220,8 @@ class Transaction:
             fee=self.fee,
             nonce=self.nonce,
             signature=signature,
+            public_key=public_key or self.public_key,
+            signature_algorithm=self.signature_algorithm,
         )
 
     def with_nonce(self, nonce: Nonce) -> Transaction:
@@ -170,6 +236,8 @@ class Transaction:
             fee=self.fee,
             nonce=nonce,
             signature=self.signature,
+            public_key=self.public_key,
+            signature_algorithm=self.signature_algorithm,
         )
 
     def age_seconds(self, current_time: Timestamp | None = None) -> float:
@@ -196,6 +264,8 @@ class Transaction:
             "fee": self.fee,
             "nonce": self.nonce,
             "signature": self.signature.hex() if self.signature else "",
+            "public_key": self.public_key.hex() if self.public_key else "",
+            "signature_algorithm": self.signature_algorithm,
             "hash": self.get_hash(),
         }
 
@@ -212,6 +282,10 @@ class Transaction:
             fee=data["fee"],
             nonce=data["nonce"],
             signature=bytes.fromhex(data["signature"]) if data["signature"] else b"",
+            public_key=bytes.fromhex(data.get("public_key", ""))
+            if data.get("public_key")
+            else b"",
+            signature_algorithm=data.get("signature_algorithm", "ed25519"),
         )
 
     def __str__(self) -> str:
@@ -316,18 +390,31 @@ def transaction_payload_strategy() -> st.SearchStrategy[TransactionPayload]:
 
 def transaction_strategy() -> st.SearchStrategy[Transaction]:
     """Generate valid Transaction instances for testing."""
-    return st.builds(
-        Transaction,
-        transaction_id=transaction_id_strategy(),
-        sender=node_id_strategy(),
-        receiver=node_id_strategy(),
-        operation_type=st.sampled_from(OperationType),
-        payload=transaction_payload_strategy(),
-        timestamp=st.floats(min_value=0, max_value=1700000000),  # Fixed timestamp range
-        fee=st.integers(min_value=0, max_value=1000),
-        nonce=st.integers(min_value=0, max_value=1000000),
-        signature=st.one_of(st.just(b""), st.binary(min_size=32, max_size=32)),
-    )
+
+    @st.composite
+    def _transaction(draw):
+        signature_algorithm = "ed25519"
+        include_signature = draw(st.booleans())
+        base = Transaction(
+            transaction_id=draw(transaction_id_strategy()),
+            sender=draw(node_id_strategy()),
+            receiver=draw(node_id_strategy()),
+            operation_type=draw(st.sampled_from(OperationType)),
+            payload=draw(transaction_payload_strategy()),
+            timestamp=draw(st.floats(min_value=0, max_value=1700000000)),
+            fee=draw(st.integers(min_value=0, max_value=1000)),
+            nonce=draw(st.integers(min_value=0, max_value=1000000)),
+            signature_algorithm=signature_algorithm,
+        )
+        if include_signature:
+            from .blockchain_crypto import generate_keypair
+
+            keypair = generate_keypair(signature_algorithm)
+            return base.sign(keypair.private_key, algorithm=signature_algorithm)
+
+        return base
+
+    return _transaction()
 
 
 def transaction_pool_strategy() -> st.SearchStrategy[TransactionPool]:

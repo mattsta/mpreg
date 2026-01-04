@@ -21,7 +21,7 @@ import time
 
 import pytest
 
-from mpreg.federation.federation_graph import (
+from mpreg.fabric.federation_graph import (
     DijkstraRouter,
     FederationGraph,
     FederationGraphEdge,
