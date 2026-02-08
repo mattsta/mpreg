@@ -22,6 +22,169 @@ MPREG supports multiple deployment shapes; all rely on the same fabric:
 3. **Hybrid** (global scale)
    - Regional hubs plus mesh inside regions.
 
+### Ingress Nodes and Client Discovery
+
+Ingress nodes can run with no local functions and still participate fully in
+the fabric routing mesh. Clients can connect to any ingress node and discover
+other endpoints via the `cluster_map` RPC, then fail over or load-balance across
+advertised URLs.
+
+For HA client access, prefer the cluster-aware client:
+
+```python
+from mpreg.client.cluster_client import MPREGClusterClient
+
+client = MPREGClusterClient(
+    seed_urls=("ws://ingress-a:<port>", "ws://ingress-b:<port>")
+)
+await client.connect()
+result = await client.call("echo", "ping")
+await client.disconnect()
+```
+
+The cluster-aware client prefers lower load endpoints and applies latency/error
+penalties using recent call history to stabilize selection.
+
+### Resolver Nodes (Discovery Cache)
+
+Resolver nodes serve discovery queries from a cache populated by catalog deltas.
+They still participate in the fabric data plane; only discovery queries are
+cache-backed.
+
+```python
+from mpreg.core.config import MPREGSettings
+
+settings = MPREGSettings(
+    name="resolver-1",
+    connect="ws://hub:<port>",
+    discovery_resolver_mode=True,
+    discovery_resolver_seed_on_start=True,
+    discovery_resolver_namespaces=("svc.market",),
+    discovery_resolver_prune_interval_seconds=30.0,
+    discovery_resolver_resync_interval_seconds=300.0,
+)
+```
+
+### DNS Gateway (Optional)
+
+DNS interoperability can be enabled on ingress or resolver nodes to expose
+service discovery through standard DNS clients without changing the data plane.
+
+```python
+from mpreg.core.config import MPREGSettings
+
+settings = MPREGSettings(
+    name="dns-gateway",
+    dns_gateway_enabled=True,
+    dns_zones=("mpreg",),
+    dns_allow_external_names=False,
+    dns_min_ttl_seconds=1.0,
+    dns_max_ttl_seconds=60.0,
+)
+```
+
+If legacy clients omit the zone suffix, set `dns_allow_external_names=True` and
+document the names you serve to avoid becoming an unintended open resolver.
+
+### Namespace Policy (Discovery Visibility)
+
+Namespace policies gate discovery visibility by namespace prefix. Discovery
+control topics under `mpreg.discovery.*` are exempt from policy filtering so
+summary/delta propagation continues even when discovery policies default-deny.
+Tenant-aware policies can be enabled with `discovery_tenant_mode=True`, using
+`visibility_tenants` in rules and `viewer_tenant_id` in discovery requests.
+To bind tenant identity to authenticated connections, configure token
+credentials and disable request overrides.
+
+```python
+from mpreg.core.discovery_tenant import DiscoveryTenantCredential
+from mpreg.core.namespace_policy import NamespacePolicyRule
+
+settings = MPREGSettings(
+    discovery_policy_enabled=True,
+    discovery_policy_default_allow=True,
+    discovery_policy_rules=(
+        NamespacePolicyRule(
+            namespace="svc.secret",
+            owners=("cluster-a",),
+            visibility=("secure-cluster",),
+            visibility_tenants=("tenant-secure",),
+            policy_version="v1",
+        ),
+    ),
+    discovery_tenant_mode=True,
+    discovery_tenant_allow_request_override=False,
+    discovery_tenant_credentials=(
+        DiscoveryTenantCredential(
+            tenant_id="tenant-secure",
+            token="tenant-secure-token",
+            scheme="bearer",
+        ),
+    ),
+)
+```
+
+If tenant identity is injected by a trusted gateway, set
+`discovery_tenant_header="x-mpreg-tenant"` to read the tenant from headers.
+
+CLI helpers:
+
+```bash
+mpreg client namespace-policy export --url ws://node:<port>
+mpreg client namespace-policy validate --url ws://node:<port> --rules-file policy.json
+mpreg client namespace-policy apply --url ws://node:<port> --rules-file policy.json --enabled
+mpreg client namespace-policy audit --url ws://node:<port> --limit 20
+mpreg discovery access-audit --url ws://node:<port> --limit 20
+```
+
+### Summary Export (Discovery Summaries)
+
+Summary exports publish periodic service summaries for higher-tier aggregators.
+
+```python
+settings = MPREGSettings(
+    discovery_summary_export_enabled=True,
+    discovery_summary_export_interval_seconds=30.0,
+    discovery_summary_export_namespaces=("svc.market", "svc.risk"),
+    discovery_summary_export_scope="global",
+    discovery_summary_export_include_unscoped=True,
+    discovery_summary_export_hold_down_seconds=5.0,
+    discovery_summary_export_store_forward_seconds=300.0,
+    discovery_summary_export_store_forward_max_messages=200,
+)
+```
+
+Summary resolvers cache summary exports for `summary_query` with `scope=region`
+or `scope=global`:
+
+```python
+settings = MPREGSettings(
+    discovery_summary_resolver_mode=True,
+    discovery_summary_resolver_namespaces=("svc.market",),
+    discovery_summary_resolver_prune_interval_seconds=30.0,
+    discovery_summary_resolver_scopes=("global",),
+)
+```
+
+### Discovery Backpressure (Rate Limits)
+
+Discovery RPCs can be rate limited per viewer cluster to protect resolvers.
+Set the per-minute limit to `0` to disable. When tenant mode is enabled,
+rate limits are keyed by tenant identity.
+
+```python
+settings = MPREGSettings(
+    discovery_rate_limit_requests_per_minute=120,
+    discovery_rate_limit_window_seconds=60.0,
+    discovery_rate_limit_max_keys=2000,
+)
+```
+
+### Runbooks
+
+Operational guidance for discovery lag, resolver cache health, policy denials,
+and rate-limit tuning lives in `docs/DISCOVERY_RUNBOOKS.md`.
+
 ## Core Configuration
 
 Use `MPREGSettings` to configure nodes. The fabric is enabled by default.
@@ -202,8 +365,14 @@ Route tracing is available at the monitoring endpoint:
 
 Baseline soak/churn validation lives in `tests/test_fabric_soak_churn.py`.
 
-- Latest run (2025-12-31): 15-node soak + 12-node churn with 2 replacements; 2 passed in 8.8s.
-- Run: `uv run pytest tests/test_fabric_soak_churn.py -n 0 -vs`
+- Latest validated run (2026-02-08):
+  - Full suite under parallelism: `uv run pytest -n 3` -> `1960 passed, 1 xfailed`.
+  - Churn recovery stability probe:
+    `uv run python tools/debug/pytest_evidence_harness.py --test tests/test_fabric_soak_churn.py::test_fabric_churn_recovery --repeat 5 --run-mode single --timeout 180 --output-dir artifacts/evidence/churn_probe --pytest-arg=-q --pytest-arg=-n --pytest-arg=3`
+    -> `5/5` pass with evidence report in
+    `artifacts/evidence/churn_probe/<timestamp>/evidence_report.txt`.
+- Standard soak/churn run:
+  `uv run pytest tests/test_fabric_soak_churn.py -n 0 -vs`
 
 ## Operational Checklist
 

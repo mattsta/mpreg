@@ -11,13 +11,17 @@ This is the primary entry point for MPREG documentation.
 ## Architecture and Protocol
 
 - `docs/ARCHITECTURE.md`
+- `docs/DISCOVERY_PLATFORM_ROADMAP.md`
 - `docs/MPREG_PROTOCOL_SPECIFICATION.md`
 - `docs/MPREG_CLIENT_GUIDE.md`
+- `docs/DNS_INTEROP_GUIDE.md`
 
 ## Operations and Observability
 
 - `docs/PRODUCTION_DEPLOYMENT.md`
 - `docs/OBSERVABILITY_TROUBLESHOOTING.md`
+- `docs/DISCOVERY_RUNBOOKS.md`
+- `docs/DNS_RUNBOOKS.md`
 - `docs/FEDERATION_CLI.md`
 - `docs/FEDERATION_CLI_QUICK_REFERENCE.md`
 

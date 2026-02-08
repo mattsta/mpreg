@@ -4,4 +4,6 @@ uv.lock
 .coverage*
 htmlcov
 CLAUDE.md
+AGENTS.md
 IDEAS.md
+artifacts/

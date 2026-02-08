@@ -33,7 +33,7 @@ uv run mpreg --verbose server start --port <port> --cluster-id demo
 ### Known Module Prefixes
 
 - **Fabric control plane**: `fabric.gossip`, `fabric.peer_directory`, `fabric.membership`, `fabric.router`, `fabric.link_state`, `fabric.connection`, `fabric.consensus`, `fabric.resilience`, `fabric.alerting`, `fabric.monitoring`, `fabric.auto_discovery`, `fabric.hubs`, `fabric.hub_registry`, `fabric.hub_hierarchy`, `fabric.queue`, `fabric.queue_federation`, `fabric.cache`, `fabric.federation`, `fabric.blockchain`, `fabric.metrics`
-- **Core runtime**: `core.connection`, `core.registry`, `core.monitoring`, `core.transport.factory`, `core.transport.adapter`, `core.transport.circuit_breaker`, `core.cache_ops`, `core.cache_pubsub`, `core.location_consistency`, `core.timer`, `core.topic_dependency`
+- **Core runtime**: `core.connection`, `core.rpc_registry`, `core.monitoring`, `core.transport.factory`, `core.transport.adapter`, `core.transport.circuit_breaker`, `core.cache_ops`, `core.cache_pubsub`, `core.location_consistency`, `core.timer`, `core.topic_dependency`
 - **Client**: `client`, `client.api`, `client.pubsub`
 - **Queue/Cache**: `queue`, `queue.manager`, `cache`, `cache.store`
 - **Consensus/Raft**: `raft.impl`, `raft.rpc`, `raft.storage`, `raft.tasks`
@@ -58,6 +58,8 @@ Useful transport endpoints:
 
 - `/transport/endpoints` (or `mpreg monitor transport-endpoints`) shows the
   adapter-assigned endpoints when `base_port=0` is used.
+- `/dns/metrics` (or `mpreg monitor dns`) reports DNS gateway status, ports, and query statistics.
+- `mpreg monitor dns-watch` streams DNS metrics on a polling interval.
   Useful persistence endpoint:
 - `/metrics/persistence` surfaces snapshot status (enabled/mode/last save+restore).
   CLI shortcut: `uv run mpreg monitor persistence --url http://127.0.0.1:<port>`
@@ -83,7 +85,18 @@ Symptoms: missing peers, incomplete catalog, partial discovery.
 
 Actions:
 
-- `mpreg client list-peers --url ws://host:<port>`
+- `mpreg client list-peers --url ws://host:<port> --scope region` (optional
+  `--cluster-id` to filter; `--target-cluster` for federated routing)
+- `mpreg client call cluster_map --url ws://host:<port>` to inspect advertised URLs
+  and load metrics seen by the ingress node.
+- `http://host:<monitoring-port>/discovery/cache` (resolver + summary cache),
+  `/discovery/summary` (summary export), `/discovery/policy`, `/discovery/lag`
+  for discovery health.
+- `mpreg discovery status --url http://host:<monitoring-port>` for a consolidated
+  discovery status snapshot.
+- `mpreg report namespace-health --url http://host:<monitoring-port>` for
+  per-namespace export health.
+- `mpreg report export-lag --url http://host:<monitoring-port>` for summary lag.
 - Verify gossip interval and catalog TTL values
 - Enable `fabric.router` and `mpreg` module prefixes to see catalog updates
 
@@ -104,8 +117,14 @@ Symptoms: peers reappear after departure, repeated reconnections.
 Actions:
 
 - Enable `goodbye` module prefix
+- Enable peer snapshot diagnostics:
+  `MPREG_DEBUG_PEER_SNAPSHOT=1`
 - Check `goodbye_reconnect_grace_seconds`
 - Verify catalog deltas are filtered by policy before peer updates
+- Capture churn trace evidence:
+  `uv run python tools/debug/fabric_churn_trace.py --output-json artifacts/evidence/fabric_churn_trace.json`
+- Inspect whether `departed_in_peer_list` and `departed_in_directory` converge
+  to zero in the generated JSON report.
 
 ### 4) Cross-Cluster Routing Errors
 
@@ -128,6 +147,75 @@ Actions:
 - Review suppression counters if routes are flapping
 - Use server status `route_metrics` to confirm suppression/withdrawals, active routes,
   and convergence timing
+
+## Proof-First Debug Workflow
+
+Use this loop for distributed-system flakes instead of random retries:
+
+1. Capture repeat evidence with fixed manifests.
+   `uv run python tools/debug/pytest_evidence_harness.py --manifest <manifest.json>`
+2. Extract deterministic failure signatures.
+   `uv run python tools/debug/pytest_log_digest.py --log <run.log>`
+3. Add scoped diagnostics and rerun.
+   `MPREG_DEBUG_PEER_DIAL=1`, `MPREG_DEBUG_PEER_DIAL_POLICY=1`,
+   `MPREG_DEBUG_GOSSIP_SCHED=1`
+4. Quantify control-loop behavior.
+   `uv run python tools/debug/analyze_peer_dial_diag.py --log <run.log>`
+   `uv run python tools/debug/peer_dial_saturation_report.py --log <run.log>`
+5. Implement adaptive fixes in platform logic, not global timeout tuning.
+6. Re-validate with repeat manifests, then run broader subset/full-suite checkpoints.
+
+Evidence artifacts:
+
+- `tools/debug/pytest_evidence_harness.py` writes a timestamped run directory
+  with per-run logs plus `evidence_report.json` and `evidence_report.txt`.
+- Keep artifact roots under `artifacts/evidence/` and retain the exact manifest
+  used for reproducibility.
+
+## Audit/Test/Debug Suite Catalog
+
+Primary orchestration:
+
+- `tools/debug/pytest_evidence_harness.py`
+  Repeatable pytest orchestration (single or batch mode) with timeouts and
+  structured reports.
+- `tools/debug/pytest_stall_watchdog.py`
+  Watches long-running suites and records stalls for dead-run detection.
+- `tools/debug/pytest_log_digest.py`
+  Extracts deterministic failure signatures from noisy logs.
+- `tools/debug/pytest_collection_order_audit.py`
+  Captures collection order to audit xdist/sharding side effects.
+
+Membership/churn deep dives:
+
+- `tools/debug/fabric_churn_trace.py`
+  Traces peer list, peer directory, and departed-url convergence under churn.
+- `tools/debug/goodbye_reentry_debug.py`
+  Focused GOODBYE/re-entry lifecycle diagnostics.
+
+Discovery/convergence:
+
+- `tools/debug/auto_discovery_multi_hub_debug.py`
+- `tools/debug/auto_discovery_topology_probe.py`
+- `tools/debug/auto_discovery_topology_summary.py`
+- `tools/debug/analyze_auto_discovery_diag_log.py`
+
+Dial scheduler analysis:
+
+- `tools/debug/analyze_peer_dial_diag.py`
+- `tools/debug/peer_dial_saturation_report.py`
+
+Raft/consensus/load:
+
+- `tools/debug/live_raft_cluster_size_probe.py`
+- `tools/debug/live_raft_high_load_probe.py`
+- `tools/debug/scalability_boundary_probe.py`
+
+Manifest library:
+
+- Versioned manifests live in `tools/debug/manifests/`.
+- Prefer manifests over ad-hoc command lines for repeatability and low-fragility
+  debugging.
 
 ## Operational Tips
 

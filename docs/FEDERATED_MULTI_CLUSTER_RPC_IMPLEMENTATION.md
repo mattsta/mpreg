@@ -24,7 +24,7 @@ versioned routing:
 
 Each node contributes function endpoints to the routing catalog:
 
-- `LocalFunctionRegistry` tracks local registrations.
+- `RpcRegistry` tracks local registrations and RPC specs.
 - `LocalFunctionCatalogAdapter` builds `RoutingCatalogDelta` updates.
 - The control plane gossips deltas via `CATALOG_UPDATE`.
 - `RoutingCatalog` stores `FunctionEndpoint` entries with TTL and resources.
@@ -42,6 +42,8 @@ RPC routing is performed by the fabric router:
 - Local match: `RoutingEngine` chooses the best local candidate.
 - Cross-cluster: `FabricFederationPlanner` chooses the next hop using the route
   table (path-vector) with graph fallback when needed.
+- Load-aware preference: when node load metrics are available, the routing
+  engine prefers lower-load targets for the same function identity.
 - Reply routing uses the recorded `routing_path` for multi-hop responses.
 
 Routing metadata used in flight:

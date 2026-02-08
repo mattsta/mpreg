@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from mpreg.datastructures.type_aliases import NodeId, RequestId
+from mpreg.datastructures.type_aliases import JsonDict, NodeId, RequestId
 
 RAFT_RPC_REQUEST_KIND = "raft-rpc-request"
 RAFT_RPC_RESPONSE_KIND = "raft-rpc-response"
@@ -23,7 +23,7 @@ def _as_optional_int(value: object) -> int | None:
     if isinstance(value, (int, float, str)):
         try:
             return int(value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
     return None
 
@@ -41,7 +41,7 @@ class FabricRaftRpcRequest:
     payload: dict[str, Any]
     term: int | None = None
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonDict:
         return {
             "kind": RAFT_RPC_REQUEST_KIND,
             "request_id": self.request_id,
@@ -53,7 +53,7 @@ class FabricRaftRpcRequest:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> FabricRaftRpcRequest:
+    def from_dict(cls, payload: JsonDict) -> FabricRaftRpcRequest:
         return cls(
             request_id=str(payload.get("request_id", "")),
             rpc_kind=RaftRpcKind(str(payload.get("rpc_kind", ""))),
@@ -72,7 +72,7 @@ class FabricRaftRpcResponse:
     payload: dict[str, Any]
     term: int | None = None
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonDict:
         return {
             "kind": RAFT_RPC_RESPONSE_KIND,
             "request_id": self.request_id,
@@ -84,7 +84,7 @@ class FabricRaftRpcResponse:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> FabricRaftRpcResponse:
+    def from_dict(cls, payload: JsonDict) -> FabricRaftRpcResponse:
         return cls(
             request_id=str(payload.get("request_id", "")),
             rpc_kind=RaftRpcKind(str(payload.get("rpc_kind", ""))),

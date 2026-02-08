@@ -240,7 +240,52 @@ enterprise_nodes, leaders = await create_enterprise_mesh()
 print(f"✅ Created enterprise service mesh with {len(enterprise_nodes)} nodes across 3 tiers")
 ```
 
-### 4. Global CDN (Cross-Datacenter)
+### 4. DNS Gateway + Ingress Node (Interop Demo)
+
+Expose the service catalog via DNS while keeping MPREG RPC and pub/sub intact.
+
+```python
+import asyncio
+from mpreg.core.config import MPREGSettings
+from mpreg.core.port_allocator import port_range_context, port_context
+from mpreg.server import MPREGServer
+
+async def create_dns_gateway_demo():
+    with port_range_context(2, "servers") as ports, port_context("dns-udp") as dns_port:
+        # Ingress node with DNS gateway enabled
+        settings = MPREGSettings(
+            host="127.0.0.1",
+            port=ports[0],
+            name="dns-ingress",
+            cluster_id="demo-cluster",
+            dns_gateway_enabled=True,
+            dns_zones=("mpreg",),
+            dns_udp_port=dns_port,
+        )
+        ingress = MPREGServer(settings=settings)
+        task = asyncio.create_task(ingress.server())
+
+        # Feature node that registers a service
+        feature_settings = MPREGSettings(
+            host="127.0.0.1",
+            port=ports[1],
+            name="feature-node",
+            cluster_id="demo-cluster",
+            connect=f"ws://127.0.0.1:{ports[0]}",
+        )
+        feature = MPREGServer(settings=feature_settings)
+        feature_task = asyncio.create_task(feature.server())
+
+        await asyncio.sleep(0.5)
+        return ingress, feature, dns_port, (task, feature_task)
+
+# After startup, register a service and resolve via DNS:
+# mpreg client dns-register --url ws://127.0.0.1:<port> --name tradefeed --namespace market \
+#   --protocol tcp --port 9000 --target 127.0.0.1
+# mpreg client dns-resolve --host 127.0.0.1 --port <dns-port> --qname _svc._tcp.tradefeed.market.mpreg --qtype SRV
+```
+
+### 5. Global CDN (Cross-Datacenter)
 
 ```python
 async def create_global_cdn():
@@ -334,7 +379,7 @@ cdn_nodes, dc_leaders = await create_global_cdn()
 print(f"✅ Created global CDN with {len(cdn_nodes)} nodes across 3 datacenters")
 ```
 
-### 5. Mission-Critical System (Self-Healing)
+### 6. Mission-Critical System (Self-Healing)
 
 ```python
 async def create_mission_critical_system():

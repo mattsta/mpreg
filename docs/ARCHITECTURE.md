@@ -51,6 +51,16 @@ The control plane is the source of truth for discovery and routing.
 - **Route Control** (`mpreg/fabric/route_control.py`): Path-vector route table
   for cross-cluster routing with TTL, policy weights, withdrawals, and
   deterministic tie-breakers.
+- **Node Discovery Snapshot** (`cluster_map` RPC in `mpreg/server.py`): Exposes
+  catalog-backed node metadata, transport endpoints, and load metrics for
+  discovery-aware clients.
+- **Scoped Discovery APIs** (`cluster_map_v2`, `catalog_query` in
+  `mpreg/server.py`): Filtered, paginated discovery for nodes, functions,
+  queues, topics, and caches.
+- **Discovery Delta Stream** (`catalog_watch` + `mpreg.discovery.delta`): Emits
+  catalog deltas for resolver caches and incremental discovery updates.
+- **Discovery Summary Stream** (`summary_watch` + `mpreg.discovery.summary`):
+  Emits periodic service summaries for tiered discovery exports.
 - **Route Security (optional)** (`mpreg/fabric/route_keys.py`,
   `mpreg/fabric/route_security.py`): Signed announcements + key registry with
   rotation overlap, enforced via `RouteSecurityConfig`.
@@ -119,6 +129,8 @@ RPC supports dependency graphs and resource-aware routing.
   topological execution order.
 - **Server Integration** (`mpreg/server.py`): Adapts RPC requests to the fabric
   router and execution engine.
+- **Load-Aware Selection** (`mpreg/fabric/engine.py`): Prefers lower-load
+  candidates when node load metrics are available.
 
 Why this design:
 
@@ -158,8 +170,26 @@ Membership is managed via gossip and server lifecycle messages.
 
 - **Server lifecycle** (`RPCServerStatus`, `RPCServerGoodbye` in
   `mpreg/core/model.py`): Diagnostics and shutdown signaling.
+- **Client discovery**: Status metrics feed the cluster map response for
+  discovery-aware clients.
 - **Membership** (`mpreg/fabric/membership.py`): Failure detection and
   cluster-wide liveness signals.
+- **Peer snapshot gating** (`MPREGServer._get_peers_snapshot`): `list_peers`
+  is filtered by departed-peer records, live connection state, and stale-status
+  exclusion logic before returning discovery snapshots.
+- **Reconnect lifecycle** (`MPREGServer._manage_peer_connections`): adaptive
+  peer dialing updates per-peer connectivity state; dial-failure paths can
+  transition stale peers to disconnected status so snapshots converge.
+
+Churn hardening details:
+
+- Departures are recorded in `_departed_peers` and checked by both status
+  ingestion and peer-snapshot generation.
+- Disconnected peers are hidden from `list_peers` after an adaptive grace
+  period derived from gossip interval and peer target count.
+- Small-cluster full-mesh mode additionally suppresses stale "connected/ok"
+  statuses and marks `peer_reconcile` dial failures as disconnected, which
+  prevents ghost peers after partial GOODBYE propagation.
 
 Why this design:
 
@@ -224,6 +254,12 @@ Why this design:
 3. Route table forwards to the owning cluster.
 4. Delivery acknowledgments flow back via the fabric.
 
+### E) Client Discovery (Cluster Map)
+
+1. Client calls `cluster_map` against any ingress node.
+2. Server builds a snapshot from the routing catalog and status metrics.
+3. Client scores endpoints and selects the best target.
+
 ## Design Decisions and Tradeoffs
 
 | Decision                       | Benefit                         | Drawback              | Mitigation                               |
@@ -242,6 +278,8 @@ Logging is centralized in `mpreg/core/logging.py` with module-based filtering.
 - **Structured context**: correlation IDs and routing paths in logs.
 - **Metrics**: `mpreg/core/statistics.py` exports fabric and system metrics.
 - **Route trace**: use `RouteTable.explain_selection()` for next-hop decisions.
+- **Peer-snapshot diagnostics**: `MPREG_DEBUG_PEER_SNAPSHOT=1` emits
+  snapshot exclusion and dial-failure demotion events.
 
 Operational recommendations:
 

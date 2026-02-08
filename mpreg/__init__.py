@@ -44,11 +44,11 @@ from __future__ import annotations
 
 # Core exports
 # Client exports
-from .client import Client, MPREGClientAPI, MPREGPubSubClient
+from .client import Client, MPREGClientAPI, MPREGDnsClient, MPREGPubSubClient
 from .core import (
-    CommandRegistry,
     JsonSerializer,
     MPREGSettings,
+    RpcRegistry,
     TopicExchange,
 )
 
@@ -86,7 +86,7 @@ __license__ = "MIT"
 
 __all__ = [
     # Core
-    "CommandRegistry",
+    "RpcRegistry",
     "JsonSerializer",
     "MPREGSettings",
     "TopicExchange",
@@ -117,5 +117,6 @@ __all__ = [
     # Client
     "Client",
     "MPREGClientAPI",
+    "MPREGDnsClient",
     "MPREGPubSubClient",
 ]

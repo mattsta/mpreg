@@ -17,7 +17,9 @@ import pytest
 
 from tests.test_production_raft_integration import (
     MockNetwork,
-    TestProductionRaftIntegration,
+)
+from tests.test_production_raft_integration import (
+    TestProductionRaftIntegration as RaftIntegrationHarness,
 )
 
 class TestTaskRecursionRegression:
@@ -35,7 +37,7 @@ class TestTaskRecursionRegression:
             )
 
     async def _run_election_test(self):
-        test_instance = TestProductionRaftIntegration()
+        test_instance = RaftIntegrationHarness()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             temp_dir = Path(tmpdir)
@@ -107,7 +109,7 @@ class TestTaskRecursionRegression:
             )
 
     async def _run_multiple_cycles_test(self):
-        test_instance = TestProductionRaftIntegration()
+        test_instance = RaftIntegrationHarness()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             temp_dir = Path(tmpdir)
@@ -125,8 +127,8 @@ class TestTaskRecursionRegression:
                 for node in nodes.values():
                     await node.start()
 
-                # Wait for initial election
-                await asyncio.sleep(0.5)
+                # Wait for initial election based on live Raft config.
+                await test_instance._wait_for_single_leader(nodes)
 
                 # Simulate leader failures to trigger re-elections
                 for cycle in range(3):
@@ -174,7 +176,7 @@ class TestTaskRecursionRegression:
             )
 
     async def _run_concurrent_operations_test(self):
-        test_instance = TestProductionRaftIntegration()
+        test_instance = RaftIntegrationHarness()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             temp_dir = Path(tmpdir)
@@ -219,7 +221,7 @@ class TestTaskRecursionRegression:
             )
 
     async def _run_timer_lifecycle_test(self):
-        test_instance = TestProductionRaftIntegration()
+        test_instance = RaftIntegrationHarness()
 
         with tempfile.TemporaryDirectory() as tmpdir:
             temp_dir = Path(tmpdir)
@@ -234,8 +236,13 @@ class TestTaskRecursionRegression:
                 # Start node
                 await node.start()
 
-                # Single node should become leader quickly
-                await asyncio.sleep(0.3)
+                # Single node should become leader within its configured timeout window.
+                await test_instance._wait_for_single_leader(
+                    nodes,
+                    timeout_seconds=test_instance._leader_wait_timeout_seconds(
+                        nodes, multiplier=2.0, minimum=0.5
+                    ),
+                )
                 assert node.current_state.value == "leader"
 
                 # Leader should not be running election timers (internal implementation detail)
@@ -251,11 +258,13 @@ class TestTaskRecursionRegression:
                     f"Node should be follower but is {node.current_state.value}"
                 )
 
-                # Since it's a single node cluster, it should become leader again quickly
-                # Wait a bit and verify it can still function (no recursion/deadlock)
-                await asyncio.sleep(0.5)
-                # Single node should elect itself leader again in a single-node cluster
-                # This tests that the election system is working without recursion
+                # Since it's a single node cluster, it should elect itself leader again.
+                await test_instance._wait_for_single_leader(
+                    nodes,
+                    timeout_seconds=test_instance._leader_wait_timeout_seconds(
+                        nodes, multiplier=2.0, minimum=0.5
+                    ),
+                )
 
             finally:
                 await asyncio.wait_for(node.stop(), timeout=2.0)

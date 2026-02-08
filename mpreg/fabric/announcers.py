@@ -25,6 +25,15 @@ class FunctionCatalogAdapter(Protocol):
         update_id: str | None = None,
     ) -> RoutingCatalogDelta: ...
 
+class ServiceCatalogAdapter(Protocol):
+    def build_delta(
+        self,
+        *,
+        now: Timestamp | None = None,
+        include_node: bool = True,
+        update_id: str | None = None,
+    ) -> RoutingCatalogDelta: ...
+
 @dataclass(slots=True)
 class FabricFunctionAnnouncer:
     adapter: FunctionCatalogAdapter
@@ -47,6 +56,15 @@ class FabricQueueAnnouncer:
             sent_at=now if now is not None else time.time(),
             queues=(endpoint,),
         )
+        return await self.broadcaster.broadcast(delta, now=now)
+
+@dataclass(slots=True)
+class FabricServiceAnnouncer:
+    adapter: ServiceCatalogAdapter
+    broadcaster: CatalogBroadcaster
+
+    async def announce(self, *, now: float | None = None) -> CatalogBroadcastResult:
+        delta = self.adapter.build_delta(now=now, include_node=True)
         return await self.broadcaster.broadcast(delta, now=now)
 
 @dataclass(slots=True)

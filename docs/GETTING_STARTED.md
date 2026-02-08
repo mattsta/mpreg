@@ -70,6 +70,78 @@ async with MPREGClientAPI(server_url) as client:
     print(f"Result: {result}")  # Result: 15
 ```
 
+### High Availability Client (Cluster Map)
+
+Use the cluster-aware client when you want automatic failover across ingress
+nodes or hubs.
+
+```python
+from mpreg.client.cluster_client import MPREGClusterClient
+
+client = MPREGClusterClient(
+    seed_urls=("ws://127.0.0.1:<port>", "ws://127.0.0.1:<port>")
+)
+await client.connect()
+result = await client.call(
+    "add",
+    5,
+    10,
+    function_id="math.add",
+    version_constraint=">=1.0.0,<2.0.0",
+)
+await client.disconnect()
+```
+
+### DNS Interop Quickstart (Optional)
+
+Expose service discovery through DNS without changing the data plane:
+
+```python
+from mpreg.core.config import MPREGSettings
+from mpreg.server import MPREGServer
+
+dns_udp_port = allocate_port("dns-udp")
+settings = MPREGSettings(
+    host="127.0.0.1",
+    port=allocate_port("servers"),
+    dns_gateway_enabled=True,
+    dns_zones=("mpreg",),
+    dns_udp_port=dns_udp_port,
+)
+server = MPREGServer(settings)
+```
+
+Register a service and resolve via DNS:
+
+```python
+from mpreg.client.client_api import MPREGClientAPI
+from mpreg.client.dns_client import MPREGDnsClient
+
+async with MPREGClientAPI(f"ws://127.0.0.1:{settings.port}") as client:
+    await client.dns_register(
+        {
+            "name": "tradefeed",
+            "namespace": "market",
+            "protocol": "tcp",
+            "port": 9000,
+            "targets": ["127.0.0.1"],
+        }
+    )
+
+dns = MPREGDnsClient(host="127.0.0.1", port=dns_udp_port)
+result = await dns.resolve("_svc._tcp.tradefeed.market.mpreg", qtype="SRV")
+print(result.to_dict())
+```
+
+CLI alternative:
+
+```bash
+mpreg client dns-register --url ws://127.0.0.1:<port> \
+  --name tradefeed --namespace market --protocol tcp --port 9000 --target 127.0.0.1
+mpreg client dns-resolve --host 127.0.0.1 --port <udp-port> \
+  --qname _svc._tcp.tradefeed.market.mpreg --qtype SRV
+```
+
 ### Cache + Queue Quickstart
 
 These snippets are meant to run inside an async function or notebook cell.

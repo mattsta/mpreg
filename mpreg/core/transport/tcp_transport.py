@@ -251,7 +251,7 @@ class TCPTransport(TransportInterface):
                                 sock.setsockopt(
                                     socket.IPPROTO_TCP, socket.TCP_KEEPCNT, 3
                                 )  # 3 attempts
-                        except (OSError, AttributeError):
+                        except OSError, AttributeError:
                             # Ignore if platform doesn't support these options
                             pass
 
@@ -310,7 +310,7 @@ class TCPTransport(TransportInterface):
 
         except TimeoutError:
             raise TransportTimeoutError("TCP send timeout")
-        except (ConnectionError, BrokenPipeError):
+        except ConnectionError, BrokenPipeError:
             self._connected = False
             raise TransportConnectionError("TCP connection closed")
         except Exception as e:
@@ -423,7 +423,7 @@ class TCPTransport(TransportInterface):
 
         except TimeoutError:
             raise TransportTimeoutError("TCP stream send timeout")
-        except (ConnectionError, BrokenPipeError):
+        except ConnectionError, BrokenPipeError:
             self._connected = False
             raise TransportConnectionError("TCP connection closed")
         except Exception as e:
@@ -432,7 +432,7 @@ class TCPTransport(TransportInterface):
                 error_chunk = struct.pack(">II", 0, STREAM_FLAG_ERROR)
                 self._writer.write(error_chunk)
                 await self._writer.drain()
-            except (OSError, ConnectionError, asyncio.CancelledError):
+            except OSError, ConnectionError, asyncio.CancelledError:
                 # Expected during connection failures or cancellation - safe to ignore
                 pass
             raise TransportError(f"TCP stream send error: {e}")
@@ -785,7 +785,7 @@ class _TCPServerTransport(TransportInterface):
                     import socket
 
                     sock.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
-                except (OSError, AttributeError):
+                except OSError, AttributeError:
                     pass
 
     async def connect(self) -> None:
@@ -829,7 +829,7 @@ class _TCPServerTransport(TransportInterface):
 
         except TimeoutError:
             raise TransportTimeoutError("TCP send timeout")
-        except (ConnectionError, BrokenPipeError):
+        except ConnectionError, BrokenPipeError:
             self._connected = False
             raise TransportConnectionError("TCP connection closed")
         except Exception as e:
@@ -944,7 +944,7 @@ class _TCPServerTransport(TransportInterface):
 
         except TimeoutError:
             raise TransportTimeoutError("TCP stream send timeout")
-        except (ConnectionError, BrokenPipeError):
+        except ConnectionError, BrokenPipeError:
             self._connected = False
             raise TransportConnectionError("TCP connection closed")
         except Exception as e:
@@ -953,7 +953,7 @@ class _TCPServerTransport(TransportInterface):
                 error_chunk = struct.pack(">II", 0, STREAM_FLAG_ERROR)
                 self._writer.write(error_chunk)
                 await self._writer.drain()
-            except (OSError, ConnectionError, asyncio.CancelledError):
+            except OSError, ConnectionError, asyncio.CancelledError:
                 # Expected during connection failures or cancellation - safe to ignore
                 pass
             raise TransportError(f"TCP stream send error: {e}")
