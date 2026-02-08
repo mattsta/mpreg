@@ -428,7 +428,7 @@ class Trie[T]:
         """Recursively collect all patterns that contain a specific value."""
         if target_value in node.values:
             pattern = self.config.segment_separator.join(current_path)
-            patterns.append(pattern if pattern else self.config.segment_separator)
+            patterns.append(pattern or self.config.segment_separator)
 
         # Traverse exact matches
         for segment, child in node.children.items():
@@ -474,7 +474,7 @@ class Trie[T]:
 
         if node.values:
             pattern = self.config.segment_separator.join(current_path)
-            patterns.append(pattern if pattern else self.config.segment_separator)
+            patterns.append(pattern or self.config.segment_separator)
 
         # Traverse exact matches
         for segment, child in node.children.items():

@@ -18,6 +18,7 @@ from mpreg.core.global_cache import (
     GlobalCacheManager,
 )
 from mpreg.core.serialization import JsonSerializer
+from mpreg.datastructures.type_aliases import JsonDict
 from mpreg.fabric.cache_federation import FabricCacheProtocol
 from mpreg.fabric.cache_transport import InProcessCacheTransport, ServerCacheTransport
 from mpreg.fabric.catalog import CacheRole, CacheRoleEntry
@@ -28,7 +29,7 @@ class _StubServer:
     def __init__(self, cluster_id: str) -> None:
         self.settings = SimpleNamespace(cluster_id=cluster_id)
 
-    def _get_all_peer_connections(self) -> dict[str, object]:
+    def _get_all_peer_connections(self) -> JsonDict:
         return {}
 
 

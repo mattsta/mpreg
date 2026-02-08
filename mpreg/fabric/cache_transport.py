@@ -6,11 +6,11 @@ import asyncio
 import time
 import uuid
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Protocol
 
 from mpreg.core.serialization import JsonSerializer
-from mpreg.datastructures.type_aliases import NodeId
+from mpreg.datastructures.type_aliases import JsonDict, NodeId
 
 from .cache_selection import CachePeerSelector
 from .message import DeliveryGuarantee, MessageHeaders, MessageType, UnifiedMessage
@@ -24,7 +24,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from .cache_federation import CacheDigest, CacheOperationMessage
 
 
-class CacheMessageKind(str, Enum):
+class CacheMessageKind(StrEnum):
     OPERATION = "cache_operation"
     DIGEST_REQUEST = "cache_digest_request"
     DIGEST_RESPONSE = "cache_digest_response"
@@ -427,7 +427,7 @@ class ServerCacheTransport:
     async def _send_payload(
         self,
         target_node: NodeId,
-        payload: dict[str, object],
+        payload: JsonDict,
         *,
         correlation_id: str,
         topic: str,

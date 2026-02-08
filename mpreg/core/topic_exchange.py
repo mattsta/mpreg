@@ -183,6 +183,8 @@ class TopicExchange:
     internal_callbacks: dict[
         str, Callable[[PubSubNotification], Coroutine[Any, Any, None] | None]
     ] = field(default_factory=dict)
+    _backlog_disabled: set[str] = field(default_factory=set)
+    _backlog_disabled_prefixes: set[str] = field(default_factory=set)
     _lock: RLock = field(default_factory=RLock)
 
     def add_subscription(self, subscription: PubSubSubscription) -> None:
@@ -246,8 +248,12 @@ class TopicExchange:
             ]
         ] = []
         with self._lock:
-            # Store in backlog
-            self.backlog.add_message(message)
+            # Store in backlog unless disabled for this topic
+            if message.topic not in self._backlog_disabled and not any(
+                message.topic.startswith(prefix)
+                for prefix in self._backlog_disabled_prefixes
+            ):
+                self.backlog.add_message(message)
 
             # Find matching subscriptions
             matching_subscriptions = self.trie.match_topic(message.topic)
@@ -278,6 +284,22 @@ class TopicExchange:
                     asyncio.create_task(result)
 
         return notifications
+
+    def set_backlog_enabled(self, topic: str, *, enabled: bool) -> None:
+        """Enable or disable backlog storage for a specific topic."""
+        with self._lock:
+            if enabled:
+                self._backlog_disabled.discard(topic)
+            else:
+                self._backlog_disabled.add(topic)
+
+    def set_backlog_prefix_enabled(self, prefix: str, *, enabled: bool) -> None:
+        """Enable or disable backlog storage for topics with the prefix."""
+        with self._lock:
+            if enabled:
+                self._backlog_disabled_prefixes.discard(prefix)
+            else:
+                self._backlog_disabled_prefixes.add(prefix)
 
     def _send_backlog(
         self, subscription: PubSubSubscription

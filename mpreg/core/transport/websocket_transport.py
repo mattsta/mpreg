@@ -383,6 +383,14 @@ class _WebSocketServerTransport(TransportInterface):
         super().__init__(websocket.remote_address[0], config)
         self._websocket = websocket
         self._connected = True
+        headers: dict[str, str] = {}
+        try:
+            request_headers = websocket.request.headers
+        except AttributeError:
+            request_headers = websocket.request_headers
+        for key, value in request_headers.items():
+            headers[str(key).lower()] = str(value)
+        self.peer_headers = headers
 
     async def connect(self) -> None:
         """No-op for server-side connection (already connected)."""

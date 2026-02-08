@@ -248,6 +248,12 @@ Integrates with HashiCorp Consul for service discovery:
 
 Uses DNS SRV records for cluster discovery:
 
+Notes:
+
+- If `resolver_host` is omitted, MPREG will use the system resolver
+  (by reading `/etc/resolv.conf` on Unix-like systems).
+- `resolver_port`, `use_tcp`, and `timeout_seconds` let you tune DNS lookups.
+
 **Configuration:**
 
 ```json
@@ -255,6 +261,10 @@ Uses DNS SRV records for cluster discovery:
   "protocol": "dns_srv",
   "domain": "mpreg.company.com",
   "service": "_mpreg._tcp",
+  "resolver_host": "127.0.0.1",
+  "resolver_port": 53,
+  "use_tcp": false,
+  "timeout_seconds": 2.0,
   "discovery_interval": 120.0
 }
 ```

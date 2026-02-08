@@ -169,7 +169,7 @@ class RealTimePerformanceMonitor:
                     else float("inf")
                 )
                 clustering_coeff = nx.average_clustering(G)
-            except (nx.NetworkXError, ZeroDivisionError, ValueError):
+            except nx.NetworkXError, ZeroDivisionError, ValueError:
                 # Handle disconnected graphs or computation errors
                 diameter = 0
                 avg_path_length = 0.0
@@ -197,7 +197,7 @@ class RealTimePerformanceMonitor:
                 centrality_scores = {
                     node: score for node, score in betweenness_centrality.items()
                 }
-            except (nx.NetworkXError, ValueError, KeyError):
+            except nx.NetworkXError, ValueError, KeyError:
                 # Handle graph computation errors or empty graphs
                 centrality_scores = {}
 

@@ -55,7 +55,7 @@ class ManagedTask:
         """Get task runtime in seconds."""
         if self.started_at is None:
             return 0.0
-        end_time = self.stopped_at if self.stopped_at else time.time()
+        end_time = self.stopped_at or time.time()
         return end_time - self.started_at
 
 
@@ -365,7 +365,7 @@ class RaftTaskManager:
         try:
             # Give task a chance to cleanup gracefully
             await asyncio.wait_for(managed_task.task, timeout=timeout)
-        except (TimeoutError, asyncio.CancelledError):
+        except TimeoutError, asyncio.CancelledError:
             # Expected - task was cancelled or took too long
             task_log.debug(f"[{self.node_id}] Task {managed_task.name} cancelled")
         except Exception as e:

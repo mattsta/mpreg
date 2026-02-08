@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 
-class PersistenceMode(str, Enum):
+class PersistenceMode(StrEnum):
     """Supported persistence backends."""
 
     MEMORY = "memory"

@@ -13,6 +13,7 @@ from .catalog import (
     FunctionEndpoint,
     NodeDescriptor,
     QueueEndpoint,
+    ServiceEndpoint,
     TopicSubscription,
 )
 
@@ -56,6 +57,9 @@ class CatalogFilterPolicy:
         return self._allows_node_id(node.node_id, node.cluster_id)
 
     def allows_queue(self, endpoint: QueueEndpoint) -> bool:
+        return self._allows_node_id(endpoint.node_id, endpoint.cluster_id)
+
+    def allows_service(self, endpoint: ServiceEndpoint) -> bool:
         return self._allows_node_id(endpoint.node_id, endpoint.cluster_id)
 
     def allows_cache(self, entry: CacheRoleEntry) -> bool:

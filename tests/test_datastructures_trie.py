@@ -1639,9 +1639,9 @@ class TestTriePropertyBasedTesting:
         ),
         test_keys=st.lists(
             st.text(alphabet="abcdefghij.", min_size=0, max_size=15).filter(
-                lambda x: not x.startswith(".")
-                and not x.endswith(".")
-                and ".." not in x
+                lambda x: (
+                    not x.startswith(".") and not x.endswith(".") and ".." not in x
+                )
             ),
             min_size=1,
             max_size=10,
@@ -1808,9 +1808,9 @@ class TestTriePropertyBasedTesting:
     @given(
         patterns=st.lists(
             st.text(alphabet="*#abc.", min_size=1, max_size=15).filter(
-                lambda x: not x.startswith(".")
-                and not x.endswith(".")
-                and ".." not in x
+                lambda x: (
+                    not x.startswith(".") and not x.endswith(".") and ".." not in x
+                )
             ),
             min_size=1,
             max_size=8,

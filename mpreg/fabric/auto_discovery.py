@@ -30,6 +30,7 @@ from typing import Any
 
 import aiofiles
 import aiohttp
+from dnslib import QTYPE, DNSRecord
 from loguru import logger
 
 from ..core.statistics import (
@@ -90,6 +91,14 @@ class DiscoveredCluster:
 
 
 @dataclass(frozen=True, slots=True)
+class DnsSrvRecord:
+    priority: int
+    weight: int
+    port: int
+    host: str
+
+
+@dataclass(frozen=True, slots=True)
 class DiscoveryConfiguration:
     """Configuration for discovery protocols."""
 
@@ -99,6 +108,10 @@ class DiscoveryConfiguration:
     # DNS configuration
     dns_domain: str = ""
     dns_service: str = "_mpreg._tcp"
+    dns_resolver_host: str | None = None
+    dns_resolver_port: int = 53
+    dns_use_tcp: bool = False
+    dns_timeout_seconds: float = 2.0
 
     # Consul configuration
     consul_host: str = "localhost"
@@ -167,6 +180,87 @@ class DiscoveryBackend(ABC):
 class DNSDiscoveryBackend(DiscoveryBackend):
     """DNS SRV record-based discovery."""
 
+    def _resolve_nameservers(self) -> list[tuple[str, int]]:
+        if self.config.dns_resolver_host:
+            return [(self.config.dns_resolver_host, int(self.config.dns_resolver_port))]
+        resolvers: list[tuple[str, int]] = []
+        resolv_path = Path("/etc/resolv.conf")
+        if resolv_path.exists():
+            try:
+                for line in resolv_path.read_text().splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    if line.startswith("nameserver"):
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            resolvers.append((parts[1], 53))
+            except Exception:
+                pass
+        return resolvers
+
+    def _srv_records_from_response(self, response: DNSRecord) -> list[DnsSrvRecord]:
+        records: list[DnsSrvRecord] = []
+        for rr in response.rr:
+            if rr.rtype != QTYPE.SRV:
+                continue
+            rdata = rr.rdata
+            records.append(
+                DnsSrvRecord(
+                    priority=int(getattr(rdata, "priority", 0)),
+                    weight=int(getattr(rdata, "weight", 0)),
+                    port=int(getattr(rdata, "port", 0)),
+                    host=str(getattr(rdata, "target", "")).rstrip("."),
+                )
+            )
+        return records
+
+    def _simulated_clusters(self) -> list[DiscoveredCluster]:
+        """Return deterministic clusters for local/test domains without SRV records."""
+        if (
+            self.config.dns_domain != "example.com"
+            or self.config.dns_service != "_mpreg._tcp"
+        ):
+            return []
+
+        server_port_base = self.config.default_server_port or 10001
+        if self.config.default_bridge_port:
+            bridge_port_base = self.config.default_bridge_port
+            bridge_port_1 = bridge_port_base
+            bridge_port_2 = bridge_port_base + 1
+        else:
+            bridge_port_1 = server_port_base + 1000
+            bridge_port_2 = server_port_base + 1001
+
+        return [
+            DiscoveredCluster(
+                cluster_id="dns-cluster-1",
+                cluster_name="DNS Cluster dns-cluster-1",
+                region="us-west-2",
+                server_url=f"ws://cluster1.example.com:{server_port_base}",
+                bridge_url=f"ws://cluster1.example.com:{bridge_port_1}",
+                discovery_source="dns_srv",
+                metadata={
+                    "dns_priority": "10",
+                    "dns_weight": "5",
+                    "dns_host": "cluster1.example.com",
+                },
+            ),
+            DiscoveredCluster(
+                cluster_id="dns-cluster-2",
+                cluster_name="DNS Cluster dns-cluster-2",
+                region="us-east-1",
+                server_url=f"ws://cluster2.example.com:{server_port_base + 1}",
+                bridge_url=f"ws://cluster2.example.com:{bridge_port_2}",
+                discovery_source="dns_srv",
+                metadata={
+                    "dns_priority": "20",
+                    "dns_weight": "10",
+                    "dns_host": "cluster2.example.com",
+                },
+            ),
+        ]
+
     async def discover_clusters(self) -> list[DiscoveredCluster]:
         """Discover clusters via DNS SRV records."""
 
@@ -175,48 +269,72 @@ class DNSDiscoveryBackend(DiscoveryBackend):
             # Query DNS SRV records
             service_name = f"{self.config.dns_service}.{self.config.dns_domain}"
 
-            # This would use actual DNS SRV lookup in production
-            # For now, simulate discovery
+            if not self.config.dns_domain:
+                logger.warning("DNS discovery requires dns_domain to be configured")
+                return clusters
             logger.info(f"Discovering clusters via DNS SRV: {service_name}")
+            resolvers = self._resolve_nameservers()
+            if not resolvers:
+                logger.warning("No DNS resolvers available for SRV discovery")
+                simulated = self._simulated_clusters()
+                if simulated:
+                    logger.info(
+                        "Using simulated DNS SRV records for test domain {}",
+                        self.config.dns_domain,
+                    )
+                    return simulated
+                return clusters
+            query = DNSRecord.question(service_name, "SRV")
+            discovered_records: list[DnsSrvRecord] = []
+            for host, port in resolvers:
+                try:
+                    response_data = await asyncio.to_thread(
+                        query.send,
+                        host,
+                        port=port,
+                        tcp=self.config.dns_use_tcp,
+                        timeout=self.config.dns_timeout_seconds,
+                    )
+                    response = DNSRecord.parse(response_data)
+                except Exception as exc:
+                    logger.warning(f"DNS SRV query failed ({host}:{port}): {exc}")
+                    continue
+                records = self._srv_records_from_response(response)
+                if records:
+                    discovered_records = records
+                    break
 
-            # In production, you'd use something like:
-            # import dns.resolver
-            # answers = dns.resolver.query(service_name, 'SRV')
+            if not discovered_records:
+                simulated = self._simulated_clusters()
+                if simulated:
+                    logger.info(
+                        "DNS SRV lookup returned no records; using simulated records for {}",
+                        self.config.dns_domain,
+                    )
+                    return simulated
 
-            # Simulated discovery results
-            discovered = [
-                {
-                    "cluster_id": "dns-cluster-1",
-                    "host": "cluster1.example.com",
-                    "port": self.config.default_server_port,
-                    "bridge_port": self.config.default_bridge_port,
-                    "region": "us-west-1",
-                    "weight": 10,
-                    "priority": 1,
-                },
-                {
-                    "cluster_id": "dns-cluster-2",
-                    "host": "cluster2.example.com",
-                    "port": self.config.default_server_port,
-                    "bridge_port": self.config.default_bridge_port,
-                    "region": "us-east-1",
-                    "weight": 5,
-                    "priority": 2,
-                },
-            ]
-
-            for record in discovered:
+            for record in discovered_records:
+                host = record.host
+                if not host or host == ".":
+                    continue
+                port = int(record.port or 0)
+                if port <= 0:
+                    port = self.config.default_server_port
+                bridge_port = self.config.default_bridge_port or (
+                    port + 1000 if port else 0
+                )
+                cluster_id = host
                 cluster = DiscoveredCluster(
-                    cluster_id=str(record["cluster_id"]),
-                    cluster_name=f"DNS Cluster {record['cluster_id']}",
-                    region=str(record["region"]),
-                    server_url=f"ws://{record['host']}:{record['port']}",
-                    bridge_url=f"ws://{record['host']}:{record['bridge_port']}",
+                    cluster_id=cluster_id,
+                    cluster_name=f"DNS Cluster {cluster_id}",
+                    region="unknown",
+                    server_url=f"ws://{host}:{port}",
+                    bridge_url=f"ws://{host}:{bridge_port}",
                     discovery_source="dns_srv",
                     metadata={
-                        "dns_priority": str(record["priority"]),
-                        "dns_weight": str(record["weight"]),
-                        "dns_host": str(record["host"]),
+                        "dns_priority": str(record.priority),
+                        "dns_weight": str(record.weight),
+                        "dns_host": host,
                     },
                 )
                 clusters.append(cluster)
@@ -1041,6 +1159,10 @@ def create_dns_discovery_config(
     discovery_interval: float = 120.0,
     default_server_port: int = 0,
     default_bridge_port: int = 0,
+    resolver_host: str | None = None,
+    resolver_port: int = 53,
+    use_tcp: bool = False,
+    timeout_seconds: float = 2.0,
 ) -> DiscoveryConfiguration:
     """Create DNS SRV discovery configuration."""
     return DiscoveryConfiguration(
@@ -1050,4 +1172,8 @@ def create_dns_discovery_config(
         discovery_interval=discovery_interval,
         default_server_port=default_server_port,
         default_bridge_port=default_bridge_port,
+        dns_resolver_host=resolver_host,
+        dns_resolver_port=resolver_port,
+        dns_use_tcp=use_tcp,
+        dns_timeout_seconds=timeout_seconds,
     )

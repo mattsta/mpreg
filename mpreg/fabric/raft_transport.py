@@ -23,7 +23,13 @@ from mpreg.datastructures.raft_codec import (
     serialize_request_vote,
     serialize_request_vote_response,
 )
-from mpreg.datastructures.type_aliases import ClusterId, HopCount, NodeId, RequestId
+from mpreg.datastructures.type_aliases import (
+    ClusterId,
+    HopCount,
+    JsonDict,
+    NodeId,
+    RequestId,
+)
 from mpreg.fabric.message import (
     DeliveryGuarantee,
     MessageHeaders,
@@ -164,7 +170,7 @@ class FabricRaftTransport:
         return False
 
     async def _send_rpc(
-        self, *, target: NodeId, rpc_kind: RaftRpcKind, payload: dict[str, object]
+        self, *, target: NodeId, rpc_kind: RaftRpcKind, payload: JsonDict
     ) -> FabricRaftRpcResponse | None:
         request_id = self._create_request_id()
         request = FabricRaftRpcRequest(
@@ -239,7 +245,7 @@ class FabricRaftTransport:
             )
             return
 
-        response_payload: dict[str, object]
+        response_payload: JsonDict
         if request.rpc_kind is RaftRpcKind.REQUEST_VOTE:
             vote_response = await node.handle_request_vote(
                 deserialize_request_vote(request.payload)

@@ -26,6 +26,30 @@ class CleanPerformanceResearch:
         self.test_context = test_context
         self.port_allocator = get_port_allocator()
 
+    async def _cleanup_context_slice(
+        self, *, tasks_start: int, servers_start: int
+    ) -> None:
+        """Shutdown and remove test-context resources created after slice markers."""
+        new_servers = self.test_context.servers[servers_start:]
+        if new_servers:
+            await asyncio.gather(
+                *(server.shutdown_async() for server in new_servers),
+                return_exceptions=True,
+            )
+
+        new_tasks = self.test_context.tasks[tasks_start:]
+        if new_tasks:
+            await asyncio.wait(new_tasks, timeout=max(5.0, len(new_tasks) * 0.5))
+        for task in new_tasks:
+            if not task.done():
+                task.cancel()
+        if new_tasks:
+            await asyncio.gather(*new_tasks, return_exceptions=True)
+
+        del self.test_context.tasks[tasks_start:]
+        del self.test_context.servers[servers_start:]
+        await asyncio.sleep(0.05)
+
     async def test_gossip_federation_gossip_topology(
         self, cluster_sizes: list[int] = [12, 15, 9]
     ) -> dict[str, Any]:
@@ -183,81 +207,89 @@ class CleanPerformanceResearch:
 
             # Allocate ports
             ports = self.port_allocator.allocate_port_range(size, "research")
+            tasks_start = len(self.test_context.tasks)
+            servers_start = len(self.test_context.servers)
 
             # Create star hub cluster
             servers = []
-            for i, port in enumerate(ports):
-                connect_to = f"ws://127.0.0.1:{ports[0]}" if i > 0 else None
+            try:
+                for i, port in enumerate(ports):
+                    connect_to = f"ws://127.0.0.1:{ports[0]}" if i > 0 else None
 
-                settings = MPREGSettings(
-                    host="127.0.0.1",
-                    port=port,
-                    name=f"scale-node-{i}",
-                    cluster_id=f"scale-test-{size}",
-                    resources={f"scale-resource-{i}"},
-                    peers=None,
-                    connect=connect_to,
-                    advertised_urls=None,
-                    gossip_interval=0.5,
+                    settings = MPREGSettings(
+                        host="127.0.0.1",
+                        port=port,
+                        name=f"scale-node-{i}",
+                        cluster_id=f"scale-test-{size}",
+                        resources={f"scale-resource-{i}"},
+                        peers=None,
+                        connect=connect_to,
+                        advertised_urls=None,
+                        gossip_interval=0.5,
+                    )
+
+                    server = MPREGServer(settings=settings)
+                    servers.append(server)
+
+                self.test_context.servers.extend(servers)
+
+                # Start servers
+                for server in servers:
+                    task = asyncio.create_task(server.server())
+                    self.test_context.tasks.append(task)
+                    await asyncio.sleep(0.05)  # Very minimal delay
+
+                # Wait for convergence
+                await asyncio.sleep(max(2.0, size * 0.15))
+                setup_time = (time.time() - start_time) * 1000
+
+                # Test function propagation
+                def scale_test_function(data: str) -> str:
+                    return f"Scale test: {data}"
+
+                prop_start = time.time()
+                servers[0].register_command(
+                    "scale_test", scale_test_function, ["scale-resource"]
                 )
+                await asyncio.sleep(max(1.0, size * 0.05))
 
-                server = MPREGServer(settings=settings)
-                servers.append(server)
+                # Count propagation success
+                nodes_with_function = sum(
+                    1 for server in servers if "scale_test" in server.cluster.funtimes
+                )
+                propagation_time = (time.time() - prop_start) * 1000
 
-            self.test_context.servers.extend(servers)
+                # Calculate metrics
+                total_connections = sum(
+                    len(server.peer_connections) for server in servers
+                )
+                theoretical_max = size * (size - 1)
+                efficiency = (
+                    total_connections / theoretical_max if theoretical_max > 0 else 0
+                )
+                success_rate = nodes_with_function / size
 
-            # Start servers
-            for server in servers:
-                task = asyncio.create_task(server.server())
-                self.test_context.tasks.append(task)
-                await asyncio.sleep(0.05)  # Very minimal delay
+                result = {
+                    "cluster_size": size,
+                    "setup_time_ms": setup_time,
+                    "propagation_time_ms": propagation_time,
+                    "connection_efficiency": efficiency,
+                    "function_success_rate": success_rate,
+                    "total_connections": total_connections,
+                }
 
-            # Wait for convergence
-            await asyncio.sleep(max(2.0, size * 0.15))
-            setup_time = (time.time() - start_time) * 1000
+                results.append(result)
 
-            # Test function propagation
-            def scale_test_function(data: str) -> str:
-                return f"Scale test: {data}"
-
-            prop_start = time.time()
-            servers[0].register_command(
-                "scale_test", scale_test_function, ["scale-resource"]
-            )
-            await asyncio.sleep(max(1.0, size * 0.05))
-
-            # Count propagation success
-            nodes_with_function = sum(
-                1 for server in servers if "scale_test" in server.cluster.funtimes
-            )
-            propagation_time = (time.time() - prop_start) * 1000
-
-            # Calculate metrics
-            total_connections = sum(len(server.peer_connections) for server in servers)
-            theoretical_max = size * (size - 1)
-            efficiency = (
-                total_connections / theoretical_max if theoretical_max > 0 else 0
-            )
-            success_rate = nodes_with_function / size
-
-            result = {
-                "cluster_size": size,
-                "setup_time_ms": setup_time,
-                "propagation_time_ms": propagation_time,
-                "connection_efficiency": efficiency,
-                "function_success_rate": success_rate,
-                "total_connections": total_connections,
-            }
-
-            results.append(result)
-
-            print(
-                f"Setup: {setup_time:.0f}ms, Efficiency: {efficiency:.2%}, Success: {success_rate:.2%}"
-            )
-
-            # Release ports for next test
-            for port in ports:
-                self.port_allocator.release_port(port)
+                print(
+                    f"Setup: {setup_time:.0f}ms, Efficiency: {efficiency:.2%}, Success: {success_rate:.2%}"
+                )
+            finally:
+                await self._cleanup_context_slice(
+                    tasks_start=tasks_start,
+                    servers_start=servers_start,
+                )
+                for port in ports:
+                    self.port_allocator.release_port(port)
 
         return results
 

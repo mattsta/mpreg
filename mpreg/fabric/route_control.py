@@ -13,6 +13,7 @@ from mpreg.datastructures.type_aliases import (
     ClusterId,
     DurationSeconds,
     HopCount,
+    JsonDict,
     NetworkLatencyMs,
     ReliabilityScore,
     RouteCostScore,
@@ -20,7 +21,7 @@ from mpreg.datastructures.type_aliases import (
 )
 
 
-def _as_dict(value: object) -> dict[str, object]:
+def _as_dict(value: object) -> JsonDict:
     if isinstance(value, dict):
         return {str(key): val for key, val in value.items()}
     return {}
@@ -38,7 +39,7 @@ def _as_int(value: object, default: int) -> int:
     if isinstance(value, (int, float, str)):
         try:
             return int(value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return default
     return default
 
@@ -49,7 +50,7 @@ def _as_float(value: object, default: float) -> float:
     if isinstance(value, (int, float, str)):
         try:
             return float(value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return default
     return default
 
@@ -64,7 +65,7 @@ class RouteDestination:
         return {"cluster_id": self.cluster_id}
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> RouteDestination:
+    def from_dict(cls, payload: JsonDict) -> RouteDestination:
         return cls(cluster_id=str(payload.get("cluster_id", "")))
 
 
@@ -94,7 +95,7 @@ class RoutePath:
         return {"hops": list(self.hops)}
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> RoutePath:
+    def from_dict(cls, payload: JsonDict) -> RoutePath:
         return cls(hops=_as_str_tuple(payload.get("hops", ())))
 
 
@@ -146,7 +147,7 @@ class RouteMetrics:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> RouteMetrics:
+    def from_dict(cls, payload: JsonDict) -> RouteMetrics:
         return cls(
             hop_count=_as_int(payload.get("hop_count"), 0),
             latency_ms=_as_float(payload.get("latency_ms"), 0.0),
@@ -176,7 +177,7 @@ class RouteAnnouncement:
         timestamp = now if now is not None else time.time()
         return timestamp > (self.advertised_at + self.ttl_seconds)
 
-    def signature_payload(self) -> dict[str, object]:
+    def signature_payload(self) -> JsonDict:
         return {
             "destination": self.destination.to_dict(),
             "path": self.path.to_dict(),
@@ -205,7 +206,7 @@ class RouteAnnouncement:
             signature_algorithm=algorithm,
         )
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonDict:
         return {
             "destination": self.destination.to_dict(),
             "path": self.path.to_dict(),
@@ -221,7 +222,7 @@ class RouteAnnouncement:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> RouteAnnouncement:
+    def from_dict(cls, payload: JsonDict) -> RouteAnnouncement:
         signature_hex = str(payload.get("signature", ""))
         public_key_hex = str(payload.get("public_key", ""))
         try:
@@ -264,7 +265,7 @@ class RouteWithdrawal:
     public_key: bytes = b""
     signature_algorithm: str = "ed25519"
 
-    def signature_payload(self) -> dict[str, object]:
+    def signature_payload(self) -> JsonDict:
         return {
             "destination": self.destination.to_dict(),
             "path": self.path.to_dict(),
@@ -291,7 +292,7 @@ class RouteWithdrawal:
             signature_algorithm=algorithm,
         )
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonDict:
         return {
             "destination": self.destination.to_dict(),
             "path": self.path.to_dict(),
@@ -305,7 +306,7 @@ class RouteWithdrawal:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> RouteWithdrawal:
+    def from_dict(cls, payload: JsonDict) -> RouteWithdrawal:
         signature_hex = str(payload.get("signature", ""))
         public_key_hex = str(payload.get("public_key", ""))
         try:
@@ -374,7 +375,7 @@ class RouteCandidateTrace:
     expired: bool
     filtered_reason: str | None = None
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonDict:
         return {
             "destination": self.destination.to_dict(),
             "next_hop": self.next_hop,
@@ -400,7 +401,7 @@ class RouteSelectionTrace:
     candidates: tuple[RouteCandidateTrace, ...]
     selected: RouteCandidateTrace | None
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonDict:
         return {
             "destination": self.destination.to_dict(),
             "evaluated_at": float(self.evaluated_at),
@@ -454,7 +455,7 @@ class RouteControlStats:
         self.announcements_rejected += 1
         self.rejection_reasons[reason] = self.rejection_reasons.get(reason, 0) + 1
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonDict:
         return {
             "announcements_accepted": self.announcements_accepted,
             "announcements_rejected": self.announcements_rejected,
@@ -982,7 +983,7 @@ class RouteTable:
             if not record.is_expired(now)
         )
 
-    def metrics_snapshot(self, *, now: Timestamp | None = None) -> dict[str, object]:
+    def metrics_snapshot(self, *, now: Timestamp | None = None) -> JsonDict:
         timestamp = now if now is not None else time.time()
         snapshot = dict(self.stats.to_dict())
         routes_active_total = 0

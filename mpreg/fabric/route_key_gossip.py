@@ -67,18 +67,18 @@ class RouteKeyAnnouncer:
             advertised_at=timestamp,
             ttl_seconds=self.ttl_seconds,
         )
+        sequence_number = self.gossip.next_sequence_number()
         message = GossipMessage(
             message_id=f"{self.gossip.node_id}:{uuid.uuid4()}",
             message_type=GossipMessageType.ROUTE_KEY_ANNOUNCEMENT,
             sender_id=self.gossip.node_id,
             payload=announcement,
             vector_clock=self.gossip.vector_clock.copy(),
-            sequence_number=self.gossip.protocol_stats.messages_created,
+            sequence_number=sequence_number,
             ttl=10,
             max_hops=5,
         )
         await self.gossip.add_message(message)
-        self.gossip.protocol_stats.messages_created += 1
         return message
 
 

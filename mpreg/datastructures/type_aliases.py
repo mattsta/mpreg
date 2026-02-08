@@ -20,6 +20,8 @@ type TimestampNanoseconds = int
 # ID and identifier types
 type NodeId = str
 type ClusterId = str
+type TenantId = str
+type ViewerId = str
 type MessageIdString = str
 type SubscriptionIdString = str
 type SessionId = str
@@ -64,7 +66,10 @@ type FunctionName = str  # Name of an RPC function
 type FunctionId = str  # Unique identifier for a function capability
 type FunctionVersion = str  # Semantic version string for a function
 type VersionConstraintSpec = str  # Constraint spec for function versions
+type ServiceName = str  # Name of a service endpoint
 type ResourceName = str  # Name of a resource/location
+type NamespaceName = str  # Namespace/prefix for discovery policies
+type EndpointScope = str  # Discovery scope for endpoints (local/zone/region/global)
 type ClusterWeight = float
 type NetworkLatencyMs = float
 
@@ -104,9 +109,24 @@ type MerkleTreeDepth = int
 type MerkleLeafIndex = int
 
 # Serialization types
-type JsonDict = dict[str, Any]
+type JsonScalar = str | int | float | bool | None
+type JsonArray = list["JsonValue"] | tuple["JsonValue", ...]
+type JsonValue = JsonScalar | JsonArray | dict[str, "JsonValue"]
+type JsonDict = dict[str, JsonValue]
 type SerializedData = str | bytes
 type CompressionLevel = int
+
+# RPC metadata types
+type RpcName = str
+type RpcNamespace = str
+type RpcParamName = str
+type RpcDocString = str
+type RpcDocSummary = str
+type RpcTypeName = str
+type RpcSpecDigest = str
+type RpcSpecVersion = str
+type RpcTag = str
+type RpcExampleName = str
 
 # Blockchain and DAO types
 type BlockId = str

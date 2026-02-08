@@ -165,6 +165,10 @@ class FederationCLI:
                     domain=backend_config.get("domain", "mpreg.local"),
                     service=backend_config.get("service", "_mpreg._tcp"),
                     discovery_interval=backend_config.get("discovery_interval", 120.0),
+                    resolver_host=backend_config.get("resolver_host"),
+                    resolver_port=backend_config.get("resolver_port", 53),
+                    use_tcp=backend_config.get("use_tcp", False),
+                    timeout_seconds=backend_config.get("timeout_seconds", 2.0),
                 )
                 discovery_configs.append(config)
 

@@ -30,7 +30,7 @@ from .model import (
     TopicAdvertisement,
     TopicPattern,
 )
-from .registry import Command, CommandRegistry
+from .rpc_registry import RpcRegistry
 from .serialization import JsonSerializer
 from .timer import Timer
 from .topic_exchange import TopicExchange
@@ -64,8 +64,7 @@ __all__ = [
     "MPREGException",
     "CommandNotFoundException",
     # Registry
-    "Command",
-    "CommandRegistry",
+    "RpcRegistry",
     # Serialization
     "JsonSerializer",
     # Timer

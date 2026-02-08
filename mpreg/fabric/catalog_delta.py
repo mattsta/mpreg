@@ -6,7 +6,12 @@ import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
 
-from mpreg.datastructures.type_aliases import ClusterId, SubscriptionId, Timestamp
+from mpreg.datastructures.type_aliases import (
+    ClusterId,
+    JsonDict,
+    SubscriptionId,
+    Timestamp,
+)
 
 from .catalog import (
     CacheNodeKey,
@@ -20,6 +25,8 @@ from .catalog import (
     QueueEndpoint,
     QueueKey,
     RoutingCatalog,
+    ServiceEndpoint,
+    ServiceKey,
     TopicSubscription,
 )
 
@@ -44,6 +51,8 @@ class RoutingCatalogDelta:
     topic_removals: tuple[SubscriptionId, ...] = ()
     queues: tuple[QueueEndpoint, ...] = ()
     queue_removals: tuple[QueueKey, ...] = ()
+    services: tuple[ServiceEndpoint, ...] = ()
+    service_removals: tuple[ServiceKey, ...] = ()
     caches: tuple[CacheRoleEntry, ...] = ()
     cache_removals: tuple[CacheRoleKey, ...] = ()
     cache_profiles: tuple[CacheNodeProfile, ...] = ()
@@ -51,7 +60,7 @@ class RoutingCatalogDelta:
     nodes: tuple[NodeDescriptor, ...] = ()
     node_removals: tuple[NodeKey, ...] = ()
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonDict:
         return {
             "update_id": self.update_id,
             "cluster_id": self.cluster_id,
@@ -62,6 +71,8 @@ class RoutingCatalogDelta:
             "topic_removals": list(self.topic_removals),
             "queues": [entry.to_dict() for entry in self.queues],
             "queue_removals": [key.to_dict() for key in self.queue_removals],
+            "services": [entry.to_dict() for entry in self.services],
+            "service_removals": [key.to_dict() for key in self.service_removals],
             "caches": [entry.to_dict() for entry in self.caches],
             "cache_removals": [key.to_dict() for key in self.cache_removals],
             "cache_profiles": [entry.to_dict() for entry in self.cache_profiles],
@@ -73,7 +84,7 @@ class RoutingCatalogDelta:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> RoutingCatalogDelta:
+    def from_dict(cls, payload: JsonDict) -> RoutingCatalogDelta:
         return cls(
             update_id=str(payload.get("update_id", "")),
             cluster_id=str(payload.get("cluster_id", "")),
@@ -98,6 +109,14 @@ class RoutingCatalogDelta:
             queue_removals=tuple(
                 QueueKey.from_dict(item)  # type: ignore[arg-type]
                 for item in payload.get("queue_removals", [])
+            ),
+            services=tuple(
+                ServiceEndpoint.from_dict(item)  # type: ignore[arg-type]
+                for item in payload.get("services", [])
+            ),
+            service_removals=tuple(
+                ServiceKey.from_dict(item)  # type: ignore[arg-type]
+                for item in payload.get("service_removals", [])
             ),
             caches=tuple(
                 CacheRoleEntry.from_dict(item)  # type: ignore[arg-type]
@@ -142,6 +161,8 @@ class RoutingCatalogApplier:
             "topics_removed": 0,
             "queues_added": 0,
             "queues_removed": 0,
+            "services_added": 0,
+            "services_removed": 0,
             "caches_added": 0,
             "caches_removed": 0,
             "cache_profiles_added": 0,
@@ -158,6 +179,11 @@ class RoutingCatalogApplier:
         queue_removals = [
             key
             for key in delta.queue_removals
+            if not policy or policy.allows_cluster(key.cluster_id)
+        ]
+        service_removals = [
+            key
+            for key in delta.service_removals
             if not policy or policy.allows_cluster(key.cluster_id)
         ]
         cache_removals = [
@@ -190,6 +216,11 @@ class RoutingCatalogApplier:
             for endpoint in delta.queues
             if not policy or policy.allows_queue(endpoint)
         ]
+        services = [
+            endpoint
+            for endpoint in delta.services
+            if not policy or policy.allows_service(endpoint)
+        ]
         caches = [
             entry for entry in delta.caches if not policy or policy.allows_cache(entry)
         ]
@@ -209,6 +240,9 @@ class RoutingCatalogApplier:
         for key in queue_removals:
             if self.catalog.queues.remove(key):
                 counts["queues_removed"] += 1
+        for key in service_removals:
+            if self.catalog.services.remove(key):
+                counts["services_removed"] += 1
         for key in cache_removals:
             if self.catalog.caches.remove(key):
                 counts["caches_removed"] += 1
@@ -231,6 +265,9 @@ class RoutingCatalogApplier:
         for endpoint in queues:
             if self.catalog.queues.register(endpoint, now=now):
                 counts["queues_added"] += 1
+        for endpoint in services:
+            if self.catalog.services.register(endpoint, now=now):
+                counts["services_added"] += 1
         for entry in caches:
             if self.catalog.caches.register(entry, now=now):
                 counts["caches_added"] += 1
@@ -251,6 +288,8 @@ class RoutingCatalogApplier:
             topic_removals=delta.topic_removals,
             queues=tuple(queues),
             queue_removals=tuple(queue_removals),
+            services=tuple(services),
+            service_removals=tuple(service_removals),
             caches=tuple(caches),
             cache_removals=tuple(cache_removals),
             cache_profiles=tuple(cache_profiles),

@@ -73,18 +73,18 @@ class RouteAnnouncementPublisher:
         if self.signer:
             announcement = self.signer.sign(announcement)
 
+        sequence_number = self.gossip.next_sequence_number()
         message = GossipMessage(
             message_id=f"{self.gossip.node_id}:{uuid.uuid4()}",
             message_type=GossipMessageType.ROUTE_ADVERTISEMENT,
             sender_id=self.gossip.node_id,
             payload=announcement.to_dict(),
             vector_clock=self.gossip.vector_clock.copy(),
-            sequence_number=self.gossip.protocol_stats.messages_created,
+            sequence_number=sequence_number,
             ttl=self.ttl,
             max_hops=self.max_hops,
         )
         await self.gossip.add_message(message)
-        self.gossip.protocol_stats.messages_created += 1
         return message
 
     async def publish_withdrawal(self, withdrawal: RouteWithdrawal) -> GossipMessage:
@@ -96,18 +96,18 @@ class RouteAnnouncementPublisher:
         if self.signer:
             withdrawal = self.signer.sign_withdrawal(withdrawal)
 
+        sequence_number = self.gossip.next_sequence_number()
         message = GossipMessage(
             message_id=f"{self.gossip.node_id}:{uuid.uuid4()}",
             message_type=GossipMessageType.ROUTE_WITHDRAWAL,
             sender_id=self.gossip.node_id,
             payload=withdrawal.to_dict(),
             vector_clock=self.gossip.vector_clock.copy(),
-            sequence_number=self.gossip.protocol_stats.messages_created,
+            sequence_number=sequence_number,
             ttl=self.ttl,
             max_hops=self.max_hops,
         )
         await self.gossip.add_message(message)
-        self.gossip.protocol_stats.messages_created += 1
         return message
 
 

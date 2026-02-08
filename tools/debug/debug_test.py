@@ -41,7 +41,7 @@ async def test_simple_server():
 
         try:
             await asyncio.wait_for(server_task, timeout=2.0)
-        except (TimeoutError, asyncio.CancelledError):
+        except TimeoutError, asyncio.CancelledError:
             print("Server shutdown completed")
 
 

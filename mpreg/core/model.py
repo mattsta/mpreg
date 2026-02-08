@@ -521,3 +521,17 @@ class CommandNotFoundException(MPREGException):
     code: Literal[1001] = 1001
     message: Literal["Command not found"] = "Command not found"
     details: str | None = None
+
+    def __post_init__(self) -> None:
+        details = self.details
+        if details is None and self.command_name:
+            details = f"Command not found: {self.command_name}"
+        self.rpc_error = RPCError(
+            code=self.code,
+            message=self.message,
+            details=details,
+        )
+        if details:
+            self.args = (details,)
+        else:
+            self.args = (self.message,)

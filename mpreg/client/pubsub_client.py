@@ -279,6 +279,14 @@ class MPREGPubSubClient:
             backlog_seconds=backlog_seconds,
         )
 
+        # Register callback before sending subscribe so backlog messages are handled.
+        self.subscriptions[subscription_id] = SubscriptionCallback(
+            callback=callback,
+            patterns=patterns,
+            subscription_id=subscription_id,
+            created_at=time.time(),
+        )
+
         # Send subscription request
         subscribe_req = PubSubSubscribe(subscription=subscription, u=str(ulid.new()))
 
@@ -291,20 +299,13 @@ class MPREGPubSubClient:
             if response.get("role") == "pubsub-ack":
                 ack = PubSubAck.model_validate(response)
                 if ack.success:
-                    # Store subscription callback
-                    self.subscriptions[subscription_id] = SubscriptionCallback(
-                        callback=callback,
-                        patterns=patterns,
-                        subscription_id=subscription_id,
-                        created_at=time.time(),
-                    )
                     return subscription_id
-                else:
-                    raise Exception(f"Subscription failed: {ack.error}")
+                raise Exception(f"Subscription failed: {ack.error}")
 
             raise Exception("Invalid response to subscription request")
 
         except Exception as e:
+            self.subscriptions.pop(subscription_id, None)
             pubsub_log.error(f"Error subscribing to patterns {patterns}: {e}")
             raise
 

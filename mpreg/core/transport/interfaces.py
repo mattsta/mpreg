@@ -176,6 +176,7 @@ class TransportInterface(ABC):
         self.config = config
         self._parsed_url: ParseResult | None = None
         self._connected = False
+        self.peer_headers: dict[str, str] = {}
 
     @property
     def connected(self) -> bool:

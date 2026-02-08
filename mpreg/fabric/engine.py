@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 from typing import Protocol
 
-from mpreg.datastructures.type_aliases import ClusterId, HopCount, Timestamp
+from mpreg.datastructures.type_aliases import ClusterId, HopCount, NodeId, Timestamp
 from mpreg.fabric.federation_planner import FabricForwardingPlan
 
 from .catalog import FunctionEndpoint
@@ -71,6 +72,7 @@ class RoutingEngine:
     local_cluster: ClusterId
     routing_index: RoutingIndex
     federation_planner: FederationPlanner | None = None
+    node_load_provider: Callable[[NodeId], float | None] | None = None
 
     def plan_function_route(
         self,
@@ -95,15 +97,26 @@ class RoutingEngine:
         ) -> FunctionEndpoint | None:
             if not candidates:
                 return None
-            candidates_sorted = sorted(
-                candidates,
-                key=lambda entry: (
+
+            def load_sort_key(
+                entry: FunctionEndpoint,
+            ) -> tuple[float, str, str, str, str]:
+                load_score: float | None = None
+                if self.node_load_provider:
+                    try:
+                        load_score = self.node_load_provider(entry.node_id)
+                    except Exception:
+                        load_score = None
+                score = float(load_score) if load_score is not None else 1000.0
+                return (
+                    score,
                     entry.cluster_id,
                     entry.node_id,
                     entry.identity.function_id,
                     str(entry.identity.version),
-                ),
-            )
+                )
+
+            candidates_sorted = sorted(candidates, key=load_sort_key)
             return candidates_sorted[0]
 
         if allow_local and (

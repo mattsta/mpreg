@@ -8,8 +8,11 @@ from mpreg.datastructures.function_identity import FunctionSelector
 from mpreg.datastructures.type_aliases import (
     ClusterId,
     NodeId,
+    PortNumber,
     QueueName,
+    ServiceName,
     Timestamp,
+    TransportProtocolName,
 )
 
 from .catalog import (
@@ -20,6 +23,7 @@ from .catalog import (
     NodeDescriptor,
     QueueEndpoint,
     RoutingCatalog,
+    ServiceEndpoint,
     TopicSubscription,
 )
 
@@ -41,6 +45,16 @@ class TopicQuery:
 class QueueQuery:
     queue_name: QueueName
     cluster_id: ClusterId | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ServiceQuery:
+    namespace: str | None = None
+    name: ServiceName | None = None
+    protocol: TransportProtocolName | None = None
+    port: PortNumber | None = None
+    cluster_id: ClusterId | None = None
+    node_id: NodeId | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,7 +86,7 @@ class RoutingIndex:
     def find_functions(
         self, query: FunctionQuery, *, now: Timestamp | None = None
     ) -> list[FunctionEndpoint]:
-        resources = query.resources if query.resources else None
+        resources = query.resources or None
         return self.catalog.functions.find(
             query.selector,
             resources=resources,
@@ -91,6 +105,19 @@ class RoutingIndex:
     ) -> list[QueueEndpoint]:
         return self.catalog.queues.find(
             query.queue_name, cluster_id=query.cluster_id, now=now
+        )
+
+    def find_services(
+        self, query: ServiceQuery, *, now: Timestamp | None = None
+    ) -> list[ServiceEndpoint]:
+        return self.catalog.services.find(
+            namespace=query.namespace,
+            name=query.name,
+            protocol=query.protocol,
+            port=query.port,
+            cluster_id=query.cluster_id,
+            node_id=query.node_id,
+            now=now,
         )
 
     def find_cache_roles(

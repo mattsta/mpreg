@@ -111,7 +111,7 @@ async def test_basic_pubsub_notifications():
         # Cleanup
         try:
             await client.disconnect()
-        except (ConnectionError, asyncio.CancelledError):
+        except ConnectionError, asyncio.CancelledError:
             # Client disconnection errors during cleanup are expected
             pass
         server_task.cancel()

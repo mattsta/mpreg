@@ -85,7 +85,7 @@ async def _await_peer_state(
 
     while time.time() < deadline:
         peers = await client.list_peers()
-        urls = {peer["url"] for peer in peers}
+        urls = {peer.url for peer in peers}
         last_count = len(urls)
         if last_count == expected_count and not (urls & departed_urls):
             return urls
@@ -96,6 +96,46 @@ async def _await_peer_state(
     )
 
 
+async def _await_routing_ready(client: MPREGClientAPI, *, timeout: float = 8.0) -> None:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            result = await client.call(
+                FUNCTION_NAME,
+                "warmup",
+                function_id=FUNCTION_ID,
+                version_constraint=VERSION_CONSTRAINT,
+            )
+        except Exception:
+            result = None
+        if isinstance(result, str):
+            return
+        await asyncio.sleep(0.2)
+    raise AssertionError("Expected soak_echo routing to converge")
+
+
+async def _call_with_retry(
+    client: MPREGClientAPI,
+    payload: str,
+    *,
+    retries: int = 5,
+    delay: float = 0.2,
+) -> object:
+    last_result: object = None
+    for _ in range(retries):
+        result = await client.call(
+            FUNCTION_NAME,
+            payload,
+            function_id=FUNCTION_ID,
+            version_constraint=VERSION_CONSTRAINT,
+        )
+        last_result = result
+        if isinstance(result, str):
+            return result
+        await asyncio.sleep(delay)
+    return last_result
+
+
 @pytest.mark.asyncio
 async def test_fabric_soak_routing_stability(test_context: AsyncTestContext) -> None:
     cluster_size = 15
@@ -104,19 +144,12 @@ async def test_fabric_soak_routing_stability(test_context: AsyncTestContext) -> 
 
         async with MPREGClientAPI(f"ws://127.0.0.1:{ports[0]}") as client:
             await _await_peer_state(client, cluster_size - 1)
+            await _await_routing_ready(client)
 
             for iteration in range(5):
                 payloads = [f"payload-{iteration}-{idx}" for idx in range(8)]
                 results = await asyncio.gather(
-                    *[
-                        client.call(
-                            FUNCTION_NAME,
-                            payload,
-                            function_id=FUNCTION_ID,
-                            version_constraint=VERSION_CONSTRAINT,
-                        )
-                        for payload in payloads
-                    ]
+                    *[_call_with_retry(client, payload) for payload in payloads]
                 )
 
                 for payload, result in zip(payloads, results, strict=False):

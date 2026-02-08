@@ -571,18 +571,18 @@ class TestTopicQueueRoutingPropertyBased:
     @given(
         topic_patterns=st.lists(
             st.text(alphabet="abcdefg.*#", min_size=1, max_size=15).filter(
-                lambda x: not x.startswith(".")
-                and not x.endswith(".")
-                and ".." not in x
+                lambda x: (
+                    not x.startswith(".") and not x.endswith(".") and ".." not in x
+                )
             ),
             min_size=1,
             max_size=5,
         ),
         test_topics=st.lists(
             st.text(alphabet="abcdefg.", min_size=1, max_size=15).filter(
-                lambda x: not x.startswith(".")
-                and not x.endswith(".")
-                and ".." not in x
+                lambda x: (
+                    not x.startswith(".") and not x.endswith(".") and ".." not in x
+                )
             ),
             min_size=1,
             max_size=10,

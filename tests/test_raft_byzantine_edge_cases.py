@@ -814,7 +814,7 @@ class TestRaftByzantineEdgeCases:
                 if node not in failed_nodes:
                     try:
                         await asyncio.wait_for(node.stop(), timeout=2.0)
-                    except (TimeoutError, asyncio.CancelledError, AttributeError):
+                    except TimeoutError, asyncio.CancelledError, AttributeError:
                         pass  # Node shutdown errors during cleanup are expected
 
     @pytest.mark.asyncio

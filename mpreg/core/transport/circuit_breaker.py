@@ -81,6 +81,13 @@ class CircuitBreaker:
         """Record a successful operation."""
         self.failure_count = 0
 
+        if self.state == CircuitBreakerState.OPEN:
+            # A direct transport success is definitive recovery evidence.
+            self.state = CircuitBreakerState.CLOSED
+            self.success_count = 0
+            logger.info(f"Circuit breaker CLOSED for {self.endpoint}")
+            return
+
         if self.state == CircuitBreakerState.HALF_OPEN:
             self.success_count += 1
             if self.success_count >= self.config.success_threshold:
@@ -117,6 +124,13 @@ class CircuitBreaker:
             return False
         else:  # HALF_OPEN
             return True
+
+    def reset(self) -> None:
+        """Reset breaker state when a peer reconnects with a fresh transport."""
+        self.state = CircuitBreakerState.CLOSED
+        self.failure_count = 0
+        self.success_count = 0
+        self.last_failure_time = 0.0
 
 
 # Factory function for creating circuit breakers

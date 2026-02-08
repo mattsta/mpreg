@@ -13,6 +13,7 @@ from mpreg.datastructures.blockchain_types import PublicKey
 from mpreg.datastructures.type_aliases import (
     ClusterId,
     DurationSeconds,
+    JsonDict,
     RouteKeyId,
     Timestamp,
 )
@@ -30,12 +31,12 @@ def _as_float(value: object, default: float) -> float:
     if isinstance(value, (int, float, str)):
         try:
             return float(value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return default
     return default
 
 
-def _as_key_records(value: object) -> list[dict[str, object]]:
+def _as_key_records(value: object) -> list[JsonDict]:
     if not isinstance(value, list):
         return []
     return [item for item in value if isinstance(item, dict)]
@@ -54,7 +55,7 @@ class RouteKeyRecord:
         timestamp = now if now is not None else time.time()
         return self.expires_at is None or timestamp < self.expires_at
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonDict:
         return {
             "key_id": self.key_id,
             "public_key": self.public_key.hex(),
@@ -65,7 +66,7 @@ class RouteKeyRecord:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> RouteKeyRecord:
+    def from_dict(cls, payload: JsonDict) -> RouteKeyRecord:
         public_key_hex = str(payload.get("public_key", ""))
         try:
             public_key = bytes.fromhex(public_key_hex) if public_key_hex else b""
@@ -96,7 +97,7 @@ class RouteKeyAnnouncement:
         timestamp = now if now is not None else time.time()
         return timestamp > (self.advertised_at + self.ttl_seconds)
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonDict:
         return {
             "cluster_id": self.cluster_id,
             "keys": [record.to_dict() for record in self.keys],
@@ -106,7 +107,7 @@ class RouteKeyAnnouncement:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> RouteKeyAnnouncement:
+    def from_dict(cls, payload: JsonDict) -> RouteKeyAnnouncement:
         keys_payload = _as_key_records(payload.get("keys", []))
         return cls(
             cluster_id=str(payload.get("cluster_id", "")),
@@ -280,9 +281,9 @@ class RouteKeyRegistry:
 
         return _resolver
 
-    def to_dict(self, *, now: Timestamp | None = None) -> dict[str, object]:
+    def to_dict(self, *, now: Timestamp | None = None) -> JsonDict:
         timestamp = now if now is not None else time.time()
-        clusters: dict[str, dict[str, object]] = {}
+        clusters: dict[str, JsonDict] = {}
         for cluster_id, key_set in self.key_sets.items():
             key_set.purge_expired(now=timestamp)
             if not key_set.keys:
@@ -293,9 +294,7 @@ class RouteKeyRegistry:
             }
         return {"generated_at": float(timestamp), "clusters": clusters}
 
-    def load_from_dict(
-        self, payload: dict[str, object], *, now: Timestamp | None = None
-    ) -> int:
+    def load_from_dict(self, payload: JsonDict, *, now: Timestamp | None = None) -> int:
         timestamp = now if now is not None else time.time()
         clusters_payload = payload.get("clusters", {})
         self.key_sets.clear()
@@ -322,7 +321,7 @@ class RouteKeyRegistry:
         return updated
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> RouteKeyRegistry:
+    def from_dict(cls, payload: JsonDict) -> RouteKeyRegistry:
         registry = cls()
         registry.load_from_dict(payload)
         return registry

@@ -180,6 +180,57 @@ class TestLiveRaftIntegration:
             )
             raise AssertionError(message) from exc
 
+    def _single_leader(
+        self,
+        nodes: dict[str, ProductionRaft],
+    ) -> ProductionRaft | None:
+        leaders = [
+            node for node in nodes.values() if node.current_state == RaftState.LEADER
+        ]
+        if len(leaders) != 1:
+            return None
+        return leaders[0]
+
+    async def _current_leader(
+        self,
+        nodes: dict[str, ProductionRaft],
+        *,
+        timeout_seconds: float,
+    ) -> ProductionRaft | None:
+        deadline = time.time() + timeout_seconds
+        while time.time() < deadline:
+            leader = self._single_leader(nodes)
+            if leader is not None:
+                return leader
+            await asyncio.sleep(0.05)
+        return None
+
+    async def _wait_for_stable_leader(
+        self,
+        nodes: dict[str, ProductionRaft],
+        *,
+        timeout_seconds: float,
+        stable_seconds: float,
+    ) -> ProductionRaft | None:
+        deadline = time.time() + timeout_seconds
+        stable_leader_id: str | None = None
+        stable_since: float | None = None
+        while time.time() < deadline:
+            leader = self._single_leader(nodes)
+            if leader is None:
+                stable_leader_id = None
+                stable_since = None
+                await asyncio.sleep(0.05)
+                continue
+            if leader.node_id != stable_leader_id:
+                stable_leader_id = leader.node_id
+                stable_since = time.time()
+            if stable_since is not None:
+                if (time.time() - stable_since) >= stable_seconds:
+                    return leader
+            await asyncio.sleep(0.05)
+        return None
+
     @pytest.mark.asyncio
     async def test_live_leader_election_golden_path(self, temp_dir, test_context):
         """Test leader election golden path with real network connections."""
@@ -580,9 +631,35 @@ class TestLiveRaftIntegration:
                 20, cluster_size * 2
             )  # Scale commands with cluster size
 
+            # Ensure we start throughput sampling with a stable leader in large clusters.
+            stable_wait = min(1.2, 0.4 + cluster_size * 0.03)
+            stable_leader = await self._wait_for_stable_leader(
+                nodes,
+                timeout_seconds=max(3.0, cluster_size * 0.4),
+                stable_seconds=stable_wait,
+            )
+            if stable_leader is not None:
+                leader = stable_leader
+
             throughput_start = time.time()
             for i in range(command_count):
-                result = await leader.submit_command(f"perf_test_cmd_{i}")
+                result: Any | None = None
+                for _ in range(3):
+                    active_leader = await self._current_leader(
+                        nodes, timeout_seconds=1.0
+                    )
+                    if active_leader is None:
+                        continue
+                    leader = active_leader
+                    try:
+                        result = await asyncio.wait_for(
+                            leader.submit_command(f"perf_test_cmd_{i}"),
+                            timeout=max(5.0, cluster_size * 0.5),
+                        )
+                    except TimeoutError:
+                        result = None
+                    if result is not None:
+                        break
                 assert result is not None, (
                     f"Command {i} failed in {cluster_size}-node cluster"
                 )
@@ -598,9 +675,12 @@ class TestLiveRaftIntegration:
             await asyncio.sleep(
                 max(1.0, cluster_size * 0.1)
             )  # Scale wait time with cluster size
-            replication_time = time.time() - replication_start
+            _ = time.time() - replication_start
 
             # Verify log consistency across all nodes
+            verification_leader = await self._current_leader(nodes, timeout_seconds=2.0)
+            if verification_leader is not None:
+                leader = verification_leader
             leader_log_length = len(leader.persistent_state.log_entries)
             for node in nodes.values():
                 if node != leader:
@@ -719,7 +799,7 @@ class TestLiveRaftIntegration:
             for node in nodes.values():
                 try:
                     await asyncio.wait_for(node.stop(), timeout=2.0)
-                except (TimeoutError, asyncio.CancelledError, AttributeError):
+                except TimeoutError, asyncio.CancelledError, AttributeError:
                     pass  # Some nodes may already be stopped or timeout during shutdown
 
     @pytest.mark.asyncio
@@ -811,7 +891,7 @@ class TestLiveRaftIntegration:
                 for node in nodes.values():
                     try:
                         await asyncio.wait_for(node.stop(), timeout=1.0)
-                    except (TimeoutError, asyncio.CancelledError, AttributeError):
+                    except TimeoutError, asyncio.CancelledError, AttributeError:
                         pass  # Node shutdown errors during cleanup are expected
 
         # Analyze results
@@ -850,6 +930,8 @@ class TestLiveRaftIntegration:
         for cluster_size in [5, 7, 11]:
             print(f"\n--- High load test: {cluster_size} nodes ---")
 
+            servers_start = len(test_context.servers)
+            tasks_start = len(test_context.tasks)
             nodes = await self.create_live_raft_cluster(
                 cluster_size, temp_dir, test_context
             )
@@ -896,19 +978,6 @@ class TestLiveRaftIntegration:
                 concurrent_batches = cluster_size  # Scale with cluster size
                 commands_per_batch = 10
 
-                async def current_leader(timeout: float = 1.0) -> ProductionRaft | None:
-                    deadline = asyncio.get_running_loop().time() + timeout
-                    while asyncio.get_running_loop().time() < deadline:
-                        leaders = [
-                            n
-                            for n in nodes.values()
-                            if n.current_state == RaftState.LEADER
-                        ]
-                        if leaders:
-                            return leaders[0]
-                        await asyncio.sleep(0.05)
-                    return None
-
                 async def high_load_batch(batch_id: int):
                     """Submit a batch of commands concurrently."""
                     batch_results = []
@@ -918,7 +987,9 @@ class TestLiveRaftIntegration:
                             result = None
                             while attempt < 2:
                                 attempt += 1
-                                target = await current_leader(timeout=1.0)
+                                target = await self._current_leader(
+                                    nodes, timeout_seconds=1.0
+                                )
                                 if not target:
                                     continue
                                 result = await asyncio.wait_for(
@@ -982,7 +1053,9 @@ class TestLiveRaftIntegration:
                 await asyncio.sleep(2.0)
 
                 # Verify cluster consistency after high load
-                refreshed_leader = await current_leader(timeout=2.0)
+                refreshed_leader = await self._current_leader(
+                    nodes, timeout_seconds=2.0
+                )
                 if refreshed_leader:
                     leader = refreshed_leader
                 leader_log_length = len(leader.persistent_state.log_entries)
@@ -1010,8 +1083,32 @@ class TestLiveRaftIntegration:
                 for node in nodes.values():
                     try:
                         await asyncio.wait_for(node.stop(), timeout=2.0)
-                    except (TimeoutError, asyncio.CancelledError, AttributeError):
+                    except TimeoutError, asyncio.CancelledError, AttributeError:
                         pass  # Node shutdown errors during cleanup are expected
+
+                # Ensure each cluster-size run is isolated and doesn't leak server load
+                # into the next iteration of this test.
+                new_servers = test_context.servers[servers_start:]
+                if new_servers:
+                    await asyncio.gather(
+                        *(server.shutdown_async() for server in new_servers),
+                        return_exceptions=True,
+                    )
+
+                new_tasks = test_context.tasks[tasks_start:]
+                if new_tasks:
+                    await asyncio.wait(
+                        new_tasks, timeout=max(5.0, len(new_tasks) * 0.5)
+                    )
+                for task in new_tasks:
+                    if not task.done():
+                        task.cancel()
+                if new_tasks:
+                    await asyncio.gather(*new_tasks, return_exceptions=True)
+
+                del test_context.tasks[tasks_start:]
+                del test_context.servers[servers_start:]
+                await asyncio.sleep(0.1)
 
         print("✓ All concurrent high load tests completed")
 

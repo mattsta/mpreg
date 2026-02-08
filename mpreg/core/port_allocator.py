@@ -72,7 +72,7 @@ class PortAllocator:
             else:
                 worker_num = hash(self.worker_id) % 1000
                 worker_num += 1
-        except (ValueError, IndexError):
+        except ValueError, IndexError:
             worker_num = hash(self.worker_id) % 1000
             worker_num += 1
 
@@ -108,20 +108,20 @@ class PortAllocator:
                             try:
                                 os.kill(pid, 0)
                                 is_stale = False
-                            except (OSError, ProcessLookupError):
+                            except OSError, ProcessLookupError:
                                 is_stale = True
 
                             if is_stale:
                                 lock_file.unlink()
                                 cleanup_count += 1
-                except (ValueError, OSError):
+                except ValueError, OSError:
                     if file_age > grace_period:
                         try:
                             lock_file.unlink()
                             cleanup_count += 1
                         except OSError:
                             pass
-            except (OSError, FileNotFoundError):
+            except OSError, FileNotFoundError:
                 pass
 
         if cleanup_count:
@@ -155,13 +155,13 @@ class PortAllocator:
                         try:
                             os.kill(pid, 0)
                             is_stale = False
-                        except (OSError, ProcessLookupError):
+                        except OSError, ProcessLookupError:
                             is_stale = True
 
                         if is_stale:
                             lock_file.unlink()
                             return self._acquire_port_lock(port)
-            except (OSError, ValueError, FileNotFoundError):
+            except OSError, ValueError, FileNotFoundError:
                 try:
                     file_age = time.time() - lock_file.stat().st_mtime
                     if file_age > 5.0:

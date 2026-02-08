@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import resource
+import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from loguru import logger
+
+from mpreg.datastructures.type_aliases import TenantId
 
 from .transport.factory import TransportFactory
 from .transport.interfaces import (
@@ -17,6 +21,12 @@ from .transport.interfaces import (
 
 if TYPE_CHECKING:
     from ..server import Cluster
+
+
+_DIAG_TRUE_VALUES = frozenset({"1", "true", "yes", "on", "enabled", "debug"})
+PEER_DIAL_DIAG_ENABLED = (
+    os.environ.get("MPREG_DEBUG_PEER_DIAL", "").strip().lower() in _DIAG_TRUE_VALUES
+)
 
 
 @dataclass(eq=True, slots=True)
@@ -32,6 +42,7 @@ class Connection:
     max_size: int = field(default=2**20, repr=False)
     max_queue: int = field(default=32, repr=False)
     transport_config: TransportConfig | None = field(default=None, repr=False)
+    tenant_id: TenantId | None = field(default=None, repr=False, compare=False)
     _transport: TransportInterface | None = field(default=None, init=False)
     cluster: Cluster | None = field(default=None, init=False)
 
@@ -43,10 +54,39 @@ class Connection:
         connection._transport = transport
         return connection
 
-    def _build_transport_config(self) -> TransportConfig:
+    def _base_connect_timeout(self) -> float:
+        """Resolve the baseline timeout used for the first dial attempt."""
+        effective_timeout = self.connect_timeout
+        if effective_timeout <= 0:
+            effective_timeout = self.open_timeout
+        if effective_timeout <= 0:
+            effective_timeout = 1.0
+        return effective_timeout
+
+    def _connect_timeout_for_attempt(self, attempt: int) -> float:
+        """Increase timeout budget across retries to absorb transient load."""
+        base_timeout = self._base_connect_timeout()
+        if self.max_retries <= 0 or attempt <= 0:
+            return base_timeout
+        retry_ratio = min(
+            max(float(attempt) / float(self.max_retries), 0.0),
+            1.0,
+        )
+        multiplier = 1.0 + (retry_ratio * 2.0)
+        return min(base_timeout * 4.0, base_timeout * multiplier)
+
+    def _build_transport_config(
+        self, *, connect_timeout_override: float | None = None
+    ) -> TransportConfig:
         if self.transport_config:
             return self.transport_config
-        effective_timeout = min(self.connect_timeout, self.open_timeout)
+        # Respect explicit connection timeout. `open_timeout` remains as legacy
+        # fallback for callers that only set that field.
+        effective_timeout = (
+            connect_timeout_override
+            if connect_timeout_override is not None
+            else self._base_connect_timeout()
+        )
         return TransportConfig(
             connect_timeout=effective_timeout,
             protocol_options={"max_message_size": self.max_size},
@@ -57,6 +97,17 @@ class Connection:
         if self._transport and self._transport.connected:
             logger.debug("[{}] Connection already open.", self.url)
             return
+        diagnostics_enabled = PEER_DIAL_DIAG_ENABLED
+        if diagnostics_enabled:
+            logger.error(
+                "[DIAG_CONN] connect_start url={} retries={} base_delay={:.3f}s "
+                "connect_timeout={:.3f}s open_timeout={:.3f}s",
+                self.url,
+                self.max_retries,
+                self.base_delay,
+                self.connect_timeout,
+                self.open_timeout,
+            )
 
         # Check if we're approaching file descriptor limits
         try:
@@ -85,15 +136,49 @@ class Connection:
                 attempt + 1,
                 self.max_retries + 1,
             )
+            attempt_started_at = time.monotonic()
             try:
-                config = self._build_transport_config()
+                attempt_timeout = self._connect_timeout_for_attempt(attempt)
+                config = self._build_transport_config(
+                    connect_timeout_override=attempt_timeout
+                )
                 transport = TransportFactory.create(self.url, config)
                 await transport.connect()
                 self._transport = transport
                 logger.debug("[{}] Connected.", self.url)
+                if diagnostics_enabled:
+                    elapsed = time.monotonic() - attempt_started_at
+                    logger.error(
+                        "[DIAG_CONN] connect_success url={} attempt={}/{} timeout={:.3f}s elapsed={:.3f}s",
+                        self.url,
+                        attempt + 1,
+                        self.max_retries + 1,
+                        attempt_timeout,
+                        elapsed,
+                    )
                 return
+            except asyncio.CancelledError:
+                self._transport = None
+                raise
             except (TransportError, Exception) as exc:
-                logger.error("[{}] Failed to connect: {}", self.url, exc)
+                logger.debug(
+                    "[{}] Connection attempt failed (attempt {}/{}): {}",
+                    self.url,
+                    attempt + 1,
+                    self.max_retries + 1,
+                    exc,
+                )
+                if diagnostics_enabled:
+                    elapsed = time.monotonic() - attempt_started_at
+                    logger.error(
+                        "[DIAG_CONN] connect_failure url={} attempt={}/{} timeout={:.3f}s elapsed={:.3f}s error={}",
+                        self.url,
+                        attempt + 1,
+                        self.max_retries + 1,
+                        attempt_timeout,
+                        elapsed,
+                        exc,
+                    )
                 self._transport = None
                 if attempt < self.max_retries:
                     delay = self.base_delay * (2**attempt)
@@ -104,8 +189,9 @@ class Connection:
                     )
                     await asyncio.sleep(delay)
                 else:
-                    logger.error(
-                        "[{}] Max reconnection attempts reached. Giving up.", self.url
+                    logger.debug(
+                        "[{}] Max reconnection attempts reached. Giving up.",
+                        self.url,
                     )
                     raise ConnectionError(
                         f"Failed to connect to {self.url} after {self.max_retries + 1} attempts."
@@ -118,7 +204,7 @@ class Connection:
                 await asyncio.wait_for(
                     self._transport.disconnect(), timeout=self.close_timeout
                 )
-            except (TimeoutError, asyncio.CancelledError):
+            except TimeoutError, asyncio.CancelledError:
                 pass
             except Exception as exc:
                 logger.debug("[{}] Error during disconnect: {}", self.url, exc)

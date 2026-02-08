@@ -7,6 +7,10 @@ queues, and cache operations through one control plane and one message envelope.
 Legacy federation bridges and queue-specific gossip are removed in favor of the
 fabric catalog, routing engine, and unified transport.
 
+The DNS interoperability gateway is an optional protocol adapter that resolves
+MPREG catalog entries to DNS records. It does not participate in the fabric data
+plane and never becomes a new source of truth.
+
 ## Core Components
 
 1. **FabricControlPlane** (`mpreg/fabric/control_plane.py`)

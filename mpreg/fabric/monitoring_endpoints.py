@@ -62,6 +62,11 @@ type TimeSeriesData = list[tuple[float, float]]  # [(timestamp, value), ...]
 type RouteTraceProvider = Callable[[ClusterId, tuple[ClusterId, ...]], JsonResponse]
 type LinkStateStatusProvider = Callable[[], JsonResponse]
 type PersistenceSnapshotProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
+type DiscoverySummaryProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
+type DiscoveryCacheProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
+type DiscoveryPolicyProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
+type DiscoveryLagProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
+type DnsMetricsProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
 
 
 class MonitoringEndpointType(Enum):
@@ -251,6 +256,11 @@ class FederationMonitoringSystem:
     link_state_status_provider: LinkStateStatusProvider | None = None
     adapter_endpoint_registry: AdapterEndpointRegistry | None = None
     persistence_snapshot_provider: PersistenceSnapshotProvider | None = None
+    discovery_summary_provider: DiscoverySummaryProvider | None = None
+    discovery_cache_provider: DiscoveryCacheProvider | None = None
+    discovery_policy_provider: DiscoveryPolicyProvider | None = None
+    discovery_lag_provider: DiscoveryLagProvider | None = None
+    dns_metrics_provider: DnsMetricsProvider | None = None
 
     # Web server components
     app: web.Application = field(init=False)
@@ -302,6 +312,13 @@ class FederationMonitoringSystem:
         self.app.router.add_get("/metrics/transport", self._get_transport_metrics)
         self.app.router.add_get("/metrics/persistence", self._get_persistence_metrics)
         self.app.router.add_get("/transport/endpoints", self._get_transport_endpoints)
+
+        # Discovery endpoints
+        self.app.router.add_get("/discovery/summary", self._get_discovery_summary)
+        self.app.router.add_get("/discovery/cache", self._get_discovery_cache)
+        self.app.router.add_get("/discovery/policy", self._get_discovery_policy)
+        self.app.router.add_get("/discovery/lag", self._get_discovery_lag)
+        self.app.router.add_get("/dns/metrics", self._get_dns_metrics)
 
         # Topology endpoints
         self.app.router.add_get("/topology", self._get_federation_topology)
@@ -804,6 +821,147 @@ class FederationMonitoringSystem:
             )
         except Exception as e:
             logger.error(f"Error getting persistence metrics: {e}")
+            return web.json_response({"status": "error", "message": str(e)}, status=500)
+
+    async def _get_discovery_summary(self, request: web.Request) -> web.Response:
+        """Get discovery summary export status."""
+        provider = self.discovery_summary_provider
+        if provider is None:
+            return web.json_response(
+                {
+                    "status": "ok",
+                    "summary_export": {"enabled": False},
+                    "timestamp": time.time(),
+                }
+            )
+        try:
+            payload = provider()
+            if inspect.isawaitable(payload):
+                payload = await payload
+            return web.json_response(
+                {
+                    "status": "ok",
+                    "summary_export": payload,
+                    "timestamp": time.time(),
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error getting discovery summary status: {e}")
+            return web.json_response({"status": "error", "message": str(e)}, status=500)
+
+    async def _get_discovery_cache(self, request: web.Request) -> web.Response:
+        """Get discovery resolver cache status."""
+        provider = self.discovery_cache_provider
+        if provider is None:
+            return web.json_response(
+                {
+                    "status": "ok",
+                    "resolver_cache": {"enabled": False},
+                    "timestamp": time.time(),
+                }
+            )
+        try:
+            payload = provider()
+            if inspect.isawaitable(payload):
+                payload = await payload
+            if isinstance(payload, dict) and (
+                "resolver_cache" in payload or "summary_cache" in payload
+            ):
+                response_payload = dict(payload)
+                return web.json_response(
+                    {
+                        "status": "ok",
+                        **response_payload,
+                        "timestamp": time.time(),
+                    }
+                )
+            return web.json_response(
+                {
+                    "status": "ok",
+                    "resolver_cache": payload,
+                    "timestamp": time.time(),
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error getting discovery cache status: {e}")
+            return web.json_response({"status": "error", "message": str(e)}, status=500)
+
+    async def _get_discovery_policy(self, request: web.Request) -> web.Response:
+        """Get discovery namespace policy status."""
+        provider = self.discovery_policy_provider
+        if provider is None:
+            return web.json_response(
+                {
+                    "status": "ok",
+                    "policy": {"enabled": False},
+                    "timestamp": time.time(),
+                }
+            )
+        try:
+            payload = provider()
+            if inspect.isawaitable(payload):
+                payload = await payload
+            return web.json_response(
+                {
+                    "status": "ok",
+                    "policy": payload,
+                    "timestamp": time.time(),
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error getting discovery policy status: {e}")
+            return web.json_response({"status": "error", "message": str(e)}, status=500)
+
+    async def _get_discovery_lag(self, request: web.Request) -> web.Response:
+        """Get discovery lag status."""
+        provider = self.discovery_lag_provider
+        if provider is None:
+            return web.json_response(
+                {
+                    "status": "ok",
+                    "lag": {"resolver_enabled": False},
+                    "timestamp": time.time(),
+                }
+            )
+        try:
+            payload = provider()
+            if inspect.isawaitable(payload):
+                payload = await payload
+            return web.json_response(
+                {
+                    "status": "ok",
+                    "lag": payload,
+                    "timestamp": time.time(),
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error getting discovery lag status: {e}")
+            return web.json_response({"status": "error", "message": str(e)}, status=500)
+
+    async def _get_dns_metrics(self, request: web.Request) -> web.Response:
+        """Get DNS gateway metrics."""
+        provider = self.dns_metrics_provider
+        if provider is None:
+            return web.json_response(
+                {
+                    "status": "ok",
+                    "dns_gateway": {"enabled": False},
+                    "timestamp": time.time(),
+                }
+            )
+        try:
+            payload = provider()
+            if inspect.isawaitable(payload):
+                payload = await payload
+            return web.json_response(
+                {
+                    "status": "ok",
+                    "dns_gateway": payload,
+                    "timestamp": time.time(),
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error getting DNS metrics: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
     async def _get_transport_endpoints(self, request: web.Request) -> web.Response:
@@ -1653,6 +1811,26 @@ class FederationMonitoringSystem:
                 "description": "Adapter endpoints and auto-assigned transport ports",
             },
             {
+                "path": "/discovery/summary",
+                "method": "GET",
+                "description": "Discovery summary export status",
+            },
+            {
+                "path": "/discovery/cache",
+                "method": "GET",
+                "description": "Discovery resolver cache status",
+            },
+            {
+                "path": "/discovery/policy",
+                "method": "GET",
+                "description": "Namespace policy status and audit summary",
+            },
+            {
+                "path": "/discovery/lag",
+                "method": "GET",
+                "description": "Discovery delta and summary export lag",
+            },
+            {
                 "path": "/metrics/timeseries",
                 "method": "GET",
                 "description": "Time series metrics data",
@@ -2203,6 +2381,11 @@ def create_federation_monitoring_system(
     link_state_status_provider: LinkStateStatusProvider | None = None,
     adapter_endpoint_registry: AdapterEndpointRegistry | None = None,
     persistence_snapshot_provider: PersistenceSnapshotProvider | None = None,
+    discovery_summary_provider: DiscoverySummaryProvider | None = None,
+    discovery_cache_provider: DiscoveryCacheProvider | None = None,
+    discovery_policy_provider: DiscoveryPolicyProvider | None = None,
+    discovery_lag_provider: DiscoveryLagProvider | None = None,
+    dns_metrics_provider: DnsMetricsProvider | None = None,
 ) -> FederationMonitoringSystem:
     """Create a federation monitoring system with specified configuration."""
 
@@ -2220,6 +2403,11 @@ def create_federation_monitoring_system(
         link_state_status_provider=link_state_status_provider,
         adapter_endpoint_registry=adapter_endpoint_registry,
         persistence_snapshot_provider=persistence_snapshot_provider,
+        discovery_summary_provider=discovery_summary_provider,
+        discovery_cache_provider=discovery_cache_provider,
+        discovery_policy_provider=discovery_policy_provider,
+        discovery_lag_provider=discovery_lag_provider,
+        dns_metrics_provider=dns_metrics_provider,
     )
 
     monitoring_system.monitoring_port = monitoring_port

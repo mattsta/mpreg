@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 from mpreg.datastructures.type_aliases import ClusterId, HopCount, NodeURL
 from mpreg.fabric.federation_graph import GraphBasedFederationRouter
@@ -21,7 +21,7 @@ PeerLocator = Callable[[ClusterId], Sequence[NodeURL]]
 NeighborLocator = Callable[[], Sequence[PeerNeighbor]]
 
 
-class FabricForwardingFailureReason(str, Enum):
+class FabricForwardingFailureReason(StrEnum):
     """Reasons fabric forwarding may not select a next hop."""
 
     OK = "ok"

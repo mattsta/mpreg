@@ -17,6 +17,7 @@ import json
 import os
 import sys
 import time
+from collections.abc import Mapping
 from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any
@@ -28,10 +29,26 @@ from rich.table import Table
 
 from mpreg import __version__
 from mpreg.client.client_api import MPREGClientAPI
+from mpreg.client.dns_client import MPREGDnsClient
+from mpreg.client.pubsub_client import MPREGPubSubClient
+from mpreg.core.cluster_map import (
+    CatalogQueryRequest,
+    CatalogWatchRequest,
+    ListPeersRequest,
+)
 from mpreg.core.config import MPREGSettings
+from mpreg.core.discovery_monitoring import DiscoveryAccessAuditRequest
+from mpreg.core.discovery_summary import SummaryQueryRequest, SummaryWatchRequest
 from mpreg.core.logging import configure_logging
+from mpreg.core.namespace_policy import (
+    NamespacePolicyApplyRequest,
+    NamespacePolicyAuditRequest,
+    NamespacePolicyRule,
+)
 from mpreg.core.persistence.config import PersistenceConfig, PersistenceMode
 from mpreg.core.port_allocator import allocate_port
+from mpreg.datastructures.type_aliases import JsonDict, MetadataValue, TenantId
+from mpreg.dns import decode_node_id, encode_node_id
 from mpreg.server import MPREGServer
 
 from .federation_cli import FederationCLI
@@ -120,17 +137,1015 @@ def call(
     envvar="MPREG_URL",
     help="MPREG server URL (or set MPREG_URL)",
 )
-def list_peers(url: str | None):
+@click.option(
+    "--scope", default=None, help="Discovery scope (local, zone, region, global)"
+)
+@click.option("--cluster-id", default=None, help="Filter peers by cluster id")
+@click.option(
+    "--target-cluster", default=None, help="Target cluster for federated routing"
+)
+def list_peers(
+    url: str | None,
+    scope: str | None,
+    cluster_id: str | None,
+    target_cluster: str | None,
+):
     """List known peers in the cluster."""
     if not url:
         raise click.UsageError("Provide --url or set MPREG_URL.")
 
     async def _list():
         async with MPREGClientAPI(url) as client:
-            peers = await client.list_peers()
-            console.print(peers)
+            request = ListPeersRequest(scope=scope, cluster_id=cluster_id)
+            peers = await client.list_peers(request, target_cluster=target_cluster)
+            console.print([peer.to_dict() for peer in peers])
 
     asyncio.run(_list())
+
+
+@client.command("resolver-cache-stats")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_URL",
+    help="MPREG server URL (or set MPREG_URL)",
+)
+def resolver_cache_stats(url: str | None) -> None:
+    """Fetch resolver cache stats."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _stats() -> None:
+        async with MPREGClientAPI(url) as client:
+            result = await client.resolver_cache_stats()
+            console.print(result.to_dict())
+
+    asyncio.run(_stats())
+
+
+@client.command("resolver-resync")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_URL",
+    help="MPREG server URL (or set MPREG_URL)",
+)
+def resolver_resync(url: str | None) -> None:
+    """Trigger a resolver cache resync."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _resync() -> None:
+        async with MPREGClientAPI(url) as client:
+            result = await client.resolver_resync()
+            console.print(result.to_dict())
+
+    asyncio.run(_resync())
+
+
+def _parse_metadata_items(items: tuple[str, ...]) -> dict[str, MetadataValue]:
+    metadata: dict[str, MetadataValue] = {}
+    for item in items:
+        if "=" in item:
+            key, value = item.split("=", 1)
+            key = key.strip()
+            if not key:
+                continue
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, (str, int, float, bool)):
+                    metadata[key] = parsed
+                else:
+                    metadata[key] = str(parsed)
+            except Exception:
+                metadata[key] = value
+        else:
+            metadata[item] = True
+    return metadata
+
+
+@client.command("dns-register")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_URL",
+    help="MPREG server URL (or set MPREG_URL)",
+)
+@click.option("--name", required=True, help="Service name")
+@click.option("--namespace", required=True, help="Service namespace")
+@click.option("--protocol", default="tcp", help="Service protocol")
+@click.option("--port", type=int, required=True, help="Service port")
+@click.option("--target", multiple=True, help="Service target host (repeatable)")
+@click.option("--tag", multiple=True, help="Service tag (repeatable)")
+@click.option("--capability", multiple=True, help="Service capability (repeatable)")
+@click.option("--metadata", multiple=True, help="Metadata key=value (repeatable)")
+@click.option("--priority", type=int, default=0, help="SRV priority")
+@click.option("--weight", type=int, default=0, help="SRV weight")
+@click.option("--scope", default=None, help="Discovery scope")
+@click.option("--ttl", type=float, default=None, help="TTL override in seconds")
+def dns_register(
+    url: str | None,
+    name: str,
+    namespace: str,
+    protocol: str,
+    port: int,
+    target: tuple[str, ...],
+    tag: tuple[str, ...],
+    capability: tuple[str, ...],
+    metadata: tuple[str, ...],
+    priority: int,
+    weight: int,
+    scope: str | None,
+    ttl: float | None,
+) -> None:
+    """Register a DNS service endpoint."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _register() -> None:
+        async with MPREGClientAPI(url) as client:
+            payload = {
+                "name": name,
+                "namespace": namespace,
+                "protocol": protocol,
+                "port": port,
+                "targets": list(target),
+                "tags": list(tag),
+                "capabilities": list(capability),
+                "metadata": _parse_metadata_items(metadata),
+                "priority": priority,
+                "weight": weight,
+                "scope": scope,
+                "ttl_seconds": ttl,
+            }
+            response = await client.dns_register(payload)
+            console.print(response.to_dict())
+
+    asyncio.run(_register())
+
+
+@client.command("dns-unregister")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_URL",
+    help="MPREG server URL (or set MPREG_URL)",
+)
+@click.option("--name", required=True, help="Service name")
+@click.option("--namespace", required=True, help="Service namespace")
+@click.option("--protocol", default="tcp", help="Service protocol")
+@click.option("--port", type=int, required=True, help="Service port")
+def dns_unregister(
+    url: str | None,
+    name: str,
+    namespace: str,
+    protocol: str,
+    port: int,
+) -> None:
+    """Unregister a DNS service endpoint."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _unregister() -> None:
+        async with MPREGClientAPI(url) as client:
+            response = await client.dns_unregister(
+                {
+                    "name": name,
+                    "namespace": namespace,
+                    "protocol": protocol,
+                    "port": port,
+                }
+            )
+            console.print(response.to_dict())
+
+    asyncio.run(_unregister())
+
+
+@client.command("dns-list")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_URL",
+    help="MPREG server URL (or set MPREG_URL)",
+)
+@click.option("--namespace", default=None, help="Filter by namespace")
+@click.option("--name", default=None, help="Filter by service name")
+@click.option("--protocol", default=None, help="Filter by protocol")
+@click.option("--port", type=int, default=None, help="Filter by port")
+@click.option("--scope", default=None, help="Discovery scope")
+@click.option("--tag", multiple=True, help="Filter by tag (repeatable)")
+@click.option("--capability", multiple=True, help="Filter by capability (repeatable)")
+@click.option("--limit", type=int, default=None, help="Page size limit")
+@click.option("--page-token", default=None, help="Pagination token")
+def dns_list(
+    url: str | None,
+    namespace: str | None,
+    name: str | None,
+    protocol: str | None,
+    port: int | None,
+    scope: str | None,
+    tag: tuple[str, ...],
+    capability: tuple[str, ...],
+    limit: int | None,
+    page_token: str | None,
+) -> None:
+    """List DNS service endpoints."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _list() -> None:
+        async with MPREGClientAPI(url) as client:
+            response = await client.dns_list(
+                {
+                    "namespace": namespace,
+                    "name": name,
+                    "protocol": protocol,
+                    "port": port,
+                    "scope": scope,
+                    "tags": list(tag),
+                    "capabilities": list(capability),
+                    "limit": limit,
+                    "page_token": page_token,
+                }
+            )
+            console.print(response.to_dict())
+
+    asyncio.run(_list())
+
+
+@client.command("dns-describe")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_URL",
+    help="MPREG server URL (or set MPREG_URL)",
+)
+@click.option("--namespace", default=None, help="Filter by namespace")
+@click.option("--name", default=None, help="Filter by service name")
+@click.option("--protocol", default=None, help="Filter by protocol")
+@click.option("--port", type=int, default=None, help="Filter by port")
+@click.option("--scope", default=None, help="Discovery scope")
+@click.option("--tag", multiple=True, help="Filter by tag (repeatable)")
+@click.option("--capability", multiple=True, help="Filter by capability (repeatable)")
+@click.option("--limit", type=int, default=None, help="Page size limit")
+@click.option("--page-token", default=None, help="Pagination token")
+def dns_describe(
+    url: str | None,
+    namespace: str | None,
+    name: str | None,
+    protocol: str | None,
+    port: int | None,
+    scope: str | None,
+    tag: tuple[str, ...],
+    capability: tuple[str, ...],
+    limit: int | None,
+    page_token: str | None,
+) -> None:
+    """Describe DNS service endpoints with full metadata."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _describe() -> None:
+        async with MPREGClientAPI(url) as client:
+            response = await client.dns_describe(
+                {
+                    "namespace": namespace,
+                    "name": name,
+                    "protocol": protocol,
+                    "port": port,
+                    "scope": scope,
+                    "tags": list(tag),
+                    "capabilities": list(capability),
+                    "limit": limit,
+                    "page_token": page_token,
+                }
+            )
+            console.print(response.to_dict())
+
+    asyncio.run(_describe())
+
+
+@client.command("dns-node-encode")
+@click.argument("node_id")
+def dns_node_encode(node_id: str) -> None:
+    """Encode a node_id into a DNS-safe label."""
+    label = encode_node_id(node_id)
+    if not label:
+        raise click.ClickException("Failed to encode node_id")
+    console.print(label)
+
+
+@client.command("dns-node-decode")
+@click.argument("label")
+def dns_node_decode(label: str) -> None:
+    """Decode a DNS node label back into a node_id."""
+    decoded = decode_node_id(label)
+    if decoded is None:
+        raise click.ClickException("Invalid DNS node label")
+    console.print(decoded)
+
+
+@client.command("dns-resolve")
+@click.option(
+    "--host",
+    default="127.0.0.1",
+    help="DNS gateway host (default: 127.0.0.1)",
+)
+@click.option("--port", type=int, required=True, help="DNS gateway port")
+@click.option("--qname", required=True, help="Query name")
+@click.option("--qtype", default="A", help="Query type (A, AAAA, SRV, TXT, ANY)")
+@click.option("--tcp/--udp", default=False, help="Use TCP instead of UDP")
+@click.option("--timeout", type=float, default=2.0, help="Query timeout in seconds")
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON output")
+def dns_resolve(
+    host: str,
+    port: int,
+    qname: str,
+    qtype: str,
+    tcp: bool,
+    timeout: float,
+    as_json: bool,
+) -> None:
+    """Resolve a DNS name against the MPREG DNS gateway."""
+
+    async def _resolve() -> None:
+        try:
+            client = MPREGDnsClient(
+                host=host,
+                port=port,
+                use_tcp=tcp,
+                timeout=timeout,
+            )
+            result = await client.resolve(qname, qtype=qtype)
+        except TimeoutError as exc:
+            raise click.ClickException("DNS query timed out") from exc
+        except Exception as exc:
+            raise click.ClickException(str(exc)) from exc
+        if as_json:
+            console.print(result.to_dict())
+            return
+        if not result.answers:
+            console.print(f"No answers (rcode={result.rcode})")
+            return
+        table = Table(title=f"DNS Answers ({result.rcode})")
+        table.add_column("Name")
+        table.add_column("Type")
+        table.add_column("TTL")
+        table.add_column("Data")
+        for answer in result.answers:
+            table.add_row(answer.name, answer.rtype, str(answer.ttl), answer.rdata)
+        console.print(table)
+
+    asyncio.run(_resolve())
+
+
+@client.group("namespace-policy")
+def namespace_policy():
+    """Namespace policy management commands."""
+    pass
+
+
+@namespace_policy.command("validate")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_URL",
+    help="MPREG server URL (or set MPREG_URL)",
+)
+@click.option(
+    "--rules-file",
+    type=click.Path(exists=True, dir_okay=False),
+    required=True,
+    help="Path to a JSON file containing namespace policy rules",
+)
+@click.option("--actor", default=None, help="Audit actor label")
+def namespace_policy_validate(url: str | None, rules_file: str, actor: str | None):
+    """Validate namespace policy rules."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    with open(rules_file, encoding="utf-8") as handle:
+        rules = json.load(handle)
+
+    async def _validate():
+        async with MPREGClientAPI(url) as client:
+            raw_rules = rules
+            if isinstance(raw_rules, dict):
+                raw_rules = [raw_rules]
+            parsed_rules = tuple(
+                NamespacePolicyRule.from_dict(rule)
+                for rule in raw_rules
+                if isinstance(rule, dict)
+            )
+            request = NamespacePolicyApplyRequest(rules=parsed_rules, actor=actor)
+            result = await client.namespace_policy_validate(request)
+            console.print(result.to_dict())
+
+    asyncio.run(_validate())
+
+
+@namespace_policy.command("apply")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_URL",
+    help="MPREG server URL (or set MPREG_URL)",
+)
+@click.option(
+    "--rules-file",
+    type=click.Path(exists=True, dir_okay=False),
+    required=True,
+    help="Path to a JSON file containing namespace policy rules",
+)
+@click.option(
+    "--enabled/--no-enabled",
+    default=None,
+    help="Enable or disable namespace policy enforcement",
+)
+@click.option(
+    "--default-allow/--default-deny",
+    default=None,
+    help="Default allow behavior when no policy matches",
+)
+@click.option("--actor", default=None, help="Audit actor label")
+def namespace_policy_apply(
+    url: str | None,
+    rules_file: str,
+    enabled: bool | None,
+    default_allow: bool | None,
+    actor: str | None,
+):
+    """Apply namespace policy rules."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    with open(rules_file, encoding="utf-8") as handle:
+        rules = json.load(handle)
+
+    async def _apply():
+        async with MPREGClientAPI(url) as client:
+            raw_rules = rules
+            if isinstance(raw_rules, dict):
+                raw_rules = [raw_rules]
+            parsed_rules = tuple(
+                NamespacePolicyRule.from_dict(rule)
+                for rule in raw_rules
+                if isinstance(rule, dict)
+            )
+            request = NamespacePolicyApplyRequest(
+                rules=parsed_rules,
+                enabled=enabled,
+                default_allow=default_allow,
+                actor=actor,
+            )
+            result = await client.namespace_policy_apply(request)
+            console.print(result.to_dict())
+
+    asyncio.run(_apply())
+
+
+@namespace_policy.command("export")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_URL",
+    help="MPREG server URL (or set MPREG_URL)",
+)
+def namespace_policy_export(url: str | None):
+    """Export current namespace policy configuration."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _export():
+        async with MPREGClientAPI(url) as client:
+            result = await client.namespace_policy_export()
+            console.print(result.to_dict())
+
+    asyncio.run(_export())
+
+
+@namespace_policy.command("audit")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_URL",
+    help="MPREG server URL (or set MPREG_URL)",
+)
+@click.option("--limit", type=int, default=None, help="Limit audit entries")
+def namespace_policy_audit(url: str | None, limit: int | None):
+    """Fetch namespace policy audit entries."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _audit():
+        async with MPREGClientAPI(url) as client:
+            request = NamespacePolicyAuditRequest(limit=limit)
+            result = await client.namespace_policy_audit(request)
+            console.print(result.to_dict())
+
+    asyncio.run(_audit())
+
+
+@cli.group()
+def discovery():
+    """Discovery plane commands."""
+    pass
+
+
+@cli.group()
+def report():
+    """Reporting commands."""
+    pass
+
+
+@discovery.command("query")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_URL",
+    help="MPREG server URL (or set MPREG_URL)",
+)
+@click.option(
+    "--entry-type",
+    default="functions",
+    help="Catalog entry type (functions, nodes, queues, topics, caches, cache_profiles)",
+)
+@click.option("--namespace", default=None, help="Namespace prefix to filter")
+@click.option(
+    "--scope", default=None, help="Discovery scope (local, zone, region, global)"
+)
+@click.option(
+    "--viewer-cluster-id",
+    default=None,
+    help="Viewer cluster for policy checks (ignored when identity is derived from connection)",
+)
+@click.option(
+    "--viewer-tenant-id",
+    default=None,
+    help="Viewer tenant for policy checks (when tenant mode is enabled)",
+)
+@click.option("--capability", "capabilities", multiple=True, help="Capability filter")
+@click.option("--resource", "resources", multiple=True, help="Resource filter")
+@click.option("--tag", "tags", multiple=True, help="Tag filter (repeatable)")
+@click.option("--cluster-id", default=None, help="Filter to cluster ID")
+@click.option("--node-id", default=None, help="Filter to node ID")
+@click.option("--function-name", default=None, help="Function name filter")
+@click.option("--function-id", default=None, help="Function ID filter")
+@click.option("--version-constraint", default=None, help="Semantic version constraint")
+@click.option("--queue-name", default=None, help="Queue name filter")
+@click.option("--topic", default=None, help="Topic filter")
+@click.option("--limit", type=int, default=None, help="Page size limit")
+@click.option("--page-token", default=None, help="Pagination token")
+def discovery_query(
+    url: str | None,
+    entry_type: str,
+    namespace: str | None,
+    scope: str | None,
+    viewer_cluster_id: str | None,
+    viewer_tenant_id: TenantId | None,
+    capabilities: tuple[str, ...],
+    resources: tuple[str, ...],
+    tags: tuple[str, ...],
+    cluster_id: str | None,
+    node_id: str | None,
+    function_name: str | None,
+    function_id: str | None,
+    version_constraint: str | None,
+    queue_name: str | None,
+    topic: str | None,
+    limit: int | None,
+    page_token: str | None,
+):
+    """Run a catalog_query for discovery entries."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _query() -> None:
+        request = CatalogQueryRequest(
+            entry_type=entry_type,
+            namespace=namespace,
+            scope=scope,
+            viewer_cluster_id=viewer_cluster_id,
+            viewer_tenant_id=viewer_tenant_id,
+            capabilities=capabilities,
+            resources=resources,
+            tags=tags,
+            cluster_id=cluster_id,
+            node_id=node_id,
+            function_name=function_name,
+            function_id=function_id,
+            version_constraint=version_constraint,
+            queue_name=queue_name,
+            topic=topic,
+            limit=limit,
+            page_token=page_token,
+        )
+        async with MPREGClientAPI(url) as client:
+            result = await client.catalog_query(request)
+            console.print(result.to_dict())
+
+    asyncio.run(_query())
+
+
+@discovery.command("summary")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_URL",
+    help="MPREG server URL (or set MPREG_URL)",
+)
+@click.option("--namespace", default=None, help="Namespace prefix to filter")
+@click.option("--service-id", default=None, help="Service ID filter")
+@click.option(
+    "--viewer-cluster-id",
+    default=None,
+    help="Viewer cluster for policy checks (ignored when identity is derived from connection)",
+)
+@click.option(
+    "--viewer-tenant-id",
+    default=None,
+    help="Viewer tenant for policy checks (when tenant mode is enabled)",
+)
+@click.option(
+    "--scope", default=None, help="Discovery scope (local, zone, region, global)"
+)
+@click.option(
+    "--include-ingress/--no-include-ingress",
+    default=False,
+    help="Include ingress hints for source clusters",
+)
+@click.option("--ingress-limit", type=int, default=None, help="Ingress URL limit")
+@click.option(
+    "--ingress-scope",
+    default=None,
+    help="Ingress scope filter (local, zone, region, global)",
+)
+@click.option(
+    "--ingress-capability",
+    "ingress_capabilities",
+    multiple=True,
+    help="Ingress capability filter (repeatable)",
+)
+@click.option(
+    "--ingress-tag",
+    "ingress_tags",
+    multiple=True,
+    help="Ingress tag filter (repeatable)",
+)
+@click.option("--limit", type=int, default=None, help="Page size limit")
+@click.option("--page-token", default=None, help="Pagination token")
+def discovery_summary(
+    url: str | None,
+    namespace: str | None,
+    service_id: str | None,
+    viewer_cluster_id: str | None,
+    viewer_tenant_id: TenantId | None,
+    scope: str | None,
+    include_ingress: bool,
+    ingress_limit: int | None,
+    ingress_scope: str | None,
+    ingress_capabilities: tuple[str, ...],
+    ingress_tags: tuple[str, ...],
+    limit: int | None,
+    page_token: str | None,
+):
+    """Run a summary_query for discovery summaries."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _summary() -> None:
+        include_ingress = include_ingress or bool(
+            ingress_limit is not None
+            or ingress_scope
+            or ingress_capabilities
+            or ingress_tags
+        )
+        async with MPREGClientAPI(url) as client:
+            request = SummaryQueryRequest(
+                scope=scope,
+                namespace=namespace,
+                service_id=service_id,
+                viewer_cluster_id=viewer_cluster_id,
+                viewer_tenant_id=viewer_tenant_id,
+                include_ingress=include_ingress,
+                ingress_limit=ingress_limit,
+                ingress_scope=ingress_scope,
+                ingress_capabilities=ingress_capabilities,
+                ingress_tags=ingress_tags,
+                limit=limit,
+                page_token=page_token,
+            )
+            result = await client.summary_query(request)
+            console.print(result.to_dict())
+
+    asyncio.run(_summary())
+
+
+@discovery.command("watch")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_URL",
+    help="MPREG server URL (or set MPREG_URL)",
+)
+@click.option(
+    "--summary/--delta",
+    default=False,
+    help="Watch summary exports instead of catalog deltas",
+)
+@click.option(
+    "--scope", default=None, help="Discovery scope (local, zone, region, global)"
+)
+@click.option("--namespace", default=None, help="Namespace filter")
+@click.option("--cluster-id", default=None, help="Cluster ID filter")
+@click.option("--viewer-tenant-id", default=None, help="Viewer tenant id")
+@click.option("--duration", type=float, default=None, help="Stop after N seconds")
+@click.option("--count", type=int, default=None, help="Stop after N messages")
+def discovery_watch(
+    url: str | None,
+    summary: bool,
+    scope: str | None,
+    namespace: str | None,
+    cluster_id: str | None,
+    viewer_tenant_id: TenantId | None,
+    duration: float | None,
+    count: int | None,
+):
+    """Watch discovery delta or summary topics."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _watch() -> None:
+        async with MPREGClientAPI(url) as client:
+            pubsub = MPREGPubSubClient(base_client=client)
+            await pubsub.start()
+            queue: asyncio.Queue = asyncio.Queue()
+
+            def on_message(message):
+                queue.put_nowait(message)
+
+            watch_request = (
+                SummaryWatchRequest(
+                    scope=scope,
+                    namespace=namespace,
+                    cluster_id=cluster_id,
+                    viewer_tenant_id=viewer_tenant_id,
+                )
+                if summary
+                else CatalogWatchRequest(
+                    scope=scope,
+                    namespace=namespace,
+                    cluster_id=cluster_id,
+                    viewer_tenant_id=viewer_tenant_id,
+                )
+            )
+            watch_info = (
+                await client.summary_watch(watch_request)
+                if summary
+                else await client.catalog_watch(watch_request)
+            )
+            await pubsub.subscribe(
+                patterns=[watch_info.topic],
+                callback=on_message,
+                get_backlog=False,
+            )
+
+            deadline = time.time() + duration if duration else None
+            received = 0
+            while True:
+                timeout = None
+                if deadline is not None:
+                    remaining = deadline - time.time()
+                    if remaining <= 0:
+                        break
+                    timeout = max(0.1, remaining)
+                try:
+                    if timeout is None:
+                        message = await queue.get()
+                    else:
+                        message = await asyncio.wait_for(queue.get(), timeout=timeout)
+                except TimeoutError:
+                    break
+                console.print(
+                    {
+                        "topic": message.topic,
+                        "timestamp": message.timestamp,
+                        "payload": message.payload,
+                    }
+                )
+                received += 1
+                if count is not None and received >= count:
+                    break
+
+            await pubsub.stop()
+
+    asyncio.run(_watch())
+
+
+@discovery.command("status")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_MONITORING_URL",
+    help="Monitoring endpoint URL (or set MPREG_MONITORING_URL)",
+)
+def discovery_status(url: str | None) -> None:
+    """Fetch discovery status from monitoring endpoints."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_MONITORING_URL.")
+
+    async def _status() -> None:
+        base_url = url.rstrip("/")
+        endpoints = {
+            "summary": "/discovery/summary",
+            "cache": "/discovery/cache",
+            "policy": "/discovery/policy",
+            "lag": "/discovery/lag",
+        }
+        results: JsonDict = {}
+        async with aiohttp.ClientSession() as session:
+            for key, path in endpoints.items():
+                async with session.get(f"{base_url}{path}") as response:
+                    results[key] = await response.json()
+        console.print(results)
+
+    asyncio.run(_status())
+
+
+@discovery.command("access-audit")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_URL",
+    help="MPREG server URL (or set MPREG_URL)",
+)
+@click.option("--limit", type=int, default=None, help="Limit audit entries")
+def discovery_access_audit(url: str | None, limit: int | None) -> None:
+    """Fetch discovery access audit entries."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _audit() -> None:
+        async with MPREGClientAPI(url) as client:
+            request = DiscoveryAccessAuditRequest(limit=limit)
+            result = await client.discovery_access_audit(request)
+            console.print(result.to_dict())
+
+    asyncio.run(_audit())
+
+
+@report.command("namespace-health")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_MONITORING_URL",
+    help="Monitoring endpoint URL (or set MPREG_MONITORING_URL)",
+)
+@click.option(
+    "--output",
+    type=click.Choice(["table", "json"]),
+    default="table",
+    help="Output format",
+)
+@click.option("--namespace", default=None, help="Namespace prefix filter")
+@click.option("--limit", type=int, default=None, help="Limit rows displayed")
+def report_namespace_health(
+    url: str | None,
+    output: str,
+    namespace: str | None,
+    limit: int | None,
+) -> None:
+    """Report namespace export health from discovery summary metrics."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_MONITORING_URL.")
+
+    async def _report() -> None:
+        base_url = url.rstrip("/")
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{base_url}/discovery/summary") as response:
+                payload = await response.json()
+        summary_export = payload.get("summary_export", {})
+        entries = summary_export.get("per_namespace", [])
+        if not isinstance(entries, list):
+            entries = []
+        if namespace:
+            entries = [
+                entry
+                for entry in entries
+                if isinstance(entry, dict)
+                and str(entry.get("namespace", "")).startswith(namespace)
+            ]
+        entries = [
+            entry
+            for entry in entries
+            if isinstance(entry, dict) and entry.get("namespace")
+        ]
+        entries.sort(
+            key=lambda item: (
+                -int(item.get("summaries_exported", 0)),
+                item.get("namespace"),
+            )
+        )
+        if limit is not None and limit >= 0:
+            entries = entries[:limit]
+
+        if output == "json":
+            console.print(
+                {
+                    "summary_export": summary_export,
+                    "namespaces": entries,
+                }
+            )
+            return
+
+        table = Table(title="Namespace Export Health")
+        table.add_column("Namespace")
+        table.add_column("Exports", justify="right")
+        table.add_column("Summaries", justify="right")
+        table.add_column("Last Export Count", justify="right")
+        table.add_column("Last Export At")
+
+        for entry in entries:
+            last_export_at = entry.get("last_export_at")
+            if isinstance(last_export_at, (int, float)):
+                last_export = time.strftime(
+                    "%Y-%m-%d %H:%M:%S", time.localtime(float(last_export_at))
+                )
+            else:
+                last_export = "-"
+            table.add_row(
+                str(entry.get("namespace", "")),
+                str(entry.get("exports_total", 0)),
+                str(entry.get("summaries_exported", 0)),
+                str(entry.get("last_export_count", 0)),
+                last_export,
+            )
+
+        console.print(table)
+
+    asyncio.run(_report())
+
+
+@report.command("export-lag")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_MONITORING_URL",
+    help="Monitoring endpoint URL (or set MPREG_MONITORING_URL)",
+)
+@click.option(
+    "--output",
+    type=click.Choice(["table", "json"]),
+    default="table",
+    help="Output format",
+)
+def report_export_lag(url: str | None, output: str) -> None:
+    """Report summary export lag from discovery metrics."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_MONITORING_URL.")
+
+    async def _report() -> None:
+        base_url = url.rstrip("/")
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{base_url}/discovery/lag") as response:
+                payload = await response.json()
+        lag = payload.get("lag", {})
+        if output == "json":
+            console.print(lag)
+            return
+
+        table = Table(title="Discovery Export Lag")
+        table.add_column("Field")
+        table.add_column("Value")
+        table.add_row("Resolver Enabled", str(lag.get("resolver_enabled")))
+        table.add_row("Summary Export Enabled", str(lag.get("summary_export_enabled")))
+        table.add_row(
+            "Delta Lag (s)",
+            str(lag.get("delta_lag_seconds", "n/a")),
+        )
+        table.add_row(
+            "Summary Export Lag (s)",
+            str(lag.get("summary_export_lag_seconds", "n/a")),
+        )
+        last_delta_at = lag.get("last_delta_at")
+        if isinstance(last_delta_at, (int, float)):
+            last_delta = time.strftime(
+                "%Y-%m-%d %H:%M:%S", time.localtime(float(last_delta_at))
+            )
+        else:
+            last_delta = "-"
+        last_summary_at = lag.get("last_summary_export_at")
+        if isinstance(last_summary_at, (int, float)):
+            last_summary = time.strftime(
+                "%Y-%m-%d %H:%M:%S", time.localtime(float(last_summary_at))
+            )
+        else:
+            last_summary = "-"
+        table.add_row("Last Delta At", last_delta)
+        table.add_row("Last Summary Export At", last_summary)
+        console.print(table)
+
+    asyncio.run(_report())
 
 
 @cli.group()
@@ -464,7 +1479,7 @@ def health(cluster: str | None, output: str):
             import json
 
             # Convert dataclasses to dict for JSON serialization
-            serializable_results: dict[str, dict[str, Any]] = {}
+            serializable_results: dict[str, JsonDict] = {}
             for cluster_id, result in health_results.items():
                 serializable_results[cluster_id] = {}
                 for key, value in result.items():
@@ -819,7 +1834,7 @@ def status(cluster: str | None, output: str, url: str | None) -> None:
         except Exception:
             return str(raw)
 
-    def _summarize_transport(snapshot_payload: dict[str, Any]) -> dict[str, int]:
+    def _summarize_transport(snapshot_payload: Mapping[str, object]) -> dict[str, int]:
         snapshots = snapshot_payload.get("transport_health_snapshots", {}) or {}
         if not isinstance(snapshots, dict):
             return {"total": 0, "healthy": 0, "degraded": 0}
@@ -857,7 +1872,7 @@ def status(cluster: str | None, output: str, url: str | None) -> None:
             "transport": f"{base_url}/metrics/transport",
             "unified": f"{base_url}/metrics/unified",
         }
-        results: dict[str, Any] = {}
+        results: JsonDict = {}
         async with aiohttp.ClientSession() as session:
             for key, endpoint in endpoints.items():
                 async with session.get(endpoint) as response:
@@ -1110,6 +2125,70 @@ def persistence(url: str | None) -> None:
     asyncio.run(_persistence())
 
 
+@monitor.command("dns")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_MONITORING_URL",
+    help="Monitoring base URL (or set MPREG_MONITORING_URL)",
+)
+def dns_metrics(url: str | None) -> None:
+    """Fetch DNS gateway metrics from monitoring."""
+
+    async def _dns_metrics() -> None:
+        monitoring_url = url or os.environ.get("MPREG_MONITORING_URL")
+        if not monitoring_url:
+            console.print(
+                "[red]Monitoring URL required. Use --url or set MPREG_MONITORING_URL.[/red]"
+            )
+            return
+        endpoint = f"{monitoring_url.rstrip('/')}/dns/metrics"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(endpoint) as response:
+                payload = await response.json()
+                if response.status != 200:
+                    console.print_json(data=payload)
+                    return
+                console.print_json(data=payload)
+
+    asyncio.run(_dns_metrics())
+
+
+@monitor.command("dns-watch")
+@click.option("--interval", default=5.0, help="Polling interval in seconds")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_MONITORING_URL",
+    help="Monitoring base URL (or set MPREG_MONITORING_URL)",
+)
+def dns_watch(interval: float, url: str | None) -> None:
+    """Continuously monitor DNS gateway metrics."""
+
+    async def _dns_watch() -> None:
+        monitoring_url = url or os.environ.get("MPREG_MONITORING_URL")
+        if not monitoring_url:
+            console.print(
+                "[red]Monitoring URL required. Use --url or set MPREG_MONITORING_URL.[/red]"
+            )
+            return
+        endpoint = f"{monitoring_url.rstrip('/')}/dns/metrics"
+        console.print(
+            f"[bold green]📡 Starting DNS metrics watch (interval: {interval}s)[/bold green]"
+        )
+        async with aiohttp.ClientSession() as session:
+            try:
+                while True:
+                    async with session.get(endpoint) as response:
+                        payload = await response.json()
+                        console.print_json(data=payload)
+                    await asyncio.sleep(interval)
+            except KeyboardInterrupt:
+                console.print("\n[yellow]⚠️ DNS metrics watch stopped[/yellow]")
+
+    asyncio.run(_dns_watch())
+
+
 @monitor.command("persistence-watch")
 @click.option(
     "--interval", "-i", type=int, default=30, help="Polling interval in seconds"
@@ -1250,6 +2329,10 @@ def generate(output_path: str):
                     "protocol": "dns_srv",
                     "domain": "mpreg.local",
                     "service": "_mpreg._tcp",
+                    "resolver_host": "127.0.0.1",
+                    "resolver_port": 53,
+                    "use_tcp": False,
+                    "timeout_seconds": 2.0,
                     "discovery_interval": 120.0,
                 },
                 {

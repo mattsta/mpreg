@@ -170,7 +170,7 @@ async def test_simple_forward():
         try:
             await bridge1.stop()
             await bridge2.stop()
-        except (AttributeError, asyncio.CancelledError, ConnectionError):
+        except AttributeError, asyncio.CancelledError, ConnectionError:
             pass  # Bridge cleanup errors during teardown are expected
 
 

@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from mpreg.datastructures.type_aliases import HopCount, NodeId
+from mpreg.datastructures.type_aliases import HopCount, JsonDict, NodeId
 
 FABRIC_PUBSUB_FORWARDING_KEY = "fabric_forwarding"
 
@@ -44,7 +44,7 @@ class PubSubForwardingMetadata:
             max_hops=self.max_hops if max_hops is None else max_hops,
         )
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonDict:
         return {
             "origin_node": self.origin_node,
             "routing_path": list(self.routing_path),
@@ -76,7 +76,7 @@ class PubSubForwardingMetadata:
         if max_hops is not None:
             try:
                 parsed_max_hops = int(max_hops)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 parsed_max_hops = None
         return cls(
             origin_node=origin_node,

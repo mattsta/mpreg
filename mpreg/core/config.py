@@ -6,13 +6,17 @@ from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import Any
 
+from mpreg.core.discovery_tenant import DiscoveryTenantCredential
+from mpreg.core.namespace_policy import NamespacePolicyRule
 from mpreg.core.persistence.config import PersistenceConfig, PersistenceMode
 from mpreg.datastructures.type_aliases import (
     AreaId,
     ClusterId,
     DurationSeconds,
+    EndpointScope,
     PortAssignmentCallback,
     PortNumber,
+    TenantId,
 )
 from mpreg.fabric.federation_config import (
     FederationConfig,
@@ -89,6 +93,67 @@ class MPREGSettings:
     fabric_route_key_announce_interval_seconds: DurationSeconds = 60.0
     fabric_raft_request_timeout_seconds: DurationSeconds = 1.0
 
+    # RPC spec gossip configuration
+    rpc_spec_gossip_mode: str = "summary"
+    rpc_spec_gossip_namespaces: tuple[str, ...] = ()
+    rpc_spec_gossip_max_bytes: int | None = None
+
+    # Discovery resolver configuration
+    discovery_resolver_mode: bool = False
+    discovery_resolver_namespaces: tuple[str, ...] = ()
+    discovery_resolver_seed_on_start: bool = True
+    discovery_resolver_prune_interval_seconds: DurationSeconds = 30.0
+    discovery_resolver_resync_interval_seconds: DurationSeconds = 0.0
+    discovery_resolver_query_cache_enabled: bool = True
+    discovery_resolver_query_ttl_seconds: DurationSeconds = 10.0
+    discovery_resolver_query_stale_seconds: DurationSeconds = 20.0
+    discovery_resolver_query_negative_ttl_seconds: DurationSeconds = 5.0
+    discovery_resolver_query_cache_max_entries: int = 1000
+
+    # Discovery summary resolver configuration
+    discovery_summary_resolver_mode: bool = False
+    discovery_summary_resolver_namespaces: tuple[str, ...] = ()
+    discovery_summary_resolver_prune_interval_seconds: DurationSeconds = 30.0
+    discovery_summary_resolver_scopes: tuple[EndpointScope, ...] = ()
+
+    # Discovery namespace policy configuration
+    discovery_policy_enabled: bool = False
+    discovery_policy_default_allow: bool = True
+    discovery_policy_rules: tuple[NamespacePolicyRule, ...] = ()
+    discovery_tenant_mode: bool = False
+    discovery_tenant_allow_request_override: bool = True
+    discovery_tenant_default_id: TenantId | None = None
+    discovery_tenant_header: str | None = None
+    discovery_tenant_credentials: tuple[DiscoveryTenantCredential, ...] = ()
+    discovery_access_audit_max_entries: int = 500
+
+    # Discovery summary export configuration
+    discovery_summary_export_enabled: bool = False
+    discovery_summary_export_interval_seconds: DurationSeconds = 30.0
+    discovery_summary_export_namespaces: tuple[str, ...] = ()
+    discovery_summary_export_scope: EndpointScope | None = "global"
+    discovery_summary_export_include_unscoped: bool = True
+    discovery_summary_export_hold_down_seconds: DurationSeconds = 0.0
+    discovery_summary_export_store_forward_seconds: DurationSeconds = 0.0
+    discovery_summary_export_store_forward_max_messages: int = 100
+
+    # Discovery backpressure configuration
+    discovery_rate_limit_requests_per_minute: int = 0
+    discovery_rate_limit_window_seconds: DurationSeconds = 60.0
+    discovery_rate_limit_max_keys: int = 2000
+
+    # DNS interoperability gateway configuration
+    dns_gateway_enabled: bool = False
+    dns_listen_host: str | None = None
+    dns_udp_port: PortNumber | None = None
+    dns_tcp_port: PortNumber | None = None
+    dns_zones: tuple[str, ...] = ("mpreg",)
+    dns_min_ttl_seconds: DurationSeconds = 1.0
+    dns_max_ttl_seconds: DurationSeconds = 60.0
+    dns_allow_external_names: bool = False
+    dns_viewer_cluster_id: ClusterId | None = None
+    dns_viewer_tenant_id: TenantId | None = None
+
     def __post_init__(self) -> None:
         """Initialize default federation configuration if not provided."""
         if self.federation_config is None:
@@ -111,6 +176,81 @@ class MPREGSettings:
                     "fabric_link_state_mode",
                     LinkStateMode.DISABLED,
                 )
+        if self.discovery_policy_rules:
+            normalized_rules: list[NamespacePolicyRule] = []
+            for rule in self.discovery_policy_rules:
+                if isinstance(rule, NamespacePolicyRule):
+                    normalized_rules.append(rule)
+                    continue
+                if isinstance(rule, dict):
+                    normalized_rules.append(NamespacePolicyRule.from_dict(rule))
+                    continue
+                raise ValueError(
+                    f"Unsupported discovery_policy_rules entry: {type(rule).__name__}"
+                )
+            self.discovery_policy_rules = tuple(normalized_rules)
+        if self.discovery_summary_export_scope is not None:
+            scope = str(self.discovery_summary_export_scope).strip().lower()
+            if not scope:
+                self.discovery_summary_export_scope = None
+            else:
+                alias = "zone" if scope == "cluster" else scope
+                if alias not in {"local", "zone", "region", "global"}:
+                    raise ValueError(
+                        f"Unsupported discovery_summary_export_scope: {scope}"
+                    )
+                self.discovery_summary_export_scope = alias
+        if self.discovery_summary_resolver_scopes:
+            normalized_scopes: list[str] = []
+            for scope in self.discovery_summary_resolver_scopes:
+                value = str(scope).strip().lower()
+                if not value:
+                    continue
+                alias = "zone" if value == "cluster" else value
+                if alias not in {"local", "zone", "region", "global"}:
+                    raise ValueError(
+                        f"Unsupported discovery_summary_resolver_scope: {scope}"
+                    )
+                normalized_scopes.append(alias)
+            self.discovery_summary_resolver_scopes = tuple(normalized_scopes)
+        if self.dns_zones:
+            normalized_zones = [
+                str(zone).strip().strip(".").lower()
+                for zone in self.dns_zones
+                if str(zone).strip().strip(".")
+            ]
+            self.dns_zones = tuple(dict.fromkeys(normalized_zones))
+        if self.dns_min_ttl_seconds < 1:
+            self.dns_min_ttl_seconds = 1.0
+        if self.dns_max_ttl_seconds < self.dns_min_ttl_seconds:
+            self.dns_max_ttl_seconds = max(
+                float(self.dns_min_ttl_seconds), float(self.dns_max_ttl_seconds)
+            )
+        if self.discovery_access_audit_max_entries < 0:
+            self.discovery_access_audit_max_entries = 0
+        if self.discovery_rate_limit_requests_per_minute < 0:
+            self.discovery_rate_limit_requests_per_minute = 0
+        if self.discovery_rate_limit_window_seconds < 0:
+            self.discovery_rate_limit_window_seconds = 0.0
+        if self.discovery_tenant_header is not None:
+            header = str(self.discovery_tenant_header).strip().lower()
+            self.discovery_tenant_header = header or None
+        if self.discovery_tenant_credentials:
+            normalized_credentials: list[DiscoveryTenantCredential] = []
+            for entry in self.discovery_tenant_credentials:
+                if isinstance(entry, DiscoveryTenantCredential):
+                    normalized_credentials.append(entry)
+                    continue
+                if isinstance(entry, dict):
+                    normalized_credentials.append(
+                        DiscoveryTenantCredential.from_dict(entry)
+                    )
+                    continue
+                raise ValueError(
+                    "Unsupported discovery_tenant_credentials entry: "
+                    f"{type(entry).__name__}"
+                )
+            self.discovery_tenant_credentials = tuple(normalized_credentials)
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> MPREGSettings:
@@ -212,5 +352,68 @@ class MPREGSettings:
                 data["log_debug_scopes"] = (scopes,)
             else:
                 data["log_debug_scopes"] = tuple(scopes)
+
+        gossip_namespaces = data.get("rpc_spec_gossip_namespaces")
+        if gossip_namespaces is not None and not isinstance(gossip_namespaces, tuple):
+            if isinstance(gossip_namespaces, str):
+                data["rpc_spec_gossip_namespaces"] = (gossip_namespaces,)
+            else:
+                data["rpc_spec_gossip_namespaces"] = tuple(gossip_namespaces)
+
+        resolver_namespaces = data.get("discovery_resolver_namespaces")
+        if resolver_namespaces is not None and not isinstance(
+            resolver_namespaces, tuple
+        ):
+            if isinstance(resolver_namespaces, str):
+                data["discovery_resolver_namespaces"] = (resolver_namespaces,)
+            else:
+                data["discovery_resolver_namespaces"] = tuple(resolver_namespaces)
+
+        summary_resolver_namespaces = data.get("discovery_summary_resolver_namespaces")
+        if summary_resolver_namespaces is not None and not isinstance(
+            summary_resolver_namespaces, tuple
+        ):
+            if isinstance(summary_resolver_namespaces, str):
+                data["discovery_summary_resolver_namespaces"] = (
+                    summary_resolver_namespaces,
+                )
+            else:
+                data["discovery_summary_resolver_namespaces"] = tuple(
+                    summary_resolver_namespaces
+                )
+
+        summary_resolver_scopes = data.get("discovery_summary_resolver_scopes")
+        if summary_resolver_scopes is not None and not isinstance(
+            summary_resolver_scopes, tuple
+        ):
+            if isinstance(summary_resolver_scopes, str):
+                data["discovery_summary_resolver_scopes"] = (summary_resolver_scopes,)
+            else:
+                data["discovery_summary_resolver_scopes"] = tuple(
+                    summary_resolver_scopes
+                )
+
+        policy_rules = data.get("discovery_policy_rules")
+        if policy_rules is not None and not isinstance(policy_rules, tuple):
+            if isinstance(policy_rules, dict):
+                policy_rules = (policy_rules,)
+            else:
+                policy_rules = tuple(policy_rules)
+            data["discovery_policy_rules"] = policy_rules
+
+        tenant_credentials = data.get("discovery_tenant_credentials")
+        if tenant_credentials is not None and not isinstance(tenant_credentials, tuple):
+            if isinstance(tenant_credentials, dict):
+                tenant_credentials = (tenant_credentials,)
+            else:
+                tenant_credentials = tuple(tenant_credentials)
+            data["discovery_tenant_credentials"] = tenant_credentials
+
+        summary_namespaces = data.get("discovery_summary_export_namespaces")
+        if summary_namespaces is not None and not isinstance(summary_namespaces, tuple):
+            if isinstance(summary_namespaces, str):
+                data["discovery_summary_export_namespaces"] = (summary_namespaces,)
+            else:
+                data["discovery_summary_export_namespaces"] = tuple(summary_namespaces)
 
         return data

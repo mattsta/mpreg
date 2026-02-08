@@ -496,25 +496,16 @@ class MetricBasedLeaderElection:
 
     async def elect_leader(self, namespace: str) -> ClusterId:
         """Elect leader based on best metrics."""
-        # Get all candidates including self
-        all_candidates = set(self.cluster_metrics.keys())
-        all_candidates.add(self.cluster_id)
+        # Start with self as baseline and preserve insertion order for metric ties.
+        # This mirrors "first best observed wins" while staying deterministic.
+        best_cluster = self.cluster_id
+        best_score = self._get_fitness_score(self.cluster_id)
 
-        if not all_candidates:
-            # Fallback - should never happen
-            self.namespace_leaders[namespace] = self.cluster_id
-            return self.cluster_id
-
-        # Find cluster with best fitness score including self
-        # Use self-preference as tiebreaker, then cluster_id for deterministic ordering
-        best_cluster = max(
-            all_candidates,
-            key=lambda cid: (
-                self._get_fitness_score(cid),
-                cid == self.cluster_id,  # Prefer self when scores are equal
-                cid,  # Final tiebreaker for deterministic ordering
-            ),
-        )
+        for candidate_id in self.cluster_metrics:
+            candidate_score = self._get_fitness_score(candidate_id)
+            if candidate_score > best_score:
+                best_cluster = candidate_id
+                best_score = candidate_score
 
         self.namespace_leaders[namespace] = best_cluster
         return best_cluster

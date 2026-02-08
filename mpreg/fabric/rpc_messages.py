@@ -10,6 +10,7 @@ from mpreg.datastructures.type_aliases import (
     FunctionId,
     FunctionName,
     HopCount,
+    JsonDict,
     NodeId,
     RequestId,
     VersionConstraintSpec,
@@ -51,7 +52,7 @@ def _as_optional_int(value: object) -> int | None:
     if isinstance(value, (int, float, str)):
         try:
             return int(value)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
     return None
 
@@ -71,7 +72,7 @@ class FabricRPCRequest:
     federation_path: tuple[ClusterId, ...] = field(default_factory=tuple)
     federation_remaining_hops: HopCount | None = None
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonDict:
         return {
             "kind": FABRIC_RPC_REQUEST_KIND,
             "request_id": self.request_id,
@@ -89,7 +90,7 @@ class FabricRPCRequest:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> FabricRPCRequest:
+    def from_dict(cls, payload: JsonDict) -> FabricRPCRequest:
         return cls(
             request_id=str(payload.get("request_id", "")),
             command=str(payload.get("command", "")),
@@ -119,7 +120,7 @@ class FabricRPCResponse:
     reply_cluster: ClusterId | None = None
     routing_path: tuple[NodeId, ...] = field(default_factory=tuple)
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonDict:
         return {
             "kind": FABRIC_RPC_RESPONSE_KIND,
             "request_id": self.request_id,
@@ -133,7 +134,7 @@ class FabricRPCResponse:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> FabricRPCResponse:
+    def from_dict(cls, payload: JsonDict) -> FabricRPCResponse:
         raw_error = payload.get("error")
         return cls(
             request_id=str(payload.get("request_id", "")),

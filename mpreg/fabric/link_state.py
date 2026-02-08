@@ -7,7 +7,7 @@ import contextlib
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -17,6 +17,7 @@ from mpreg.datastructures.type_aliases import (
     BandwidthMbps,
     ClusterId,
     DurationSeconds,
+    JsonDict,
     NetworkLatencyMs,
     ReliabilityScore,
     RouteCostScore,
@@ -36,7 +37,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from mpreg.fabric.route_announcer import RouteLinkMetrics
 
 
-class LinkStateMode(str, Enum):
+class LinkStateMode(StrEnum):
     """Link-state routing mode selection."""
 
     DISABLED = "disabled"
@@ -54,7 +55,7 @@ class LinkStateNeighbor:
     reliability_score: ReliabilityScore = 1.0
     cost_score: RouteCostScore = 0.0
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self) -> JsonDict:
         return {
             "cluster_id": self.cluster_id,
             "latency_ms": float(self.latency_ms),
@@ -64,7 +65,7 @@ class LinkStateNeighbor:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> LinkStateNeighbor:
+    def from_dict(cls, payload: JsonDict) -> LinkStateNeighbor:
         return cls(
             cluster_id=str(payload.get("cluster_id", "")),
             latency_ms=float(payload.get("latency_ms", 0.0)),
@@ -89,8 +90,8 @@ class LinkStateUpdate:
         timestamp = now if now is not None else time.time()
         return timestamp > (self.advertised_at + self.ttl_seconds)
 
-    def to_dict(self) -> dict[str, object]:
-        payload: dict[str, object] = {
+    def to_dict(self) -> JsonDict:
+        payload: JsonDict = {
             "origin": self.origin,
             "neighbors": [neighbor.to_dict() for neighbor in self.neighbors],
             "advertised_at": float(self.advertised_at),
@@ -102,7 +103,7 @@ class LinkStateUpdate:
         return payload
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]) -> LinkStateUpdate:
+    def from_dict(cls, payload: JsonDict) -> LinkStateUpdate:
         neighbors_payload = payload.get("neighbors", []) or []
         neighbors = tuple(
             LinkStateNeighbor.from_dict(entry)
@@ -403,18 +404,18 @@ class LinkStatePublisher:
     async def publish(self, update: LinkStateUpdate) -> GossipMessage:
         from mpreg.fabric.gossip import GossipMessage, GossipMessageType
 
+        sequence_number = self.gossip.next_sequence_number()
         message = GossipMessage(
             message_id=f"{self.gossip.node_id}:{update.origin}:{update.sequence}",
             message_type=GossipMessageType.LINK_STATE_UPDATE,
             sender_id=self.gossip.node_id,
             payload=update.to_dict(),
             vector_clock=self.gossip.vector_clock.copy(),
-            sequence_number=self.gossip.protocol_stats.messages_created,
+            sequence_number=sequence_number,
             ttl=self.ttl,
             max_hops=self.max_hops,
         )
         await self.gossip.add_message(message)
-        self.gossip.protocol_stats.messages_created += 1
         return message
 
 

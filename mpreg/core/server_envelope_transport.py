@@ -32,6 +32,7 @@ class ServerEnvelopeTransport:
     _circuit_breakers: dict[NodeId, CircuitBreaker] = field(
         default_factory=dict, init=False
     )
+    _connection_generations: dict[NodeId, int] = field(default_factory=dict, init=False)
 
     def peer_ids(self, *, exclude: NodeId | None = None) -> tuple[NodeId, ...]:
         peers = []
@@ -43,15 +44,24 @@ class ServerEnvelopeTransport:
         return tuple(sorted(peers))
 
     async def send_envelope(self, peer_id: NodeId, envelope: BaseModel) -> bool:
-        breaker = self._circuit_breaker_for(peer_id)
-        if breaker and not breaker.can_execute():
-            return False
-
         connection = self._active_connections().get(peer_id)
+        breaker = self._circuit_breaker_for(peer_id)
         if connection is None or not connection.is_connected:
+            self._connection_generations.pop(peer_id, None)
             if breaker:
                 breaker.record_failure()
             return False
+
+        current_generation = id(connection)
+        previous_generation = self._connection_generations.get(peer_id)
+        self._connection_generations[peer_id] = current_generation
+        if (
+            breaker
+            and previous_generation is not None
+            and previous_generation != current_generation
+        ):
+            # A fresh connected transport indicates recovery and should clear stale OPEN state.
+            breaker.reset()
 
         data = self.serializer.serialize(envelope.model_dump())
         try:

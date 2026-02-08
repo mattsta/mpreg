@@ -70,6 +70,7 @@ Why is this useful? I made this because I had some models with datasets I wanted
 - 🏭 **Data Pipelines**: 8-stage processing workflows with automatic server routing
 - 🤖 **ML Inference**: Distributed model serving with preprocessing and post-processing chains
 - 🏢 **Enterprise Integration**: Federation CLI and a dozen monitoring endpoints for production deployment
+- 🧭 **DNS Interop Gateway**: Optional DNS server for standard service discovery clients (`docs/DNS_INTEROP_GUIDE.md`)
 
 🎯 **The big idea**: Write functions, not infrastructure. MPREG handles the distributed coordination across all these systems.
 
@@ -688,6 +689,7 @@ Planet-scale distributed coordination with:
 
 - **`client.py`** - Low-level WebSocket client
 - **`client_api.py`** - High-level `MPREGClientAPI` with context manager support
+- **`cluster_client.py`** - Cluster-aware `MPREGClusterClient` with discovery + failover
 - **`pubsub_client.py`** - Publish/subscribe messaging client
 
 ### 🗄️ **Data Structures (`mpreg.datastructures`)**
@@ -720,6 +722,7 @@ from mpreg.core.config import MPREGSettings
 
 # Client APIs (see docs/MPREG_CLIENT_GUIDE.md for complete examples)
 from mpreg.client.client_api import MPREGClientAPI
+from mpreg.client.cluster_client import MPREGClusterClient
 from mpreg.client.pubsub_client import MPREGPubSubClient
 
 # Advanced caching systems
@@ -763,7 +766,7 @@ from mpreg import FederationGraph, GeographicCoordinate, MPREGClientAPI
 The above demos all work! The system has evolved significantly since the early prototype days and now includes:
 
 ✅ **Production-Ready**: Comprehensive test coverage (2,000+ tests) and robust error handling  
-✅ **Modern Client API**: Easy-to-use `MPREGClientAPI` with context manager support  
+✅ **Modern Client API**: `MPREGClientAPI` plus HA discovery via `MPREGClusterClient`  
 ✅ **Concurrent Requests**: Multiple simultaneous requests over single connections  
 ✅ **Self-Managing Components**: Automatic connection pooling, peer discovery, and cleanup  
 ✅ **Distributed Coordination**: Gossip protocol for cluster formation and function discovery  
@@ -882,7 +885,10 @@ MPREG has evolved from experimental prototype to **production-ready distributed 
 
 - **Concurrent Request Processing**: Multiple simultaneous requests over single connections using Future-based dispatching
 - **Advanced Connection Pooling**: Persistent WebSocket connections with automatic reconnection and health monitoring
-- **Modern Client API**: Easy `MPREGClientAPI` with context manager support and proper async/await patterns
+- **Modern Client API**: `MPREGClientAPI` plus `MPREGClusterClient` for HA discovery and failover
+- **Cluster Map Discovery**: `cluster_map` exposes advertised endpoints and load metrics for client-side selection
+- **Scoped Discovery APIs**: `cluster_map_v2` and `catalog_query` provide filtered, paginated discovery
+- **Discovery Delta Stream**: `catalog_watch` + `mpreg.discovery.delta` for resolver caches and incremental updates
 
 **🌐 Federation & Geographic Scaling**:
 
@@ -952,7 +958,7 @@ MPREG continues evolving toward an even more comprehensive distributed computing
 ### ✅ **Recently Completed**
 
 - ✅ ~~Add comprehensive automated test suite~~ **DONE!** (384+ tests covering distributed scenarios)
-- ✅ ~~Modern client library with async/await~~ **DONE!** (MPREGClientAPI with context managers)
+- ✅ ~~Modern client library with async/await~~ **DONE!** (MPREGClientAPI + MPREGClusterClient)
 - ✅ ~~Easy server function registration~~ **DONE!** (server.register_command() interface)
 - ✅ ~~Planet-scale federation capabilities~~ **DONE!** (Geographic routing with hub-and-spoke)
 - ✅ ~~Production-ready consensus algorithms~~ **DONE!** (Raft implementation with safety guarantees)

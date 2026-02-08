@@ -53,7 +53,7 @@ def message_headers_from_dict(payload: dict[str, Any]) -> MessageHeaders:
     if hop_budget_raw is not None:
         try:
             hop_budget = int(hop_budget_raw)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             hop_budget = None
     metadata = payload.get("metadata", {})
     if not isinstance(metadata, dict):
@@ -104,7 +104,7 @@ def unified_message_from_dict(payload: dict[str, Any]) -> UnifiedMessage:
     timestamp_raw = payload.get("timestamp")
     try:
         timestamp = float(timestamp_raw) if timestamp_raw is not None else None
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         timestamp = None
     return UnifiedMessage(
         message_id=message_id,

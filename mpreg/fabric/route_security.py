@@ -48,10 +48,8 @@ class RouteAnnouncementSigner:
         signature = sign_payload(
             announcement.to_bytes(), self.private_key, self.algorithm
         )
-        public_key = (
-            self.public_key
-            if self.public_key
-            else derive_public_key(self.private_key, self.algorithm)
+        public_key = self.public_key or derive_public_key(
+            self.private_key, self.algorithm
         )
         return announcement.with_signature(
             signature=signature,
@@ -63,10 +61,8 @@ class RouteAnnouncementSigner:
         signature = sign_payload(
             withdrawal.to_bytes(), self.private_key, self.algorithm
         )
-        public_key = (
-            self.public_key
-            if self.public_key
-            else derive_public_key(self.private_key, self.algorithm)
+        public_key = self.public_key or derive_public_key(
+            self.private_key, self.algorithm
         )
         return withdrawal.with_signature(
             signature=signature,

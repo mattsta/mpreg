@@ -1,10 +1,8 @@
 import pytest
 
 from mpreg.core.model import PubSubSubscription, TopicPattern
-from mpreg.datastructures.function_identity import (
-    FunctionIdentity,
-    SemanticVersion,
-)
+from mpreg.core.rpc_registry import RpcRegistry
+from mpreg.datastructures.rpc_spec import RpcRegistration
 from mpreg.fabric.adapters.cache_federation import CacheFederationCatalogAdapter
 from mpreg.fabric.adapters.function_registry import LocalFunctionCatalogAdapter
 from mpreg.fabric.adapters.topic_exchange import TopicExchangeCatalogAdapter
@@ -18,7 +16,6 @@ from mpreg.fabric.broadcaster import CatalogBroadcaster
 from mpreg.fabric.catalog import CacheRole, QueueEndpoint, QueueHealth, RoutingCatalog
 from mpreg.fabric.catalog_delta import RoutingCatalogApplier
 from mpreg.fabric.catalog_publisher import CatalogDeltaPublisher
-from mpreg.fabric.function_registry import LocalFunctionRegistry
 from mpreg.fabric.gossip import GossipProtocol
 from mpreg.fabric.gossip_transport import InProcessGossipTransport
 from mpreg.fabric.message import DeliveryGuarantee
@@ -26,17 +23,19 @@ from mpreg.fabric.message import DeliveryGuarantee
 
 @pytest.mark.asyncio
 async def test_fabric_function_announcer_broadcasts() -> None:
-    registry = LocalFunctionRegistry(
-        node_id="node-a",
-        cluster_id="cluster-a",
-        ttl_seconds=42.0,
-    )
-    identity = FunctionIdentity(
+    registry = RpcRegistry()
+
+    def echo(payload: str) -> str:
+        return payload
+
+    implementation = RpcRegistration.from_callable(
+        echo,
         name="echo",
         function_id="func-echo",
-        version=SemanticVersion.parse("1.0.0"),
+        version="1.0.0",
+        resources=("cpu",),
     )
-    registry.register(identity, resources=frozenset({"cpu"}), now=100.0)
+    registry.register(implementation)
 
     catalog = RoutingCatalog()
     applier = RoutingCatalogApplier(catalog)
@@ -52,8 +51,11 @@ async def test_fabric_function_announcer_broadcasts() -> None:
     announcer = FabricFunctionAnnouncer(
         adapter=LocalFunctionCatalogAdapter(
             registry=registry,
+            node_id="node-a",
+            cluster_id="cluster-a",
             node_resources=frozenset({"cpu"}),
             node_capabilities=frozenset({"rpc"}),
+            function_ttl_seconds=42.0,
         ),
         broadcaster=broadcaster,
     )

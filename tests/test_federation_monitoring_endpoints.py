@@ -15,6 +15,7 @@ from mpreg.core.monitoring.unified_monitoring import (
     MonitoringConfig,
     UnifiedSystemMonitor,
 )
+from mpreg.datastructures.type_aliases import JsonDict
 from mpreg.fabric.connection_manager import FederationConnectionManager
 from mpreg.fabric.federation_config import FederationConfig, FederationMode
 from mpreg.fabric.federation_graph import (
@@ -875,6 +876,20 @@ class TestFederationMonitoringEndpoints:
                     assert "transport_endpoints" in data
                     assert "timestamp" in data
 
+                discovery_endpoints = (
+                    ("/discovery/summary", "summary_export"),
+                    ("/discovery/cache", "resolver_cache"),
+                    ("/discovery/policy", "policy"),
+                    ("/discovery/lag", "lag"),
+                )
+                for path, key in discovery_endpoints:
+                    async with session.get(f"{base_url}{path}") as response:
+                        assert response.status == 200
+                        data = await response.json()
+                        assert data["status"] == "ok"
+                        assert key in data
+                        assert "timestamp" in data
+
         finally:
             await monitoring_system.stop()
 
@@ -910,7 +925,7 @@ class TestFederationMonitoringEndpoints:
         unified_monitor = UnifiedSystemMonitor(config=monitoring_config)
         test_context.tasks.append(asyncio.create_task(unified_monitor.start()))
 
-        captured: dict[str, object] = {}
+        captured: JsonDict = {}
 
         def _route_trace(destination: str, avoid: tuple[str, ...]):
             captured["destination"] = destination

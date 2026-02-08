@@ -26,6 +26,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.core.model import RPCCommand, RPCRequest
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
+from tests.test_helpers import wait_for_condition
 
 pytestmark = pytest.mark.slow
 
@@ -519,7 +520,13 @@ class TestFederatedRPCPerformance:
             test_context.tasks.append(task)
             await asyncio.sleep(0.5)
 
-        await asyncio.sleep(2.0)
+        await wait_for_condition(
+            lambda: all(server._transport_listener is not None for server in servers),
+            timeout=15.0,
+            interval=0.1,
+            error_message="Memory test servers failed to start transport listeners",
+        )
+        await asyncio.sleep(1.0)
         startup_memory = process.memory_info().rss / 1024 / 1024  # MB
 
         # Register many functions to test memory scaling
@@ -547,11 +554,27 @@ class TestFederatedRPCPerformance:
         num_requests = 200
         clients = []
 
+        async def _connect_with_retry(client: MPREGClientAPI) -> None:
+            # Under heavy registration churn, handshake availability can dip for
+            # an extended window before recovering.
+            connect_deadline = time.time() + 120.0
+            last_error: Exception | None = None
+            while time.time() < connect_deadline:
+                try:
+                    await client.connect()
+                    return
+                except Exception as exc:
+                    last_error = exc
+                    await asyncio.sleep(0.5)
+            raise AssertionError(
+                f"Client failed to connect within 120s (url={client.url}, last_error={last_error!r})"
+            )
+
         for i in range(len(ports)):
             client = MPREGClientAPI(f"ws://127.0.0.1:{ports[i]}")
             clients.append(client)
             test_context.clients.append(client)
-            await client.connect()
+            await _connect_with_retry(client)
 
         # Execute many requests to test memory behavior under load
         for request_batch in range(5):  # 5 batches of 40 requests each

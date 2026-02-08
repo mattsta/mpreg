@@ -167,6 +167,53 @@ class TestRaftSafetyProperties:
         print(f"DEBUG: create_raft_cluster finished, returning {len(nodes)} nodes")
         return nodes
 
+    def _leader_wait_timeout_seconds(
+        self,
+        nodes: dict[str, ProductionRaft],
+        *,
+        multiplier: float = 2.5,
+        minimum: float = 1.0,
+    ) -> float:
+        """Derive an election wait timeout from the active Raft configuration."""
+        max_election_timeout = max(
+            (node.config.election_timeout_max for node in nodes.values()),
+            default=minimum,
+        )
+        return max(minimum, max_election_timeout * multiplier)
+
+    async def _wait_for_single_leader(
+        self,
+        nodes: dict[str, ProductionRaft],
+        *,
+        timeout_seconds: float | None = None,
+        poll_interval: float = 0.05,
+    ) -> ProductionRaft:
+        """Wait until exactly one node is leader or fail with current states."""
+        timeout = (
+            timeout_seconds
+            if timeout_seconds is not None
+            else self._leader_wait_timeout_seconds(nodes)
+        )
+        deadline = asyncio.get_running_loop().time() + timeout
+        last_states: dict[str, str] = {}
+
+        while asyncio.get_running_loop().time() < deadline:
+            leaders = [
+                node
+                for node in nodes.values()
+                if node.current_state == RaftState.LEADER
+            ]
+            if len(leaders) == 1:
+                return leaders[0]
+            last_states = {
+                node_id: node.current_state.value for node_id, node in nodes.items()
+            }
+            await asyncio.sleep(poll_interval)
+
+        raise AssertionError(
+            f"Expected exactly one leader within {timeout:.2f}s; final_states={last_states}"
+        )
+
     @pytest.mark.asyncio
     async def test_election_safety_single_leader_per_term(self, temp_dir):
         """
@@ -256,13 +303,7 @@ class TestRaftSafetyProperties:
             for node in nodes.values():
                 await node.start()
 
-            await asyncio.sleep(0.5)
-
-            leader = next(
-                node
-                for node in nodes.values()
-                if node.current_state == RaftState.LEADER
-            )
+            leader = await self._wait_for_single_leader(nodes)
 
             # Submit commands to build up log
             for i in range(10):
@@ -324,13 +365,7 @@ class TestRaftSafetyProperties:
             for node in nodes.values():
                 await node.start()
 
-            await asyncio.sleep(0.5)
-
-            leader = next(
-                node
-                for node in nodes.values()
-                if node.current_state == RaftState.LEADER
-            )
+            leader = await self._wait_for_single_leader(nodes)
 
             # Submit initial commands
             initial_commands = []
@@ -399,13 +434,7 @@ class TestRaftSafetyProperties:
             for node in nodes.values():
                 await node.start()
 
-            await asyncio.sleep(0.5)
-
-            leader = next(
-                node
-                for node in nodes.values()
-                if node.current_state == RaftState.LEADER
-            )
+            leader = await self._wait_for_single_leader(nodes)
 
             # Submit commands
             commands = []
@@ -996,7 +1025,7 @@ class TestRaftSafetyProperties:
             for node in nodes.values():
                 try:
                     await asyncio.wait_for(node.stop(), timeout=2.0)
-                except (TimeoutError, asyncio.CancelledError, AttributeError):
+                except TimeoutError, asyncio.CancelledError, AttributeError:
                     pass  # Some nodes may already be stopped or timeout during shutdown
 
     @pytest.mark.asyncio

@@ -23,6 +23,7 @@ dependencies = [
     "cryptography>=45.0.5",
     "sortedcontainers>=2.4.0",
     "aiosqlite>=0.21.0",
+    "dnslib>=0.9.24",
 ]
 
 [project.scripts]

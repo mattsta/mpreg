@@ -220,6 +220,21 @@ class TopicTaxonomy:
         example_topics=["mpreg.fabric.cluster.west_coast.leave"],
     )
 
+    # Discovery System Topics
+    DISCOVERY_DELTA = TopicPattern(
+        pattern="mpreg.discovery.delta",
+        access_level=TopicAccessLevel.CONTROL_PLANE,
+        description="Discovery catalog delta stream",
+        example_topics=["mpreg.discovery.delta"],
+    )
+
+    DISCOVERY_SUMMARY = TopicPattern(
+        pattern="mpreg.discovery.summary",
+        access_level=TopicAccessLevel.CONTROL_PLANE,
+        description="Discovery summary export stream",
+        example_topics=["mpreg.discovery.summary"],
+    )
+
     FEDERATION_MESSAGE_FORWARD = TopicPattern(
         pattern="mpreg.fabric.forward.{source_cluster}.{target_cluster}.#",
         access_level=TopicAccessLevel.CONTROL_PLANE,

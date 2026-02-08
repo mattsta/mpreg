@@ -232,6 +232,816 @@ MPREG uses two canonical envelope shapes:
 }
 ```
 
+### Discovery RPCs
+
+MPREG exposes two RPCs for client discovery:
+
+- `list_peers`: returns a peer snapshot list.
+- `cluster_map`: returns a full node map with load metrics and transport endpoints.
+- `cluster_map_v2`: scoped node map with pagination and filters.
+- `catalog_query`: scoped catalog queries for functions, nodes, queues, topics, caches.
+- `rpc_list`: lists RPC endpoints with summaries and spec digests.
+- `rpc_describe`: returns RPC specs (auto/local/catalog/scatter modes with
+  `detail_level` for summary vs full).
+- `rpc_report`: aggregates RPC counts by namespace, cluster, and tag.
+- `catalog_watch`: returns discovery delta stream metadata (use with pub/sub).
+- `summary_query`: returns service summaries derived from the catalog (local/zone)
+  or from summary cache when `scope` is `region`/`global` and summary resolvers
+  are enabled.
+- `summary_watch`: returns summary export stream metadata (use with pub/sub).
+- `resolver_cache_stats`: returns resolver cache stats (resolver nodes only).
+- `resolver_resync`: triggers a resolver cache resync from the fabric catalog.
+- `namespace_status`: returns namespace policy visibility for a viewer cluster.
+- `namespace_policy_validate`: validates namespace policy rules.
+- `namespace_policy_apply`: applies namespace policy rules.
+- `namespace_policy_audit`: returns namespace policy audit entries.
+- `dns_register`, `dns_unregister`: register/unregister service endpoints for DNS interop.
+- `dns_list`, `dns_describe`: list DNS-exposed service endpoints.
+
+#### DNS Interop RPCs (Example)
+
+`dns_register` request:
+
+```json
+{
+  "name": "tradefeed",
+  "namespace": "market",
+  "protocol": "tcp",
+  "port": 9000,
+  "targets": ["10.0.1.12", "10.0.1.13"],
+  "tags": ["primary"],
+  "capabilities": ["quotes"],
+  "metadata": { "tier": "gold" },
+  "priority": 10,
+  "weight": 5
+}
+```
+
+`dns_list` request:
+
+```json
+{
+  "namespace": "market",
+  "name": "tradefeed",
+  "protocol": "tcp"
+}
+```
+
+#### `list_peers` Request (Optional Payload)
+
+```json
+{
+  "scope": "zone",
+  "cluster_id": "cluster-a"
+}
+```
+
+#### `list_peers` Response (Example)
+
+```json
+[
+  {
+    "url": "ws://node-a:<port>",
+    "cluster_id": "cluster-a",
+    "scope": "zone",
+    "region": "us-east",
+    "funs": ["echo", "quote"],
+    "locs": ["gpu", "market"],
+    "last_seen": 1700000000.0,
+    "status": "ok",
+    "status_timestamp": 1700000000.1,
+    "advertised_urls": ["ws://node-a:<port>"],
+    "transport_endpoints": [
+      {
+        "connection_type": "internal",
+        "protocol": "ws",
+        "host": "127.0.0.1",
+        "port": 9001,
+        "endpoint": "ws://127.0.0.1:9001"
+      }
+    ],
+    "load": {
+      "active_clients": 3,
+      "peer_count": 5,
+      "status": "ok",
+      "status_timestamp": 1700000000.1,
+      "messages_processed": 1200,
+      "rpc_responses_skipped": 0,
+      "server_messages": 50,
+      "other_messages": 20,
+      "load_score": 3.0
+    }
+  }
+]
+```
+
+#### `cluster_map` Response (Example)
+
+```json
+{
+  "cluster_id": "cluster-a",
+  "generated_at": 1700000000.2,
+  "nodes": [
+    {
+      "node_id": "ws://node-a:<port>",
+      "cluster_id": "cluster-a",
+      "region": "us-east",
+      "resources": ["gpu", "market"],
+      "capabilities": ["rpc", "queue"],
+      "transport_endpoints": [
+        {
+          "connection_type": "internal",
+          "protocol": "ws",
+          "host": "127.0.0.1",
+          "port": 9001,
+          "endpoint": "ws://127.0.0.1:9001"
+        }
+      ],
+      "advertised_urls": ["ws://node-a:<port>"],
+      "advertised_at": 1700000000.0,
+      "load": {
+        "active_clients": 3,
+        "peer_count": 5,
+        "status": "ok",
+        "status_timestamp": 1700000000.1,
+        "messages_processed": 1200,
+        "rpc_responses_skipped": 0,
+        "server_messages": 50,
+        "other_messages": 20,
+        "load_score": 3.0
+      }
+    }
+  ]
+}
+```
+
+#### `cluster_map_v2` Request (Example)
+
+```json
+{
+  "scope": "zone",
+  "capabilities": ["rpc"],
+  "limit": 2
+}
+```
+
+#### `cluster_map_v2` Response (Example)
+
+```json
+{
+  "cluster_id": "cluster-a",
+  "generated_at": 1700000001.0,
+  "nodes": [
+    {
+      "node_id": "ws://node-a:<port>",
+      "cluster_id": "cluster-a",
+      "region": "us-east",
+      "scope": "zone",
+      "resources": ["gpu", "market"],
+      "capabilities": ["rpc"],
+      "tags": ["edge"],
+      "transport_endpoints": [
+        {
+          "connection_type": "internal",
+          "protocol": "ws",
+          "host": "127.0.0.1",
+          "port": 9001,
+          "endpoint": "ws://127.0.0.1:9001"
+        }
+      ],
+      "advertised_urls": ["ws://node-a:<port>"],
+      "advertised_at": 1700000000.0,
+      "load": {
+        "active_clients": 1,
+        "peer_count": 2,
+        "status": "ok",
+        "status_timestamp": 1700000000.8,
+        "messages_processed": 220,
+        "rpc_responses_skipped": 0,
+        "server_messages": 8,
+        "other_messages": 4,
+        "load_score": 1.0
+      }
+    }
+  ],
+  "next_page_token": "2:2"
+}
+```
+
+#### `catalog_query` Request (Example)
+
+```json
+{
+  "entry_type": "functions",
+  "namespace": "svc.market",
+  "viewer_cluster_id": "cluster-a",
+  "scope": "zone",
+  "tags": ["alpha"],
+  "function_name": "quote",
+  "version_constraint": ">=1.0.0",
+  "limit": 5
+}
+```
+
+#### `catalog_query` Response (Example)
+
+```json
+{
+  "entry_type": "functions",
+  "generated_at": 1700000002.0,
+  "items": [
+    {
+      "identity": {
+        "name": "svc.market.quote",
+        "function_id": "market.quote",
+        "version": "1.0.0"
+      },
+      "resources": ["market"],
+      "node_id": "ws://node-a:<port>",
+      "cluster_id": "cluster-a",
+      "scope": "zone",
+      "tags": ["alpha"],
+      "advertised_at": 1700000001.5,
+      "ttl_seconds": 30.0
+    }
+  ]
+}
+```
+
+Function endpoint entries may also include `rpc_summary`, `spec_digest`, and
+`rpc_spec` when RPC metadata is available. These fields power `rpc_list` and
+`rpc_describe` (full specs are gossipped when `rpc_spec_gossip_mode="full"`).
+
+#### `rpc_list` Request (Optional Payload)
+
+```json
+{
+  "namespace": "svc.market",
+  "scope": "zone",
+  "capabilities": ["rpc"],
+  "tags": ["alpha"],
+  "query": "quote",
+  "limit": 20
+}
+```
+
+#### `rpc_list` Response (Example)
+
+```json
+{
+  "generated_at": 1700000002.4,
+  "items": [
+    {
+      "identity": {
+        "name": "svc.market.quote",
+        "function_id": "market.quote",
+        "version": "1.0.0"
+      },
+      "namespace": "svc.market",
+      "node_id": "ws://node-a:<port>",
+      "cluster_id": "cluster-a",
+      "resources": ["market"],
+      "tags": ["alpha"],
+      "scope": "zone",
+      "summary": {
+        "identity": {
+          "name": "svc.market.quote",
+          "function_id": "market.quote",
+          "version": "1.0.0"
+        },
+        "namespace": "svc.market",
+        "summary": "Return the latest market quote.",
+        "parameter_count": 1,
+        "required_parameter_count": 1,
+        "return_type": {
+          "display": "Quote",
+          "args": [],
+          "is_optional": false
+        },
+        "spec_version": "1",
+        "spec_digest": "e3b0c442..."
+      },
+      "spec_digest": "e3b0c442..."
+    }
+  ],
+  "next_page_token": "2:20"
+}
+```
+
+#### `rpc_describe` Request (Example)
+
+```json
+{
+  "mode": "auto",
+  "detail_level": "full",
+  "namespace": "svc.market",
+  "scope": "zone",
+  "function_name": "svc.market.quote",
+  "timeout_seconds": 2.0,
+  "limit": 10
+}
+```
+
+#### `rpc_describe` Response (Example)
+
+```json
+{
+  "generated_at": 1700000002.7,
+  "items": [
+    {
+      "identity": {
+        "name": "svc.market.quote",
+        "function_id": "market.quote",
+        "version": "1.0.0"
+      },
+      "namespace": "svc.market",
+      "node_id": "ws://node-a:<port>",
+      "cluster_id": "cluster-a",
+      "resources": ["market"],
+      "tags": ["alpha"],
+      "scope": "zone",
+      "summary": {
+        "identity": {
+          "name": "svc.market.quote",
+          "function_id": "market.quote",
+          "version": "1.0.0"
+        },
+        "namespace": "svc.market",
+        "summary": "Return the latest market quote.",
+        "parameter_count": 1,
+        "required_parameter_count": 1,
+        "return_type": {
+          "display": "Quote",
+          "args": [],
+          "is_optional": false
+        },
+        "spec_version": "1",
+        "spec_digest": "e3b0c442..."
+      },
+      "spec": {
+        "identity": {
+          "name": "svc.market.quote",
+          "function_id": "market.quote",
+          "version": "1.0.0"
+        },
+        "namespace": "svc.market",
+        "doc": {
+          "summary": "Return the latest market quote.",
+          "description": "Pull the most recent quote for the symbol.",
+          "param_docs": [
+            {
+              "name": "symbol",
+              "description": "Ticker symbol."
+            }
+          ],
+          "return_doc": "Quote payload."
+        },
+        "parameters": [
+          {
+            "name": "symbol",
+            "kind": "positional_or_keyword",
+            "type_spec": {
+              "display": "str",
+              "args": [],
+              "is_optional": false
+            },
+            "required": true,
+            "default": {
+              "has_default": false,
+              "encoding": "none"
+            },
+            "doc": "Ticker symbol."
+          }
+        ],
+        "return_spec": {
+          "type_spec": {
+            "display": "Quote",
+            "args": [],
+            "is_optional": false
+          },
+          "doc": "Quote payload."
+        },
+        "resources": ["market"],
+        "tags": ["alpha"],
+        "scope": "zone",
+        "capabilities": ["rpc"],
+        "examples": [],
+        "spec_version": "1",
+        "spec_digest": "e3b0c442..."
+      },
+      "spec_digest": "e3b0c442..."
+    }
+  ],
+  "errors": [],
+  "next_page_token": null
+}
+```
+
+#### `rpc_report` Request (Optional Payload)
+
+```json
+{
+  "namespace": "svc.market",
+  "scope": "zone"
+}
+```
+
+#### `rpc_report` Response (Example)
+
+```json
+{
+  "generated_at": 1700000003.0,
+  "total_functions": 5,
+  "namespace_counts": [
+    {
+      "key": "svc.market",
+      "count": 5
+    }
+  ],
+  "cluster_counts": [
+    {
+      "key": "cluster-a",
+      "count": 5
+    }
+  ],
+  "tag_counts": [
+    {
+      "key": "alpha",
+      "count": 5
+    }
+  ]
+}
+```
+
+#### `catalog_watch` Request (Example)
+
+```json
+{
+  "scope": "zone",
+  "namespace": "svc.market"
+}
+```
+
+#### `catalog_watch` Response (Example)
+
+```json
+{
+  "topic": "mpreg.discovery.delta",
+  "generated_at": 1700000003.0,
+  "scope": "zone",
+  "namespace": "svc.market",
+  "cluster_id": "cluster-a"
+}
+```
+
+If `namespace` is provided, the topic is namespaced (e.g.
+`mpreg.discovery.delta.svc.market`).
+
+#### `catalog_watch` Delta Payload (Example)
+
+```json
+{
+  "delta": {
+    "update_id": "delta-01",
+    "cluster_id": "cluster-a",
+    "sent_at": 1700000002.9,
+    "functions": [
+      {
+        "identity": {
+          "name": "svc.market.quote",
+          "function_id": "market.quote",
+          "version": "1.0.0"
+        },
+        "resources": ["market"],
+        "node_id": "ws://node-a:<port>",
+        "cluster_id": "cluster-a",
+        "advertised_at": 1700000002.9,
+        "ttl_seconds": 30.0
+      }
+    ],
+    "function_removals": [],
+    "topics": [],
+    "topic_removals": [],
+    "queues": [],
+    "queue_removals": [],
+    "caches": [],
+    "cache_removals": [],
+    "cache_profiles": [],
+    "cache_profile_removals": [],
+    "nodes": [],
+    "node_removals": []
+  },
+  "counts": {
+    "functions_added": 1,
+    "functions_removed": 0,
+    "topics_added": 0,
+    "topics_removed": 0,
+    "queues_added": 0,
+    "queues_removed": 0,
+    "caches_added": 0,
+    "caches_removed": 0,
+    "cache_profiles_added": 0,
+    "cache_profiles_removed": 0,
+    "nodes_added": 0,
+    "nodes_removed": 0
+  },
+  "namespaces": ["svc.market"],
+  "source_node": "ws://node-a:<port>",
+  "source_cluster": "cluster-a",
+  "published_at": 1700000003.0
+}
+```
+
+#### `summary_query` Request (Example)
+
+```json
+{
+  "namespace": "svc.market",
+  "viewer_cluster_id": "cluster-a",
+  "scope": "global",
+  "include_ingress": true,
+  "ingress_limit": 2,
+  "ingress_scope": "zone",
+  "ingress_capabilities": ["rpc"],
+  "ingress_tags": ["edge"],
+  "limit": 5
+}
+```
+
+#### `summary_query` Response (Example)
+
+```json
+{
+  "generated_at": 1700000004.5,
+  "items": [
+    {
+      "namespace": "svc.market",
+      "service_id": "svc.market.quote",
+      "regions": ["local"],
+      "endpoint_count": 2,
+      "health_band": "healthy",
+      "latency_band_ms": [0, 0],
+      "ttl_seconds": 30.0,
+      "generated_at": 1700000004.5,
+      "source_cluster": "cluster-a"
+    }
+  ],
+  "ingress": {
+    "cluster-a": ["ws://node-a:<port>"]
+  },
+  "next_page_token": "5:5"
+}
+```
+
+#### `summary_watch` Request (Example)
+
+```json
+{
+  "scope": "zone",
+  "namespace": "svc.market"
+}
+```
+
+#### `summary_watch` Response (Example)
+
+```json
+{
+  "topic": "mpreg.discovery.summary",
+  "generated_at": 1700000005.0,
+  "scope": "zone",
+  "namespace": "svc.market",
+  "cluster_id": "cluster-a"
+}
+```
+
+If `namespace` is provided, the topic is namespaced (e.g.
+`mpreg.discovery.summary.svc.market`).
+
+#### `summary_watch` Summary Payload (Example)
+
+```json
+{
+  "summaries": [
+    {
+      "namespace": "svc.market",
+      "service_id": "svc.market.quote",
+      "regions": ["local"],
+      "endpoint_count": 2,
+      "health_band": "healthy",
+      "latency_band_ms": [0, 0],
+      "ttl_seconds": 30.0,
+      "generated_at": 1700000005.0,
+      "policy_version": "v1",
+      "source_cluster": "cluster-a"
+    }
+  ],
+  "namespaces": ["svc.market"],
+  "source_node": "ws://node-a:<port>",
+  "source_cluster": "cluster-a",
+  "published_at": 1700000005.0
+}
+```
+
+#### `resolver_cache_stats` Response (Example)
+
+```json
+{
+  "enabled": true,
+  "generated_at": 1700000004.0,
+  "namespaces": ["svc.market"],
+  "entry_counts": {
+    "functions": 2,
+    "topics": 0,
+    "queues": 0,
+    "caches": 0,
+    "cache_profiles": 0,
+    "nodes": 3
+  },
+  "stats": {
+    "deltas_applied": 12,
+    "deltas_skipped": 0,
+    "deltas_invalid": 0,
+    "last_delta_id": "delta-12",
+    "last_delta_cluster": "cluster-a",
+    "last_delta_at": 1700000003.9,
+    "last_seed_at": 1700000001.0,
+    "last_delta_counts": {
+      "functions_added": 1,
+      "functions_removed": 0,
+      "topics_added": 0,
+      "topics_removed": 0,
+      "queues_added": 0,
+      "queues_removed": 0,
+      "caches_added": 0,
+      "caches_removed": 0,
+      "cache_profiles_added": 0,
+      "cache_profiles_removed": 0,
+      "nodes_added": 0,
+      "nodes_removed": 0
+    }
+  },
+  "query_cache": {
+    "catalog_entries": 4,
+    "cluster_map_entries": 1,
+    "catalog_hits": 12,
+    "catalog_misses": 3,
+    "catalog_stale_serves": 2,
+    "catalog_negative_hits": 1,
+    "catalog_refreshes": 2,
+    "cluster_map_hits": 4,
+    "cluster_map_misses": 1,
+    "cluster_map_stale_serves": 0,
+    "cluster_map_negative_hits": 0,
+    "cluster_map_refreshes": 0
+  }
+}
+```
+
+#### `resolver_resync` Response (Example)
+
+```json
+{
+  "enabled": true,
+  "generated_at": 1700000005.0,
+  "resynced": true,
+  "entry_counts": {
+    "functions": 2,
+    "topics": 0,
+    "queues": 0,
+    "caches": 0,
+    "cache_profiles": 0,
+    "nodes": 3
+  },
+  "stats": {
+    "deltas_applied": 12,
+    "deltas_skipped": 0,
+    "deltas_invalid": 0,
+    "last_seed_at": 1700000005.0
+  }
+}
+```
+
+#### `namespace_status` Request (Example)
+
+```json
+{
+  "namespace": "svc.secret",
+  "viewer_cluster_id": "cluster-a"
+}
+```
+
+`viewer_cluster_id` is ignored when the server can derive viewer identity from
+the authenticated connection context.
+
+#### `namespace_status` Response (Example)
+
+```json
+{
+  "namespace": "svc.secret",
+  "generated_at": 1700000006.0,
+  "viewer_cluster_id": "cluster-a",
+  "allowed": false,
+  "reason": "viewer_denied",
+  "summaries_exported": 12,
+  "last_export_at": 1700000006.2,
+  "rule": {
+    "namespace": "svc.secret",
+    "owners": ["cluster-a"],
+    "visibility": ["secure-cluster"],
+    "export_scopes": [],
+    "allow_summaries": false,
+    "cutover_windows": [
+      {
+        "starts_at": 1700000100.0,
+        "ends_at": 1700003700.0,
+        "export_scopes": ["global"],
+        "allow_summaries": true
+      }
+    ],
+    "policy_version": "v1"
+  }
+}
+```
+
+#### `namespace_policy_validate` Request (Example)
+
+```json
+{
+  "rules": [
+    {
+      "namespace": "svc.secret",
+      "visibility": ["secure-cluster"],
+      "policy_version": "v1"
+    }
+  ],
+  "actor": "admin"
+}
+```
+
+#### `namespace_policy_validate` Response (Example)
+
+```json
+{
+  "valid": true,
+  "generated_at": 1700000007.0,
+  "rule_count": 1,
+  "errors": []
+}
+```
+
+#### `namespace_policy_apply` Request (Example)
+
+```json
+{
+  "rules": [
+    {
+      "namespace": "svc.secret",
+      "visibility": ["secure-cluster"],
+      "cutover_windows": [
+        {
+          "starts_at": 1700000100.0,
+          "ends_at": 1700003700.0,
+          "export_scopes": ["global"],
+          "allow_summaries": true
+        }
+      ],
+      "policy_version": "v1"
+    }
+  ],
+  "enabled": true,
+  "actor": "admin"
+}
+```
+
+#### `namespace_policy_apply` Response (Example)
+
+```json
+{
+  "applied": true,
+  "valid": true,
+  "generated_at": 1700000008.0,
+  "rule_count": 1,
+  "errors": []
+}
+```
+
+#### `namespace_policy_audit` Response (Example)
+
+```json
+{
+  "generated_at": 1700000009.0,
+  "entries": [
+    {
+      "event": "apply",
+      "timestamp": 1700000008.0,
+      "actor": "admin",
+      "valid": true,
+      "rule_count": 1
+    }
+  ]
+}
+```
+
 ### Fabric RPC (UnifiedMessage)
 
 **Message Type**: `fabric-message` (UnifiedMessage + FabricRPCRequest payload)

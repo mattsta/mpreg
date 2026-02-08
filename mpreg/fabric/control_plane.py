@@ -16,8 +16,10 @@ from .announcers import (
     FabricCacheRoleAnnouncer,
     FabricFunctionAnnouncer,
     FabricQueueAnnouncer,
+    FabricServiceAnnouncer,
     FabricTopicAnnouncer,
     FunctionCatalogAdapter,
+    ServiceCatalogAdapter,
 )
 from .broadcaster import CatalogBroadcaster
 from .catalog import RoutingCatalog
@@ -278,6 +280,11 @@ class FabricControlPlane:
 
     def queue_announcer(self) -> FabricQueueAnnouncer:
         return FabricQueueAnnouncer(broadcaster=self.broadcaster)
+
+    def service_announcer(
+        self, *, adapter: ServiceCatalogAdapter
+    ) -> FabricServiceAnnouncer:
+        return FabricServiceAnnouncer(adapter=adapter, broadcaster=self.broadcaster)
 
     def cache_announcer(
         self, *, cache_adapter: CacheFederationCatalogAdapter

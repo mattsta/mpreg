@@ -31,6 +31,8 @@ from .catalog import (
     QueueHealth,
     QueueKey,
     RoutingCatalog,
+    ServiceEndpoint,
+    ServiceKey,
     TopicSubscription,
     TransportEndpoint,
 )
@@ -59,11 +61,6 @@ from .federation_planner import (
     FabricForwardingFailureReason,
     FabricForwardingPlan,
 )
-from .function_registry import (
-    LocalFunctionKey,
-    LocalFunctionRegistration,
-    LocalFunctionRegistry,
-)
 from .hub_registry import (
     ClusterRegistrar,
     HubHealthMonitor,
@@ -88,6 +85,7 @@ from .index import (
     NodeQuery,
     QueueQuery,
     RoutingIndex,
+    ServiceQuery,
     TopicQuery,
 )
 from .link_state import (
@@ -224,6 +222,9 @@ __all__ = [
     "QueueKey",
     "QueueQuery",
     "QueueHealth",
+    "ServiceEndpoint",
+    "ServiceKey",
+    "ServiceQuery",
     "RoutingEngine",
     "RoutingCatalog",
     "RoutingIndex",
@@ -294,9 +295,6 @@ __all__ = [
     "is_control_plane_message",
     "is_federation_message",
     "is_internal_topic",
-    "LocalFunctionKey",
-    "LocalFunctionRegistration",
-    "LocalFunctionRegistry",
     "CacheDigest",
     "CacheDigestEntry",
     "CacheOperationMessage",

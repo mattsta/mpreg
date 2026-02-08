@@ -649,12 +649,6 @@ class FabricRouter:
                 )
             )
         for sub in plan.remote_subscriptions:
-            route_plan = cluster_routes.get(sub.cluster_id)
-            if (
-                route_plan
-                and route_plan.reason is ClusterRouteReason.REMOTE_UNAVAILABLE
-            ):
-                continue
             targets.append(
                 FabricRouteTarget(
                     system_type=MessageType.PUBSUB,

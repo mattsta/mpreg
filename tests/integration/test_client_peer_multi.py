@@ -22,9 +22,11 @@ async def test_peer_directory_converges(cluster_3_servers):
     }
 
     await wait_for_condition(
-        lambda: expected.issubset(_peer_node_ids(server1))
-        and expected.issubset(_peer_node_ids(server2))
-        and expected.issubset(_peer_node_ids(server3)),
+        lambda: (
+            expected.issubset(_peer_node_ids(server1))
+            and expected.issubset(_peer_node_ids(server2))
+            and expected.issubset(_peer_node_ids(server3))
+        ),
         timeout=6.0,
         error_message="Peer directory did not converge across 3 servers",
     )

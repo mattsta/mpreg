@@ -303,6 +303,53 @@ class TestProductionRaftIntegration:
 
         return nodes
 
+    def _leader_wait_timeout_seconds(
+        self,
+        nodes: dict[str, ProductionRaft],
+        *,
+        multiplier: float = 2.5,
+        minimum: float = 1.0,
+    ) -> float:
+        """Derive a leader-election wait timeout from live node configuration."""
+        max_election_timeout = max(
+            (node.config.election_timeout_max for node in nodes.values()),
+            default=minimum,
+        )
+        return max(minimum, max_election_timeout * multiplier)
+
+    async def _wait_for_single_leader(
+        self,
+        nodes: dict[str, ProductionRaft],
+        *,
+        timeout_seconds: float | None = None,
+        poll_interval: float = 0.05,
+    ) -> ProductionRaft:
+        """Wait for exactly one leader and return it with a deterministic timeout."""
+        timeout = (
+            timeout_seconds
+            if timeout_seconds is not None
+            else self._leader_wait_timeout_seconds(nodes)
+        )
+        deadline = time.time() + timeout
+        last_states: dict[str, str] = {}
+
+        while time.time() < deadline:
+            leaders = [
+                node
+                for node in nodes.values()
+                if node.current_state == RaftState.LEADER
+            ]
+            if len(leaders) == 1:
+                return leaders[0]
+            last_states = {
+                node_id: node.current_state.value for node_id, node in nodes.items()
+            }
+            await asyncio.sleep(poll_interval)
+
+        raise AssertionError(
+            f"Expected exactly one leader within {timeout:.2f}s; final_states={last_states}"
+        )
+
     @pytest.mark.asyncio
     async def test_single_node_cluster_basic_operations(self, temp_dir):
         """Test basic operations in a single-node cluster."""
@@ -313,9 +360,14 @@ class TestProductionRaftIntegration:
         try:
             await node.start()
 
-            # Single node should immediately become leader
-            await asyncio.sleep(0.3)  # Wait for election
-            assert node.current_state == RaftState.LEADER
+            # Single node should elect itself as leader within config-derived timeout.
+            leader = await self._wait_for_single_leader(
+                nodes,
+                timeout_seconds=self._leader_wait_timeout_seconds(
+                    nodes, multiplier=2.0, minimum=0.5
+                ),
+            )
+            assert leader.node_id == node.node_id
             assert node.current_leader == node.node_id
 
             # Test command submission
@@ -334,19 +386,12 @@ class TestProductionRaftIntegration:
             # Restart and verify state is preserved
             await node.start()
 
-            # Wait for election to complete with robust timeout
-            # Election timeout is scaled for concurrency, so wait appropriately
-            concurrency_factor = get_concurrency_factor()
-            base_election_timeout = 1.0
-            election_timeout = base_election_timeout * concurrency_factor
-            start_time = time.time()
-            while node.current_state != RaftState.LEADER:
-                if time.time() - start_time > election_timeout:
-                    raise AssertionError(
-                        f"Node did not become leader within {election_timeout}s after restart. "
-                        f"Current state: {node.current_state}, term: {node.persistent_state.current_term}"
-                    )
-                await asyncio.sleep(0.05)  # Check every 50ms
+            await self._wait_for_single_leader(
+                nodes,
+                timeout_seconds=self._leader_wait_timeout_seconds(
+                    nodes, multiplier=2.0, minimum=0.5
+                ),
+            )
 
             # Should become leader again and have persisted log
             assert node.current_state == RaftState.LEADER
@@ -660,14 +705,8 @@ class TestProductionRaftIntegration:
             for node in nodes.values():
                 await node.start()
 
-            await asyncio.sleep(0.5)
-
-            # Find leader
-            leader = next(
-                node
-                for node in nodes.values()
-                if node.current_state == RaftState.LEADER
-            )
+            # Find leader with timeout derived from election configuration.
+            leader = await self._wait_for_single_leader(nodes)
 
             # Create network partition: leader + 1 node vs. 3 nodes
             if leader.node_id in node_ids[:2]:
@@ -871,13 +910,7 @@ class TestProductionRaftIntegration:
             for node in nodes.values():
                 await node.start()
 
-            await asyncio.sleep(0.5)
-
-            leader = next(
-                node
-                for node in nodes.values()
-                if node.current_state == RaftState.LEADER
-            )
+            leader = await self._wait_for_single_leader(nodes)
 
             # Submit a batch of commands
             for i in range(10):
@@ -921,11 +954,7 @@ class TestProductionRaftIntegration:
             await asyncio.sleep(0.5)
 
             # All nodes should eventually converge
-            final_leader = next(
-                node
-                for node in nodes.values()
-                if node.current_state == RaftState.LEADER
-            )
+            final_leader = await self._wait_for_single_leader(nodes)
 
             # Check final consistency
             for i in range(15):
@@ -961,13 +990,7 @@ class TestProductionRaftIntegration:
             for node in nodes.values():
                 await node.start()
 
-            await asyncio.sleep(0.5)
-
-            leader = next(
-                node
-                for node in nodes.values()
-                if node.current_state == RaftState.LEADER
-            )
+            leader = await self._wait_for_single_leader(nodes)
 
             # Submit commands to build up log
             for i in range(5):
@@ -1000,7 +1023,7 @@ class TestProductionRaftIntegration:
             for node in new_nodes.values():
                 await node.start()
 
-            await asyncio.sleep(0.5)
+            new_leader = await self._wait_for_single_leader(new_nodes)
 
             # Verify recovery
             for node_id, node in new_nodes.items():
@@ -1027,16 +1050,7 @@ class TestProductionRaftIntegration:
                         if hasattr(node.state_machine, "state"):
                             assert node.state_machine.state.get(key) == value
 
-            # New leader should be elected
-            leaders = [
-                node
-                for node in new_nodes.values()
-                if node.current_state == RaftState.LEADER
-            ]
-            assert len(leaders) == 1
-
             # Should be able to continue normal operations
-            new_leader = leaders[0]
             result = await new_leader.submit_command("recovery_test=success")
             assert result is not None
 

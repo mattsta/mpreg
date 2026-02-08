@@ -23,6 +23,7 @@ import asyncio
 import contextlib
 import hashlib
 import math
+import os
 import random
 import time
 from collections import deque
@@ -56,6 +57,12 @@ if TYPE_CHECKING:
     from mpreg.fabric.route_announcer import RouteAnnouncementProcessor
 
     from .consensus import ConsensusManager
+
+
+_DIAG_TRUE_VALUES = frozenset({"1", "true", "yes", "on", "enabled", "debug"})
+GOSSIP_SCHED_DIAG_ENABLED = (
+    os.environ.get("MPREG_DEBUG_GOSSIP_SCHED", "").strip().lower() in _DIAG_TRUE_VALUES
+)
 
 
 # New dataclasses for type safety
@@ -527,6 +534,8 @@ class GossipScheduler:
     pending_messages: int = 0
     convergence_times: list[float] = field(default_factory=list)
     bandwidth_usage: list[float] = field(default_factory=list)
+    target_selection_tick: int = 0
+    target_last_selected: dict[NodeId, int] = field(default_factory=dict)
 
     adaptive_interval: float = field(init=False)
     min_interval: float = field(init=False)
@@ -541,16 +550,45 @@ class GossipScheduler:
     def should_gossip(self) -> bool:
         """Determine if it's time to gossip."""
         current_time = time.time()
+        elapsed = current_time - self.last_gossip_time
 
         # Check if enough time has passed
-        if current_time - self.last_gossip_time < self.adaptive_interval:
+        if elapsed < self.adaptive_interval:
+            if GOSSIP_SCHED_DIAG_ENABLED and self.pending_messages > 0:
+                logger.warning(
+                    "[DIAG_GOSSIP_SCHED] action=should_gossip decision=false "
+                    "reason=interval_guard pending={} elapsed={:.4f}s interval={:.4f}s "
+                    "cycles={} fanout={} strategy={}",
+                    self.pending_messages,
+                    elapsed,
+                    self.adaptive_interval,
+                    self.gossip_cycles,
+                    self.fanout,
+                    self.strategy.value,
+                )
             return False
 
         # Check if we have messages to propagate
-        return self.pending_messages != 0
+        should_send = self.pending_messages != 0
+        if GOSSIP_SCHED_DIAG_ENABLED:
+            logger.warning(
+                "[DIAG_GOSSIP_SCHED] action=should_gossip decision={} reason=ready_check "
+                "pending={} elapsed={:.4f}s interval={:.4f}s cycles={} fanout={} strategy={}",
+                should_send,
+                self.pending_messages,
+                elapsed,
+                self.adaptive_interval,
+                self.gossip_cycles,
+                self.fanout,
+                self.strategy.value,
+            )
+        return should_send
 
     def get_next_gossip_interval(self) -> float:
         """Get the next gossip interval."""
+        previous_interval = self.adaptive_interval
+        previous_pending = self.pending_messages
+
         # Adaptive interval based on pending messages
         if self.pending_messages > 10:
             # Increase frequency if many pending messages
@@ -558,9 +596,20 @@ class GossipScheduler:
                 self.min_interval, self.adaptive_interval * 0.8
             )
         elif self.pending_messages < 3:
-            # Decrease frequency if few pending messages
+            # Decrease frequency when the queue is nearly drained.
             self.adaptive_interval = min(
                 self.max_interval, self.adaptive_interval * 1.2
+            )
+
+        if GOSSIP_SCHED_DIAG_ENABLED:
+            logger.warning(
+                "[DIAG_GOSSIP_SCHED] action=next_interval pending={} prev_interval={:.4f}s "
+                "new_interval={:.4f}s min_interval={:.4f}s max_interval={:.4f}s",
+                previous_pending,
+                previous_interval,
+                self.adaptive_interval,
+                self.min_interval,
+                self.max_interval,
             )
 
         return self.adaptive_interval
@@ -591,8 +640,31 @@ class GossipScheduler:
             len(available_nodes),
         )
 
+        available_set = set(available_nodes)
+        stale_nodes = [
+            node_id
+            for node_id in self.target_last_selected
+            if node_id not in available_set
+        ]
+        for node_id in stale_nodes:
+            self.target_last_selected.pop(node_id, None)
+
+        def _mark_selected(targets: list[str]) -> list[str]:
+            self.target_selection_tick += 1
+            tick = self.target_selection_tick
+            for node_id in targets:
+                self.target_last_selected[node_id] = tick
+            return targets
+
         if self.strategy == GossipStrategy.RANDOM:
-            return random.sample(available_nodes, target_count)
+            ordered_nodes = sorted(
+                available_nodes,
+                key=lambda node_id: (
+                    self.target_last_selected.get(node_id, -1),
+                    random.random(),
+                ),
+            )
+            return _mark_selected(ordered_nodes[:target_count])
 
         elif self.strategy == GossipStrategy.PROXIMITY:
             # Select nodes based on proximity (if metadata available)
@@ -600,13 +672,13 @@ class GossipScheduler:
                 # Sort by proximity and select closest nodes
                 sorted_nodes = sorted(
                     available_nodes,
-                    key=lambda n: node_metadata.get(
-                        n, NodeMetadata(node_id=n)
-                    ).distance,
+                    key=lambda n: (
+                        node_metadata.get(n, NodeMetadata(node_id=n)).distance
+                    ),
                 )
-                return sorted_nodes[:target_count]
+                return _mark_selected(sorted_nodes[:target_count])
             else:
-                return random.sample(available_nodes, target_count)
+                return _mark_selected(random.sample(available_nodes, target_count))
 
         elif self.strategy == GossipStrategy.TOPOLOGY_AWARE:
             # Select nodes based on topology (if metadata available)
@@ -628,9 +700,9 @@ class GossipScheduler:
                         if len(selected) >= target_count:
                             break
 
-                return selected
+                return _mark_selected(selected)
             else:
-                return random.sample(available_nodes, target_count)
+                return _mark_selected(random.sample(available_nodes, target_count))
 
         elif self.strategy == GossipStrategy.HYBRID:
             # Mix of random and proximity-based selection
@@ -647,9 +719,9 @@ class GossipScheduler:
                 proximity_count = target_count - len(random_targets)
                 sorted_nodes = sorted(
                     remaining_nodes,
-                    key=lambda n: node_metadata.get(
-                        n, NodeMetadata(node_id=n)
-                    ).distance,
+                    key=lambda n: (
+                        node_metadata.get(n, NodeMetadata(node_id=n)).distance
+                    ),
                 )
                 proximity_targets = sorted_nodes[:proximity_count]
             else:
@@ -658,12 +730,14 @@ class GossipScheduler:
                     min(target_count - len(random_targets), len(remaining_nodes)),
                 )
 
-            return random_targets + proximity_targets
+            return _mark_selected(random_targets + proximity_targets)
 
-        return random.sample(available_nodes, target_count)
+        return _mark_selected(random.sample(available_nodes, target_count))
 
     def record_gossip_cycle(self, messages_sent: int, bandwidth_used: float) -> None:
         """Record completion of a gossip cycle."""
+        previous_pending = self.pending_messages
+        previous_cycles = self.gossip_cycles
         self.last_gossip_time = time.time()
         self.gossip_cycles += 1
         self.pending_messages = max(0, self.pending_messages - messages_sent)
@@ -673,9 +747,31 @@ class GossipScheduler:
         if len(self.bandwidth_usage) > 100:
             self.bandwidth_usage = self.bandwidth_usage[-100:]
 
+        if GOSSIP_SCHED_DIAG_ENABLED:
+            logger.warning(
+                "[DIAG_GOSSIP_SCHED] action=record_cycle messages_sent={} "
+                "bandwidth_used={} pending_before={} pending_after={} "
+                "cycles_before={} cycles_after={} last_gossip_time={:.6f}",
+                messages_sent,
+                bandwidth_used,
+                previous_pending,
+                self.pending_messages,
+                previous_cycles,
+                self.gossip_cycles,
+                self.last_gossip_time,
+            )
+
     def update_pending_messages(self, count: int) -> None:
         """Update count of pending messages."""
+        previous_pending = self.pending_messages
         self.pending_messages = max(0, count)
+        if GOSSIP_SCHED_DIAG_ENABLED:
+            logger.warning(
+                "[DIAG_GOSSIP_SCHED] action=update_pending pending_before={} pending_after={} requested={}",
+                previous_pending,
+                self.pending_messages,
+                count,
+            )
 
     def get_scheduler_statistics(self) -> SchedulerStatistics:
         """Get scheduler statistics."""
@@ -838,7 +934,7 @@ class GossipProtocol:
         start_time = time.time()
         messages_sent = 0
         bandwidth_used = 0.0
-        has_test_function = False
+        dequeued_messages = 0
 
         with self._lock:
             # Get available nodes
@@ -847,12 +943,17 @@ class GossipProtocol:
             if not available_nodes:
                 return
 
+            message_budget = self._message_budget_per_cycle(len(available_nodes))
             # Get messages to propagate
-            messages_to_send = self._get_messages_to_propagate()
+            messages_to_send, dequeued_messages = self._get_messages_to_propagate(
+                limit=message_budget
+            )
             if not messages_to_send:
+                if dequeued_messages > 0:
+                    self.scheduler.record_gossip_cycle(0, 0.0)
+                    self.scheduler.update_pending_messages(len(self.pending_messages))
                 return
             # Use full fanout for catalog/route updates in small clusters.
-            full_fanout_threshold = 20
             force_full_fanout = any(
                 message.message_type
                 in {
@@ -864,20 +965,23 @@ class GossipProtocol:
                 }
                 for message in messages_to_send
             )
-            if force_full_fanout and len(available_nodes) <= full_fanout_threshold:
-                targets = list(available_nodes)
+            if force_full_fanout:
+                fanout_override = self._catalog_fanout_override(
+                    available_count=len(available_nodes)
+                )
+                if fanout_override >= len(available_nodes):
+                    targets = list(available_nodes)
+                else:
+                    targets = self.scheduler.select_gossip_targets(
+                        available_nodes,
+                        self.node_metadata,
+                        fanout_override=fanout_override,
+                    )
             else:
                 # Select gossip targets
-                fanout_override = None
-                if force_full_fanout and len(available_nodes) > full_fanout_threshold:
-                    fanout_override = max(
-                        self.fanout,
-                        int(math.sqrt(len(available_nodes))) + 1,
-                    )
                 targets = self.scheduler.select_gossip_targets(
                     available_nodes,
                     self.node_metadata,
-                    fanout_override=fanout_override,
                 )
 
         # Send messages to targets
@@ -893,7 +997,8 @@ class GossipProtocol:
 
         # Update statistics
         cycle_time = time.time() - start_time
-        self.scheduler.record_gossip_cycle(messages_sent, bandwidth_used)
+        self.scheduler.record_gossip_cycle(dequeued_messages, bandwidth_used)
+        self.scheduler.update_pending_messages(len(self.pending_messages))
 
         self.protocol_stats.gossip_cycles += 1
         self.protocol_stats.total_messages_sent += messages_sent
@@ -902,17 +1007,61 @@ class GossipProtocol:
             f"Gossip cycle completed: {messages_sent} messages sent to {len(targets)} nodes in {cycle_time:.3f}s"
         )
 
+    def _message_budget_per_cycle(self, available_count: int) -> int:
+        """Adaptive per-cycle message dequeue budget based on queue pressure."""
+        pending_count = len(self.pending_messages)
+        if available_count <= 0:
+            return 10
+        pending_per_peer = pending_count / max(available_count, 1)
+
+        if pending_per_peer >= 8.0:
+            pressure_multiplier = 8
+        elif pending_per_peer >= 4.0:
+            pressure_multiplier = 6
+        elif pending_per_peer >= 2.0:
+            pressure_multiplier = 4
+        else:
+            pressure_multiplier = 2
+
+        base_budget = max(10, available_count * 2)
+        pressure_budget = available_count * pressure_multiplier
+        budget = max(base_budget, pressure_budget)
+        max_budget = 512 if pending_per_peer >= 8.0 else 256
+        return max(10, min(max_budget, budget))
+
+    def _catalog_fanout_override(self, *, available_count: int) -> int:
+        """Use full fanout for catalog updates to maximize convergence reliability."""
+        if available_count <= 0:
+            return self.fanout
+        return available_count
+
+    def _send_delay_seconds(self, message: GossipMessage) -> float:
+        """Adaptive transport delay model for local in-process gossip."""
+        if message.message_type in {
+            GossipMessageType.CATALOG_UPDATE,
+            GossipMessageType.ROUTE_ADVERTISEMENT,
+            GossipMessageType.ROUTE_WITHDRAWAL,
+            GossipMessageType.LINK_STATE_UPDATE,
+            GossipMessageType.ROUTE_KEY_ANNOUNCEMENT,
+        }:
+            return 0.0002
+        return 0.001
+
     def _get_available_nodes(self) -> list[str]:
         """Get list of available nodes for gossiping."""
         return list(self.transport.peer_ids(exclude=self.node_id))
 
-    def _get_messages_to_propagate(self) -> list[GossipMessage]:
+    def _get_messages_to_propagate(
+        self, *, limit: int
+    ) -> tuple[list[GossipMessage], int]:
         """Get messages that should be propagated."""
         messages_to_send = []
+        dequeued_count = 0
 
         # Get pending messages
         while self.pending_messages:
             message = self.pending_messages.popleft()
+            dequeued_count += 1
 
             # Check if message should be propagated
             if self.filter.should_propagate(message, self.node_id):
@@ -921,10 +1070,10 @@ class GossipProtocol:
                 messages_to_send.append(propagated_message)
 
             # Limit number of messages per cycle
-            if len(messages_to_send) >= 10:
+            if len(messages_to_send) >= limit:
                 break
 
-        return messages_to_send
+        return messages_to_send, dequeued_count
 
     async def _send_messages_to_node(
         self, target_id: str, messages: list[GossipMessage]
@@ -952,8 +1101,9 @@ class GossipProtocol:
                     message, target_id
                 ):
                     continue
-                # Simulate network delay
-                await asyncio.sleep(0.001)  # 1ms delay
+                send_delay = self._send_delay_seconds(message)
+                if send_delay > 0.0:
+                    await asyncio.sleep(send_delay)
                 # Avoid pre-marking seen_by so receivers can forward multi-hop.
 
                 # Store in recent messages for inspection
@@ -971,8 +1121,6 @@ class GossipProtocol:
 
     async def _cleanup_expired_messages(self) -> None:
         """Clean up expired messages."""
-        current_time = time.time()
-
         with self._lock:
             # Clean up recent messages
             expired_messages = [
@@ -1008,12 +1156,19 @@ class GossipProtocol:
             except Exception as e:
                 logger.warning(f"Failed to get state update from provider: {e}")
 
+    def next_sequence_number(self) -> int:
+        """Reserve and return the next local gossip sequence number."""
+        sequence_number = self.protocol_stats.messages_created
+        self.protocol_stats.messages_created += 1
+        return sequence_number
+
     async def _create_state_update_message(
         self, state_update: StateUpdatePayload | dict[str, Any]
     ) -> None:
         """Create a state update message."""
         # Increment vector clock
         self.vector_clock = self.vector_clock.increment(self.node_id)
+        sequence_number = self.next_sequence_number()
 
         # Ensure payload is properly typed
         if isinstance(state_update, dict):
@@ -1035,15 +1190,13 @@ class GossipProtocol:
             sender_id=self.node_id,
             payload=typed_payload,
             vector_clock=self.vector_clock.copy(),
-            sequence_number=self.protocol_stats.messages_created,
+            sequence_number=sequence_number,
             ttl=10,
             max_hops=5,
         )
 
         # Add to pending messages
         await self.add_message(message)
-
-        self.protocol_stats.messages_created += 1
 
     async def add_message(self, message: GossipMessage) -> None:
         """Add a message to be propagated."""
@@ -1052,21 +1205,26 @@ class GossipProtocol:
             and message.hop_count == 0
         )
         with self._lock:
+            enqueue_message = True
+            if message.message_type == GossipMessageType.CATALOG_UPDATE:
+                enqueue_message = self._coalesce_pending_catalog_update(message)
+
             # Always add locally created messages to pending queue
             # The filter check will happen later during propagation
-            if message.message_type in {
-                GossipMessageType.CATALOG_UPDATE,
-                GossipMessageType.ROUTE_ADVERTISEMENT,
-                GossipMessageType.ROUTE_WITHDRAWAL,
-                GossipMessageType.LINK_STATE_UPDATE,
-                GossipMessageType.ROUTE_KEY_ANNOUNCEMENT,
-            }:
-                if message.hop_count == 0:
-                    self.pending_messages.appendleft(message)
+            if enqueue_message:
+                if message.message_type in {
+                    GossipMessageType.CATALOG_UPDATE,
+                    GossipMessageType.ROUTE_ADVERTISEMENT,
+                    GossipMessageType.ROUTE_WITHDRAWAL,
+                    GossipMessageType.LINK_STATE_UPDATE,
+                    GossipMessageType.ROUTE_KEY_ANNOUNCEMENT,
+                }:
+                    if message.hop_count == 0:
+                        self.pending_messages.appendleft(message)
+                    else:
+                        self.pending_messages.append(message)
                 else:
                     self.pending_messages.append(message)
-            else:
-                self.pending_messages.append(message)
             self.scheduler.update_pending_messages(len(self.pending_messages))
 
             # Also add to recent_messages so tests can access locally created messages
@@ -1081,53 +1239,126 @@ class GossipProtocol:
         if broadcast_local_catalog:
             await self._broadcast_local_catalog_update(message)
 
+    def _catalog_update_id(self, message: GossipMessage) -> str | None:
+        if message.message_type is not GossipMessageType.CATALOG_UPDATE:
+            return None
+        payload = message.payload
+        if not isinstance(payload, dict):
+            return None
+        update_id = payload.get("update_id")
+        if isinstance(update_id, str) and update_id:
+            return update_id
+        return None
+
+    def _coalesce_pending_catalog_update(self, incoming: GossipMessage) -> bool:
+        """Coalesce duplicate catalog updates without dropping unrelated payloads."""
+        if incoming.message_type != GossipMessageType.CATALOG_UPDATE:
+            return True
+        incoming_sender = incoming.sender_id
+        incoming_sequence = int(incoming.sequence_number)
+        incoming_update_id = self._catalog_update_id(incoming)
+        filtered: deque[Any] = deque()
+        enqueue_incoming = True
+        for existing in self.pending_messages:
+            if existing.message_type != GossipMessageType.CATALOG_UPDATE:
+                filtered.append(existing)
+                continue
+
+            existing_update_id = self._catalog_update_id(existing)
+            if (
+                incoming_update_id is not None
+                and existing_update_id is not None
+                and incoming_update_id == existing_update_id
+            ):
+                # Keep one pending copy of the same logical catalog delta.
+                if int(existing.hop_count) <= int(incoming.hop_count):
+                    filtered.append(existing)
+                    enqueue_incoming = False
+                # Otherwise drop older-hop existing entry and keep incoming.
+                continue
+
+            # Sequence-based coalescing is safe only for local-origin updates where
+            # sender_id remains stable and monotonic.
+            if incoming_sender == self.node_id and existing.sender_id == self.node_id:
+                existing_sequence = int(existing.sequence_number)
+                if existing_sequence >= incoming_sequence:
+                    filtered.append(existing)
+                    enqueue_incoming = False
+                # Drop older local pending update.
+                continue
+
+            filtered.append(existing)
+        self.pending_messages = filtered
+        return enqueue_incoming
+
     async def _broadcast_local_catalog_update(self, message: GossipMessage) -> None:
         peer_ids = self.transport.peer_ids(exclude=self.node_id)
         if not peer_ids:
             return
         propagated_message = message.prepare_for_propagation(self.node_id)
-        for peer_id in peer_ids:
-            try:
-                await self.transport.send_message(peer_id, propagated_message)
-            except Exception as e:
-                logger.warning(f"Failed to broadcast catalog update to {peer_id}: {e}")
+        pending_peers = set(peer_ids)
+        max_attempts = max(1, min(3, int(math.sqrt(len(peer_ids)))))
+        for attempt in range(max_attempts):
+            if not pending_peers:
+                break
+            failed_peers: set[str] = set()
+            for peer_id in sorted(pending_peers):
+                try:
+                    delivered = await self.transport.send_message(
+                        peer_id, propagated_message
+                    )
+                    if not delivered:
+                        failed_peers.add(peer_id)
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to broadcast catalog update to {peer_id}: {e}"
+                    )
+                    failed_peers.add(peer_id)
+            pending_peers = failed_peers.intersection(
+                self.transport.peer_ids(exclude=self.node_id)
+            )
+            if pending_peers and attempt + 1 < max_attempts:
+                await asyncio.sleep(0.02 * (attempt + 1))
 
     async def handle_received_message(self, message: GossipMessage) -> None:
         """Handle a received gossip message."""
         with self._lock:
-            # Update vector clock
+            # Keep vector-clock updates synchronized, but avoid holding the lock
+            # across awaited handlers or propagation calls.
             self.vector_clock = self.vector_clock.update(message.vector_clock)
 
-            # Process message based on type
-            if message.message_type == GossipMessageType.STATE_UPDATE:
-                await self._handle_state_update(message)
-            elif message.message_type == GossipMessageType.MEMBERSHIP_UPDATE:
-                await self._handle_membership_update(message)
-            elif message.message_type == GossipMessageType.CONFIG_UPDATE:
-                await self._handle_config_update(message)
-            elif message.message_type == GossipMessageType.HEARTBEAT:
-                await self._handle_heartbeat(message)
-            elif message.message_type == GossipMessageType.CONSENSUS_PROPOSAL:
-                await self._handle_consensus_proposal(message)
-            elif message.message_type == GossipMessageType.CONSENSUS_VOTE:
-                await self._handle_consensus_vote(message)
-            elif message.message_type == GossipMessageType.CATALOG_UPDATE:
-                await self._handle_catalog_update(message)
-            elif message.message_type == GossipMessageType.ROUTE_ADVERTISEMENT:
-                await self._handle_route_advertisement(message)
-            elif message.message_type == GossipMessageType.ROUTE_WITHDRAWAL:
-                await self._handle_route_withdrawal(message)
-            elif message.message_type == GossipMessageType.LINK_STATE_UPDATE:
-                await self._handle_link_state_update(message)
-            elif message.message_type == GossipMessageType.ROUTE_KEY_ANNOUNCEMENT:
-                await self._handle_route_key_announcement(message)
+        should_repropagate = True
 
-            # Add to recent messages
+        # Process message based on type
+        if message.message_type == GossipMessageType.STATE_UPDATE:
+            await self._handle_state_update(message)
+        elif message.message_type == GossipMessageType.MEMBERSHIP_UPDATE:
+            await self._handle_membership_update(message)
+        elif message.message_type == GossipMessageType.CONFIG_UPDATE:
+            await self._handle_config_update(message)
+        elif message.message_type == GossipMessageType.HEARTBEAT:
+            await self._handle_heartbeat(message)
+        elif message.message_type == GossipMessageType.CONSENSUS_PROPOSAL:
+            await self._handle_consensus_proposal(message)
+        elif message.message_type == GossipMessageType.CONSENSUS_VOTE:
+            await self._handle_consensus_vote(message)
+        elif message.message_type == GossipMessageType.CATALOG_UPDATE:
+            should_repropagate = await self._handle_catalog_update(message)
+        elif message.message_type == GossipMessageType.ROUTE_ADVERTISEMENT:
+            await self._handle_route_advertisement(message)
+        elif message.message_type == GossipMessageType.ROUTE_WITHDRAWAL:
+            await self._handle_route_withdrawal(message)
+        elif message.message_type == GossipMessageType.LINK_STATE_UPDATE:
+            await self._handle_link_state_update(message)
+        elif message.message_type == GossipMessageType.ROUTE_KEY_ANNOUNCEMENT:
+            await self._handle_route_key_announcement(message)
+
+        with self._lock:
             self.recent_messages[message.message_id] = message
 
-            # Propagate if needed
-            if message.can_propagate():
-                await self.add_message(message)
+        # Propagate if needed.
+        if should_repropagate and message.can_propagate():
+            await self.add_message(message)
 
         self.protocol_stats.messages_received += 1
 
@@ -1262,11 +1493,11 @@ class GossipProtocol:
         except Exception as e:
             logger.error(f"Error handling consensus vote: {e}")
 
-    async def _handle_catalog_update(self, message: GossipMessage) -> None:
+    async def _handle_catalog_update(self, message: GossipMessage) -> bool:
         """Handle routing catalog updates."""
         if not self.catalog_applier:
             logger.debug("Catalog update received but no catalog applier configured.")
-            return
+            return False
         if isinstance(message.payload, RoutingCatalogDelta):
             delta = message.payload
         elif isinstance(message.payload, dict):
@@ -1275,9 +1506,10 @@ class GossipProtocol:
             logger.warning(
                 f"Invalid catalog update payload type: {type(message.payload)}"
             )
-            return
-        self.catalog_applier.apply(delta, now=delta.sent_at)
-        return
+            return False
+        counts = self.catalog_applier.apply(delta, now=delta.sent_at)
+        has_effect = any(value > 0 for value in counts.values())
+        return has_effect
 
     async def _handle_route_advertisement(self, message: GossipMessage) -> None:
         """Handle path-vector route advertisements."""

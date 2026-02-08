@@ -38,6 +38,54 @@ class TestFederationCLI:
         assert result.exit_code == 0
         assert "Discover available fabric clusters" in result.output
 
+    def test_discovery_help(self):
+        """Test discovery command help."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["discovery", "--help"])
+
+        assert result.exit_code == 0
+        assert "Discovery plane commands" in result.output
+
+    def test_discovery_query_help(self):
+        """Test discovery query command help."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["discovery", "query", "--help"])
+
+        assert result.exit_code == 0
+        assert "catalog_query" in result.output
+
+    def test_discovery_status_help(self):
+        """Test discovery status command help."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["discovery", "status", "--help"])
+
+        assert result.exit_code == 0
+        assert "monitoring" in result.output
+
+    def test_resolver_cache_stats_help(self):
+        """Test resolver cache stats command help."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["client", "resolver-cache-stats", "--help"])
+
+        assert result.exit_code == 0
+        assert "resolver cache stats" in result.output.lower()
+
+    def test_report_help(self):
+        """Test report command help."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["report", "--help"])
+
+        assert result.exit_code == 0
+        assert "Reporting commands" in result.output
+
+    def test_report_namespace_health_help(self):
+        """Test report namespace-health command help."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["report", "namespace-health", "--help"])
+
+        assert result.exit_code == 0
+        assert "namespace export health" in result.output.lower()
+
     def test_discover_command(self):
         """Test discover command without config."""
         runner = CliRunner()

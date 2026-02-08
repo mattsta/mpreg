@@ -18,7 +18,7 @@ def calculate_worker_offset(worker_id: str) -> int:
             # Fallback: hash the worker ID
             worker_num = hash(worker_id) % 1000
             worker_num += 1  # Ensure non-zero for non-gw workers
-    except (ValueError, IndexError):
+    except ValueError, IndexError:
         # Fallback: hash the worker ID
         worker_num = hash(worker_id) % 1000
         worker_num += 1  # Ensure non-zero
