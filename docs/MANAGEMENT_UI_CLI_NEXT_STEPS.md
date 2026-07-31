@@ -18,6 +18,18 @@ by the fabric control plane so the platform manages itself.
 
 ## 2) Current Foundation (What Exists)
 
+### Implemented foundation (2026-07)
+
+- `/mgmt/v1/cluster|nodes|routes|catalog|health` read models
+- `POST /mgmt/v1/policy/dry-run` (provider-bound dry run)
+- `/routing/decisions` route decision audit log
+- `/metrics/prometheus`, monitoring bearer auth, CORS default off
+- CLI: `doctor`, `config-check`, `monitor decisions|prometheus`, `profile`
+
+Remaining: full mutation API, audit log store, REPL modes, UI.
+
+## 2.0) Prior foundation notes
+
 - Fabric monitoring endpoints (HTTP) and metrics, including routing + transport views.
 - Persistence snapshot observability (`/metrics/persistence`) for fabric catalog + route keys.
 - Unified fabric control plane: catalog, gossip, route control, link-state.
@@ -39,7 +51,9 @@ by the fabric control plane so the platform manages itself.
 - Health: `/health`, `/health/summary`, `/health/clusters`, `/health/clusters/{cluster_id}`
 - Metrics: `/metrics`, `/metrics/unified`, `/metrics/rpc`, `/metrics/pubsub`, `/metrics/queue`,
   `/metrics/cache`, `/metrics/transport`, `/metrics/persistence`
-- Routing: `/routing/trace`, `/routing/link-state`
+- Routing: `/routing/trace`, `/routing/link-state`, `/routing/decisions`
+- Prometheus: `/metrics/prometheus`
+- Mgmt: `/mgmt/v1/*`, `POST /mgmt/v1/policy/dry-run`
 - Topology: `/topology`, `/topology/graph`, `/topology/paths`, `/topology/analysis`
 - Transport: `/transport/endpoints`
 - Endpoint listing: `/endpoints`
@@ -52,12 +66,12 @@ by the fabric control plane so the platform manages itself.
 
 ### Gaps vs. Management Goals
 
-- No management API contract yet (`/mgmt/v1/*`) despite endpoints existing.
-- CLI output formatting is mixed (JSON-only for most monitor commands).
+- `/mgmt/v1/*` **read** models and policy dry-run exist; **mutations** (drain, detach, policy apply) do not.
+- CLI `--format` covers many commands; not every legacy monitor path is fully table-formatted.
 - No REPL/IOS-like CLI mode yet (exec/config/diag).
-- UI not implemented; no shared schema contract for CLI + UI.
-- Missing audit trail for admin actions (read-only only today).
-- No consistency between monitoring payloads and a normalized management data model.
+- UI not implemented; OpenAPI/schema contract for CLI + UI still thin.
+- Missing durable audit trail for admin **mutations** (route decision ring buffer is read-path only).
+- Some monitoring payloads still differ from the normalized management data model.
 
 ## 3) Goals and Non-Goals
 

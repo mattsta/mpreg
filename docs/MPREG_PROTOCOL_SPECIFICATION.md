@@ -2843,3 +2843,34 @@ main().catch(console.error);
 ---
 
 This comprehensive protocol specification provides complete coverage of all MPREG communication patterns and includes the proposed global distributed caching system. External developers can use this specification to implement compatible clients in any programming language, while the code references point to specific implementation details within the MPREG codebase.
+
+## Structured error codes
+
+RPC failures may surface as `RPCError` with stable numeric codes:
+
+| Code | Name | Meaning |
+|------|------|---------|
+| 1001 | COMMAND_NOT_FOUND | No matching function endpoint |
+| 1002 | VERSION_MISMATCH | Version constraint unsatisfied |
+| 1003 | HOP_BUDGET_EXCEEDED | Fabric hop budget exhausted |
+| 1004 | POLICY_DENIED | Namespace/routing policy denied |
+| 1005 | ROUTE_NOT_FOUND | No path to target cluster/node |
+| 1006 | TIMEOUT | Deadline exceeded |
+| 1007 | UNAVAILABLE | Temporary unavailability (retryable) |
+| 1008 | INVALID_ARGUMENT | Bad request parameters |
+| 1009 | AUTH_REQUIRED | Monitoring/API auth missing |
+| 1010 | AUTH_FAILED | Auth present but invalid |
+| 1099 | INTERNAL | Unexpected server failure |
+
+Python helpers: `mpreg.core.errors.MpregError`, `MpregErrorCode`.
+
+## Trace context on fabric envelopes
+
+`MessageHeaders.metadata` may include W3C Trace Context fields:
+
+- `traceparent` (required for correlation when present)
+- `tracestate` (optional)
+
+New fabric hops inject a `traceparent` when missing. Top-level `traceparent` on
+decoded header dicts is accepted and stored into metadata for interop.
+

@@ -4,6 +4,15 @@ This guide describes how to deploy MPREG with the unified fabric control plane
 for production use. MPREG uses a single routing fabric for RPC, pub/sub, queues,
 and cache. All cross-node routing is catalog-driven and gossip-propagated.
 
+## Production observability checklist
+
+1. Set `monitoring_auth_token`; keep `monitoring_enable_cors=false`.
+2. Scrape `GET /metrics/prometheus` (Bearer token).
+3. Alert on golden signals (`docs/ops/SLO_GOLDEN_SIGNALS.md`).
+4. Run `mpreg doctor` from a bastion against the monitoring URL.
+5. Enable `discovery_summary_signing_secret` if summaries cross trust boundaries.
+6. Use settings profiles (`mpreg/profiles/`) as the base; override identity/peers only.
+
 ## Architecture Summary
 
 - **Control plane**: RoutingCatalog + gossip + route announcements.
@@ -418,3 +427,17 @@ with port_range_context(2, "servers") as ports:
 This produces a shared fabric catalog with cross-cluster routing and path-vector
 route announcements. RPC calls with `target_cluster` are routed across the fabric
 without legacy federation modules.
+
+## Modern operations checklist
+
+1. **Monitoring auth**: set `monitoring_auth_token` (or `--monitoring-token` / `MPREG_MONITORING_TOKEN`).
+2. **CORS**: leave `monitoring_enable_cors=false` unless a browser UI requires it.
+3. **Prometheus**: scrape `GET /metrics/prometheus` (see `docs/ops/SLO_GOLDEN_SIGNALS.md`).
+4. **Doctor**: `mpreg doctor --url $MPREG_MONITORING_URL` before and after deploys.
+5. **Config**: `mpreg config-check path/to/settings.toml` (exits 2 on warnings).
+6. **Profiles**: start from `mpreg/profiles/*.toml` rather than hand-copying all knobs.
+7. **Summary signing**: if `discovery_summary_export_enabled`, set `discovery_summary_signing_secret`.
+8. **Route audit**: `mpreg monitor decisions` or `/routing/decisions` for multi-hop debugging.
+9. **Management reads**: `/mgmt/v1/cluster|nodes|routes|catalog|health` (mutations still planned).
+10. **Persistence**: set `persistence_config` explicitly when queues/cache must survive restart.
+

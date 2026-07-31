@@ -1,5 +1,13 @@
 # Unified Persistence Framework Plan
 
+> **Implementation status (2026-07):** Core framework is **implemented** under
+> `mpreg/core/persistence/` (backend, KV store, cache L2 store, queue store,
+> registry) with `PersistenceConfig` on `MPREGSettings` and
+> `from_toml` / `from_json` / `from_path` loaders. Monitoring exposes
+> `/metrics/persistence`. Remaining work is backend expansion (remote SQL/other stores),
+> deeper crash-recovery hardening, and doc examples — not greenfield scaffolding.
+>
+
 ## Goals
 
 - Provide a single, well-encapsulated persistence layer shared by cache, queues,
@@ -10,7 +18,10 @@
 - Expose ergonomic configuration and startup restore with explicit data
   directories and defaults.
 
-## Current Audit (What Exists Today)
+## Historical Audit (Pre-implementation notes)
+
+The bullets below describe the pre-framework state and are retained for
+context. Prefer the status banner at the top of this document.
 
 - **Cache**: `GlobalCacheManager` supports L2 persistent cache on disk
   (`persistent_cache_dir`), but the implementation is simplified and not a

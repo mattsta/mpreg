@@ -118,7 +118,7 @@ uv run mpreg server start-config mpreg/examples/persistence_settings.toml
 
 ## 🧪 Comprehensive Test Suite
 
-MPREG includes **2,000+ tests** covering unit, integration, and live topology
+MPREG includes **1,900+ tests** covering unit, integration, and live topology
 scenarios across RPC, pub/sub, queues, cache, and the fabric control plane.
 
 ```bash

@@ -1,73 +1,54 @@
 # Documentation Index
 
-This is the primary entry point for MPREG documentation.
+**Start here:** [BOOK.md](BOOK.md) — narrative learning path.
 
-## Getting Started
+## By role
 
-- `docs/GETTING_STARTED.md`
-- `docs/EXAMPLES.md`
-- `mpreg/examples/README.md`
+### New users
+- [BOOK.md](BOOK.md)
+- [GETTING_STARTED.md](GETTING_STARTED.md)
+- [EXAMPLES.md](EXAMPLES.md)
+- [WORKING_EXAMPLES.md](WORKING_EXAMPLES.md)
+- [ops/SETTINGS_GROUPS.md](ops/SETTINGS_GROUPS.md)
 
-## Architecture and Protocol
+### Application developers
+- [MPREG_CLIENT_GUIDE.md](MPREG_CLIENT_GUIDE.md)
+- [MPREG_PROTOCOL_SPECIFICATION.md](MPREG_PROTOCOL_SPECIFICATION.md)
+- [INTERMEDIATE_RESULTS_DESIGN.md](INTERMEDIATE_RESULTS_DESIGN.md)
+- [CACHING_SYSTEM.md](CACHING_SYSTEM.md)
+- [SQS_MESSAGE_QUEUE_SYSTEM.md](SQS_MESSAGE_QUEUE_SYSTEM.md)
 
-- `docs/ARCHITECTURE.md`
-- `docs/DISCOVERY_PLATFORM_ROADMAP.md`
-- `docs/MPREG_PROTOCOL_SPECIFICATION.md`
-- `docs/MPREG_CLIENT_GUIDE.md`
-- `docs/DNS_INTEROP_GUIDE.md`
+### Platform / fabric
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [FABRIC_ROUTE_POLICIES.md](FABRIC_ROUTE_POLICIES.md)
+- [FABRIC_LINK_STATE_ROUTING.md](FABRIC_LINK_STATE_ROUTING.md)
+- [FABRIC_ROUTE_SECURITY.md](FABRIC_ROUTE_SECURITY.md)
+- [DISCOVERY_PLATFORM_ROADMAP.md](DISCOVERY_PLATFORM_ROADMAP.md)
+- [DNS_INTEROP_GUIDE.md](DNS_INTEROP_GUIDE.md)
 
-## Operations and Observability
+### Operators
+- [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)
+- [OBSERVABILITY_TROUBLESHOOTING.md](OBSERVABILITY_TROUBLESHOOTING.md)
+- [ops/SLO_GOLDEN_SIGNALS.md](ops/SLO_GOLDEN_SIGNALS.md)
+- [DISCOVERY_RUNBOOKS.md](DISCOVERY_RUNBOOKS.md)
+- [DNS_RUNBOOKS.md](DNS_RUNBOOKS.md)
+- [FEDERATION_CLI.md](FEDERATION_CLI.md) (CLI reference; fabric runtime)
 
-- `docs/PRODUCTION_DEPLOYMENT.md`
-- `docs/OBSERVABILITY_TROUBLESHOOTING.md`
-- `docs/DISCOVERY_RUNBOOKS.md`
-- `docs/DNS_RUNBOOKS.md`
-- `docs/FEDERATION_CLI.md`
-- `docs/FEDERATION_CLI_QUICK_REFERENCE.md`
+### Extensions (optional)
+- Blockchain: [BLOCKCHAIN_COMPLETE_GUIDE.md](BLOCKCHAIN_COMPLETE_GUIDE.md),
+  [BLOCKCHAIN_ARCHITECTURE.md](BLOCKCHAIN_ARCHITECTURE.md),
+  [BLOCKCHAIN_MESSAGE_QUEUE_ARCHITECTURE.md](BLOCKCHAIN_MESSAGE_QUEUE_ARCHITECTURE.md)
+- DAO: [DAO_COMPREHENSIVE_GUIDE.md](DAO_COMPREHENSIVE_GUIDE.md),
+  [DAO_INTEGRATION_EXAMPLES.md](DAO_INTEGRATION_EXAMPLES.md)
+- Primitives: [MERKLE_TREE_GUIDE.md](MERKLE_TREE_GUIDE.md),
+  [VECTOR_CLOCK_GUIDE.md](VECTOR_CLOCK_GUIDE.md)
 
-## Fabric Routing and Security
+### Reference matrices and historical notes
+- [TEST_PARITY_MATRIX.md](TEST_PARITY_MATRIX.md)
+- [PERSISTENCE_FRAMEWORK_PLAN.md](PERSISTENCE_FRAMEWORK_PLAN.md) — persistence design notes
+- [MANAGEMENT_UI_CLI_NEXT_STEPS.md](MANAGEMENT_UI_CLI_NEXT_STEPS.md) — management API surface notes
+- [archive/README.md](archive/README.md)
 
-- `docs/FABRIC_LINK_STATE_ROUTING.md`
-- `docs/FABRIC_ROUTE_POLICIES.md`
-- `docs/FABRIC_ROUTE_SECURITY.md`
-- `docs/INTERMEDIATE_RESULTS_DESIGN.md`
-- `docs/TEST_PARITY_MATRIX.md`
-
-## Persistence and Storage
-
-- `docs/PERSISTENCE_FRAMEWORK_PLAN.md`
-
-## Federation System
-
-- `docs/FEDERATION_ARCHITECTURE.md`
-- `docs/FEDERATION_ARCHITECTURE_AND_FAULT_TOLERANCE.md`
-- `docs/FEDERATION_DEVELOPER_QUICK_REFERENCE.md`
-- `docs/FEDERATION_QUICK_START_EXAMPLES.md`
-- `docs/FEDERATED_MULTI_CLUSTER_RPC_IMPLEMENTATION.md`
-- `docs/FEDERATION_ALERTING_GUIDE.md`
-- `docs/BYZANTINE_FAULT_DETECTION_DEBUG_GUIDE.md`
-
-## Caching, Queue, and Pub/Sub
-
-- `docs/CACHING_SYSTEM.md`
-- `docs/CACHE_FEDERATION_GUIDE.md`
-- `docs/CACHE_FEDERATION_CONFLICT_RESOLUTION.md`
-- `docs/SQS_MESSAGE_QUEUE_SYSTEM.md`
-
-## Blockchain and Governance
-
-- `docs/BLOCKCHAIN_COMPLETE_GUIDE.md`
-- `docs/BLOCKCHAIN_ARCHITECTURE.md`
-- `docs/BLOCKCHAIN_MESSAGE_QUEUE_ARCHITECTURE.md`
-- `docs/DAO_COMPREHENSIVE_GUIDE.md`
-- `docs/DAO_INTEGRATION_EXAMPLES.md`
-- `docs/MERKLE_TREE_GUIDE.md`
-- `docs/VECTOR_CLOCK_GUIDE.md`
-
-## Management Plane (Planned)
-
-- `docs/MANAGEMENT_UI_CLI_NEXT_STEPS.md`
-
-## Archived Plans and Status Docs
-
-- `docs/archive/README.md`
+### Historical federation docs
+Guides named `FEDERATION_*` describe topology and ops patterns; the **code path
+is `mpreg/fabric/`**. Prefer ARCHITECTURE + fabric guides for new work.

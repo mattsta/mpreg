@@ -2,7 +2,7 @@
 
 Welcome to **MPREG** (Matt's Protocol for Results Everywhere Guaranteed) - the distributed RPC system that makes complex distributed computing feel effortless. This guide will take you from zero to hero with comprehensive examples, performance insights, and architectural best practices.
 
-For the full documentation index, see `docs/README.md`.
+For the full documentation path, see `docs/BOOK.md` (narrative) and `docs/README.md` (index).
 
 ## 📋 Table of Contents
 
@@ -26,7 +26,7 @@ cd mpreg
 uv sync
 
 # Verify installation
-uv run pytest  # Should see 2,000+ passing tests
+uv run pytest  # Should see 1,900+ collected tests
 ```
 
 ### Your First MPREG Application
@@ -56,9 +56,13 @@ server.register_command(
     version="1.0.0",
 )
 
-# Use it
+# Use it — function_id/version are optional for the happy path
 print(f"MPREG_URL={server_url}")
 async with MPREGClientAPI(server_url) as client:
+    result = await client.call("add", 5, 10, locs=frozenset(["compute"]))
+    print(f"Result: {result}")  # Result: 15
+
+    # Optional: pin identity + version when multiple implementations coexist
     result = await client.call(
         "add",
         5,
@@ -67,7 +71,16 @@ async with MPREGClientAPI(server_url) as client:
         function_id="math.add",
         version_constraint=">=1.0.0,<2.0.0",
     )
-    print(f"Result: {result}")  # Result: 15
+```
+
+### Profiles and doctor (recommended local path)
+
+```bash
+uv run mpreg profile list
+uv run mpreg config-check $(uv run mpreg profile path dev)
+# start with monitoring enabled in settings, then:
+export MPREG_MONITORING_URL=http://127.0.0.1:<monitoring-port>
+uv run mpreg doctor
 ```
 
 ### High Availability Client (Cluster Map)
@@ -1035,7 +1048,8 @@ server = MPREGServer(
         port=allocate_port("servers"),
         monitoring_enabled=True,
         monitoring_port=allocate_port("monitoring"),
-        monitoring_enable_cors=True,
+        monitoring_enable_cors=False,
+        # monitoring_auth_token="dev-only-token",,
     )
 )
 
@@ -1250,3 +1264,14 @@ MPREG gives you the power to build distributed systems that feel like single-mac
 ---
 
 _This guide represents the current state of MPREG after comprehensive modernization and testing. All performance metrics are based on real benchmarks and production-ready examples._
+
+## Simple registration (defaults)
+
+`function_id` defaults to the command **name** and `version` defaults to `1.0.0`
+when omitted. For multi-version production routing, set explicit reverse-DNS
+`function_id` values (for example `math.add`) and semantic versions.
+
+```python
+server.register_command("add", add_numbers, ["compute"])
+# equivalent function_id="add", version="1.0.0"
+```

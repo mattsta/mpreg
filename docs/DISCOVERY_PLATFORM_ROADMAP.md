@@ -102,7 +102,7 @@ kept in sync with implementation changes.
   but automatic client redirection from global summaries still requires opt-in.
 - Tenant-aware discovery visibility now supports authenticated binding; request
   overrides remain configurable for legacy clients.
-- Optional signature verification for summary exports is not implemented.
+- Optional HMAC signature verification for summary exports is implemented (`discovery_summary_signing_secret`, `mpreg.core.discovery_signatures`).
 - Load/chaos harnesses are manual and not yet wired into CI gates.
 
 ## Executive Summary

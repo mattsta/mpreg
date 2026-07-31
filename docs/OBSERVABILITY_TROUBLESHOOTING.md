@@ -77,6 +77,65 @@ Useful transport endpoints:
 - `uv run mpreg monitor status --url http://127.0.0.1:<port>` for a compact
   admin summary (health + persistence + transport + unified metrics).
 
+### Prometheus scrape
+
+- `GET /metrics/prometheus` — OpenMetrics-style text exposition of golden signals
+  (`mpreg_info`, health scores, unified metric gauges, persistence flatten).
+- CLI: `mpreg monitor prometheus --url http://host:<monitoring-port>`
+- Scrape with Prometheus `metrics_path: /metrics/prometheus`.
+
+### Monitoring authentication
+
+When `monitoring_auth_token` is set (settings or `--monitoring-token` /
+`MPREG_MONITORING_TOKEN`), all monitoring HTTP routes require either:
+
+- `Authorization: Bearer <token>`, or
+- `X-MPREG-Monitoring-Token: <token>`
+
+Unauthenticated requests receive `401`. Leave the token unset for local dev only.
+
+CORS defaults to **off** (`monitoring_enable_cors=false`). Enable only for
+browser-based UIs.
+
+### Management read API
+
+Normalized read models (mutations still deferred):
+
+- `/mgmt/v1/cluster`, `/mgmt/v1/nodes`, `/mgmt/v1/routes`, `/mgmt/v1/catalog`,
+  `/mgmt/v1/health`
+- `POST /mgmt/v1/policy/dry-run` — evaluate namespace/routing policy without apply
+
+### CLI output format
+
+Most `mpreg monitor` one-shot and watch commands accept `--format json|table|plain` (default `json`). `monitor status` uses `--output`; `monitor prometheus` prints raw text.
+
+### Doctor
+
+```bash
+export MPREG_MONITORING_URL=http://127.0.0.1:<port>
+mpreg doctor
+```
+
+Exits non-zero if any probe fails.
+
+### Route decision audit
+
+```bash
+mpreg monitor decisions --url "$MPREG_MONITORING_URL" --limit 50 --format table
+```
+
+### Config check
+
+```bash
+mpreg config-check path/to/settings.toml --format json
+```
+
+### Trace context
+
+Fabric `MessageHeaders.metadata` carries W3C `traceparent` (and optional
+`tracestate`). New fabric hops inject a traceparent when missing via
+`mpreg.core.observability.trace_context`. Full OTel SDK export remains optional.
+
 ## Troubleshooting Flow
 
 ### 1) Peer Discovery Issues

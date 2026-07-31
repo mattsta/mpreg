@@ -276,15 +276,22 @@ Logging is centralized in `mpreg/core/logging.py` with module-based filtering.
 
 - **Module filtering**: enable targeted debug output (`fabric.router`, `goodbye`, `cluster`).
 - **Structured context**: correlation IDs and routing paths in logs.
-- **Metrics**: `mpreg/core/statistics.py` exports fabric and system metrics.
-- **Route trace**: use `RouteTable.explain_selection()` for next-hop decisions.
+- **Metrics**: JSON subsystem metrics + Prometheus text at `/metrics/prometheus`.
+- **Route trace**: `RouteTable.explain_selection()` and `/routing/trace`.
+- **Route decisions**: in-memory ring buffer at `/routing/decisions` (filter by
+  `correlation_id` / `traceparent`).
+- **Trace context**: W3C `traceparent` in `MessageHeaders.metadata`
+  (`mpreg.core.observability.trace_context`).
+- **Structured errors**: `mpreg.core.errors.MpregError` codes on RPC failures.
 - **Peer-snapshot diagnostics**: `MPREG_DEBUG_PEER_SNAPSHOT=1` emits
   snapshot exclusion and dial-failure demotion events.
+- **Doctor**: `mpreg doctor` multi-endpoint probe against monitoring URL.
 
 Operational recommendations:
 
 - Keep default log level at INFO for throughput tests.
 - Use module filters for narrow triage (avoid global DEBUG in large clusters).
+- Scrape Prometheus with bearer auth; alert via `docs/ops/SLO_GOLDEN_SIGNALS.md`.
 - Validate routing convergence with the fabric auto-discovery tests.
 
 See `docs/OBSERVABILITY_TROUBLESHOOTING.md` for a focused troubleshooting flow.
@@ -299,7 +306,43 @@ For protocol specifics, see `docs/MPREG_PROTOCOL_SPECIFICATION.md`.
 
 ## See Also
 
-- `docs/MANAGEMENT_UI_CLI_NEXT_STEPS.md`
+- `docs/MANAGEMENT_UI_CLI_NEXT_STEPS.md` (management API surface)
 - `docs/FABRIC_LINK_STATE_ROUTING.md`
 - `docs/FABRIC_ROUTE_POLICIES.md`
 - `docs/FABRIC_ROUTE_SECURITY.md`
+
+## Consensus API (canonical)
+
+For Raft and coordination entry points, see `mpreg/server_pkg/consensus.md`.
+Prefer `ProductionRaft` over fabric transport for strong consensus; use
+`ConsensusManager` only for lightweight fabric coordination signals.
+
+## Composition root (`server.py` + `server_pkg`)
+
+The process façade is still `MPREGServer` in `mpreg/server.py`. Pure policy and
+read-model builders are extracted to `mpreg/server_pkg/` so dial math and mgmt
+payloads can be unit-tested without booting a server:
+
+| Module | Responsibility |
+|--------|----------------|
+| `types.py` | Shared server dataclasses (stats, departed peers, catalog adapters) |
+| `peer_dial.py` | `PeerDialState`, connection policy, backoff, parallelism, exploration |
+| `monitoring_metrics.py` | DNS + persistence metric dicts |
+| `discovery_metrics.py` | Discovery summary/cache/policy/lag metric builders |
+| `mgmt_summary.py` | `/mgmt/v1` cluster/nodes/routes/catalog/health summaries |
+| `consensus.md` | Canonical Raft vs fabric consensus matrix |
+
+Further extraction (Cluster/RPC engine, discovery handlers) can continue
+incrementally without changing the public `MPREGServer` entry point.
+
+## Operator surfaces
+
+- Monitoring HTTP (health, metrics, topology, discovery, DNS, prometheus, mgmt)
+- Route decision ring buffer: `/routing/decisions`
+- Settings groups: `docs/ops/SETTINGS_GROUPS.md`
+- Narrative docs: `docs/BOOK.md`
+
+## Structured errors
+
+See `mpreg.core.errors` and the protocol specification error code table.
+

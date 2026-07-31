@@ -18,6 +18,12 @@ For in-repo usage, prefer the unified `MPREGClientAPI` or the transport factory 
 opening raw sockets directly. External clients should follow the wire protocol described in
 `docs/MPREG_PROTOCOL_SPECIFICATION.md`.
 
+### Structured errors and retries
+
+See [Call retries and deadlines](#call-retries-and-deadlines) for
+`ClientCallPolicy`, `MpregError` codes, and HA non-retryable short-circuit
+behavior on `MPREGClusterClient`.
+
 ---
 
 ## 1. MPREG RPC Client
@@ -796,3 +802,72 @@ mpreg client dns-node-decode b32-...
 ```
 
 This guide provides everything needed to start using MPREG's RPC, cluster-aware, PubSub clients, the in-process cache manager, and the optional DNS gateway.
+
+## Call retries and deadlines
+
+```python
+from mpreg.client.client_api import MPREGClientAPI
+from mpreg.client.call_policy import ClientCallPolicy
+from mpreg.core.errors import MpregError, MpregErrorCode
+
+policy = ClientCallPolicy(
+    max_attempts=3,
+    base_backoff_seconds=0.05,
+    max_backoff_seconds=1.0,
+    jitter_seconds=0.05,
+    deadline_seconds=5.0,
+    retry_on_timeout=True,
+    retry_on_unavailable=True,
+)
+async with MPREGClientAPI("ws://127.0.0.1:<port>", call_policy=policy) as client:
+    try:
+        result = await client.call("echo", "hi")
+    except MpregError as exc:
+        # Branch on stable numeric codes (also on exc.rpc_error.code)
+        if exc.code == int(MpregErrorCode.COMMAND_NOT_FOUND):
+            ...
+        elif exc.retryable:
+            ...
+        raise
+    # Optional correlation aid when debugging multi-hop fabric paths:
+    print(client.last_trace_context())
+```
+
+| Code | Name | Typical retry? |
+|------|------|----------------|
+| 1001 | COMMAND_NOT_FOUND | No (cluster client may try summary redirect) |
+| 1002 | VERSION_MISMATCH | No |
+| 1003 | HOP_BUDGET_EXCEEDED | No |
+| 1004 | POLICY_DENIED | No |
+| 1005 | ROUTE_NOT_FOUND | Yes (default) |
+| 1006 | TIMEOUT | Yes |
+| 1007 | UNAVAILABLE | Yes |
+| 1008 | INVALID_ARGUMENT | No |
+| 1009–1010 | AUTH_* | No |
+| 1099 | INTERNAL | Operator-dependent |
+
+### High-availability cluster client
+
+```python
+from mpreg.client.cluster_client import MPREGClusterClient
+
+client = MPREGClusterClient(
+    seed_urls=("ws://hub-a:<port>", "ws://hub-b:<port>"),
+    preferred_region="us-east",
+    auto_summary_redirect=True,
+)
+# Non-retryable MpregError stops endpoint rotation (except command-not-found
+# when summary redirect is enabled).
+```
+
+Endpoint selection already weights latency and error rate. Keep
+`auto_summary_redirect=False` (default) for single-cluster deployments.
+
+### Trace correlation
+
+Fabric messages carry W3C `traceparent` in header metadata. Correlate hops with:
+
+```bash
+mpreg monitor decisions --correlation-id <id> --url $MPREG_MONITORING_URL
+```
+

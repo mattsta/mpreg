@@ -21,7 +21,7 @@ Why is this useful? I made this because I had some models with datasets I wanted
 - **Multi-tier caching** with intelligent eviction policies and dependency tracking
 - **Production Raft consensus** for distributed coordination and state management
 - **Blockchain components** for immutable state and transaction management
-- **2,000+ comprehensive tests** with property-based validation and type safety
+- **1,900+ comprehensive tests** with property-based validation and type safety
 
 ## Summary the Second
 
@@ -61,7 +61,7 @@ Why is this useful? I made this because I had some models with datasets I wanted
 
 ### 📈 **Reliability & Monitoring**
 
-- ✅ **Comprehensive Testing**: 2,000+ tests with unit, integration, and property/hypothesis-based validation and type safety
+- ✅ **Comprehensive Testing**: 1,900+ tests with unit, integration, and property/hypothesis-based validation and type safety
 - 📊 **Real-Time Metrics**: Built-in monitoring endpoints with distributed tracing
 - 🚨 **Fault Tolerance**: Circuit breakers, split-brain prevention, and network partition handling
 
@@ -451,7 +451,7 @@ tools/debug/debug_leader_election_failures.py    # Leader election failure analy
 
 ## 🧪 Testing Infrastructure
 
-MPREG includes sophisticated testing infrastructure with 2,000+ tests supporting concurrent execution:
+MPREG includes sophisticated testing infrastructure with 1,900+ tests supporting concurrent execution:
 
 ### 🔄 **Concurrent Testing Support**
 
@@ -643,7 +643,7 @@ uv run mpreg topology
 ### 🛠️ **Operations and Management**
 
 - **[Observability + Troubleshooting](docs/OBSERVABILITY_TROUBLESHOOTING.md)** - Logging scopes, debugging flow, and monitoring
-- **[Management UI + CLI Plan](docs/MANAGEMENT_UI_CLI_NEXT_STEPS.md)** - Full management plane spec and roadmap
+- **[Management plane notes](docs/MANAGEMENT_UI_CLI_NEXT_STEPS.md)** - Management API foundation and CLI surface
 
 ### 🌐 **Federation System Documentation**
 
@@ -765,7 +765,7 @@ from mpreg import FederationGraph, GeographicCoordinate, MPREGClientAPI
 
 The above demos all work! The system has evolved significantly since the early prototype days and now includes:
 
-✅ **Production-Ready**: Comprehensive test coverage (2,000+ tests) and robust error handling  
+✅ **Production-Ready**: Comprehensive test coverage (1,900+ tests) and robust error handling  
 ✅ **Modern Client API**: `MPREGClientAPI` plus HA discovery via `MPREGClusterClient`  
 ✅ **Concurrent Requests**: Multiple simultaneous requests over single connections  
 ✅ **Self-Managing Components**: Automatic connection pooling, peer discovery, and cleanup  
@@ -857,7 +857,7 @@ MPREG has evolved from experimental prototype to **production-ready distributed 
 
 **🔐 Reliability & Safety**
 
-- ✅ **2,000+ comprehensive tests** covering edge cases and failure scenarios
+- ✅ **1,900+ comprehensive tests** covering edge cases and failure scenarios
 - ✅ **Byzantine fault tolerance** with production Raft consensus
 - ✅ **Circuit breaker patterns** for cascading failure prevention
 - ✅ **Graceful degradation** under high load and network stress
@@ -957,7 +957,7 @@ MPREG continues evolving toward an even more comprehensive distributed computing
 
 ### ✅ **Recently Completed**
 
-- ✅ ~~Add comprehensive automated test suite~~ **DONE!** (384+ tests covering distributed scenarios)
+- ✅ ~~Add comprehensive automated test suite~~ **DONE!** (1,900+ tests covering distributed scenarios)
 - ✅ ~~Modern client library with async/await~~ **DONE!** (MPREGClientAPI + MPREGClusterClient)
 - ✅ ~~Easy server function registration~~ **DONE!** (server.register_command() interface)
 - ✅ ~~Planet-scale federation capabilities~~ **DONE!** (Geographic routing with hub-and-spoke)

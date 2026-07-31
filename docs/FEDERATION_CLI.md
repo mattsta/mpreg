@@ -984,3 +984,31 @@ uv run mpreg --version
 ```
 
 For additional support, refer to the main MPREG documentation or open an issue on the project repository.
+
+## Fabric naming note
+
+CLI groups historically say "federation"; the runtime control plane is the
+**fabric** (`mpreg/fabric/`). Prefer `mpreg monitor`, `mpreg doctor`, and
+`mpreg discovery` for day-2 ops. Top-level `federation-metrics` is the
+federation-era metrics helper (distinct from `mpreg monitor metrics`).
+
+## Doctor and route decisions (fabric ops)
+
+```bash
+export MPREG_MONITORING_URL=http://127.0.0.1:<monitoring-port>
+mpreg doctor
+mpreg monitor decisions --limit 50 --format table
+mpreg monitor prometheus
+```
+
+Federation CLI names remain for history; the runtime plane is the **fabric**.
+
+## Output format
+
+Most monitoring subcommands accept `--format json|table|plain`:
+
+```bash
+mpreg monitor health --url "$MPREG_MONITORING_URL" --format table
+mpreg monitor metrics --system unified --format json
+mpreg doctor --format json
+```
