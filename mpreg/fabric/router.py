@@ -331,9 +331,10 @@ class FabricRouter:
         self.handler_registry = RouteHandlerRegistry()
         self.metrics = RoutingMetrics()
         self.route_cache: dict[str, tuple[FabricRouteResult, float]] = {}
-        from mpreg.fabric.route_decision_log import get_default_route_decision_log
+        from mpreg.fabric.route_decision_log import RouteDecisionLog
 
-        self.decision_log = get_default_route_decision_log()
+        # Per-router log (not process-global) so multi-server processes stay isolated.
+        self.decision_log = RouteDecisionLog()
 
     async def route_message(self, message: UnifiedMessage) -> FabricRouteResult:
         start_time = time.time()
@@ -448,12 +449,11 @@ class FabricRouter:
         )
         try:
             from mpreg.core.observability.trace_context import extract_traceparent
-            from mpreg.fabric.route_decision_log import (
-                get_default_route_decision_log,
-                make_record_from_route,
-            )
+            from mpreg.fabric.route_decision_log import make_record_from_route
 
-            log = getattr(self, "decision_log", None) or get_default_route_decision_log()
+            log = getattr(self, "decision_log", None)
+            if log is None:
+                return
             log.record(
                 make_record_from_route(
                     message_id=str(message.message_id),

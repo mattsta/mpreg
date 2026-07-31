@@ -85,3 +85,5 @@ __all__ = [
     "MessageStats",
     "RemoteCommandStats",
 ]
+
+# openapi_surface — machine-readable HTTP contract

@@ -257,6 +257,8 @@ class FederationMonitoringSystem:
     policy_dry_run_provider: (
         Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse] | None
     ) = None
+    # Per-server route decision audit log (bound from FabricRouter).
+    route_decision_log: object | None = None
 
     # Web server components
     app: web.Application = field(init=False)
@@ -356,10 +358,16 @@ class FederationMonitoringSystem:
         self.app.router.add_get("/routing/decisions", self._get_route_decisions)
         self.app.router.add_get("/routing/link-state", self._get_link_state_status)
         self.app.router.add_post("/mgmt/v1/policy/dry-run", self._post_policy_dry_run)
+        self.app.router.add_post("/mgmt/v1/nodes/drain", self._post_mgmt_not_implemented)
+        self.app.router.add_post("/mgmt/v1/peers/detach", self._post_mgmt_not_implemented)
+        self.app.router.add_post("/mgmt/v1/policy/apply", self._post_mgmt_not_implemented)
+        self.app.router.add_get("/mgmt/v1/audit", self._get_mgmt_audit)
 
         # Utility endpoints
         self.app.router.add_get("/", self._get_monitoring_index)
         self.app.router.add_get("/endpoints", self._get_available_endpoints)
+        self.app.router.add_get("/openapi.json", self._get_openapi)
+        self.app.router.add_get("/mgmt/v1/schema", self._get_openapi)
 
     def _setup_middleware(self) -> None:
         """Configure middleware for request processing."""
@@ -1765,7 +1773,10 @@ class FederationMonitoringSystem:
 
     async def _get_route_decisions(self, request: web.Request) -> web.Response:
         """Return recent fabric route decisions (ring buffer audit log)."""
-        from mpreg.fabric.route_decision_log import get_default_route_decision_log
+        from mpreg.fabric.route_decision_log import (
+            RouteDecisionLog,
+            get_default_route_decision_log,
+        )
 
         try:
             limit = int(request.query.get("limit", "50"))
@@ -1773,16 +1784,63 @@ class FederationMonitoringSystem:
             limit = 50
         message_id = request.query.get("message_id")
         correlation_id = request.query.get("correlation_id")
-        log = get_default_route_decision_log()
+        log = getattr(self, "route_decision_log", None)
+        if log is None:
+            # Backward-compatible fallback for tests that don't bind a server log.
+            log = get_default_route_decision_log()
+        assert isinstance(log, RouteDecisionLog) or hasattr(log, "recent")
         records = log.recent(
             limit=limit, message_id=message_id, correlation_id=correlation_id
         )
         return web.json_response(
             {
                 "decisions": [r.to_dict() for r in records],
-                "stats": log.stats(),
+                "stats": log.stats() if hasattr(log, "stats") else {},
             }
         )
+
+    async def _post_mgmt_not_implemented(self, request: web.Request) -> web.Response:
+        """Reserved mutation endpoint — returns 501 until control-plane apply lands."""
+        return web.json_response(
+            {
+                "error": "not_implemented",
+                "code": 501,
+                "path": request.path,
+                "message": (
+                    "Management mutations (drain/detach/policy apply) are reserved. "
+                    "Use policy dry-run and namespace_policy CLI until apply is enabled."
+                ),
+                "audit": False,
+            },
+            status=501,
+        )
+
+    async def _get_mgmt_audit(self, request: web.Request) -> web.Response:
+        """Audit trail placeholder (route decisions are the current read-path audit)."""
+        from mpreg.fabric.route_decision_log import get_default_route_decision_log
+
+        log = getattr(self, "route_decision_log", None) or get_default_route_decision_log()
+        try:
+            limit = int(request.query.get("limit", "50"))
+        except ValueError:
+            limit = 50
+        records = log.recent(limit=limit) if hasattr(log, "recent") else []
+        return web.json_response(
+            {
+                "audit_kind": "route_decisions_read_path",
+                "mutations": [],
+                "note": "Durable admin mutation audit lands with mgmt apply APIs.",
+                "recent_route_decisions": [
+                    r.to_dict() if hasattr(r, "to_dict") else r for r in records
+                ],
+            }
+        )
+
+    async def _get_openapi(self, request: web.Request) -> web.Response:
+        """Minimal OpenAPI 3 surface for monitoring + mgmt read APIs."""
+        from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
+
+        return web.json_response(build_monitoring_openapi())
 
     async def _post_policy_dry_run(self, request: web.Request) -> web.Response:
         """Dry-run namespace policy evaluation without applying changes."""
@@ -2698,6 +2756,7 @@ def create_federation_monitoring_system(
     | None = None,
     policy_dry_run_provider: Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse]
     | None = None,
+    route_decision_log: object | None = None,
 ) -> FederationMonitoringSystem:
     """Create a federation monitoring system with specified configuration."""
 
@@ -2726,6 +2785,7 @@ def create_federation_monitoring_system(
         dns_metrics_provider=dns_metrics_provider,
         mgmt_summary_provider=mgmt_summary_provider,
         policy_dry_run_provider=policy_dry_run_provider,
+        route_decision_log=route_decision_log,
     )
 
     monitoring_system.monitoring_port = monitoring_port
