@@ -1,0 +1,12 @@
+# Single-node production-ish process (RPC/cache/queue local)
+[mpreg]
+name = "single-node"
+cluster_id = "single"
+host = "0.0.0.0"
+monitoring_enabled = true
+monitoring_enable_cors = false
+enable_default_cache = true
+enable_default_queue = true
+fabric_routing_enabled = true
+gossip_interval = 5.0
+log_level = "INFO"

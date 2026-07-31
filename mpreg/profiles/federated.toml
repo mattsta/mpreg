@@ -1,0 +1,15 @@
+# Cross-cluster fabric member with path-vector routing emphasis
+[mpreg]
+name = "federated-node"
+cluster_id = "region-east"
+host = "0.0.0.0"
+monitoring_enabled = true
+monitoring_enable_cors = false
+enable_default_cache = true
+enable_default_queue = true
+enable_cache_federation = true
+fabric_routing_enabled = true
+fabric_route_ttl_seconds = 30.0
+fabric_route_announce_interval_seconds = 10.0
+gossip_interval = 5.0
+log_level = "INFO"

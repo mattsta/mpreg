@@ -1,0 +1,14 @@
+# Multi-node cluster member (set connect/peers at deploy time)
+[mpreg]
+name = "cluster-node"
+cluster_id = "cluster-a"
+host = "0.0.0.0"
+monitoring_enabled = true
+monitoring_enable_cors = false
+enable_default_cache = true
+enable_default_queue = true
+fabric_routing_enabled = true
+gossip_interval = 5.0
+log_level = "INFO"
+# connect = "ws://seed-host:<port>"
+# peers = ["ws://peer1:<port>", "ws://peer2:<port>"]

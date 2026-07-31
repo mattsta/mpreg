@@ -1,0 +1,13 @@
+# Local development — single node, verbose-friendly defaults
+[mpreg]
+name = "dev-node"
+cluster_id = "dev-cluster"
+host = "127.0.0.1"
+# port omitted → auto-allocate
+monitoring_enabled = true
+monitoring_enable_cors = false
+enable_default_cache = false
+enable_default_queue = false
+fabric_routing_enabled = true
+gossip_interval = 2.0
+log_level = "INFO"

@@ -1,0 +1,15 @@
+# Discovery resolver node (delta + summary caches)
+[mpreg]
+name = "discovery-resolver"
+cluster_id = "discovery"
+host = "0.0.0.0"
+monitoring_enabled = true
+monitoring_enable_cors = false
+fabric_routing_enabled = true
+discovery_resolver_mode = true
+discovery_resolver_seed_on_start = true
+discovery_summary_resolver_mode = true
+discovery_summary_export_enabled = true
+discovery_summary_export_interval_seconds = 30.0
+gossip_interval = 5.0
+log_level = "INFO"
