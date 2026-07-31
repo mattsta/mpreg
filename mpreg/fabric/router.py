@@ -331,6 +331,9 @@ class FabricRouter:
         self.handler_registry = RouteHandlerRegistry()
         self.metrics = RoutingMetrics()
         self.route_cache: dict[str, tuple[FabricRouteResult, float]] = {}
+        from mpreg.fabric.route_decision_log import get_default_route_decision_log
+
+        self.decision_log = get_default_route_decision_log()
 
     async def route_message(self, message: UnifiedMessage) -> FabricRouteResult:
         start_time = time.time()
@@ -426,6 +429,11 @@ class FabricRouter:
     def _log_route_decision(
         self, message: UnifiedMessage, route_result: FabricRouteResult, cached: bool
     ) -> None:
+        targets = [
+            target.node_id or target.cluster_id or target.target_id
+            for target in route_result.targets
+        ]
+        path = tuple(route_result.routing_path or ())
         router_log.opt(lazy=True).debug(
             "Fabric route decision: message_id={message_id} topic={topic} type={message_type} "
             "reason={reason} cached={cached} targets={targets} path={path} hops={hops}",
@@ -434,13 +442,34 @@ class FabricRouter:
             message_type=lambda: message.message_type.value,
             reason=lambda: route_result.reason.value,
             cached=lambda: cached,
-            targets=lambda: [
-                target.node_id or target.cluster_id or target.target_id
-                for target in route_result.targets
-            ],
-            path=lambda: route_result.routing_path,
+            targets=lambda: targets,
+            path=lambda: path,
             hops=lambda: route_result.hops_required,
         )
+        try:
+            from mpreg.core.observability.trace_context import extract_traceparent
+            from mpreg.fabric.route_decision_log import (
+                get_default_route_decision_log,
+                make_record_from_route,
+            )
+
+            log = getattr(self, "decision_log", None) or get_default_route_decision_log()
+            log.record(
+                make_record_from_route(
+                    message_id=str(message.message_id),
+                    correlation_id=str(message.headers.correlation_id or ""),
+                    topic=str(message.topic),
+                    message_type=str(message.message_type.value),
+                    reason=str(route_result.reason.value),
+                    cached=cached,
+                    targets=[str(t) for t in targets if t],
+                    routing_path=[str(p) for p in path],
+                    hops_required=int(route_result.hops_required or 0),
+                    traceparent=extract_traceparent(message.headers.metadata),
+                )
+            )
+        except Exception:  # never break routing for observability
+            router_log.opt(lazy=True).debug("route decision log record failed")
 
     async def _compute_route(
         self, message: UnifiedMessage, policy: FabricRoutingPolicy

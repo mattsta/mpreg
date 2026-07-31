@@ -58,6 +58,37 @@ class MessageHeaders:
     priority: RoutingPriority = RoutingPriority.NORMAL
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    def with_trace_context(
+        self,
+        *,
+        traceparent: str | None = None,
+        tracestate: str | None = None,
+    ) -> MessageHeaders:
+        """Return headers with W3C trace context injected into metadata."""
+        from mpreg.core.observability.trace_context import inject_trace_metadata
+
+        meta = inject_trace_metadata(
+            dict(self.metadata),
+            traceparent=traceparent,
+            tracestate=tracestate,
+        )
+        return MessageHeaders(
+            correlation_id=self.correlation_id,
+            source_cluster=self.source_cluster,
+            target_cluster=self.target_cluster,
+            routing_path=self.routing_path,
+            federation_path=self.federation_path,
+            hop_budget=self.hop_budget,
+            priority=self.priority,
+            metadata=meta,
+        )
+
+    @property
+    def traceparent(self) -> str | None:
+        from mpreg.core.observability.trace_context import extract_traceparent
+
+        return extract_traceparent(self.metadata)
+
 @dataclass(frozen=True, slots=True)
 class UnifiedMessage:
     """Canonical message envelope for the routing fabric."""

@@ -56,6 +56,13 @@ def message_headers_from_dict(payload: dict[str, Any]) -> MessageHeaders:
     metadata = payload.get("metadata", {})
     if not isinstance(metadata, dict):
         metadata = {}
+    else:
+        metadata = dict(metadata)
+    # Accept top-level traceparent for interop; store in metadata.
+    if payload.get("traceparent") and "traceparent" not in metadata:
+        metadata["traceparent"] = payload["traceparent"]
+    if payload.get("tracestate") and "tracestate" not in metadata:
+        metadata["tracestate"] = payload["tracestate"]
     return MessageHeaders(
         correlation_id=correlation_id,
         source_cluster=payload.get("source_cluster"),

@@ -1,0 +1,67 @@
+"""W3C Trace Context helpers for fabric message metadata.
+
+Full OpenTelemetry SDK export is optional; these helpers ensure multi-hop
+fabric messages can carry ``traceparent`` / ``tracestate`` in
+``MessageHeaders.metadata`` without requiring a hard OTel dependency.
+"""
+
+from __future__ import annotations
+
+import secrets
+from typing import Any, Mapping, MutableMapping
+
+TRACEPARENT_KEY = "traceparent"
+TRACESTATE_KEY = "tracestate"
+
+def generate_trace_id() -> str:
+    """Return a 16-byte trace id as 32 lowercase hex characters."""
+    return secrets.token_hex(16)
+
+def generate_span_id() -> str:
+    """Return an 8-byte span id as 16 lowercase hex characters."""
+    return secrets.token_hex(8)
+
+def generate_traceparent(*, sampled: bool = True) -> str:
+    """Build a W3C ``traceparent`` header value (version 00)."""
+    flags = "01" if sampled else "00"
+    return f"00-{generate_trace_id()}-{generate_span_id()}-{flags}"
+
+def extract_traceparent(metadata: Mapping[str, Any] | None) -> str | None:
+    if not metadata:
+        return None
+    value = metadata.get(TRACEPARENT_KEY)
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+def ensure_traceparent(metadata: MutableMapping[str, Any] | None = None) -> str:
+    """Return existing traceparent or create one; mutate metadata when provided."""
+    meta: MutableMapping[str, Any]
+    if metadata is None:
+        meta = {}
+    else:
+        meta = metadata
+    existing = extract_traceparent(meta)
+    if existing:
+        return existing
+    tp = generate_traceparent()
+    meta[TRACEPARENT_KEY] = tp
+    return tp
+
+def inject_trace_metadata(
+    metadata: MutableMapping[str, Any] | None = None,
+    *,
+    traceparent: str | None = None,
+    tracestate: str | None = None,
+) -> dict[str, Any]:
+    """Return a metadata dict with W3C trace fields injected."""
+    result: dict[str, Any] = dict(metadata or {})
+    tp = traceparent or extract_traceparent(result) or generate_traceparent()
+    result[TRACEPARENT_KEY] = tp
+    if tracestate is not None:
+        result[TRACESTATE_KEY] = tracestate
+    elif TRACESTATE_KEY not in result:
+        # Leave tracestate absent unless provided — valid per W3C.
+        pass
+    return result

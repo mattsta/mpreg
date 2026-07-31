@@ -1,4 +1,9 @@
 """
+
+Exception handling policy: supervisory loops catch Exception to keep
+membership liveness tasks alive; failures are logged at warning/error.
+Callers must not rely on swallowed protocol invariant errors.
+
 Membership and Failure Detection for the MPREG Fabric.
 
 This module implements advanced membership management and failure detection
