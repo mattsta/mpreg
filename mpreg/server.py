@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import hashlib
 import inspect
 import os
 import pprint as pp
@@ -61,16 +60,32 @@ PEER_SNAPSHOT_DIAG_ENABLED = (
     os.environ.get("MPREG_DEBUG_PEER_SNAPSHOT", "").strip().lower() in _DIAG_TRUE_VALUES
 )
 
-@dataclass(frozen=True, slots=True)
-class InternalDiscoverySubscriptionAnnouncer:
-    schedule: Callable[[Coroutine[Any, Any, None]], None]
-    announce: Callable[[], Coroutine[Any, Any, None]]
+from mpreg.server_pkg.types import (
+    CatalogDeltaObserverAdapter,
+    CatalogSnapshotDispatchState,
+    CommandExecutionResult,
+    DepartedPeer,
+    InternalDiscoverySubscriptionAnnouncer,
+    MessageStats,
+    RemoteCommandStats,
+)
 
-    def on_connection_established(self, event: ConnectionEvent) -> None:
-        self.schedule(self.announce())
-
-    def on_connection_lost(self, event: ConnectionEvent) -> None:
-        return
+from mpreg.server_pkg.peer_dial import (
+    PeerDialConnectionPolicy,
+    PeerDialDiagnosticSnapshot,
+    PeerDialLoopSnapshot,
+    PeerDialState,
+    backoff_base_seconds as _peer_dial_backoff_base_seconds_pure,
+    backoff_cap_seconds as _peer_dial_backoff_cap_seconds_pure,
+    dial_exploration_slots as _peer_dial_exploration_slots_pure,
+    dial_parallelism as _peer_dial_parallelism_pure,
+    dial_pressure as _peer_dial_pressure_pure,
+    reconcile_interval_seconds as _peer_dial_reconcile_interval_pure,
+    select_peer_connection_policy as _select_peer_connection_policy_pure,
+    selection_spread as _peer_dial_selection_spread_pure,
+    spread_fraction_for_url as _peer_dial_spread_fraction_pure,
+    target_connection_count as _peer_target_connection_count_pure,
+)
 
 from .core.cluster_map import (
     CatalogQueryRequest,
@@ -286,143 +301,6 @@ except RuntimeError:
 # maximum 4 GB messages should be enough for anybody, right?
 MPREG_DATA_MAX = 2**32
 
-@dataclass(slots=True)
-class MessageStats:
-    total_processed: int = 0
-    rpc_responses_skipped: int = 0
-    server_messages: int = 0
-    other_messages: int = 0
-
-@dataclass(slots=True)
-class RemoteCommandStats:
-    total: int = 0
-    last_command: str | None = None
-
-    def record(self, command: str) -> None:
-        self.total += 1
-        self.last_command = command
-
-@dataclass(frozen=True, slots=True)
-class DepartedPeer:
-    node_url: str
-    instance_id: str
-    cluster_id: str
-    reason: GoodbyeReason
-    departed_at: float
-    ttl_seconds: float
-
-    def is_expired(self, now: float | None = None) -> bool:
-        timestamp = now if now is not None else time.time()
-        return timestamp > (self.departed_at + self.ttl_seconds)
-
-@dataclass(slots=True)
-class PeerDialState:
-    """Adaptive dial scheduling state for a peer URL."""
-
-    consecutive_failures: int = 0
-    last_attempt_at: float = 0.0
-    last_success_at: float | None = None
-    next_attempt_at: float = 0.0
-
-    def can_attempt(self, now: float) -> bool:
-        return now >= self.next_attempt_at
-
-    def record_attempt(self, now: float) -> None:
-        self.last_attempt_at = now
-
-    def record_success(self, now: float) -> None:
-        self.consecutive_failures = 0
-        self.last_success_at = now
-        self.next_attempt_at = now
-
-    def record_failure(
-        self,
-        *,
-        now: float,
-        base_delay_seconds: float,
-        max_delay_seconds: float,
-        spread_fraction: float,
-    ) -> None:
-        self.consecutive_failures += 1
-        exponent = max(self.consecutive_failures - 1, 0)
-        if base_delay_seconds <= 0:
-            delay = max_delay_seconds
-        else:
-            delay = base_delay_seconds
-            max_exponent = 0
-            while delay < max_delay_seconds:
-                delay *= 2
-                max_exponent += 1
-            exponent = min(exponent, max_exponent)
-            delay = min(max_delay_seconds, base_delay_seconds * (2**exponent))
-        jitter_seconds = delay * max(min(spread_fraction, 0.25), 0.0)
-        self.next_attempt_at = now + delay + jitter_seconds
-
-@dataclass(frozen=True, slots=True)
-class PeerDialConnectionPolicy:
-    """Connection attempt policy chosen for a peer dial."""
-
-    max_retries: int
-    base_delay_seconds: float
-    connect_timeout_seconds: float
-    open_timeout_seconds: float
-
-@dataclass(frozen=True, slots=True)
-class PeerDialDiagnosticSnapshot:
-    """Structured dial attempt snapshot for diagnostics."""
-
-    peer_url: str
-    dial_url: str
-    context: str
-    fast_connect: bool
-    peer_target_count: int
-    connected_ratio: float
-    consecutive_failures: int
-    policy: PeerDialConnectionPolicy
-    attempt_epoch_seconds: float
-
-@dataclass(frozen=True, slots=True)
-class PeerDialLoopSnapshot:
-    """Structured scheduler loop snapshot for diagnostics."""
-
-    peer_target_count: int
-    connected_ratio: float
-    discovery_ratio: float
-    pressure: float
-    desired_connected: int
-    exploration_slots: int
-    connected_candidates: int
-    due_candidates: int
-    selected_candidates: int
-    parallelism: int
-    dial_budget: int
-    not_due_candidates: int
-    reconcile_interval_seconds: float
-
-@dataclass(slots=True)
-class CatalogSnapshotDispatchState:
-    """Track coalesced catalog snapshot dispatch across rapid update bursts."""
-
-    pending_peers: set[str] = field(default_factory=set)
-    flush_task: asyncio.Task[None] | None = None
-    enqueued_events: int = 0
-    flush_batches: int = 0
-    peers_flushed: int = 0
-
-@dataclass(frozen=True, slots=True)
-class CommandExecutionResult:
-    name: str
-    value: Any
-
-@dataclass(slots=True)
-class CatalogDeltaObserverAdapter:
-    publish: Callable[[RoutingCatalogDelta, dict[str, int]], None]
-
-    def on_catalog_delta(
-        self, delta: RoutingCatalogDelta, counts: dict[str, int]
-    ) -> None:
-        self.publish(delta, counts)
-
 ############################################
 #
 # Default commands for all servers
@@ -611,19 +489,24 @@ class Cluster:
         return tuple(str(url) for url in self.config.advertised_urls)
 
     @property
-    def funtimes(self) -> dict[str, dict[frozenset[str], set[str]]]:
-        """Get funtimes using the fabric catalog."""
+    def function_index(self) -> dict[str, dict[frozenset[str], set[str]]]:
+        """Map function name → {resources → node_ids} from the fabric catalog."""
         engine = self.fabric_engine
         if not engine:
             return {}
         catalog = engine.routing_index.catalog
-        funtimes: dict[str, dict[frozenset[str], set[str]]] = {}
+        index: dict[str, dict[frozenset[str], set[str]]] = {}
         for endpoint in catalog.functions.entries():
             fun_name = endpoint.identity.name
-            funtimes.setdefault(fun_name, {}).setdefault(endpoint.resources, set()).add(
+            index.setdefault(fun_name, {}).setdefault(endpoint.resources, set()).add(
                 endpoint.node_id
             )
-        return funtimes
+        return index
+
+    @property
+    def funtimes(self) -> dict[str, dict[frozenset[str], set[str]]]:
+        """Deprecated alias for :attr:`function_index` (historical name)."""
+        return self.function_index
 
     @property
     def servers(self) -> set[str]:
@@ -947,7 +830,15 @@ class Cluster:
         )
         implementation = self.registry.resolve(selector)
         if not implementation:
-            raise CommandNotFoundException(command_name=rpc_command.fun)
+            from mpreg.core.errors import command_not_found, version_mismatch
+
+            if rpc_command.version_constraint:
+                raise version_mismatch(
+                    rpc_command.function_id or rpc_command.fun,
+                    rpc_command.version_constraint,
+                    command_name=rpc_command.fun,
+                )
+            raise command_not_found(rpc_command.fun)
         return await implementation.call_async(*resolved_args, **resolved_kwargs)
 
     async def _get_or_open_peer_connection(
@@ -1246,7 +1137,14 @@ class Cluster:
                     rpc_command.fun,
                     rpc_command.locs,
                 )
-                raise CommandNotFoundException(command_name=rpc_command.fun)
+                from mpreg.core.errors import command_not_found, route_not_found
+
+                if rpc_command.target_cluster:
+                    raise route_not_found(
+                        rpc_command.target_cluster,
+                        command_name=rpc_command.fun,
+                    )
+                raise command_not_found(rpc_command.fun)
 
             if target.node_id == self.local_url:
                 logger.info("Executing '{}' locally", rpc_command.fun)
@@ -1258,7 +1156,13 @@ class Cluster:
                         rpc_command.fun,
                         rpc_command.locs,
                     )
-                    raise CommandNotFoundException(command_name=rpc_command.fun)
+                    from mpreg.core.errors import route_not_found
+
+                    raise route_not_found(
+                        target.cluster_id if target else rpc_command.fun,
+                        command_name=rpc_command.fun,
+                        reason="no_next_hop",
+                    )
                 logger.info("Executing '{}' remotely on {}", rpc_command.fun, where)
                 # Use persistent connection if available, else create new one
                 logger.debug(
@@ -1418,7 +1322,14 @@ class Cluster:
                     rpc_command.fun,
                     rpc_command.locs,
                 )
-                raise CommandNotFoundException(command_name=rpc_command.fun)
+                from mpreg.core.errors import command_not_found, route_not_found
+
+                if rpc_command.target_cluster:
+                    raise route_not_found(
+                        rpc_command.target_cluster,
+                        command_name=rpc_command.fun,
+                    )
+                raise command_not_found(rpc_command.fun)
 
             if target.node_id != self.local_url:
                 target_cluster = target.cluster_id
@@ -1435,7 +1346,13 @@ class Cluster:
                         rpc_command.fun,
                         rpc_command.locs,
                     )
-                    raise CommandNotFoundException(command_name=rpc_command.fun)
+                    from mpreg.core.errors import route_not_found
+
+                    raise route_not_found(
+                        target.cluster_id if target else rpc_command.fun,
+                        command_name=rpc_command.fun,
+                        reason="no_next_hop",
+                    )
                 connection = self.peer_connections.get(where)
                 if not connection or not connection.is_connected:
                     connection = await self._get_or_open_peer_connection(
@@ -2111,6 +2028,16 @@ class MPREGServer:
             resolver.record_skipped()
             return
         try:
+            secret = self.settings.discovery_summary_signing_secret
+            if secret:
+                from mpreg.core.discovery_signatures import verify_summary
+
+                if not verify_summary(payload if isinstance(payload, dict) else {}, secret):
+                    logger.warning(
+                        "[{}] Rejecting discovery summary with invalid signature",
+                        self.settings.name,
+                    )
+                    return
             message = DiscoverySummaryMessage.from_dict(payload)
         except Exception:
             resolver.record_invalid()
@@ -2492,103 +2419,24 @@ class MPREGServer:
         consecutive_failures: int,
         connected_ratio: float = 1.0,
     ) -> PeerDialConnectionPolicy:
-        target_count = max(peer_target_count, 1)
-        failure_count = max(consecutive_failures, 0)
-        connectivity = min(max(connected_ratio, 0.0), 1.0)
-        target_factor = target_count**0.5
-        retry_bonus = min(4, failure_count // 2)
-        connectivity_pressure = max(0.0, 0.45 - connectivity) / 0.45
-
-        def _adaptive_retry_cap(*, fast_path: bool) -> int:
-            if fast_path:
-                if target_count >= 20:
-                    if connectivity < 0.15:
-                        # Rotate targets quickly under near-isolation instead of
-                        # spending long retry chains on a single candidate.
-                        return 0
-                    # Large sparse fabrics should avoid retry storms.
-                    if connectivity < 0.45:
-                        return 1
-                    return 2
-                base_cap = max(2, int(6.0 / max(target_factor, 1.0)))
-                if connectivity < 0.5:
-                    base_cap += 1
-                return base_cap + min(1, failure_count // 5)
-            if target_count >= 20:
-                if connectivity < 0.15:
-                    return 0
-                if connectivity < 0.45:
-                    return 1
-                return 2
-            base_cap = max(2, int(8.0 / max(target_factor, 1.0)))
-            return base_cap + min(2, failure_count // 5)
-
-        def _pressure_timeout_floor(*, fast_path: bool) -> float:
-            if target_count < 20:
-                if fast_path:
-                    return 1.4 + (connectivity_pressure * 1.4)
-                return 2.0 + (connectivity_pressure * 1.8)
-            if fast_path:
-                return 1.8 + (connectivity_pressure * 1.2)
-            return 2.4 + (connectivity_pressure * 1.6)
-
-        if fast_connect:
-            max_retries = min(6, max(1, 1 + int(target_factor // 2)) + retry_bonus)
-            base_delay_seconds = min(
-                1.5, 0.08 + (target_factor * 0.035) + (min(failure_count, 6) * 0.04)
-            )
-            connect_timeout_seconds = min(
-                8.0, 1.1 + (target_factor * 0.16) + (min(failure_count, 8) * 0.18)
-            )
-            connect_timeout_seconds = max(
-                connect_timeout_seconds, _pressure_timeout_floor(fast_path=True)
-            )
-            max_retries = min(max_retries, _adaptive_retry_cap(fast_path=True))
-            policy = PeerDialConnectionPolicy(
-                max_retries=max_retries,
-                base_delay_seconds=base_delay_seconds,
-                connect_timeout_seconds=connect_timeout_seconds,
-                open_timeout_seconds=connect_timeout_seconds,
-            )
-            if self._peer_dial_policy_diagnostics_enabled():
-                logger.warning(
-                    "[DIAG_PEER_DIAL_POLICY] node={} mode=fast targets={} failures={} "
-                    "connected_ratio={:.3f} pressure={:.3f} retries={} base_delay={:.4f}s "
-                    "connect_timeout={:.4f}s",
-                    self.cluster.local_url,
-                    target_count,
-                    failure_count,
-                    connectivity,
-                    connectivity_pressure,
-                    policy.max_retries,
-                    policy.base_delay_seconds,
-                    policy.connect_timeout_seconds,
-                )
-            return policy
-
-        max_retries = min(8, max(2, 1 + int(target_factor)) + retry_bonus)
-        base_delay_seconds = min(
-            2.2, 0.3 + (target_factor * 0.05) + (min(failure_count, 6) * 0.07)
-        )
-        connect_timeout_seconds = min(
-            10.0, 2.4 + (target_factor * 0.10) + (min(failure_count, 10) * 0.22)
-        )
-        connect_timeout_seconds = max(
-            connect_timeout_seconds, _pressure_timeout_floor(fast_path=False)
-        )
-        max_retries = min(max_retries, _adaptive_retry_cap(fast_path=False))
-        policy = PeerDialConnectionPolicy(
-            max_retries=max_retries,
-            base_delay_seconds=base_delay_seconds,
-            connect_timeout_seconds=connect_timeout_seconds,
-            open_timeout_seconds=connect_timeout_seconds,
+        policy = _select_peer_connection_policy_pure(
+            fast_connect=fast_connect,
+            peer_target_count=peer_target_count,
+            consecutive_failures=consecutive_failures,
+            connected_ratio=connected_ratio,
         )
         if self._peer_dial_policy_diagnostics_enabled():
+            target_count = max(peer_target_count, 1)
+            failure_count = max(consecutive_failures, 0)
+            connectivity = min(max(connected_ratio, 0.0), 1.0)
+            connectivity_pressure = max(0.0, 0.45 - connectivity) / 0.45
+            mode = "fast" if fast_connect else "steady"
             logger.warning(
-                "[DIAG_PEER_DIAL_POLICY] node={} mode=steady targets={} failures={} "
+                "[DIAG_PEER_DIAL_POLICY] node={} mode={} targets={} failures={} "
                 "connected_ratio={:.3f} pressure={:.3f} retries={} base_delay={:.4f}s "
                 "connect_timeout={:.4f}s",
                 self.cluster.local_url,
+                mode,
                 target_count,
                 failure_count,
                 connectivity,
@@ -2763,77 +2611,52 @@ class MPREGServer:
         return state
 
     def _peer_dial_spread_fraction(self, peer_url: str) -> float:
-        # Deterministic jitter prevents synchronized redials without global randomness.
-        checksum = sum(ord(char) for char in peer_url) % 1000
-        return checksum / 4000.0
+        return _peer_dial_spread_fraction_pure(peer_url)
 
     def _peer_dial_selection_spread(self, peer_url: str) -> float:
-        # Per-node deterministic spread prevents large fabrics from hammering the
-        # same low-sorted peers when dial budgets are constrained.
-        basis = f"{self.cluster.local_url}|{peer_url}"
-        digest = hashlib.blake2s(basis.encode("utf-8"), digest_size=8).digest()
-        spread_value = int.from_bytes(digest, "big")
-        return spread_value / float((1 << 64) - 1)
+        return _peer_dial_selection_spread_pure(
+            local_url=self.cluster.local_url, peer_url=peer_url
+        )
 
     def _peer_dial_pressure(
         self, peer_target_count: int, connected_ratio: float = 1.0
     ) -> float:
-        target_count = max(peer_target_count, 1)
-        connectivity = min(max(connected_ratio, 0.0), 1.0)
-        connectivity_deficit = 1.0 - connectivity
-        size_factor = max(target_count**0.5 - 2.0, 0.0) / 2.0
-        return connectivity_deficit * size_factor
+        return _peer_dial_pressure_pure(
+            peer_target_count=peer_target_count, connected_ratio=connected_ratio
+        )
 
     def _peer_dial_backoff_base_seconds(
         self, peer_target_count: int, connected_ratio: float = 1.0
     ) -> float:
-        target_count = max(peer_target_count, 1)
-        gossip_interval = float(self.settings.gossip_interval)
-        by_cluster_scale = gossip_interval / max(target_count**0.5, 1.0)
-        startup_pressure_floor = gossip_interval * min(target_count / 100.0, 0.5)
-        pressure = self._peer_dial_pressure(target_count, connected_ratio)
-        pressure_multiplier = 1.0 + (min(pressure, 2.5) * 1.5)
-        return max(0.2, by_cluster_scale, startup_pressure_floor) * pressure_multiplier
+        return _peer_dial_backoff_base_seconds_pure(
+            peer_target_count=peer_target_count,
+            connected_ratio=connected_ratio,
+            gossip_interval=float(self.settings.gossip_interval),
+        )
 
     def _peer_dial_backoff_cap_seconds(self, peer_target_count: int) -> float:
-        target_count = max(peer_target_count, 1)
-        return max(
-            float(self.settings.gossip_interval),
-            float(self.settings.gossip_interval) * (target_count**0.5),
+        return _peer_dial_backoff_cap_seconds_pure(
+            peer_target_count=peer_target_count,
+            gossip_interval=float(self.settings.gossip_interval),
         )
 
     def _peer_dial_parallelism(
         self, peer_target_count: int, connected_ratio: float = 1.0
     ) -> int:
-        target_count = max(peer_target_count, 1)
-        connectivity = min(max(connected_ratio, 0.0), 1.0)
-        pressure = self._peer_dial_pressure(target_count, connectivity)
-        parallelism_cap = 4
-        if pressure >= 1.2:
-            parallelism_cap = 1
-        elif pressure >= 0.8:
-            parallelism_cap = 2
-        elif pressure >= 0.4:
-            parallelism_cap = 3
-        parallelism = max(1, min(parallelism_cap, int(target_count**0.5)))
-        if target_count >= 24 and connectivity < 0.20:
-            # Large-cluster recovery mode: avoid two-slot starvation when a node is
-            # far behind on active links but has already discovered most peers.
-            parallelism = max(parallelism, 3)
-        elif target_count >= 20 and connectivity < 0.15:
-            # Recovery mode for near-isolated nodes in large fabrics:
-            # keep dial concurrency bounded, but avoid single-slot starvation.
-            recovery_parallelism = 2 if target_count < 36 else 3
-            parallelism = max(parallelism, recovery_parallelism)
+        parallelism = _peer_dial_parallelism_pure(
+            peer_target_count=peer_target_count, connected_ratio=connected_ratio
+        )
         if self._peer_dial_policy_diagnostics_enabled():
+            target_count = max(peer_target_count, 1)
+            connectivity = min(max(connected_ratio, 0.0), 1.0)
+            pressure = self._peer_dial_pressure(target_count, connectivity)
             logger.warning(
                 "[DIAG_PEER_DIAL_POLICY] node={} action=parallelism targets={} "
-                "connected_ratio={:.3f} pressure={:.3f} cap={} selected={}",
+                "connected_ratio={:.3f} pressure={:.3f} selected={}",
                 self.cluster.local_url,
                 target_count,
                 connectivity,
                 pressure,
-                parallelism_cap,
                 parallelism,
             )
         return parallelism
@@ -2857,70 +2680,31 @@ class MPREGServer:
         connected_ratio: float,
         discovery_ratio: float,
     ) -> int:
-        target_count = max(peer_target_count, 1)
-        if target_count < 20:
-            return 0
-        if discovery_ratio >= 0.95:
-            return 0
-        if connected_ratio < 0.30:
-            return max(2, int(target_count**0.5))
-        if connected_ratio < 0.50:
-            return max(2, int(target_count**0.5) // 2)
-        return max(1, int(target_count**0.5) // 2)
+        return _peer_dial_exploration_slots_pure(
+            peer_target_count=peer_target_count,
+            connected_ratio=connected_ratio,
+            discovery_ratio=discovery_ratio,
+        )
 
     def _peer_target_connection_count(
         self, peer_target_count: int, connected_ratio: float = 1.0
     ) -> int:
         target_count = max(peer_target_count, 1)
-        if target_count <= 20:
-            return target_count
-        baseline = max(6, int(target_count**0.5) + 4)
-        connectivity = min(max(connected_ratio, 0.0), 1.0)
         discovery_ratio = self._peer_discovery_ratio(target_count)
-
-        if discovery_ratio >= 0.90:
-            # Once discovery is already broad, keep a modest stable mesh and
-            # avoid expensive reconnect storms that starve propagation work.
-            stability_target = max(6, int(target_count**0.5) + 2)
-            if connectivity < 0.30:
-                return min(target_count, stability_target + 1)
-            return min(target_count, stability_target)
-
-        if connectivity < 0.3:
-            deficit_bonus = max(6, int(target_count**0.5))
-        elif connectivity < 0.5:
-            deficit_bonus = max(4, int(target_count**0.4))
-        elif connectivity < 0.7:
-            deficit_bonus = 2
-        else:
-            deficit_bonus = 0
-
-        discovery_bonus = 0
-        if target_count >= 24:
-            if discovery_ratio < 0.5:
-                discovery_bonus = max(discovery_bonus, int(target_count * 0.35))
-            elif discovery_ratio < 0.7:
-                discovery_bonus = max(discovery_bonus, int(target_count * 0.25))
-            elif discovery_ratio < 0.85:
-                discovery_bonus = max(discovery_bonus, int(target_count * 0.15))
-            elif discovery_ratio < 0.95:
-                discovery_bonus = max(discovery_bonus, int(target_count * 0.08))
-
-        return min(target_count, baseline + max(deficit_bonus, discovery_bonus))
+        return _peer_target_connection_count_pure(
+            peer_target_count=target_count,
+            connected_ratio=connected_ratio,
+            discovery_ratio=discovery_ratio,
+        )
 
     def _peer_reconcile_interval_seconds(
         self, peer_target_count: int, connected_ratio: float = 1.0
     ) -> float:
-        gossip_interval = float(self.settings.gossip_interval)
-        if peer_target_count <= 0:
-            return max(gossip_interval, 0.2)
-        scaled_interval = gossip_interval / max(peer_target_count**0.5, 1.0)
-        adaptive_floor = min(0.75, 0.2 + (peer_target_count / 200.0))
-        base_interval = max(adaptive_floor, scaled_interval)
-        pressure = self._peer_dial_pressure(peer_target_count, connected_ratio)
-        pressure_multiplier = 1.0 + (min(pressure, 2.0) * 1.25)
-        interval_cap = max(gossip_interval * 4.0, 1.5)
-        return min(interval_cap, base_interval * pressure_multiplier)
+        return _peer_dial_reconcile_interval_pure(
+            peer_target_count=peer_target_count,
+            connected_ratio=connected_ratio,
+            gossip_interval=float(self.settings.gossip_interval),
+        )
 
     def _record_peer_dial_outcome(
         self,
@@ -3400,12 +3184,15 @@ class MPREGServer:
         from mpreg.fabric.message import MessageHeaders
 
         if headers is None:
+            from mpreg.core.observability.trace_context import inject_trace_metadata
+
             return MessageHeaders(
                 correlation_id=correlation_id,
                 source_cluster=self.settings.cluster_id,
                 routing_path=(self.cluster.local_url,),
                 federation_path=(self.settings.cluster_id,),
                 hop_budget=max_hops,
+                metadata=inject_trace_metadata(),
             )
 
         if self.cluster.local_url in headers.routing_path:
@@ -3427,7 +3214,15 @@ class MPREGServer:
 
         hop_count = max(0, len(routing_path) - 1)
         if hop_budget is not None and hop_count > hop_budget:
-            return None
+            from mpreg.core.errors import hop_budget_exceeded
+
+            raise hop_budget_exceeded(
+                int(hop_budget),
+                hop_count=hop_count,
+                correlation_id=headers.correlation_id or correlation_id,
+            )
+
+        from mpreg.core.observability.trace_context import inject_trace_metadata
 
         return MessageHeaders(
             correlation_id=headers.correlation_id or correlation_id,
@@ -3437,7 +3232,7 @@ class MPREGServer:
             federation_path=federation_path,
             hop_budget=hop_budget,
             priority=headers.priority,
-            metadata=dict(headers.metadata),
+            metadata=inject_trace_metadata(dict(headers.metadata)),
         )
 
     def _fabric_next_hop_for_cluster(
@@ -3832,7 +3627,15 @@ class MPREGServer:
                 try:
                     resolved = implementation or self.registry.resolve(selector)
                     if not resolved:
-                        raise CommandNotFoundException(command_name=payload.command)
+                        from mpreg.core.errors import command_not_found, version_mismatch
+
+                        if payload.version_constraint:
+                            raise version_mismatch(
+                                payload.function_id or payload.command,
+                                payload.version_constraint,
+                                command_name=payload.command,
+                            )
+                        raise command_not_found(payload.command)
                     answer_payload = await resolved.call_async(
                         *payload.args, **payload.kwargs
                     )
@@ -6054,14 +5857,21 @@ class MPREGServer:
                 published_at=timestamp,
                 scope=scope,
             )
+            summary_payload = message.to_dict()
+            secret = self.settings.discovery_summary_signing_secret
+            if secret:
+                from mpreg.core.discovery_signatures import sign_summary
+
+                summary_payload = sign_summary(summary_payload, secret)
             pubsub_message = PubSubMessage(
                 message_id=str(ulid.new()),
                 topic=topic,
-                payload=message.to_dict(),
+                payload=summary_payload,
                 publisher=self.settings.name,
                 headers={
                     "event": "discovery.summary_export",
                     "cluster_id": self.settings.cluster_id,
+                    "summary_signed": "1" if secret else "0",
                 },
                 timestamp=timestamp,
             )
@@ -11107,6 +10917,7 @@ class MPREGServer:
             monitoring_port=monitoring_port,
             monitoring_host=monitoring_host,
             enable_cors=self.settings.monitoring_enable_cors,
+            auth_token=self.settings.monitoring_auth_token,
             route_trace_provider=route_trace_provider,
             link_state_status_provider=link_state_status_provider,
             adapter_endpoint_registry=get_adapter_endpoint_registry(),
@@ -11116,6 +10927,7 @@ class MPREGServer:
             discovery_policy_provider=self._discovery_policy_metrics,
             discovery_lag_provider=self._discovery_lag_metrics,
             dns_metrics_provider=self._dns_metrics,
+            mgmt_summary_provider=self._mgmt_v1_summary,
         )
         try:
             await self._monitoring_system.start()
@@ -11217,209 +11029,43 @@ class MPREGServer:
                 )
             self._auto_allocated_dns_tcp_port = None
 
+    async def _mgmt_v1_summary(self) -> dict[str, object]:
+        """Normalized management-plane snapshot for /mgmt/v1/* endpoints."""
+        from mpreg.server_pkg.mgmt_summary import build_mgmt_v1_summary
+
+        return build_mgmt_v1_summary(self)
+
     async def _persistence_snapshot_metrics(self) -> dict[str, Any]:
-        config = self.settings.persistence_config
-        if config is None:
-            return {"enabled": False}
+        from mpreg.server_pkg.monitoring_metrics import (
+            build_persistence_snapshot_metrics,
+        )
 
-        payload: dict[str, Any] = {
-            "enabled": True,
-            "mode": config.mode.value,
-            "data_dir": str(config.data_dir),
-        }
-        if config.mode is PersistenceMode.SQLITE:
-            payload["sqlite_path"] = str(config.sqlite_path())
-
-        if self._persistence_registry is not None:
-            payload["registry_open"] = getattr(
-                self._persistence_registry, "_opened", False
-            )
-
-        catalog_counts: dict[str, int] = {}
-        route_key_info: dict[str, Any] = {}
-        if self._fabric_control_plane is not None:
-            catalog = self._fabric_control_plane.catalog
-            catalog_counts = {
-                "functions": catalog.functions.entry_count(),
-                "topics": catalog.topics.entry_count(),
-                "queues": catalog.queues.entry_count(),
-                "services": catalog.services.entry_count(),
-                "caches": catalog.caches.entry_count(),
-                "cache_profiles": catalog.cache_profiles.entry_count(),
-                "nodes": catalog.nodes.entry_count(),
-            }
-            if self._fabric_control_plane.route_key_registry is not None:
-                registry = self._fabric_control_plane.route_key_registry
-                registry.purge_expired()
-                route_key_info = {
-                    "clusters": len(registry.key_sets),
-                    "active_keys": sum(
-                        len(key_set.keys) for key_set in registry.key_sets.values()
-                    ),
-                }
-
-        payload["fabric"] = {
-            "catalog_entries": catalog_counts,
-            "route_keys": route_key_info,
-            "snapshot_last_saved_at": self._fabric_snapshot_last_saved_at,
-            "snapshot_last_restored_at": self._fabric_snapshot_last_restored_at,
-            "snapshot_saved_counts": self._fabric_snapshot_last_saved_counts,
-            "snapshot_restored_counts": self._fabric_snapshot_last_restored_counts,
-            "snapshot_saved_route_keys": self._fabric_snapshot_last_route_keys_saved,
-            "snapshot_restored_route_keys": self._fabric_snapshot_last_route_keys_restored,
-        }
-        return payload
+        return build_persistence_snapshot_metrics(self)
 
     def _dns_metrics(self) -> JsonDict:
-        if not self.settings.dns_gateway_enabled:
-            return {"enabled": False}
-        gateway = self._dns_gateway
-        if gateway is None:
-            return {"enabled": True, "status": "starting"}
-        return {
-            "enabled": True,
-            "status": "running",
-            "udp_port": gateway.bound_udp_port,
-            "tcp_port": gateway.bound_tcp_port,
-            "zones": list(self.settings.dns_zones or ()),
-            "metrics": gateway.metrics_snapshot(),
-        }
+        from mpreg.server_pkg.monitoring_metrics import build_dns_metrics
+
+        return build_dns_metrics(self)  # type: ignore[return-value]
 
     def _discovery_summary_metrics(self) -> dict[str, Any]:
-        timestamp = time.time()
-        snapshot = self._summary_export_state.snapshot(
-            enabled=self.settings.discovery_summary_export_enabled,
-            interval_seconds=self.settings.discovery_summary_export_interval_seconds,
-            export_scope=self.settings.discovery_summary_export_scope,
-            hold_down_seconds=float(
-                self.settings.discovery_summary_export_hold_down_seconds
-            ),
-            store_forward_seconds=float(
-                self.settings.discovery_summary_export_store_forward_seconds
-            ),
-            store_forward_max_messages=int(
-                self.settings.discovery_summary_export_store_forward_max_messages
-            ),
-            configured_namespaces=tuple(
-                self.settings.discovery_summary_export_namespaces
-            ),
-            generated_at=timestamp,
-        )
-        return snapshot.to_dict()
+        from mpreg.server_pkg.discovery_metrics import build_discovery_summary_metrics
+
+        return build_discovery_summary_metrics(self)
 
     def _discovery_cache_metrics(self) -> dict[str, Any]:
-        timestamp = time.time()
-        namespaces = tuple(self.settings.discovery_resolver_namespaces)
-        resolver = (
-            self._discovery_resolver if self._discovery_resolver_enabled() else None
-        )
-        if resolver is None:
-            resolver_response = DiscoveryResolverCacheStatsResponse(
-                enabled=False,
-                generated_at=timestamp,
-                namespaces=namespaces,
-                entry_counts=CatalogEntryCounts(),
-                stats=None,
-                query_cache=None,
-            )
-        else:
-            counts = resolver.entry_counts()
-            stats = resolver.stats_snapshot()
-            query_cache = resolver.query_cache_snapshot()
-            resolver_response = DiscoveryResolverCacheStatsResponse(
-                enabled=True,
-                generated_at=timestamp,
-                namespaces=namespaces,
-                entry_counts=counts,
-                stats=stats,
-                query_cache=query_cache,
-            )
+        from mpreg.server_pkg.discovery_metrics import build_discovery_cache_metrics
 
-        summary_namespaces = tuple(self.settings.discovery_summary_resolver_namespaces)
-        summary_resolver = (
-            self._discovery_summary_resolver
-            if self._discovery_summary_resolver_enabled()
-            else None
-        )
-        if summary_resolver is None:
-            summary_response = DiscoverySummaryCacheStatsResponse(
-                enabled=False,
-                generated_at=timestamp,
-                namespaces=summary_namespaces,
-                entry_counts=SummaryCacheEntryCounts(),
-                stats=None,
-            )
-        else:
-            summary_counts = summary_resolver.entry_counts()
-            summary_stats = summary_resolver.stats_snapshot()
-            summary_response = DiscoverySummaryCacheStatsResponse(
-                enabled=True,
-                generated_at=timestamp,
-                namespaces=summary_namespaces,
-                entry_counts=summary_counts,
-                stats=summary_stats,
-            )
-
-        return {
-            "resolver_cache": resolver_response.to_dict(),
-            "summary_cache": summary_response.to_dict(),
-        }
+        return build_discovery_cache_metrics(self)
 
     def _discovery_policy_metrics(self) -> dict[str, Any]:
-        timestamp = time.time()
-        engine = self._namespace_policy_engine
-        audit_log = self._namespace_policy_audit_log
-        access_log = self._discovery_access_audit_log
-        rules = engine.rules if engine else ()
-        entries = audit_log.snapshot() if audit_log else ()
-        recent_entries = entries[-20:] if entries else ()
-        if access_log:
-            access_entries_all = access_log.snapshot()
-            access_total = len(access_entries_all)
-            access_entries = access_entries_all[-20:]
-        else:
-            access_entries = ()
-            access_total = 0
-        status = DiscoveryPolicyStatus(
-            enabled=bool(engine and engine.enabled),
-            generated_at=timestamp,
-            default_allow=engine.default_allow if engine else True,
-            rule_count=len(rules),
-            rules=rules,
-            audit_entries=recent_entries,
-            audit_total=len(entries),
-            access_entries=access_entries,
-            access_total=access_total,
-        )
-        return status.to_dict()
+        from mpreg.server_pkg.discovery_metrics import build_discovery_policy_metrics
+
+        return build_discovery_policy_metrics(self)
 
     def _discovery_lag_metrics(self) -> dict[str, Any]:
-        timestamp = time.time()
-        resolver = (
-            self._discovery_resolver if self._discovery_resolver_enabled() else None
-        )
-        last_delta_at = resolver.stats.last_delta_at if resolver else None
-        delta_lag_seconds = (
-            timestamp - last_delta_at if last_delta_at is not None else None
-        )
-        last_seed_at = resolver.stats.last_seed_at if resolver else None
-        last_summary_export_at = self._summary_export_state.last_export_at
-        summary_export_lag_seconds = (
-            timestamp - last_summary_export_at
-            if last_summary_export_at is not None
-            else None
-        )
-        status = DiscoveryLagStatus(
-            generated_at=timestamp,
-            resolver_enabled=bool(resolver),
-            last_delta_at=last_delta_at,
-            delta_lag_seconds=delta_lag_seconds,
-            last_seed_at=last_seed_at,
-            summary_export_enabled=self.settings.discovery_summary_export_enabled,
-            last_summary_export_at=last_summary_export_at,
-            summary_export_lag_seconds=summary_export_lag_seconds,
-        )
-        return status.to_dict()
+        from mpreg.server_pkg.discovery_metrics import build_discovery_lag_metrics
+
+        return build_discovery_lag_metrics(self)
 
     def attach_cache_manager(self, cache_manager: Any) -> None:
         """Attach a cache manager to the monitoring system."""
@@ -11682,6 +11328,10 @@ class MPREGServer:
             name: The name of the command.
             func: The callable function that implements the command.
             resources: An iterable of resource strings associated with the command.
+            function_id: Stable identity for versioned routing. Defaults to ``name``
+                when omitted (simple mode). Prefer reverse-DNS ids in production
+                (for example ``math.add``).
+            version: Semantic version string (default ``1.0.0``).
             scope: Optional discovery scope for the function endpoint.
             tags: Optional discovery tags for the function endpoint.
             namespace: Optional namespace override for discovery grouping.
