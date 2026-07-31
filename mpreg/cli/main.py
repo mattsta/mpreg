@@ -1339,6 +1339,8 @@ def doctor(url: str | None, token: str | None, timeout: float, output_format: st
             ("mgmt_cluster", f"{base}/mgmt/v1/cluster"),
             ("mgmt_catalog", f"{base}/mgmt/v1/catalog"),
             ("endpoints", f"{base}/endpoints"),
+            ("openapi", f"{base}/openapi.json"),
+            ("mgmt_audit", f"{base}/mgmt/v1/audit"),
         ]
         failures = 0
         rows: list[dict[str, str]] = []
@@ -1994,17 +1996,20 @@ def metrics_watch(interval: int, clusters: tuple[str, ...], system: str, url: st
     "--output",
     "-o",
     type=click.Choice(["table", "json"]),
-    default="table",
-    help="Output format",
+    default=None,
+    help="Deprecated: use --format",
 )
+@add_format_option
 @click.option(
     "--url",
     default=None,
     envvar="MPREG_MONITORING_URL",
     help="Monitoring base URL (or set MPREG_MONITORING_URL)",
 )
-def status(cluster: str | None, output: str, url: str | None) -> None:
+def status(cluster: str | None, output: str | None, output_format: str, url: str | None) -> None:
     """Show a compact admin status summary from monitoring endpoints."""
+    if output is not None:
+        output_format = "json" if output == "json" else "table"
 
     def _format_timestamp(raw: Any) -> str:
         if not raw:
@@ -2063,7 +2068,7 @@ def status(cluster: str | None, output: str, url: str | None) -> None:
                     }
 
         if output == "json":
-            console.print_json(data=results)
+            emit(results, output_format=output_format, table_title="Status")
             return
 
         table = Table(title="MPREG Monitoring Status")

@@ -1,0 +1,25 @@
+groups:
+  - name: mpreg_golden_signals
+    rules:
+      - alert: MPREGFederationHealthDegraded
+        expr: mpreg_federation_health_score < 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MPREG federation health degraded"
+          description: "Health score {{ $value }} on {{ $labels.cluster_id }}"
+      - alert: MPREGFederationHealthCritical
+        expr: mpreg_federation_health_score < 0.6
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MPREG federation health critical"
+      - alert: MPREGMonitoringDown
+        expr: mpreg_monitoring_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MPREG monitoring scrape target down"

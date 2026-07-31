@@ -12,3 +12,4 @@ gossip_interval = 5.0
 log_level = "INFO"
 # connect = "ws://seed-host:<port>"
 # peers = ["ws://peer1:<port>", "ws://peer2:<port>"]
+# monitoring_auth_token = "set-me"

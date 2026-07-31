@@ -282,7 +282,9 @@ Logging is centralized in `mpreg/core/logging.py` with module-based filtering.
   `correlation_id` / `traceparent`).
 - **Trace context**: W3C `traceparent` in `MessageHeaders.metadata`
   (`mpreg.core.observability.trace_context`).
-- **Structured errors**: `mpreg.core.errors.MpregError` codes on RPC failures.
+- **Structured errors**: `mpreg.core.errors.MpregError` codes on RPC failures (`mpreg/core/error_codes.json`; emit only via helpers).
+- **OpenAPI**: `GET /openapi.json` and `/mgmt/v1/schema` describe monitoring/mgmt paths.
+- **Route decision log**: per-`FabricRouter` ring buffer (bound into monitoring).
 - **Peer-snapshot diagnostics**: `MPREG_DEBUG_PEER_SNAPSHOT=1` emits
   snapshot exclusion and dial-failure demotion events.
 - **Doctor**: `mpreg doctor` multi-endpoint probe against monitoring URL.

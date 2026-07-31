@@ -31,6 +31,8 @@ from mpreg.core.observability import prometheus_alert_rules_yaml
 print(prometheus_alert_rules_yaml())
 ```
 
+Packaged copy: `mpreg/ops/prometheus_alerts.yml`.
+
 Also see `mpreg doctor` for a live multi-endpoint probe.
 
 ## Route decision audit

@@ -13,3 +13,6 @@ fabric_route_ttl_seconds = 30.0
 fabric_route_announce_interval_seconds = 10.0
 gossip_interval = 5.0
 log_level = "INFO"
+discovery_summary_export_enabled = true
+# Set a real secret in production (env or override file). Placeholder enables the knob.
+# discovery_summary_signing_secret = "change-me"

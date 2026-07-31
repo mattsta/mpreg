@@ -25,6 +25,9 @@ by the fabric control plane so the platform manages itself.
 - `/routing/decisions` route decision audit log
 - `/metrics/prometheus`, monitoring bearer auth, CORS default off
 - CLI: `doctor`, `config-check`, `monitor decisions|prometheus`, `profile`
+- OpenAPI: `GET /openapi.json`, `GET /mgmt/v1/schema`
+- Mutation stubs: `POST /mgmt/v1/nodes/drain|peers/detach|policy/apply` → HTTP 501
+- Audit read-path: `GET /mgmt/v1/audit` (route decisions until durable store)
 
 Remaining: full mutation API, audit log store, REPL modes, UI.
 
