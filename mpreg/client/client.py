@@ -65,6 +65,34 @@ class Client:
     _notification_handlers: dict[str, list[Callable[[Any], None]]] = field(
         default_factory=dict, init=False
     )
+    _last_trace_metadata: dict[str, str] | None = field(default=None, init=False)
+
+    def _record_trace_from_message(self, message_data: object) -> None:
+        """Capture W3C trace fields from an inbound message for last_trace_context()."""
+        if not isinstance(message_data, dict):
+            return
+        meta: dict[str, str] = {}
+        # Top-level trace fields
+        for key in ("traceparent", "tracestate"):
+            val = message_data.get(key)
+            if val is not None:
+                meta[key] = str(val)
+        # Nested headers / metadata bags
+        for bag_key in ("headers", "metadata", "h"):
+            bag = message_data.get(bag_key)
+            if isinstance(bag, dict):
+                for key in ("traceparent", "tracestate"):
+                    val = bag.get(key)
+                    if val is not None:
+                        meta[key] = str(val)
+                nested = bag.get("metadata")
+                if isinstance(nested, dict):
+                    for key in ("traceparent", "tracestate"):
+                        val = nested.get(key)
+                        if val is not None:
+                            meta[key] = str(val)
+        if meta:
+            self._last_trace_metadata = meta
 
     async def request(
         self, cmds: list[RPCCommand], timeout: float | None = None
@@ -120,13 +148,24 @@ class Client:
                 "[{}] Result:\n{}", response.u, pp.pformat(response.model_dump())
             )
 
+        try:
+            self._record_trace_from_message(response.model_dump())
+        except Exception:
+            pass
+
         assert req.u == response.u
 
         if response.error:
             client_log.error(
                 "RPC Error: {}: {}", response.error.code, response.error.message
             )
-            raise MPREGException(rpc_error=response.error)
+            from mpreg.core.errors import map_exception
+
+            base = MPREGException(rpc_error=response.error)
+            mapped = map_exception(base)
+            if mapped is not None:
+                raise mapped from None
+            raise base
 
         return response.r
 
@@ -199,7 +238,13 @@ class Client:
                 response.error.code,
                 response.error.message,
             )
-            raise MPREGException(rpc_error=response.error)
+            from mpreg.core.errors import map_exception
+
+            base = MPREGException(rpc_error=response.error)
+            mapped = map_exception(base)
+            if mapped is not None:
+                raise mapped from None
+            raise base
 
         return response
 
@@ -213,6 +258,7 @@ class Client:
                 try:
                     raw_message = await self._transport.receive()
                     message_data = self.serializer.deserialize(raw_message)
+                    self._record_trace_from_message(message_data)
 
                     # Check message type
                     message_role = message_data.get("role")

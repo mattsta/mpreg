@@ -40,7 +40,9 @@ from ..core.dns_registry import (
     DnsUnregisterRequest,
     DnsUnregisterResponse,
 )
+from ..core.errors import MpregError, map_exception
 from ..core.model import CommandNotFoundException, MPREGException, RPCCommand
+from .call_policy import ClientCallPolicy, call_with_policy
 from ..core.namespace_policy import (
     NamespacePolicyApplyRequest,
     NamespacePolicyApplyResponse,
@@ -76,6 +78,7 @@ class MPREGClientAPI:
     auth_token: str | None = None
     api_key: str | None = None
     transport_config: TransportConfig | None = None
+    call_policy: ClientCallPolicy | None = None
 
     # Fields assigned in __post_init__
     _client: Client = field(init=False)  # Needs special initialization in __post_init__
@@ -197,22 +200,49 @@ class MPREGClientAPI:
             routing_topic=routing_topic,
             kwargs=kwargs,
         )
+        async def _once() -> Any:
+            return await self._client.request(cmds=[command], timeout=timeout)
+
+        policy = self.call_policy
         try:
-            result = await self._client.request(cmds=[command], timeout=timeout)
+            if policy is not None and policy.max_attempts > 1:
+                result = await call_with_policy(_once, policy)
+            else:
+                result = await _once()
             # For single command calls, extract the result directly
             if isinstance(result, dict) and len(result) == 1:
                 return list(result.values())[0]
             return result
         except CommandNotFoundException as e:
             raise e
+        except MpregError:
+            raise
         except MPREGException as e:
             client_api_log.error(
                 "RPC Call Failed: {}: {}", e.rpc_error.code, e.rpc_error.message
             )
+            mapped = map_exception(e)
+            if mapped is not None:
+                raise mapped from e
             raise e
         except Exception as e:
             client_api_log.error("RPC Call Failed: {}", e)
+            mapped = map_exception(e)
+            if mapped is not None:
+                raise mapped from e
             raise
+
+    def last_trace_context(self) -> dict[str, str] | None:
+        """Return last observed W3C ``traceparent`` / ``tracestate`` fields.
+
+        Populated from inbound wire messages by the underlying transport client.
+        Correlate multi-hop fabric paths with monitoring
+        ``/routing/decisions?correlation_id=...`` or the same ``traceparent``.
+        """
+        meta = getattr(self._client, "_last_trace_metadata", None)
+        if isinstance(meta, dict) and meta:
+            return {str(k): str(v) for k, v in meta.items()}
+        return None
 
     async def list_peers(
         self,

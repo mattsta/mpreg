@@ -67,7 +67,14 @@ class EndpointHealthStats:
 
 @dataclass(slots=True)
 class MPREGClusterClient:
-    """Cluster-aware client with discovery, failover, and load-based selection."""
+    """Cluster-aware client with discovery, failover, and load-based selection.
+
+    **HA defaults (opt-in multi-region):** keep ``auto_summary_redirect=False`` for
+    single-cluster deployments. For multi-region fabrics, set
+    ``auto_summary_redirect=True`` and optionally ``preferred_region`` so missing
+    commands can redirect via discovery summaries. Endpoint selection already
+    penalizes high latency/error rates using ``latency_weight`` / ``error_weight``.
+    """
 
     seed_urls: tuple[str, ...]
     full_log: bool = True
@@ -207,6 +214,15 @@ class MPREGClusterClient:
                 last_error = exc
                 if self._is_command_not_found(exc):
                     saw_command_not_found = True
+                from mpreg.core.errors import MpregError
+
+                if isinstance(exc, MpregError) and not exc.retryable:
+                    # Non-retryable structured errors should not rotate endpoints forever.
+                    if self._is_command_not_found(exc):
+                        # still allow summary redirect path below
+                        pass
+                    else:
+                        raise
                 self._last_failure[url] = time.time()
                 cluster_client_log.warning(
                     "Cluster client call failed on {}: {}", url, exc
@@ -231,6 +247,11 @@ class MPREGClusterClient:
             if summary_result is not None:
                 return summary_result
         if last_error:
+            from mpreg.core.errors import map_exception
+
+            mapped = map_exception(last_error)
+            if mapped is not None:
+                raise mapped from last_error
             raise last_error
         raise ConnectionError("No cluster endpoints available for RPC call.")
 
@@ -503,8 +524,14 @@ class MPREGClusterClient:
         start_time = time.time()
         try:
             result = await client.request(cmds=[command], timeout=timeout)
-        except Exception:
+        except Exception as exc:
+            # Record failure for load-aware selection; re-raise without swallowing.
+            from mpreg.core.errors import map_exception
+
             self._record_endpoint_error(url)
+            mapped = map_exception(exc)
+            if mapped is not None:
+                raise mapped from exc
             raise
         latency_ms = (time.time() - start_time) * 1000.0
         self._record_endpoint_success(url, latency_ms)
