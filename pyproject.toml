@@ -108,5 +108,7 @@ include = [
   "mpreg/**",
   "mpreg/profiles/*.toml",
   "mpreg/profiles/README.md",
+  "mpreg/core/error_codes.json",
+  "mpreg/ops/*",
   "mpreg/server_pkg/consensus.md",
 ]

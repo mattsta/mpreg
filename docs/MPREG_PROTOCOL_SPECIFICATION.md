@@ -2846,23 +2846,34 @@ This comprehensive protocol specification provides complete coverage of all MPRE
 
 ## Structured error codes
 
-RPC failures may surface as `RPCError` with stable numeric codes:
+RPC failures surface as `RPCError` with stable numeric codes from
+`mpreg.core.errors.MpregErrorCode`. Servers emit **only** via helpers in
+`mpreg.core.errors` (never bare integers). Language-neutral catalog:
+`mpreg/core/error_codes.json`.
 
-| Code | Name | Meaning |
-|------|------|---------|
-| 1001 | COMMAND_NOT_FOUND | No matching function endpoint |
-| 1002 | VERSION_MISMATCH | Version constraint unsatisfied |
-| 1003 | HOP_BUDGET_EXCEEDED | Fabric hop budget exhausted |
-| 1004 | POLICY_DENIED | Namespace/routing policy denied |
-| 1005 | ROUTE_NOT_FOUND | No path to target cluster/node |
-| 1006 | TIMEOUT | Deadline exceeded |
-| 1007 | UNAVAILABLE | Temporary unavailability (retryable) |
-| 1008 | INVALID_ARGUMENT | Bad request parameters |
-| 1009 | AUTH_REQUIRED | Monitoring/API auth missing |
-| 1010 | AUTH_FAILED | Auth present but invalid |
-| 1099 | INTERNAL | Unexpected server failure |
+| Code | Name | Meaning | Retryable |
+|------|------|---------|-----------|
+| 1000 | PROTOCOL | Unknown/invalid protocol message | no |
+| 1001 | COMMAND_NOT_FOUND | No matching function endpoint | no |
+| 1002 | VERSION_MISMATCH | Version constraint unsatisfied | no |
+| 1003 | HOP_BUDGET_EXCEEDED | Fabric hop budget exhausted | no |
+| 1004 | POLICY_DENIED | Namespace/routing policy denied | no |
+| 1005 | ROUTE_NOT_FOUND | No path to target cluster/node | yes |
+| 1006 | TIMEOUT | Deadline exceeded | yes |
+| 1007 | UNAVAILABLE | Temporary unavailability | yes |
+| 1008 | INVALID_ARGUMENT | Bad request parameters | no |
+| 1009 | AUTH_REQUIRED | Auth missing | no |
+| 1010 | AUTH_FAILED | Auth present but invalid | no |
+| 1099 | INTERNAL | Unexpected server failure | no |
+| 1101 | DISCOVERY_ACCESS_DENIED | Discovery namespace/policy denial | no |
+| 1102 | DISCOVERY_RATE_LIMITED | Discovery rate limit | yes |
 
-Python helpers: `mpreg.core.errors.MpregError`, `MpregErrorCode`.
+Python: `MpregError`, `map_exception` (always returns structured error),
+`rpc_error()`, `timeout_error()`, `discovery_rate_limited()`, etc.
+
+**Historical note:** older builds sometimes reused 1002–1004 for internal/timeout
+failures and HTTP-ish 403/429 for discovery. Clients should treat those via
+`map_exception` legacy remap; new servers no longer emit them.
 
 ## Trace context on fabric envelopes
 

@@ -1243,12 +1243,11 @@ class Cluster:
             got = await asyncio.wait_for(execute_with_timeout(), timeout=timeout)
         except TimeoutError:
             logger.error("RPC execution timed out after {} seconds", timeout)
-            raise MPREGException(
-                rpc_error=RPCError(
-                    code=1004,
-                    message=f"RPC execution timed out after {timeout} seconds",
-                    details="The RPC workflow took too long to complete",
-                )
+            from mpreg.core.errors import timeout_error
+
+            raise timeout_error(
+                f"RPC execution timed out after {timeout} seconds",
+                workflow="standard",
             )
 
         result = {}
@@ -1456,12 +1455,11 @@ class Cluster:
             got = await asyncio.wait_for(execute_with_timeout(), timeout=timeout)
         except TimeoutError:
             logger.error("Enhanced RPC execution timed out after {} seconds", timeout)
-            raise MPREGException(
-                rpc_error=RPCError(
-                    code=1004,
-                    message=f"RPC execution timed out after {timeout} seconds",
-                    details="The enhanced RPC workflow took too long to complete",
-                )
+            from mpreg.core.errors import timeout_error
+
+            raise timeout_error(
+                f"RPC execution timed out after {timeout} seconds",
+                workflow="enhanced",
             )
 
         # Build final result
@@ -5223,15 +5221,14 @@ class MPREGServer:
             namespace=namespace or None,
             reason="rate_limited",
         )
-        raise MPREGException(
-            rpc_error=RPCError(
-                code=429,
-                message="discovery_rate_limited",
-                details=(
-                    f"Rate limit exceeded for {command} "
-                    f"(viewer={viewer_id}, namespace={namespace or ''})"
-                ),
-            )
+        from mpreg.core.errors import discovery_rate_limited
+
+        raise discovery_rate_limited(
+            f"Rate limit exceeded for {command} "
+            f"(viewer={viewer_id}, namespace={namespace or ''})",
+            command=command,
+            viewer_id=viewer_id,
+            namespace=namespace or "",
         )
 
     def _effective_viewer_cluster_id(self, requested: str | None = None) -> str:
@@ -7800,12 +7797,12 @@ class MPREGServer:
                     namespace=namespace,
                     reason=decision.reason,
                 )
-                raise MPREGException(
-                    rpc_error=RPCError(
-                        code=403,
-                        message="discovery_access_denied",
-                        details=f"catalog_watch denied for namespace {namespace}",
-                    )
+                from mpreg.core.errors import discovery_access_denied
+
+                raise discovery_access_denied(
+                    f"catalog_watch denied for namespace {namespace}",
+                    command="catalog_watch",
+                    namespace=namespace,
                 )
         topic = (
             f"{DISCOVERY_DELTA_TOPIC}.{namespace}"
@@ -8001,12 +7998,12 @@ class MPREGServer:
                     namespace=namespace,
                     reason=decision.reason,
                 )
-                raise MPREGException(
-                    rpc_error=RPCError(
-                        code=403,
-                        message="discovery_access_denied",
-                        details=f"summary_watch denied for namespace {namespace}",
-                    )
+                from mpreg.core.errors import discovery_access_denied
+
+                raise discovery_access_denied(
+                    f"summary_watch denied for namespace {namespace}",
+                    command="summary_watch",
+                    namespace=namespace,
                 )
         response = SummaryWatchResponse(
             topic=topic,
@@ -8973,24 +8970,23 @@ class MPREGServer:
                     return RPCResponse(r="STATUS", u=req.u)
                 case _:
                     # Handle unknown server message types.
+                    from mpreg.core.errors import protocol_error
+
                     return RPCResponse(
                         r=None,
-                        error=RPCError(
-                            code=1000,
-                            message=f"Unknown server message type: {req.server.what}",
-                        ),
+                        error=protocol_error(
+                            f"Unknown server message type: {req.server.what}"
+                        ).rpc_error,
                         u=req.u,
                     )
         except Exception as e:
             # Catch any exceptions during server command processing and return an error response.
             logger.exception("Error processing server command")
+            from mpreg.core.errors import internal_error
+
             return RPCResponse(
                 r=None,
-                error=RPCError(
-                    code=1002,
-                    message="Internal server error",
-                    details=traceback.format_exc(),
-                ),
+                error=internal_error(traceback.format_exc()).rpc_error,
                 u=req.u,
             )
 
@@ -9051,13 +9047,11 @@ class MPREGServer:
             except Exception:
                 # Catch any exceptions during RPC execution and return an error response.
                 logger.exception("Error running RPC")
+                from mpreg.core.errors import internal_error
+
                 return RPCResponse(
                     r=None,
-                    error=RPCError(
-                        code=1003,
-                        message="RPC execution failed",
-                        details=traceback.format_exc(),
-                    ),
+                    error=internal_error(traceback.format_exc()).rpc_error,
                     u=req.u,
                 )
             finally:
@@ -9141,12 +9135,13 @@ class MPREGServer:
                                 peer_url,
                                 server_request.server.instance_id or None,
                             ):
+                                from mpreg.core.errors import unavailable
+
                                 response_model = RPCResponse(
                                     r=None,
-                                    error=RPCError(
-                                        code=1003,
-                                        message="Peer is marked departed",
-                                    ),
+                                    error=unavailable(
+                                        "Peer is marked departed"
+                                    ).rpc_error,
                                     u=server_request.u,
                                 )
                                 close_connection = True
@@ -9168,12 +9163,14 @@ class MPREGServer:
                                         remote_cluster_id,
                                         decision.error_message,
                                     )
+                                    from mpreg.core.errors import policy_denied
+
                                     response_model = RPCResponse(
                                         r=None,
-                                        error=RPCError(
-                                            code=1003,
-                                            message=decision.error_message,
-                                        ),
+                                        error=policy_denied(
+                                            decision.error_message
+                                            or "connection policy denied"
+                                        ).rpc_error,
                                         u=server_request.u,
                                     )
                                     close_connection = True
@@ -9529,10 +9526,13 @@ class MPREGServer:
                         )
                         response_model = RPCResponse(
                             r=None,
-                            error=RPCError(
-                                code=1004,
-                                message=f"Invalid RPC request role: {parsed_msg.get('role')}",
-                            ),
+                            error=__import__(
+                                "mpreg.core.errors", fromlist=["invalid_argument"]
+                            )
+                            .invalid_argument(
+                                f"Invalid RPC request role: {parsed_msg.get('role')}"
+                            )
+                            .rpc_error,
                             u=parsed_msg.get("u", "unknown"),
                         )
 
@@ -10909,6 +10909,10 @@ class MPREGServer:
 
                 link_state_status_provider = _link_state_status
 
+        route_decision_log = None
+        if getattr(self, "_fabric_router", None) is not None:
+            route_decision_log = getattr(self._fabric_router, "decision_log", None)
+
         self._monitoring_system = create_federation_monitoring_system(
             settings=self.settings,
             federation_config=self.settings.federation_config,
@@ -10928,6 +10932,7 @@ class MPREGServer:
             discovery_lag_provider=self._discovery_lag_metrics,
             dns_metrics_provider=self._dns_metrics,
             mgmt_summary_provider=self._mgmt_v1_summary,
+            route_decision_log=route_decision_log,
         )
         try:
             await self._monitoring_system.start()

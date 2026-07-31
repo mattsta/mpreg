@@ -8,7 +8,7 @@ models, registry, serialization, and connection management.
 from __future__ import annotations
 
 from .config import MPREGSettings
-from .errors import MpregError, MpregErrorCode
+from .errors import MpregError, MpregErrorCode, error_code_catalog, map_exception
 from .connection import Connection
 from .model import (
     CommandNotFoundException,
@@ -66,6 +66,8 @@ __all__ = [
     "CommandNotFoundException",
     "MpregError",
     "MpregErrorCode",
+    "error_code_catalog",
+    "map_exception",
     # Registry
     "RpcRegistry",
     # Serialization

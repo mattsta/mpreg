@@ -1,0 +1,92 @@
+[
+  {
+    "code": -1,
+    "name": "UNKNOWN",
+    "message": "Unknown error",
+    "retryable": false
+  },
+  {
+    "code": 1000,
+    "name": "PROTOCOL",
+    "message": "Protocol error",
+    "retryable": false
+  },
+  {
+    "code": 1001,
+    "name": "COMMAND_NOT_FOUND",
+    "message": "Command not found",
+    "retryable": false
+  },
+  {
+    "code": 1002,
+    "name": "VERSION_MISMATCH",
+    "message": "Function version constraint not satisfied",
+    "retryable": false
+  },
+  {
+    "code": 1003,
+    "name": "HOP_BUDGET_EXCEEDED",
+    "message": "Fabric hop budget exceeded",
+    "retryable": false
+  },
+  {
+    "code": 1004,
+    "name": "POLICY_DENIED",
+    "message": "Namespace or routing policy denied the request",
+    "retryable": false
+  },
+  {
+    "code": 1005,
+    "name": "ROUTE_NOT_FOUND",
+    "message": "No route to target",
+    "retryable": true
+  },
+  {
+    "code": 1006,
+    "name": "TIMEOUT",
+    "message": "Operation timed out",
+    "retryable": true
+  },
+  {
+    "code": 1007,
+    "name": "UNAVAILABLE",
+    "message": "Service temporarily unavailable",
+    "retryable": true
+  },
+  {
+    "code": 1008,
+    "name": "INVALID_ARGUMENT",
+    "message": "Invalid argument",
+    "retryable": false
+  },
+  {
+    "code": 1009,
+    "name": "AUTH_REQUIRED",
+    "message": "Authentication required",
+    "retryable": false
+  },
+  {
+    "code": 1010,
+    "name": "AUTH_FAILED",
+    "message": "Authentication failed",
+    "retryable": false
+  },
+  {
+    "code": 1099,
+    "name": "INTERNAL",
+    "message": "Internal error",
+    "retryable": false
+  },
+  {
+    "code": 1101,
+    "name": "DISCOVERY_ACCESS_DENIED",
+    "message": "Discovery access denied",
+    "retryable": false
+  },
+  {
+    "code": 1102,
+    "name": "DISCOVERY_RATE_LIMITED",
+    "message": "Discovery rate limit exceeded",
+    "retryable": true
+  }
+]
