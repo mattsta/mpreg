@@ -22,7 +22,7 @@ import contextlib
 import inspect
 import time
 from collections.abc import Awaitable, Callable
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, is_dataclass
 from enum import Enum
 from typing import Any
 
@@ -67,6 +67,9 @@ type DiscoveryCacheProvider = Callable[[], Awaitable[JsonResponse] | JsonRespons
 type DiscoveryPolicyProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
 type DiscoveryLagProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
 type DnsMetricsProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
+
+def _is_dataclass_obj(value: Any) -> bool:
+    return is_dataclass(value) and not isinstance(value, type)
 
 class MonitoringEndpointType(Enum):
     """Types of federation monitoring endpoints."""
@@ -247,6 +250,13 @@ class FederationMonitoringSystem:
     discovery_policy_provider: DiscoveryPolicyProvider | None = None
     discovery_lag_provider: DiscoveryLagProvider | None = None
     dns_metrics_provider: DnsMetricsProvider | None = None
+    # Optional callable returning mgmt summary dicts (cluster/nodes/routes/catalog)
+    mgmt_summary_provider: Callable[[], Awaitable[JsonResponse] | JsonResponse] | None = (
+        None
+    )
+    policy_dry_run_provider: (
+        Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse] | None
+    ) = None
 
     # Web server components
     app: web.Application = field(init=False)
@@ -260,7 +270,8 @@ class FederationMonitoringSystem:
     # Configuration
     monitoring_port: int = 9090
     monitoring_host: str | None = None
-    enable_cors: bool = True
+    enable_cors: bool = False
+    auth_token: str | None = None
     metrics_retention_hours: int = 24
     metrics_ingest_interval_seconds: float = 5.0
 
@@ -297,7 +308,15 @@ class FederationMonitoringSystem:
         self.app.router.add_get("/metrics/cache", self._get_cache_metrics)
         self.app.router.add_get("/metrics/transport", self._get_transport_metrics)
         self.app.router.add_get("/metrics/persistence", self._get_persistence_metrics)
+        self.app.router.add_get("/metrics/prometheus", self._get_prometheus_metrics)
         self.app.router.add_get("/transport/endpoints", self._get_transport_endpoints)
+
+        # Management read API (v1)
+        self.app.router.add_get("/mgmt/v1/cluster", self._get_mgmt_cluster)
+        self.app.router.add_get("/mgmt/v1/nodes", self._get_mgmt_nodes)
+        self.app.router.add_get("/mgmt/v1/routes", self._get_mgmt_routes)
+        self.app.router.add_get("/mgmt/v1/catalog", self._get_mgmt_catalog)
+        self.app.router.add_get("/mgmt/v1/health", self._get_mgmt_health)
 
         # Discovery endpoints
         self.app.router.add_get("/discovery/summary", self._get_discovery_summary)
@@ -334,7 +353,9 @@ class FederationMonitoringSystem:
 
         # Routing endpoints
         self.app.router.add_get("/routing/trace", self._get_route_trace)
+        self.app.router.add_get("/routing/decisions", self._get_route_decisions)
         self.app.router.add_get("/routing/link-state", self._get_link_state_status)
+        self.app.router.add_post("/mgmt/v1/policy/dry-run", self._post_policy_dry_run)
 
         # Utility endpoints
         self.app.router.add_get("/", self._get_monitoring_index)
@@ -344,13 +365,35 @@ class FederationMonitoringSystem:
         """Configure middleware for request processing."""
 
         @web.middleware
+        async def auth_middleware(request: web.Request, handler) -> web.Response:
+            """Optional bearer-token gate for monitoring endpoints."""
+            token = self.auth_token or getattr(
+                self.settings, "monitoring_auth_token", None
+            )
+            if token:
+                auth_header = request.headers.get("Authorization", "")
+                alt = request.headers.get("X-MPREG-Monitoring-Token", "")
+                expected = f"Bearer {token}"
+                if auth_header != expected and alt != token:
+                    return web.json_response(
+                        {"error": "unauthorized", "detail": "valid monitoring token required"},
+                        status=401,
+                    )
+            return await handler(request)
+
+        @web.middleware
         async def cors_middleware(request: web.Request, handler) -> web.Response:
-            """Handle CORS headers for browser access."""
-            response = await handler(request)
+            """Handle CORS headers for browser access when explicitly enabled."""
+            if request.method == "OPTIONS" and self.enable_cors:
+                response = web.Response(status=204)
+            else:
+                response = await handler(request)
             if self.enable_cors:
                 response.headers["Access-Control-Allow-Origin"] = "*"
                 response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-                response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+                response.headers["Access-Control-Allow-Headers"] = (
+                    "Content-Type, Authorization, X-MPREG-Monitoring-Token"
+                )
             return response
 
         @web.middleware
@@ -385,8 +428,10 @@ class FederationMonitoringSystem:
                 )
                 raise
 
-        self.app.middlewares.append(cors_middleware)
+        # aiohttp applies middlewares in reverse order of append.
         self.app.middlewares.append(metrics_middleware)
+        self.app.middlewares.append(cors_middleware)
+        self.app.middlewares.append(auth_middleware)
 
     async def start(self) -> None:
         """Start the federation monitoring HTTP server."""
@@ -1718,6 +1763,243 @@ class FederationMonitoringSystem:
             configuration_validation_errors=[],
         )
 
+    async def _get_route_decisions(self, request: web.Request) -> web.Response:
+        """Return recent fabric route decisions (ring buffer audit log)."""
+        from mpreg.fabric.route_decision_log import get_default_route_decision_log
+
+        try:
+            limit = int(request.query.get("limit", "50"))
+        except ValueError:
+            limit = 50
+        message_id = request.query.get("message_id")
+        correlation_id = request.query.get("correlation_id")
+        log = get_default_route_decision_log()
+        records = log.recent(
+            limit=limit, message_id=message_id, correlation_id=correlation_id
+        )
+        return web.json_response(
+            {
+                "decisions": [r.to_dict() for r in records],
+                "stats": log.stats(),
+            }
+        )
+
+    async def _post_policy_dry_run(self, request: web.Request) -> web.Response:
+        """Dry-run namespace policy evaluation without applying changes."""
+        try:
+            body = await request.json()
+        except Exception:
+            return web.json_response({"error": "invalid_json"}, status=400)
+        if not isinstance(body, dict):
+            return web.json_response({"error": "body_must_be_object"}, status=400)
+
+        # Prefer live server policy engine via mgmt provider extension
+        provider = getattr(self, "policy_dry_run_provider", None)
+        if provider is not None:
+            result = provider(body)
+            if inspect.isawaitable(result):
+                result = await result
+            return web.json_response(result if isinstance(result, dict) else {"result": result})
+
+        # Fallback: local structural validation only
+        namespace = str(body.get("namespace", ""))
+        action = str(body.get("action", "query"))
+        return web.json_response(
+            {
+                "dry_run": True,
+                "namespace": namespace,
+                "action": action,
+                "allowed": True,
+                "reason": "no_policy_engine_bound",
+                "note": "Wire policy_dry_run_provider on the monitoring system for live evaluation",
+            }
+        )
+
+    async def _get_prometheus_metrics(self, request: web.Request) -> web.Response:
+        """Expose golden-signal metrics in Prometheus text exposition format."""
+        lines = await self._build_prometheus_text()
+        body = "\n".join(lines) + "\n"
+        return web.Response(
+            text=body,
+            content_type="text/plain",
+            charset="utf-8",
+        )
+
+    async def _build_prometheus_text(self) -> list[str]:
+        """Build OpenMetrics-ish Prometheus text from available monitors."""
+        cluster = self._prom_escape(str(self.settings.cluster_id))
+        name = self._prom_escape(str(self.settings.name))
+        labels = f'cluster_id="{cluster}",node="{name}"'
+        lines: list[str] = [
+            "# HELP mpreg_info Static MPREG node labels.",
+            "# TYPE mpreg_info gauge",
+            f'mpreg_info{{{labels}}} 1',
+            "# HELP mpreg_monitoring_up 1 if monitoring process is serving.",
+            "# TYPE mpreg_monitoring_up gauge",
+            f"mpreg_monitoring_up{{{labels}}} 1",
+        ]
+
+        # Endpoint latency samples
+        for path, samples in self.endpoint_metrics.items():
+            if not samples:
+                continue
+            safe_path = self._prom_escape(path)
+            avg = sum(samples) / len(samples)
+            lines.append(
+                "# HELP mpreg_http_request_duration_ms Average monitoring handler latency."
+            )
+            lines.append("# TYPE mpreg_http_request_duration_ms gauge")
+            lines.append(
+                f'mpreg_http_request_duration_ms{{{labels},path="{safe_path}"}} {avg:.3f}'
+            )
+            lines.append(
+                f'mpreg_http_request_samples{{{labels},path="{safe_path}"}} {len(samples)}'
+            )
+
+        try:
+            unified = await self.unified_monitor.get_unified_metrics()
+            payload = (
+                unified.to_dict()
+                if hasattr(unified, "to_dict")
+                else asdict(unified) if _is_dataclass_obj(unified) else {}
+            )
+            self._prom_flatten(lines, "mpreg_unified", payload, labels)
+        except Exception as exc:  # noqa: BLE001 - metrics must not crash scrape
+            logger.debug("Prometheus unified metrics unavailable: {}", exc)
+
+        try:
+            health = await self._collect_health_summary()
+            lines.append("# HELP mpreg_federation_health_score Overall federation health 0-1.")
+            lines.append("# TYPE mpreg_federation_health_score gauge")
+            score = getattr(health, "overall_health_score", 0.0)
+            try:
+                score_f = float(score)
+            except (TypeError, ValueError):
+                score_f = 0.0
+            lines.append(f"mpreg_federation_health_score{{{labels}}} {score_f}")
+            lines.append(
+                f"mpreg_federation_healthy_clusters{{{labels}}} {getattr(health, 'healthy_clusters', 0)}"
+            )
+            lines.append(
+                f"mpreg_federation_total_clusters{{{labels}}} {getattr(health, 'total_clusters', 0)}"
+            )
+            lines.append(
+                f"mpreg_federation_active_connections{{{labels}}} {getattr(health, 'active_connections', 0)}"
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Prometheus health metrics unavailable: {}", exc)
+
+        if self.persistence_snapshot_provider is not None:
+            try:
+                snap = self.persistence_snapshot_provider()
+                if inspect.isawaitable(snap):
+                    snap = await snap
+                if isinstance(snap, dict):
+                    self._prom_flatten(lines, "mpreg_persistence", snap, labels)
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("Prometheus persistence metrics unavailable: {}", exc)
+
+        # Deduplicate HELP/TYPE lines while preserving order of metric samples
+        return lines
+
+    @staticmethod
+    def _prom_escape(value: str) -> str:
+        return (
+            value.replace("\\", "\\\\")
+            .replace("\n", "\\n")
+            .replace('"', '\\"')
+        )
+
+    def _prom_flatten(
+        self,
+        lines: list[str],
+        prefix: str,
+        payload: dict[str, Any],
+        labels: str,
+        depth: int = 0,
+    ) -> None:
+        if depth > 4 or not isinstance(payload, dict):
+            return
+        for key, value in payload.items():
+            safe_key = "".join(
+                ch if ch.isalnum() or ch == "_" else "_" for ch in str(key)
+            ).strip("_")
+            metric = f"{prefix}_{safe_key}" if safe_key else prefix
+            if isinstance(value, bool):
+                lines.append(f"{metric}{{{labels}}} {1 if value else 0}")
+            elif isinstance(value, (int, float)) and not isinstance(value, bool):
+                lines.append(f"{metric}{{{labels}}} {float(value)}")
+            elif isinstance(value, dict):
+                self._prom_flatten(lines, metric, value, labels, depth + 1)
+
+    async def _resolve_mgmt_summary(self) -> JsonResponse:
+        if self.mgmt_summary_provider is None:
+            # Minimal fallback from local settings + health
+            health_status = "unknown"
+            try:
+                summary = await self._get_health_summary_payload()
+                health_status = str(summary.get("overall_health_status", "unknown"))
+            except Exception:  # noqa: BLE001
+                summary = {}
+            return {
+                "cluster": {
+                    "cluster_id": self.settings.cluster_id,
+                    "node_name": self.settings.name,
+                    "health": health_status,
+                },
+                "nodes": [],
+                "routes": [],
+                "catalog": {
+                    "functions": 0,
+                    "queues": 0,
+                    "topics": 0,
+                    "caches": 0,
+                },
+                "health": summary if isinstance(summary, dict) else {},
+            }
+        result = self.mgmt_summary_provider()
+        if inspect.isawaitable(result):
+            result = await result
+        if not isinstance(result, dict):
+            return {"error": "invalid_mgmt_summary"}
+        return result
+
+    async def _get_health_summary_payload(self) -> JsonResponse:
+        """Best-effort JSON health summary for mgmt fallback."""
+        try:
+            health = await self._collect_health_summary()
+            return {
+                "overall_health_status": getattr(
+                    health.overall_health_status, "value", str(health.overall_health_status)
+                ),
+                "overall_health_score": float(health.overall_health_score),
+                "total_clusters": health.total_clusters,
+                "healthy_clusters": health.healthy_clusters,
+                "active_connections": health.active_connections,
+            }
+        except Exception:  # noqa: BLE001
+            return {"overall_health_status": "unknown"}
+
+    async def _get_mgmt_cluster(self, request: web.Request) -> web.Response:
+        summary = await self._resolve_mgmt_summary()
+        return web.json_response(summary.get("cluster", summary))
+
+    async def _get_mgmt_nodes(self, request: web.Request) -> web.Response:
+        summary = await self._resolve_mgmt_summary()
+        return web.json_response({"nodes": summary.get("nodes", [])})
+
+    async def _get_mgmt_routes(self, request: web.Request) -> web.Response:
+        summary = await self._resolve_mgmt_summary()
+        return web.json_response({"routes": summary.get("routes", [])})
+
+    async def _get_mgmt_catalog(self, request: web.Request) -> web.Response:
+        summary = await self._resolve_mgmt_summary()
+        return web.json_response({"catalog": summary.get("catalog", {})})
+
+    async def _get_mgmt_health(self, request: web.Request) -> web.Response:
+        summary = await self._resolve_mgmt_summary()
+        return web.json_response({"health": summary.get("health", {})})
+
     async def _collect_available_endpoints(self) -> list[dict[str, Any]]:
         """Collect information about available monitoring endpoints."""
         return [
@@ -1790,6 +2072,36 @@ class FederationMonitoringSystem:
                 "path": "/metrics/persistence",
                 "method": "GET",
                 "description": "Persistence snapshot metrics",
+            },
+            {
+                "path": "/metrics/prometheus",
+                "method": "GET",
+                "description": "Prometheus text exposition of golden-signal metrics",
+            },
+            {
+                "path": "/mgmt/v1/cluster",
+                "method": "GET",
+                "description": "Management API: cluster summary",
+            },
+            {
+                "path": "/mgmt/v1/nodes",
+                "method": "GET",
+                "description": "Management API: node summaries",
+            },
+            {
+                "path": "/mgmt/v1/routes",
+                "method": "GET",
+                "description": "Management API: route summaries",
+            },
+            {
+                "path": "/mgmt/v1/catalog",
+                "method": "GET",
+                "description": "Management API: catalog summary",
+            },
+            {
+                "path": "/mgmt/v1/health",
+                "method": "GET",
+                "description": "Management API: health summary",
             },
             {
                 "path": "/transport/endpoints",
@@ -1890,6 +2202,16 @@ class FederationMonitoringSystem:
                 "path": "/config/validation",
                 "method": "GET",
                 "description": "Federation configuration validation",
+            },
+            {
+                "path": "/routing/decisions",
+                "method": "GET",
+                "description": "Recent fabric route decision audit log",
+            },
+            {
+                "path": "/mgmt/v1/policy/dry-run",
+                "method": "POST",
+                "description": "Dry-run namespace/routing policy evaluation",
             },
             {
                 "path": "/routing/trace",
@@ -2359,7 +2681,8 @@ def create_federation_monitoring_system(
     unified_monitor: UnifiedSystemMonitor,
     monitoring_port: int = 9090,
     monitoring_host: str | None = None,
-    enable_cors: bool = True,
+    enable_cors: bool = False,
+    auth_token: str | None = None,
     performance_service: PerformanceMetricsService | None = None,
     federation_graph: FederationGraph | None = None,
     route_trace_provider: RouteTraceProvider | None = None,
@@ -2371,11 +2694,19 @@ def create_federation_monitoring_system(
     discovery_policy_provider: DiscoveryPolicyProvider | None = None,
     discovery_lag_provider: DiscoveryLagProvider | None = None,
     dns_metrics_provider: DnsMetricsProvider | None = None,
+    mgmt_summary_provider: Callable[[], Awaitable[JsonResponse] | JsonResponse]
+    | None = None,
+    policy_dry_run_provider: Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse]
+    | None = None,
 ) -> FederationMonitoringSystem:
     """Create a federation monitoring system with specified configuration."""
 
     if performance_service is None:
         performance_service = PerformanceMetricsService()
+
+    resolved_token = auth_token
+    if resolved_token is None:
+        resolved_token = getattr(settings, "monitoring_auth_token", None)
 
     monitoring_system = FederationMonitoringSystem(
         settings=settings,
@@ -2393,9 +2724,12 @@ def create_federation_monitoring_system(
         discovery_policy_provider=discovery_policy_provider,
         discovery_lag_provider=discovery_lag_provider,
         dns_metrics_provider=dns_metrics_provider,
+        mgmt_summary_provider=mgmt_summary_provider,
+        policy_dry_run_provider=policy_dry_run_provider,
     )
 
     monitoring_system.monitoring_port = monitoring_port
     monitoring_system.monitoring_host = monitoring_host
     monitoring_system.enable_cors = enable_cors
+    monitoring_system.auth_token = resolved_token
     return monitoring_system

@@ -50,7 +50,11 @@ class MPREGSettings:
     monitoring_enabled: bool = True
     monitoring_port: PortNumber | None = None
     monitoring_host: str | None = None
-    monitoring_enable_cors: bool = True
+    # CORS is off by default; enable only when a browser UI needs it.
+    monitoring_enable_cors: bool = False
+    # When set, monitoring HTTP endpoints require Authorization: Bearer <token>
+    # (or X-MPREG-Monitoring-Token). Empty/None disables auth (dev default).
+    monitoring_auth_token: str | None = None
     on_port_assigned: PortAssignmentCallback | None = None
     on_monitoring_port_assigned: PortAssignmentCallback | None = None
 
@@ -135,6 +139,8 @@ class MPREGSettings:
     discovery_summary_export_hold_down_seconds: DurationSeconds = 0.0
     discovery_summary_export_store_forward_seconds: DurationSeconds = 0.0
     discovery_summary_export_store_forward_max_messages: int = 100
+    # Optional HMAC secret for summary export integrity (see discovery_signatures).
+    discovery_summary_signing_secret: str | None = None
 
     # Discovery backpressure configuration
     discovery_rate_limit_requests_per_minute: int = 0
