@@ -94,6 +94,40 @@ class Client:
         if meta:
             self._last_trace_metadata = meta
 
+    def _inject_outbound_trace(self, payload: dict) -> dict:
+        """Ensure W3C traceparent on outbound RPC JSON when missing."""
+        from mpreg.core.observability.trace_context import (
+            TRACEPARENT_KEY,
+            TRACESTATE_KEY,
+            ensure_traceparent,
+            inject_trace_metadata,
+        )
+
+        if not isinstance(payload, dict):
+            return payload
+        meta: dict = {}
+        if isinstance(payload.get("headers"), dict):
+            meta = dict(payload["headers"])
+        elif isinstance(payload.get("metadata"), dict):
+            meta = dict(payload["metadata"])
+        # Prefer continuing last observed trace when present.
+        last = getattr(self, "_last_trace_metadata", None) or {}
+        if TRACEPARENT_KEY not in meta and TRACEPARENT_KEY in last:
+            meta[TRACEPARENT_KEY] = last[TRACEPARENT_KEY]
+            if TRACESTATE_KEY in last:
+                meta[TRACESTATE_KEY] = last[TRACESTATE_KEY]
+        meta = inject_trace_metadata(meta)
+        ensure_traceparent(meta)
+        payload = dict(payload)
+        headers = dict(payload.get("headers") or {})
+        headers.update({k: meta[k] for k in (TRACEPARENT_KEY, TRACESTATE_KEY) if k in meta})
+        # Also top-level for interop
+        payload["headers"] = headers
+        payload[TRACEPARENT_KEY] = meta[TRACEPARENT_KEY]
+        if TRACESTATE_KEY in meta:
+            payload[TRACESTATE_KEY] = meta[TRACESTATE_KEY]
+        return payload
+
     async def request(
         self, cmds: list[RPCCommand], timeout: float | None = None
     ) -> Any:
@@ -112,7 +146,9 @@ class Client:
         """
         req = RPCRequest(cmds=tuple(cmds), u=str(ulid.new()))
 
-        send = req.model_dump_json()
+        injected = self._inject_outbound_trace(req.model_dump())
+        import json as _json
+        send = _json.dumps(injected)
 
         if self.full_log:
             client_log.info("====================== NEW REQUEST ======================")
@@ -162,10 +198,7 @@ class Client:
             from mpreg.core.errors import map_exception
 
             base = MPREGException(rpc_error=response.error)
-            mapped = map_exception(base)
-            if mapped is not None:
-                raise mapped from None
-            raise base
+            raise map_exception(base) from None
 
         return response.r
 
@@ -185,7 +218,8 @@ class Client:
             asyncio.TimeoutError: If the request times out.
             Exception: For other RPC errors returned by the server.
         """
-        send = request.model_dump_json()
+        import json as _json
+        send = _json.dumps(self._inject_outbound_trace(request.model_dump()))
         if self.full_log:
             client_log.info("================= NEW ENHANCED REQUEST =================")
             client_log.info(
@@ -241,10 +275,7 @@ class Client:
             from mpreg.core.errors import map_exception
 
             base = MPREGException(rpc_error=response.error)
-            mapped = map_exception(base)
-            if mapped is not None:
-                raise mapped from None
-            raise base
+            raise map_exception(base) from None
 
         return response
 

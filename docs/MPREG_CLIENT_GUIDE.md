@@ -871,3 +871,10 @@ Fabric messages carry W3C `traceparent` in header metadata. Correlate hops with:
 mpreg monitor decisions --correlation-id <id> --url $MPREG_MONITORING_URL
 ```
 
+## Default HA call policy
+
+`MPREGClusterClient` applies `default_ha_policy()` (3 attempts, retry timeout/unavailable only)
+unless you pass `call_policy=ClientCallPolicy(...)` or `call_policy=ClientCallPolicy(max_attempts=1)`.
+
+Outbound RPC JSON includes a W3C `traceparent` (and optional `tracestate`) injected by the
+transport client. Read the last observed context with `MPREGClientAPI.last_trace_context()`.

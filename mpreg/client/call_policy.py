@@ -64,13 +64,18 @@ async def call_with_policy(
         except Exception as exc:
             last_exc = exc
             if not policy.should_retry(exc, attempt):
-                mapped = map_exception(exc)
-                if mapped is not None:
-                    raise mapped from exc
-                raise
+                raise map_exception(exc) from exc
             await asyncio.sleep(policy.backoff_for_attempt(attempt))
     assert last_exc is not None
-    mapped = map_exception(last_exc)
-    if mapped is not None:
-        raise mapped from last_exc
-    raise last_exc
+    raise map_exception(last_exc) from last_exc
+
+def default_ha_policy() -> ClientCallPolicy:
+    """Sensible defaults for multi-endpoint clients (retry only retryable codes)."""
+    return ClientCallPolicy(
+        max_attempts=3,
+        base_backoff_seconds=0.05,
+        max_backoff_seconds=2.0,
+        jitter_seconds=0.05,
+        retry_on_timeout=True,
+        retry_on_unavailable=True,
+    )

@@ -88,6 +88,7 @@ class MPREGClusterClient:
     summary_redirect_scope: str | None = "global"
     summary_redirect_ingress_limit: int | None = 2
     summary_redirect_ingress_scope: str | None = None
+    call_policy: "ClientCallPolicy | None" = None
 
     _clients: dict[str, Client] = field(default_factory=dict, init=False)
     _endpoint_scores: dict[str, float] = field(default_factory=dict, init=False)
@@ -110,6 +111,10 @@ class MPREGClusterClient:
             self.seed_urls = (self.seed_urls,)
         else:
             self.seed_urls = tuple(self.seed_urls)
+        if self.call_policy is None:
+            from mpreg.client.call_policy import default_ha_policy
+
+            self.call_policy = default_ha_policy()
 
     async def connect(self) -> None:
         """Connect to at least one seed endpoint and start discovery."""
@@ -249,10 +254,7 @@ class MPREGClusterClient:
         if last_error:
             from mpreg.core.errors import map_exception
 
-            mapped = map_exception(last_error)
-            if mapped is not None:
-                raise mapped from last_error
-            raise last_error
+            raise map_exception(last_error) from last_error
         raise ConnectionError("No cluster endpoints available for RPC call.")
 
     async def cluster_map(self) -> ClusterMapSnapshot:
@@ -529,10 +531,7 @@ class MPREGClusterClient:
             from mpreg.core.errors import map_exception
 
             self._record_endpoint_error(url)
-            mapped = map_exception(exc)
-            if mapped is not None:
-                raise mapped from exc
-            raise
+            raise map_exception(exc) from exc
         latency_ms = (time.time() - start_time) * 1000.0
         self._record_endpoint_success(url, latency_ms)
         if isinstance(result, dict) and len(result) == 1:
