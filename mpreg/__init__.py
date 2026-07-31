@@ -34,10 +34,10 @@ await server.server()
 
 ## Performance
 
-- **Sub-millisecond routing** for 100+ node graphs
-- **1781+ requests/second** throughput
-- **384 passing tests** with comprehensive coverage
-- **Production-ready** with deployment guides and examples
+- Sub-millisecond routing for large node graphs
+- Comprehensive unit, integration, and property-based tests
+- Production-oriented deployment guides and examples
+
 """
 
 from __future__ import annotations
@@ -79,10 +79,20 @@ from .fabric.membership import (
     MembershipState,
 )
 
-# Version info
-__version__ = "3.0.0"
-__author__ = "MPREG Development Team"
-__license__ = "MIT"
+# Version info — single source is pyproject.toml [project].version
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
+
+try:
+    __version__ = _pkg_version("mpreg")
+except PackageNotFoundError:  # pragma: no cover - editable/source tree fallback
+    __version__ = "0.2.0"
+
+__author__ = "Matt Stancliff"
+__license__ = "Apache-2.0"
+
+from .client.cluster_client import MPREGClusterClient
+from .core.port_allocator import allocate_port
+from .server import MPREGServer
 
 __all__ = [
     # Core
@@ -90,6 +100,8 @@ __all__ = [
     "JsonSerializer",
     "MPREGSettings",
     "TopicExchange",
+    "allocate_port",
+    "MPREGServer",
     # Fabric - Graph
     "FederationGraph",
     "GraphBasedFederationRouter",
@@ -117,6 +129,9 @@ __all__ = [
     # Client
     "Client",
     "MPREGClientAPI",
+    "MPREGClusterClient",
     "MPREGDnsClient",
     "MPREGPubSubClient",
+    # Meta
+    "__version__",
 ]

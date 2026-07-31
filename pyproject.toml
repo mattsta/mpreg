@@ -1,6 +1,6 @@
 [project]
 name = "mpreg"
-version = "0.1.0"
+version = "0.2.0"
 description = "Matt’s Protocol for Results Everywhere Guaranteed"
 authors = [{ name = "Matt Stancliff", email = "matt@genges.com" }]
 requires-python = " >=3.11,<4"
@@ -99,3 +99,14 @@ pretty = true
 show_traceback = true
 warn_return_any = true
 warn_unused_configs = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["mpreg"]
+
+[tool.hatch.build]
+include = [
+  "mpreg/**",
+  "mpreg/profiles/*.toml",
+  "mpreg/profiles/README.md",
+  "mpreg/server_pkg/consensus.md",
+]

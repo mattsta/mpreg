@@ -7,3 +7,6 @@ CLAUDE.md
 AGENTS.md
 IDEAS.md
 artifacts/
+
+# Local-only notes (not part of the product tree)
+.local/
