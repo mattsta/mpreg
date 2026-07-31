@@ -8970,25 +8970,17 @@ class MPREGServer:
                     return RPCResponse(r="STATUS", u=req.u)
                 case _:
                     # Handle unknown server message types.
-                    from mpreg.core.errors import protocol_error
+                    from mpreg.server_pkg.rpc_responses import protocol_response
 
-                    return RPCResponse(
-                        r=None,
-                        error=protocol_error(
-                            f"Unknown server message type: {req.server.what}"
-                        ).rpc_error,
-                        u=req.u,
+                    return protocol_response(
+                        req.u, f"Unknown server message type: {req.server.what}"
                     )
         except Exception as e:
             # Catch any exceptions during server command processing and return an error response.
             logger.exception("Error processing server command")
-            from mpreg.core.errors import internal_error
+            from mpreg.server_pkg.rpc_responses import internal_response
 
-            return RPCResponse(
-                r=None,
-                error=internal_error(traceback.format_exc()).rpc_error,
-                u=req.u,
-            )
+            return internal_response(req.u, traceback.format_exc())
 
     async def run_rpc(
         self,
@@ -9047,13 +9039,9 @@ class MPREGServer:
             except Exception:
                 # Catch any exceptions during RPC execution and return an error response.
                 logger.exception("Error running RPC")
-                from mpreg.core.errors import internal_error
+                from mpreg.server_pkg.rpc_responses import internal_response
 
-                return RPCResponse(
-                    r=None,
-                    error=internal_error(traceback.format_exc()).rpc_error,
-                    u=req.u,
-                )
+                return internal_response(req.u, traceback.format_exc())
             finally:
                 duration_ms = (time.time() - start_time) * 1000.0
                 self._metrics_tracker.record_rpc(duration_ms, success)
@@ -9135,14 +9123,12 @@ class MPREGServer:
                                 peer_url,
                                 server_request.server.instance_id or None,
                             ):
-                                from mpreg.core.errors import unavailable
+                                from mpreg.server_pkg.rpc_responses import (
+                                    unavailable_response,
+                                )
 
-                                response_model = RPCResponse(
-                                    r=None,
-                                    error=unavailable(
-                                        "Peer is marked departed"
-                                    ).rpc_error,
-                                    u=server_request.u,
+                                response_model = unavailable_response(
+                                    server_request.u, "Peer is marked departed"
                                 )
                                 close_connection = True
                             else:
@@ -9163,15 +9149,14 @@ class MPREGServer:
                                         remote_cluster_id,
                                         decision.error_message,
                                     )
-                                    from mpreg.core.errors import policy_denied
+                                    from mpreg.server_pkg.rpc_responses import (
+                                        policy_response,
+                                    )
 
-                                    response_model = RPCResponse(
-                                        r=None,
-                                        error=policy_denied(
-                                            decision.error_message
-                                            or "connection policy denied"
-                                        ).rpc_error,
-                                        u=server_request.u,
+                                    response_model = policy_response(
+                                        server_request.u,
+                                        decision.error_message
+                                        or "connection policy denied",
                                     )
                                     close_connection = True
                                 else:
@@ -9524,16 +9509,11 @@ class MPREGServer:
                             peer_label,
                             parsed_msg.get("role"),
                         )
-                        response_model = RPCResponse(
-                            r=None,
-                            error=__import__(
-                                "mpreg.core.errors", fromlist=["invalid_argument"]
-                            )
-                            .invalid_argument(
-                                f"Invalid RPC request role: {parsed_msg.get('role')}"
-                            )
-                            .rpc_error,
-                            u=parsed_msg.get("u", "unknown"),
+                        from mpreg.server_pkg.rpc_responses import invalid_arg_response
+
+                        response_model = invalid_arg_response(
+                            parsed_msg.get("u", "unknown"),
+                            f"Invalid RPC request role: {parsed_msg.get('role')}",
                         )
 
                 # If a response model was generated, send it back to the client.

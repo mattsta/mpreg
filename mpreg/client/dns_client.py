@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from dnslib import QTYPE, RCODE, DNSRecord
 
+from mpreg.core.errors import map_exception
 from mpreg.datastructures.type_aliases import JsonDict
 
 @dataclass(frozen=True, slots=True)
@@ -66,14 +67,17 @@ class MPREGDnsClient:
             raise ValueError(f"Unsupported qtype: {qtype_name}") from exc
         selected_timeout = self._timeout if timeout is None else float(timeout)
         selected_tcp = self._use_tcp if use_tcp is None else use_tcp
-        if selected_tcp:
-            response = await _tcp_dns_query(
-                self._host, self._port, qname, qtype_name, selected_timeout
-            )
-        else:
-            response = await _udp_dns_query(
-                self._host, self._port, qname, qtype_name, selected_timeout
-            )
+        try:
+            if selected_tcp:
+                response = await _tcp_dns_query(
+                    self._host, self._port, qname, qtype_name, selected_timeout
+                )
+            else:
+                response = await _udp_dns_query(
+                    self._host, self._port, qname, qtype_name, selected_timeout
+                )
+        except Exception as exc:
+            raise map_exception(exc) from exc
         rcode = RCODE.get(response.header.rcode)
         answers = _dns_answers_from_response(response)
         return DnsResolveResult(

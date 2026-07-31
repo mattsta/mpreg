@@ -87,3 +87,4 @@ __all__ = [
 ]
 
 # openapi_surface — machine-readable HTTP contract
+# rpc_responses — canonical RPCResponse error builders

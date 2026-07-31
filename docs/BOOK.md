@@ -26,7 +26,9 @@ call by name/identity; the fabric routes and resolves dependency graphs.
 
 ### Structured errors and traces
 
-- Stable codes: `1001`–`1010`, `1099` (`mpreg.core.errors.MpregErrorCode`)
+- Stable codes: `1000`–`1010`, `1099`, discovery `1101`/`1102` (`mpreg.core.errors.MpregErrorCode`, `mpreg/core/error_codes.json`)
+- OpenAPI: `GET /openapi.json` on the monitoring port
+- HA clients: `MPREGClusterClient` defaults to `default_ha_policy()`
 - Clients raise `MpregError` with `retryable` for HA policies
 - Fabric hops carry W3C `traceparent` in header metadata; correlate with
   `/routing/decisions?correlation_id=...`

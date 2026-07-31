@@ -34,6 +34,8 @@ from ..core.statistics import (
     SubscriptionInfo,
     TopicMetrics,
 )
+from mpreg.core.errors import MpregError, MpregErrorCode, map_exception
+
 from .client_api import MPREGClientAPI
 
 pubsub_log = logger
@@ -298,14 +300,23 @@ class MPREGPubSubClient:
                 ack = PubSubAck.model_validate(response)
                 if ack.success:
                     return subscription_id
-                raise Exception(f"Subscription failed: {ack.error}")
+                raise MpregError.of(
+                    MpregErrorCode.UNAVAILABLE,
+                    details=f"Subscription failed: {ack.error}",
+                )
 
-            raise Exception("Invalid response to subscription request")
+            raise MpregError.of(
+                MpregErrorCode.PROTOCOL,
+                details="Invalid response to subscription request",
+            )
 
+        except MpregError:
+            self.subscriptions.pop(subscription_id, None)
+            raise
         except Exception as e:
             self.subscriptions.pop(subscription_id, None)
             pubsub_log.error(f"Error subscribing to patterns {patterns}: {e}")
-            raise
+            raise map_exception(e) from e
 
     async def unsubscribe(self, subscription_id: str) -> bool:
         """
