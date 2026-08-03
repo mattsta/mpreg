@@ -78,6 +78,7 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
+    "chaos: cross-plane chaos scenarios (DS validation)",
 ]
 # Test discovery
 testpaths = ["tests"]

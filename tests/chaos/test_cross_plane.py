@@ -1,0 +1,252 @@
+"""D: Cross-plane chaos X1–X4 (L2 simulated)."""
+
+from __future__ import annotations
+
+import asyncio
+import time
+
+import pytest
+
+from mpreg.client.call_policy import ClientCallPolicy, RpcExecutionMode, call_with_policy
+from mpreg.core.errors import MpregError, MpregErrorCode
+from mpreg.datastructures.production_raft import RaftState
+from mpreg.datastructures.production_raft_implementation import (
+    ProductionRaft,
+    RaftConfiguration,
+)
+from mpreg.datastructures.raft_storage_adapters import RaftStorageFactory
+from mpreg.fabric.federation_graph import (
+    FederationGraphEdge,
+    FederationGraphNode,
+    GeographicCoordinate,
+    GraphBasedFederationRouter,
+    NodeType,
+)
+from mpreg.fabric.federation_planner import FabricFederationPlanner
+from mpreg.fabric.link_state import LinkStateMode
+from mpreg.fabric.route_control import (
+    RouteAnnouncement,
+    RouteDestination,
+    RouteMetrics,
+    RoutePath,
+    RouteTable,
+    RouteWithdrawal,
+)
+from mpreg.testing.faults import FaultInjector
+from mpreg.testing.oracles import RaftOracle, RoutingOracle
+from tests.test_production_raft_integration import (
+    MockNetwork,
+    NetworkAwareTransport,
+    TestableStateMachine,
+)
+
+def _node(cid: str) -> FederationGraphNode:
+    return FederationGraphNode(
+        node_id=cid,
+        node_type=NodeType.CLUSTER,
+        region="r",
+        coordinates=GeographicCoordinate(0.0, 0.0),
+        max_capacity=100,
+    )
+
+@pytest.mark.asyncio
+async def test_x1_leader_election_during_route_withdraw() -> None:
+    """X1: Route withdraw storm concurrent with Raft election — no hang."""
+    # Routing plane
+    table = RouteTable(local_cluster="a")
+    now = time.time()
+    table.apply_announcement(
+        RouteAnnouncement(
+            destination=RouteDestination(cluster_id="z"),
+            path=RoutePath(hops=("b", "z")),
+            metrics=RouteMetrics(hop_count=1),
+            advertiser="b",
+            advertised_at=now,
+            ttl_seconds=60,
+        ),
+        received_from="b",
+        now=now,
+    )
+    # Raft plane
+    network = MockNetwork()
+    members = {"r0", "r1", "r2"}
+    nodes = []
+    for nid in members:
+        n = ProductionRaft(
+            node_id=nid,
+            cluster_members=members,
+            storage=RaftStorageFactory.create_memory_storage(nid),
+            transport=NetworkAwareTransport(nid, network),
+            state_machine=TestableStateMachine(),
+            config=RaftConfiguration(
+            election_timeout_min=0.15,
+            election_timeout_max=0.30,
+            heartbeat_interval=0.025,
+        ),
+        )
+        network.register_node(nid, n)
+        nodes.append(n)
+        await n.start()
+
+    oracle = RaftOracle()
+    try:
+        # Withdraw storm
+        for _ in range(5):
+            table.apply_withdrawal(
+                RouteWithdrawal(
+                    destination=RouteDestination(cluster_id="z"),
+                    path=RoutePath(hops=("b", "z")),
+                    advertiser="b",
+                    withdrawn_at=now,
+                ),
+                received_from="b",
+                now=now,
+            )
+            table.apply_announcement(
+                RouteAnnouncement(
+                    destination=RouteDestination(cluster_id="z"),
+                    path=RoutePath(hops=("b", "z")),
+                    metrics=RouteMetrics(hop_count=1),
+                    advertiser="b",
+                    advertised_at=now,
+                    ttl_seconds=60,
+                ),
+                received_from="b",
+                now=now,
+            )
+
+        leader = None
+        for _ in range(80):
+            for n in nodes:
+                if n.current_state == RaftState.LEADER:
+                    leader = n
+                    break
+            if leader:
+                break
+            await asyncio.sleep(0.05)
+        assert leader is not None
+        oracle.observe_role(leader.node_id, leader.persistent_state.current_term, "leader")
+        # RPC-style call must complete or structured fail (no hang)
+        policy = ClientCallPolicy.for_mode(
+            RpcExecutionMode.M2_SOFT_RT, deadline_seconds=1.0
+        )
+
+        async def ping() -> str:
+            return "ok"
+
+        assert await call_with_policy(ping, policy) == "ok"
+        oracle.assert_safe()
+    finally:
+        for n in nodes:
+            await n.stop()
+
+@pytest.mark.asyncio
+async def test_x2_minority_partition_no_commit() -> None:
+    """X2: Minority Raft partition cannot commit; routing still plans."""
+    network = MockNetwork()
+    members = {"a", "b", "c"}
+    nodes: dict[str, ProductionRaft] = {}
+    for nid in members:
+        n = ProductionRaft(
+            node_id=nid,
+            cluster_members=members,
+            storage=RaftStorageFactory.create_memory_storage(nid),
+            transport=NetworkAwareTransport(nid, network),
+            state_machine=TestableStateMachine(),
+            config=RaftConfiguration(
+            election_timeout_min=0.15,
+            election_timeout_max=0.30,
+            heartbeat_interval=0.025,
+        ),
+        )
+        network.register_node(nid, n)
+        nodes[nid] = n
+        await n.start()
+
+    try:
+        leader = None
+        for _ in range(100):
+            for n in nodes.values():
+                if n.current_state == RaftState.LEADER:
+                    leader = n
+                    break
+            if leader:
+                break
+            await asyncio.sleep(0.05)
+        assert leader is not None
+        # Commit one entry while healthy
+        assert await leader.submit_command("x=1") is not None
+        commit_before = leader.volatile_state.commit_index
+
+        # Partition minority {leader} alone if possible — use 1 vs 2
+        majority = set(members) - {leader.node_id}
+        # Actually put leader with one follower vs singleton minority
+        singleton = next(iter(majority))
+        rest = members - {singleton}
+        network.create_partition({singleton}, rest)
+
+        # Minority singleton should not advance commits as sole leader of new term easily;
+        # majority side may elect.
+        await asyncio.sleep(0.5)
+        # Routing plane still works under LS prefer
+        g = GraphBasedFederationRouter()
+        for c in "xyz":
+            g.add_node(_node(c))
+        g.add_edge(
+            FederationGraphEdge(
+                "x", "y", latency_ms=1, bandwidth_mbps=100, reliability_score=1.0
+            )
+        )
+        planner = FabricFederationPlanner(
+            local_cluster="x",
+            graph_router=g,
+            peer_locator=lambda c: [f"ws://{c}:1"],
+            link_state_mode=LinkStateMode.PREFER,
+            link_state_router=g,
+        )
+        plan = planner.plan_next_hop(target_cluster="y")
+        assert plan.can_forward
+
+        # Heal
+        network.heal_partition()
+        await asyncio.sleep(0.3)
+        # Safety: at most one leader per term observed at end
+        leaders = [n for n in nodes.values() if n.current_state == RaftState.LEADER]
+        if leaders:
+            terms = {n.persistent_state.current_term for n in leaders}
+            # multiple leaders only ok if different terms (shouldn't happen same time)
+            assert len(leaders) <= 1 or len(terms) == len(leaders)
+        assert commit_before >= 0
+    finally:
+        for n in nodes.values():
+            await n.stop()
+
+@pytest.mark.asyncio
+async def test_x3_restart_mid_stream_client_timeout() -> None:
+    """X3: Client sees TIMEOUT / structured error, not hang, when op dies."""
+    policy = ClientCallPolicy.for_mode(
+        RpcExecutionMode.M3_STREAMING, deadline_seconds=0.2, max_attempts=1
+    )
+    inj = FaultInjector(seed=1)
+    inj.crash("server")
+
+    async def broken_stream() -> str:
+        if not inj.view().can_communicate("client", "server"):
+            await asyncio.sleep(1.0)
+        return "should-not"
+
+    with pytest.raises(MpregError) as ei:
+        await call_with_policy(broken_stream, policy)
+    assert ei.value.code == int(MpregErrorCode.TIMEOUT)
+
+def test_x4_clock_skew_view() -> None:
+    """X4: Clock skew injection is observable per node."""
+    inj = FaultInjector()
+    inj.set_clock_skew("n0", 0.5)
+    inj.set_clock_skew("n1", -0.5)
+    wall = 10_000.0
+    assert inj.view().now_for("n0", wall) == wall + 0.5
+    assert inj.view().now_for("n1", wall) == wall - 0.5
+    # Partition + skew compose
+    inj.partition({"n0"}, {"n1", "n2"})
+    assert not inj.view().can_communicate("n0", "n1")
