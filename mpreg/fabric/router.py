@@ -49,6 +49,8 @@ class FabricRouteReason(Enum):
     FEDERATED = "federated"
     NO_MATCH = "no_match"
     FALLBACK_LOCAL = "fallback_local"
+    # Requested delivery guarantee is not implemented (fail closed, not silent).
+    UNSUPPORTED_DELIVERY = "unsupported_delivery"
 
 @dataclass(frozen=True, slots=True)
 class FabricRouteTarget:
@@ -773,8 +775,25 @@ class FabricRouter:
         estimated_latency = 15.0
         route_cost = 3.0
         if message.delivery == DeliveryGuarantee.EXACTLY_ONCE:
-            estimated_latency *= 2.0
-            route_cost *= 2.0
+            # Fail closed: no idempotent barrier / dedup store on the fabric hop.
+            # Previously we only inflated cost — a silent paper guarantee.
+            router_log.warning(
+                "EXACTLY_ONCE delivery rejected (unsupported): topic={} message_id={}",
+                message.topic,
+                message.message_id,
+            )
+            return FabricRouteResult(
+                route_id=route_id,
+                targets=[],
+                routing_path=[],
+                federation_path=[],
+                estimated_latency_ms=0.0,
+                route_cost=0.0,
+                federation_required=False,
+                hops_required=0,
+                reason=FabricRouteReason.UNSUPPORTED_DELIVERY,
+                cluster_routes={},
+            )
         remote_routes = {
             cluster_id: plan
             for cluster_id, plan in cluster_routes.items()

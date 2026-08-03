@@ -5,7 +5,7 @@ import contextlib
 import time
 from collections import deque
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from loguru import logger
@@ -77,7 +77,7 @@ class MPREGClusterClient:
     """
 
     seed_urls: tuple[str, ...]
-    full_log: bool = True
+    full_log: bool = False
     refresh_interval: float = 5.0
     failure_cooldown_seconds: float = 2.0
     latency_weight: float = 0.01
@@ -89,6 +89,9 @@ class MPREGClusterClient:
     summary_redirect_ingress_limit: int | None = 2
     summary_redirect_ingress_scope: str | None = None
     call_policy: "ClientCallPolicy | None" = None
+    default_timeout_seconds: float | None = 30.0
+    # Cap total endpoint×attempt work so HA retries cannot storm the mesh.
+    max_endpoint_attempts: int = 6
 
     _clients: dict[str, Client] = field(default_factory=dict, init=False)
     _endpoint_scores: dict[str, float] = field(default_factory=dict, init=False)
@@ -201,8 +204,46 @@ class MPREGClusterClient:
             )
             if summary_result is not None:
                 return summary_result
+        from mpreg.client.call_policy import ClientCallPolicy, call_with_policy
+        from mpreg.core.errors import MpregError, MpregErrorCode, timeout_error
+
+        policy = self.call_policy
+        # Shared wall deadline across endpoints (HA + soft-RT fail-closed).
+        deadline_mono: float | None = None
+        if (
+            policy is not None
+            and policy.deadline_seconds is not None
+            and policy.share_deadline_across_attempts
+        ):
+            deadline_mono = time.monotonic() + float(policy.deadline_seconds)
+
+        attempts_used = 0
         for url in candidates:
-            try:
+            if attempts_used >= max(1, self.max_endpoint_attempts):
+                break
+            if deadline_mono is not None:
+                remaining = deadline_mono - time.monotonic()
+                if remaining <= 0:
+                    raise timeout_error("cluster call deadline exhausted across endpoints")
+                ep_timeout = remaining if timeout is None else min(float(timeout), remaining)
+            else:
+                ep_timeout = timeout
+
+            # Prefer failover across endpoints over deep retry on one bad peer.
+            # Budget remaining attempts across the outer loop.
+            remaining_slots = max(1, self.max_endpoint_attempts - attempts_used)
+            if policy is not None:
+                per_ep = replace(
+                    policy,
+                    max_attempts=min(max(1, policy.max_attempts), remaining_slots),
+                    # Deadline already enforced via ep_timeout / deadline_mono.
+                    deadline_seconds=None,
+                    share_deadline_across_attempts=False,
+                )
+            else:
+                per_ep = ClientCallPolicy(max_attempts=1)
+
+            async def _once(url: str = url, ep_timeout: float | None = ep_timeout) -> Any:
                 return await self._call_on_url(
                     url,
                     fun,
@@ -212,22 +253,36 @@ class MPREGClusterClient:
                     version_constraint=version_constraint,
                     target_cluster=target_cluster,
                     routing_topic=routing_topic,
-                    timeout=timeout,
+                    timeout=ep_timeout,
                     **kwargs,
                 )
+
+            try:
+                result = await call_with_policy(_once, per_ep)
+                attempts_used += per_ep.max_attempts  # upper bound; actual may be lower
+                return result
             except Exception as exc:
+                attempts_used += 1
                 last_error = exc
                 if self._is_command_not_found(exc):
                     saw_command_not_found = True
-                from mpreg.core.errors import MpregError
+                mapped = exc if isinstance(exc, MpregError) else None
+                if mapped is None:
+                    from mpreg.core.errors import map_exception
 
-                if isinstance(exc, MpregError) and not exc.retryable:
+                    try:
+                        mapped = map_exception(exc)
+                    except Exception:
+                        mapped = None
+                if isinstance(mapped, MpregError) and not mapped.retryable:
                     # Non-retryable structured errors should not rotate endpoints forever.
-                    if self._is_command_not_found(exc):
+                    if self._is_command_not_found(mapped) or self._is_command_not_found(
+                        exc
+                    ):
                         # still allow summary redirect path below
                         pass
                     else:
-                        raise
+                        raise mapped from exc
                 self._last_failure[url] = time.time()
                 cluster_client_log.warning(
                     "Cluster client call failed on {}: {}", url, exc
@@ -442,7 +497,11 @@ class MPREGClusterClient:
     async def _ensure_client(self, url: str) -> Client:
         client = self._clients.get(url)
         if client is None:
-            client = Client(url=url, full_log=self.full_log)
+            client = Client(
+                url=url,
+                full_log=self.full_log,
+                default_timeout_seconds=self.default_timeout_seconds,
+            )
             self._clients[url] = client
         return client
 
@@ -524,6 +583,7 @@ class MPREGClusterClient:
             kwargs=kwargs,
         )
         start_time = time.time()
+        # Explicit timeout wins; otherwise Client.default_timeout_seconds applies.
         try:
             result = await client.request(cmds=[command], timeout=timeout)
         except Exception as exc:
@@ -633,4 +693,10 @@ class MPREGClusterClient:
 
     @staticmethod
     def _is_command_not_found(exc: Exception) -> bool:
-        return isinstance(exc, MPREGException) and exc.rpc_error.code == 1001
+        from mpreg.core.errors import MpregError, MpregErrorCode
+
+        if isinstance(exc, MpregError):
+            return int(exc.code) == int(MpregErrorCode.COMMAND_NOT_FOUND)
+        if isinstance(exc, MPREGException):
+            return int(exc.rpc_error.code) == int(MpregErrorCode.COMMAND_NOT_FOUND)
+        return False

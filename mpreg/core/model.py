@@ -240,6 +240,13 @@ class RPCError(BaseModel):
     details: Any | None = Field(
         default=None, description="Optional additional details about the error."
     )
+    retryable: bool | None = Field(
+        default=None,
+        description=(
+            "Whether a well-behaved client may retry this error. "
+            "None means the client should consult the error-code catalog."
+        ),
+    )
 
 class RPCResponse(BaseModel):
     """

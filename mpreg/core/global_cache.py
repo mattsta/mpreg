@@ -614,6 +614,15 @@ class GlobalCacheManager(ManagedObject):
 
     async def _put_to_l3(self, entry: GlobalCacheEntry, options: CacheOptions) -> None:
         """Store entry in L3 distributed cache."""
+        if options.consistency_level is ConsistencyLevel.STRONG:
+            # Fail closed: live FabricCacheProtocol does not wait for majority.
+            # Checked before protocol-None short-circuit so STRONG never silently
+            # degrades to local-only success.
+            raise ValueError(
+                "ConsistencyLevel.STRONG is not implemented on the live fabric "
+                "cache path (no majority-ack barrier). Use EVENTUAL or WEAK, or "
+                "await a future quorum-backed put."
+            )
         if self.cache_protocol is None:
             return
         from mpreg.fabric.cache_federation import CacheOperationType

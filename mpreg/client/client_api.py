@@ -74,11 +74,12 @@ class MPREGClientAPI:
     """A high-level client API for interacting with the MPREG cluster."""
 
     url: str
-    full_log: bool = True
+    full_log: bool = False
     auth_token: str | None = None
     api_key: str | None = None
     transport_config: TransportConfig | None = None
     call_policy: ClientCallPolicy | None = None
+    default_timeout_seconds: float | None = 30.0
 
     # Fields assigned in __post_init__
     _client: Client = field(init=False)  # Needs special initialization in __post_init__
@@ -104,6 +105,7 @@ class MPREGClientAPI:
         self._client = Client(
             url=self.url,
             full_log=self.full_log,
+            default_timeout_seconds=self.default_timeout_seconds,
             transport_config=transport_config,
         )
 
@@ -200,12 +202,23 @@ class MPREGClientAPI:
             routing_topic=routing_topic,
             kwargs=kwargs,
         )
-        async def _once() -> Any:
-            return await self._client.request(cmds=[command], timeout=timeout)
-
+        # When a call_policy owns the deadline, do not also layer a per-attempt
+        # timeout that restarts the full budget on each retry.
         policy = self.call_policy
+        request_timeout = timeout
+        if (
+            policy is not None
+            and policy.deadline_seconds is not None
+            and policy.share_deadline_across_attempts
+            and timeout is None
+        ):
+            request_timeout = None  # policy.wait_for uses remaining budget
+
+        async def _once() -> Any:
+            return await self._client.request(cmds=[command], timeout=request_timeout)
+
         try:
-            if policy is not None and policy.max_attempts > 1:
+            if policy is not None:
                 result = await call_with_policy(_once, policy)
             else:
                 result = await _once()

@@ -16,10 +16,23 @@ groups:
           severity: critical
         annotations:
           summary: "MPREG federation health critical"
+      # mpreg_monitoring_up is always 1 when the process answers scrapes.
+      # Detect down targets via Prometheus `up` or absent(mpreg_info).
       - alert: MPREGMonitoringDown
-        expr: mpreg_monitoring_up == 0
+        expr: up{job=~".*mpreg.*"} == 0 or absent(mpreg_info)
         for: 1m
         labels:
           severity: critical
         annotations:
           summary: "MPREG monitoring scrape target down"
+          description: >-
+            Scrape job is down or mpreg_info is absent. Prefer job-level `up`
+            over mpreg_monitoring_up (which cannot be 0 while serving).
+      - alert: MPREGRouteBlackholeSpike
+        expr: increase(mpreg_route_blackhole_total[5m]) > 50
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Elevated fabric route blackhole decisions"
+

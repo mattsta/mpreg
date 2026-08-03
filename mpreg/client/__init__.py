@@ -8,7 +8,12 @@ from __future__ import annotations
 
 from .client import Client
 from .client_api import MPREGClientAPI
-from .call_policy import ClientCallPolicy, default_ha_policy
+from .call_policy import (
+    ClientCallPolicy,
+    RpcExecutionMode,
+    call_with_policy,
+    default_ha_policy,
+)
 from .cluster_client import MPREGClusterClient
 from .dns_client import MPREGDnsClient
 from .pubsub_client import (
@@ -22,6 +27,8 @@ __all__ = [
     "MPREGClientAPI",
     "MPREGClusterClient",
     "ClientCallPolicy",
+    "RpcExecutionMode",
+    "call_with_policy",
     "default_ha_policy",
     "MPREGDnsClient",
     "MPREGPubSubClient",

@@ -46,8 +46,10 @@ class Client:
     # websocket URL like: ws://127.0.0.1:<port>
     url: str
 
-    # optionally disable big log printing to get more accurate timing measurements
-    full_log: bool = True
+    # Verbose request/response pretty-print (dev only; off by default for prod perf)
+    full_log: bool = False
+    # Default RPC wait budget when callers pass timeout=None (fail-closed hang prevention)
+    default_timeout_seconds: float | None = 30.0
     transport_config: TransportConfig = field(
         default_factory=TransportConfig, repr=False
     )
@@ -128,6 +130,12 @@ class Client:
             payload[TRACESTATE_KEY] = meta[TRACESTATE_KEY]
         return payload
 
+    def _effective_timeout(self, timeout: float | None) -> float | None:
+        """Resolve call timeout: explicit value wins; else client default."""
+        if timeout is not None:
+            return timeout
+        return self.default_timeout_seconds
+
     async def request(
         self, cmds: list[RPCCommand], timeout: float | None = None
     ) -> Any:
@@ -135,7 +143,9 @@ class Client:
 
         Args:
             cmds: A list of RPCCommand objects representing the commands to execute.
-            timeout: Optional timeout in seconds for the request.
+            timeout: Optional timeout in seconds for the request. When omitted,
+                ``default_timeout_seconds`` applies (30s). Pass a larger value or
+                pair with ``ClientCallPolicy`` for soft-RT budgets.
 
         Returns:
             The result of the RPC call.
@@ -145,10 +155,10 @@ class Client:
             Exception: For other RPC errors returned by the server.
         """
         req = RPCRequest(cmds=tuple(cmds), u=str(ulid.new()))
+        wait_timeout = self._effective_timeout(timeout)
 
         injected = self._inject_outbound_trace(req.model_dump())
-        import json as _json
-        send = _json.dumps(injected)
+        send = self.serializer.serialize(injected)
 
         if self.full_log:
             client_log.info("====================== NEW REQUEST ======================")
@@ -163,17 +173,19 @@ class Client:
 
         try:
             await self._transport.send(
-                send.encode("utf-8") if isinstance(send, str) else send
+                send if isinstance(send, (bytes, bytearray)) else str(send).encode("utf-8")
             )
 
             # Wait for the response with timeout
-            response = await asyncio.wait_for(response_future, timeout=timeout)
+            response = await asyncio.wait_for(response_future, timeout=wait_timeout)
 
             # Ensure we got an RPCResponse
             if not isinstance(response, RPCResponse):
                 raise Exception(f"Expected RPCResponse, got {type(response)}")
         except TimeoutError:
-            client_log.error("[{}] Request timed out after {} seconds.", req.u, timeout)
+            client_log.error(
+                "[{}] Request timed out after {} seconds.", req.u, wait_timeout
+            )
             raise
         finally:
             # Clean up the pending request
@@ -218,8 +230,8 @@ class Client:
             asyncio.TimeoutError: If the request times out.
             Exception: For other RPC errors returned by the server.
         """
-        import json as _json
-        send = _json.dumps(self._inject_outbound_trace(request.model_dump()))
+        send = self.serializer.serialize(self._inject_outbound_trace(request.model_dump()))
+        wait_timeout = self._effective_timeout(timeout)
         if self.full_log:
             client_log.info("================= NEW ENHANCED REQUEST =================")
             client_log.info(
@@ -235,15 +247,12 @@ class Client:
 
         # Send the request
         await self._transport.send(
-            send.encode("utf-8") if isinstance(send, str) else send
+            send if isinstance(send, (bytes, bytearray)) else str(send).encode("utf-8")
         )
 
-        # Wait for the response with optional timeout
+        # Wait for the response with timeout (default applies when None)
         try:
-            if timeout:
-                response = await asyncio.wait_for(response_future, timeout=timeout)
-            else:
-                response = await response_future
+            response = await asyncio.wait_for(response_future, timeout=wait_timeout)
         finally:
             # Clean up the pending request
             self._pending_requests.pop(request.u, None)
@@ -418,7 +427,7 @@ class Client:
         try:
             await transport.send(serialized)
 
-            # Wait for response from the unified listener
+            # Wait for response from the unified listener (fail closed on timeout)
             response_data = await asyncio.wait_for(response_future, timeout=10.0)
             # Convert to RawMessageDict if needed
             if isinstance(response_data, RawMessageDict):
@@ -427,15 +436,12 @@ class Client:
                 # Convert RPCResponse to RawMessageDict
                 return RawMessageDict(response_data.model_dump())
 
-        except TimeoutError:
-            # If no response within timeout, return a basic acknowledgment
-            return RawMessageDict(
-                {
-                    "status": "sent",
-                    "message_id": request_id,
-                    "timestamp": asyncio.get_running_loop().time(),
-                }
-            )
+        except TimeoutError as exc:
+            from mpreg.core.errors import timeout_error
+
+            raise timeout_error(
+                f"raw message {request_id} timed out waiting for acknowledgment"
+            ) from exc
         finally:
             # Clean up the pending request
             self._pending_requests.pop(request_id, None)

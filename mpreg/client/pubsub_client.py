@@ -509,10 +509,8 @@ async def create_topic_metrics_collector(
 
     def metrics_callback(message: PubSubMessage):
         metrics.message_count += 1
-        if metrics.topics_seen:
-            metrics.topics_seen.add(message.topic)
-        if metrics.publishers_seen:
-            metrics.publishers_seen.add(message.publisher)
+        metrics.topics_seen.add(message.topic)
+        metrics.publishers_seen.add(message.publisher)
         metrics.last_message_time = message.timestamp
 
     # Subscribe and update the subscription_id in metrics

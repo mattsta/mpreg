@@ -1287,6 +1287,30 @@ def start_config(settings_path: str) -> None:
 
     async def _start() -> None:
         settings = MPREGSettings.from_path(settings_path)
+        # Print effective endpoints before bind (ports may still auto-allocate).
+        host = settings.host or "127.0.0.1"
+        port = settings.port
+        if port in (None, 0):
+            console.print(
+                "[yellow]Server port will auto-allocate; "
+                "watch logs for final MPREG_URL[/yellow]"
+            )
+        else:
+            server_url = f"ws://{host}:{port}"
+            console.print(f"Server endpoint: {server_url}")
+            console.print(f"MPREG_URL={server_url}")
+        if settings.monitoring_enabled:
+            mon_host = settings.monitoring_host or host
+            mon_port = settings.monitoring_port
+            if mon_port in (None, 0):
+                console.print(
+                    "[yellow]Monitoring port will auto-allocate; "
+                    "watch logs for final MPREG_MONITORING_URL[/yellow]"
+                )
+            else:
+                mon_url = f"http://{mon_host}:{mon_port}"
+                console.print(f"Monitoring endpoint: {mon_url}")
+                console.print(f"MPREG_MONITORING_URL={mon_url}")
         server_instance = MPREGServer(settings=settings)
         await server_instance.server()
 
@@ -1340,6 +1364,8 @@ def doctor(
     async def _doctor() -> int:
         base = monitoring_url.rstrip("/")
         checks = [
+            ("live", f"{base}/live"),
+            ("ready", f"{base}/ready"),
             ("health", f"{base}/health"),
             ("health_summary", f"{base}/health/summary"),
             ("metrics_unified", f"{base}/metrics/unified"),
@@ -1369,6 +1395,7 @@ def doctor(
                 try:
                     async with session.get(endpoint) as response:
                         body_preview = ""
+                        payload: object | None = None
                         ctype = response.headers.get("Content-Type", "")
                         if "json" in ctype:
                             payload = await response.json(content_type=None)
@@ -1378,6 +1405,7 @@ def doctor(
                             body_preview = (
                                 text_body.splitlines()[0][:120] if text_body else ""
                             )
+                            payload = text_body
                         ok = 200 <= response.status < 300
                         # Deep optional planes: 503 means feature not wired — warn only.
                         if (
@@ -1387,6 +1415,40 @@ def doctor(
                         ):
                             ok = True
                             body_preview = f"optional unavailable: {body_preview}"
+                        # Semantic checks (not just HTTP 2xx)
+                        if ok and name == "ready" and isinstance(payload, dict):
+                            if payload.get("ready") is False:
+                                ok = False
+                                body_preview = f"not ready: {body_preview}"
+                        if ok and name == "health" and isinstance(payload, dict):
+                            # Nested critical still passes liveness HTTP 200; surface it.
+                            fh = payload.get("federation_health") or {}
+                            if isinstance(fh, dict):
+                                ost = str(fh.get("overall_status", "")).lower()
+                                if ost in {"critical", "unavailable", "unhealthy"}:
+                                    body_preview = (
+                                        f"liveness ok but federation {ost}: "
+                                        f"{body_preview}"
+                                    )
+                                    # Do not fail plain doctor on nested status —
+                                    # /ready is the admission gate. Mark WARN via detail.
+                        if ok and name == "prometheus" and isinstance(payload, str):
+                            if "mpreg_info" not in payload:
+                                ok = False
+                                body_preview = "missing mpreg_info metric"
+                        if (
+                            deep
+                            and ok
+                            and name == "mgmt_raft"
+                            and isinstance(payload, dict)
+                            and response.status == 200
+                        ):
+                            # When raft is intentionally unbound, configured=false is OK.
+                            # When profile claims HA raft, operators should use --deep
+                            # and inspect configured; we only fail if body is empty.
+                            if "configured" not in payload and "nodes" not in payload:
+                                ok = False
+                                body_preview = f"unexpected raft body: {body_preview}"
                         if not ok:
                             failures += 1
                         rows.append(

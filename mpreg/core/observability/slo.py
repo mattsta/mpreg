@@ -64,10 +64,18 @@ def prometheus_alert_rules_yaml() -> str:
         annotations:
           summary: "MPREG federation health critical"
       - alert: MPREGMonitoringDown
-        expr: mpreg_monitoring_up == 0
+        expr: up{job=~".*mpreg.*"} == 0 or absent(mpreg_info)
         for: 1m
         labels:
           severity: critical
         annotations:
           summary: "MPREG monitoring scrape target down"
+          description: "Prefer job-level up / absent(mpreg_info); mpreg_monitoring_up is always 1 while serving."
+      - alert: MPREGRouteBlackholeSpike
+        expr: increase(mpreg_route_blackhole_total[5m]) > 50
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Elevated fabric route blackhole decisions"
 """

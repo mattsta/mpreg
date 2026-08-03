@@ -94,6 +94,7 @@ class MpregError(MPREGException):
             code=int(self.code),
             message=self.message,
             details=self.details,
+            retryable=bool(self.retryable),
         )
         self.args = (self.details or self.message,)
 
@@ -284,11 +285,16 @@ def map_exception(exc: BaseException) -> MpregError:
         raw_code = getattr(exc.rpc_error, "code", -1)
         message = str(getattr(exc.rpc_error, "message", exc) or exc)
         details = str(getattr(exc.rpc_error, "details", None) or "")
+        wire_retryable = getattr(exc.rpc_error, "retryable", None)
         code = _legacy_remap_code(
             int(raw_code) if raw_code is not None else -1, message, details
         )
         enum = _coerce_enum(code)
-        retryable = enum in _DEFAULT_RETRYABLE
+        retryable = (
+            bool(wire_retryable)
+            if wire_retryable is not None
+            else enum in _DEFAULT_RETRYABLE
+        )
         return MpregError(
             code=int(enum) if enum is not MpregErrorCode.UNKNOWN else code,
             message=message

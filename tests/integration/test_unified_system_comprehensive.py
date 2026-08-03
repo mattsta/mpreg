@@ -167,8 +167,13 @@ class TestFabricRoutingComprehensive:
         route_exact = await router.route_message(message_exact)
         route_once = await router.route_message(message_at_least)
 
-        assert route_exact.route_cost > route_once.route_cost
-        assert route_exact.estimated_latency_ms > route_once.estimated_latency_ms
+        # EXACTLY_ONCE is fail-closed (unsupported) until a real idempotent path exists.
+        from mpreg.fabric.router import FabricRouteReason
+
+        assert route_exact.reason == FabricRouteReason.UNSUPPORTED_DELIVERY
+        assert route_exact.targets == []
+        assert route_once.targets  # AT_LEAST_ONCE still routes
+        assert route_once.reason != FabricRouteReason.UNSUPPORTED_DELIVERY
 
     @pytest.mark.asyncio
     async def test_pubsub_routing_multi_cluster(self) -> None:

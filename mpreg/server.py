@@ -10959,8 +10959,14 @@ class MPREGServer:
             await self._monitoring_system.start()
 
         effective_port = self._monitoring_system.monitoring_port
-        logger.debug(
-            f"[{self.settings.name}] Monitoring endpoints available at http://{monitoring_host}:{effective_port}"
+        mon_url = f"http://{monitoring_host}:{effective_port}"
+        # Always surface the effective URL at INFO so start-config / port fallback
+        # are operator-visible (not only debug).
+        logger.info(
+            "[{}] Monitoring endpoints available at {} (MPREG_MONITORING_URL={})",
+            self.settings.name,
+            mon_url,
+            mon_url,
         )
 
     async def _start_dns_gateway(self) -> None:

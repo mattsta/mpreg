@@ -20,10 +20,16 @@ from .caching import CacheKey as LocalCacheKey
 from .serialization import JsonSerializer
 
 class ConsistencyLevel(Enum):
-    """Cache consistency levels for distributed operations."""
+    """Cache consistency levels for distributed operations.
+
+    ``STRONG`` is reserved for majority-ack puts. The live fabric path does not
+    yet implement a quorum barrier; ``GlobalCacheManager`` fails closed when
+    ``STRONG`` is requested so callers cannot mistake async propagation for
+    linearizable majority commit.
+    """
 
     EVENTUAL = "eventual"  # Best effort, eventual consistency
-    STRONG = "strong"  # Wait for majority acknowledgment
+    STRONG = "strong"  # Reserved: majority acknowledgment (fail-closed until implemented)
     WEAK = "weak"  # Local cache only, no synchronization
 
 class CacheLevel(Enum):

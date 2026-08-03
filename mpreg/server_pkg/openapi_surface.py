@@ -12,7 +12,24 @@ from typing import Any
 def build_monitoring_openapi() -> dict[str, Any]:
     """Return an OpenAPI 3.0 document for the monitoring HTTP server."""
     paths: dict[str, Any] = {
-        "/health": {"get": {"summary": "Liveness", "tags": ["health"]}},
+        "/live": {
+            "get": {
+                "summary": "Process liveness (always 200 if HTTP is up)",
+                "tags": ["health"],
+            }
+        },
+        "/ready": {
+            "get": {
+                "summary": "Readiness / traffic admission (503 when not ready)",
+                "tags": ["health"],
+            }
+        },
+        "/health": {
+            "get": {
+                "summary": "Federation health snapshot (liveness-shaped HTTP 200)",
+                "tags": ["health"],
+            }
+        },
         "/health/summary": {"get": {"summary": "Health summary", "tags": ["health"]}},
         "/metrics/prometheus": {
             "get": {
@@ -33,6 +50,12 @@ def build_monitoring_openapi() -> dict[str, Any]:
                         "name": "correlation_id",
                         "in": "query",
                         "schema": {"type": "string"},
+                    },
+                    {
+                        "name": "traceparent",
+                        "in": "query",
+                        "schema": {"type": "string"},
+                        "description": "Filter by W3C traceparent",
                     },
                 ],
             }

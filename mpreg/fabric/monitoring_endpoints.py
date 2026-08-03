@@ -292,8 +292,10 @@ class FederationMonitoringSystem:
 
     def _setup_routes(self) -> None:
         """Configure HTTP routes for monitoring endpoints."""
-        # Health endpoints
+        # Health endpoints (/live = process up; /ready = traffic-admissible)
         self.app.router.add_get("/health", self._get_federation_health)
+        self.app.router.add_get("/live", self._get_live)
+        self.app.router.add_get("/ready", self._get_ready)
         self.app.router.add_get("/health/summary", self._get_health_summary)
         self.app.router.add_get("/health/clusters", self._get_cluster_health)
         self.app.router.add_get(
@@ -521,16 +523,62 @@ class FederationMonitoringSystem:
 
     # Health monitoring endpoints
 
-    async def _get_federation_health(self, request: web.Request) -> web.Response:
-        """Get overall federation health status."""
+    async def _get_live(self, request: web.Request) -> web.Response:
+        """probe-style liveness: process is up and serving HTTP."""
+        return web.json_response(
+            {"status": "live", "timestamp": time.time()},
+            status=200,
+        )
+
+    async def _get_ready(self, request: web.Request) -> web.Response:
+        """Readiness: refuse traffic when federation health is critical/unavailable."""
         try:
             health_summary = await self._collect_health_summary()
+            status = health_summary.overall_health_status
+            score = float(health_summary.overall_health_score)
+            # CRITICAL / UNAVAILABLE → not ready (503). DEGRADED still admits traffic.
+            not_ready_values = {"critical", "unavailable", "unhealthy"}
+            status_value = getattr(status, "value", str(status)).lower()
+            ready = status_value not in not_ready_values and score >= 0.4
+            body = {
+                "status": "ready" if ready else "not_ready",
+                "ready": ready,
+                "health_score": score,
+                "overall_status": status_value,
+                "timestamp": time.time(),
+            }
+            return web.json_response(body, status=200 if ready else 503)
+        except Exception as e:
+            logger.error("Error computing readiness: {}", e)
+            return web.json_response(
+                {
+                    "status": "not_ready",
+                    "ready": False,
+                    "message": str(e),
+                    "timestamp": time.time(),
+                },
+                status=503,
+            )
+
+    async def _get_federation_health(self, request: web.Request) -> web.Response:
+        """Get overall federation health status.
+
+        Always returns HTTP 200 when the process can answer (liveness-shaped).
+        Use ``/ready`` for traffic admission based on health score/status.
+        """
+        try:
+            health_summary = await self._collect_health_summary()
+            status_value = health_summary.overall_health_status.value
+            score = float(health_summary.overall_health_score)
 
             return web.json_response(
                 {
                     "status": "ok",
+                    "ready": status_value.lower()
+                    not in {"critical", "unavailable", "unhealthy"}
+                    and score >= 0.4,
                     "federation_health": {
-                        "overall_status": health_summary.overall_health_status.value,
+                        "overall_status": status_value,
                         "health_score": health_summary.overall_health_score,
                         "total_clusters": health_summary.total_clusters,
                         "healthy_clusters": health_summary.healthy_clusters,
@@ -553,7 +601,7 @@ class FederationMonitoringSystem:
             )
 
         except Exception as e:
-            logger.error(f"Error getting federation health: {e}")
+            logger.error("Error getting federation health: {}", e)
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
     async def _get_health_summary(self, request: web.Request) -> web.Response:
@@ -1787,13 +1835,17 @@ class FederationMonitoringSystem:
             limit = 50
         message_id = request.query.get("message_id")
         correlation_id = request.query.get("correlation_id")
+        traceparent = request.query.get("traceparent")
         log = getattr(self, "route_decision_log", None)
         if log is None:
             # Backward-compatible fallback for tests that don't bind a server log.
             log = get_default_route_decision_log()
         assert isinstance(log, RouteDecisionLog) or hasattr(log, "recent")
         records = log.recent(
-            limit=limit, message_id=message_id, correlation_id=correlation_id
+            limit=limit,
+            message_id=message_id,
+            correlation_id=correlation_id,
+            traceparent=traceparent,
         )
         return web.json_response(
             {
@@ -1895,7 +1947,9 @@ class FederationMonitoringSystem:
             "# HELP mpreg_info Static MPREG node labels.",
             "# TYPE mpreg_info gauge",
             f'mpreg_info{{{labels}}} 1',
-            "# HELP mpreg_monitoring_up 1 if monitoring process is serving.",
+            # Prefer Prometheus `up` / absent(mpreg_info) for scrape-down alerts.
+            # This gauge is always 1 when the process can answer the scrape.
+            "# HELP mpreg_monitoring_up 1 if this process is serving /metrics/prometheus.",
             "# TYPE mpreg_monitoring_up gauge",
             f"mpreg_monitoring_up{{{labels}}} 1",
         ]
@@ -1949,6 +2003,43 @@ class FederationMonitoringSystem:
             )
         except Exception as exc:  # noqa: BLE001
             logger.debug("Prometheus health metrics unavailable: {}", exc)
+
+        # Route decision blackhole / reachability (process-local ring buffer)
+        try:
+            log = getattr(self, "route_decision_log", None)
+            if log is None:
+                from mpreg.fabric.route_decision_log import (
+                    get_default_route_decision_log,
+                )
+
+                log = get_default_route_decision_log()
+            stats = log.stats() if hasattr(log, "stats") else {}
+            lines.append(
+                "# HELP mpreg_route_blackhole_total Unreachable route decisions recorded."
+            )
+            lines.append("# TYPE mpreg_route_blackhole_total counter")
+            lines.append(
+                f"mpreg_route_blackhole_total{{{labels}}} "
+                f"{int(stats.get('blackhole_count', 0))}"
+            )
+            lines.append(
+                "# HELP mpreg_route_decisions_total Total route decisions recorded."
+            )
+            lines.append("# TYPE mpreg_route_decisions_total counter")
+            lines.append(
+                f"mpreg_route_decisions_total{{{labels}}} "
+                f"{int(stats.get('total_recorded', 0))}"
+            )
+            lines.append(
+                "# HELP mpreg_route_reachable_ratio Fraction of decisions that were reachable."
+            )
+            lines.append("# TYPE mpreg_route_reachable_ratio gauge")
+            lines.append(
+                f"mpreg_route_reachable_ratio{{{labels}}} "
+                f"{float(stats.get('reachable_ratio', 1.0)):.6f}"
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Prometheus route decision metrics unavailable: {}", exc)
 
         if self.persistence_snapshot_provider is not None:
             try:

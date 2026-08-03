@@ -35,6 +35,8 @@ UNREACHABLE_REASONS: frozenset[str] = frozenset(
         "hop_budget_exhausted",
         "loop_detected",
         "blackhole",
+        "unsupported_delivery",
+        "no_match",
     }
 )
 
