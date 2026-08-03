@@ -348,7 +348,10 @@ class FabricFederationPlanner:
         table = self.route_table
         if not table:
             return None
-        avoid = visited + (self.local_cluster,)
+        # Avoid only clusters already on the federation path. Do NOT avoid
+        # local_cluster: RouteTable prefixes every learned path with local, so
+        # including it would filter out all path-vector candidates (INV-R1).
+        avoid = visited
         record = table.select_route(
             RouteDestination(cluster_id=target_cluster),
             avoid_clusters=avoid,
