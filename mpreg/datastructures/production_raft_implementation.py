@@ -624,6 +624,23 @@ class ProductionRaft(ProductionRaftRPCs):
         async with self.state_lock:
             await self._convert_to_follower(restart_timer=True, reset_backoff=True)
 
+    
+    async def submit_configuration_change(
+        self, new_members: set[str] | frozenset[str], client_id: str = ""
+    ) -> None:
+        """Refuse dynamic membership changes (INV-C6).
+
+        Joint consensus is not production-ready. Cluster membership is fixed at
+        construction time. Rebuild the Raft group offline to change members.
+        """
+        from mpreg.consensus import MembershipChangeNotSupported
+
+        raise MembershipChangeNotSupported(
+            "CONFIGURATION_CHANGE / joint consensus is not supported; "
+            f"requested members={sorted(new_members)} client_id={client_id!r}. "
+            "Construct a new ProductionRaft with the desired cluster_members."
+        )
+
     async def submit_command(self, command: Any, client_id: str = "") -> Any | None:
         """
         Submit a command to be replicated via Raft consensus.
