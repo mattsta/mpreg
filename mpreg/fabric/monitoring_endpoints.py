@@ -61,6 +61,7 @@ type QueryParameters = dict[str, str]
 type TimeSeriesData = list[tuple[float, float]]  # [(timestamp, value), ...]
 type RouteTraceProvider = Callable[[ClusterId, tuple[ClusterId, ...]], JsonResponse]
 type LinkStateStatusProvider = Callable[[], JsonResponse]
+type RaftStatusProvider = Callable[[], JsonResponse]
 type PersistenceSnapshotProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
 type DiscoverySummaryProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
 type DiscoveryCacheProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
@@ -243,6 +244,7 @@ class FederationMonitoringSystem:
     federation_graph: FederationGraph | None = None
     route_trace_provider: RouteTraceProvider | None = None
     link_state_status_provider: LinkStateStatusProvider | None = None
+    raft_status_provider: RaftStatusProvider | None = None
     adapter_endpoint_registry: AdapterEndpointRegistry | None = None
     persistence_snapshot_provider: PersistenceSnapshotProvider | None = None
     discovery_summary_provider: DiscoverySummaryProvider | None = None
@@ -319,6 +321,7 @@ class FederationMonitoringSystem:
         self.app.router.add_get("/mgmt/v1/routes", self._get_mgmt_routes)
         self.app.router.add_get("/mgmt/v1/catalog", self._get_mgmt_catalog)
         self.app.router.add_get("/mgmt/v1/health", self._get_mgmt_health)
+        self.app.router.add_get("/mgmt/v1/raft", self._get_mgmt_raft)
 
         # Discovery endpoints
         self.app.router.add_get("/discovery/summary", self._get_discovery_summary)
@@ -2162,6 +2165,11 @@ class FederationMonitoringSystem:
                 "description": "Management API: health summary",
             },
             {
+                "path": "/mgmt/v1/raft",
+                "method": "GET",
+                "description": "Management API: Raft consensus status",
+            },
+            {
                 "path": "/transport/endpoints",
                 "method": "GET",
                 "description": "Adapter endpoints and auto-assigned transport ports",
@@ -2624,6 +2632,36 @@ class FederationMonitoringSystem:
             logger.error(f"Error generating route trace: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
+    async def _get_mgmt_raft(self, request: web.Request) -> web.Response:
+        """Raft group status for operators (term, role, commit_index)."""
+        if not self.raft_status_provider:
+            return web.json_response(
+                {
+                    "status": "ok",
+                    "raft": {
+                        "configured": False,
+                        "nodes": [],
+                        "membership_change_supported": False,
+                    },
+                    "timestamp": time.time(),
+                }
+            )
+        try:
+            payload = self.raft_status_provider()
+            if not isinstance(payload, dict):
+                payload = {"nodes": payload}
+            body = {
+                "status": "ok",
+                "raft": payload,
+                "timestamp": time.time(),
+            }
+            return web.json_response(body)
+        except Exception as e:
+            logger.error(f"Error getting raft status: {e}")
+            return web.json_response(
+                {"status": "error", "message": str(e)}, status=500
+            )
+
     async def _get_link_state_status(self, request: web.Request) -> web.Response:
         """Get link-state routing status and area mismatch counters."""
         if not self.link_state_status_provider:
@@ -2757,6 +2795,7 @@ def create_federation_monitoring_system(
     policy_dry_run_provider: Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse]
     | None = None,
     route_decision_log: object | None = None,
+    raft_status_provider: RaftStatusProvider | None = None,
 ) -> FederationMonitoringSystem:
     """Create a federation monitoring system with specified configuration."""
 
@@ -2786,6 +2825,7 @@ def create_federation_monitoring_system(
         mgmt_summary_provider=mgmt_summary_provider,
         policy_dry_run_provider=policy_dry_run_provider,
         route_decision_log=route_decision_log,
+        raft_status_provider=raft_status_provider,
     )
 
     monitoring_system.monitoring_port = monitoring_port

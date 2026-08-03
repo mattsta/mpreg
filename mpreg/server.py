@@ -1555,6 +1555,7 @@ class MPREGServer:
     _fabric_queue_federation: Any = field(init=False, default=None)
     _fabric_queue_delivery: Any = field(init=False, default=None)
     _fabric_raft_transport: Any = field(init=False, default=None)
+    _registered_raft_nodes: list[Any] = field(init=False, default_factory=list)
     _fabric_catalog_refresh_task: asyncio.Task[None] | None = field(
         init=False, default=None
     )
@@ -2256,6 +2257,21 @@ class MPREGServer:
         if not self._fabric_raft_transport:
             raise RuntimeError("Fabric raft transport is not initialized")
         self._fabric_raft_transport.register_node(node)
+        if node not in self._registered_raft_nodes:
+            self._registered_raft_nodes.append(node)
+
+    def raft_status(self) -> dict[str, Any]:
+        """Operator snapshot of registered Raft nodes (mgmt / doctor)."""
+        from mpreg.consensus import status_dict
+
+        nodes = [status_dict(n) for n in self._registered_raft_nodes]
+        return {
+            "configured": bool(self._fabric_raft_transport),
+            "registered": len(nodes),
+            "nodes": nodes,
+            "membership_change_supported": False,
+            "snapshot_supported": True,
+        }
 
     def fabric_raft_transport(self) -> Any | None:
         return self._fabric_raft_transport
@@ -10893,6 +10909,8 @@ class MPREGServer:
         if getattr(self, "_fabric_router", None) is not None:
             route_decision_log = getattr(self._fabric_router, "decision_log", None)
 
+        raft_status_provider = self.raft_status
+
         self._monitoring_system = create_federation_monitoring_system(
             settings=self.settings,
             federation_config=self.settings.federation_config,
@@ -10913,6 +10931,7 @@ class MPREGServer:
             dns_metrics_provider=self._dns_metrics,
             mgmt_summary_provider=self._mgmt_v1_summary,
             route_decision_log=route_decision_log,
+            raft_status_provider=raft_status_provider,
         )
         try:
             await self._monitoring_system.start()

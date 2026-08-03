@@ -1311,8 +1311,20 @@ def start_config(settings_path: str) -> None:
     default=5.0,
     help="HTTP timeout seconds",
 )
+@click.option(
+    "--deep",
+    is_flag=True,
+    default=False,
+    help="Also probe Raft status and link-state (DS validation deep checks)",
+)
 @add_format_option
-def doctor(url: str | None, token: str | None, timeout: float, output_format: str) -> None:
+def doctor(
+    url: str | None,
+    token: str | None,
+    timeout: float,
+    output_format: str,
+    deep: bool,
+) -> None:
     """Probe monitoring health, discovery, and persistence endpoints."""
 
     monitoring_url = url or os.environ.get("MPREG_MONITORING_URL")
@@ -1342,6 +1354,13 @@ def doctor(url: str | None, token: str | None, timeout: float, output_format: st
             ("openapi", f"{base}/openapi.json"),
             ("mgmt_audit", f"{base}/mgmt/v1/audit"),
         ]
+        if deep:
+            checks.extend(
+                [
+                    ("mgmt_raft", f"{base}/mgmt/v1/raft"),
+                    ("link_state", f"{base}/routing/link-state"),
+                ]
+            )
         failures = 0
         rows: list[dict[str, str]] = []
         timeout_cfg = aiohttp.ClientTimeout(total=timeout)
@@ -1360,6 +1379,14 @@ def doctor(url: str | None, token: str | None, timeout: float, output_format: st
                                 text_body.splitlines()[0][:120] if text_body else ""
                             )
                         ok = 200 <= response.status < 300
+                        # Deep optional planes: 503 means feature not wired — warn only.
+                        if (
+                            deep
+                            and name in ("mgmt_raft", "link_state")
+                            and response.status == 503
+                        ):
+                            ok = True
+                            body_preview = f"optional unavailable: {body_preview}"
                         if not ok:
                             failures += 1
                         rows.append(

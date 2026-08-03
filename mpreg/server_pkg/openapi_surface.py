@@ -43,6 +43,7 @@ def build_monitoring_openapi() -> dict[str, Any]:
         "/mgmt/v1/routes": {"get": {"summary": "Routes", "tags": ["mgmt"]}},
         "/mgmt/v1/catalog": {"get": {"summary": "Catalog counts", "tags": ["mgmt"]}},
         "/mgmt/v1/health": {"get": {"summary": "Mgmt health", "tags": ["mgmt"]}},
+        "/mgmt/v1/raft": {"get": {"summary": "Raft consensus status", "tags": ["mgmt"]}},
         "/mgmt/v1/policy/dry-run": {
             "post": {"summary": "Policy dry-run", "tags": ["mgmt"]}
         },
