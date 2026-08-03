@@ -1,4 +1,7 @@
-# Cross-cluster fabric member with path-vector routing emphasis
+# Cross-cluster fabric member with path-vector routing emphasis.
+# Client HA default: ClientCallPolicy / default_ha_policy() (M1 async retries).
+# For soft-RT federated calls, use soft-rt.toml + RpcExecutionMode.M2_SOFT_RT.
+
 [mpreg]
 name = "federated-node"
 cluster_id = "region-east"
@@ -9,8 +12,12 @@ enable_default_cache = true
 enable_default_queue = true
 enable_cache_federation = true
 fabric_routing_enabled = true
+fabric_routing_max_hops = 5
 fabric_route_ttl_seconds = 30.0
 fabric_route_announce_interval_seconds = 10.0
+# Path-vector primary; enable LS PREFER when multi-area SPF is desired.
+fabric_link_state_mode = "disabled"
+fabric_link_state_ecmp_paths = 1
 gossip_interval = 5.0
 log_level = "INFO"
 discovery_summary_export_enabled = true

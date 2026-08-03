@@ -134,3 +134,106 @@ def test_tiebreak_stable() -> None:
     r2 = table.select_route(RouteDestination(cluster_id="d"), now=now)
     assert r1 is not None and r2 is not None
     assert r1.advertiser == r2.advertiser
+
+def test_hold_down_rejects_then_recovers() -> None:
+    """INV-R11: hold-down blocks re-announce, then recovers after quiet period."""
+    from mpreg.fabric.route_control import RouteStabilityPolicy
+
+    table = RouteTable(
+        local_cluster="a",
+        stability_policy=RouteStabilityPolicy(hold_down_seconds=5.0),
+    )
+    now = 100.0
+    assert _announce(
+        dest="z",
+        hops=("b", "z"),
+        advertiser="b",
+        received_from="b",
+        table=table,
+        now=now,
+    )
+    wd = RouteWithdrawal(
+        destination=RouteDestination(cluster_id="z"),
+        path=RoutePath(hops=("b", "z")),
+        advertiser="b",
+        withdrawn_at=now + 1,
+    )
+    assert table.apply_withdrawal(wd, received_from="b", now=now + 1)
+    assert table.select_route(RouteDestination(cluster_id="z"), now=now + 1) is None
+
+    # Immediate re-announce rejected (hold-down)
+    assert (
+        _announce(
+            dest="z",
+            hops=("b", "z"),
+            advertiser="b",
+            received_from="b",
+            table=table,
+            now=now + 2,
+        )
+        is False
+    )
+    assert table.stats.hold_down_rejects >= 1
+
+    # After hold-down expires, path recovers
+    assert _announce(
+        dest="z",
+        hops=("b", "z"),
+        advertiser="b",
+        received_from="b",
+        table=table,
+        now=now + 7,
+    )
+    rec = table.select_route(RouteDestination(cluster_id="z"), now=now + 7)
+    assert rec is not None
+    assert rec.next_hop == "b"
+
+def test_flap_suppression_not_permanent_blackhole() -> None:
+    """INV-R11: flap damping suppresses, then clears after suppression window."""
+    from mpreg.fabric.route_control import RouteStabilityPolicy
+
+    table = RouteTable(
+        local_cluster="a",
+        stability_policy=RouteStabilityPolicy(
+            flap_threshold=2,
+            suppression_window_seconds=10.0,
+        ),
+    )
+    dest = RouteDestination(cluster_id="z")
+    now = 200.0
+
+    def ann(t: float) -> bool:
+        return _announce(
+            dest="z",
+            hops=("b", "z"),
+            advertiser="b",
+            received_from="b",
+            table=table,
+            now=t,
+        )
+
+    def wd(t: float) -> None:
+        table.apply_withdrawal(
+            RouteWithdrawal(
+                destination=dest,
+                path=RoutePath(hops=("b", "z")),
+                advertiser="b",
+                withdrawn_at=t,
+            ),
+            received_from="b",
+            now=t,
+        )
+
+    assert ann(now)
+    wd(now + 1)
+    assert ann(now + 2)
+    wd(now + 3)
+    # Threshold hit → suppressed
+    assert ann(now + 4) is False
+    assert table.stats.suppression_rejects >= 1
+    # Still suppressed mid-window
+    assert ann(now + 8) is False
+    # After suppression window, recovery succeeds
+    assert ann(now + 15) is True
+    rec = table.select_route(dest, now=now + 15)
+    assert rec is not None

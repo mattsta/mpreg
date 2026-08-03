@@ -62,6 +62,7 @@ class RouteDecisionLog:
         limit: int = 50,
         message_id: str | None = None,
         correlation_id: str | None = None,
+        traceparent: str | None = None,
     ) -> list[RouteDecisionRecord]:
         with self._lock:
             items = list(self._items)
@@ -69,6 +70,8 @@ class RouteDecisionLog:
             items = [i for i in items if i.message_id == message_id]
         if correlation_id:
             items = [i for i in items if i.correlation_id == correlation_id]
+        if traceparent:
+            items = [i for i in items if i.traceparent == traceparent]
         if limit > 0:
             items = items[-limit:]
         return list(reversed(items))

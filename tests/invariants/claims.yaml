@@ -33,7 +33,7 @@ routing:
       - tests/invariants/test_routing_ls_properties.py
   - id: INV-R6
     claim: "area policy can deny cross-area installation"
-    proof: [L1]
+    proof: [L1, L2]
     tests:
       - tests/invariants/test_routing_ls_properties.py
   - id: INV-R7
@@ -56,6 +56,17 @@ routing:
     proof: [L1]
     tests:
       - tests/invariants/test_blackhole_metrics.py
+      - tests/invariants/test_routing_mode_matrix.py
+  - id: INV-R11
+    claim: "hold-down and flap damping reject churn then recover after quiet period (no permanent blackhole)"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_routing_pv_properties.py
+  - id: INV-R12
+    claim: "under partition, planner NO_PATH is distinguishable via decision blackhole metrics"
+    proof: [L1, L2]
+    tests:
+      - tests/invariants/test_routing_mode_matrix.py
 
 raft:
   - id: INV-C1
@@ -127,6 +138,16 @@ rpc:
     proof: [L1]
     tests:
       - tests/invariants/test_rpc_modality.py
+  - id: INV-P6
+    claim: "outbound traceparent is stored on route decisions and filterable"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_trace_decisions.py
+  - id: INV-P7
+    claim: "federated announcement u-ids do not double-apply under retry (dedup)"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_rpc_dedup.py
 
 encapsulation:
   - id: INV-E1
@@ -144,6 +165,11 @@ encapsulation:
     proof: [L1]
     tests:
       - tests/invariants/test_doctor_deep.py
+  - id: INV-E4
+    claim: "profiles encode safe modality defaults (dev / federated / soft-rt)"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_settings_profiles_ds.py
 
 non_claims:
   - "Full OSPF adjacency FSM / LSA flooding reliability"

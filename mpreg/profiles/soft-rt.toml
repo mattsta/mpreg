@@ -1,0 +1,24 @@
+# Soft real-time fabric member — fail-closed deadlines, path-vector + optional LS.
+# Client modality: use RpcExecutionMode.M2_SOFT_RT / ClientCallPolicy.for_mode(...).
+# Server keeps hop budgets tight and monitoring on for deadline/blackhole proof.
+
+[mpreg]
+name = "soft-rt-node"
+cluster_id = "soft-rt-cluster"
+host = "0.0.0.0"
+monitoring_enabled = true
+monitoring_enable_cors = false
+enable_default_cache = false
+enable_default_queue = false
+fabric_routing_enabled = true
+fabric_routing_max_hops = 4
+fabric_route_ttl_seconds = 20.0
+fabric_route_announce_interval_seconds = 5.0
+# PREFER: use link-state SPF when fresh; fall back to path-vector under churn.
+fabric_link_state_mode = "prefer"
+fabric_link_state_ttl_seconds = 15.0
+fabric_link_state_announce_interval_seconds = 5.0
+fabric_link_state_ecmp_paths = 1
+gossip_interval = 2.0
+log_level = "INFO"
+# Set monitoring_auth_token in production.

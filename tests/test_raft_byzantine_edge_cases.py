@@ -280,16 +280,22 @@ class ByzantineNetworkTransport:
         if target not in self.network.nodes:
             return None
 
-        # For now, return a simple response since install_snapshot is not fully implemented
-        try:
-            from mpreg.datastructures.production_raft import InstallSnapshotResponse
-
-            # Create a basic response
-            response = InstallSnapshotResponse(
-                term=1,  # Simple term for testing
-                follower_id=target,
+        if random.random() < self.network.message_loss_rate:
+            self.network.dropped_messages.append(
+                ("install_snapshot", self.node_id, target, request)
             )
-            return response
+            return None
+
+        if self.network.message_delay > 0:
+            await asyncio.sleep(self.network.message_delay)
+
+        self.network.sent_messages.append(
+            ("install_snapshot", self.node_id, target, request)
+        )
+
+        target_node = self.network.nodes[target]
+        try:
+            return await target_node.handle_install_snapshot(request)
         except Exception:
             return None
 
