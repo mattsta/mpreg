@@ -1,0 +1,132 @@
+# Machine-readable architecture claims for DS validation.
+# Each claim maps to automated tests under tests/invariants/ and tests/chaos/.
+# See .local/DISTRIBUTED_SYSTEMS_VALIDATION_PLAN.md §1 and §6.
+
+version: 1
+updated: "2026-08-03"
+
+routing:
+  - id: INV-R1
+    claim: "plan_next_hop order respects LinkStateMode (LS → PV → graph when allowed)"
+    proof: [L1, L2]
+    tests:
+      - tests/invariants/test_routing_mode_matrix.py
+  - id: INV-R2
+    claim: "RouteTable rejects paths that contain local cluster (loop freedom)"
+    proof: [L1, L4]
+    tests:
+      - tests/invariants/test_routing_pv_properties.py
+  - id: INV-R3
+    claim: "withdraw(advertiser, dest) removes residual routes from that advertiser"
+    proof: [L1, L4]
+    tests:
+      - tests/invariants/test_routing_pv_properties.py
+  - id: INV-R4
+    claim: "expired LSDB entries are not used for SPF"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_routing_ls_properties.py
+  - id: INV-R5
+    claim: "stale sequence numbers are rejected"
+    proof: [L1, L4]
+    tests:
+      - tests/invariants/test_routing_ls_properties.py
+  - id: INV-R6
+    claim: "area policy can deny cross-area installation"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_routing_ls_properties.py
+  - id: INV-R7
+    claim: "ECMP selection is deterministic for fixed inputs + counter"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_routing_mode_matrix.py
+  - id: INV-R8
+    claim: "ONLY mode does not fall through to path-vector (except direct peer escape)"
+    proof: [L2]
+    tests:
+      - tests/invariants/test_routing_mode_matrix.py
+
+raft:
+  - id: INV-C1
+    claim: "at most one leader per term"
+    proof: [L2, L4]
+    tests:
+      - tests/test_raft_safety_properties.py
+      - tests/invariants/test_raft_transitions.py
+  - id: INV-C2
+    claim: "commit_index is monotonic per node"
+    proof: [L2]
+    tests:
+      - tests/invariants/test_raft_transitions.py
+  - id: INV-C3
+    claim: "applied prefix identical for indices ≤ min(commit) across majority"
+    proof: [L2]
+    tests:
+      - tests/invariants/test_raft_linearizability_smoke.py
+  - id: INV-C4
+    claim: "minority partition does not commit new entries"
+    proof: [L2]
+    tests:
+      - tests/test_raft_safety_properties.py
+  - id: INV-C5
+    claim: "after InstallSnapshot, follower last_applied ≥ snapshot index"
+    proof: [L2]
+    tests:
+      - tests/invariants/test_raft_snapshot.py
+  - id: INV-C6
+    claim: "CONFIGURATION_CHANGE is refused until joint consensus is complete"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_raft_membership.py
+
+rpc:
+  - id: INV-P1
+    claim: "RpcExecutionMode selects modality defaults on ClientCallPolicy"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_rpc_modality.py
+  - id: INV-P2
+    claim: "deadline exceeded ⇒ TIMEOUT, no late success past budget"
+    proof: [L1, L2]
+    tests:
+      - tests/invariants/test_rpc_modality.py
+  - id: INV-P3
+    claim: "soft-RT mode does not retry past remaining deadline"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_rpc_modality.py
+  - id: INV-P4
+    claim: "stream final implies no further partials (oracle)"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_rpc_modality.py
+  - id: INV-P5
+    claim: "intermediate level indices strictly increasing (oracle)"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_rpc_modality.py
+
+encapsulation:
+  - id: INV-E1
+    claim: "mpreg.consensus is the single strong-consensus facade"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_consensus_facade.py
+  - id: INV-E2
+    claim: "/mgmt/v1/raft exposes term/role/commit when raft registered"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_raft_mgmt.py
+  - id: INV-E3
+    claim: "doctor --deep probes raft and link-state"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_doctor_deep.py
+
+non_claims:
+  - "Full OSPF adjacency FSM / LSA flooding reliability"
+  - "Full BGP RIB / communities ecosystem"
+  - "Byzantine fault tolerant consensus (Raft is CFT)"
+  - "Hard real-time (only soft-RT fail-closed deadlines)"
+  - "Joint consensus membership until implemented (API hard-fails)"
