@@ -262,21 +262,25 @@ class NamespacePolicyEngine:
         if rule is None:
             return NamespacePolicyDecision(self.default_allow, "no_policy")
 
-        # Tenant isolation first when the rule is tenant-scoped.
+        cluster = (actor_cluster or "").strip()
+
+        # Missing actor on an owned write fails closed before visibility checks
+        # so the reason is owner_required (not viewer_denied from empty cluster).
+        if write and rule.owners and not cluster:
+            return NamespacePolicyDecision(False, "owner_required", rule=rule)
+
+        # Tenant isolation when the rule is tenant-scoped.
         if rule.visibility_tenants:
             if not actor_tenant_id:
                 return NamespacePolicyDecision(False, "tenant_required", rule=rule)
             if actor_tenant_id not in rule.visibility_tenants:
                 return NamespacePolicyDecision(False, "tenant_denied", rule=rule)
         elif rule.visibility:
-            cluster = actor_cluster or ""
             if cluster not in rule.visibility:
                 return NamespacePolicyDecision(False, "viewer_denied", rule=rule)
 
-        if write and rule.owners:
-            cluster = actor_cluster or ""
-            if cluster and cluster not in rule.owners:
-                return NamespacePolicyDecision(False, "owner_denied", rule=rule)
+        if write and rule.owners and cluster not in rule.owners:
+            return NamespacePolicyDecision(False, "owner_denied", rule=rule)
 
         if rule.visibility_tenants:
             return NamespacePolicyDecision(True, "tenant_allowed", rule=rule)

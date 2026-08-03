@@ -13,6 +13,8 @@ from collections import deque
 from dataclasses import dataclass, field, replace
 from typing import Any
 
+from loguru import logger
+
 from ..datastructures import (
     Block,
     Blockchain,
@@ -811,6 +813,17 @@ class BlockchainMessageQueue:
     def submit_message(self, message: BlockchainMessage) -> bool:
         """Submit message to queue with full processing."""
         try:
+            # EXACTLY_ONCE is reserved (same honesty as fabric router).
+            if getattr(message, "delivery_guarantee", None) is not None:
+                dg = message.delivery_guarantee
+                dg_val = getattr(dg, "value", dg)
+                if dg is DeliveryGuarantee.EXACTLY_ONCE or dg_val == "exactly_once":
+                    logger.warning(
+                        "Rejecting blockchain message with unsupported EXACTLY_ONCE "
+                        "delivery guarantee (message_id={})",
+                        getattr(message, "message_id", None),
+                    )
+                    return False
             # Enqueue with fairness checks
             stored_message = self.priority_queue.enqueue(message)
 

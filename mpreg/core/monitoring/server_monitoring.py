@@ -55,6 +55,9 @@ class ServerMetricsTracker:
     rpc_latencies_ms: deque[float] = field(default_factory=lambda: deque(maxlen=1000))
     # Per-error-code counters (stringified MpregErrorCode / wire code).
     rpc_error_codes: dict[str, int] = field(default_factory=dict)
+    mgmt_mutations: dict[str, int] = field(default_factory=dict)
+    notification_drops: int = 0
+    node_draining: int = 0
     rpc_latency_buckets: list[int] = field(
         default_factory=lambda: [0] * (len(_LATENCY_BUCKETS_MS) + 1)
     )
@@ -115,6 +118,16 @@ class ServerMetricsTracker:
         if not placed:
             buckets[-1] += 1  # +Inf
 
+    def record_mgmt_mutation(self, event: str, *, success: bool = True) -> None:
+        key = f"{event}:{'ok' if success else 'err'}"
+        self.mgmt_mutations[key] = self.mgmt_mutations.get(key, 0) + 1
+
+    def set_draining(self, draining: bool) -> None:
+        self.node_draining = 1 if draining else 0
+
+    def set_notification_drops(self, count: int) -> None:
+        self.notification_drops = max(0, int(count))
+
     def prometheus_lines(self, labels: str) -> list[str]:
         """Emit process-local RPC/pubsub counters and latency histograms."""
         lines: list[str] = []
@@ -124,6 +137,24 @@ class ServerMetricsTracker:
         lines.append("# HELP mpreg_rpc_errors_total Total failed RPC requests.")
         lines.append("# TYPE mpreg_rpc_errors_total counter")
         lines.append(f"mpreg_rpc_errors_total{{{labels}}} {self.rpc_errors}")
+        lines.append("# HELP mpreg_node_draining 1 if node is draining traffic.")
+        lines.append("# TYPE mpreg_node_draining gauge")
+        lines.append(f"mpreg_node_draining{{{labels}}} {int(self.node_draining)}")
+        lines.append("# HELP mpreg_mgmt_mutations_total Management mutations by event.")
+        lines.append("# TYPE mpreg_mgmt_mutations_total counter")
+        for key, count in sorted(self.mgmt_mutations.items()):
+            safe = "".join(ch if ch.isalnum() or ch in "-_." else "_" for ch in key)
+            lines.append(
+                f'mpreg_mgmt_mutations_total{{{labels},event="{safe}"}} {count}'
+            )
+        lines.append(
+            "# HELP mpreg_client_notification_drops_total "
+            "Pubsub notifications dropped (server-observed mirror when set)."
+        )
+        lines.append("# TYPE mpreg_client_notification_drops_total counter")
+        lines.append(
+            f"mpreg_client_notification_drops_total{{{labels}}} {self.notification_drops}"
+        )
         lines.append(
             "# HELP mpreg_rpc_errors_by_code_total RPC failures labeled by error code."
         )

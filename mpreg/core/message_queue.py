@@ -48,8 +48,10 @@ class DeliveryGuarantee(Enum):
     """Message delivery guarantee types (queue data-plane).
 
     Fabric hop routing uses ``mpreg.fabric.message.DeliveryGuarantee``.
-    Values share the same wire strings for AT_LEAST_ONCE / EXACTLY_ONCE /
-    FIRE_AND_FORGET / BROADCAST / QUORUM so converters can map by ``.value``.
+    Shared wire strings with fabric: FIRE_AND_FORGET / AT_LEAST_ONCE /
+    BROADCAST / QUORUM. Fabric also defines EXACTLY_ONCE (fail-closed /
+    unsupported on hop route); the queue plane has no EXACTLY_ONCE member —
+    RPC ``queue_send`` rejects that wire string explicitly.
     Prefer importing the enum from the plane you are on; do not mix types
     without an explicit conversion.
     """
@@ -57,7 +59,7 @@ class DeliveryGuarantee(Enum):
     FIRE_AND_FORGET = "fire_and_forget"  # Send once, no tracking
     AT_LEAST_ONCE = "at_least_once"  # Retry until acknowledged
     BROADCAST = "broadcast"  # Deliver to all subscribers
-    QUORUM = "quorum"  # Require N acknowledgments
+    QUORUM = "quorum"  # Require N subscriber acknowledgments (not Raft quorum)
 
 class QueueMessageStatus(Enum):
     """Message delivery status for queue operations."""

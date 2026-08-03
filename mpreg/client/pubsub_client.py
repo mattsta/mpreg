@@ -7,6 +7,8 @@ publish/subscribe capabilities.
 
 from __future__ import annotations
 
+import inspect
+
 import asyncio
 import contextlib
 import time
@@ -136,7 +138,12 @@ class MPREGPubSubClient:
             return False
         except Exception as e:
             pubsub_log.error(f"Error publishing to topic {topic}: {e}")
-            return False
+            from mpreg.core.errors import map_exception
+
+            mapped = map_exception(e)
+            if mapped is not None:
+                raise mapped from e
+            raise
 
     async def publish_with_reply(
         self,
@@ -380,11 +387,23 @@ class MPREGPubSubClient:
                 await asyncio.sleep(0.1)  # Brief pause before retrying
 
     def _handle_notification(self, notification: PubSubNotification):
-        """Handle a received notification."""
+        """Handle a received notification (async callbacks scheduled off the hot path)."""
         if notification.subscription_id in self.subscriptions:
             callback_info = self.subscriptions[notification.subscription_id]
             try:
-                callback_info.callback(notification.message)
+                result = callback_info.callback(notification.message)
+                if inspect.isawaitable(result):
+                    task = asyncio.create_task(result)  # type: ignore[arg-type]
+
+                    def _done(t: asyncio.Task) -> None:
+                        try:
+                            t.result()
+                        except Exception as exc:  # noqa: BLE001
+                            pubsub_log.error(
+                                "Error in async subscription callback: {}", exc
+                            )
+
+                    task.add_done_callback(_done)
             except Exception as e:
                 pubsub_log.error(f"Error in subscription callback: {e}")
 
@@ -425,12 +444,8 @@ class MPREGPubSubExtendedClient(MPREGClientAPI):
     pubsub: MPREGPubSubClient = field(init=False)
 
     def __post_init__(self) -> None:
-        """Initialize the pub/sub client after parent initialization."""
-        # Initialize the parent manually since MPREGClientAPI doesn't have __post_init__
-        from .client import Client
-
-        self._client = Client(url=self.url, full_log=self.full_log)
-        self._connected = False
+        """Initialize via parent API (auth/timeout/policy) then attach pubsub."""
+        MPREGClientAPI.__post_init__(self)
         self.pubsub = MPREGPubSubClient(base_client=self)
 
     async def __aenter__(self):

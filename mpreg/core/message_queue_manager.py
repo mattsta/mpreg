@@ -69,6 +69,7 @@ class QueueManagerStatistics:
 class QueueManagerConfiguration:
     """Configuration for the message queue manager."""
 
+    local_cluster_id: str = ""
     default_queue_type: QueueType = QueueType.FIFO
     default_max_queue_size: int = 10000
     default_visibility_timeout_seconds: float = 30.0
@@ -131,7 +132,10 @@ class MessageQueueManager(ManagedObject):
             return True, "policy_disabled"
         decision = engine.allows_data_access(
             namespace,
-            actor_cluster=get_actor_cluster_id(),
+            actor_cluster=(
+                get_actor_cluster_id()
+                or (self.config.local_cluster_id or None)
+            ),
             actor_tenant_id=get_actor_tenant_id(),
             write=write,
         )

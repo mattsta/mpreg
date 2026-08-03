@@ -45,6 +45,7 @@ from __future__ import annotations
 # Core exports
 # Client exports
 from .client import Client, MPREGClientAPI, MPREGDnsClient, MPREGPubSubClient
+from .client.unified_client import MPREGClient, UnifiedMPREGClient
 from .core import (
     JsonSerializer,
     MPREGSettings,
@@ -129,6 +130,8 @@ __all__ = [
     # Client
     "Client",
     "MPREGClientAPI",
+    "MPREGClient",
+    "UnifiedMPREGClient",
     "MPREGClusterClient",
     "MPREGDnsClient",
     "MPREGPubSubClient",

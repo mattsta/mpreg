@@ -18,7 +18,7 @@ by the fabric control plane so the platform manages itself.
 
 ## 2) Current Foundation (What Exists)
 
-### Implemented foundation (2026-07)
+### Implemented foundation (2026-07 → 2026-08 T3/T4)
 
 - `/mgmt/v1/cluster|nodes|routes|catalog|health` read models
 - `POST /mgmt/v1/policy/dry-run` (provider-bound dry run)
@@ -26,10 +26,12 @@ by the fabric control plane so the platform manages itself.
 - `/metrics/prometheus`, monitoring bearer auth, CORS default off
 - CLI: `doctor`, `config-check`, `monitor decisions|prometheus`, `profile`
 - OpenAPI: `GET /openapi.json`, `GET /mgmt/v1/schema`
-- Mutation stubs: `POST /mgmt/v1/nodes/drain|peers/detach|policy/apply` → HTTP 501
-- Audit read-path: `GET /mgmt/v1/audit` (route decisions until durable store)
+- **Mutations live:** `POST /mgmt/v1/nodes/drain`, `/peers/detach`, `/policy/apply`
+  (process-local audit ring; `/ready` honors drain)
+- CLI mutations: `mpreg admin drain|detach|audit` (monitoring HTTP)
+- Audit read-path: `GET /mgmt/v1/audit` (mgmt mutations + route decisions)
 
-Remaining: full mutation API, audit log store, REPL modes, UI.
+Remaining: durable audit store, REPL modes, full UI.
 
 ## 2.0) Prior foundation notes
 
@@ -69,11 +71,10 @@ Remaining: full mutation API, audit log store, REPL modes, UI.
 
 ### Gaps vs. Management Goals
 
-- `/mgmt/v1/*` **read** models and policy dry-run exist; **mutations** (drain, detach, policy apply) do not.
+- Mutations (drain, detach, policy apply) are **live** over HTTP + CLI; durable multi-node audit store is still missing (process-local ring).
 - CLI `--format` covers many commands; not every legacy monitor path is fully table-formatted.
 - No REPL/IOS-like CLI mode yet (exec/config/diag).
 - UI not implemented; OpenAPI/schema contract for CLI + UI still thin.
-- Missing durable audit trail for admin **mutations** (route decision ring buffer is read-path only).
 - Some monitoring payloads still differ from the normalized management data model.
 
 ## 3) Goals and Non-Goals

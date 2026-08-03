@@ -6,16 +6,32 @@ resulting `MPREG_URL` with clients.
 
 ## Overview
 
-MPREG provides four distinct client types, each optimized for different use cases:
+For most application code, start with the unified façade:
 
-1. **MPREG RPC Client** - For distributed function calls and compute workloads
-2. **MPREG Cluster Client** - For HA access with auto-discovery and failover
-3. **MPREG PubSub Client** - For topic-based messaging and event routing
-4. **MPREG Cache Client** - For direct cache operations and data structures
+```python
+from mpreg import MPREGClient  # also: UnifiedMPREGClient
 
-All clients operate over standard network protocols (WebSocket, TCP) and can be used from any programming language.
-For in-repo usage, prefer the unified `MPREGClientAPI` or the transport factory rather than
-opening raw sockets directly. External clients should follow the wire protocol described in
+async with MPREGClient("ws://127.0.0.1:<port>") as client:
+    result = await client.call("echo", "hello")
+    # Queue/cache RPCs require the server to have managers attached
+    # (enable_default_queue / enable_default_cache or attach_*).
+    # await client.queue_send("jobs", payload={"x": 1})
+    # await client.cache_put("ns", "key", value={"v": 1})
+```
+
+`MPREGClient` spans RPC, pub/sub, queue, and cache over the same transport.
+Queue and cache RPCs are only available when the server has those managers
+attached — `mpreg config-check` warns when both defaults are off.
+
+Lower-level clients remain available for specialized use:
+
+1. **MPREGClientAPI** — RPC-focused API (base of the unified façade)
+2. **MPREG Cluster Client** — HA access with auto-discovery and failover
+3. **MPREG PubSub Client** — topic-based messaging and event routing
+4. **In-process cache/queue managers** — same-process attach path (not remote RPC)
+
+All clients operate over standard network protocols (WebSocket, TCP).
+External clients should follow the wire protocol in
 `docs/MPREG_PROTOCOL_SPECIFICATION.md`.
 
 ### Structured errors and retries

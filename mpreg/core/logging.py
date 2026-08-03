@@ -134,3 +134,20 @@ def configure_logging(
             )
 
     return tuple(handler_ids)
+
+def bind_trace_context(
+    *,
+    traceparent: str | None = None,
+    correlation_id: str | None = None,
+    request_u: str | None = None,
+) -> object:
+    """Return a loguru logger bound with correlation fields for JSON sinks."""
+    extra: dict[str, str] = {}
+    if traceparent:
+        extra["traceparent"] = str(traceparent)
+    if correlation_id:
+        extra["correlation_id"] = str(correlation_id)
+    if request_u:
+        extra["request_u"] = str(request_u)
+    return logger.bind(**extra) if extra else logger
+

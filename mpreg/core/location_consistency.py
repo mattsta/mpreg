@@ -40,7 +40,7 @@ class ConsistencyLevel(Enum):
 
     EVENTUAL = "eventual"  # Best performance, eventual consistency
     CAUSAL = "causal"  # Causal ordering preserved
-    STRONG = "strong"  # Immediate consistency across all replicas
+    STRONG = "strong"  # Reserved: fail-closed until real quorum ACKs exist
     LOCATION_AWARE = "location"  # Consistency based on geographic proximity
 
 class ReplicationStrategy(Enum):
@@ -623,19 +623,22 @@ class LocationConsistencyManager:
     async def _wait_for_strong_consistency(
         self, operation: ReplicationOperation
     ) -> None:
-        """Wait for strong consistency acknowledgments."""
-        # Implementation would wait for ACKs from target clusters
-        # For demo purposes, we'll simulate with a delay
-        await asyncio.sleep(0.1)
+        """STRONG consistency is not implemented — fail closed (no sleep theater)."""
+        raise ValueError(
+            "ConsistencyLevel.STRONG is not implemented on the location "
+            "consistency plane (no multi-replica quorum ACKs). Use EVENTUAL "
+            "or CAUSAL, or the live GlobalCacheManager path which also refuses STRONG."
+        )
 
     async def _get_with_strong_consistency(
         self, key: GlobalCacheKey
     ) -> ReplicatedCacheEntry | None:
-        """Get entry with strong consistency by querying multiple clusters."""
-        # Implementation would query multiple clusters and resolve conflicts
-        # For demo purposes, return local entry
-        entry_key = self._entry_key(key)
-        return self.replicated_entries.get(entry_key)
+        """STRONG get is not implemented — fail closed."""
+        raise ValueError(
+            "ConsistencyLevel.STRONG is not implemented on the location "
+            "consistency plane (no multi-replica quorum read). Use EVENTUAL "
+            "or CAUSAL instead."
+        )
 
     def _start_background_tasks(self) -> None:
         """Start background replication and heartbeat tasks."""

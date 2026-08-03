@@ -20,6 +20,11 @@ Key Features:
 - Integration with existing gossip and consensus systems
 
 This is Phase 3.3 of the Planet-Scale Fabric Roadmap.
+
+**Integration status:** library-only until ``MPREGServer`` wires
+``MembershipProtocol`` into the control plane. Peer liveness on the
+production path uses dial/gossip-adjacent mechanisms, not this SWIM FSM.
+Do not claim planet-scale SWIM failure detection for deployed nodes yet.
 """
 
 from __future__ import annotations

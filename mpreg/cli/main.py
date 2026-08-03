@@ -1574,6 +1574,12 @@ def config_check(settings_path: str, output_format: str) -> None:
         warnings.append("monitoring CORS is enabled — disable in production unless needed")
     if settings.monitoring_enabled and not settings.monitoring_auth_token:
         warnings.append("monitoring has no auth token — set monitoring_auth_token for production")
+    if not settings.enable_default_queue and not settings.enable_default_cache:
+        warnings.append(
+            "enable_default_queue and enable_default_cache are both false — "
+            "MPREGClient queue_*/cache_* RPCs need managers attached "
+            "(--enable-queue / --enable-cache or profile flags)"
+        )
     if settings.discovery_summary_export_enabled and not settings.discovery_summary_signing_secret:
         warnings.append("summary export enabled without signing secret")
     sec = settings.fabric_route_security_config
@@ -1599,6 +1605,177 @@ def config_check(settings_path: str, output_format: str) -> None:
     emit(report, output_format=output_format, table_title="Config check")
     if warnings:
         raise SystemExit(2)
+
+@cli.group("admin")
+def admin_group():
+    """Management mutations: drain, detach, audit (monitoring HTTP)."""
+    pass
+
+def _admin_base_url(url: str | None) -> str:
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_MONITORING_URL.")
+    return url.rstrip("/")
+
+def _admin_headers(token: str | None) -> dict[str, str]:
+    headers: dict[str, str] = {}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+@admin_group.command("drain")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_MONITORING_URL",
+    help="Monitoring base URL",
+)
+@click.option(
+    "--token",
+    default=None,
+    envvar="MPREG_MONITORING_TOKEN",
+    help="Bearer token for monitoring auth",
+)
+@click.option("--clear", is_flag=True, help="Clear drain (admit traffic again)")
+@click.option("--actor", default=None, help="Actor name for audit")
+@click.option("--reason", default=None, help="Reason for audit")
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON")
+def admin_drain(
+    url: str | None,
+    token: str | None,
+    clear: bool,
+    actor: str | None,
+    reason: str | None,
+    as_json: bool,
+) -> None:
+    """Enter or clear node drain (affects /ready)."""
+
+    async def _run() -> None:
+        base = _admin_base_url(url)
+        body = {
+            "draining": not clear,
+            "actor": actor,
+            "reason": reason,
+        }
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/mgmt/v1/nodes/drain",
+                json=body,
+                headers=_admin_headers(token),
+            ) as resp:
+                data = await resp.json(content_type=None)
+                if as_json:
+                    console.print(data)
+                else:
+                    console.print(
+                        f"[{'green' if resp.status == 200 else 'red'}]"
+                        f"HTTP {resp.status} drain applied={data.get('applied')} "
+                        f"draining={data.get('draining', body['draining'])}[/]"
+                    )
+                if resp.status >= 400:
+                    raise SystemExit(1)
+
+    asyncio.run(_run())
+
+@admin_group.command("detach")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_MONITORING_URL",
+    help="Monitoring base URL",
+)
+@click.option(
+    "--token",
+    default=None,
+    envvar="MPREG_MONITORING_TOKEN",
+    help="Bearer token for monitoring auth",
+)
+@click.argument("peer_url")
+@click.option("--actor", default=None, help="Actor name for audit")
+@click.option("--reason", default=None, help="Reason for audit")
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON")
+def admin_detach(
+    url: str | None,
+    token: str | None,
+    peer_url: str,
+    actor: str | None,
+    reason: str | None,
+    as_json: bool,
+) -> None:
+    """Detach a peer connection from this node."""
+
+    async def _run() -> None:
+        base = _admin_base_url(url)
+        body = {"peer_url": peer_url, "actor": actor, "reason": reason}
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}/mgmt/v1/peers/detach",
+                json=body,
+                headers=_admin_headers(token),
+            ) as resp:
+                data = await resp.json(content_type=None)
+                if as_json:
+                    console.print(data)
+                else:
+                    console.print(
+                        f"[{'green' if resp.status == 200 and data.get('applied') else 'red'}]"
+                        f"HTTP {resp.status} detach applied={data.get('applied')} "
+                        f"peer={peer_url}[/]"
+                    )
+                if resp.status >= 400 or data.get("applied") is False:
+                    raise SystemExit(1)
+
+    asyncio.run(_run())
+
+@admin_group.command("audit")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_MONITORING_URL",
+    help="Monitoring base URL",
+)
+@click.option(
+    "--token",
+    default=None,
+    envvar="MPREG_MONITORING_TOKEN",
+    help="Bearer token for monitoring auth",
+)
+@click.option("--limit", default=50, show_default=True, type=int)
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON")
+def admin_audit(
+    url: str | None, token: str | None, limit: int, as_json: bool
+) -> None:
+    """Show recent management mutation audit entries."""
+
+    async def _run() -> None:
+        base = _admin_base_url(url)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{base}/mgmt/v1/audit",
+                params={"limit": str(limit)},
+                headers=_admin_headers(token),
+            ) as resp:
+                data = await resp.json(content_type=None)
+                if as_json:
+                    console.print(data)
+                    return
+                mutations = data.get("mutations") or []
+                table = Table(title="Mgmt mutation audit")
+                table.add_column("event")
+                table.add_column("actor")
+                table.add_column("success")
+                table.add_column("detail")
+                for m in mutations:
+                    table.add_row(
+                        str(m.get("event")),
+                        str(m.get("actor")),
+                        str(m.get("success")),
+                        str(m.get("detail"))[:80],
+                    )
+                console.print(table)
+                if resp.status >= 400:
+                    raise SystemExit(1)
+
+    asyncio.run(_run())
 
 @cli.group("profile")
 def profile_group():

@@ -241,6 +241,11 @@ class MPREGClientAPI:
             client_api_log.error("RPC Call Failed: {}", e)
             raise map_exception(e) from e
 
+    @property
+    def notification_dropped_count(self) -> int:
+        """Pubsub notifications dropped on the transport client under backpressure."""
+        return int(getattr(self._client, "notification_dropped_count", 0) or 0)
+
     def last_trace_context(self) -> dict[str, str] | None:
         """Return last observed W3C ``traceparent`` / ``tracestate`` fields.
 

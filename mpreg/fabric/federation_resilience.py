@@ -14,7 +14,6 @@ This module provides comprehensive resilience patterns for federated operations:
 from __future__ import annotations
 
 import asyncio
-import random
 import time
 from collections import defaultdict, deque
 from collections.abc import Callable
@@ -331,34 +330,18 @@ class FederationHealthMonitor:
         start_time = time.time()
 
         try:
-            # This would be implemented to actually check cluster health
-            # For now, simulate a health check
-            await asyncio.sleep(0.1)  # Simulate network call
-
-            # Simulate various health states
-            if random.random() < 0.95:  # 95% success rate for demo
-                latency_ms = random.uniform(10, 100)
-                resource_metrics = ResourceMetrics(
-                    cpu_usage=random.uniform(10, 80),
-                    memory_usage=random.uniform(20, 70),
-                    connection_count=random.randint(5, 50),
-                    queue_depth=random.randint(0, 10),
-                )
-                return HealthCheckResult(
-                    cluster_id=cluster_id,
-                    status=HealthStatus.HEALTHY.value,
-                    latency_ms=latency_ms,
-                    timestamp=time.time(),
-                    resource_metrics=resource_metrics,
-                )
-            else:
-                return HealthCheckResult(
-                    cluster_id=cluster_id,
-                    status=HealthStatus.UNHEALTHY.value,
-                    latency_ms=1000.0,  # High latency indicates issues
-                    timestamp=time.time(),
-                    error_message="Connection timeout",
-                )
+            # Production health must come from real probes (monitoring /live|/ready).
+            # RNG/sleep demos were removed — report unknown rather than fake HEALTHY.
+            return HealthCheckResult(
+                cluster_id=cluster_id,
+                status=HealthStatus.UNKNOWN.value,
+                latency_ms=0.0,
+                timestamp=time.time(),
+                error_message=(
+                    "health_probe_unimplemented: wire real monitoring probes; "
+                    "simulated RNG health checks are not production-safe"
+                ),
+            )
 
         except Exception as e:
             return HealthCheckResult(
@@ -720,97 +703,59 @@ class FederationAutoRecovery:
             return False
 
     async def _immediate_retry_recovery(self, cluster_id: str) -> bool:
-        """Attempt immediate retry recovery."""
+        """Immediate retry only succeeds when a real health probe reports HEALTHY."""
         logger.info(f"Attempting immediate retry recovery for {cluster_id}")
-
-        # Simulate immediate retry
-        await asyncio.sleep(1.0)
-
-        # Check if cluster is now healthy
         health_metrics = self.health_monitor.cluster_health.get(cluster_id)
         if health_metrics and health_metrics.status == HealthStatus.HEALTHY:
             logger.info(f"Immediate retry recovery successful for {cluster_id}")
             return True
-
-        return False
-
-    async def _exponential_backoff_recovery(self, cluster_id: str) -> bool:
-        """Attempt recovery with exponential backoff."""
-        logger.info(f"Attempting exponential backoff recovery for {cluster_id}")
-
-        for attempt in range(self.retry_config.max_attempts):
-            # Calculate delay with jitter
-            delay = min(
-                self.retry_config.initial_delay_seconds
-                * (self.retry_config.backoff_multiplier**attempt),
-                self.retry_config.max_delay_seconds,
-            )
-
-            jitter = random.uniform(
-                -self.retry_config.jitter_factor, self.retry_config.jitter_factor
-            )
-            delay *= 1 + jitter
-
-            logger.info(
-                f"Recovery attempt {attempt + 1}/{self.retry_config.max_attempts} for {cluster_id}, waiting {delay:.2f}s"
-            )
-            await asyncio.sleep(delay)
-
-            # Simulate recovery attempt
-            # In real implementation, this would attempt to reconnect to the cluster
-            if random.random() < 0.3:  # 30% chance of success per attempt
-                logger.info(f"Exponential backoff recovery successful for {cluster_id}")
-                return True
-
         logger.warning(
-            f"Exponential backoff recovery failed for {cluster_id} after {self.retry_config.max_attempts} attempts"
+            "immediate_retry_unimplemented for {}; no real reconnect path",
+            cluster_id,
         )
         return False
 
+    async def _exponential_backoff_recovery(self, cluster_id: str) -> bool:
+        """Backoff recovery refuses RNG success; requires real HEALTHY probe state."""
+        logger.warning(
+            "exponential_backoff_recovery_unimplemented for {}; "
+            "refusing simulated success (wire real reconnect + probes)",
+            cluster_id,
+        )
+        health_metrics = self.health_monitor.cluster_health.get(cluster_id)
+        if health_metrics and health_metrics.status == HealthStatus.HEALTHY:
+            return True
+        return False
+
     async def _circuit_breaker_recovery(self, cluster_id: str) -> bool:
-        """Coordinate circuit breaker recovery."""
-        logger.info(f"Initiating circuit breaker recovery for {cluster_id}")
-
-        # Circuit breaker recovery is handled by the circuit breaker itself
-        # This just logs and waits for the circuit breaker to recover
-        await asyncio.sleep(60.0)  # Wait for circuit breaker timeout
-
-        # Check if recovery occurred
+        """Circuit breaker recovery requires real health transitions — no sleep theater."""
+        logger.warning(
+            "circuit_breaker_recovery_unimplemented for {}; refusing silent success",
+            cluster_id,
+        )
         health_metrics = self.health_monitor.cluster_health.get(cluster_id)
         if health_metrics and health_metrics.status in [
             HealthStatus.HEALTHY,
             HealthStatus.DEGRADED,
         ]:
-            logger.info(f"Circuit breaker recovery successful for {cluster_id}")
             return True
-
         return False
 
     async def _graceful_degradation_recovery(self, cluster_id: str) -> bool:
-        """Implement graceful degradation recovery."""
-        logger.info(f"Implementing graceful degradation for {cluster_id}")
-
-        # Graceful degradation: reduce load, disable non-critical features
-        # For demo purposes, just wait and simulate recovery
-        await asyncio.sleep(30.0)
-
-        # Simulate partial recovery
-        if random.random() < 0.7:  # 70% chance of partial recovery
-            logger.info(f"Graceful degradation recovery successful for {cluster_id}")
-            return True
-
+        """Graceful degradation requires real traffic shaping — not simulated."""
+        logger.warning(
+            "graceful_degradation_unimplemented for {}; refusing silent success",
+            cluster_id,
+        )
         return False
 
     async def _failover_recovery(self, cluster_id: str) -> bool:
-        """Implement failover recovery."""
-        logger.info(f"Initiating failover recovery for {cluster_id}")
-
-        # Failover: redirect traffic to backup clusters
-        # For demo purposes, simulate failover process
-        await asyncio.sleep(10.0)
-
-        logger.info(f"Failover recovery completed for {cluster_id}")
-        return True
+        """Failover requires real traffic redirect — not simulated."""
+        logger.warning(
+            "failover_recovery_unimplemented for {}; refusing silent success",
+            cluster_id,
+        )
+        return False
 
     def add_recovery_callback(
         self, callback: Callable[[str, RecoveryStrategy, bool], None]

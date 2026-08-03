@@ -3280,6 +3280,16 @@ class MPREGServer:
         from mpreg.core.observability.trace_context import inject_trace_metadata
         from mpreg.core.rpc_deadline import decrement_deadline_headers
 
+        meta = dict(headers.metadata) if headers is not None else {}
+        hop_ms = 5.0  # conservative floor when ingress mono stamp missing
+        raw_entered = meta.get("mpreg.hop_entered_mono")
+        if raw_entered is not None:
+            try:
+                entered = float(raw_entered)
+                hop_ms = max(0.1, (time.monotonic() - entered) * 1000.0)
+            except (TypeError, ValueError):
+                hop_ms = 5.0
+        meta["mpreg.hop_entered_mono"] = f"{time.monotonic():.6f}"
         next_headers = MessageHeaders(
             correlation_id=headers.correlation_id or correlation_id,
             source_cluster=headers.source_cluster or self.settings.cluster_id,
@@ -3288,11 +3298,11 @@ class MPREGServer:
             federation_path=federation_path,
             hop_budget=hop_budget,
             priority=headers.priority,
-            metadata=inject_trace_metadata(dict(headers.metadata)),
+            metadata=inject_trace_metadata(meta),
             deadline_remaining_ms=headers.deadline_remaining_ms,
         )
-        # Soft-RT: charge a minimal hop cost so multi-hop budgets fail closed.
-        return decrement_deadline_headers(next_headers, hop_latency_ms=1.0)
+        # Soft-RT: charge measured on-node time when stamped, else conservative floor.
+        return decrement_deadline_headers(next_headers, hop_latency_ms=hop_ms)
 
     def _fabric_next_hop_for_cluster(
         self, cluster_id: str, *, headers: MessageHeaders
@@ -11262,6 +11272,31 @@ class MPREGServer:
             return dict(payload)
         return {}
 
+    def _rpc_actor_ids(self, body: dict[str, Any]) -> tuple[str, str | None]:
+        """Resolve actor cluster/tenant for queue/cache RPC policy binding.
+
+        Prefer explicit body fields; fall back to this node's cluster_id so
+        local unauthenticated RPC still has a stable owner identity. Tenant
+        remains optional unless the namespace rule requires it.
+        """
+        cluster_raw = (
+            body.get("cluster_id")
+            or body.get("actor_cluster")
+            or body.get("source_cluster")
+            or getattr(self.settings, "cluster_id", None)
+            or ""
+        )
+        cluster_id = str(cluster_raw).strip()
+        tenant_raw = (
+            body.get("tenant_id")
+            or body.get("actor_tenant_id")
+            or body.get("viewer_tenant_id")
+        )
+        tenant_id = str(tenant_raw).strip() if tenant_raw is not None else None
+        if tenant_id == "":
+            tenant_id = None
+        return cluster_id, tenant_id
+
     async def _rpc_queue_create(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
         body = self._rpc_payload_dict(payload)
         if kwargs:
@@ -11272,7 +11307,9 @@ class MPREGServer:
         name = str(body.get("queue_name") or body.get("name") or "")
         if not name:
             return {"success": False, "error_message": "queue_name_required"}
-        ok = await manager.create_queue(name)
+        cluster_id, tenant_id = self._rpc_actor_ids(body)
+        with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
+            ok = await manager.create_queue(name)
         return {"success": bool(ok), "queue_name": name}
 
     async def _rpc_queue_send(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
@@ -11287,16 +11324,30 @@ class MPREGServer:
             return {"success": False, "error_message": "queue_name_required"}
         topic = str(body.get("topic") or f"mpreg.queue.{queue_name}")
         payload_data = body.get("payload", body.get("message"))
-        dg_raw = str(body.get("delivery_guarantee") or "at_least_once")
+        dg_raw = str(body.get("delivery_guarantee") or "at_least_once").strip().lower()
         from mpreg.core.message_queue import DeliveryGuarantee
 
+        if dg_raw in {"exactly_once", "exact_once", "eo"}:
+            return {
+                "success": False,
+                "error_message": "unsupported_delivery_guarantee:exactly_once",
+                "queue_name": queue_name,
+                "topic": topic,
+            }
         try:
             dg = DeliveryGuarantee(dg_raw)
         except ValueError:
-            dg = DeliveryGuarantee.AT_LEAST_ONCE
-        result = await manager.send_message(
-            queue_name, topic, payload_data, delivery_guarantee=dg
-        )
+            return {
+                "success": False,
+                "error_message": f"unsupported_delivery_guarantee:{dg_raw}",
+                "queue_name": queue_name,
+                "topic": topic,
+            }
+        cluster_id, tenant_id = self._rpc_actor_ids(body)
+        with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
+            result = await manager.send_message(
+                queue_name, topic, payload_data, delivery_guarantee=dg
+            )
         mid = getattr(result, "message_id", None)
         return {
             "success": bool(getattr(result, "success", False)),
@@ -11327,7 +11378,9 @@ class MPREGServer:
             identifier=identifier,
             version=str(body.get("version") or "v1.0.0"),
         )
-        result = await manager.get(key)
+        cluster_id, tenant_id = self._rpc_actor_ids(body)
+        with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
+            result = await manager.get(key)
         entry = getattr(result, "entry", None)
         value = getattr(entry, "value", None) if entry is not None else None
         return {
@@ -11361,7 +11414,9 @@ class MPREGServer:
             identifier=identifier,
             version=str(body.get("version") or "v1.0.0"),
         )
-        result = await manager.put(key, body.get("value"))
+        cluster_id, tenant_id = self._rpc_actor_ids(body)
+        with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
+            result = await manager.put(key, body.get("value"))
         return {
             "success": bool(getattr(result, "success", False)),
             "error_message": getattr(result, "error_message", None),
@@ -11386,6 +11441,15 @@ class MPREGServer:
     def attach_queue_manager(self, queue_manager: Any) -> None:
         """Attach a queue manager to the monitoring system and RPC surface."""
         self._queue_manager = queue_manager
+        cfg = getattr(queue_manager, "config", None)
+        if cfg is not None and hasattr(cfg, "local_cluster_id"):
+            if not getattr(cfg, "local_cluster_id", ""):
+                try:
+                    object.__setattr__(
+                        cfg, "local_cluster_id", str(self.settings.cluster_id)
+                    )
+                except Exception:
+                    pass
         if hasattr(queue_manager, "attach_namespace_policy"):
             queue_manager.attach_namespace_policy(self._namespace_policy_engine)
         self._initialize_fabric_queue_federation()

@@ -441,6 +441,11 @@ class CrossRegionCoordinator:
 
         try:
             # Create delivery request
+            if message.delivery_guarantee == DeliveryGuarantee.EXACTLY_ONCE:
+                logger.warning(
+                    "Rejecting cross-region delivery with unsupported EXACTLY_ONCE"
+                )
+                return False
             delivery_request = CrossRegionDeliveryRequest(
                 message_id=f"cross_region_{message.message_id}",
                 original_message_id=message.message_id,
@@ -451,8 +456,7 @@ class CrossRegionCoordinator:
                 priority_level=self._get_priority_level(message.priority),
                 processing_fee=message.processing_fee,
                 coordination_fee=message.processing_fee,  # Additional fee for coordination
-                requires_exactly_once=message.delivery_guarantee
-                == DeliveryGuarantee.EXACTLY_ONCE,
+                requires_exactly_once=False,
             )
 
             # Find regional coordinators
@@ -519,9 +523,8 @@ class CrossRegionCoordinator:
             recipient_id=destination_coordinator,
             message_type="cross_region_coordinated",
             priority=MessagePriority.HIGH,
-            delivery_guarantee=DeliveryGuarantee.EXACTLY_ONCE
-            if request.requires_exactly_once
-            else DeliveryGuarantee.AT_LEAST_ONCE,
+            # EXACTLY_ONCE is unsupported; always AT_LEAST_ONCE on this plane.
+            delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
             processing_fee=request.coordination_fee,
             metadata={
                 "original_message_id": request.original_message_id,
