@@ -871,6 +871,44 @@ Fabric messages carry W3C `traceparent` in header metadata. Correlate hops with:
 mpreg monitor decisions --correlation-id <id> --url $MPREG_MONITORING_URL
 ```
 
+## RPC execution modalities (async / soft real-time / streaming)
+
+MPREG clients select evaluation semantics through ``ClientCallPolicy`` and
+``RpcExecutionMode``:
+
+| Mode | Enum | Semantics |
+|------|------|-----------|
+| M1 Async | ``RpcExecutionMode.M1_ASYNC`` | Throughput-oriented retries; optional wall deadline per attempt |
+| M2 Soft real-time | ``RpcExecutionMode.M2_SOFT_RT`` | Shared end-to-end deadline budget; fail closed with ``TIMEOUT`` (1006); no retry past remaining budget |
+| M3 Streaming | ``RpcExecutionMode.M3_STREAMING`` | Progressive / intermediate results; cancel stops further partials; default single attempt |
+
+```python
+from mpreg.client.call_policy import ClientCallPolicy, RpcExecutionMode, call_with_policy
+
+# Soft real-time: 200ms budget shared across retries
+policy = ClientCallPolicy.for_mode(
+    RpcExecutionMode.M2_SOFT_RT,
+    deadline_seconds=0.2,
+)
+
+# Streaming / progressive
+stream_policy = ClientCallPolicy.for_mode(RpcExecutionMode.M3_STREAMING)
+
+# Async throughput with HA defaults
+async_policy = ClientCallPolicy.for_mode(RpcExecutionMode.M1_ASYNC)
+```
+
+Fabric hops carry ``MessageHeaders.deadline_remaining_ms`` (also mirrored in
+metadata key ``mpreg.deadline_remaining_ms``). Forwarders should decrement the
+budget by measured hop latency via ``mpreg.core.rpc_deadline.decrement_deadline_headers``.
+When remaining ≤ 0, servers return structured ``TIMEOUT`` rather than stalling.
+
+Intermediate results (``return_intermediate_results``) emit monotonic level
+indices; a final event implies no further partials. Under hop loss, clients may
+observe a prefix of levels without a final — never a silent wrong success.
+
+See architecture claims INV-P1–P5 in ``tests/invariants/claims.yaml``.
+
 ## Default HA call policy
 
 `MPREGClusterClient` applies `default_ha_policy()` (3 attempts, retry timeout/unavailable only)

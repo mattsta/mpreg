@@ -57,6 +57,8 @@ class MessageHeaders:
     hop_budget: HopCount | None = None
     priority: RoutingPriority = RoutingPriority.NORMAL
     metadata: dict[str, Any] = field(default_factory=dict)
+    # Soft-RT remaining budget in milliseconds (INV-P2/C1). None = no deadline.
+    deadline_remaining_ms: float | None = None
 
     def with_trace_context(
         self,
@@ -81,6 +83,7 @@ class MessageHeaders:
             hop_budget=self.hop_budget,
             priority=self.priority,
             metadata=meta,
+            deadline_remaining_ms=self.deadline_remaining_ms,
         )
 
     @property
@@ -88,6 +91,26 @@ class MessageHeaders:
         from mpreg.core.observability.trace_context import extract_traceparent
 
         return extract_traceparent(self.metadata)
+
+    def with_deadline_remaining_ms(self, remaining_ms: float | None) -> MessageHeaders:
+        """Return headers with updated soft-RT deadline budget."""
+        return MessageHeaders(
+            correlation_id=self.correlation_id,
+            source_cluster=self.source_cluster,
+            target_cluster=self.target_cluster,
+            routing_path=self.routing_path,
+            federation_path=self.federation_path,
+            hop_budget=self.hop_budget,
+            priority=self.priority,
+            metadata=dict(self.metadata),
+            deadline_remaining_ms=remaining_ms,
+        )
+
+    def deadline_exhausted(self) -> bool:
+        """True when a deadline was set and remaining budget is <= 0."""
+        if self.deadline_remaining_ms is None:
+            return False
+        return float(self.deadline_remaining_ms) <= 0.0
 
 @dataclass(frozen=True, slots=True)
 class UnifiedMessage:

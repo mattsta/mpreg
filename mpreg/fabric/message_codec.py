@@ -14,7 +14,7 @@ from .message import (
 )
 
 def message_headers_to_dict(headers: MessageHeaders) -> dict[str, Any]:
-    return {
+    payload = {
         "correlation_id": headers.correlation_id,
         "source_cluster": headers.source_cluster,
         "target_cluster": headers.target_cluster,
@@ -24,6 +24,9 @@ def message_headers_to_dict(headers: MessageHeaders) -> dict[str, Any]:
         "priority": headers.priority.value,
         "metadata": headers.metadata,
     }
+    if headers.deadline_remaining_ms is not None:
+        payload["deadline_remaining_ms"] = float(headers.deadline_remaining_ms)
+    return payload
 
 def message_headers_from_dict(payload: dict[str, Any]) -> MessageHeaders:
     correlation_id = str(payload.get("correlation_id", ""))
@@ -63,6 +66,15 @@ def message_headers_from_dict(payload: dict[str, Any]) -> MessageHeaders:
         metadata["traceparent"] = payload["traceparent"]
     if payload.get("tracestate") and "tracestate" not in metadata:
         metadata["tracestate"] = payload["tracestate"]
+    deadline_raw = payload.get("deadline_remaining_ms")
+    deadline_remaining_ms = None
+    if deadline_raw is None and isinstance(metadata, dict):
+        deadline_raw = metadata.get("mpreg.deadline_remaining_ms")
+    if deadline_raw is not None:
+        try:
+            deadline_remaining_ms = float(deadline_raw)
+        except (TypeError, ValueError):
+            deadline_remaining_ms = None
     return MessageHeaders(
         correlation_id=correlation_id,
         source_cluster=payload.get("source_cluster"),
@@ -72,6 +84,7 @@ def message_headers_from_dict(payload: dict[str, Any]) -> MessageHeaders:
         hop_budget=hop_budget,
         priority=priority,
         metadata=metadata,
+        deadline_remaining_ms=deadline_remaining_ms,
     )
 
 def unified_message_to_dict(message: UnifiedMessage) -> dict[str, Any]:

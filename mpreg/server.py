@@ -1556,6 +1556,7 @@ class MPREGServer:
     _fabric_queue_delivery: Any = field(init=False, default=None)
     _fabric_raft_transport: Any = field(init=False, default=None)
     _registered_raft_nodes: list[Any] = field(init=False, default_factory=list)
+    _raft_plane: Any = field(init=False, default=None)
     _fabric_catalog_refresh_task: asyncio.Task[None] | None = field(
         init=False, default=None
     )
@@ -2252,8 +2253,17 @@ class MPREGServer:
             ),
             hooks=hooks,
         )
+        from mpreg.server_pkg.raft_handlers import RaftPlane
+
+        self._raft_plane = RaftPlane()
+        self._raft_plane.bind_transport(self._fabric_raft_transport)
 
     def register_raft_node(self, node: Any) -> None:
+        if self._raft_plane is not None:
+            self._raft_plane.register_node(node)
+            if node not in self._registered_raft_nodes:
+                self._registered_raft_nodes.append(node)
+            return
         if not self._fabric_raft_transport:
             raise RuntimeError("Fabric raft transport is not initialized")
         self._fabric_raft_transport.register_node(node)
@@ -2262,6 +2272,8 @@ class MPREGServer:
 
     def raft_status(self) -> dict[str, Any]:
         """Operator snapshot of registered Raft nodes (mgmt / doctor)."""
+        if self._raft_plane is not None:
+            return self._raft_plane.status()
         from mpreg.consensus import status_dict
 
         nodes = [status_dict(n) for n in self._registered_raft_nodes]
@@ -3237,8 +3249,9 @@ class MPREGServer:
             )
 
         from mpreg.core.observability.trace_context import inject_trace_metadata
+        from mpreg.core.rpc_deadline import decrement_deadline_headers
 
-        return MessageHeaders(
+        next_headers = MessageHeaders(
             correlation_id=headers.correlation_id or correlation_id,
             source_cluster=headers.source_cluster or self.settings.cluster_id,
             target_cluster=headers.target_cluster,
@@ -3247,7 +3260,10 @@ class MPREGServer:
             hop_budget=hop_budget,
             priority=headers.priority,
             metadata=inject_trace_metadata(dict(headers.metadata)),
+            deadline_remaining_ms=headers.deadline_remaining_ms,
         )
+        # Soft-RT: charge a minimal hop cost so multi-hop budgets fail closed.
+        return decrement_deadline_headers(next_headers, hop_latency_ms=1.0)
 
     def _fabric_next_hop_for_cluster(
         self, cluster_id: str, *, headers: MessageHeaders

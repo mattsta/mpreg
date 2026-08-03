@@ -394,6 +394,7 @@ class FabricRaftTransport:
             hop_budget=hop_budget,
             priority=headers.priority,
             metadata=dict(headers.metadata),
+            deadline_remaining_ms=headers.deadline_remaining_ms,
         )
 
     @staticmethod
