@@ -46,6 +46,16 @@ routing:
     proof: [L2]
     tests:
       - tests/invariants/test_routing_mode_matrix.py
+  - id: INV-R9
+    claim: "signed mode rejects wrong key; rotation overlap accepts old+new"
+    proof: [L1, L2]
+    tests:
+      - tests/invariants/test_route_security_rotation.py
+  - id: INV-R10
+    claim: "unreachable / no_path decisions increment blackhole_count"
+    proof: [L1]
+    tests:
+      - tests/invariants/test_blackhole_metrics.py
 
 raft:
   - id: INV-C1
@@ -79,6 +89,16 @@ raft:
     proof: [L1]
     tests:
       - tests/invariants/test_raft_membership.py
+  - id: INV-C7
+    claim: "pre-vote minority does not unboundedly thrash terms"
+    proof: [L2]
+    tests:
+      - tests/invariants/test_raft_prevote_minority.py
+  - id: INV-C8
+    claim: "crash/restart recovers committed log prefix from storage"
+    proof: [L2]
+    tests:
+      - tests/invariants/test_raft_persistence_crash.py
 
 rpc:
   - id: INV-P1
@@ -91,6 +111,7 @@ rpc:
     proof: [L1, L2]
     tests:
       - tests/invariants/test_rpc_modality.py
+      - tests/invariants/test_rpc_deadline_hops.py
   - id: INV-P3
     claim: "soft-RT mode does not retry past remaining deadline"
     proof: [L1]

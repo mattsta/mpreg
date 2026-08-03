@@ -25,6 +25,19 @@ class RouteDecisionRecord:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+# Reasons that mean "no deliverable path" (observable blackhole / unreachable).
+UNREACHABLE_REASONS: frozenset[str] = frozenset(
+    {
+        "no_fabric_path",
+        "no_path",
+        "unreachable",
+        "no_peer_for_next_hop",
+        "hop_budget_exhausted",
+        "loop_detected",
+        "blackhole",
+    }
+)
+
 class RouteDecisionLog:
     """Thread-safe fixed-size log of route decisions."""
 
@@ -32,10 +45,16 @@ class RouteDecisionLog:
         self._maxlen = max(1, maxlen)
         self._items: deque[RouteDecisionRecord] = deque(maxlen=self._maxlen)
         self._lock = threading.Lock()
+        self._blackhole_count = 0
+        self._total_count = 0
 
     def record(self, entry: RouteDecisionRecord) -> None:
         with self._lock:
             self._items.append(entry)
+            self._total_count += 1
+            reason = (entry.reason or "").lower()
+            if reason in UNREACHABLE_REASONS or "unreachable" in reason or "no_path" in reason:
+                self._blackhole_count += 1
 
     def recent(
         self,
@@ -60,7 +79,22 @@ class RouteDecisionLog:
 
     def stats(self) -> dict[str, Any]:
         with self._lock:
-            return {"size": len(self._items), "maxlen": self._maxlen}
+            return {
+                "size": len(self._items),
+                "maxlen": self._maxlen,
+                "total_recorded": self._total_count,
+                "blackhole_count": self._blackhole_count,
+                "reachable_ratio": (
+                    1.0 - (self._blackhole_count / self._total_count)
+                    if self._total_count
+                    else 1.0
+                ),
+            }
+
+    @property
+    def blackhole_count(self) -> int:
+        with self._lock:
+            return self._blackhole_count
 
 # Process-wide default log used by FabricRouter instances that share it.
 _DEFAULT_LOG = RouteDecisionLog(maxlen=512)
