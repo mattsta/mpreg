@@ -55,16 +55,21 @@ from .output import add_format_option, emit
 
 console = Console()
 
-def setup_logging(verbose: bool = False):
+def setup_logging(verbose: bool = False, *, json_logs: bool = False) -> None:
     """Setup logging configuration."""
     level = "DEBUG" if verbose else "INFO"
-    configure_logging(level, colorize=True)
+    configure_logging(level, colorize=not json_logs, json_logs=json_logs)
 
 @click.group()
 @click.version_option(__version__, prog_name="mpreg")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
+@click.option(
+    "--json-logs",
+    is_flag=True,
+    help="Emit structured JSON logs (one object per line on stderr)",
+)
 @click.pass_context
-def cli(ctx, verbose: bool):
+def cli(ctx, verbose: bool, json_logs: bool):
     """
     MPREG Fabric Management CLI.
 
@@ -72,9 +77,10 @@ def cli(ctx, verbose: bool):
     routing diagnostics, and deployment automation. (Historical "federation"
     subcommands remain as aliases where noted.)
     """
-    setup_logging(verbose)
+    setup_logging(verbose, json_logs=json_logs)
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
+    ctx.obj["json_logs"] = json_logs
 
 @cli.group()
 def client():
@@ -1199,7 +1205,14 @@ def server():
     default="mpreg.sqlite",
     help="SQLite filename for persistence backend",
 )
+@click.option(
+    "--json-logs",
+    is_flag=True,
+    help="Emit structured JSON logs from the server process",
+)
+@click.pass_context
 def start_server(
+    ctx: click.Context,
     host: str,
     port: int | None,
     name: str,
@@ -1223,6 +1236,7 @@ def start_server(
     persistence_mode: str,
     persistence_dir: str | None,
     persistence_sqlite_filename: str,
+    json_logs: bool,
 ):
     """Start an MPREG server."""
 
@@ -1274,6 +1288,7 @@ def start_server(
             monitoring_enable_cors=monitoring_cors,
             monitoring_auth_token=monitoring_token,
             persistence_config=persistence_config,
+            json_logs=bool(json_logs or (ctx.obj or {}).get("json_logs")),
         )
         server_instance = MPREGServer(settings=settings)
         await server_instance.server()

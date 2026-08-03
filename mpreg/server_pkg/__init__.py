@@ -10,6 +10,7 @@ Modules
 - ``monitoring_metrics`` — DNS/persistence metric payload builders
 - ``discovery_metrics`` — discovery summary/cache/policy/lag metric builders
 - ``mgmt_summary`` — normalized ``/mgmt/v1`` read models
+- ``mgmt_mutations`` — drain/detach/policy apply + audit log
 - ``consensus.md`` — canonical consensus API matrix (docs)
 """
 
@@ -22,6 +23,14 @@ from .discovery_metrics import (
     build_discovery_summary_metrics,
 )
 from .mgmt_summary import build_mgmt_v1_summary
+from .mgmt_mutations import (
+    MgmtAuditEntry,
+    MgmtAuditLog,
+    apply_namespace_policy,
+    apply_node_drain,
+    apply_peer_detach,
+    policy_dry_run,
+)
 from .monitoring_metrics import build_dns_metrics, build_persistence_snapshot_metrics
 from .peer_dial import (
     PeerDialBackoff,
@@ -54,6 +63,12 @@ from .types import (
 
 __all__ = [
     "build_mgmt_v1_summary",
+    "MgmtAuditEntry",
+    "MgmtAuditLog",
+    "apply_namespace_policy",
+    "apply_node_drain",
+    "apply_peer_detach",
+    "policy_dry_run",
     "build_persistence_snapshot_metrics",
     "build_dns_metrics",
     "build_discovery_summary_metrics",

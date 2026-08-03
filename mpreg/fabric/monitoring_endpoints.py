@@ -259,6 +259,19 @@ class FederationMonitoringSystem:
     policy_dry_run_provider: (
         Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse] | None
     ) = None
+    # Management mutation providers (bound from MPREGServer).
+    mgmt_drain_provider: (
+        Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse] | None
+    ) = None
+    mgmt_detach_provider: (
+        Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse] | None
+    ) = None
+    mgmt_policy_apply_provider: (
+        Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse] | None
+    ) = None
+    mgmt_audit_provider: Callable[[], list[dict[str, Any]] | dict[str, Any]] | None = None
+    # Optional readiness override: when True, /ready returns 503 (drain).
+    draining_provider: Callable[[], bool] | None = None
     # Per-server route decision audit log (bound from FabricRouter).
     route_decision_log: object | None = None
     # Optional ServerMetricsTracker (or duck-type with prometheus_lines).
@@ -365,9 +378,9 @@ class FederationMonitoringSystem:
         self.app.router.add_get("/routing/decisions", self._get_route_decisions)
         self.app.router.add_get("/routing/link-state", self._get_link_state_status)
         self.app.router.add_post("/mgmt/v1/policy/dry-run", self._post_policy_dry_run)
-        self.app.router.add_post("/mgmt/v1/nodes/drain", self._post_mgmt_not_implemented)
-        self.app.router.add_post("/mgmt/v1/peers/detach", self._post_mgmt_not_implemented)
-        self.app.router.add_post("/mgmt/v1/policy/apply", self._post_mgmt_not_implemented)
+        self.app.router.add_post("/mgmt/v1/nodes/drain", self._post_mgmt_drain)
+        self.app.router.add_post("/mgmt/v1/peers/detach", self._post_mgmt_detach)
+        self.app.router.add_post("/mgmt/v1/policy/apply", self._post_mgmt_policy_apply)
         self.app.router.add_get("/mgmt/v1/audit", self._get_mgmt_audit)
 
         # Utility endpoints
@@ -533,18 +546,32 @@ class FederationMonitoringSystem:
         )
 
     async def _get_ready(self, request: web.Request) -> web.Response:
-        """Readiness: refuse traffic when federation health is critical/unavailable."""
+        """Readiness: refuse traffic when draining or federation health is bad."""
         try:
+            draining = False
+            drain_fn = getattr(self, "draining_provider", None)
+            if drain_fn is not None:
+                try:
+                    draining = bool(drain_fn())
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("draining_provider failed: {}", exc)
+                    draining = False
+
             health_summary = await self._collect_health_summary()
             status = health_summary.overall_health_status
             score = float(health_summary.overall_health_score)
             # CRITICAL / UNAVAILABLE → not ready (503). DEGRADED still admits traffic.
             not_ready_values = {"critical", "unavailable", "unhealthy"}
             status_value = getattr(status, "value", str(status)).lower()
-            ready = status_value not in not_ready_values and score >= 0.4
+            ready = (
+                not draining
+                and status_value not in not_ready_values
+                and score >= 0.4
+            )
             body = {
                 "status": "ready" if ready else "not_ready",
                 "ready": ready,
+                "draining": draining,
                 "health_score": score,
                 "overall_status": status_value,
                 "timestamp": time.time(),
@@ -1856,39 +1883,109 @@ class FederationMonitoringSystem:
             }
         )
 
-    async def _post_mgmt_not_implemented(self, request: web.Request) -> web.Response:
-        """Reserved mutation endpoint — returns 501 until control-plane apply lands."""
-        return web.json_response(
-            {
-                "error": "not_implemented",
-                "code": 501,
-                "path": request.path,
-                "message": (
-                    "Management mutations (drain/detach/policy apply) are reserved. "
-                    "Use policy dry-run and namespace_policy CLI until apply is enabled."
-                ),
-                "audit": False,
-            },
-            status=501,
+    async def _read_json_body(self, request: web.Request) -> tuple[dict[str, Any] | None, web.Response | None]:
+        try:
+            body = await request.json()
+        except Exception:
+            return None, web.json_response({"error": "invalid_json"}, status=400)
+        if body is None:
+            return {}, None
+        if not isinstance(body, dict):
+            return None, web.json_response({"error": "body_must_be_object"}, status=400)
+        return body, None
+
+    async def _invoke_mgmt_provider(
+        self,
+        provider: Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse] | None,
+        body: dict[str, Any],
+        *,
+        missing_code: str,
+    ) -> web.Response:
+        if provider is None:
+            return web.json_response(
+                {
+                    "applied": False,
+                    "error": missing_code,
+                    "message": "Management mutation provider is not bound on this node.",
+                },
+                status=503,
+            )
+        result = provider(body)
+        if inspect.isawaitable(result):
+            result = await result
+        if not isinstance(result, dict):
+            result = {"result": result}
+        status = 200 if result.get("applied", True) is not False else 400
+        if result.get("error") in {"namespace_policy_unavailable"}:
+            status = 503
+        return web.json_response(result, status=status)
+
+    async def _post_mgmt_drain(self, request: web.Request) -> web.Response:
+        """Mark the local node as draining (or clear drain). Affects /ready."""
+        body, err = await self._read_json_body(request)
+        if err is not None:
+            return err
+        assert body is not None
+        return await self._invoke_mgmt_provider(
+            self.mgmt_drain_provider, body, missing_code="drain_provider_unbound"
+        )
+
+    async def _post_mgmt_detach(self, request: web.Request) -> web.Response:
+        """Detach a peer connection from this node."""
+        body, err = await self._read_json_body(request)
+        if err is not None:
+            return err
+        assert body is not None
+        return await self._invoke_mgmt_provider(
+            self.mgmt_detach_provider, body, missing_code="detach_provider_unbound"
+        )
+
+    async def _post_mgmt_policy_apply(self, request: web.Request) -> web.Response:
+        """Apply namespace policy rules (same path as RPC namespace_policy_apply)."""
+        body, err = await self._read_json_body(request)
+        if err is not None:
+            return err
+        assert body is not None
+        return await self._invoke_mgmt_provider(
+            self.mgmt_policy_apply_provider,
+            body,
+            missing_code="policy_apply_provider_unbound",
         )
 
     async def _get_mgmt_audit(self, request: web.Request) -> web.Response:
-        """Audit trail placeholder (route decisions are the current read-path audit)."""
+        """Admin mutation audit plus optional route-decision read path."""
         from mpreg.fabric.route_decision_log import get_default_route_decision_log
 
-        log = getattr(self, "route_decision_log", None) or get_default_route_decision_log()
         try:
             limit = int(request.query.get("limit", "50"))
         except ValueError:
             limit = 50
-        records = log.recent(limit=limit) if hasattr(log, "recent") else []
+
+        mutations: list[dict[str, Any]] = []
+        audit_fn = getattr(self, "mgmt_audit_provider", None)
+        if audit_fn is not None:
+            try:
+                snap = audit_fn()
+                if isinstance(snap, dict):
+                    mutations = list(snap.get("mutations") or snap.get("entries") or [])
+                elif isinstance(snap, list):
+                    mutations = snap
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("mgmt_audit_provider failed: {}", exc)
+
+        # Truncate to limit (most recent last)
+        if limit >= 0 and len(mutations) > limit:
+            mutations = mutations[-limit:]
+
+        log = getattr(self, "route_decision_log", None) or get_default_route_decision_log()
+        route_records = log.recent(limit=min(limit, 20)) if hasattr(log, "recent") else []
         return web.json_response(
             {
-                "audit_kind": "route_decisions_read_path",
-                "mutations": [],
-                "note": "Durable admin mutation audit lands with mgmt apply APIs.",
+                "audit_kind": "mgmt_mutations",
+                "mutations": mutations,
+                "mutation_count": len(mutations),
                 "recent_route_decisions": [
-                    r.to_dict() if hasattr(r, "to_dict") else r for r in records
+                    r.to_dict() if hasattr(r, "to_dict") else r for r in route_records
                 ],
             }
         )
@@ -2895,6 +2992,14 @@ def create_federation_monitoring_system(
     | None = None,
     policy_dry_run_provider: Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse]
     | None = None,
+    mgmt_drain_provider: Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse]
+    | None = None,
+    mgmt_detach_provider: Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse]
+    | None = None,
+    mgmt_policy_apply_provider: Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse]
+    | None = None,
+    mgmt_audit_provider: Callable[[], list[dict[str, Any]] | dict[str, Any]] | None = None,
+    draining_provider: Callable[[], bool] | None = None,
     route_decision_log: object | None = None,
     raft_status_provider: RaftStatusProvider | None = None,
     server_metrics_tracker: object | None = None,
@@ -2926,6 +3031,11 @@ def create_federation_monitoring_system(
         dns_metrics_provider=dns_metrics_provider,
         mgmt_summary_provider=mgmt_summary_provider,
         policy_dry_run_provider=policy_dry_run_provider,
+        mgmt_drain_provider=mgmt_drain_provider,
+        mgmt_detach_provider=mgmt_detach_provider,
+        mgmt_policy_apply_provider=mgmt_policy_apply_provider,
+        mgmt_audit_provider=mgmt_audit_provider,
+        draining_provider=draining_provider,
         route_decision_log=route_decision_log,
         raft_status_provider=raft_status_provider,
         server_metrics_tracker=server_metrics_tracker,

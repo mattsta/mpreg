@@ -21,6 +21,12 @@ from .pubsub_client import (
     MPREGPubSubExtendedClient,
     SubscriptionCallback,
 )
+from .unified_client import (
+    CacheOpResult,
+    MPREGClient,
+    QueueSendResult,
+    UnifiedMPREGClient,
+)
 
 __all__ = [
     "Client",
@@ -34,4 +40,8 @@ __all__ = [
     "MPREGPubSubClient",
     "MPREGPubSubExtendedClient",
     "SubscriptionCallback",
+    "MPREGClient",
+    "UnifiedMPREGClient",
+    "QueueSendResult",
+    "CacheOpResult",
 ]

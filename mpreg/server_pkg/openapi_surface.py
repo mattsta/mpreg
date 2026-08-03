@@ -72,26 +72,90 @@ def build_monitoring_openapi() -> dict[str, Any]:
         },
         "/mgmt/v1/nodes/drain": {
             "post": {
-                "summary": "Drain node (reserved)",
+                "summary": "Enter or clear node drain (affects /ready)",
                 "tags": ["mgmt"],
-                "responses": {"501": {"description": "Not implemented"}},
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "draining": {"type": "boolean"},
+                                    "actor": {"type": "string"},
+                                    "reason": {"type": "string"},
+                                },
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {"description": "Drain state applied"},
+                    "400": {"description": "Invalid body"},
+                    "503": {"description": "Provider unbound"},
+                },
             }
         },
         "/mgmt/v1/peers/detach": {
             "post": {
-                "summary": "Detach peer (reserved)",
+                "summary": "Detach a peer connection from this node",
                 "tags": ["mgmt"],
-                "responses": {"501": {"description": "Not implemented"}},
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "required": ["peer_url"],
+                                "properties": {
+                                    "peer_url": {"type": "string"},
+                                    "actor": {"type": "string"},
+                                    "reason": {"type": "string"},
+                                },
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {"description": "Peer detached"},
+                    "400": {"description": "Invalid request"},
+                    "503": {"description": "Provider unbound"},
+                },
             }
         },
         "/mgmt/v1/policy/apply": {
             "post": {
-                "summary": "Apply policy (reserved)",
+                "summary": "Apply namespace policy rules",
                 "tags": ["mgmt"],
-                "responses": {"501": {"description": "Not implemented"}},
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "rules": {"type": "array"},
+                                    "enabled": {"type": "boolean"},
+                                    "default_allow": {"type": "boolean"},
+                                    "actor": {"type": "string"},
+                                },
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {"description": "Policy applied or validation result"},
+                    "400": {"description": "Validation failed"},
+                    "503": {"description": "Provider unbound"},
+                },
             }
         },
-        "/mgmt/v1/audit": {"get": {"summary": "Admin audit (read-path)", "tags": ["mgmt"]}},
+        "/mgmt/v1/audit": {
+            "get": {
+                "summary": "Admin mutation audit trail",
+                "tags": ["mgmt"],
+                "parameters": [
+                    {"name": "limit", "in": "query", "schema": {"type": "integer"}}
+                ],
+            }
+        },
         "/mgmt/v1/schema": {"get": {"summary": "This OpenAPI document", "tags": ["mgmt"]}},
         "/openapi.json": {"get": {"summary": "This OpenAPI document", "tags": ["meta"]}},
         "/endpoints": {"get": {"summary": "Endpoint directory", "tags": ["meta"]}},
@@ -105,7 +169,7 @@ def build_monitoring_openapi() -> dict[str, Any]:
             "version": "1.0.0",
             "description": (
                 "HTTP surface for health, metrics, routing diagnostics, and "
-                "management read models. Bearer auth when monitoring_auth_token is set."
+                "management read/write models (drain, detach, policy apply). Bearer auth when monitoring_auth_token is set."
             ),
         },
         "components": {

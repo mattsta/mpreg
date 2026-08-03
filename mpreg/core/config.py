@@ -45,6 +45,8 @@ class MPREGSettings:
     goodbye_reconnect_grace_seconds: DurationSeconds = 5.0
     log_level: str = "INFO"
     log_debug_scopes: tuple[str, ...] = ()
+    # When True, loguru emits one JSON object per line (ops / log shippers).
+    json_logs: bool = False
 
     # Monitoring configuration
     monitoring_enabled: bool = True

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Iterable, Mapping
+from typing import Any, TextIO
 
 from loguru import logger
 
@@ -12,23 +14,73 @@ DEFAULT_LOG_FORMAT = (
     "{name}:{function}:{line} - {message}"
 )
 
+def _json_sink(message: Any) -> None:
+    """Emit a single JSON line for structured logging sinks."""
+    record = message.record
+    payload: dict[str, Any] = {
+        "ts": record["time"].strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        "level": record["level"].name,
+        "logger": record["name"],
+        "function": record["function"],
+        "line": record["line"],
+        "message": record["message"],
+    }
+    extra = record.get("extra") or {}
+    cleaned = {
+        k: v
+        for k, v in extra.items()
+        if not str(k).startswith("_") and k not in {"serialized"}
+    }
+    if cleaned:
+        payload["extra"] = cleaned
+    if record["exception"] is not None:
+        payload["exception"] = str(record["exception"])
+    sys.stderr.write(json.dumps(payload, default=str) + "\n")
+    sys.stderr.flush()
+
 def configure_logging(
     level: str,
     *,
     debug_scopes: Iterable[str] = (),
     colorize: bool = False,
+    json_logs: bool = False,
+    sink: TextIO | None = None,
 ) -> tuple[int, ...]:
-    """Configure loguru with module-based debug filtering."""
-    logger.remove()
+    """Configure loguru with module-based debug filtering.
 
-    handler_ids: list[int] = [
-        logger.add(
-            sys.stderr,
-            level=level,
-            format=DEFAULT_LOG_FORMAT,
-            colorize=colorize,
+    When ``json_logs`` is True, each line is a JSON object suitable for
+    aggregation (CloudWatch, Loki, etc.). Human format remains the default.
+    """
+    logger.remove()
+    target = sink if sink is not None else sys.stderr
+    handler_ids: list[int] = []
+
+    if json_logs and sink is None:
+        handler_ids.append(
+            logger.add(
+                _json_sink,
+                level=level,
+                colorize=False,
+            )
         )
-    ]
+    elif json_logs:
+        handler_ids.append(
+            logger.add(
+                target,
+                level=level,
+                colorize=False,
+                serialize=True,
+            )
+        )
+    else:
+        handler_ids.append(
+            logger.add(
+                target,
+                level=level,
+                format=DEFAULT_LOG_FORMAT,
+                colorize=colorize,
+            )
+        )
 
     level_upper = level.upper()
     scopes = tuple(scope.strip() for scope in debug_scopes if scope.strip())
@@ -37,8 +89,8 @@ def configure_logging(
         def _debug_filter(record: object) -> bool:
             if not isinstance(record, Mapping):
                 return False
-            level = record.get("level")
-            if getattr(level, "name", None) != "DEBUG":
+            level_obj = record.get("level")
+            if getattr(level_obj, "name", None) != "DEBUG":
                 return False
             record_name = record.get("name", "")
 
@@ -51,14 +103,34 @@ def configure_logging(
                     return True
             return False
 
-        handler_ids.append(
-            logger.add(
-                sys.stderr,
-                level="DEBUG",
-                format=DEFAULT_LOG_FORMAT,
-                colorize=colorize,
-                filter=_debug_filter,
+        if json_logs and sink is None:
+            handler_ids.append(
+                logger.add(
+                    _json_sink,
+                    level="DEBUG",
+                    colorize=False,
+                    filter=_debug_filter,
+                )
             )
-        )
+        elif json_logs:
+            handler_ids.append(
+                logger.add(
+                    target,
+                    level="DEBUG",
+                    colorize=False,
+                    serialize=True,
+                    filter=_debug_filter,
+                )
+            )
+        else:
+            handler_ids.append(
+                logger.add(
+                    target,
+                    level="DEBUG",
+                    format=DEFAULT_LOG_FORMAT,
+                    colorize=colorize,
+                    filter=_debug_filter,
+                )
+            )
 
     return tuple(handler_ids)

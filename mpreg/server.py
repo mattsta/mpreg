@@ -1537,6 +1537,10 @@ class MPREGServer:
     _metrics_tracker: ServerMetricsTracker = field(init=False)
     _unified_monitor: Any = field(init=False, default=None)
     _monitoring_system: Any = field(init=False, default=None)
+    _mgmt_draining: bool = field(init=False, default=False)
+    _mgmt_audit_log: Any = field(init=False, default=None)
+    _queue_rpc_registered: bool = field(init=False, default=False)
+    _cache_rpc_registered: bool = field(init=False, default=False)
     _dns_gateway: Any = field(init=False, default=None)
     _cache_manager: Any = field(init=False, default=None)
     _queue_manager: Any = field(init=False, default=None)
@@ -1729,6 +1733,7 @@ class MPREGServer:
             self.settings.log_level,
             debug_scopes=self.settings.log_debug_scopes,
             colorize=False,
+            json_logs=bool(getattr(self.settings, "json_logs", False)),
         )
 
         if self.settings.persistence_config is not None:
@@ -1756,6 +1761,11 @@ class MPREGServer:
 
         # Metrics tracking for monitoring endpoints
         self._metrics_tracker = ServerMetricsTracker()
+        # Management mutation plane (drain / detach / policy apply audit)
+        from mpreg.server_pkg.mgmt_mutations import MgmtAuditLog
+
+        self._mgmt_draining = False
+        self._mgmt_audit_log = MgmtAuditLog()
         self._namespace_policy_audit_log = NamespacePolicyAuditLog()
         self._discovery_access_audit_log = DiscoveryAccessAuditLog(
             max_entries=self.settings.discovery_access_audit_max_entries
@@ -11030,6 +11040,12 @@ class MPREGServer:
             discovery_lag_provider=self._discovery_lag_metrics,
             dns_metrics_provider=self._dns_metrics,
             mgmt_summary_provider=self._mgmt_v1_summary,
+            policy_dry_run_provider=self._mgmt_policy_dry_run,
+            mgmt_drain_provider=self._mgmt_apply_drain,
+            mgmt_detach_provider=self._mgmt_apply_detach,
+            mgmt_policy_apply_provider=self._mgmt_apply_policy,
+            mgmt_audit_provider=self._mgmt_audit_snapshot,
+            draining_provider=lambda: bool(getattr(self, "_mgmt_draining", False)),
             route_decision_log=route_decision_log,
             raft_status_provider=raft_status_provider,
             server_metrics_tracker=self._metrics_tracker,
@@ -11140,6 +11156,51 @@ class MPREGServer:
                 )
             self._auto_allocated_dns_tcp_port = None
 
+    def _mgmt_audit_snapshot(self) -> list[dict[str, object]]:
+        """Return recent management mutation audit entries."""
+        log = getattr(self, "_mgmt_audit_log", None)
+        if log is None:
+            return []
+        return log.snapshot()
+
+    def _mgmt_apply_drain(self, body: dict[str, object]) -> dict[str, object]:
+        from mpreg.server_pkg.mgmt_mutations import apply_node_drain
+
+        draining = body.get("draining", True)
+        if isinstance(draining, str):
+            draining = draining.strip().lower() not in {"0", "false", "no", "off", "clear"}
+        return apply_node_drain(
+            self,
+            draining=bool(draining),
+            actor=str(body["actor"]) if body.get("actor") is not None else None,
+            reason=str(body["reason"]) if body.get("reason") is not None else None,
+        )
+
+    async def _mgmt_apply_detach(self, body: dict[str, object]) -> dict[str, object]:
+        from mpreg.server_pkg.mgmt_mutations import apply_peer_detach
+
+        peer_url = body.get("peer_url") or body.get("url") or body.get("peer")
+        return await apply_peer_detach(
+            self,
+            peer_url=str(peer_url or ""),
+            actor=str(body["actor"]) if body.get("actor") is not None else None,
+            reason=str(body["reason"]) if body.get("reason") is not None else None,
+        )
+
+    def _mgmt_apply_policy(self, body: dict[str, object]) -> dict[str, object]:
+        from mpreg.server_pkg.mgmt_mutations import apply_namespace_policy
+
+        return apply_namespace_policy(
+            self,
+            dict(body),
+            actor=str(body["actor"]) if body.get("actor") is not None else None,
+        )
+
+    def _mgmt_policy_dry_run(self, body: dict[str, object]) -> dict[str, object]:
+        from mpreg.server_pkg.mgmt_mutations import policy_dry_run
+
+        return policy_dry_run(self, dict(body))
+
     async def _mgmt_v1_summary(self) -> dict[str, object]:
         """Normalized management-plane snapshot for /mgmt/v1/* endpoints."""
         from mpreg.server_pkg.mgmt_summary import build_mgmt_v1_summary
@@ -11178,8 +11239,138 @@ class MPREGServer:
 
         return build_discovery_lag_metrics(self)
 
+    def _register_queue_rpc_commands(self) -> None:
+        """Expose queue manager operations on the RPC command surface."""
+        if getattr(self, "_queue_rpc_registered", False):
+            return
+        self.register_command("queue_create", self._rpc_queue_create, ["queue"])
+        self.register_command("queue_send", self._rpc_queue_send, ["queue"])
+        self._queue_rpc_registered = True
+
+    def _register_cache_rpc_commands(self) -> None:
+        """Expose cache manager operations on the RPC command surface."""
+        if getattr(self, "_cache_rpc_registered", False):
+            return
+        self.register_command("cache_get", self._rpc_cache_get, ["cache"])
+        self.register_command("cache_put", self._rpc_cache_put, ["cache"])
+        self._cache_rpc_registered = True
+
+    def _rpc_payload_dict(self, payload: object) -> dict[str, Any]:
+        if payload is None:
+            return {}
+        if isinstance(payload, dict):
+            return dict(payload)
+        return {}
+
+    async def _rpc_queue_create(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
+        body = self._rpc_payload_dict(payload)
+        if kwargs:
+            body.update({k: v for k, v in kwargs.items() if v is not None})
+        manager = self._queue_manager
+        if manager is None:
+            return {"success": False, "error_message": "queue_manager_unavailable"}
+        name = str(body.get("queue_name") or body.get("name") or "")
+        if not name:
+            return {"success": False, "error_message": "queue_name_required"}
+        ok = await manager.create_queue(name)
+        return {"success": bool(ok), "queue_name": name}
+
+    async def _rpc_queue_send(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
+        body = self._rpc_payload_dict(payload)
+        if kwargs:
+            body.update({k: v for k, v in kwargs.items() if v is not None})
+        manager = self._queue_manager
+        if manager is None:
+            return {"success": False, "error_message": "queue_manager_unavailable"}
+        queue_name = str(body.get("queue_name") or body.get("name") or "")
+        if not queue_name:
+            return {"success": False, "error_message": "queue_name_required"}
+        topic = str(body.get("topic") or f"mpreg.queue.{queue_name}")
+        payload_data = body.get("payload", body.get("message"))
+        dg_raw = str(body.get("delivery_guarantee") or "at_least_once")
+        from mpreg.core.message_queue import DeliveryGuarantee
+
+        try:
+            dg = DeliveryGuarantee(dg_raw)
+        except ValueError:
+            dg = DeliveryGuarantee.AT_LEAST_ONCE
+        result = await manager.send_message(
+            queue_name, topic, payload_data, delivery_guarantee=dg
+        )
+        mid = getattr(result, "message_id", None)
+        return {
+            "success": bool(getattr(result, "success", False)),
+            "message_id": str(mid) if mid is not None else None,
+            "error_message": getattr(result, "error_message", None),
+            "queue_name": queue_name,
+            "topic": topic,
+        }
+
+    async def _rpc_cache_get(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
+        body = self._rpc_payload_dict(payload)
+        if kwargs:
+            body.update({k: v for k, v in kwargs.items() if v is not None})
+        manager = self._cache_manager
+        if manager is None:
+            return {"success": False, "error_message": "cache_manager_unavailable"}
+        namespace = str(body.get("namespace") or "")
+        identifier = str(body.get("identifier") or body.get("key") or "")
+        if not namespace or not identifier:
+            return {
+                "success": False,
+                "error_message": "namespace_and_identifier_required",
+            }
+        from mpreg.core.cache_models import GlobalCacheKey
+
+        key = GlobalCacheKey(
+            namespace=namespace,
+            identifier=identifier,
+            version=str(body.get("version") or "v1.0.0"),
+        )
+        result = await manager.get(key)
+        entry = getattr(result, "entry", None)
+        value = getattr(entry, "value", None) if entry is not None else None
+        return {
+            "success": bool(getattr(result, "success", False)),
+            "value": value,
+            "error_message": getattr(result, "error_message", None),
+            "namespace": namespace,
+            "identifier": identifier,
+        }
+
+    async def _rpc_cache_put(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
+        body = self._rpc_payload_dict(payload)
+        if kwargs:
+            body.update({k: v for k, v in kwargs.items() if v is not None})
+        manager = self._cache_manager
+        if manager is None:
+            return {"success": False, "error_message": "cache_manager_unavailable"}
+        namespace = str(body.get("namespace") or "")
+        identifier = str(body.get("identifier") or body.get("key") or "")
+        if not namespace or not identifier:
+            return {
+                "success": False,
+                "error_message": "namespace_and_identifier_required",
+            }
+        if "value" not in body:
+            return {"success": False, "error_message": "value_required"}
+        from mpreg.core.cache_models import GlobalCacheKey
+
+        key = GlobalCacheKey(
+            namespace=namespace,
+            identifier=identifier,
+            version=str(body.get("version") or "v1.0.0"),
+        )
+        result = await manager.put(key, body.get("value"))
+        return {
+            "success": bool(getattr(result, "success", False)),
+            "error_message": getattr(result, "error_message", None),
+            "namespace": namespace,
+            "identifier": identifier,
+        }
+
     def attach_cache_manager(self, cache_manager: Any) -> None:
-        """Attach a cache manager to the monitoring system."""
+        """Attach a cache manager to the monitoring system and RPC surface."""
         self._cache_manager = cache_manager
         if hasattr(cache_manager, "attach_namespace_policy"):
             cache_manager.attach_namespace_policy(self._namespace_policy_engine)
@@ -11190,9 +11381,10 @@ class MPREGServer:
                 cache_manager=cache_manager,
                 system_name=self.settings.name,
             )
+        self._register_cache_rpc_commands()
 
     def attach_queue_manager(self, queue_manager: Any) -> None:
-        """Attach a queue manager to the monitoring system."""
+        """Attach a queue manager to the monitoring system and RPC surface."""
         self._queue_manager = queue_manager
         if hasattr(queue_manager, "attach_namespace_policy"):
             queue_manager.attach_namespace_policy(self._namespace_policy_engine)
@@ -11204,6 +11396,7 @@ class MPREGServer:
                 queue_manager=queue_manager,
                 system_name=self.settings.name,
             )
+        self._register_queue_rpc_commands()
 
     async def _stop_monitoring_services(self) -> None:
         """Stop monitoring services cleanly."""
