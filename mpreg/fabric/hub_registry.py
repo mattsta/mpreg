@@ -1,12 +1,14 @@
 """
 Hub Registration and Discovery System for MPREG Federation.
 
+**Integration status:** library / research module alongside ``hubs`` / ``hub_hierarchy``. Not the default ``MPREGServer`` membership plane.
+
 This module implements the distributed hub discovery and registration system
 that enables automatic cluster-to-hub assignment, hub health monitoring,
-and dynamic hub failover for the planet-scale federation architecture.
+and dynamic hub failover for multi-region federation lab topologies (not a production membership plane).
 
 Key Features:
-- Distributed hub registry with consensus-based updates
+- Distributed hub registry with registry updates
 - Automatic cluster-to-hub assignment based on proximity and load
 - Hub health monitoring with failure detection and recovery
 - Dynamic hub failover and load redistribution
@@ -320,7 +322,7 @@ class HubDiscoveryProtocol(Protocol):
 @dataclass(slots=True)
 class HubRegistry:
     """
-    Distributed hub registry with consensus-based updates.
+    Distributed hub registry with registry updates.
 
     Provides centralized hub discovery and registration services
     with distributed consensus for reliability and scalability.

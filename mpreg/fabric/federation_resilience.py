@@ -1,14 +1,15 @@
 """
 Enhanced Federation Resilience for MPREG.
 
-This module provides comprehensive resilience patterns for federated operations:
-- Advanced circuit breakers with adaptive thresholds
-- Health monitoring and auto-recovery
-- Graceful degradation strategies
-- Retry policies with exponential backoff
-- Connection pooling and load balancing
-- Performance-based routing decisions
-- Real-time alerting and monitoring
+**Integration status:** library helpers + fail-closed stubs. Health probes and
+auto-recovery paths refuse simulated RNG success; they are **not** a production
+control loop until real monitoring probes are wired. See ``claims.yaml``.
+
+This module provides resilience *patterns* for federated operations:
+- Circuit breakers with adaptive thresholds
+- Health monitoring hooks (probes unimplemented → UNKNOWN)
+- Graceful degradation / retry / failover APIs (fail-closed when unimplemented)
+- Connection pooling and load-balancing helpers
 """
 
 from __future__ import annotations

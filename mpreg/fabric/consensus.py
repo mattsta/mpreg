@@ -2,8 +2,7 @@
 Distributed State Management for the MPREG Fabric.
 
 This module implements consensus mechanisms and conflict resolution for distributed
-coordination in the unified fabric control plane. It provides eventual consistency
-guarantees and handles state merge conflicts through sophisticated algorithms.
+coordination in the unified fabric control plane. It provides eventual consistency guarantees and conflict merge helpers for the fabric control plane. **Not BFT** — Raft CFT lives elsewhere; do not treat this module as Byzantine-tolerant consensus.
 
 Key Features:
 - Vector clock-based conflict resolution with causal ordering

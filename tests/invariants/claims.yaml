@@ -182,6 +182,7 @@ non_claims:
   - "blockchain DeliveryGuarantee.EXACTLY_ONCE is unsupported (fail-closed)"
   - "fabric DeliveryGuarantee.EXACTLY_ONCE is unsupported_delivery until idempotent path exists"
   - "MembershipProtocol (SWIM) is library-only until wired into MPREGServer"
+  - "Hub hierarchy / hub registry are library-only until wired as the default MPREGServer membership plane"
   - "federation_resilience health/recovery is not a production control loop (probes unimplemented)"
   - "Gossip envelopes are unsigned by default; fabric_gossip_require_hmac enables envelope HMAC (not PKI / not route signing)"
   - "Fabric snapshot restore is best-effort, not crash-atomic multi-store"

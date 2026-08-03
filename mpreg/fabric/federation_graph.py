@@ -1,17 +1,17 @@
 """
-Planet-Scale Graph-Based Routing for the MPREG Fabric.
+Graph-Based Routing for the MPREG Fabric (lab-scale to large topologies; not a planet-scale product SLA).
 
-This module implements the core graph routing engine that provides ultra-graph-traversal-based
+This module implements the core graph routing engine that provides graph-traversal-based
 scalability for the MPREG fabric. It enables optimal multi-hop routing through
 sophisticated graph algorithms while maintaining the high performance characteristics of the
 existing fabric routing infrastructure.
 
 Key Features:
 - Dijkstra's algorithm for optimal path finding
-- A* algorithm with geographic heuristics for global-scale routing
+- A* algorithm with geographic heuristics for wide-area routing heuristics
 - Multiple disjoint paths for load balancing and redundancy
 - Real-time graph updates with intelligent caching
-- O(log N) routing complexity through hierarchical optimization
+- hierarchical optimization helpers (complexity depends on topology)
 
 This is Phase 1 of the Planet-Scale Fabric Roadmap.
 """
@@ -711,7 +711,7 @@ class MultiPathRouter:
 @dataclass(slots=True)
 class GeographicAStarRouter:
     """
-    A* algorithm with geographic heuristics for global-scale routing.
+    A* algorithm with geographic heuristics for wide-area routing heuristics.
 
     Uses centralized A* implementation with geographic distance heuristic,
     making it particularly effective for global federation routing.
