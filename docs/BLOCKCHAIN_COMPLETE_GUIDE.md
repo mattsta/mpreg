@@ -1,5 +1,9 @@
 # MPREG Blockchain Datastructures: Complete Implementation Guide
 
+> **Honesty banner:** Blockchain MQ ``EXACTLY_ONCE`` is **unsupported**
+> (fail-closed). This guide’s historical wording may overclaim; trust
+> `tests/invariants/claims.yaml` and the live `BlockchainMessageQueue` guards.
+
 ## Table of Contents
 
 1. [Executive Summary](#executive-summary)

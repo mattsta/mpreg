@@ -1,3 +1,7 @@
+> **Honesty banner:** Raft in MPREG is **CFT**, not BFT. Rows that mention
+> “Byzantine fault tolerance” describe **theoretical topology classes**, not
+> shipped MPREG guarantees. See `tests/invariants/claims.yaml`.
+
 # MPREG Fabric Topology Comparison Matrix
 
 ## Visual Topology Overview

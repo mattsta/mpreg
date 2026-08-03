@@ -1,18 +1,18 @@
 """
-Hierarchical Routing System for MPREG Federation.
+Hub hierarchy routing helpers for large multi-region lab topologies.
 
-This module implements advanced hierarchical routing algorithms that operate on
-the hub-and-spoke architecture to provide efficient routing through the
-three-tier hub hierarchy (Global → Regional → Local).
+**Integration status:** library / research module. Not wired as the default
+``MPREGServer`` control plane. Historical roadmap language said “planet-scale”;
+that is **not** a product claim for production deployments.
 
 Key Features:
 - Intelligent hub selection based on geographic proximity and load
 - Zone-based partitioning for scalable routing
-- Hierarchical path finding with O(log N) complexity
+- Hierarchical path finding with O(log N) complexity (lab topology model)
 - Load-aware routing with dynamic rebalancing
 - Geographic optimization for cross-regional routing
 
-This is Phase 2.2 of the Planet-Scale Federation Roadmap.
+This is Phase 2.2 of the Planet-Scale Federation Roadmap (library track).
 """
 
 from __future__ import annotations

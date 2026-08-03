@@ -318,7 +318,7 @@ class ContinentalConfig:
 
 @dataclass(frozen=True, slots=True)
 class PlanetScaleConfig:
-    """Complete configuration for planet-scale federation."""
+    """Complete configuration for multi-region federation lab topologies."""
 
     continents: tuple[ContinentalConfig, ...]
     federation_features: tuple[str, ...]

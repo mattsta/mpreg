@@ -454,10 +454,13 @@ class TopicEnhancedMessageQueueManager:
 
         # Consume from the underlying queue using subscription-based approach
         try:
-            delivery_queue: asyncio.Queue[QueuedMessage] = asyncio.Queue()
+            delivery_queue: asyncio.Queue[QueuedMessage] = asyncio.Queue(maxsize=1024)
 
             def _on_message(message: QueuedMessage) -> None:
-                delivery_queue.put_nowait(message)
+                try:
+                    delivery_queue.put_nowait(message)
+                except asyncio.QueueFull:
+                    pass
 
             subscription_id_local = self.base_manager.subscribe_to_queue(
                 queue_name=subscription.queue_name,
@@ -572,10 +575,13 @@ class TopicEnhancedMessageQueueManager:
         self, queue_name: QueueName, timeout_seconds: float = 30.0
     ) -> QueuedMessage | None:
         """Receive message from specific queue (backward compatibility)."""
-        delivery_queue: asyncio.Queue[QueuedMessage] = asyncio.Queue()
+        delivery_queue: asyncio.Queue[QueuedMessage] = asyncio.Queue(maxsize=1024)
 
         def _on_message(message: QueuedMessage) -> None:
-            delivery_queue.put_nowait(message)
+            try:
+                delivery_queue.put_nowait(message)
+            except asyncio.QueueFull:
+                pass
 
         subscription_id = self.base_manager.subscribe_to_queue(
             queue_name=queue_name,
@@ -601,10 +607,13 @@ class TopicEnhancedMessageQueueManager:
         timeout_seconds: float = 30.0,
     ) -> AsyncIterator[QueuedMessage]:
         """Consume messages from specific queue (backward compatibility)."""
-        delivery_queue: asyncio.Queue[QueuedMessage] = asyncio.Queue()
+        delivery_queue: asyncio.Queue[QueuedMessage] = asyncio.Queue(maxsize=1024)
 
         def _on_message(message: QueuedMessage) -> None:
-            delivery_queue.put_nowait(message)
+            try:
+                delivery_queue.put_nowait(message)
+            except asyncio.QueueFull:
+                pass
 
         subscription_id = self.base_manager.subscribe_to_queue(
             queue_name=queue_name,

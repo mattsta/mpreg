@@ -9316,14 +9316,17 @@ class MPREGServer:
                         )
                     case "fabric-gossip":
                         envelope = FabricGossipEnvelope.model_validate(parsed_msg)
-                        if not self._accept_fabric_gossip_payload(envelope.payload):
+                        gossip_payload = self._accept_fabric_gossip_payload(
+                            envelope.payload
+                        )
+                        if gossip_payload is None:
                             continue
                         if self._fabric_control_plane:
                             from mpreg.fabric.gossip import (
                                 GossipMessage as FabricGossipMessage,
                             )
 
-                            message = FabricGossipMessage.from_dict(envelope.payload)
+                            message = FabricGossipMessage.from_dict(gossip_payload)
                             if not is_server_connection and message.sender_id:
                                 peer_url = message.sender_id
                                 peer_node_id = message.sender_id
@@ -10187,14 +10190,17 @@ class MPREGServer:
                         continue
                     if parsed_msg.get("role") == "fabric-gossip":
                         envelope = FabricGossipEnvelope.model_validate(parsed_msg)
-                        if not self._accept_fabric_gossip_payload(envelope.payload):
+                        gossip_payload = self._accept_fabric_gossip_payload(
+                            envelope.payload
+                        )
+                        if gossip_payload is None:
                             continue
                         if self._fabric_control_plane:
                             from mpreg.fabric.gossip import (
                                 GossipMessage as FabricGossipMessage,
                             )
 
-                            message = FabricGossipMessage.from_dict(envelope.payload)
+                            message = FabricGossipMessage.from_dict(gossip_payload)
                             await self._fabric_control_plane.gossip.handle_received_message(
                                 message
                             )
@@ -11280,9 +11286,17 @@ class MPREGServer:
 
         return build_discovery_lag_metrics(self)
 
-    def _accept_fabric_gossip_payload(self, payload: dict[str, Any]) -> bool:
-        """Apply optional gossip envelope HMAC policy (fail-closed when required)."""
-        from mpreg.fabric.gossip_signatures import accept_gossip_payload
+    def _accept_fabric_gossip_payload(
+        self, payload: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        """Apply optional gossip envelope HMAC policy; return payload without HMAC field.
+
+        Returns ``None`` when the envelope is rejected (fail-closed when required).
+        """
+        from mpreg.fabric.gossip_signatures import (
+            SIGNATURE_KEY,
+            accept_gossip_payload,
+        )
 
         require = bool(getattr(self.settings, "fabric_gossip_require_hmac", False))
         secret = getattr(self.settings, "fabric_gossip_hmac_secret", None)
@@ -11292,7 +11306,10 @@ class MPREGServer:
                 "[{}] Rejected fabric-gossip envelope (HMAC policy)",
                 self.settings.name,
             )
-        return ok
+            return None
+        if SIGNATURE_KEY in payload:
+            return {k: v for k, v in payload.items() if k != SIGNATURE_KEY}
+        return payload
 
     def _register_queue_rpc_commands(self) -> None:
         """Expose queue manager operations on the RPC command surface."""

@@ -1,8 +1,14 @@
 """
 Hierarchical Hub Architecture for MPREG Federation.
 
+**Integration status:** library / research module. Not the production control
+plane of ``MPREGServer``. Peer routing on the live path uses fabric route
+tables, gossip, and dial — not this hub hierarchy. Do not claim planet-scale
+hub-and-spoke operation for deployed nodes from this module alone.
+
 This module implements a hierarchical federation system with specialized hub nodes
-that provide scalable message aggregation and routing for planet-scale deployments.
+that provide scalable message aggregation and routing for large multi-region
+lab topologies (historical “planet-scale” roadmap language).
 The hub architecture reduces O(N²) complexity to O(log N) through strategic
 aggregation and hierarchical routing.
 
@@ -13,7 +19,7 @@ Key Features:
 - Subscription state compression through bloom filter aggregation
 - Hub health monitoring and load balancing
 
-This is Phase 2.1 of the Planet-Scale Federation Roadmap.
+This is Phase 2.1 of the Planet-Scale Federation Roadmap (library track).
 """
 
 from __future__ import annotations

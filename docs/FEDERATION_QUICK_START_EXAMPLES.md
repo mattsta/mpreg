@@ -1,3 +1,7 @@
+> **Honesty banner:** Examples that say “Byzantine tolerant” are **historical
+> lab sketches**. MPREG Raft is CFT; queue name-vote “Byzantine detection” is
+> experimental and fail-closed by default. See `tests/invariants/claims.yaml`.
+
 # MPREG Fabric Federation Quick Start Examples
 
 ## 🚀 5-Minute Quick Start
@@ -69,11 +73,11 @@ edge_nodes = await create_edge_network()
 print(f"✅ Created {len(edge_nodes)} edge computing nodes")
 ```
 
-### 2. Financial Trading System (Byzantine Tolerant)
+### 2. Financial Trading System (multi-region lab sketch; not BFT)
 
 ```python
 async def create_trading_system():
-    """Create a Byzantine fault-tolerant trading system."""
+    """Create a multi-region trading lab topology (CFT Raft; not BFT)."""
 
     # 3 trading regions with 3 nodes each (tolerates 1 malicious node per region)
     regions = ["new-york", "london", "tokyo"]

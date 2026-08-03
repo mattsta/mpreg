@@ -477,3 +477,31 @@ def test_accept_queue_default_is_bounded() -> None:
 
     assert DEFAULT_ACCEPT_QUEUE_MAXSIZE >= 64
 
+def test_accept_fabric_gossip_strips_hmac_field() -> None:
+    from mpreg.core.config import MPREGSettings
+    from mpreg.fabric.gossip_signatures import SIGNATURE_KEY, sign_gossip_payload
+    from mpreg.server import MPREGServer
+
+    settings = MPREGSettings(
+        host="127.0.0.1",
+        port=1,
+        name="hmac-node",
+        cluster_id="c",
+        fabric_gossip_require_hmac=True,
+        fabric_gossip_hmac_secret="lab-secret",
+    )
+    server = MPREGServer(settings)
+    payload = {
+        "message_id": "m1",
+        "message_type": "state_update",
+        "sender_id": "n1",
+        "payload": {"key": "a", "value": 1},
+    }
+    signed = sign_gossip_payload(payload, "lab-secret")
+    assert SIGNATURE_KEY in signed
+    out = server._accept_fabric_gossip_payload(signed)
+    assert out is not None
+    assert SIGNATURE_KEY not in out
+    assert out["message_id"] == "m1"
+    # reject unsigned when required
+    assert server._accept_fabric_gossip_payload(payload) is None

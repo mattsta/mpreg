@@ -11,6 +11,8 @@ from typing import Any
 
 def build_monitoring_openapi() -> dict[str, Any]:
     """Return an OpenAPI 3.0 document for the monitoring HTTP server."""
+    # When monitoring_auth_token is configured, mutations and metrics require bearer.
+    _bearer = [{"bearerAuth": []}]
     paths: dict[str, Any] = {
         "/live": {
             "get": {
@@ -35,7 +37,7 @@ def build_monitoring_openapi() -> dict[str, Any]:
             "get": {
                 "summary": "Prometheus text exposition",
                 "tags": ["metrics"],
-                "security": [{"bearerAuth": []}],
+                "security": _bearer,
             }
         },
         "/metrics/unified": {"get": {"summary": "Unified JSON metrics", "tags": ["metrics"]}},
@@ -68,12 +70,17 @@ def build_monitoring_openapi() -> dict[str, Any]:
         "/mgmt/v1/health": {"get": {"summary": "Mgmt health", "tags": ["mgmt"]}},
         "/mgmt/v1/raft": {"get": {"summary": "Raft consensus status", "tags": ["mgmt"]}},
         "/mgmt/v1/policy/dry-run": {
-            "post": {"summary": "Policy dry-run", "tags": ["mgmt"]}
+            "post": {
+                "summary": "Policy dry-run",
+                "tags": ["mgmt"],
+                "security": _bearer,
+            }
         },
         "/mgmt/v1/nodes/drain": {
             "post": {
                 "summary": "Enter or clear node drain (affects /ready)",
                 "tags": ["mgmt"],
+                "security": _bearer,
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -91,6 +98,7 @@ def build_monitoring_openapi() -> dict[str, Any]:
                 "responses": {
                     "200": {"description": "Drain state applied"},
                     "400": {"description": "Invalid body"},
+                    "401": {"description": "Auth required when token configured"},
                     "503": {"description": "Provider unbound"},
                 },
             }
@@ -99,6 +107,7 @@ def build_monitoring_openapi() -> dict[str, Any]:
             "post": {
                 "summary": "Detach a peer connection from this node",
                 "tags": ["mgmt"],
+                "security": _bearer,
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -117,6 +126,7 @@ def build_monitoring_openapi() -> dict[str, Any]:
                 "responses": {
                     "200": {"description": "Peer detached"},
                     "400": {"description": "Invalid request"},
+                    "401": {"description": "Auth required when token configured"},
                     "503": {"description": "Provider unbound"},
                 },
             }
@@ -125,6 +135,7 @@ def build_monitoring_openapi() -> dict[str, Any]:
             "post": {
                 "summary": "Apply namespace policy rules",
                 "tags": ["mgmt"],
+                "security": _bearer,
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -143,6 +154,7 @@ def build_monitoring_openapi() -> dict[str, Any]:
                 "responses": {
                     "200": {"description": "Policy applied or validation result"},
                     "400": {"description": "Validation failed"},
+                    "401": {"description": "Auth required when token configured"},
                     "503": {"description": "Provider unbound"},
                 },
             }
@@ -151,6 +163,7 @@ def build_monitoring_openapi() -> dict[str, Any]:
             "get": {
                 "summary": "Admin mutation audit trail",
                 "tags": ["mgmt"],
+                "security": _bearer,
                 "parameters": [
                     {"name": "limit", "in": "query", "schema": {"type": "integer"}}
                 ],
@@ -169,7 +182,9 @@ def build_monitoring_openapi() -> dict[str, Any]:
             "version": "1.0.0",
             "description": (
                 "HTTP surface for health, metrics, routing diagnostics, and "
-                "management read/write models (drain, detach, policy apply). Bearer auth when monitoring_auth_token is set."
+                "management read/write models (drain, detach, policy apply). "
+                "Bearer auth applies to mutations and metrics when "
+                "monitoring_auth_token is set."
             ),
         },
         "components": {

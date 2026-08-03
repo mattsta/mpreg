@@ -2367,17 +2367,22 @@ result = await fabric_queue_federation.send_message_globally(
 
 #### Acknowledgments
 
-Queue federation acknowledgments are automatic; there is no explicit client
-acknowledgment API for cross-cluster delivery.
+Local queue delivery supports explicit client ack via the ``queue_ack`` RPC
+(and ``MPREGClient.queue_ack``). Cross-cluster fabric queue federation uses
+delivery-path acknowledgments; the experimental name-vote “global quorum”
+path is **not** BFT and is refuse-by-default (see ``claims.yaml``).
 
 ### Performance Characteristics
 
-- **Queue Discovery**: O(log N) convergence via epidemic gossip
-- **Message Routing**: Optimal path selection through the fabric route table
-- **Consensus Operations**: Byzantine fault tolerant with configurable thresholds
-- **Throughput**: 100K+ messages/second per cluster with federation overhead <10%
-- **Latency**: Cross-cluster delivery <100ms for single-hop, <300ms for multi-hop
-- **Availability**: 99.99% uptime with graceful degradation during federation failures
+Figures below are **lab-oriented targets**, not contractual SLAs. Measure
+with your topology and workload.
+
+- **Queue Discovery**: Epidemic gossip convergence (not a fixed O-bound guarantee)
+- **Message Routing**: Fabric route table path selection (INV-R\*); not full OSPF/BGP
+- **Consensus Operations**: Raft is **CFT** (not Byzantine / BFT). Queue “global
+  consensus” name-votes are experimental and fail-closed by default
+- **Throughput / latency / availability**: workload- and topology-dependent;
+  do not treat historical marketing numbers as product guarantees
 
 ---
 

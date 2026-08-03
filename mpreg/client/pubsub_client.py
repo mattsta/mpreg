@@ -467,11 +467,11 @@ class MPREGPubSubClient:
 
 @dataclass(slots=True)
 class MPREGPubSubExtendedClient(MPREGClientAPI):
-    """
-    Extended MPREG client with built-in pub/sub capabilities.
+    """RPC + pub/sub client (legacy combined type).
 
-    Combines the existing RPC functionality with pub/sub operations
-    in a single client interface.
+    Prefer :class:`mpreg.client.unified_client.MPREGClient` for new code —
+    it covers RPC, pub/sub, queue, and cache on one façade. This class remains
+    for existing call sites that only need RPC + pub/sub.
     """
 
     # Fields assigned in __post_init__

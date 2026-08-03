@@ -1,8 +1,17 @@
 # Byzantine Fault Detection Debug Guide
 
+> **Honesty banner (2026-08):** MPREG does **not** provide Byzantine fault
+> tolerant consensus. Raft is CFT. The queue federation “Byzantine detection”
+> path is **name-vote theater** (`payload_digest` unused) and is
+> **fail-closed by default** unless `experimental_name_vote_consensus=True`
+> (lab only). Prefer `tests/invariants/claims.yaml` non-claims over this guide’s
+> historical wording. Kept for debugging the residual experimental path only.
+
 ## Critical Bug Discovery and Resolution
 
-This document details a critical bug discovered in the Byzantine fault detection system that caused consensus failures, and provides a definitive debugging guide for similar issues.
+This document details a critical bug discovered in the (misnamed) Byzantine
+fault detection path that caused consensus failures, and provides a debugging
+guide for the experimental name-vote lab path.
 
 ## The Bug: False Byzantine Detection
 

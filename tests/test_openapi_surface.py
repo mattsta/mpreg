@@ -34,3 +34,15 @@ def test_openapi_mgmt_mutations_have_request_bodies() -> None:
     assert "rules" in apply_["requestBody"]["content"]["application/json"]["schema"][
         "properties"
     ]
+
+def test_openapi_mgmt_mutations_declare_bearer_security() -> None:
+    paths = build_monitoring_openapi()["paths"]
+    for path in (
+        "/mgmt/v1/nodes/drain",
+        "/mgmt/v1/peers/detach",
+        "/mgmt/v1/policy/apply",
+        "/mgmt/v1/audit",
+        "/metrics/prometheus",
+    ):
+        op = next(iter(paths[path].values()))
+        assert op.get("security") == [{"bearerAuth": []}], path

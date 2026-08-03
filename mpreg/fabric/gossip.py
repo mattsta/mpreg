@@ -776,7 +776,7 @@ class GossipProtocol:
     Core epidemic dissemination algorithm for distributed coordination.
 
     Implements the gossip protocol for reliable, efficient propagation
-    of information across the planet-scale federation network.
+    of information across the multi-cluster federation network (lab-scale to large topologies; not a planet-scale product SLA).
     """
 
     node_id: str
