@@ -104,6 +104,9 @@ class GlobalCacheConfiguration:
     local_region: str = "unknown"
     local_cluster_id: str = ""
 
+    # Bound L3/L4 replication work queue (drop-oldest under pressure).
+    pending_replications_maxsize: int = 4096
+
 class GlobalCacheManager(ManagedObject):
     """
     Multi-tier global cache manager with intelligent replication and federation support.
@@ -140,11 +143,13 @@ class GlobalCacheManager(ManagedObject):
         self.operation_stats: dict[str, int] = defaultdict(int)
         self.performance_metrics: dict[CacheLevel, list[float]] = defaultdict(list)
 
-        # Initialize replication tracking
+        # Initialize replication tracking (bounded; drop-oldest under backpressure)
         self.replication_state: dict[GlobalCacheKey, set[str]] = defaultdict(set)
+        max_pending = max(1, int(getattr(config, "pending_replications_maxsize", 4096) or 4096))
         self.pending_replications: asyncio.Queue[tuple[str, GlobalCacheKey, Any]] = (
-            asyncio.Queue()
+            asyncio.Queue(maxsize=max_pending)
         )
+        self.pending_replications_dropped: int = 0
 
         # Initialize namespace index for efficient namespace operations
         self.namespace_index: dict[str, set[GlobalCacheKey]] = defaultdict(set)
@@ -165,6 +170,33 @@ class GlobalCacheManager(ManagedObject):
     def attach_namespace_policy(self, engine: NamespacePolicyEngine | None) -> None:
         """Bind or replace the namespace/tenant data-plane gate."""
         self.namespace_policy = engine
+
+    def _enqueue_replication(
+        self, op: str, key: GlobalCacheKey, entry: Any = None
+    ) -> None:
+        """Enqueue replication work; drop-oldest when the bounded queue is full."""
+        item = (op, key, entry)
+        q = self.pending_replications
+        try:
+            q.put_nowait(item)
+            return
+        except asyncio.QueueFull:
+            pass
+        try:
+            q.get_nowait()
+            self.pending_replications_dropped += 1
+            self.operation_stats["replication_drops"] = (
+                int(self.operation_stats.get("replication_drops", 0)) + 1
+            )
+        except asyncio.QueueEmpty:
+            pass
+        try:
+            q.put_nowait(item)
+        except asyncio.QueueFull:
+            self.pending_replications_dropped += 1
+            self.operation_stats["replication_drops"] = (
+                int(self.operation_stats.get("replication_drops", 0)) + 1
+            )
 
     def _data_plane_allowed(
         self, namespace: str, *, write: bool
@@ -390,7 +422,7 @@ class GlobalCacheManager(ManagedObject):
 
                 # Schedule replication if needed
                 if options.replication_factor > 1:
-                    await self.pending_replications.put(("put", key, entry))
+                    self._enqueue_replication("put", key, entry)
 
                 self.operation_stats["puts"] += 1
                 lookup_time = (time.time() - start_time) * 1000
@@ -446,7 +478,7 @@ class GlobalCacheManager(ManagedObject):
                     CacheLevel.L3 in options.cache_levels
                     and self.config.enable_l3_distributed
                 ):
-                    await self.pending_replications.put(("delete", key, None))
+                    self._enqueue_replication("delete", key, None)
                     deleted_levels.append(CacheLevel.L3)
                     fabric_deleted = True
 
@@ -455,7 +487,7 @@ class GlobalCacheManager(ManagedObject):
                     and self.config.enable_l4_federation
                     and not fabric_deleted
                 ):
-                    await self.pending_replications.put(("delete", key, None))
+                    self._enqueue_replication("delete", key, None)
                     deleted_levels.append(CacheLevel.L4)
 
                 self.operation_stats["deletes"] += 1
@@ -819,6 +851,8 @@ class GlobalCacheManager(ManagedObject):
             },
             "replication_statistics": {
                 "pending_operations": self.pending_replications.qsize(),
+                "pending_maxsize": self.pending_replications.maxsize,
+                "dropped_operations": int(self.pending_replications_dropped),
                 "tracked_replications": len(self.replication_state),
             },
             "performance_metrics": {

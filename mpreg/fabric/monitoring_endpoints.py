@@ -2177,7 +2177,8 @@ class FederationMonitoringSystem:
         labels: str,
         depth: int = 0,
     ) -> None:
-        if depth > 4 or not isinstance(payload, dict):
+        # Cap recursion: explicit golden series preferred over deep trees.
+        if depth > 2 or not isinstance(payload, dict):
             return
         for key, value in payload.items():
             safe_key = "".join(

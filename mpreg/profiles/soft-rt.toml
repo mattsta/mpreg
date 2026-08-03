@@ -8,8 +8,9 @@ cluster_id = "soft-rt-cluster"
 host = "0.0.0.0"
 monitoring_enabled = true
 monitoring_enable_cors = false
-enable_default_cache = false
-enable_default_queue = false
+# Soft-RT still benefits from local queue/cache RPC for façade parity.
+enable_default_cache = true
+enable_default_queue = true
 fabric_routing_enabled = true
 fabric_routing_max_hops = 4
 fabric_route_ttl_seconds = 20.0

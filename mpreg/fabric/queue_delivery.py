@@ -1,4 +1,15 @@
-"""Consensus-aware queue delivery over the unified fabric."""
+"""Name-vote cluster quorum for fabric queue delivery (not BFT).
+
+``deliver_with_global_quorum`` coordinates multi-cluster delivery via
+weighted cluster *name votes*. It does **not** implement Byzantine fault
+tolerance, payload-digest quorum, or cross-cluster linearizability.
+
+``payload_digest`` on consensus messages is reserved; Byzantine “detection”
+only notices conflicting vote payloads from the same voter and is not a
+security boundary. Production paths should use AT_LEAST_ONCE / QUORUM
+subscriber ACKs on the local queue plane, or enable the experimental
+name-vote path explicitly for lab soak only.
+"""
 
 from __future__ import annotations
 
@@ -336,7 +347,11 @@ class QueueCausalDelivery:
 
 @dataclass(slots=True)
 class FabricQueueDeliveryCoordinator(ManagedObject):
-    """Consensus-aware coordinator for fabric queue delivery."""
+    """Name-vote multi-cluster delivery coordinator (experimental / lab).
+
+    Not BFT. Not payload-digest quorum. Default refuses production use
+    unless ``experimental_name_vote_consensus`` is True.
+    """
 
     cluster_id: ClusterId
     queue_federation: FabricQueueFederationManager
@@ -346,6 +361,8 @@ class FabricQueueDeliveryCoordinator(ManagedObject):
     default_quorum_threshold: ClusterWeightValue = 0.67
     default_byzantine_threshold: ByzantineFaultThreshold = 1
     default_timeout_seconds: float = 120.0
+    # Fail-closed: name-vote "global consensus" is lab-only until digest quorum exists.
+    experimental_name_vote_consensus: bool = False
 
     cluster_weights: dict[ClusterId, ConsensusClusterWeight] = field(
         default_factory=dict
@@ -379,7 +396,18 @@ class FabricQueueDeliveryCoordinator(ManagedObject):
         required_weight_threshold: ClusterWeightValue | None = None,
         byzantine_fault_threshold: ByzantineFaultThreshold | None = None,
         timeout_seconds: float | None = None,
+        experimental_name_vote_consensus: bool | None = None,
     ) -> FabricQueueDeliveryResult:
+        """Multi-cluster name-vote delivery (not BFT / not digest quorum).
+
+        Refused by default. Pass ``experimental_name_vote_consensus=True`` or
+        set the coordinator flag for lab soak only.
+        """
+        allow = (
+            self.experimental_name_vote_consensus
+            if experimental_name_vote_consensus is None
+            else experimental_name_vote_consensus
+        )
         dispatch = QueueDispatchRequest(
             queue_name=queue_name,
             topic=topic,
@@ -387,6 +415,25 @@ class FabricQueueDeliveryCoordinator(ManagedObject):
             delivery_guarantee=delivery_guarantee,
             options=options or QueueMessageOptions(),
         )
+        if not allow:
+            fabric_queue_log.warning(
+                "[{}] deliver_with_global_quorum refused: name-vote consensus "
+                "is experimental (not BFT; payload_digest unused). "
+                "Set experimental_name_vote_consensus=True for lab only.",
+                self.cluster_id,
+            )
+            self.delivery_stats.failed_global_consensus += 1
+            self.delivery_stats.global_consensus_rounds += 1
+            return FabricQueueDeliveryResult(
+                success=False,
+                dispatch_id=dispatch.dispatch_id,
+                delivered_clusters=set(),
+                failed_clusters=set(target_clusters or ()),
+                error_message=(
+                    "unsupported_global_consensus:name_vote_theater;"
+                    "enable experimental_name_vote_consensus for lab only"
+                ),
+            )
         if not target_clusters:
             return FabricQueueDeliveryResult(
                 success=False,

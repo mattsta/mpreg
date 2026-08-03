@@ -280,6 +280,8 @@ async def test_fabric_queue_global_quorum_delivery() -> None:
             )
 
             assert server_a._fabric_queue_delivery is not None
+            # Name-vote global quorum is lab-only; enable explicitly for soak.
+            server_a._fabric_queue_delivery.experimental_name_vote_consensus = True
             result = await server_a._fabric_queue_delivery.deliver_with_global_quorum(
                 queue_name="quorum",
                 topic="quorum.test",

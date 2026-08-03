@@ -63,7 +63,7 @@ class MPREGSettings:
     # Federation configuration
     federation_config: FederationConfig | None = None
 
-    # Cache/system defaults
+    # Cache/system defaults (profiles should enable for four-plane façade)
     enable_default_cache: bool = False
     enable_default_queue: bool = False
     enable_cache_federation: bool = False
@@ -72,6 +72,13 @@ class MPREGSettings:
     cache_longitude: float = 0.0
     cache_capacity_mb: int = 512
     persistence_config: PersistenceConfig | None = None
+    # When True, fabric catalog/route-key snapshot restore errors abort startup.
+    fabric_snapshot_fail_on_restore_error: bool = False
+    # Optional JSONL path for durable mgmt mutation audit (process ring still primary).
+    mgmt_audit_path: str | None = None
+    # Gossip envelopes are unsigned by default; when True, require HMAC on envelope.
+    fabric_gossip_require_hmac: bool = False
+    fabric_gossip_hmac_secret: str | None = None
 
     # Fabric routing configuration
     fabric_routing_enabled: bool = True

@@ -212,7 +212,13 @@ class ServerStatusMetrics:
 type RPCServerMessage = RPCServerGoodbye | RPCServerStatus
 
 class FabricGossipEnvelope(BaseModel):
-    """Envelope for federation gossip messages transported over MPREG connections."""
+    """Envelope for federation gossip messages transported over MPREG connections.
+
+    Envelopes are **unsigned by default**. Route announcement signing
+    (``RouteSecurityConfig``) does not authenticate gossip payloads.
+    Optional HMAC is gated by ``fabric_gossip_require_hmac`` when wired;
+    until then treat gossip as best-effort control traffic, not a trust root.
+    """
 
     role: Literal["fabric-gossip"] = "fabric-gossip"
     payload: dict[str, Any] = Field(description="Serialized federation gossip message")

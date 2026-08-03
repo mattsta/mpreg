@@ -96,11 +96,30 @@ def test_byzantine_fault_detection() -> None:
     assert "byzantine" in byzantine
 
 @pytest.mark.asyncio
-async def test_deliver_with_global_quorum() -> None:
+async def test_deliver_with_global_quorum_refused_by_default() -> None:
     federation = DummyQueueFederation()
     coordinator = FabricQueueDeliveryCoordinator(
         cluster_id="cluster-a",
         queue_federation=federation,
+    )
+    result = await coordinator.deliver_with_global_quorum(
+        queue_name="consensus-queue",
+        topic="consensus.test",
+        payload={"value": "data"},
+        target_clusters={"cluster-a", "cluster-b"},
+    )
+    assert result.success is False
+    assert result.error_message is not None
+    assert "unsupported_global_consensus" in result.error_message
+    assert federation.send_message_globally.await_count == 0
+
+@pytest.mark.asyncio
+async def test_deliver_with_global_quorum_lab_flag() -> None:
+    federation = DummyQueueFederation()
+    coordinator = FabricQueueDeliveryCoordinator(
+        cluster_id="cluster-a",
+        queue_federation=federation,
+        experimental_name_vote_consensus=True,
     )
 
     approved = {"cluster-a", "cluster-b"}

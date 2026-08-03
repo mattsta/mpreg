@@ -16,6 +16,19 @@ def test_packaged_profiles_load() -> None:
         assert settings.cluster_id
         assert settings.name
 
+def test_dev_profile_enables_four_plane_facade() -> None:
+    root = Path(__file__).resolve().parents[1] / "mpreg" / "profiles"
+    dev = MPREGSettings.from_path(root / "dev.toml")
+    assert dev.enable_default_cache is True
+    assert dev.enable_default_queue is True
+
+def test_federated_profile_snapshot_fail_closed() -> None:
+    root = Path(__file__).resolve().parents[1] / "mpreg" / "profiles"
+    fed = MPREGSettings.from_path(root / "federated.toml")
+    assert fed.fabric_snapshot_fail_on_restore_error is True
+    assert fed.fabric_route_security_config is not None
+    assert fed.fabric_route_security_config.allow_unsigned is False
+
 def test_function_index_alias() -> None:
     from mpreg.server import Cluster
 

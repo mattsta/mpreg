@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 import sys
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Iterator, Mapping
+from contextlib import contextmanager
 from typing import Any, TextIO
 
 from loguru import logger
@@ -141,7 +142,11 @@ def bind_trace_context(
     correlation_id: str | None = None,
     request_u: str | None = None,
 ) -> object:
-    """Return a loguru logger bound with correlation fields for JSON sinks."""
+    """Return a loguru logger bound with correlation fields for JSON sinks.
+
+    Prefer :func:`trace_context` as a context manager so nested ``logger``
+    calls on the request path pick up the same extras via contextualize.
+    """
     extra: dict[str, str] = {}
     if traceparent:
         extra["traceparent"] = str(traceparent)
@@ -150,4 +155,25 @@ def bind_trace_context(
     if request_u:
         extra["request_u"] = str(request_u)
     return logger.bind(**extra) if extra else logger
+
+@contextmanager
+def trace_context(
+    *,
+    traceparent: str | None = None,
+    correlation_id: str | None = None,
+    request_u: str | None = None,
+) -> Iterator[None]:
+    """Context manager that contextualizes loguru with correlation fields."""
+    extra: dict[str, str] = {}
+    if traceparent:
+        extra["traceparent"] = str(traceparent)
+    if correlation_id:
+        extra["correlation_id"] = str(correlation_id)
+    if request_u:
+        extra["request_u"] = str(request_u)
+    if not extra:
+        yield
+        return
+    with logger.contextualize(**extra):
+        yield
 

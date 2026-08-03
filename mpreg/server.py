@@ -1765,7 +1765,9 @@ class MPREGServer:
         from mpreg.server_pkg.mgmt_mutations import MgmtAuditLog
 
         self._mgmt_draining = False
-        self._mgmt_audit_log = MgmtAuditLog()
+        self._mgmt_audit_log = MgmtAuditLog(
+            persist_path=getattr(self.settings, "mgmt_audit_path", None) or None
+        )
         self._namespace_policy_audit_log = NamespacePolicyAuditLog()
         self._discovery_access_audit_log = DiscoveryAccessAuditLog(
             max_entries=self.settings.discovery_access_audit_max_entries
@@ -4268,6 +4270,9 @@ class MPREGServer:
             self._persistence_registry.key_value_store("fabric")
         )
         snapshot_time = time.time()
+        fail_closed = bool(
+            getattr(self.settings, "fabric_snapshot_fail_on_restore_error", False)
+        )
         try:
             counts = await store.load_catalog(
                 self._fabric_control_plane.catalog, now=snapshot_time
@@ -4286,6 +4291,10 @@ class MPREGServer:
                 self.settings.name,
                 exc,
             )
+            if fail_closed:
+                raise RuntimeError(
+                    f"fabric catalog snapshot restore failed (fail-closed): {exc}"
+                ) from exc
         if self._fabric_control_plane.route_key_registry:
             try:
                 restored = await store.load_route_keys(
@@ -4306,6 +4315,10 @@ class MPREGServer:
                     self.settings.name,
                     exc,
                 )
+                if fail_closed:
+                    raise RuntimeError(
+                        f"fabric route key snapshot restore failed (fail-closed): {exc}"
+                    ) from exc
 
     async def _save_fabric_snapshots(self) -> None:
         if not self._persistence_registry or not self._fabric_control_plane:
@@ -9068,11 +9081,18 @@ class MPREGServer:
         Supports enhanced debugging features including intermediate results
         and execution summaries based on request parameters.
         """
+        from mpreg.core.logging import trace_context
+
         start_time = time.time()
         success = False
         error_code: str | int | None = None
-        with self._request_viewer_context(
-            viewer_cluster_id, viewer_tenant_id=viewer_tenant_id
+        # Contextualize JSON sinks with request correlation when present.
+        req_u = getattr(req, "u", None)
+        with (
+            trace_context(request_u=str(req_u) if req_u else None),
+            self._request_viewer_context(
+                viewer_cluster_id, viewer_tenant_id=viewer_tenant_id
+            ),
         ):
             try:
                 # Create an RPC object from the incoming request. This handles
@@ -11251,178 +11271,57 @@ class MPREGServer:
 
     def _register_queue_rpc_commands(self) -> None:
         """Expose queue manager operations on the RPC command surface."""
-        if getattr(self, "_queue_rpc_registered", False):
-            return
-        self.register_command("queue_create", self._rpc_queue_create, ["queue"])
-        self.register_command("queue_send", self._rpc_queue_send, ["queue"])
-        self._queue_rpc_registered = True
+        from mpreg.server_pkg.plane_rpc import register_queue_rpc_commands
+
+        register_queue_rpc_commands(self)
 
     def _register_cache_rpc_commands(self) -> None:
         """Expose cache manager operations on the RPC command surface."""
-        if getattr(self, "_cache_rpc_registered", False):
-            return
-        self.register_command("cache_get", self._rpc_cache_get, ["cache"])
-        self.register_command("cache_put", self._rpc_cache_put, ["cache"])
-        self._cache_rpc_registered = True
+        from mpreg.server_pkg.plane_rpc import register_cache_rpc_commands
+
+        register_cache_rpc_commands(self)
 
     def _rpc_payload_dict(self, payload: object) -> dict[str, Any]:
-        if payload is None:
-            return {}
-        if isinstance(payload, dict):
-            return dict(payload)
-        return {}
+        from mpreg.server_pkg.plane_rpc import rpc_payload_dict
+
+        return rpc_payload_dict(payload)
 
     def _rpc_actor_ids(self, body: dict[str, Any]) -> tuple[str, str | None]:
-        """Resolve actor cluster/tenant for queue/cache RPC policy binding.
+        from mpreg.server_pkg.plane_rpc import rpc_actor_ids
 
-        Prefer explicit body fields; fall back to this node's cluster_id so
-        local unauthenticated RPC still has a stable owner identity. Tenant
-        remains optional unless the namespace rule requires it.
-        """
-        cluster_raw = (
-            body.get("cluster_id")
-            or body.get("actor_cluster")
-            or body.get("source_cluster")
-            or getattr(self.settings, "cluster_id", None)
-            or ""
-        )
-        cluster_id = str(cluster_raw).strip()
-        tenant_raw = (
-            body.get("tenant_id")
-            or body.get("actor_tenant_id")
-            or body.get("viewer_tenant_id")
-        )
-        tenant_id = str(tenant_raw).strip() if tenant_raw is not None else None
-        if tenant_id == "":
-            tenant_id = None
-        return cluster_id, tenant_id
+        return rpc_actor_ids(self, body)
 
     async def _rpc_queue_create(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
-        body = self._rpc_payload_dict(payload)
-        if kwargs:
-            body.update({k: v for k, v in kwargs.items() if v is not None})
-        manager = self._queue_manager
-        if manager is None:
-            return {"success": False, "error_message": "queue_manager_unavailable"}
-        name = str(body.get("queue_name") or body.get("name") or "")
-        if not name:
-            return {"success": False, "error_message": "queue_name_required"}
-        cluster_id, tenant_id = self._rpc_actor_ids(body)
-        with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
-            ok = await manager.create_queue(name)
-        return {"success": bool(ok), "queue_name": name}
+        from mpreg.server_pkg.plane_rpc import queue_create
+
+        return await queue_create(self, payload, **kwargs)
 
     async def _rpc_queue_send(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
-        body = self._rpc_payload_dict(payload)
-        if kwargs:
-            body.update({k: v for k, v in kwargs.items() if v is not None})
-        manager = self._queue_manager
-        if manager is None:
-            return {"success": False, "error_message": "queue_manager_unavailable"}
-        queue_name = str(body.get("queue_name") or body.get("name") or "")
-        if not queue_name:
-            return {"success": False, "error_message": "queue_name_required"}
-        topic = str(body.get("topic") or f"mpreg.queue.{queue_name}")
-        payload_data = body.get("payload", body.get("message"))
-        dg_raw = str(body.get("delivery_guarantee") or "at_least_once").strip().lower()
-        from mpreg.core.message_queue import DeliveryGuarantee
+        from mpreg.server_pkg.plane_rpc import queue_send
 
-        if dg_raw in {"exactly_once", "exact_once", "eo"}:
-            return {
-                "success": False,
-                "error_message": "unsupported_delivery_guarantee:exactly_once",
-                "queue_name": queue_name,
-                "topic": topic,
-            }
-        try:
-            dg = DeliveryGuarantee(dg_raw)
-        except ValueError:
-            return {
-                "success": False,
-                "error_message": f"unsupported_delivery_guarantee:{dg_raw}",
-                "queue_name": queue_name,
-                "topic": topic,
-            }
-        cluster_id, tenant_id = self._rpc_actor_ids(body)
-        with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
-            result = await manager.send_message(
-                queue_name, topic, payload_data, delivery_guarantee=dg
-            )
-        mid = getattr(result, "message_id", None)
-        return {
-            "success": bool(getattr(result, "success", False)),
-            "message_id": str(mid) if mid is not None else None,
-            "error_message": getattr(result, "error_message", None),
-            "queue_name": queue_name,
-            "topic": topic,
-        }
+        return await queue_send(self, payload, **kwargs)
+
+    async def _rpc_queue_ack(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
+        from mpreg.server_pkg.plane_rpc import queue_ack
+
+        return await queue_ack(self, payload, **kwargs)
 
     async def _rpc_cache_get(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
-        body = self._rpc_payload_dict(payload)
-        if kwargs:
-            body.update({k: v for k, v in kwargs.items() if v is not None})
-        manager = self._cache_manager
-        if manager is None:
-            return {"success": False, "error_message": "cache_manager_unavailable"}
-        namespace = str(body.get("namespace") or "")
-        identifier = str(body.get("identifier") or body.get("key") or "")
-        if not namespace or not identifier:
-            return {
-                "success": False,
-                "error_message": "namespace_and_identifier_required",
-            }
-        from mpreg.core.cache_models import GlobalCacheKey
+        from mpreg.server_pkg.plane_rpc import cache_get
 
-        key = GlobalCacheKey(
-            namespace=namespace,
-            identifier=identifier,
-            version=str(body.get("version") or "v1.0.0"),
-        )
-        cluster_id, tenant_id = self._rpc_actor_ids(body)
-        with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
-            result = await manager.get(key)
-        entry = getattr(result, "entry", None)
-        value = getattr(entry, "value", None) if entry is not None else None
-        return {
-            "success": bool(getattr(result, "success", False)),
-            "value": value,
-            "error_message": getattr(result, "error_message", None),
-            "namespace": namespace,
-            "identifier": identifier,
-        }
+        return await cache_get(self, payload, **kwargs)
 
     async def _rpc_cache_put(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
-        body = self._rpc_payload_dict(payload)
-        if kwargs:
-            body.update({k: v for k, v in kwargs.items() if v is not None})
-        manager = self._cache_manager
-        if manager is None:
-            return {"success": False, "error_message": "cache_manager_unavailable"}
-        namespace = str(body.get("namespace") or "")
-        identifier = str(body.get("identifier") or body.get("key") or "")
-        if not namespace or not identifier:
-            return {
-                "success": False,
-                "error_message": "namespace_and_identifier_required",
-            }
-        if "value" not in body:
-            return {"success": False, "error_message": "value_required"}
-        from mpreg.core.cache_models import GlobalCacheKey
+        from mpreg.server_pkg.plane_rpc import cache_put
 
-        key = GlobalCacheKey(
-            namespace=namespace,
-            identifier=identifier,
-            version=str(body.get("version") or "v1.0.0"),
-        )
-        cluster_id, tenant_id = self._rpc_actor_ids(body)
-        with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
-            result = await manager.put(key, body.get("value"))
-        return {
-            "success": bool(getattr(result, "success", False)),
-            "error_message": getattr(result, "error_message", None),
-            "namespace": namespace,
-            "identifier": identifier,
-        }
+        return await cache_put(self, payload, **kwargs)
+
+    async def _rpc_cache_invalidate(
+        self, payload: object = None, **kwargs: object
+    ) -> dict[str, Any]:
+        from mpreg.server_pkg.plane_rpc import cache_invalidate
+
+        return await cache_invalidate(self, payload, **kwargs)
 
     def attach_cache_manager(self, cache_manager: Any) -> None:
         """Attach a cache manager to the monitoring system and RPC surface."""

@@ -278,6 +278,56 @@ class MPREGClient:
         raw = await self.api.call("cache_put", body, timeout=timeout)
         return CacheOpResult.from_raw(raw)
 
+    async def cache_invalidate(
+        self,
+        pattern: str,
+        *,
+        timeout: float | None = None,
+    ) -> CacheOpResult:
+        """Invalidate cache entries matching ``pattern`` via ``cache_invalidate`` RPC."""
+        raw = await self.api.call(
+            "cache_invalidate", {"pattern": pattern}, timeout=timeout
+        )
+        return CacheOpResult.from_raw(raw)
+
+    async def queue_ack(
+        self,
+        queue_name: str,
+        message_id: str,
+        subscriber_id: str,
+        *,
+        timeout: float | None = None,
+    ) -> QueueSendResult:
+        """Acknowledge a delivered queue message via ``queue_ack`` RPC."""
+        raw = await self.api.call(
+            "queue_ack",
+            {
+                "queue_name": queue_name,
+                "message_id": message_id,
+                "subscriber_id": subscriber_id,
+            },
+            timeout=timeout,
+        )
+        return QueueSendResult.from_raw(raw)
+
+    async def publish_with_reply(
+        self,
+        topic: str,
+        payload: Any,
+        headers: Any = None,
+        timeout: float = 30.0,
+    ) -> Any:
+        """Publish and wait for a reply (delegates to pubsub client)."""
+        if not self._pubsub_started:
+            await self.pubsub.start()
+            self._pubsub_started = True
+        return await self.pubsub.publish_with_reply(topic, payload, headers, timeout)
+
+    @property
+    def notification_dropped_count(self) -> int:
+        """Pubsub notifications dropped under client backpressure."""
+        return int(getattr(self.api, "notification_dropped_count", 0) or 0)
+
 # Back-compat alias used in some sketches / docs
 UnifiedMPREGClient = MPREGClient
 

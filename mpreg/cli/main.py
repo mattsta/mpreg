@@ -1590,10 +1590,27 @@ def config_check(settings_path: str, output_format: str) -> None:
             warnings.append(
                 "federated/multi-peer fabric without fabric_route_require_signatures=true"
             )
-        if sec is not None and sec.allow_unsigned:
+        if not getattr(settings, "fabric_gossip_require_hmac", False):
             warnings.append(
-                "fabric_route_allow_unsigned=true weakens route authenticity"
+                "gossip envelopes are unsigned by default "
+                "(fabric_gossip_require_hmac=false) — route signing ≠ gossip authenticity"
             )
+    if (
+        settings.persistence_config is not None
+        and not getattr(settings, "fabric_snapshot_fail_on_restore_error", False)
+    ):
+        warnings.append(
+            "fabric snapshot restore is best-effort "
+            "(fabric_snapshot_fail_on_restore_error=false)"
+        )
+    if not getattr(settings, "mgmt_audit_path", None):
+        warnings.append(
+            "mgmt audit is process-local only — set mgmt_audit_path for JSONL durability"
+        )
+    if sec is not None and sec.allow_unsigned:
+        warnings.append(
+            "fabric_route_allow_unsigned=true weakens route authenticity"
+        )
     if (
         settings.discovery_summary_signing_secret
         and settings.discovery_summary_signing_secret.startswith("change-me")

@@ -26,11 +26,17 @@ fabric_link_state_ecmp_paths = 1
 # Federated control plane: reject unsigned route announcements.
 fabric_route_require_signatures = true
 fabric_route_allow_unsigned = false
+# Gossip envelopes are still unsigned by default platform-wide; HMAC is opt-in
+# until a full signed-gossip epic lands. Documented non-claim in claims.yaml.
+# fabric_gossip_require_hmac = true
+# fabric_gossip_hmac_secret = "change-me-gossip-hmac"
 gossip_interval = 5.0
 log_level = "INFO"
 discovery_summary_export_enabled = true
 # Placeholder enables signing; replace via env/override before production.
 discovery_summary_signing_secret = "change-me-federated-summary-hmac"
+# Snapshot restore: prefer fail-closed boot when catalog/route keys corrupt.
+fabric_snapshot_fail_on_restore_error = true
 # Tenant-aware discovery is recommended when multi-tenant catalogs share a fabric.
 discovery_policy_enabled = false
 discovery_policy_default_allow = true

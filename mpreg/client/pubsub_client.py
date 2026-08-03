@@ -65,7 +65,8 @@ class MPREGPubSubClient:
     notification_handlers: dict[str, asyncio.Task] = field(default_factory=dict)
     _client_id: str = field(default_factory=lambda: f"pubsub_client_{str(ulid.new())}")
     _running: bool = False
-    _notification_queue: asyncio.Queue = field(default_factory=asyncio.Queue)
+    # Notifications flow through the transport client's bounded queue
+    # (Client.get_notification_queue); this field is intentionally absent.
     _notification_task: asyncio.Task | None = None
 
     async def __aenter__(self):

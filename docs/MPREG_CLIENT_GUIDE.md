@@ -13,10 +13,12 @@ from mpreg import MPREGClient  # also: UnifiedMPREGClient
 
 async with MPREGClient("ws://127.0.0.1:<port>") as client:
     result = await client.call("echo", "hello")
-    # Queue/cache RPCs require the server to have managers attached
-    # (enable_default_queue / enable_default_cache or attach_*).
+    # Dev/single-node/cluster/federated profiles enable queue+cache by default.
     # await client.queue_send("jobs", payload={"x": 1})
+    # await client.queue_ack("jobs", message_id, subscriber_id)
     # await client.cache_put("ns", "key", value={"v": 1})
+    # await client.cache_invalidate("ns*")
+    # await client.publish_with_reply("topic", {"ping": True})
 ```
 
 `MPREGClient` spans RPC, pub/sub, queue, and cache over the same transport.

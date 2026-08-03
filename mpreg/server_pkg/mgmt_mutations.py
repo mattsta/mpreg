@@ -2,13 +2,17 @@
 
 HTTP handlers live on FederationMonitoringSystem; this module holds the
 server-side mutation logic and a durable-in-process audit ring buffer.
+Optional JSONL append path (``persist_path``) survives process restart for
+ops forensics; the in-memory ring remains the primary /mgmt/v1/audit source.
 """
 
 from __future__ import annotations
 
+import json
 import time
 from collections import deque
 from dataclasses import dataclass, field
+from pathlib import Path
 from threading import RLock
 from typing import Any
 
@@ -33,17 +37,67 @@ class MgmtAuditEntry:
 
 @dataclass(slots=True)
 class MgmtAuditLog:
-    """Process-local ring buffer of management mutations."""
+    """Process-local ring buffer of management mutations (+ optional JSONL)."""
 
     max_entries: int = 500
+    persist_path: str | None = None
     _entries: deque[MgmtAuditEntry] = field(default_factory=deque)
     _lock: RLock = field(default_factory=RLock)
+
+    def __post_init__(self) -> None:
+        if self.persist_path:
+            self._load_from_disk()
+
+    def _load_from_disk(self) -> None:
+        path = Path(self.persist_path) if self.persist_path else None
+        if path is None or not path.is_file():
+            return
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            return
+        loaded: list[MgmtAuditEntry] = []
+        for line in lines[-self.max_entries :]:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                raw = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(raw, dict):
+                continue
+            loaded.append(
+                MgmtAuditEntry(
+                    event=str(raw.get("event") or "unknown"),
+                    timestamp=float(raw.get("timestamp") or 0.0),
+                    actor=raw.get("actor"),
+                    success=bool(raw.get("success", False)),
+                    detail=dict(raw.get("detail") or {}),
+                )
+            )
+        with self._lock:
+            self._entries.extend(loaded)
+            while len(self._entries) > self.max_entries:
+                self._entries.popleft()
+
+    def _append_disk(self, entry: MgmtAuditEntry) -> None:
+        if not self.persist_path:
+            return
+        path = Path(self.persist_path)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with path.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(entry.to_dict(), default=str) + "\n")
+        except OSError:
+            pass
 
     def record(self, entry: MgmtAuditEntry) -> None:
         with self._lock:
             self._entries.append(entry)
             while len(self._entries) > self.max_entries:
                 self._entries.popleft()
+        self._append_disk(entry)
 
     def snapshot(self, *, limit: int | None = None) -> list[dict[str, Any]]:
         with self._lock:
