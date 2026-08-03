@@ -352,3 +352,128 @@ def test_dev_profile_four_planes_in_package() -> None:
     path = Path(__file__).resolve().parents[1] / "mpreg" / "profiles" / "dev.toml"
     s = MPREGSettings.from_path(path)
     assert s.enable_default_cache and s.enable_default_queue
+
+# --- T7 residual closeout ---
+
+def test_gossip_hmac_sign_verify_roundtrip() -> None:
+    from mpreg.fabric.gossip_signatures import (
+        accept_gossip_payload,
+        sign_gossip_payload,
+        verify_gossip_payload,
+    )
+
+    payload = {"message_id": "m1", "sender_id": "n1", "payload": {"k": 1}}
+    secret = "lab-secret"
+    signed = sign_gossip_payload(payload, secret)
+    assert verify_gossip_payload(signed, secret)
+    assert accept_gossip_payload(signed, require_hmac=True, secret=secret)
+    tampered = dict(signed)
+    tampered["sender_id"] = "evil"
+    assert not verify_gossip_payload(tampered, secret)
+    assert not accept_gossip_payload(payload, require_hmac=True, secret=secret)
+    # require without secret refuses
+    assert not accept_gossip_payload(signed, require_hmac=True, secret=None)
+    # require off accepts unsigned
+    assert accept_gossip_payload(payload, require_hmac=False, secret=None)
+
+@pytest.mark.asyncio
+async def test_server_gossip_transport_signs_when_required() -> None:
+    from unittest.mock import MagicMock
+
+    from mpreg.fabric.gossip import GossipMessage, GossipMessageType
+    from mpreg.fabric.gossip_signatures import SIGNATURE_KEY, verify_gossip_payload
+    from mpreg.fabric.server_gossip_transport import ServerGossipTransport
+
+    class _T(ServerGossipTransport):
+        def __init__(self) -> None:
+            # Bypass full parent init; only exercise send_message signing path.
+            self.require_hmac = True
+            self.hmac_secret = "s3cret"
+            self._captured: list = []
+
+        async def send_envelope(self, peer_id, envelope):  # type: ignore[override]
+            self._captured.append(envelope)
+            return True
+
+    transport = _T()
+    msg = GossipMessage(
+        message_id="g1",
+        message_type=GossipMessageType.STATE_UPDATE,
+        sender_id="n1",
+        payload={"k": "v"},
+    )
+    assert await transport.send_message("peer", msg)
+    assert transport._captured
+    payload = transport._captured[0].payload
+    assert SIGNATURE_KEY in payload
+    assert verify_gossip_payload(payload, "s3cret")
+
+@pytest.mark.asyncio
+async def test_queue_receive_rpc_and_manager() -> None:
+    from mpreg.core.message_queue import DeliveryGuarantee
+    from mpreg.core.message_queue_manager import (
+        MessageQueueManager,
+        QueueManagerConfiguration,
+    )
+    from mpreg.server_pkg import plane_rpc
+    from unittest.mock import MagicMock
+
+    mgr = MessageQueueManager(QueueManagerConfiguration(local_cluster_id="c1"))
+    await mgr.create_queue("jobs")
+    sent = await mgr.send_message(
+        "jobs", "mpreg.queue.jobs", {"x": 42}, DeliveryGuarantee.AT_LEAST_ONCE
+    )
+    assert sent.success
+
+    # Direct manager receive
+    msg = await mgr.receive_message("jobs", timeout_seconds=2.0, auto_acknowledge=True)
+    assert msg is not None
+    assert getattr(msg, "payload", None) == {"x": 42}
+
+    # Second send + RPC path
+    await mgr.send_message(
+        "jobs", "mpreg.queue.jobs", {"y": 1}, DeliveryGuarantee.AT_LEAST_ONCE
+    )
+    server = MagicMock()
+    server.settings = MagicMock(cluster_id="c1")
+    server._queue_manager = mgr
+    result = await plane_rpc.queue_receive(
+        server,
+        {
+            "queue_name": "jobs",
+            "timeout_seconds": 2.0,
+            "auto_acknowledge": True,
+        },
+    )
+    assert result["success"] is True
+    assert result["empty"] is False
+    assert result["message"]["payload"] == {"y": 1}
+
+@pytest.mark.asyncio
+async def test_unified_client_queue_receive_method() -> None:
+    from mpreg.client import MPREGClient
+    from mpreg.client.client_api import MPREGClientAPI
+
+    client = MPREGClient(url="ws://127.0.0.1:9")
+    calls: list = []
+
+    async def fake_call(self, fun, *args, **kwargs):
+        calls.append(fun)
+        if fun == "queue_receive":
+            return {"success": True, "empty": False, "message": {"payload": 1}}
+        return {}
+
+    orig = MPREGClientAPI.call
+    try:
+        MPREGClientAPI.call = fake_call  # type: ignore[method-assign]
+        out = await client.queue_receive("jobs", timeout_seconds=1.0)
+        assert out["message"]["payload"] == 1
+        assert "queue_receive" in calls
+    finally:
+        MPREGClientAPI.call = orig  # type: ignore[method-assign]
+
+def test_accept_queue_default_is_bounded() -> None:
+    from mpreg.core.transport.defaults import DEFAULT_ACCEPT_QUEUE_MAXSIZE
+
+    assert DEFAULT_ACCEPT_QUEUE_MAXSIZE >= 64
+

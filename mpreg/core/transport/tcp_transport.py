@@ -688,8 +688,11 @@ class TCPListener(TransportListener):
             if self.config.security.ssl_context or self.config.security.cert_file:
                 ssl_context = self.config.security.create_ssl_context()
 
-            # Create accept queue for incoming connections
-            self._accept_queue = asyncio.Queue()
+            # Create bounded accept queue (drop-oldest under connection storms)
+            from mpreg.core.transport.defaults import DEFAULT_ACCEPT_QUEUE_MAXSIZE
+
+            self._accept_queue = asyncio.Queue(maxsize=DEFAULT_ACCEPT_QUEUE_MAXSIZE)
+            self._accept_queue_dropped = 0
 
             # Start TCP server
             self._server = await asyncio.start_server(
@@ -750,7 +753,31 @@ class TCPListener(TransportListener):
     ) -> None:
         """Handle incoming TCP connection."""
         if self._accept_queue:
-            await self._accept_queue.put((reader, writer))
+            q = self._accept_queue
+            if q.full():
+                try:
+                    old = q.get_nowait()
+                    self._accept_queue_dropped = (
+                        int(getattr(self, "_accept_queue_dropped", 0)) + 1
+                    )
+                    # Close discarded connection
+                    try:
+                        _r, old_writer = old
+                        old_writer.close()
+                    except Exception:
+                        pass
+                except asyncio.QueueEmpty:
+                    pass
+            try:
+                q.put_nowait((reader, writer))
+            except asyncio.QueueFull:
+                self._accept_queue_dropped = (
+                    int(getattr(self, "_accept_queue_dropped", 0)) + 1
+                )
+                try:
+                    writer.close()
+                except Exception:
+                    pass
 
 class _TCPServerTransport(TransportInterface):
     """TCP transport wrapper for server-side connections."""

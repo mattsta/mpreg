@@ -183,6 +183,6 @@ non_claims:
   - "fabric DeliveryGuarantee.EXACTLY_ONCE is unsupported_delivery until idempotent path exists"
   - "MembershipProtocol (SWIM) is library-only until wired into MPREGServer"
   - "federation_resilience health/recovery is not a production control loop (probes unimplemented)"
-  - "Gossip envelopes are unsigned by default (route signing ≠ gossip authenticity)"
+  - "Gossip envelopes are unsigned by default; fabric_gossip_require_hmac enables envelope HMAC (not PKI / not route signing)"
   - "Fabric snapshot restore is best-effort, not crash-atomic multi-store"
   - "No Jepsen-class concurrent linearizability checker for Raft"

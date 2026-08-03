@@ -16,6 +16,7 @@ async with MPREGClient("ws://127.0.0.1:<port>") as client:
     # Dev/single-node/cluster/federated profiles enable queue+cache by default.
     # await client.queue_send("jobs", payload={"x": 1})
     # await client.queue_ack("jobs", message_id, subscriber_id)
+    # await client.queue_receive("jobs", timeout_seconds=5.0, auto_acknowledge=True)
     # await client.cache_put("ns", "key", value={"v": 1})
     # await client.cache_invalidate("ns*")
     # await client.publish_with_reply("topic", {"ping": True})

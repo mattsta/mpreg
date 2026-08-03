@@ -324,6 +324,33 @@ class MPREGClient:
         )
         return QueueSendResult.from_raw(raw)
 
+    async def queue_receive(
+        self,
+        queue_name: str,
+        *,
+        subscriber_id: str | None = None,
+        topic_pattern: str = "#",
+        timeout_seconds: float = 5.0,
+        auto_acknowledge: bool = False,
+        timeout: float | None = None,
+    ) -> Any:
+        """Poll one queue message via ``queue_receive`` RPC.
+
+        Returns the raw server dict (``empty``, ``message``, …). Prefer
+        checking ``result.get("empty")`` before reading ``message``.
+        """
+        body: dict[str, Any] = {
+            "queue_name": queue_name,
+            "topic_pattern": topic_pattern,
+            "timeout_seconds": timeout_seconds,
+            "auto_acknowledge": auto_acknowledge,
+        }
+        if subscriber_id is not None:
+            body["subscriber_id"] = subscriber_id
+        # RPC wall clock should cover the server-side poll wait.
+        rpc_timeout = timeout if timeout is not None else float(timeout_seconds) + 5.0
+        return await self.api.call("queue_receive", body, timeout=rpc_timeout)
+
     async def publish_with_reply(
         self,
         topic: str,

@@ -28,6 +28,8 @@ def test_federated_profile_snapshot_fail_closed() -> None:
     assert fed.fabric_snapshot_fail_on_restore_error is True
     assert fed.fabric_route_security_config is not None
     assert fed.fabric_route_security_config.allow_unsigned is False
+    assert fed.fabric_gossip_require_hmac is True
+    assert fed.fabric_gossip_hmac_secret
 
 def test_function_index_alias() -> None:
     from mpreg.server import Cluster

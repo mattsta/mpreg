@@ -2106,7 +2106,14 @@ class MPREGServer:
         self.cluster.peer_directory = self._peer_directory
         self.cluster.connection_event_bus.subscribe(self._peer_directory)
 
-        transport = ServerGossipTransport(server=self, serializer=self.serializer)
+        transport = ServerGossipTransport(
+            server=self,
+            serializer=self.serializer,
+            require_hmac=bool(
+                getattr(self.settings, "fabric_gossip_require_hmac", False)
+            ),
+            hmac_secret=getattr(self.settings, "fabric_gossip_hmac_secret", None),
+        )
         gossip = GossipProtocol(
             node_id=self.cluster.local_url,
             transport=transport,
@@ -9309,6 +9316,8 @@ class MPREGServer:
                         )
                     case "fabric-gossip":
                         envelope = FabricGossipEnvelope.model_validate(parsed_msg)
+                        if not self._accept_fabric_gossip_payload(envelope.payload):
+                            continue
                         if self._fabric_control_plane:
                             from mpreg.fabric.gossip import (
                                 GossipMessage as FabricGossipMessage,
@@ -10178,6 +10187,8 @@ class MPREGServer:
                         continue
                     if parsed_msg.get("role") == "fabric-gossip":
                         envelope = FabricGossipEnvelope.model_validate(parsed_msg)
+                        if not self._accept_fabric_gossip_payload(envelope.payload):
+                            continue
                         if self._fabric_control_plane:
                             from mpreg.fabric.gossip import (
                                 GossipMessage as FabricGossipMessage,
@@ -11269,6 +11280,20 @@ class MPREGServer:
 
         return build_discovery_lag_metrics(self)
 
+    def _accept_fabric_gossip_payload(self, payload: dict[str, Any]) -> bool:
+        """Apply optional gossip envelope HMAC policy (fail-closed when required)."""
+        from mpreg.fabric.gossip_signatures import accept_gossip_payload
+
+        require = bool(getattr(self.settings, "fabric_gossip_require_hmac", False))
+        secret = getattr(self.settings, "fabric_gossip_hmac_secret", None)
+        ok = accept_gossip_payload(payload, require_hmac=require, secret=secret)
+        if not ok:
+            logger.warning(
+                "[{}] Rejected fabric-gossip envelope (HMAC policy)",
+                self.settings.name,
+            )
+        return ok
+
     def _register_queue_rpc_commands(self) -> None:
         """Expose queue manager operations on the RPC command surface."""
         from mpreg.server_pkg.plane_rpc import register_queue_rpc_commands
@@ -11305,6 +11330,11 @@ class MPREGServer:
         from mpreg.server_pkg.plane_rpc import queue_ack
 
         return await queue_ack(self, payload, **kwargs)
+
+    async def _rpc_queue_receive(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
+        from mpreg.server_pkg.plane_rpc import queue_receive
+
+        return await queue_receive(self, payload, **kwargs)
 
     async def _rpc_cache_get(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
         from mpreg.server_pkg.plane_rpc import cache_get

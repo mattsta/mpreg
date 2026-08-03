@@ -304,8 +304,11 @@ class WebSocketListener(TransportListener):
             if self.config.security.ssl_context or self.config.security.cert_file:
                 ssl_context = self.config.security.create_ssl_context()
 
-            # Create accept queue for incoming connections
-            self._accept_queue = asyncio.Queue()
+            # Create bounded accept queue (drop-oldest under connection storms)
+            from mpreg.core.transport.defaults import DEFAULT_ACCEPT_QUEUE_MAXSIZE
+
+            self._accept_queue = asyncio.Queue(maxsize=DEFAULT_ACCEPT_QUEUE_MAXSIZE)
+            self._accept_queue_dropped = 0
 
             # Start WebSocket server
             self._server = await serve(
@@ -361,7 +364,24 @@ class WebSocketListener(TransportListener):
     async def _handle_connection(self, websocket: ServerConnection) -> None:
         """Handle incoming WebSocket connection."""
         if self._accept_queue:
-            await self._accept_queue.put(websocket)
+            q = self._accept_queue
+            if q.full():
+                try:
+                    q.get_nowait()
+                    self._accept_queue_dropped = (
+                        int(getattr(self, "_accept_queue_dropped", 0)) + 1
+                    )
+                except asyncio.QueueEmpty:
+                    pass
+            try:
+                q.put_nowait(websocket)
+            except asyncio.QueueFull:
+                self._accept_queue_dropped = (
+                    int(getattr(self, "_accept_queue_dropped", 0)) + 1
+                )
+                with contextlib.suppress(Exception):
+                    await websocket.close()
+                return
 
             # Keep connection alive until it's closed
             with contextlib.suppress(Exception):

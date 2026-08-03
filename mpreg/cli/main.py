@@ -1618,6 +1618,19 @@ def config_check(settings_path: str, output_format: str) -> None:
         warnings.append(
             "discovery_summary_signing_secret is still the profile placeholder"
         )
+    gossip_secret = getattr(settings, "fabric_gossip_hmac_secret", None)
+    if (
+        gossip_secret
+        and isinstance(gossip_secret, str)
+        and gossip_secret.startswith("change-me")
+    ):
+        warnings.append(
+            "fabric_gossip_hmac_secret is still the profile placeholder"
+        )
+    if getattr(settings, "fabric_gossip_require_hmac", False) and not gossip_secret:
+        warnings.append(
+            "fabric_gossip_require_hmac=true without fabric_gossip_hmac_secret"
+        )
     report = {"groups": groups, "warnings": warnings, "ok": len(warnings) == 0}
     emit(report, output_format=output_format, table_title="Config check")
     if warnings:

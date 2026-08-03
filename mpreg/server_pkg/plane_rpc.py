@@ -49,6 +49,7 @@ def register_queue_rpc_commands(server: Any) -> None:
     server.register_command("queue_create", server._rpc_queue_create, ["queue"])
     server.register_command("queue_send", server._rpc_queue_send, ["queue"])
     server.register_command("queue_ack", server._rpc_queue_ack, ["queue"])
+    server.register_command("queue_receive", server._rpc_queue_receive, ["queue"])
     server._queue_rpc_registered = True
 
 def register_cache_rpc_commands(server: Any) -> None:
@@ -154,6 +155,62 @@ async def queue_ack(
         "success": bool(ok),
         "queue_name": queue_name,
         "message_id": message_id,
+        "subscriber_id": subscriber_id,
+    }
+
+async def queue_receive(
+    server: Any, payload: object = None, **kwargs: object
+) -> dict[str, Any]:
+    """Poll one message from a queue (short-lived subscription)."""
+    from mpreg.core.namespace_policy import actor_context
+
+    body = rpc_payload_dict(payload)
+    if kwargs:
+        body.update({k: v for k, v in kwargs.items() if v is not None})
+    manager = getattr(server, "_queue_manager", None)
+    if manager is None:
+        return {"success": False, "error_message": "queue_manager_unavailable"}
+    queue_name = str(body.get("queue_name") or body.get("name") or "")
+    if not queue_name:
+        return {"success": False, "error_message": "queue_name_required"}
+    subscriber_id = str(
+        body.get("subscriber_id") or body.get("subscriber") or ""
+    ).strip() or None
+    topic_pattern = str(body.get("topic_pattern") or body.get("topic") or "#")
+    try:
+        timeout_seconds = float(body.get("timeout_seconds") or body.get("timeout") or 5.0)
+    except (TypeError, ValueError):
+        timeout_seconds = 5.0
+    timeout_seconds = max(0.05, min(timeout_seconds, 60.0))
+    auto_ack = bool(body.get("auto_acknowledge", False))
+    cluster_id, tenant_id = rpc_actor_ids(server, body)
+    with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
+        message = await manager.receive_message(
+            queue_name,
+            subscriber_id=subscriber_id,
+            topic_pattern=topic_pattern,
+            timeout_seconds=timeout_seconds,
+            auto_acknowledge=auto_ack,
+        )
+    if message is None:
+        return {
+            "success": True,
+            "empty": True,
+            "message": None,
+            "queue_name": queue_name,
+        }
+    mid = getattr(message, "id", None) or getattr(message, "message_id", None)
+    payload_data = getattr(message, "payload", None)
+    topic = getattr(message, "topic", None)
+    return {
+        "success": True,
+        "empty": False,
+        "message": {
+            "message_id": str(mid) if mid is not None else None,
+            "payload": payload_data,
+            "topic": str(topic) if topic is not None else None,
+        },
+        "queue_name": queue_name,
         "subscriber_id": subscriber_id,
     }
 

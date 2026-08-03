@@ -31,6 +31,9 @@ DEFAULT_MAX_RETRIES = 3
 DEFAULT_RETRY_DELAY = 1.0
 DEFAULT_RETRY_BACKOFF = 2.0
 
+# Listener accept queue (drop-oldest under accept storms)
+DEFAULT_ACCEPT_QUEUE_MAXSIZE = 1024
+
 # Connection type enumeration for clarity
 from enum import Enum
 

@@ -405,25 +405,41 @@ class MPREGPubSubClient:
                 await asyncio.sleep(0.1)  # Brief pause before retrying
 
     def _handle_notification(self, notification: PubSubNotification):
-        """Handle a received notification (async callbacks scheduled off the hot path)."""
-        if notification.subscription_id in self.subscriptions:
-            callback_info = self.subscriptions[notification.subscription_id]
+        """Dispatch subscription callbacks off the notification pump (ERG-07).
+
+        Async callbacks are scheduled with ``create_task``. Sync callbacks run
+        in a worker thread via ``asyncio.to_thread`` so a slow handler cannot
+        stall delivery of other subscriptions.
+        """
+        if notification.subscription_id not in self.subscriptions:
+            return
+        callback_info = self.subscriptions[notification.subscription_id]
+        message = notification.message
+        callback = callback_info.callback
+
+        def _done(t: asyncio.Task) -> None:
             try:
-                result = callback_info.callback(notification.message)
-                if inspect.isawaitable(result):
-                    task = asyncio.create_task(result)  # type: ignore[arg-type]
+                t.result()
+            except Exception as exc:  # noqa: BLE001
+                pubsub_log.error("Error in subscription callback: {}", exc)
 
-                    def _done(t: asyncio.Task) -> None:
-                        try:
-                            t.result()
-                        except Exception as exc:  # noqa: BLE001
-                            pubsub_log.error(
-                                "Error in async subscription callback: {}", exc
-                            )
+        async def _run_async(awaitable: object) -> None:
+            await awaitable  # type: ignore[misc]
 
-                    task.add_done_callback(_done)
-            except Exception as e:
-                pubsub_log.error(f"Error in subscription callback: {e}")
+        async def _run_sync() -> None:
+            await asyncio.to_thread(callback, message)
+
+        try:
+            # Detect coroutinefunction without invoking (avoids double-call).
+            if inspect.iscoroutinefunction(callback):
+                task = asyncio.create_task(callback(message))
+                task.add_done_callback(_done)
+                return
+            # Sync callable: offload to thread pool.
+            task = asyncio.create_task(_run_sync())
+            task.add_done_callback(_done)
+        except Exception as e:
+            pubsub_log.error(f"Error scheduling subscription callback: {e}")
 
     def list_subscriptions(self) -> list[SubscriptionInfo]:
         """List all active subscriptions."""

@@ -120,8 +120,12 @@ class CachePubSubIntegration(ManagedObject):
             CacheEventType, list[Callable[[CacheEvent], None]]
         ] = {event_type: [] for event_type in CacheEventType}
 
-        # Async notification queue
-        self.notification_queue: asyncio.Queue[CacheEvent] = asyncio.Queue()
+        # Async notification queue (bounded; drop-oldest under burst)
+        self._notification_queue_maxsize = 4096
+        self.notification_queue: asyncio.Queue[CacheEvent] = asyncio.Queue(
+            maxsize=self._notification_queue_maxsize
+        )
+        self.notification_queue_dropped: int = 0
 
         # Statistics
         self.stats = CachePubSubIntegrationStats()
@@ -211,7 +215,17 @@ class CachePubSubIntegration(ManagedObject):
             # Send notification
             if config.async_notification and not from_processor:
                 # Only queue if not already being processed from the queue
-                await self.notification_queue.put(event)
+                q = self.notification_queue
+                if q.full():
+                    try:
+                        q.get_nowait()
+                        self.notification_queue_dropped += 1
+                    except asyncio.QueueEmpty:
+                        pass
+                try:
+                    q.put_nowait(event)
+                except asyncio.QueueFull:
+                    self.notification_queue_dropped += 1
             else:
                 # Send directly (either sync notification or from processor)
                 await self._send_notification(message)
@@ -520,6 +534,8 @@ class CachePubSubIntegration(ManagedObject):
                 for event_type, listeners in self.event_listeners.items()
             },
             "notification_queue_size": self.notification_queue.qsize(),
+            "notification_queue_maxsize": self.notification_queue.maxsize,
+            "notification_queue_dropped": int(self.notification_queue_dropped),
         }
 
     async def shutdown(self) -> None:

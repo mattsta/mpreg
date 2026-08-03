@@ -26,10 +26,10 @@ fabric_link_state_ecmp_paths = 1
 # Federated control plane: reject unsigned route announcements.
 fabric_route_require_signatures = true
 fabric_route_allow_unsigned = false
-# Gossip envelopes are still unsigned by default platform-wide; HMAC is opt-in
-# until a full signed-gossip epic lands. Documented non-claim in claims.yaml.
-# fabric_gossip_require_hmac = true
-# fabric_gossip_hmac_secret = "change-me-gossip-hmac"
+# Gossip envelope HMAC (route signing ≠ gossip authenticity). Placeholder secret —
+# rotate before production. Peers must share the same secret.
+fabric_gossip_require_hmac = true
+fabric_gossip_hmac_secret = "change-me-gossip-hmac"
 gossip_interval = 5.0
 log_level = "INFO"
 discovery_summary_export_enabled = true

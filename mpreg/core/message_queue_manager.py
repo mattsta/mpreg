@@ -363,6 +363,60 @@ class MessageQueueManager(ManagedObject):
             )
             return False
 
+    async def receive_message(
+        self,
+        queue_name: str,
+        *,
+        subscriber_id: str | None = None,
+        topic_pattern: str = "#",
+        timeout_seconds: float = 5.0,
+        auto_acknowledge: bool = False,
+    ) -> Any | None:
+        """Poll one message from a queue via a short-lived subscription.
+
+        Used by the ``queue_receive`` RPC façade. Subscribes, waits up to
+        ``timeout_seconds``, then unsubscribes. Returns the queued message
+        object or ``None`` on timeout / missing queue / policy deny.
+        """
+        allowed, reason = self._data_plane_allowed(queue_name, write=False)
+        if not allowed:
+            queue_mgr_log.warning(
+                f"Receive denied for queue {queue_name}: {reason}"
+            )
+            return None
+        if queue_name not in self.queues:
+            if self.config.enable_auto_queue_creation:
+                await self.create_queue(queue_name)
+            if queue_name not in self.queues:
+                return None
+
+        delivery_queue: asyncio.Queue[Any] = asyncio.Queue(maxsize=1)
+        sub_id_label = subscriber_id or f"rpc-receive-{uuid.uuid4().hex[:12]}"
+
+        def _on_message(message: Any) -> None:
+            try:
+                delivery_queue.put_nowait(message)
+            except asyncio.QueueFull:
+                pass
+
+        subscription_id = self.subscribe_to_queue(
+            queue_name=queue_name,
+            subscriber_id=sub_id_label,
+            topic_pattern=topic_pattern,
+            callback=_on_message,
+            auto_acknowledge=auto_acknowledge,
+        )
+        if subscription_id is None:
+            return None
+        try:
+            return await asyncio.wait_for(
+                delivery_queue.get(), timeout=float(timeout_seconds)
+            )
+        except TimeoutError:
+            return None
+        finally:
+            self.unsubscribe_from_queue(queue_name, subscription_id)
+
     def get_queue_statistics(self, queue_name: str) -> QueueStatistics | None:
         """Get statistics for a specific queue."""
         if queue_name not in self.queues:

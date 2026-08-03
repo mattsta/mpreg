@@ -9,6 +9,7 @@ from mpreg.core.model import FabricGossipEnvelope
 from mpreg.core.server_envelope_transport import ServerEnvelopeTransport
 from mpreg.datastructures.type_aliases import NodeId
 
+from .gossip_signatures import sign_gossip_payload
 from .gossip_transport import GossipTransport
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -19,6 +20,8 @@ class ServerGossipTransport(ServerEnvelopeTransport, GossipTransport):
     """Transport that delivers gossip messages over MPREG server connections."""
 
     _protocol: GossipProtocol | None = None
+    require_hmac: bool = False
+    hmac_secret: str | None = None
 
     def register(self, protocol: GossipProtocol) -> None:
         self._protocol = protocol
@@ -28,5 +31,8 @@ class ServerGossipTransport(ServerEnvelopeTransport, GossipTransport):
             self._protocol = None
 
     async def send_message(self, peer_id: NodeId, message: GossipMessage) -> bool:
-        envelope = FabricGossipEnvelope(payload=message.to_dict())
+        payload = message.to_dict()
+        if self.require_hmac and self.hmac_secret:
+            payload = sign_gossip_payload(payload, self.hmac_secret)
+        envelope = FabricGossipEnvelope(payload=payload)
         return await self.send_envelope(peer_id, envelope)

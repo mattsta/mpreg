@@ -216,8 +216,9 @@ class FabricGossipEnvelope(BaseModel):
 
     Envelopes are **unsigned by default**. Route announcement signing
     (``RouteSecurityConfig``) does not authenticate gossip payloads.
-    Optional HMAC is gated by ``fabric_gossip_require_hmac`` when wired;
-    until then treat gossip as best-effort control traffic, not a trust root.
+    Optional envelope HMAC is enabled via ``fabric_gossip_require_hmac`` and
+    ``fabric_gossip_hmac_secret`` (see ``mpreg.fabric.gossip_signatures``).
+    Without that flag, treat gossip as best-effort control traffic, not a trust root.
     """
 
     role: Literal["fabric-gossip"] = "fabric-gossip"
