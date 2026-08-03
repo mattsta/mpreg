@@ -101,7 +101,12 @@ class MPREGPubSubClient:
                 await self._notification_task
 
     async def publish(
-        self, topic: str, payload: Any, headers: MessageHeaders | None = None
+        self,
+        topic: str,
+        payload: Any,
+        headers: MessageHeaders | None = None,
+        *,
+        raise_on_failure: bool = False,
     ) -> bool:
         """
         Publish a message to a topic.
@@ -110,9 +115,11 @@ class MPREGPubSubClient:
             topic: The topic to publish to
             payload: The message payload
             headers: Optional message headers
+            raise_on_failure: When True, raise :class:`MpregError` instead of
+                returning False on a negative or missing ack (façade default).
 
         Returns:
-            True if published successfully, False otherwise
+            True if published successfully, False otherwise (when not raising)
         """
         message = PubSubMessage(
             topic=topic,
@@ -134,9 +141,9 @@ class MPREGPubSubClient:
             # Check if it's an acknowledgment
             if response.get("role") == "pubsub-ack":
                 ack = PubSubAck.model_validate(response)
-                return ack.success
-
-            return False
+                if ack.success:
+                    return True
+            ok = False
         except Exception as e:
             pubsub_log.error(f"Error publishing to topic {topic}: {e}")
             from mpreg.core.errors import map_exception
@@ -145,6 +152,16 @@ class MPREGPubSubClient:
             if mapped is not None:
                 raise mapped from e
             raise
+
+        if not ok and raise_on_failure:
+            from mpreg.core.errors import MpregError, MpregErrorCode
+
+            raise MpregError.of(
+                MpregErrorCode.UNAVAILABLE,
+                details=f"pubsub publish failed for topic {topic!r}",
+                topic=topic,
+            )
+        return ok
 
     async def publish_with_reply(
         self,
@@ -462,10 +479,17 @@ class MPREGPubSubExtendedClient(MPREGClientAPI):
 
     # Convenience methods for pub/sub operations
     async def publish(
-        self, topic: str, payload: Any, headers: MessageHeaders | None = None
+        self,
+        topic: str,
+        payload: Any,
+        headers: MessageHeaders | None = None,
+        *,
+        raise_on_failure: bool = False,
     ) -> bool:
-        """Publish a message to a topic."""
-        return await self.pubsub.publish(topic, payload, headers)
+        """Publish a message to a topic (soft-bool by default; see raise_on_failure)."""
+        return await self.pubsub.publish(
+            topic, payload, headers, raise_on_failure=raise_on_failure
+        )
 
     async def subscribe(
         self,

@@ -163,7 +163,7 @@ uv run pytest tests/test_integration_examples.py -v
 
 ```python
 # Complex dependency chain resolved automatically
-workflow = await client._client.request([
+workflow = await client.request([
     RPCCommand(name="step1", fun="process_data", args=(raw_data,)),
     RPCCommand(name="step2", fun="analyze", args=("step1",)),  # Uses step1 result
     RPCCommand(name="step3", fun="store", args=("step2",)),    # Uses step2 result
@@ -414,7 +414,7 @@ def aggregate_results(operation: str, data_sources: list) -> dict:
     }
 
 # Example usage in a dependency chain:
-workflow = await client._client.request([
+workflow = await client.request([
     # Stage 1: Multiple parallel data gathering
     RPCCommand(name="gpu_process", fun="run_inference", args=("ModelA", "input")),
     RPCCommand(name="cpu_process", fun="heavy_compute", args=("input", 100)),

@@ -75,9 +75,9 @@ async def main():
         ml_result = await client.call("ml_predict", "bert-large", [1.0, 2.0, 3.0])
         print(f"Prediction: {ml_result}")
 
-        # Dependency chain execution
+        # Dependency chain execution (public request / call_dag — not private _client)
         from mpreg.core.model import RPCCommand
-        result = await client._client.request([
+        result = await client.request([
             RPCCommand(
                 name="step1",
                 fun="process_data",

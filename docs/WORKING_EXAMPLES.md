@@ -92,7 +92,7 @@ Use the Tier 1 RPC demo as a baseline and measure with your own workload:
 
 ```python
 # This works perfectly - step2 automatically gets result from step1
-result = await client._client.request([
+result = await client.request([
     RPCCommand(name="step1", fun="add", args=(10, 20)),
     RPCCommand(name="step2", fun="double", args=("step1",))  # Uses step1 result!
 ])
@@ -154,8 +154,8 @@ results = await asyncio.gather(*tasks)  # Blazing fast parallel execution!
 
 ### **For Production Use:**
 
-1. Use the `MPREGClientAPI` for simple function calls
-2. Use `client._client.request([RPCCommand(...)])` for complex workflows
+1. Prefer `from mpreg import MPREGClient` for RPC + pubsub + queue + cache
+2. Use `client.request([RPCCommand(...)])` / `call_dag` for multi-step workflows
 3. Leverage resource-based routing with `locs=frozenset(["resource"])`
 4. Set up multi-server clusters with specialized resources
 

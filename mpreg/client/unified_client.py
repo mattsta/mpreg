@@ -174,11 +174,25 @@ class MPREGClient:
         return self.api.last_trace_context()
 
     # --- Pub/sub ---
-    async def publish(self, topic: str, payload: Any, headers: Any = None) -> bool:
+    async def publish(
+        self,
+        topic: str,
+        payload: Any,
+        headers: Any = None,
+        *,
+        raise_on_failure: bool = True,
+    ) -> bool:
+        """Publish to a topic.
+
+        Default is fail-closed (raises :class:`MpregError` on negative ack).
+        Pass ``raise_on_failure=False`` for the legacy soft-bool path.
+        """
         if not self._pubsub_started:
             await self.pubsub.start()
             self._pubsub_started = True
-        return await self.pubsub.publish(topic, payload, headers)
+        return await self.pubsub.publish(
+            topic, payload, headers, raise_on_failure=raise_on_failure
+        )
 
     async def subscribe(
         self,

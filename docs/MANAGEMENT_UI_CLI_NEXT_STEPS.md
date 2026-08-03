@@ -27,11 +27,13 @@ by the fabric control plane so the platform manages itself.
 - CLI: `doctor`, `config-check`, `monitor decisions|prometheus`, `profile`
 - OpenAPI: `GET /openapi.json`, `GET /mgmt/v1/schema`
 - **Mutations live:** `POST /mgmt/v1/nodes/drain`, `/peers/detach`, `/policy/apply`
-  (process-local audit ring; `/ready` honors drain)
+  (in-process audit ring + optional durable JSONL via `mgmt_audit_path`;
+  `/ready` honors drain)
 - CLI mutations: `mpreg admin drain|detach|audit` (monitoring HTTP)
 - Audit read-path: `GET /mgmt/v1/audit` (mgmt mutations + route decisions)
+- OpenAPI: mutation request bodies on `/openapi.json` and `/mgmt/v1/schema`
 
-Remaining: durable audit store, REPL modes, full UI.
+Remaining: multi-node shared audit store, REPL modes, full UI.
 
 ## 2.0) Prior foundation notes
 
@@ -71,10 +73,12 @@ Remaining: durable audit store, REPL modes, full UI.
 
 ### Gaps vs. Management Goals
 
-- Mutations (drain, detach, policy apply) are **live** over HTTP + CLI; durable multi-node audit store is still missing (process-local ring).
+- Mutations (drain, detach, policy apply) are **live** over HTTP + CLI.
+  Local durability: set `mgmt_audit_path` for JSONL append; multi-node shared
+  audit store is still a gap.
 - CLI `--format` covers many commands; not every legacy monitor path is fully table-formatted.
 - No REPL/IOS-like CLI mode yet (exec/config/diag).
-- UI not implemented; OpenAPI/schema contract for CLI + UI still thin.
+- UI not implemented; OpenAPI lists live mutation paths with request schemas.
 - Some monitoring payloads still differ from the normalized management data model.
 
 ## 3) Goals and Non-Goals

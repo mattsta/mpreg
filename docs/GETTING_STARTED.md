@@ -32,14 +32,13 @@ uv run pytest  # Should see 1,900+ collected tests
 ### Your First MPREG Application
 
 ```python
-from mpreg.client.client_api import MPREGClientAPI
+from mpreg import MPREGClient  # four-plane façade (RPC + pubsub + queue + cache)
 from mpreg.server import MPREGServer
-from pathlib import Path
 
 from mpreg.core.config import MPREGSettings
 from mpreg.core.port_allocator import allocate_port
 
-# Create a server
+# Create a server (dev/single-node/cluster profiles enable queue+cache by default)
 server_port = allocate_port("servers")
 server_url = f"ws://127.0.0.1:{server_port}"
 server = MPREGServer(MPREGSettings(port=server_port, resources={"compute"}))
@@ -58,7 +57,7 @@ server.register_command(
 
 # Use it — function_id/version are optional for the happy path
 print(f"MPREG_URL={server_url}")
-async with MPREGClientAPI(server_url) as client:
+async with MPREGClient(server_url) as client:
     result = await client.call("add", 5, 10, locs=frozenset(["compute"]))
     print(f"Result: {result}")  # Result: 15
 
@@ -71,6 +70,9 @@ async with MPREGClientAPI(server_url) as client:
         function_id="math.add",
         version_constraint=">=1.0.0,<2.0.0",
     )
+    # Queue/cache when managers are attached (default on standard profiles):
+    # await client.queue_send("jobs", {"x": 1})
+    # await client.cache_put("ns", "k", {"v": 1})
 ```
 
 ### Profiles and doctor (recommended local path)

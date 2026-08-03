@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from types import MethodType
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from mpreg.client import CacheOpResult, MPREGClient, QueueSendResult
 from mpreg.client.unified_client import UnifiedMPREGClient
+from mpreg.core.errors import MpregError, MpregErrorCode
 from mpreg.core.model import RPCCommand
 
 def test_exports_and_aliases() -> None:
@@ -68,3 +70,42 @@ async def test_unified_client_composes_api() -> None:
         MPREGClientAPI.call = orig_call  # type: ignore[method-assign]
         MPREGClientAPI.connect = orig_connect  # type: ignore[method-assign]
         MPREGClientAPI.request = orig_request  # type: ignore[method-assign]
+
+@pytest.mark.asyncio
+async def test_unified_publish_fail_closed_by_default() -> None:
+    """MPREGClient.publish raises on negative ack (ERG-05); soft path opt-in."""
+    client = MPREGClient(url="ws://127.0.0.1:9")
+    client._pubsub_started = True
+
+    async def soft_fail(*_a, **_k):
+        return {"role": "pubsub-ack", "success": False, "message": "no"}
+
+    # Drive through pubsub client path with a stubbed transport
+    transport = MagicMock()
+    transport.send_raw_message = AsyncMock(
+        return_value={"role": "other", "success": False}
+    )
+    client.api._client = transport  # type: ignore[attr-defined]
+    client.api._connected = True  # type: ignore[attr-defined]
+    object.__setattr__(client.api, "_connected", True)
+    client.pubsub.base_client = client.api
+
+    with pytest.raises(MpregError) as ei:
+        await client.publish("t.topic", {"x": 1})
+    assert ei.value.code == int(MpregErrorCode.UNAVAILABLE)
+
+    ok = await client.publish("t.topic", {"x": 1}, raise_on_failure=False)
+    assert ok is False
+
+@pytest.mark.asyncio
+async def test_pubsub_publish_soft_bool_default() -> None:
+    """Low-level pubsub client keeps legacy soft-bool unless raise_on_failure."""
+    from mpreg.client.pubsub_client import MPREGPubSubClient
+
+    base = MagicMock()
+    base._client = MagicMock()
+    base._client.send_raw_message = AsyncMock(
+        return_value={"role": "other"}
+    )
+    ps = MPREGPubSubClient(base_client=base)
+    assert await ps.publish("t", 1) is False
