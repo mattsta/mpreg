@@ -27,6 +27,22 @@ def _prune_events(events: deque[float], now: float, window_seconds: float) -> No
     while events and (now - events[0]) > window_seconds:
         events.popleft()
 
+# Latency histogram bucket upper bounds (ms) for Prometheus-style export.
+_LATENCY_BUCKETS_MS: tuple[float, ...] = (
+    1.0,
+    5.0,
+    10.0,
+    25.0,
+    50.0,
+    100.0,
+    250.0,
+    500.0,
+    1000.0,
+    2500.0,
+    5000.0,
+    10000.0,
+)
+
 @dataclass(slots=True)
 class ServerMetricsTracker:
     """Tracks server-side RPC and PubSub performance metrics."""
@@ -37,6 +53,12 @@ class ServerMetricsTracker:
     rpc_errors: int = 0
     rpc_events: deque[float] = field(default_factory=deque)
     rpc_latencies_ms: deque[float] = field(default_factory=lambda: deque(maxlen=1000))
+    # Per-error-code counters (stringified MpregErrorCode / wire code).
+    rpc_error_codes: dict[str, int] = field(default_factory=dict)
+    rpc_latency_buckets: list[int] = field(
+        default_factory=lambda: [0] * (len(_LATENCY_BUCKETS_MS) + 1)
+    )
+    rpc_latency_sum_ms: float = 0.0
 
     pubsub_total: int = 0
     pubsub_errors: int = 0
@@ -47,15 +69,29 @@ class ServerMetricsTracker:
     pubsub_subscriptions: int = 0
     pubsub_unsubscriptions: int = 0
     pubsub_notifications: int = 0
+    pubsub_latency_buckets: list[int] = field(
+        default_factory=lambda: [0] * (len(_LATENCY_BUCKETS_MS) + 1)
+    )
+    pubsub_latency_sum_ms: float = 0.0
 
-    def record_rpc(self, latency_ms: float, success: bool) -> None:
+    def record_rpc(
+        self,
+        latency_ms: float,
+        success: bool,
+        *,
+        error_code: str | int | None = None,
+    ) -> None:
         now = time.time()
         self.rpc_total += 1
         if not success:
             self.rpc_errors += 1
+            code_key = str(error_code) if error_code is not None else "unknown"
+            self.rpc_error_codes[code_key] = self.rpc_error_codes.get(code_key, 0) + 1
         self.rpc_events.append(now)
         _prune_events(self.rpc_events, now, _HOUR_WINDOW_SECONDS)
         self.rpc_latencies_ms.append(latency_ms)
+        self._observe_latency(self.rpc_latency_buckets, latency_ms)
+        self.rpc_latency_sum_ms += float(latency_ms)
 
     def record_pubsub(self, latency_ms: float, success: bool) -> None:
         now = time.time()
@@ -65,6 +101,88 @@ class ServerMetricsTracker:
         self.pubsub_events.append(now)
         _prune_events(self.pubsub_events, now, _HOUR_WINDOW_SECONDS)
         self.pubsub_latencies_ms.append(latency_ms)
+        self._observe_latency(self.pubsub_latency_buckets, latency_ms)
+        self.pubsub_latency_sum_ms += float(latency_ms)
+
+    @staticmethod
+    def _observe_latency(buckets: list[int], latency_ms: float) -> None:
+        placed = False
+        for idx, bound in enumerate(_LATENCY_BUCKETS_MS):
+            if latency_ms <= bound:
+                buckets[idx] += 1
+                placed = True
+                break
+        if not placed:
+            buckets[-1] += 1  # +Inf
+
+    def prometheus_lines(self, labels: str) -> list[str]:
+        """Emit process-local RPC/pubsub counters and latency histograms."""
+        lines: list[str] = []
+        lines.append("# HELP mpreg_rpc_requests_total Total RPC requests handled.")
+        lines.append("# TYPE mpreg_rpc_requests_total counter")
+        lines.append(f"mpreg_rpc_requests_total{{{labels}}} {self.rpc_total}")
+        lines.append("# HELP mpreg_rpc_errors_total Total failed RPC requests.")
+        lines.append("# TYPE mpreg_rpc_errors_total counter")
+        lines.append(f"mpreg_rpc_errors_total{{{labels}}} {self.rpc_errors}")
+        lines.append(
+            "# HELP mpreg_rpc_errors_by_code_total RPC failures labeled by error code."
+        )
+        lines.append("# TYPE mpreg_rpc_errors_by_code_total counter")
+        for code, count in sorted(self.rpc_error_codes.items()):
+            safe = "".join(ch if ch.isalnum() or ch in "-_." else "_" for ch in code)
+            lines.append(
+                f'mpreg_rpc_errors_by_code_total{{{labels},code="{safe}"}} {count}'
+            )
+        lines.extend(
+            self._histogram_lines(
+                "mpreg_rpc_latency_ms",
+                labels,
+                self.rpc_latency_buckets,
+                self.rpc_latency_sum_ms,
+                self.rpc_total,
+            )
+        )
+        lines.append("# HELP mpreg_pubsub_requests_total Total pubsub ops handled.")
+        lines.append("# TYPE mpreg_pubsub_requests_total counter")
+        lines.append(f"mpreg_pubsub_requests_total{{{labels}}} {self.pubsub_total}")
+        lines.append("# HELP mpreg_pubsub_errors_total Total failed pubsub ops.")
+        lines.append("# TYPE mpreg_pubsub_errors_total counter")
+        lines.append(f"mpreg_pubsub_errors_total{{{labels}}} {self.pubsub_errors}")
+        lines.extend(
+            self._histogram_lines(
+                "mpreg_pubsub_latency_ms",
+                labels,
+                self.pubsub_latency_buckets,
+                self.pubsub_latency_sum_ms,
+                self.pubsub_total,
+            )
+        )
+        return lines
+
+    @staticmethod
+    def _histogram_lines(
+        name: str,
+        labels: str,
+        buckets: list[int],
+        sum_ms: float,
+        count: int,
+    ) -> list[str]:
+        lines = [
+            f"# HELP {name} Request latency histogram in milliseconds.",
+            f"# TYPE {name} histogram",
+        ]
+        cumulative = 0
+        for idx, bound in enumerate(_LATENCY_BUCKETS_MS):
+            cumulative += buckets[idx]
+            # le label uses plain number; +Inf last
+            lines.append(
+                f'{name}_bucket{{{labels},le="{bound:g}"}} {cumulative}'
+            )
+        cumulative += buckets[-1]
+        lines.append(f'{name}_bucket{{{labels},le="+Inf"}} {cumulative}')
+        lines.append(f"{name}_sum{{{labels}}} {sum_ms:.6f}")
+        lines.append(f"{name}_count{{{labels}}} {count}")
+        return lines
 
     def record_pubsub_subscription(self) -> None:
         self.pubsub_subscriptions += 1

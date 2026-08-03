@@ -213,6 +213,7 @@ from .core.namespace_policy import (
     NamespacePolicyValidationResponse,
     NamespaceStatusRequest,
     NamespaceStatusResponse,
+    actor_context,
     validate_namespace_policy_rules,
 )
 from .core.payloads import Payload, PayloadMapping, apply_overrides, parse_request
@@ -1862,6 +1863,24 @@ class MPREGServer:
             default_allow=self.settings.discovery_policy_default_allow,
             rules=self.settings.discovery_policy_rules,
         )
+        # Propagate to data-plane systems already attached (or attach later).
+        self._bind_namespace_policy_to_data_planes()
+
+    def _bind_namespace_policy_to_data_planes(self) -> None:
+        engine = self._namespace_policy_engine
+        if self._queue_manager is not None and hasattr(
+            self._queue_manager, "attach_namespace_policy"
+        ):
+            self._queue_manager.attach_namespace_policy(engine)
+        if self._cache_manager is not None and hasattr(
+            self._cache_manager, "attach_namespace_policy"
+        ):
+            self._cache_manager.attach_namespace_policy(engine)
+        topic_exchange = getattr(self, "topic_exchange", None)
+        if topic_exchange is not None and hasattr(
+            topic_exchange, "attach_namespace_policy"
+        ):
+            topic_exchange.attach_namespace_policy(engine)
 
     def _initialize_discovery_rate_limiter(self) -> None:
         max_requests = int(self.settings.discovery_rate_limit_requests_per_minute)
@@ -9031,6 +9050,7 @@ class MPREGServer:
         """
         start_time = time.time()
         success = False
+        error_code: str | int | None = None
         with self._request_viewer_context(
             viewer_cluster_id, viewer_tenant_id=viewer_tenant_id
         ):
@@ -9067,16 +9087,21 @@ class MPREGServer:
                     return response
 
             except MPREGException as exc:
+                if exc.rpc_error is not None:
+                    error_code = getattr(exc.rpc_error, "code", None)
                 return RPCResponse(r=None, error=exc.rpc_error, u=req.u)
             except Exception:
                 # Catch any exceptions during RPC execution and return an error response.
                 logger.exception("Error running RPC")
                 from mpreg.server_pkg.rpc_responses import internal_response
 
+                error_code = "internal"
                 return internal_response(req.u, traceback.format_exc())
             finally:
                 duration_ms = (time.time() - start_time) * 1000.0
-                self._metrics_tracker.record_rpc(duration_ms, success)
+                self._metrics_tracker.record_rpc(
+                    duration_ms, success, error_code=error_code if not success else None
+                )
 
     @logger.catch
     async def opened(self, transport: TransportInterface) -> None:
@@ -9401,41 +9426,83 @@ class MPREGServer:
                         publish_success = False
                         try:
                             publish_req = PubSubPublish.model_validate(parsed_msg)
-                            notifications = self.topic_exchange.publish_message(
-                                publish_req.message
+                            msg_headers = publish_req.message.headers or {}
+                            actor_tenant = (
+                                msg_headers.get("tenant_id")
+                                or msg_headers.get("viewer_tenant_id")
+                                or self._effective_viewer_tenant_id(None)
                             )
-
-                            # Send notifications to local subscribers
-                            for notification in notifications:
-                                await self._send_notification_to_client(notification)
-                            try:
-                                self._track_background_task(
-                                    asyncio.create_task(
-                                        self._forward_pubsub_publish(
-                                            publish_req.message,
-                                            source_peer_url=(
-                                                peer_url
-                                                if is_server_connection
-                                                else None
-                                            ),
+                            topic_ns = ""
+                            if hasattr(self.topic_exchange, "_topic_namespace"):
+                                topic_ns = self.topic_exchange._topic_namespace(
+                                    publish_req.message.topic
+                                )
+                            with actor_context(
+                                tenant_id=actor_tenant,
+                                cluster_id=self.settings.cluster_id,
+                            ):
+                                allowed = True
+                                if (
+                                    topic_ns
+                                    and hasattr(
+                                        self.topic_exchange, "_data_plane_allowed"
+                                    )
+                                ):
+                                    allowed, _ = (
+                                        self.topic_exchange._data_plane_allowed(
+                                            topic_ns, write=True
                                         )
                                     )
-                                )
-                            except RuntimeError:
-                                await self._forward_pubsub_publish(
-                                    publish_req.message,
-                                    source_peer_url=(
-                                        peer_url if is_server_connection else None
-                                    ),
-                                )
+                                if not allowed:
+                                    notifications = []
+                                else:
+                                    notifications = (
+                                        self.topic_exchange.publish_message(
+                                            publish_req.message
+                                        )
+                                    )
 
-                            # Send acknowledgment
-                            response_model = PubSubAck(
-                                operation_id=publish_req.u,
-                                success=True,
-                                u=f"ack_{publish_req.u}",
-                            )
-                            publish_success = True
+                            if not allowed:
+                                response_model = PubSubAck(
+                                    operation_id=publish_req.u,
+                                    success=False,
+                                    error="namespace_policy_denied",
+                                    u=f"ack_{publish_req.u}",
+                                )
+                            else:
+                                # Send notifications to local subscribers
+                                for notification in notifications:
+                                    await self._send_notification_to_client(
+                                        notification
+                                    )
+                                try:
+                                    self._track_background_task(
+                                        asyncio.create_task(
+                                            self._forward_pubsub_publish(
+                                                publish_req.message,
+                                                source_peer_url=(
+                                                    peer_url
+                                                    if is_server_connection
+                                                    else None
+                                                ),
+                                            )
+                                        )
+                                    )
+                                except RuntimeError:
+                                    await self._forward_pubsub_publish(
+                                        publish_req.message,
+                                        source_peer_url=(
+                                            peer_url if is_server_connection else None
+                                        ),
+                                    )
+
+                                # Send acknowledgment
+                                response_model = PubSubAck(
+                                    operation_id=publish_req.u,
+                                    success=True,
+                                    u=f"ack_{publish_req.u}",
+                                )
+                                publish_success = True
                         finally:
                             publish_duration_ms = (time.time() - publish_start) * 1000.0
                             self._metrics_tracker.record_pubsub(
@@ -9448,33 +9515,50 @@ class MPREGServer:
                         subscribe_success = False
                         try:
                             subscribe_req = PubSubSubscribe.model_validate(parsed_msg)
-                            self.topic_exchange.add_subscription(
-                                subscribe_req.subscription
-                            )
-                            await self._announce_fabric_subscription(
-                                subscribe_req.subscription
-                            )
-
-                            # Track which client made this subscription
-                            client_id = f"client_{id(transport)}"
-                            self.pubsub_clients[client_id] = transport
-                            self.subscription_to_client[
-                                subscribe_req.subscription.subscription_id
-                            ] = client_id
-
-                            # Send acknowledgment
-                            response_model = PubSubAck(
-                                operation_id=subscribe_req.u,
-                                success=True,
-                                u=f"ack_{subscribe_req.u}",
-                            )
-                            subscribe_success = True
-                            self._metrics_tracker.record_pubsub_subscription()
-                            if (
-                                self._summary_store_forward_enabled()
-                                and subscribe_req.subscription.get_backlog
+                            # Tenant may ride on first pattern metadata via headers
+                            # is not on subscription; use viewer context default.
+                            actor_tenant = self._effective_viewer_tenant_id(None)
+                            with actor_context(
+                                tenant_id=actor_tenant,
+                                cluster_id=self.settings.cluster_id,
                             ):
-                                pending_summary_backlog = subscribe_req.subscription
+                                subscribed = self.topic_exchange.add_subscription(
+                                    subscribe_req.subscription
+                                )
+                            if not subscribed:
+                                response_model = PubSubAck(
+                                    operation_id=subscribe_req.u,
+                                    success=False,
+                                    error="namespace_policy_denied",
+                                    u=f"ack_{subscribe_req.u}",
+                                )
+                            else:
+                                await self._announce_fabric_subscription(
+                                    subscribe_req.subscription
+                                )
+
+                                # Track which client made this subscription
+                                client_id = f"client_{id(transport)}"
+                                self.pubsub_clients[client_id] = transport
+                                self.subscription_to_client[
+                                    subscribe_req.subscription.subscription_id
+                                ] = client_id
+
+                                # Send acknowledgment
+                                response_model = PubSubAck(
+                                    operation_id=subscribe_req.u,
+                                    success=True,
+                                    u=f"ack_{subscribe_req.u}",
+                                )
+                                subscribe_success = True
+                                self._metrics_tracker.record_pubsub_subscription()
+                                if (
+                                    self._summary_store_forward_enabled()
+                                    and subscribe_req.subscription.get_backlog
+                                ):
+                                    pending_summary_backlog = (
+                                        subscribe_req.subscription
+                                    )
                         finally:
                             subscribe_duration_ms = (
                                 time.time() - subscribe_start
@@ -10948,6 +11032,7 @@ class MPREGServer:
             mgmt_summary_provider=self._mgmt_v1_summary,
             route_decision_log=route_decision_log,
             raft_status_provider=raft_status_provider,
+            server_metrics_tracker=self._metrics_tracker,
         )
         try:
             await self._monitoring_system.start()
@@ -11096,6 +11181,8 @@ class MPREGServer:
     def attach_cache_manager(self, cache_manager: Any) -> None:
         """Attach a cache manager to the monitoring system."""
         self._cache_manager = cache_manager
+        if hasattr(cache_manager, "attach_namespace_policy"):
+            cache_manager.attach_namespace_policy(self._namespace_policy_engine)
         if self._unified_monitor is not None:
             from .core.monitoring.system_adapters import CacheSystemMonitor
 
@@ -11107,6 +11194,8 @@ class MPREGServer:
     def attach_queue_manager(self, queue_manager: Any) -> None:
         """Attach a queue manager to the monitoring system."""
         self._queue_manager = queue_manager
+        if hasattr(queue_manager, "attach_namespace_policy"):
+            queue_manager.attach_namespace_policy(self._namespace_policy_engine)
         self._initialize_fabric_queue_federation()
         if self._unified_monitor is not None:
             from .core.monitoring.system_adapters import QueueSystemMonitor

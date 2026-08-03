@@ -28,13 +28,25 @@ class MessageType(Enum):
     DATA = "data"
 
 class DeliveryGuarantee(Enum):
-    """Delivery guarantees for fabric messages."""
+    """Delivery guarantees for fabric messages.
+
+    Queue local storage uses ``mpreg.core.message_queue.DeliveryGuarantee``.
+    Shared wire values: fire_and_forget, at_least_once, exactly_once, broadcast,
+    quorum. Convert via ``DeliveryGuarantee(other.value)`` at plane boundaries.
+    """
 
     FIRE_AND_FORGET = "fire_and_forget"
     AT_LEAST_ONCE = "at_least_once"
     EXACTLY_ONCE = "exactly_once"
     BROADCAST = "broadcast"
     QUORUM = "quorum"
+
+    @classmethod
+    def from_queue_value(cls, value: str | DeliveryGuarantee) -> DeliveryGuarantee:
+        """Map a queue-plane or wire string onto the fabric enum."""
+        if isinstance(value, DeliveryGuarantee):
+            return value
+        return cls(str(value))
 
 class RoutingPriority(Enum):
     """Routing priority levels."""

@@ -80,6 +80,7 @@ class MPREGClientAPI:
     transport_config: TransportConfig | None = None
     call_policy: ClientCallPolicy | None = None
     default_timeout_seconds: float | None = 30.0
+    notification_queue_maxsize: int = 1024
 
     # Fields assigned in __post_init__
     _client: Client = field(init=False)  # Needs special initialization in __post_init__
@@ -106,6 +107,7 @@ class MPREGClientAPI:
             url=self.url,
             full_log=self.full_log,
             default_timeout_seconds=self.default_timeout_seconds,
+            notification_queue_maxsize=self.notification_queue_maxsize,
             transport_config=transport_config,
         )
 
@@ -250,6 +252,63 @@ class MPREGClientAPI:
         if isinstance(meta, dict) and meta:
             return {str(k): str(v) for k, v in meta.items()}
         return None
+
+    async def request(
+        self,
+        commands: list[RPCCommand] | tuple[RPCCommand, ...],
+        *,
+        timeout: float | None = None,
+    ) -> Any:
+        """Execute a multi-command RPC DAG (dependency graph) in one round-trip.
+
+        Prefer this over multiple ``call`` round-trips when commands depend on
+        each other via ``RPCCommand`` name references. Honors ``call_policy``.
+        """
+        cmds = list(commands)
+        if not cmds:
+            raise ValueError("request() requires at least one RPCCommand")
+        if not self._connected:
+            await self.connect()
+
+        policy = self.call_policy
+        request_timeout = timeout
+        if (
+            policy is not None
+            and policy.deadline_seconds is not None
+            and policy.share_deadline_across_attempts
+            and timeout is None
+        ):
+            request_timeout = None
+
+        async def _once() -> Any:
+            return await self._client.request(cmds=cmds, timeout=request_timeout)
+
+        try:
+            if policy is not None:
+                return await call_with_policy(_once, policy)
+            return await _once()
+        except CommandNotFoundException:
+            raise
+        except MpregError:
+            raise
+        except MPREGException as e:
+            client_api_log.error(
+                "RPC DAG Failed: {}: {}", e.rpc_error.code, e.rpc_error.message
+            )
+            raise map_exception(e) from e
+        except Exception as e:
+            client_api_log.error("RPC DAG Failed: {}", e)
+            raise map_exception(e) from e
+
+    # Alias for discoverability
+    async def call_dag(
+        self,
+        commands: list[RPCCommand] | tuple[RPCCommand, ...],
+        *,
+        timeout: float | None = None,
+    ) -> Any:
+        """Alias for :meth:`request` (multi-command DAG)."""
+        return await self.request(commands, timeout=timeout)
 
     async def list_peers(
         self,

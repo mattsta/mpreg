@@ -265,6 +265,26 @@ class MPREGSettings:
         if persistence_payload is not None or persistence_config is not None:
             data["persistence_config"] = persistence_config
 
+        security_payload = data.pop("fabric_route_security_config", None)
+        if security_payload is not None:
+            data["fabric_route_security_config"] = cls._parse_route_security_config(
+                security_payload
+            )
+        # Flat TOML knobs (profiles) → RouteSecurityConfig when nested table absent.
+        elif (
+            "fabric_route_require_signatures" in data
+            or "fabric_route_allow_unsigned" in data
+        ):
+            data["fabric_route_security_config"] = RouteSecurityConfig(
+                require_signatures=bool(
+                    data.pop("fabric_route_require_signatures", False)
+                ),
+                allow_unsigned=bool(data.pop("fabric_route_allow_unsigned", True)),
+            )
+        else:
+            data.pop("fabric_route_require_signatures", None)
+            data.pop("fabric_route_allow_unsigned", None)
+
         field_names = {field.name for field in fields(cls)}
         cleaned = {key: value for key, value in data.items() if key in field_names}
         cleaned = cls._normalize_collections(cleaned)
@@ -326,6 +346,20 @@ class MPREGSettings:
             sqlite_wal=bool(payload.get("sqlite_wal", True)),
             sqlite_synchronous=str(payload.get("sqlite_synchronous", "NORMAL")),
             sqlite_foreign_keys=bool(payload.get("sqlite_foreign_keys", True)),
+        )
+
+    @staticmethod
+    def _parse_route_security_config(payload: Any) -> RouteSecurityConfig | None:
+        if payload is None:
+            return None
+        if isinstance(payload, RouteSecurityConfig):
+            return payload
+        if not isinstance(payload, dict):
+            raise ValueError("fabric_route_security_config must be a mapping")
+        return RouteSecurityConfig(
+            require_signatures=bool(payload.get("require_signatures", False)),
+            allow_unsigned=bool(payload.get("allow_unsigned", True)),
+            signature_algorithm=str(payload.get("signature_algorithm", "ed25519")),
         )
 
     @staticmethod

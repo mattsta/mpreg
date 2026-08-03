@@ -37,6 +37,11 @@ from .cache_models import (
     ReplicationStrategy,
 )
 from .caching import CacheConfiguration, SmartCacheManager
+from .namespace_policy import (
+    NamespacePolicyEngine,
+    get_actor_cluster_id,
+    get_actor_tenant_id,
+)
 from .persistence.cache_store import CacheL2Store
 from .persistence.registry import PersistenceRegistry
 from .serialization import JsonSerializer
@@ -116,11 +121,13 @@ class GlobalCacheManager(ManagedObject):
         cache_protocol: FabricCacheProtocol | None = None,
         *,
         persistence_registry: PersistenceRegistry | None = None,
+        namespace_policy: NamespacePolicyEngine | None = None,
     ) -> None:
         super().__init__(name=f"GlobalCacheManager-{id(self)}")
         self.config = config
         self.cache_protocol = cache_protocol
         self._persistence_registry = persistence_registry
+        self.namespace_policy = namespace_policy
 
         # Initialize L1 memory cache
         self.l1_cache = SmartCacheManager[Any](config.local_cache_config)
@@ -154,6 +161,24 @@ class GlobalCacheManager(ManagedObject):
     def attach_cache_protocol(self, cache_protocol: FabricCacheProtocol) -> None:
         """Attach a fabric cache protocol for L3 distributed cache support."""
         self.cache_protocol = cache_protocol
+
+    def attach_namespace_policy(self, engine: NamespacePolicyEngine | None) -> None:
+        """Bind or replace the namespace/tenant data-plane gate."""
+        self.namespace_policy = engine
+
+    def _data_plane_allowed(
+        self, namespace: str, *, write: bool
+    ) -> tuple[bool, str]:
+        engine = self.namespace_policy
+        if engine is None or not engine.enabled:
+            return True, "policy_disabled"
+        decision = engine.allows_data_access(
+            namespace,
+            actor_cluster=get_actor_cluster_id() or self.config.local_cluster_id or None,
+            actor_tenant_id=get_actor_tenant_id(),
+            write=write,
+        )
+        return decision.allowed, decision.reason
 
     def _init_persistent_cache(self) -> None:
         """Initialize persistent cache storage."""
@@ -206,6 +231,13 @@ class GlobalCacheManager(ManagedObject):
         """
         if options is None:
             options = CacheOptions()
+
+        allowed, reason = self._data_plane_allowed(key.namespace, write=False)
+        if not allowed:
+            return CacheOperationResult(
+                success=False,
+                error_message=f"namespace_policy_denied:{reason}",
+            )
 
         operation_id = str(uuid.uuid4())
         start_time = time.time()
@@ -305,6 +337,13 @@ class GlobalCacheManager(ManagedObject):
 
         if options is None:
             options = CacheOptions()
+
+        allowed, reason = self._data_plane_allowed(key.namespace, write=True)
+        if not allowed:
+            return CacheOperationResult(
+                success=False,
+                error_message=f"namespace_policy_denied:{reason}",
+            )
 
         operation_id = str(uuid.uuid4())
         start_time = time.time()

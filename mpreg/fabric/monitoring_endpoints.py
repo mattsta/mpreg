@@ -261,6 +261,8 @@ class FederationMonitoringSystem:
     ) = None
     # Per-server route decision audit log (bound from FabricRouter).
     route_decision_log: object | None = None
+    # Optional ServerMetricsTracker (or duck-type with prometheus_lines).
+    server_metrics_tracker: object | None = None
 
     # Web server components
     app: web.Application = field(init=False)
@@ -2041,6 +2043,14 @@ class FederationMonitoringSystem:
         except Exception as exc:  # noqa: BLE001
             logger.debug("Prometheus route decision metrics unavailable: {}", exc)
 
+        # RPC / pubsub counters + latency histograms + per-error-code
+        try:
+            tracker = self.server_metrics_tracker
+            if tracker is not None and hasattr(tracker, "prometheus_lines"):
+                lines.extend(tracker.prometheus_lines(labels))
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Prometheus server metrics unavailable: {}", exc)
+
         if self.persistence_snapshot_provider is not None:
             try:
                 snap = self.persistence_snapshot_provider()
@@ -2887,6 +2897,7 @@ def create_federation_monitoring_system(
     | None = None,
     route_decision_log: object | None = None,
     raft_status_provider: RaftStatusProvider | None = None,
+    server_metrics_tracker: object | None = None,
 ) -> FederationMonitoringSystem:
     """Create a federation monitoring system with specified configuration."""
 
@@ -2917,6 +2928,7 @@ def create_federation_monitoring_system(
         policy_dry_run_provider=policy_dry_run_provider,
         route_decision_log=route_decision_log,
         raft_status_provider=raft_status_provider,
+        server_metrics_tracker=server_metrics_tracker,
     )
 
     monitoring_system.monitoring_port = monitoring_port

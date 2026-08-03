@@ -45,7 +45,14 @@ type SubscriptionId = str
 type MessageIdStr = str
 
 class DeliveryGuarantee(Enum):
-    """Message delivery guarantee types."""
+    """Message delivery guarantee types (queue data-plane).
+
+    Fabric hop routing uses ``mpreg.fabric.message.DeliveryGuarantee``.
+    Values share the same wire strings for AT_LEAST_ONCE / EXACTLY_ONCE /
+    FIRE_AND_FORGET / BROADCAST / QUORUM so converters can map by ``.value``.
+    Prefer importing the enum from the plane you are on; do not mix types
+    without an explicit conversion.
+    """
 
     FIRE_AND_FORGET = "fire_and_forget"  # Send once, no tracking
     AT_LEAST_ONCE = "at_least_once"  # Retry until acknowledged
@@ -248,21 +255,42 @@ class MessageQueue(ManagedObject):
             queue_log.debug("No event loop running, skipping background workers")
 
     async def restore_from_store(self) -> None:
-        """Restore queue state from persistence store."""
+        """Restore queue state from persistence store.
+
+        AT_LEAST_ONCE crash recovery: any in-flight (delivered, unacked) messages
+        are moved back to pending so they are redelivered after restart. Callers
+        must tolerate duplicate delivery — that is the AT_LEAST_ONCE contract.
+        """
         if self._queue_store is None:
             return
         state = await self._queue_store.load_state()
         if state.config:
             self.config = state.config
         self.pending_messages = state.pending
-        self.in_flight_messages = state.in_flight
         self.dead_letter_queue = state.dead_letter
+        # Requeue unacked in-flight messages for redelivery (crash × visibility).
+        self.in_flight_messages = {}
+        for message_id, in_flight in state.in_flight.items():
+            message = in_flight.message
+            # Preserve delivery attempt so max_retries still bounds poison messages.
+            message._delivery_attempt = max(
+                int(getattr(message, "_delivery_attempt", 1) or 1),
+                int(in_flight.delivery_attempt or 1),
+            )
+            self.pending_messages.appendleft(message)
+            await self._queue_store.requeue(message)
+            queue_log.info(
+                f"Restored in-flight message {message_id} to pending for redelivery "
+                f"(attempt={message._delivery_attempt})"
+            )
         if self.config.enable_deduplication:
             self.fingerprint_history = SortedSet(state.fingerprints)
             cutoff_time = time.time() - self.config.deduplication_window_seconds
             old_entries = self.fingerprint_history.irange(maximum=(cutoff_time, ""))
             for entry in list(old_entries):
                 self.fingerprint_history.remove(entry)
+        self.statistics.current_queue_size = len(self.pending_messages)
+        self.statistics.current_in_flight_count = 0
 
     async def send_message(
         self,

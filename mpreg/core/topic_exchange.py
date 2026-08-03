@@ -183,9 +183,50 @@ class TopicExchange:
     _backlog_disabled: set[str] = field(default_factory=set)
     _backlog_disabled_prefixes: set[str] = field(default_factory=set)
     _lock: RLock = field(default_factory=RLock)
+    # Optional namespace/tenant gate (set by server when discovery_policy_enabled).
+    namespace_policy: Any | None = field(default=None, repr=False)
 
-    def add_subscription(self, subscription: PubSubSubscription) -> None:
-        """Add a new subscription."""
+    def attach_namespace_policy(self, engine: Any | None) -> None:
+        """Bind namespace/tenant data-plane gate for publish/subscribe."""
+        self.namespace_policy = engine
+
+    def _topic_namespace(self, topic_or_pattern: str) -> str:
+        prefix = topic_or_pattern
+        if "*" in prefix:
+            prefix = prefix.split("*", 1)[0]
+        if "#" in prefix:
+            prefix = prefix.split("#", 1)[0]
+        return prefix.rstrip(".")
+
+    def _data_plane_allowed(
+        self, namespace: str, *, write: bool
+    ) -> tuple[bool, str]:
+        engine = self.namespace_policy
+        if engine is None or not getattr(engine, "enabled", False):
+            return True, "policy_disabled"
+        from mpreg.core.namespace_policy import (
+            get_actor_cluster_id,
+            get_actor_tenant_id,
+        )
+
+        decision = engine.allows_data_access(
+            namespace,
+            actor_cluster=get_actor_cluster_id() or self.cluster_id,
+            actor_tenant_id=get_actor_tenant_id(),
+            write=write,
+        )
+        return decision.allowed, decision.reason
+
+    def add_subscription(self, subscription: PubSubSubscription) -> bool:
+        """Add a new subscription. Returns False when namespace policy denies."""
+        for pattern in subscription.patterns:
+            ns = self._topic_namespace(pattern.pattern)
+            if not ns:
+                continue
+            allowed, reason = self._data_plane_allowed(ns, write=False)
+            if not allowed:
+                return False
+
         with self._lock:
             self.subscriptions[subscription.subscription_id] = subscription
             self.client_subscriptions[subscription.subscriber].add(
@@ -201,16 +242,19 @@ class TopicExchange:
                 self._send_backlog(subscription)
 
             self.active_subscribers = len(self.client_subscriptions)
+        return True
 
     def add_internal_subscription(
         self,
         subscription: PubSubSubscription,
         callback: Callable[[PubSubNotification], Coroutine[Any, Any, None] | None],
-    ) -> None:
+    ) -> bool:
         """Add an internal subscription with an in-process callback."""
-        self.add_subscription(subscription)
+        if not self.add_subscription(subscription):
+            return False
         with self._lock:
             self.internal_callbacks[subscription.subscription_id] = callback
+        return True
 
     def remove_subscription(self, subscription_id: str) -> bool:
         """Remove a subscription."""
@@ -237,7 +281,17 @@ class TopicExchange:
             return True
 
     def publish_message(self, message: PubSubMessage) -> list[PubSubNotification]:
-        """Publish a message and return notifications for subscribers."""
+        """Publish a message and return notifications for subscribers.
+
+        When a namespace policy is bound and denies the topic namespace, returns
+        an empty list without fan-out (caller should treat as denied).
+        """
+        ns = self._topic_namespace(message.topic)
+        if ns:
+            allowed, _reason = self._data_plane_allowed(ns, write=True)
+            if not allowed:
+                return []
+
         internal_deliveries: list[
             tuple[
                 Callable[[PubSubNotification], Coroutine[Any, Any, None] | None],

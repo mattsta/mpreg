@@ -170,6 +170,12 @@ class MemoryQueueStore:
 
     async def mark_in_flight(self, in_flight: InFlightMessage) -> None:
         message_id = str(in_flight.message.id)
+        # Leave pending once the message is out for delivery.
+        to_remove = [
+            seq for seq, msg in self._pending.items() if str(msg.id) == message_id
+        ]
+        for seq in to_remove:
+            self._pending.pop(seq, None)
         self._in_flight[message_id] = in_flight
 
     async def ack(self, message_id: str) -> None:
@@ -186,12 +192,27 @@ class MemoryQueueStore:
             self._dead_letter.pop(seq, None)
 
     async def move_to_dead_letter(self, message: QueuedMessage) -> int:
+        message_id = str(message.id)
+        self._in_flight.pop(message_id, None)
+        to_remove = [
+            seq for seq, msg in self._pending.items() if str(msg.id) == message_id
+        ]
+        for seq in to_remove:
+            self._pending.pop(seq, None)
         seq = self._next_seq
         self._next_seq += 1
         self._dead_letter[seq] = message
         return seq
 
     async def requeue(self, message: QueuedMessage) -> int:
+        # Drop any prior in-flight row so restore cannot double-count.
+        self._in_flight.pop(str(message.id), None)
+        # Avoid duplicate pending rows for the same message id.
+        to_remove = [
+            seq for seq, msg in self._pending.items() if str(msg.id) == str(message.id)
+        ]
+        for seq in to_remove:
+            self._pending.pop(seq, None)
         return await self.enqueue(message)
 
     async def add_fingerprint(self, timestamp: float, fingerprint: str) -> None:
@@ -304,6 +325,11 @@ class SQLiteQueueStore:
     async def mark_in_flight(self, in_flight: InFlightMessage) -> None:
         payload = self._serializer.serialize(_queued_message_to_dict(in_flight.message))
         in_flight_payload = self._serializer.serialize(_in_flight_to_dict(in_flight))
+        # Replace any prior pending/in_flight row for this message id.
+        await self.backend.execute(
+            "DELETE FROM queue_messages WHERE namespace=? AND queue_name=? AND message_id=?",
+            (self.namespace, self.queue_name, str(in_flight.message.id)),
+        )
         await self.backend.execute(
             "INSERT OR REPLACE INTO queue_messages (namespace, queue_name, message_id, status, seq, message, in_flight, updated_at)"
             " VALUES (?, ?, ?, 'in_flight', NULL, ?, ?, ?)",
@@ -341,6 +367,11 @@ class SQLiteQueueStore:
         return seq
 
     async def requeue(self, message: QueuedMessage) -> int:
+        # Clear prior in-flight row so crash restore cannot leave dual status.
+        await self.backend.execute(
+            "DELETE FROM queue_messages WHERE namespace=? AND queue_name=? AND message_id=?",
+            (self.namespace, self.queue_name, str(message.id)),
+        )
         return await self.enqueue(message)
 
     async def add_fingerprint(self, timestamp: float, fingerprint: str) -> None:

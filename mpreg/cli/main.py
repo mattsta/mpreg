@@ -1523,6 +1523,15 @@ def config_check(settings_path: str, output_format: str) -> None:
             "catalog_ttl": settings.fabric_catalog_ttl_seconds,
             "route_ttl": settings.fabric_route_ttl_seconds,
             "link_state_mode": str(settings.fabric_link_state_mode),
+            "route_require_signatures": bool(
+                settings.fabric_route_security_config
+                and settings.fabric_route_security_config.require_signatures
+            ),
+            "route_allow_unsigned": (
+                True
+                if settings.fabric_route_security_config is None
+                else bool(settings.fabric_route_security_config.allow_unsigned)
+            ),
         },
         "discovery": {
             "resolver_mode": settings.discovery_resolver_mode,
@@ -1552,6 +1561,25 @@ def config_check(settings_path: str, output_format: str) -> None:
         warnings.append("monitoring has no auth token — set monitoring_auth_token for production")
     if settings.discovery_summary_export_enabled and not settings.discovery_summary_signing_secret:
         warnings.append("summary export enabled without signing secret")
+    sec = settings.fabric_route_security_config
+    if settings.enable_cache_federation or (
+        settings.peers and len(settings.peers) > 0
+    ):
+        if sec is None or not sec.require_signatures:
+            warnings.append(
+                "federated/multi-peer fabric without fabric_route_require_signatures=true"
+            )
+        if sec is not None and sec.allow_unsigned:
+            warnings.append(
+                "fabric_route_allow_unsigned=true weakens route authenticity"
+            )
+    if (
+        settings.discovery_summary_signing_secret
+        and settings.discovery_summary_signing_secret.startswith("change-me")
+    ):
+        warnings.append(
+            "discovery_summary_signing_secret is still the profile placeholder"
+        )
     report = {"groups": groups, "warnings": warnings, "ok": len(warnings) == 0}
     emit(report, output_format=output_format, table_title="Config check")
     if warnings:

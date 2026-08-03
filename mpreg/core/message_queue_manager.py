@@ -23,6 +23,12 @@ from .message_queue import (
     QueueStatistics,
     QueueType,
 )
+from ..datastructures import MessageId
+from .namespace_policy import (
+    NamespacePolicyEngine,
+    get_actor_cluster_id,
+    get_actor_tenant_id,
+)
 from .persistence.registry import PersistenceRegistry
 from .task_manager import ManagedObject
 from .topic_exchange import TopicExchange
@@ -90,11 +96,13 @@ class MessageQueueManager(ManagedObject):
         topic_exchange: TopicExchange | None = None,
         *,
         persistence_registry: PersistenceRegistry | None = None,
+        namespace_policy: NamespacePolicyEngine | None = None,
     ) -> None:
         super().__init__(name="MessageQueueManager")
         self.config = config
         self.topic_exchange = topic_exchange
         self.persistence_registry = persistence_registry
+        self.namespace_policy = namespace_policy
 
         # Queue management
         self.queues: dict[QueueName, MessageQueue] = {}
@@ -110,6 +118,24 @@ class MessageQueueManager(ManagedObject):
             self._setup_topic_exchange_integration()
 
         queue_mgr_log.info("Message Queue Manager initialized")
+
+    def attach_namespace_policy(self, engine: NamespacePolicyEngine | None) -> None:
+        """Bind or replace the namespace/tenant data-plane gate."""
+        self.namespace_policy = engine
+
+    def _data_plane_allowed(
+        self, namespace: str, *, write: bool
+    ) -> tuple[bool, str]:
+        engine = self.namespace_policy
+        if engine is None or not engine.enabled:
+            return True, "policy_disabled"
+        decision = engine.allows_data_access(
+            namespace,
+            actor_cluster=get_actor_cluster_id(),
+            actor_tenant_id=get_actor_tenant_id(),
+            write=write,
+        )
+        return decision.allowed, decision.reason
 
     async def create_queue(
         self, name: str, config: QueueConfiguration | None = None
@@ -209,6 +235,25 @@ class MessageQueueManager(ManagedObject):
         **options: Any,
     ) -> DeliveryResult:
         """Send a message to a specific queue."""
+        # Namespace is the queue name (primary) with topic as secondary prefix.
+        allowed, reason = self._data_plane_allowed(queue_name, write=True)
+        if not allowed:
+            return DeliveryResult(
+                success=False,
+                message_id=MessageId(),
+                error_message=f"namespace_policy_denied:{reason}",
+            )
+        if topic:
+            topic_ns = topic.split(".", 1)[0] if "." in topic else topic
+            if topic_ns and topic_ns != queue_name:
+                allowed_t, reason_t = self._data_plane_allowed(topic_ns, write=True)
+                if not allowed_t:
+                    return DeliveryResult(
+                        success=False,
+                        message_id=MessageId(),
+                        error_message=f"namespace_policy_denied:{reason_t}",
+                    )
+
         # Auto-create queue if enabled
         if queue_name not in self.queues and self.config.enable_auto_queue_creation:
             await self.create_queue(queue_name)
@@ -252,6 +297,12 @@ class MessageQueueManager(ManagedObject):
         **metadata: str,
     ) -> str | None:
         """Subscribe to messages from a specific queue."""
+        allowed, reason = self._data_plane_allowed(queue_name, write=False)
+        if not allowed:
+            queue_mgr_log.warning(
+                f"Subscribe denied for queue {queue_name}: {reason}"
+            )
+            return None
         if queue_name not in self.queues:
             queue_mgr_log.error(f"Cannot subscribe to non-existent queue: {queue_name}")
             return None

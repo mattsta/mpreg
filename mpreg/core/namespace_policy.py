@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from collections import deque
+from contextlib import contextmanager
+from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
 from threading import RLock
+from typing import Iterator
 
 from mpreg.core.payloads import (
     PAYLOAD_FLOAT,
@@ -31,6 +34,48 @@ from mpreg.fabric.catalog import (
 from mpreg.fabric.catalog_policy import CatalogFilterPolicy
 
 _DISCOVERY_TOPIC_PREFIX = "mpreg.discovery."
+
+# Data-plane actor identity (queue/cache/pubsub). Discovery may set the same
+# vars so a single ContextVar gates both control and data paths.
+_current_actor_tenant_id: ContextVar[TenantId | None] = ContextVar(
+    "mpreg_actor_tenant_id", default=None
+)
+_current_actor_cluster_id: ContextVar[ClusterId | None] = ContextVar(
+    "mpreg_actor_cluster_id", default=None
+)
+
+def get_actor_tenant_id() -> TenantId | None:
+    return _current_actor_tenant_id.get()
+
+def get_actor_cluster_id() -> ClusterId | None:
+    return _current_actor_cluster_id.get()
+
+def set_actor_tenant_id(tenant_id: TenantId | None) -> Token[TenantId | None]:
+    return _current_actor_tenant_id.set(tenant_id)
+
+def set_actor_cluster_id(cluster_id: ClusterId | None) -> Token[ClusterId | None]:
+    return _current_actor_cluster_id.set(cluster_id)
+
+def reset_actor_tenant_id(token: Token[TenantId | None]) -> None:
+    _current_actor_tenant_id.reset(token)
+
+def reset_actor_cluster_id(token: Token[ClusterId | None]) -> None:
+    _current_actor_cluster_id.reset(token)
+
+@contextmanager
+def actor_context(
+    *,
+    tenant_id: TenantId | None = None,
+    cluster_id: ClusterId | None = None,
+) -> Iterator[None]:
+    """Bind actor identity for the duration of a data-plane operation."""
+    tenant_token = set_actor_tenant_id(tenant_id)
+    cluster_token = set_actor_cluster_id(cluster_id)
+    try:
+        yield
+    finally:
+        reset_actor_cluster_id(cluster_token)
+        reset_actor_tenant_id(tenant_token)
 
 @dataclass(frozen=True, slots=True)
 class CutoverWindow:
@@ -196,6 +241,48 @@ class NamespacePolicyEngine:
         if rule.visibility and viewer_cluster in rule.visibility:
             return NamespacePolicyDecision(True, "viewer_allowed", rule=rule)
         return NamespacePolicyDecision(False, "viewer_denied", rule=rule)
+
+    def allows_data_access(
+        self,
+        namespace: NamespaceName,
+        *,
+        actor_cluster: ClusterId | None = None,
+        actor_tenant_id: TenantId | None = None,
+        write: bool = False,
+    ) -> NamespacePolicyDecision:
+        """Gate queue/cache/pubsub data-plane ops (not just discovery).
+
+        Tenant-scoped rules (``visibility_tenants``) refuse cross-tenant access.
+        Cluster visibility applies when no tenant list is configured.
+        Writes additionally require ownership when ``owners`` is non-empty.
+        """
+        if not self.enabled:
+            return NamespacePolicyDecision(True, "policy_disabled")
+        rule = self._best_match(namespace)
+        if rule is None:
+            return NamespacePolicyDecision(self.default_allow, "no_policy")
+
+        # Tenant isolation first when the rule is tenant-scoped.
+        if rule.visibility_tenants:
+            if not actor_tenant_id:
+                return NamespacePolicyDecision(False, "tenant_required", rule=rule)
+            if actor_tenant_id not in rule.visibility_tenants:
+                return NamespacePolicyDecision(False, "tenant_denied", rule=rule)
+        elif rule.visibility:
+            cluster = actor_cluster or ""
+            if cluster not in rule.visibility:
+                return NamespacePolicyDecision(False, "viewer_denied", rule=rule)
+
+        if write and rule.owners:
+            cluster = actor_cluster or ""
+            if cluster and cluster not in rule.owners:
+                return NamespacePolicyDecision(False, "owner_denied", rule=rule)
+
+        if rule.visibility_tenants:
+            return NamespacePolicyDecision(True, "tenant_allowed", rule=rule)
+        if rule.visibility:
+            return NamespacePolicyDecision(True, "viewer_allowed", rule=rule)
+        return NamespacePolicyDecision(True, "visibility_unrestricted", rule=rule)
 
     def allows_summary_export(
         self,

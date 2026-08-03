@@ -50,6 +50,8 @@ class Client:
     full_log: bool = False
     # Default RPC wait budget when callers pass timeout=None (fail-closed hang prevention)
     default_timeout_seconds: float | None = 30.0
+    # Bound inbound pubsub fan-in so a slow consumer cannot OOM the client.
+    notification_queue_maxsize: int = 1024
     transport_config: TransportConfig = field(
         default_factory=TransportConfig, repr=False
     )
@@ -60,14 +62,17 @@ class Client:
         default_factory=dict, init=False
     )
     _listener_task: asyncio.Task[None] | None = field(default=None, init=False)
-    # PubSub notification handling
-    _notification_queue: asyncio.Queue[PubSubNotification] = field(
-        default_factory=asyncio.Queue, init=False
-    )
+    # PubSub notification handling (bounded; drops oldest under backpressure)
+    _notification_queue: asyncio.Queue[PubSubNotification] = field(init=False)
+    _notification_dropped: int = field(default=0, init=False)
     _notification_handlers: dict[str, list[Callable[[Any], None]]] = field(
         default_factory=dict, init=False
     )
     _last_trace_metadata: dict[str, str] | None = field(default=None, init=False)
+
+    def __post_init__(self) -> None:
+        maxsize = max(1, int(self.notification_queue_maxsize))
+        self._notification_queue = asyncio.Queue(maxsize=maxsize)
 
     def _record_trace_from_message(self, message_data: object) -> None:
         """Capture W3C trace fields from an inbound message for last_trace_context()."""
@@ -304,9 +309,9 @@ class Client:
                     message_role = message_data.get("role")
 
                     if message_role == "pubsub-notification":
-                        # Handle PubSub notification
+                        # Handle PubSub notification (drop-oldest under backpressure)
                         notification = PubSubNotification.model_validate(message_data)
-                        await self._notification_queue.put(notification)
+                        self._enqueue_notification(notification)
 
                     elif message_role == "pubsub-ack":
                         # Handle PubSub acknowledgment - route to pending requests
@@ -400,9 +405,36 @@ class Client:
         self._pending_requests.clear()
         self._transport = None
 
+    def _enqueue_notification(self, notification: PubSubNotification) -> None:
+        """Put notification on the bounded queue; drop oldest if full."""
+        q = self._notification_queue
+        try:
+            q.put_nowait(notification)
+            return
+        except asyncio.QueueFull:
+            pass
+        try:
+            q.get_nowait()
+            self._notification_dropped += 1
+        except asyncio.QueueEmpty:
+            pass
+        try:
+            q.put_nowait(notification)
+        except asyncio.QueueFull:
+            self._notification_dropped += 1
+            client_log.warning(
+                "Notification queue full; dropped message (total_dropped={})",
+                self._notification_dropped,
+            )
+
     def get_notification_queue(self) -> asyncio.Queue[PubSubNotification]:
         """Get the notification queue for PubSub clients."""
         return self._notification_queue
+
+    @property
+    def notification_dropped_count(self) -> int:
+        """Number of pubsub notifications dropped due to queue backpressure."""
+        return self._notification_dropped
 
     async def send_raw_message(self, message: dict[str, Any]) -> RawMessageDict:
         """Send a raw message and return the response."""
