@@ -22,7 +22,6 @@ Design Principles:
 from __future__ import annotations
 
 import asyncio
-import json
 import pickle
 import tempfile
 import time
@@ -32,6 +31,8 @@ from pathlib import Path
 from typing import Any
 
 from loguru import logger
+
+from mpreg.core.native_codec import dumps_pretty, dumps_text, load_path, loads_text
 
 try:
     import aiosqlite
@@ -400,8 +401,9 @@ class FileBasedRaftStorage(BaseRaftStorage):
         temp_file = file_path.with_suffix(".tmp")
 
         # Write to temporary file first
-        with open(temp_file, "w") as f:
-            json.dump(data, f, indent=2, default=str)
+        blob = dumps_pretty(data)
+        with open(temp_file, "wb") as f:
+            f.write(blob)
             if self.use_fsync:
                 f.flush()
                 import os
@@ -446,8 +448,7 @@ class FileBasedRaftStorage(BaseRaftStorage):
             return None
 
         try:
-            with open(self.state_file) as f:
-                data = json.load(f)
+            data = load_path(self.state_file)
 
             # Reconstruct log entries
             log_entries = []
@@ -679,7 +680,7 @@ class SQLiteRaftStorage(BaseRaftStorage):
                             entry.index,
                             entry.term,
                             entry.entry_type.value,
-                            json.dumps(entry.command)
+                            dumps_text(entry.command)
                             if entry.command is not None
                             else None,
                             entry.client_id,
@@ -733,7 +734,7 @@ class SQLiteRaftStorage(BaseRaftStorage):
                     checksum,
                 ) = row
 
-                command = json.loads(command_json) if command_json is not None else None
+                command = loads_text(command_json) if command_json is not None else None
 
                 entry = LogEntry(
                     term=term,
@@ -775,7 +776,7 @@ class SQLiteRaftStorage(BaseRaftStorage):
                     snapshot.last_included_index,
                     snapshot.last_included_term,
                     snapshot.state_machine_state,
-                    json.dumps(sorted(list(snapshot.configuration))),
+                    dumps_text(sorted(list(snapshot.configuration))),
                     snapshot.created_at,
                     snapshot.size_bytes,
                     snapshot.checksum,
@@ -813,7 +814,7 @@ class SQLiteRaftStorage(BaseRaftStorage):
                 checksum,
             ) = row
 
-            configuration = set(json.loads(configuration_json))
+            configuration = set(loads_text(configuration_json))
 
             self._storage_stats["operations"] += 1
 
