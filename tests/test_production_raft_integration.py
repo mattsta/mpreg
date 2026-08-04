@@ -140,11 +140,39 @@ class MockNetwork:
         return source_partition is not None and source_partition == target_partition
 
 class NetworkAwareTransport:
-    """Transport that respects network conditions."""
+    """Transport that respects network conditions.
+
+    Handlers run on independent tasks (not nested awaits of the caller's
+    coroutine). Nested await of handle_* under the leader's heartbeat gather
+    made Task.cancel walk a deep _fut_waiter chain and could RecursionError
+    when outer wait_for cancelled the test body.
+    """
 
     def __init__(self, node_id: str, network: MockNetwork):
         self.node_id = node_id
         self.network = network
+
+    async def _deliver(self, handler_coro, timeout: float = 5.0):
+        """Run handler as a sibling task and await its result."""
+        task = asyncio.create_task(handler_coro)
+        try:
+            return await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
+        except TimeoutError:
+            task.cancel()
+            try:
+                await task
+            except (asyncio.CancelledError, Exception):
+                pass
+            return None
+        except asyncio.CancelledError:
+            # Caller cancelled: leave handler running briefly so it can finish
+            # under its own task (avoids cascading cancel into deep chains).
+            # Best-effort cancel if still pending after a tick.
+            if not task.done():
+                task.cancel()
+            raise
+        except Exception:
+            return None
 
     async def send_request_vote(
         self, target: str, request: RequestVoteRequest
@@ -162,11 +190,7 @@ class NetworkAwareTransport:
 
         target_node = self.network.nodes.get(target)
         if target_node:
-            try:
-                response = await target_node.handle_request_vote(request)
-                return response
-            except Exception as e:
-                return None
+            return await self._deliver(target_node.handle_request_vote(request))
 
         return None
 
@@ -186,10 +210,7 @@ class NetworkAwareTransport:
 
         target_node = self.network.nodes.get(target)
         if target_node:
-            try:
-                return await target_node.handle_append_entries(request)
-            except Exception:
-                return None
+            return await self._deliver(target_node.handle_append_entries(request))
 
         return None
 
@@ -209,10 +230,7 @@ class NetworkAwareTransport:
 
         target_node = self.network.nodes.get(target)
         if target_node:
-            try:
-                return await target_node.handle_install_snapshot(request)
-            except Exception:
-                return None
+            return await self._deliver(target_node.handle_install_snapshot(request))
 
         return None
 

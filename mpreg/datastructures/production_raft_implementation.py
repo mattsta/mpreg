@@ -445,6 +445,12 @@ class ProductionRaft(ProductionRaftRPCs):
 
     # Concurrency control
     state_lock: asyncio.Lock = field(default_factory=asyncio.Lock, init=False)
+    # Task lifecycle work that must not run while holding state_lock (avoids
+    # self-cancel deadlock when heartbeat/step-down holds the lock).
+    _pending_task_ops: list[tuple[str, tuple[Any, ...]]] = field(
+        default_factory=list, init=False, repr=False
+    )
+    _stopped: bool = field(default=False, init=False, repr=False)
 
     # CLEAN ARCHITECTURE: Single well-encapsulated coordination system
     election_coordinator: ElectionCoordinator = field(
@@ -605,43 +611,51 @@ class ProductionRaft(ProductionRaftRPCs):
 
         This method cancels background tasks, saves persistent state,
         and performs cleanup.
+
+        Task cancellation intentionally runs *outside* state_lock. Holding the
+        lock while awaiting heartbeat/election cancel deadlocks when those
+        tasks need the same lock (or when cancel targets the current task).
         """
         raft_log.debug(f"[{self.node_id}] stop() called")
-        async with self.state_lock:
-            try:
-                raft_log.info(f"Stopping Raft node {self.node_id}")
+        if self._stopped:
+            return
+        self._stopped = True
+        try:
+            raft_log.info(f"Stopping Raft node {self.node_id}")
 
-                # Cancel background tasks
-                raft_log.debug(f"[{self.node_id}] Stopping background tasks")
-                await self._stop_background_tasks()
-
-                # Save final state
-                raft_log.debug(f"[{self.node_id}] Saving final state")
-                await self.storage.save_persistent_state(self.persistent_state)
-
-                # Reset state
-                raft_log.debug(f"[{self.node_id}] Resetting state")
+            # Flip role first so loops exit without needing cancel alone.
+            async with self.state_lock:
                 self.current_state = RaftState.FOLLOWER
                 self.current_leader = None
                 self.leader_volatile_state = None
                 self.election_coordinator.election_in_progress = False
                 self.votes_received.clear()
+                self._pending_task_ops.clear()
 
-                raft_log.info(f"Raft node {self.node_id} stopped")
+            # Cancel background tasks without holding state_lock.
+            raft_log.debug(f"[{self.node_id}] Stopping background tasks")
+            await self._stop_background_tasks()
 
-            except Exception as e:
-                raft_log.error(f"[{self.node_id}] Error stopping Raft node: {e}")
-                import traceback
+            # Save final state
+            raft_log.debug(f"[{self.node_id}] Saving final state")
+            await self.storage.save_persistent_state(self.persistent_state)
 
-                raft_log.error(
-                    f"[{self.node_id}] Stop traceback: {traceback.format_exc()}"
-                )
-                raise
+            raft_log.info(f"Raft node {self.node_id} stopped")
+
+        except Exception as e:
+            raft_log.error(f"[{self.node_id}] Error stopping Raft node: {e}")
+            import traceback
+
+            raft_log.error(
+                f"[{self.node_id}] Stop traceback: {traceback.format_exc()}"
+            )
+            raise
 
     async def step_down(self) -> None:
         """Request this node to step down to follower state."""
         async with self.state_lock:
             await self._convert_to_follower(restart_timer=True, reset_backoff=True)
+        await self._run_pending_task_ops()
 
     
     async def submit_configuration_change(
@@ -875,6 +889,7 @@ class ProductionRaft(ProductionRaftRPCs):
                     f"Single node cluster, becoming leader for term {new_term}"
                 )
                 await self._become_leader()
+                await self._run_pending_task_ops()
             else:
                 # Send RequestVote RPCs to all other nodes
                 vote_tasks = []
@@ -924,6 +939,7 @@ class ProductionRaft(ProductionRaftRPCs):
                         f"Achieved majority after vote collection: {len(self.votes_received)}/{len(self.cluster_members)}"
                     )
                     await self._become_leader()
+                    await self._run_pending_task_ops()
                 else:
                     raft_log.info(
                         f"Election failed in term {new_term}: got {len(self.votes_received)} votes, needed {majority_threshold}"
@@ -939,6 +955,7 @@ class ProductionRaft(ProductionRaftRPCs):
                             majority_threshold,
                         )
                     await self._convert_to_follower()
+                    await self._run_pending_task_ops()
 
         except Exception as e:
             raft_log.error(f"Error during election: {e}")
@@ -952,6 +969,7 @@ class ProductionRaft(ProductionRaftRPCs):
                     self.persistent_state.current_term,
                 )
             await self._convert_to_follower()
+            await self._run_pending_task_ops()
         finally:
             # ElectionCoordinator will reset election_in_progress flag
             pass
@@ -985,10 +1003,8 @@ class ProductionRaft(ProductionRaftRPCs):
                     if response.term > self.persistent_state.current_term:
                         await self._update_term(response.term)
                         await self._convert_to_follower(restart_timer=False)
-                        return
-
                     # If vote granted and we're still candidate in same term
-                    if (
+                    elif (
                         response.vote_granted
                         and self.current_state == RaftState.CANDIDATE
                         and response.term == self.persistent_state.current_term
@@ -1005,11 +1021,12 @@ class ProductionRaft(ProductionRaftRPCs):
                                 f"[{self.node_id}] ACHIEVED MAJORITY ({len(self.votes_received)}/{len(self.cluster_members)}), becoming leader"
                             )
                             await self._become_leader()
-                            return
                     else:
                         raft_log.debug(
                             f"[{self.node_id}] Vote NOT counted from {target_node}: vote_granted={response.vote_granted}, state={self.current_state}, response_term={response.term}, our_term={self.persistent_state.current_term}"
                         )
+                await self._run_pending_task_ops()
+                return
 
         except Exception as e:
             raft_log.error(f"Exception in _request_vote_from_node({target_node}): {e}")
@@ -1046,12 +1063,14 @@ class ProductionRaft(ProductionRaftRPCs):
         self.metrics.elections_won += 1
         self.metrics.current_state = self.current_state
 
-        # CRITICAL: Stop election coordinator when becoming leader to prevent election storms
-        await self.election_coordinator.stop_coordinator()
-        self.election_coordinator.election_in_progress = False
+        # Defer coordinator stop + heartbeat start: must not cancel/create tasks
+        # while callers hold state_lock (vote path holds the lock into become_leader).
+        # Keep election_in_progress True until stop_coordinator runs so the
+        # coordinator cannot schedule a second election in the gap.
+        self._pending_task_ops.append(("stop_coordinator", ()))
         if RAFT_DIAG_ENABLED:
             raft_log.warning(
-                "[DIAG_RAFT] node={} action=coordinator_stopped_for_leader term={}",
+                "[DIAG_RAFT] node={} action=coordinator_stop_queued_for_leader term={}",
                 self.node_id,
                 self.persistent_state.current_term,
             )
@@ -1093,11 +1112,10 @@ class ProductionRaft(ProductionRaftRPCs):
             if member_id != self.node_id:
                 self.follower_contact_info[member_id] = FollowerContactInfo()
 
-        # Start heartbeat/replication
-        await self._start_heartbeat()
+        self._pending_task_ops.append(("start_heartbeat", ()))
         if RAFT_DIAG_ENABLED:
             raft_log.warning(
-                "[DIAG_RAFT] node={} action=heartbeat_started term={} noop_index={}",
+                "[DIAG_RAFT] node={} action=heartbeat_start_queued term={} noop_index={}",
                 self.node_id,
                 self.persistent_state.current_term,
                 noop_entry.index,
@@ -1216,6 +1234,7 @@ class ProductionRaft(ProductionRaftRPCs):
                     await self._handle_append_entries_response(
                         follower_id, request, response
                     )
+                await self._run_pending_task_ops()
             else:
                 # No response received - this indicates communication failure
                 raft_log.warning(
@@ -1612,6 +1631,7 @@ class ProductionRaft(ProductionRaftRPCs):
                 f"(timeout: {step_down_timeout:.3f}s)"
             )
             await self._convert_to_follower(restart_timer=True)
+            await self._run_pending_task_ops()
             # Add backoff delay to prevent immediate re-election cycle
             backoff_delay = min(2.0, step_down_timeout)
             raft_log.debug(
@@ -1667,6 +1687,7 @@ class ProductionRaft(ProductionRaftRPCs):
                     if response.term > self.persistent_state.current_term:
                         await self._update_term(response.term)
                         await self._convert_to_follower()
+                        await self._run_pending_task_ops()
                         return
                     # COR-T10-01 / COR-T12-01: fail-closed — missing success ⇒ reject.
                     if not bool(getattr(response, "success", False)):
@@ -1796,7 +1817,13 @@ class ProductionRaft(ProductionRaftRPCs):
     async def _convert_to_follower(
         self, restart_timer: bool = True, reset_backoff: bool = False
     ) -> None:
-        """Convert to follower state."""
+        """Convert to follower state.
+
+        Task stop/start is deferred via ``_pending_task_ops`` so this method is
+        safe to call while holding ``state_lock`` and from inside the heartbeat
+        task itself (which would otherwise self-cancel through nested gathers
+        and blow the recursion limit / deadlock on the lock).
+        """
         raft_log.debug(
             f"[{self.node_id}] _convert_to_follower called, restart_timer={restart_timer}, current_state={self.current_state}"
         )
@@ -1812,40 +1839,16 @@ class ProductionRaft(ProductionRaftRPCs):
             self.votes_received.clear()
             self.current_leader = None
 
-            # Stop leader-only tasks when stepping down from leader.
-            # Keep election coordinator running for candidate/follower transitions.
+            # Queue leader-task teardown + coordinator restart outside the lock.
             if old_state == RaftState.LEADER:
-                await self.task_manager.stop_specific_task(
-                    "core", "heartbeat", timeout=0.5
-                )
-                await self.task_manager.stop_task_group("replication", timeout=0.5)
+                self._pending_task_ops.append(("stop_leader_tasks", ()))
+                self._pending_task_ops.append(("start_coordinator", ()))
                 if RAFT_DIAG_ENABLED:
                     raft_log.warning(
-                        "[DIAG_RAFT] node={} action=leader_tasks_stopped old_state={} term={}",
+                        "[DIAG_RAFT] node={} action=leader_task_stop_queued old_state={} term={}",
                         self.node_id,
                         old_state.value,
                         self.persistent_state.current_term,
-                    )
-
-            # CRITICAL: Restart election coordinator when stepping down from leader
-            if (
-                old_state == RaftState.LEADER
-                and self.current_state == RaftState.FOLLOWER
-            ):
-                # Leader stepping down - restart election coordinator
-                await self.election_coordinator.start_coordinator(
-                    self.node_id, self._start_election_with_semaphore
-                )
-                raft_log.info(
-                    f"[{self.node_id}] Restarted election coordinator after stepping down from leader"
-                )
-                if RAFT_DIAG_ENABLED:
-                    raft_log.warning(
-                        "[DIAG_RAFT] node={} action=coordinator_restarted_after_stepdown "
-                        "term={} restart_timer={}",
-                        self.node_id,
-                        self.persistent_state.current_term,
-                        restart_timer,
                     )
 
             # Avoid immediate trigger loops; coordinator timeout cadence drives retries.
@@ -1867,6 +1870,90 @@ class ProductionRaft(ProductionRaftRPCs):
                     reset_backoff,
                     restart_timer,
                     self.last_heartbeat_time,
+                )
+
+    async def _run_pending_task_ops(self) -> None:
+        """Execute deferred task lifecycle work outside ``state_lock``.
+
+        Callers that hold ``state_lock`` while changing role must release the
+        lock, then await this. Heartbeat loops that step down exit via the
+        ``current_state != LEADER`` check; we never cancel the running heartbeat
+        task from inside itself.
+        """
+        if not self._pending_task_ops or self._stopped:
+            return
+
+        ops = self._pending_task_ops
+        self._pending_task_ops = []
+        current = asyncio.current_task()
+        hb_task = None
+        if "core" in self.task_manager.task_groups:
+            managed = self.task_manager.task_groups["core"].tasks.get("heartbeat")
+            if managed is not None:
+                hb_task = managed.task
+
+        for op, _args in ops:
+            try:
+                if op == "stop_leader_tasks":
+                    # If we *are* the heartbeat task, flip state already exited the
+                    # loop; do not cancel self (nested gather cancel recursion).
+                    if hb_task is not None and current is not hb_task:
+                        await self.task_manager.stop_specific_task(
+                            "core", "heartbeat", timeout=0.5
+                        )
+                    elif hb_task is not None and current is hb_task:
+                        raft_log.debug(
+                            f"[{self.node_id}] Skipping self-cancel of heartbeat; "
+                            "loop will exit on state check"
+                        )
+                    await self.task_manager.stop_task_group(
+                        "replication", timeout=0.5
+                    )
+                    if RAFT_DIAG_ENABLED:
+                        raft_log.warning(
+                            "[DIAG_RAFT] node={} action=leader_tasks_stopped term={}",
+                            self.node_id,
+                            self.persistent_state.current_term,
+                        )
+                elif op == "start_coordinator":
+                    if self._stopped:
+                        continue
+                    await self.election_coordinator.start_coordinator(
+                        self.node_id, self._start_election_with_semaphore
+                    )
+                    raft_log.info(
+                        f"[{self.node_id}] Restarted election coordinator after "
+                        "stepping down from leader"
+                    )
+                    if RAFT_DIAG_ENABLED:
+                        raft_log.warning(
+                            "[DIAG_RAFT] node={} action=coordinator_restarted_after_stepdown "
+                            "term={}",
+                            self.node_id,
+                            self.persistent_state.current_term,
+                        )
+                elif op == "stop_coordinator":
+                    await self.election_coordinator.stop_coordinator()
+                    self.election_coordinator.election_in_progress = False
+                    if RAFT_DIAG_ENABLED:
+                        raft_log.warning(
+                            "[DIAG_RAFT] node={} action=coordinator_stopped_for_leader term={}",
+                            self.node_id,
+                            self.persistent_state.current_term,
+                        )
+                elif op == "start_heartbeat":
+                    if self._stopped or self.current_state != RaftState.LEADER:
+                        continue
+                    await self._start_heartbeat()
+                    if RAFT_DIAG_ENABLED:
+                        raft_log.warning(
+                            "[DIAG_RAFT] node={} action=heartbeat_started term={}",
+                            self.node_id,
+                            self.persistent_state.current_term,
+                        )
+            except Exception as e:
+                raft_log.warning(
+                    f"[{self.node_id}] pending task op {op!r} failed: {e}"
                 )
 
     def _update_exponential_average(
