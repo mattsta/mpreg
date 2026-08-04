@@ -83,6 +83,15 @@ class RPCRequest(BaseModel):
     )
     u: str = Field(description="A unique identifier for this request.")
 
+    # Optional headers (W3C traceparent/tracestate, etc.) — OBS-02.
+    headers: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Optional message headers/metadata (e.g. W3C traceparent).",
+    )
+    # Top-level W3C fields accepted for interop with inject_outbound_trace.
+    traceparent: str | None = Field(default=None, description="W3C traceparent")
+    tracestate: str | None = Field(default=None, description="W3C tracestate")
+
     # Enhanced debugging features (optional, backward compatible)
     return_intermediate_results: bool = Field(
         default=False,

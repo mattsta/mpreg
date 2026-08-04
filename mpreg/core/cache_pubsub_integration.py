@@ -126,6 +126,8 @@ class CachePubSubIntegration(ManagedObject):
             maxsize=self._notification_queue_maxsize
         )
         self.notification_queue_dropped: int = 0
+        # Optional OBS sink: callable(n: int) when notification queue drops.
+        self._metrics_cache_pubsub_drop: Any = None
 
         # Statistics
         self.stats = CachePubSubIntegrationStats()
@@ -135,6 +137,20 @@ class CachePubSubIntegration(ManagedObject):
 
         # Subscribe to cache coordination topics
         self._setup_cache_coordination_subscriptions()
+
+    def _note_notification_drop(self) -> None:
+        self.notification_queue_dropped += 1
+        sink = getattr(self, "_metrics_cache_pubsub_drop", None)
+        if callable(sink):
+            try:
+                sink(1)
+            except Exception:
+                pass
+
+    def attach_metrics_sink(self, *, on_cache_pubsub_drop=None) -> None:
+        """Attach optional Prom/metrics callbacks (OBS-04)."""
+        if on_cache_pubsub_drop is not None:
+            self._metrics_cache_pubsub_drop = on_cache_pubsub_drop
 
     def configure_notifications(
         self, namespace: str, config: CacheNotificationConfig
@@ -219,13 +235,13 @@ class CachePubSubIntegration(ManagedObject):
                 if q.full():
                     try:
                         q.get_nowait()
-                        self.notification_queue_dropped += 1
+                        self._note_notification_drop()
                     except asyncio.QueueEmpty:
                         pass
                 try:
                     q.put_nowait(event)
                 except asyncio.QueueFull:
-                    self.notification_queue_dropped += 1
+                    self._note_notification_drop()
             else:
                 # Send directly (either sync notification or from processor)
                 await self._send_notification(message)

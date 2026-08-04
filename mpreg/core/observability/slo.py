@@ -29,8 +29,8 @@ GOLDEN_SIGNALS: tuple[GoldenSignal, ...] = (
     ),
     GoldenSignal(
         name="latency",
-        prometheus_metric="mpreg_http_request_duration_ms",
-        description="Monitoring handler latency proxy; prefer RPC p95 from unified",
+        prometheus_metric="mpreg_rpc_latency_ms",
+        description="RPC handler latency histogram (p95 from mpreg_rpc_latency_ms)",
         warning_threshold="p95 > 250ms",
         critical_threshold="p95 > 1000ms",
     ),

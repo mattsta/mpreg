@@ -1,8 +1,9 @@
 """
 MPREG - Massively Parallel Request/Response Exchange Gateway
 
-A high-performance, planet-scale fabric system for distributed messaging
-with graph-based routing, gossip-based discovery, and failure detection.
+A high-performance fabric messaging platform with graph-assisted routing,
+gossip-based discovery, and CFT Raft consensus (not BFT). Prefer profiles
+and ``MPREGClient`` for four-plane (RPC/pubsub/queue/cache) usage.
 
 ## Architecture
 

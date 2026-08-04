@@ -25,6 +25,10 @@ This is Phase 3.3 of the Planet-Scale Fabric Roadmap.
 ``MembershipProtocol`` into the control plane. Peer liveness on the
 production path uses dial/gossip-adjacent mechanisms, not this SWIM FSM.
 Do not claim planet-scale SWIM failure detection for deployed nodes yet.
+
+**PERF-08/09:** probe loops use fixed ``asyncio.sleep(0.1)`` timers. That is
+acceptable for an unwired library module; do not treat it as a production
+latency floor, and prefer event-driven wake if this path is ever attached.
 """
 
 from __future__ import annotations

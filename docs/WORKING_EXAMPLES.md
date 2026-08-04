@@ -1,3 +1,5 @@
+> **Honesty banner:** “Production-ready” here means examples run under tests, not BFT/EO/STRONG product guarantees. See ``claims.yaml`` non_claims.
+
 # ✅ VERIFIED WORKING EXAMPLES
 
 This document lists all the examples and tests that have been **verified to work correctly**.

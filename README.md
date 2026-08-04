@@ -4,6 +4,8 @@
 
 Do you need results? Everywhere? Guaranteed? Then you need to MPREG!
 
+> **Honesty banner:** Raft in MPREG is **CFT**, not BFT. `EXACTLY_ONCE` and cache `STRONG` are refuse-by-default until real barriers exist. Prefer `MPREGClient`, shipped profiles (`mpreg/profiles/`), and `docs/MPREG_CLIENT_GUIDE.md` / `tests/invariants/claims.yaml`.
+
 ## What is it?
 
 `mpreg` allows you to define a distributed cluster multi-call function topology across multiple processes or servers so you can run your requests against one cluster endpoint and automatically receive results from your data anywhere in the cluster.
@@ -30,7 +32,7 @@ Why is this useful? I made this because I had some models with datasets I wanted
 - 📬 Message Queues (SQS-like with multiple delivery guarantees)
 - 🗄️ Smart Caching (S4LRU, dependency-aware, cost-based eviction)
 - 🌍 Fabric Federation (path-vector routing, hub-and-spoke/mesh)
-- ⛓️ Blockchain & Consensus (production Raft, Byzantine fault tolerance)
+- ⛓️ Blockchain & Consensus (production Raft **CFT**; not BFT)
 - 🏭 Real-World Examples (8-stage data pipelines, distributed ML inference)
 
 ## Summary the Third: 🎯 **Core Capabilities Index**
@@ -38,7 +40,7 @@ Why is this useful? I made this because I had some models with datasets I wanted
 ### 🔄 **Distributed Computing Foundation**
 
 - 🎪 **Dependency-Resolving RPC**: Automatic function call ordering across servers with resource-based routing
-- 🌐 **Planet-Scale Federation**: Gossip clustering with geographic routing (tested to 100+ nodes)
+- 🌐 **Fabric Federation**: Gossip clustering with path-vector / optional link-state routing
 - 📡 **Zero-Config Discovery**: Peer-to-peer mesh with automatic cluster formation and health monitoring
 
 ### 🚀 **Message & Communication Systems**
@@ -55,7 +57,7 @@ Why is this useful? I made this because I had some models with datasets I wanted
 
 ### 🏗️ **Production Infrastructure**
 
-- 🔒 **Consensus Algorithms**: Production Raft implementation with Byzantine fault tolerance
+- 🔒 **Consensus Algorithms**: Production Raft implementation (**CFT**, not Byzantine/BFT)
 - 🌍 **Geographic Routing**: Hub-and-spoke federation with Dijkstra/A\* path optimization
 - 🔧 **Self-Healing Systems**: Automatic failure detection, recovery, and graceful degradation
 
@@ -91,14 +93,15 @@ dynamically (for example, via `allocate_port("servers")`) or omit `port` to let
 MPREG auto-assign one and emit `MPREG_URL`.
 
 ```python
-# Modern API
+# Modern API (prefer MPREGClient for four-plane: RPC+pubsub+queue+cache)
+# from mpreg import MPREGClient
 async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
     result = await client.call("echo", "hi there!")
     # Returns: "hi there!"
 
 # Or using the lower-level client directly
 from mpreg.core.model import RPCCommand
-result = await client._client.request([
+result = await client.request([
     RPCCommand(name="first", fun="echo", args=("hi there!",), locs=frozenset())
 ])
 ```
@@ -117,7 +120,7 @@ We can also call multiple functions at once with unique names:
 
 ```python
 # Modern dependency resolution - these execute in proper order automatically
-result = await client._client.request([
+result = await client.request([
     RPCCommand(name="first", fun="echo", args=("hi there!",), locs=frozenset()),
     RPCCommand(name="second", fun="echo", args=("first",), locs=frozenset()),  # Uses result from "first"
 ])
@@ -134,7 +137,7 @@ and it returns the `first` RPC returned value as the parameter to the `second` n
 Direct string matching on the function parameters can be confusing as above with "first" suddenly becoming a magic value, so let's name them better:
 
 ```python
-result = await client._client.request([
+result = await client.request([
     RPCCommand(name="|first", fun="echo", args=("hi there!",), locs=frozenset()),
     RPCCommand(name="|second", fun="echo", args=("|first",), locs=frozenset()),
     RPCCommand(name="|third", fun="echos", args=("|first", "AND ME TOO"), locs=frozenset()),
@@ -154,7 +157,7 @@ Note how it returns all FINAL level RPCs having no further resolvable arguments 
 #### 3-returns-1 using multiple replacements
 
 ```python
-result = await client._client.request([
+result = await client.request([
     RPCCommand(name="|first", fun="echo", args=("hi there!",), locs=frozenset()),
     RPCCommand(name="|second", fun="echo", args=("|first",), locs=frozenset()),
     RPCCommand(name="|third", fun="echos", args=("|first", "|second", "AND ME TOO"), locs=frozenset()),
@@ -172,7 +175,7 @@ Note how here it returns only `|third` because `third` contains _both_ `|first` 
 #### 4-returns-1 using multiple replacements
 
 ```python
-result = await client._client.request([
+result = await client.request([
     RPCCommand(name="|first", fun="echo", args=("hi there!",), locs=frozenset()),
     RPCCommand(name="|second", fun="echo", args=("|first",), locs=frozenset()),
     RPCCommand(name="|third", fun="echos", args=("|first", "|second", "AND ME TOO"), locs=frozenset()),
@@ -278,7 +281,7 @@ cache.put(key, result, dependencies=["data_source_1", "model_v2"])
 # Try it: uv run python mpreg/examples/tier1_single_system_full.py --system cache
 ```
 
-### 🌍 Planet-Scale Federation
+### 🌍 Fabric Federation
 
 ```python
 # Fabric-backed federation with unified routing + gossip catalog
@@ -336,7 +339,7 @@ await raft.start()  # Handles leader election, log replication, membership chang
 # Ingestion → Validation → Cleaning → Analytics → Insights → Storage → Dashboard
 # Each stage automatically routes to servers with required resources (CPU/GPU/Database)
 
-result = await client._client.request([
+result = await client.request([
     # Stage 1: Data ingestion server
     RPCCommand(name="ingested", fun="ingest_sensor_data",
                args=(sensor_id, readings), locs=frozenset(["ingestion", "raw-data"])),
@@ -363,7 +366,7 @@ result = await client._client.request([
 
 ```python
 # Route ML inference to specialized model servers automatically
-result = await client._client.request([
+result = await client.request([
     # Route to image preprocessing server
     RPCCommand(name="preprocessed", fun="preprocess_image",
                args=(image_data,), locs=frozenset(["preprocessing"])),
@@ -436,7 +439,7 @@ The `tools/debug/` directory contains 60+ specialized debugging scripts for deep
 # Federation and scalability analysis
 tools/debug/debug_federation_scaling.py          # Federation scalability analysis
 tools/debug/debug_auto_discovery_5node.py        # Auto-discovery mechanism testing
-tools/debug/debug_planet_scale_deep_dive.py      # Planet-scale consensus debugging
+tools/debug/debug_planet_scale_deep_dive.py      # Large-topology consensus debugging (lab)
 
 # Performance and replication testing
 tools/debug/benchmark_replication_performance.py # Replication performance testing
@@ -548,7 +551,7 @@ async def main():
 
         # Multi-step workflow
         from mpreg.core.model import RPCCommand
-        workflow = await client._client.request([
+        workflow = await client.request([
             RPCCommand(name="step1", fun="echo", args=("first step",), locs=frozenset()),
             RPCCommand(name="step2", fun="echo", args=("step1",), locs=frozenset()),
         ])
@@ -649,8 +652,8 @@ uv run mpreg topology
 
 **⚠️ Critical for Developers Working with Federation**:
 
-- **[Federation Architecture & Fault Tolerance](docs/FEDERATION_ARCHITECTURE_AND_FAULT_TOLERANCE.md)** - Complete technical documentation of the federation system, including Byzantine fault tolerance and critical edge cases
-- **[Byzantine Fault Detection Debug Guide](docs/BYZANTINE_FAULT_DETECTION_DEBUG_GUIDE.md)** - Essential debugging guide for consensus system issues, including a critical bug discovery and resolution
+- **[Federation Architecture & Fault Tolerance](docs/FEDERATION_ARCHITECTURE_AND_FAULT_TOLERANCE.md)** - Complete technical documentation of the federation system, including CFT Raft behavior, queue delivery, and critical edge cases (not BFT)
+- **[Byzantine Fault Detection Debug Guide](docs/BYZANTINE_FAULT_DETECTION_DEBUG_GUIDE.md)** - Historical debug note: queue “Byzantine detection” is **not** BFT (see honesty banner in that doc)
 - **[Federation Developer Quick Reference](docs/FEDERATION_DEVELOPER_QUICK_REFERENCE.md)** - Quick reference guide for developers working with the federation system
 
 These documents detail fragile components, edge cases, and architectural decisions discovered through deep debugging sessions. **Essential reading** before modifying federation or consensus code.
@@ -674,7 +677,7 @@ MPREG is organized into a clean, modular architecture with well-separated concer
 
 ### 🌐 **Fabric Federation System (`mpreg.fabric`)**
 
-Planet-scale distributed coordination with:
+Distributed coordination with:
 
 - **`mpreg/fabric/federation_graph.py`** - Graph-based routing with geographic optimization
 - **`mpreg/fabric/hubs.py`** - Hub-and-spoke architecture (Local → Regional → Global)
@@ -792,7 +795,7 @@ MPREG implements a sophisticated **multi-layer distributed architecture** design
 - **Resource-Based Routing**: Functions execute on servers with required datasets/compute resources
 - **Gossip-Based Discovery**: Automatic peer discovery and function advertisement
 - **Zero-Config Clustering**: Servers auto-discover and self-organize without central coordination
-- **Geographic Federation**: Planet-scale routing with hub-and-spoke topology optimization
+- **Geographic Federation**: Path-vector / optional link-state routing; hub modules are library-only
 
 ### 🔧 **Server Configuration**
 
@@ -826,7 +829,7 @@ MPREG implements epidemic-style gossip for robust distributed coordination:
 
 ### 🌍 **Federation Topology**
 
-For planet-scale deployments, MPREG supports hierarchical federation:
+For large multi-cluster deployments, MPREG supports hierarchical federation helpers (library-scale; not a multi-cluster SLA):
 
 ```
 Local Clusters → Regional Hubs → Global Federation
@@ -843,14 +846,14 @@ Local Clusters → Regional Hubs → Global Federation
 
 ## 🚀 Production Deployment Status
 
-MPREG has evolved from experimental prototype to **production-ready distributed platform** with enterprise-grade reliability:
+MPREG is a **capable distributed platform** with strong tests on fabric routing, CFT Raft, and RPC modalities. Read `tests/invariants/claims.yaml` non_claims before assuming BFT/EO/STRONG:
 
 ### ✅ **Production Readiness Checklist**
 
 **🏗️ Architecture & Scalability**
 
 - ✅ **Tested to 100+ nodes** in federation scenarios
-- ✅ **Planet-scale geographic routing** with hub-and-spoke optimization
+- ✅ **Fabric geographic routing** (hub hierarchy is library-only, not default plane)
 - ✅ **Zero-downtime rolling updates** with graceful connection migration
 - ✅ **Horizontal scaling** with automatic load balancing
 - ✅ **Network partition tolerance** with split-brain prevention
@@ -858,7 +861,7 @@ MPREG has evolved from experimental prototype to **production-ready distributed 
 **🔐 Reliability & Safety**
 
 - ✅ **1,900+ comprehensive tests** covering edge cases and failure scenarios
-- ✅ **Byzantine fault tolerance** with production Raft consensus
+- ✅ **Crash-fault tolerant Raft** (CFT) — not Byzantine/BFT consensus
 - ✅ **Circuit breaker patterns** for cascading failure prevention
 - ✅ **Graceful degradation** under high load and network stress
 - ✅ **Comprehensive error handling** with proper timeout management
@@ -960,7 +963,7 @@ MPREG continues evolving toward an even more comprehensive distributed computing
 - ✅ ~~Add comprehensive automated test suite~~ **DONE!** (1,900+ tests covering distributed scenarios)
 - ✅ ~~Modern client library with async/await~~ **DONE!** (MPREGClientAPI + MPREGClusterClient)
 - ✅ ~~Easy server function registration~~ **DONE!** (server.register_command() interface)
-- ✅ ~~Planet-scale federation capabilities~~ **DONE!** (Geographic routing with hub-and-spoke)
+- ✅ ~~Fabric federation routing~~ **DONE!** (path-vector / LS; hubs library-only)
 - ✅ ~~Production-ready consensus algorithms~~ **DONE!** (Raft implementation with safety guarantees)
 - ✅ ~~Advanced caching with multiple eviction policies~~ **DONE!** (S4LRU, dependency-aware, cost-based)
 - ✅ ~~Message queues and pub/sub systems~~ **DONE!** (SQS-like queues, AMQP-style topics)

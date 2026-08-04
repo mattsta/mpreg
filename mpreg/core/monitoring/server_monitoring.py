@@ -14,6 +14,8 @@ from .unified_monitoring import (
 
 _RPS_WINDOW_SECONDS = 60.0
 _HOUR_WINDOW_SECONDS = 3600.0
+# Cap in-memory event timestamps used for RPS windows (OBS-08).
+_EVENT_DEQUE_MAXLEN = 50_000
 
 def _calculate_percentile(values: list[float], percentile: float) -> float:
     if not values:
@@ -51,12 +53,17 @@ class ServerMetricsTracker:
 
     rpc_total: int = 0
     rpc_errors: int = 0
-    rpc_events: deque[float] = field(default_factory=deque)
+    # OBS-08: bound event deques (prune still runs; maxlen caps multi-kRPS memory).
+    rpc_events: deque[float] = field(
+        default_factory=lambda: deque(maxlen=_EVENT_DEQUE_MAXLEN)
+    )
     rpc_latencies_ms: deque[float] = field(default_factory=lambda: deque(maxlen=1000))
     # Per-error-code counters (stringified MpregErrorCode / wire code).
     rpc_error_codes: dict[str, int] = field(default_factory=dict)
     mgmt_mutations: dict[str, int] = field(default_factory=dict)
     notification_drops: int = 0
+    replication_drops: int = 0
+    cache_pubsub_drops: int = 0
     node_draining: int = 0
     rpc_latency_buckets: list[int] = field(
         default_factory=lambda: [0] * (len(_LATENCY_BUCKETS_MS) + 1)
@@ -65,7 +72,9 @@ class ServerMetricsTracker:
 
     pubsub_total: int = 0
     pubsub_errors: int = 0
-    pubsub_events: deque[float] = field(default_factory=deque)
+    pubsub_events: deque[float] = field(
+        default_factory=lambda: deque(maxlen=_EVENT_DEQUE_MAXLEN)
+    )
     pubsub_latencies_ms: deque[float] = field(
         default_factory=lambda: deque(maxlen=1000)
     )
@@ -128,6 +137,26 @@ class ServerMetricsTracker:
     def set_notification_drops(self, count: int) -> None:
         self.notification_drops = max(0, int(count))
 
+    def record_notification_drop(self, n: int = 1) -> None:
+        """Increment server-observed notification delivery drops (OBS-01)."""
+        self.notification_drops = max(0, int(self.notification_drops) + max(0, int(n)))
+
+    def record_replication_drop(self, n: int = 1) -> None:
+        """Increment cache replication enqueue drops (OBS-04)."""
+        self.replication_drops = max(0, int(self.replication_drops) + max(0, int(n)))
+
+    def record_cache_pubsub_drop(self, n: int = 1) -> None:
+        """Increment cache-pubsub notification queue drops (OBS-04)."""
+        self.cache_pubsub_drops = max(
+            0, int(self.cache_pubsub_drops) + max(0, int(n))
+        )
+
+    def set_replication_drops(self, count: int) -> None:
+        self.replication_drops = max(0, int(count))
+
+    def set_cache_pubsub_drops(self, count: int) -> None:
+        self.cache_pubsub_drops = max(0, int(count))
+
     def prometheus_lines(self, labels: str) -> list[str]:
         """Emit process-local RPC/pubsub counters and latency histograms."""
         lines: list[str] = []
@@ -149,11 +178,28 @@ class ServerMetricsTracker:
             )
         lines.append(
             "# HELP mpreg_client_notification_drops_total "
-            "Pubsub notifications dropped (server-observed mirror when set)."
+            "Pubsub notifications dropped (server-observed delivery failures)."
         )
         lines.append("# TYPE mpreg_client_notification_drops_total counter")
         lines.append(
             f"mpreg_client_notification_drops_total{{{labels}}} {self.notification_drops}"
+        )
+        lines.append(
+            "# HELP mpreg_cache_replication_drops_total "
+            "Cache replication operations dropped due to backpressure."
+        )
+        lines.append("# TYPE mpreg_cache_replication_drops_total counter")
+        lines.append(
+            f"mpreg_cache_replication_drops_total{{{labels}}} {self.replication_drops}"
+        )
+        lines.append(
+            "# HELP mpreg_cache_pubsub_notification_drops_total "
+            "Cache-pubsub integration notification queue drops."
+        )
+        lines.append("# TYPE mpreg_cache_pubsub_notification_drops_total counter")
+        lines.append(
+            f"mpreg_cache_pubsub_notification_drops_total{{{labels}}} "
+            f"{self.cache_pubsub_drops}"
         )
         lines.append(
             "# HELP mpreg_rpc_errors_by_code_total RPC failures labeled by error code."

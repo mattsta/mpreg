@@ -99,10 +99,12 @@ browser-based UIs.
 
 ### Management read API
 
-Normalized read models (mutations still deferred):
+Normalized read models (mutations are shipped (drain/detach/policy/audit)):
 
 - `/mgmt/v1/cluster`, `/mgmt/v1/nodes`, `/mgmt/v1/routes`, `/mgmt/v1/catalog`,
-  `/mgmt/v1/health`
+  `/mgmt/v1/health`, `/mgmt/v1/raft`, `/mgmt/v1/audit`
+- `POST /mgmt/v1/nodes/drain`, `POST /mgmt/v1/peers/detach`, `POST /mgmt/v1/policy/apply`
+- CLI: `mpreg admin drain|detach|policy|audit`
 - `POST /mgmt/v1/policy/dry-run` — evaluate namespace/routing policy without apply
 
 ### CLI output format

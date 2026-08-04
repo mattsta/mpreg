@@ -74,6 +74,11 @@ class MPREGClusterClient:
     ``auto_summary_redirect=True`` and optionally ``preferred_region`` so missing
     commands can redirect via discovery summaries. Endpoint selection already
     penalizes high latency/error rates using ``latency_weight`` / ``error_weight``.
+
+    **Four-plane HA (ERG-04):** this client is RPC-primary. For queue/cache/pubsub
+    on a chosen endpoint, use :meth:`plane_client` to open an ``MPREGClient`` against
+    the current best URL (or a specific seed). Failover across planes is
+    composition, not automatic multi-plane fan-out.
     """
 
     seed_urls: tuple[str, ...]
@@ -148,6 +153,24 @@ class MPREGClusterClient:
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.disconnect()
+
+    def plane_client(self, url: str | None = None) -> Any:
+        """Return an ``MPREGClient`` bound to one endpoint for four-plane ops (ERG-04).
+
+        Does not auto-failover queue/cache/pubsub; callers pick ``url`` or the
+        first healthy seed. Prefer this over inventing multi-plane HA on RPC-only paths.
+        """
+        from mpreg.client.unified_client import MPREGClient
+
+        target = url
+        if not target:
+            candidates = self._candidate_urls() if hasattr(self, "_candidate_urls") else []
+            target = (candidates[0] if candidates else None) or (
+                self.seed_urls[0] if self.seed_urls else None
+            )
+        if not target:
+            raise RuntimeError("No endpoint available for plane_client")
+        return MPREGClient(target)
 
     async def call(
         self,

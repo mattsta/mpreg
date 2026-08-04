@@ -1,3 +1,5 @@
+> **Honesty banner:** Blockchain MQ ``EXACTLY_ONCE`` is **unsupported** (fail-closed). Fee tables must not price it. Raft elsewhere is CFT, not BFT.
+
 # Blockchain-Backed Message Queue Architecture
 
 ## Overview

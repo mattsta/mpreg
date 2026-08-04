@@ -791,6 +791,8 @@ class GossipProtocol:
     message_target_filter: Callable[[GossipMessage, NodeId], bool] | None = None
     vector_clock: VectorClock = field(default_factory=VectorClock.empty)
     pending_messages: deque[Any] = field(default_factory=deque)
+    pending_messages_maxsize: int = 10000
+    pending_messages_dropped: int = 0
     recent_messages: dict[str, GossipMessage] = field(default_factory=dict)
     state_cache: dict[str, Any] = field(default_factory=dict)
     known_nodes: dict[NodeId, NodeMetadata] = field(default_factory=dict)
@@ -1033,6 +1035,20 @@ class GossipProtocol:
         """Get list of available nodes for gossiping."""
         return list(self.transport.peer_ids(exclude=self.node_id))
 
+    def _enqueue_pending(self, message: Any, *, front: bool = False) -> None:
+        """Bound pending gossip queue (PERF-07); drop oldest on overflow."""
+        max_n = max(1, int(self.pending_messages_maxsize or 10000))
+        while len(self.pending_messages) >= max_n:
+            try:
+                self.pending_messages.pop()
+                self.pending_messages_dropped += 1
+            except IndexError:
+                break
+        if front:
+            self.pending_messages.appendleft(message)
+        else:
+            self.pending_messages.append(message)
+
     def _get_messages_to_propagate(
         self, *, limit: int
     ) -> tuple[list[GossipMessage], int]:
@@ -1202,11 +1218,11 @@ class GossipProtocol:
                     GossipMessageType.ROUTE_KEY_ANNOUNCEMENT,
                 }:
                     if message.hop_count == 0:
-                        self.pending_messages.appendleft(message)
+                        self._enqueue_pending(message, front=True)
                     else:
-                        self.pending_messages.append(message)
+                        self._enqueue_pending(message, front=False)
                 else:
-                    self.pending_messages.append(message)
+                    self._enqueue_pending(message, front=False)
             self.scheduler.update_pending_messages(len(self.pending_messages))
 
             # Also add to recent_messages so tests can access locally created messages

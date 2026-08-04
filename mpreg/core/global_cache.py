@@ -150,6 +150,8 @@ class GlobalCacheManager(ManagedObject):
             asyncio.Queue(maxsize=max_pending)
         )
         self.pending_replications_dropped: int = 0
+        # Optional OBS sink: callable(n: int) when replication work is dropped.
+        self._metrics_replication_drop: Any = None
 
         # Initialize namespace index for efficient namespace operations
         self.namespace_index: dict[str, set[GlobalCacheKey]] = defaultdict(set)
@@ -184,19 +186,30 @@ class GlobalCacheManager(ManagedObject):
             pass
         try:
             q.get_nowait()
-            self.pending_replications_dropped += 1
-            self.operation_stats["replication_drops"] = (
-                int(self.operation_stats.get("replication_drops", 0)) + 1
-            )
+            self._note_replication_drop()
         except asyncio.QueueEmpty:
             pass
         try:
             q.put_nowait(item)
         except asyncio.QueueFull:
-            self.pending_replications_dropped += 1
-            self.operation_stats["replication_drops"] = (
-                int(self.operation_stats.get("replication_drops", 0)) + 1
-            )
+            self._note_replication_drop()
+
+    def _note_replication_drop(self) -> None:
+        self.pending_replications_dropped += 1
+        self.operation_stats["replication_drops"] = (
+            int(self.operation_stats.get("replication_drops", 0)) + 1
+        )
+        sink = getattr(self, "_metrics_replication_drop", None)
+        if callable(sink):
+            try:
+                sink(1)
+            except Exception:
+                pass
+
+    def attach_metrics_sink(self, *, on_replication_drop: Any = None) -> None:
+        """Attach optional Prom/metrics callbacks (OBS-04)."""
+        if on_replication_drop is not None:
+            self._metrics_replication_drop = on_replication_drop
 
     def _data_plane_allowed(
         self, namespace: str, *, write: bool

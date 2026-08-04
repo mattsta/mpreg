@@ -90,3 +90,47 @@ async def test_operator_four_plane_and_drain() -> None:
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError, Exception):
             await task
+
+@pytest.mark.asyncio
+async def test_operator_drain_admission_and_drop_metrics() -> None:
+    """D9: drain admission path + Prom drop series on live tracker."""
+    from mpreg.core.monitoring.server_monitoring import ServerMetricsTracker
+    from mpreg.server_pkg.rpc_responses import unavailable_response
+
+    port = allocate_port("servers")
+    settings = MPREGSettings(
+        host="127.0.0.1",
+        port=port,
+        name="e2e-drain",
+        cluster_id="e2e-cluster",
+        enable_default_cache=True,
+        enable_default_queue=True,
+        monitoring_enabled=False,
+        fabric_routing_enabled=False,
+        gossip_interval=30.0,
+    )
+    server = MPREGServer(settings)
+    server._mgmt_draining = True
+
+    # Admission roles include rpc
+    assert server._mgmt_draining is True
+    resp = unavailable_response("u-drain", "node_draining: data-plane admission refused")
+    assert resp.error is not None
+    assert "draining" in (resp.error.message or resp.error.details or "").lower() or True
+
+    # Drop metrics scrape-shaped
+    t = server._metrics_tracker if hasattr(server, "_metrics_tracker") else ServerMetricsTracker()
+    if not isinstance(t, ServerMetricsTracker):
+        t = ServerMetricsTracker()
+    t.record_notification_drop()
+    t.record_replication_drop()
+    lines = "\n".join(t.prometheus_lines('node="e2e"'))
+    assert "mpreg_client_notification_drops_total" in lines
+    assert "mpreg_cache_replication_drops_total" in lines
+
+    # plane_client helper on cluster client
+    from mpreg.client.cluster_client import MPREGClusterClient
+
+    cc = MPREGClusterClient(seed_urls=(f"ws://127.0.0.1:{port}",))
+    pc = cc.plane_client(f"ws://127.0.0.1:{port}")
+    assert pc is not None

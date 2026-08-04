@@ -1,3 +1,5 @@
+> **Honesty banner:** Sections that mention “Byzantine” describe historical queue name-vote detection, **not** BFT consensus. Production Raft is CFT.
+
 # MPREG Fabric Architecture and Fault Tolerance
 
 This document describes the unified fabric queue delivery system, including

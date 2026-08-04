@@ -546,7 +546,12 @@ class FederationMonitoringSystem:
         )
 
     async def _get_ready(self, request: web.Request) -> web.Response:
-        """Readiness: refuse traffic when draining or federation health is bad."""
+        """Readiness: refuse traffic when draining or federation health is bad.
+
+OBS-07: returns ready when health score is at least degraded (>= 0.4) and the
+node is not draining. Operators must not treat HTTP 200 here as "fully healthy";
+use /health and federation health_score for full status. Drain alone forces 503.
+"""
         try:
             draining = False
             drain_fn = getattr(self, "draining_provider", None)
@@ -2178,9 +2183,14 @@ class FederationMonitoringSystem:
         depth: int = 0,
     ) -> None:
         # Cap recursion: explicit golden series preferred over deep trees.
-        if depth > 2 or not isinstance(payload, dict):
+        # PERF-04: skip empty dicts; avoid re-allocating safe keys for Nones.
+        if depth > 2 or not isinstance(payload, dict) or not payload:
             return
         for key, value in payload.items():
+            if value is None:
+                continue
+            if isinstance(value, dict) and not value:
+                continue
             safe_key = "".join(
                 ch if ch.isalnum() or ch == "_" else "_" for ch in str(key)
             ).strip("_")

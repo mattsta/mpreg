@@ -71,7 +71,10 @@ RequestT = TypeVar("RequestT")
 
 @dataclass(slots=True)
 class MPREGClientAPI:
-    """A high-level client API for interacting with the MPREG cluster."""
+    """
+    Prefer :class:`mpreg.client.unified_client.MPREGClient` for new four-plane code.
+
+    A high-level client API for interacting with the MPREG cluster."""
 
     url: str
     full_log: bool = False

@@ -5,6 +5,9 @@ Enhanced Federation Resilience for MPREG.
 auto-recovery paths refuse simulated RNG success; they are **not** a production
 control loop until real monitoring probes are wired. See ``claims.yaml``.
 
+**PERF-08/09:** timer loops (health assess / recovery) use fixed sleeps. That is
+expected for an unwired library control plane — not a production busy-poll floor.
+
 This module provides resilience *patterns* for federated operations:
 - Circuit breakers with adaptive thresholds
 - Health monitoring hooks (probes unimplemented → UNKNOWN)

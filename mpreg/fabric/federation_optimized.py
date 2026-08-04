@@ -1,19 +1,8 @@
 """
-Optimized federated pub/sub topic routing for MPREG.
+Optimized federated pub/sub topic routing for MPREG (library helpers).
 
-This module provides a production-ready, high-performance federation system with:
-- Thread-safe concurrent operations
-- Latency-based intelligent routing
-- Comprehensive error handling and resilience
-- Memory-efficient data structures
-- Advanced monitoring and observability
-
-Key optimizations:
-- O(1) routing table updates via incremental updates
-- Fast bloom filters with optimized hashing
-- Weighted routing based on latency and cluster health
-- Circuit breakers with exponential backoff
-- Memory-efficient LRU caching
+**Integration status:** high-performance routing helpers — not a separate product SLA.
+Prefer the live fabric router + path-vector/LS planes on MPREGServer.
 """
 
 from __future__ import annotations

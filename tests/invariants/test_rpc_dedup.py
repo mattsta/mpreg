@@ -79,3 +79,27 @@ def test_tracker_ttl_expiry_allows_reprocess() -> None:
     removed = tracker.cleanup_expired(now + 10.0)
     assert removed >= 1
     assert ann.should_process("ws://x:1", tracker) is True
+
+def test_retry_storm_same_announcement_id_single_apply() -> None:
+    """INV-P7 live-shaped: many retries of the same announcement apply once."""
+    tracker = FederatedAnnouncementTracker(ttl_seconds=60.0)
+    ann = FederatedRPCAnnouncement.create_initial(
+        functions=("echo", "ping"),
+        resources=(),
+        cluster_id="c1",
+        original_source="ws://origin:1",
+        max_hops=5,
+    )
+    local = "ws://local:1"
+    applied = 0
+    for _ in range(20):
+        # Simulate network retry of identical announcement_id
+        if ann.should_process(local, tracker):
+            tracker.mark_seen(ann.propagation.announcement_id, time.time())
+            applied += 1
+        # Also retry a forwarded copy (same id)
+        fwd = ann.create_forwarded()
+        if fwd.should_process(local, tracker):
+            tracker.mark_seen(fwd.propagation.announcement_id, time.time())
+            applied += 1
+    assert applied == 1

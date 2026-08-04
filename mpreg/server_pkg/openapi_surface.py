@@ -33,6 +33,24 @@ def build_monitoring_openapi() -> dict[str, Any]:
             }
         },
         "/health/summary": {"get": {"summary": "Health summary", "tags": ["health"]}},
+        "/health/clusters": {"get": {"summary": "Per-cluster health", "tags": ["health"]}},
+        "/metrics": {"get": {"summary": "JSON metrics root", "tags": ["metrics"]}},
+        "/metrics/rpc": {"get": {"summary": "RPC metrics", "tags": ["metrics"]}},
+        "/metrics/pubsub": {"get": {"summary": "Pubsub metrics", "tags": ["metrics"]}},
+        "/metrics/queue": {"get": {"summary": "Queue metrics", "tags": ["metrics"]}},
+        "/metrics/cache": {"get": {"summary": "Cache metrics", "tags": ["metrics"]}},
+        "/metrics/transport": {"get": {"summary": "Transport metrics", "tags": ["metrics"]}},
+        "/metrics/persistence": {"get": {"summary": "Persistence metrics", "tags": ["metrics"]}},
+        "/discovery/summary": {"get": {"summary": "Discovery summary export", "tags": ["discovery"]}},
+        "/discovery/lag": {"get": {"summary": "Discovery lag", "tags": ["discovery"]}},
+        "/dns/metrics": {"get": {"summary": "DNS gateway metrics", "tags": ["dns"]}},
+        "/topology": {"get": {"summary": "Federation topology", "tags": ["topology"]}},
+        "/topology/graph": {"get": {"summary": "Topology graph", "tags": ["topology"]}},
+        "/topology/paths": {"get": {"summary": "Topology paths", "tags": ["topology"]}},
+        "/routing/link-state": {"get": {"summary": "Link-state snapshot", "tags": ["routing"]}},
+        "/alerts": {"get": {"summary": "Active alerts", "tags": ["alerts"]}},
+        "/config": {"get": {"summary": "Runtime config snapshot", "tags": ["config"]}},
+
         "/metrics/prometheus": {
             "get": {
                 "summary": "Prometheus text exposition",

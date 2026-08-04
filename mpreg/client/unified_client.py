@@ -151,7 +151,28 @@ class MPREGClient:
         await self.disconnect()
 
     # --- RPC ---
-    async def call(self, fun: str, *args: Any, **kwargs: Any) -> Any:
+    async def call(
+        self,
+        fun: str,
+        *args: Any,
+        locs: Any = None,
+        timeout: float | None = None,
+        function_id: str | None = None,
+        version_constraint: str | None = None,
+        target_cluster: str | None = None,
+        **kwargs: Any,
+    ) -> Any:
+        """Call a remote function (signature parity with MPREGClientAPI — ERG-08)."""
+        if locs is not None:
+            kwargs["locs"] = locs
+        if timeout is not None:
+            kwargs["timeout"] = timeout
+        if function_id is not None:
+            kwargs["function_id"] = function_id
+        if version_constraint is not None:
+            kwargs["version_constraint"] = version_constraint
+        if target_cluster is not None:
+            kwargs["target_cluster"] = target_cluster
         return await self.api.call(fun, *args, **kwargs)
 
     async def request(

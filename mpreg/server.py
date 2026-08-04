@@ -949,7 +949,7 @@ class Cluster:
             timestamp=time.time(),
         )
         envelope = FabricMessageEnvelope(payload=unified_message_to_dict(message))
-        body = self.serializer.serialize(envelope.model_dump())
+        body = self.serializer.serialize_model(envelope)
 
         connection = where
         if not connection.is_connected:
@@ -3589,7 +3589,7 @@ class MPREGServer:
                 envelope = FabricMessageEnvelope(
                     payload=unified_message_to_dict(message)
                 )
-                data = self.serializer.serialize(envelope.model_dump())
+                data = self.serializer.serialize_model(envelope)
                 try:
                     await connection.send(data)
                     return
@@ -3635,7 +3635,7 @@ class MPREGServer:
                 envelope = FabricMessageEnvelope(
                     payload=unified_message_to_dict(message)
                 )
-                data = self.serializer.serialize(envelope.model_dump())
+                data = self.serializer.serialize_model(envelope)
                 try:
                     await connection.send(data)
                     return
@@ -3997,7 +3997,7 @@ class MPREGServer:
                 envelope = FabricMessageEnvelope(
                     payload=unified_message_to_dict(forward_message)
                 )
-                data = self.serializer.serialize(envelope.model_dump())
+                data = self.serializer.serialize_model(envelope)
                 with contextlib.suppress(Exception):
                     await connection.send(data)
             return
@@ -9112,14 +9112,33 @@ class MPREGServer:
         and execution summaries based on request parameters.
         """
         from mpreg.core.logging import trace_context
+        from mpreg.core.observability.trace_context import extract_traceparent
 
         start_time = time.time()
         success = False
         error_code: str | int | None = None
-        # Contextualize JSON sinks with request correlation when present.
+        # Contextualize JSON sinks with request correlation + inbound W3C trace.
         req_u = getattr(req, "u", None)
+        inbound_tp: str | None = None
+        try:
+            headers = getattr(req, "headers", None) or {}
+            if isinstance(headers, dict):
+                inbound_tp = extract_traceparent(headers)
+            if not inbound_tp:
+                top = getattr(req, "traceparent", None)
+                if top:
+                    inbound_tp = str(top)
+            if not inbound_tp:
+                meta = getattr(req, "metadata", None) or {}
+                if isinstance(meta, dict):
+                    inbound_tp = extract_traceparent(meta)
+        except Exception:
+            inbound_tp = None
         with (
-            trace_context(request_u=str(req_u) if req_u else None),
+            trace_context(
+                request_u=str(req_u) if req_u else None,
+                traceparent=inbound_tp,
+            ),
             self._request_viewer_context(
                 viewer_cluster_id, viewer_tenant_id=viewer_tenant_id
             ),
@@ -9215,6 +9234,37 @@ class MPREGServer:
                 response_model: RPCResponse | PubSubAck | None = None
                 close_connection = False
                 pending_summary_backlog: PubSubSubscription | None = None
+                # ERG-01 / C1: when draining, refuse client data-plane roles so
+                # drain is more than a /ready flag (control/server/gossip still flow).
+                role = parsed_msg.get("role")
+                if (
+                    getattr(self, "_mgmt_draining", False)
+                    and role
+                    in {
+                        "rpc",
+                        "pubsub-publish",
+                        "pubsub-subscribe",
+                        "pubsub-unsubscribe",
+                        "pubsub",
+                    }
+                ):
+                    from mpreg.server_pkg.rpc_responses import unavailable_response
+
+                    u = str(parsed_msg.get("u") or "drain")
+                    response_model = unavailable_response(
+                        u, "node_draining: data-plane admission refused"
+                    )
+                    try:
+                        await transport.send(
+                            self.serializer.serialize(
+                                response_model.model_dump()
+                                if hasattr(response_model, "model_dump")
+                                else response_model
+                            )
+                        )
+                    except Exception:
+                        pass
+                    continue
                 match parsed_msg.get("role"):
                     case "server":
                         # SERVER-TO-SERVER communications packet
@@ -9799,6 +9849,8 @@ class MPREGServer:
             )
         except Exception as e:
             logger.error(f"Failed to send notification to client {client_id}: {e}")
+            # OBS-01: count server-side delivery drops so Prom is not decorative.
+            self._metrics_tracker.record_notification_drop()
             # Clean up dead client connection
             if client_id in self.pubsub_clients:
                 del self.pubsub_clients[client_id]
@@ -11315,24 +11367,18 @@ class MPREGServer:
         """Apply optional gossip envelope HMAC policy; return payload without HMAC field.
 
         Returns ``None`` when the envelope is rejected (fail-closed when required).
+        Implementation lives in :mod:`mpreg.server_pkg.gossip_admission` (PERF-02 peel).
         """
-        from mpreg.fabric.gossip_signatures import (
-            SIGNATURE_KEY,
-            accept_gossip_payload,
-        )
+        from mpreg.server_pkg.gossip_admission import accept_fabric_gossip_payload
 
-        require = bool(getattr(self.settings, "fabric_gossip_require_hmac", False))
-        secret = getattr(self.settings, "fabric_gossip_hmac_secret", None)
-        ok = accept_gossip_payload(payload, require_hmac=require, secret=secret)
-        if not ok:
-            logger.warning(
-                "[{}] Rejected fabric-gossip envelope (HMAC policy)",
-                self.settings.name,
-            )
-            return None
-        if SIGNATURE_KEY in payload:
-            return {k: v for k, v in payload.items() if k != SIGNATURE_KEY}
-        return payload
+        return accept_fabric_gossip_payload(
+            payload=payload,
+            require_hmac=bool(
+                getattr(self.settings, "fabric_gossip_require_hmac", False)
+            ),
+            secret=getattr(self.settings, "fabric_gossip_hmac_secret", None),
+            node_name=str(getattr(self.settings, "name", "node")),
+        )
 
     def _register_queue_rpc_commands(self) -> None:
         """Expose queue manager operations on the RPC command surface."""
@@ -11398,6 +11444,12 @@ class MPREGServer:
         self._cache_manager = cache_manager
         if hasattr(cache_manager, "attach_namespace_policy"):
             cache_manager.attach_namespace_policy(self._namespace_policy_engine)
+        if hasattr(cache_manager, "attach_metrics_sink"):
+            tracker = getattr(self, "_metrics_tracker", None)
+            if tracker is not None and hasattr(tracker, "record_replication_drop"):
+                cache_manager.attach_metrics_sink(
+                    on_replication_drop=tracker.record_replication_drop
+                )
         if self._unified_monitor is not None:
             from .core.monitoring.system_adapters import CacheSystemMonitor
 
@@ -11406,6 +11458,16 @@ class MPREGServer:
                 system_name=self.settings.name,
             )
         self._register_cache_rpc_commands()
+
+    def attach_cache_pubsub_integration(self, integration: Any) -> None:
+        """Attach cache↔pubsub integration and wire drop metrics (OBS-04)."""
+        self._cache_pubsub_integration = integration
+        if hasattr(integration, "attach_metrics_sink"):
+            tracker = getattr(self, "_metrics_tracker", None)
+            if tracker is not None and hasattr(tracker, "record_cache_pubsub_drop"):
+                integration.attach_metrics_sink(
+                    on_cache_pubsub_drop=tracker.record_cache_pubsub_drop
+                )
 
     def attach_queue_manager(self, queue_manager: Any) -> None:
         """Attach a queue manager to the monitoring system and RPC surface."""

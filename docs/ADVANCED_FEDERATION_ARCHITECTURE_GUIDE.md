@@ -1,3 +1,5 @@
+> **Honesty banner:** Advanced federation sketches are lab-scale. Raft is CFT (not BFT). Hub hierarchy / SWIM are library-only until wired as default membership.
+
 # Advanced Fabric Federation Architecture Guide
 
 ## Overview

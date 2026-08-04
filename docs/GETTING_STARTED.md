@@ -1192,7 +1192,7 @@ await scheduler.run_dag(dag, schedule="@daily")
 
 #### **2. Advanced Fault Tolerance**
 
-- **Byzantine fault tolerance**: Handle malicious or arbitrary failures
+- **Byzantine FT (research only; not product)**: Handle malicious or arbitrary failures
 - **Consensus algorithms**: Implement Raft for cluster coordination
 - **Chaos engineering**: Built-in failure injection for testing resilience
 

@@ -1,19 +1,8 @@
 """
-Graph-Based Routing for the MPREG Fabric (lab-scale to large topologies; not a planet-scale product SLA).
+Graph-Based Routing helpers for the MPREG Fabric (lab-scale topologies).
 
-This module implements the core graph routing engine that provides graph-traversal-based
-scalability for the MPREG fabric. It enables optimal multi-hop routing through
-sophisticated graph algorithms while maintaining the high performance characteristics of the
-existing fabric routing infrastructure.
-
-Key Features:
-- Dijkstra's algorithm for optimal path finding
-- A* algorithm with geographic heuristics for wide-area routing heuristics
-- Multiple disjoint paths for load balancing and redundancy
-- Real-time graph updates with intelligent caching
-- hierarchical optimization helpers (complexity depends on topology)
-
-This is Phase 1 of the Planet-Scale Fabric Roadmap.
+**Not a planet-scale product SLA.** Dijkstra/A* helpers complement path-vector/LS;
+see claims.yaml non_claims for OSPF/BGP.
 """
 
 from __future__ import annotations

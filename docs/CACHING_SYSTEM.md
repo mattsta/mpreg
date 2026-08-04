@@ -1,3 +1,5 @@
+> **Honesty banner:** Cache ``ConsistencyLevel.STRONG`` is refuse-by-default (no majority-ack barrier). Use EVENTUAL/WEAK on the live path.
+
 # MPREG Smart Caching System Documentation
 
 ## Table of Contents

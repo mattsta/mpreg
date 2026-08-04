@@ -3,7 +3,7 @@
 # See .local/DISTRIBUTED_SYSTEMS_VALIDATION_PLAN.md §1 and §6.
 
 version: 1
-updated: "2026-08-03"
+updated: "2026-08-04"
 
 routing:
   - id: INV-R1
@@ -187,3 +187,15 @@ non_claims:
   - "Gossip envelopes are unsigned by default; fabric_gossip_require_hmac enables envelope HMAC (not PKI / not route signing)"
   - "Fabric snapshot restore is best-effort, not crash-atomic multi-store"
   - "No Jepsen-class concurrent linearizability checker for Raft"
+
+# Tests present under tests/invariants/ that back tooling/support rather than a
+# named INV-* product claim (B3). Do not delete without reviewing usage.
+support_only:
+  - tests/invariants/test_consensus_import_guard.py
+  - tests/invariants/test_fault_injector.py
+  - tests/invariants/test_rpc_dag_properties.py
+  - tests/invariants/test_rpc_intermediate_loss.py
+  - tests/invariants/test_rpc_modality_bench_smoke.py
+  - tests/invariants/test_rpc_stream_cancel.py
+  - tests/invariants/test_server_plane_handlers.py
+

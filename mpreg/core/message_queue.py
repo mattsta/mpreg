@@ -16,6 +16,7 @@ All data structures use proper dataclasses following MPREG's clean design princi
 from __future__ import annotations
 
 import asyncio
+import bisect
 import time
 import uuid
 from collections import defaultdict, deque
@@ -158,6 +159,8 @@ class QueueConfiguration:
     message_ttl_seconds: float | None = None
     enable_dead_letter_queue: bool = True
     dead_letter_max_receives: int = 3
+    # PERF-05: bound DLQ growth under poison storms (defaults to min(max_size, 10000)).
+    dead_letter_max_size: int | None = None
     enable_deduplication: bool = False
     deduplication_window_seconds: float = 300.0
     max_retries: int = 3
@@ -220,6 +223,12 @@ class MessageQueue(ManagedObject):
         self.pending_messages: deque[QueuedMessage] = deque()
         self.in_flight_messages: dict[MessageIdStr, InFlightMessage] = {}
         self.dead_letter_queue: deque[QueuedMessage] = deque()
+        # PERF-01: wake delivery worker instead of 100ms empty poll.
+        self._delivery_wake: asyncio.Event = asyncio.Event()
+        # PERF-05: bound DLQ growth under poison storms.
+        self._dead_letter_maxsize: int = max(
+            1, int(getattr(config, "dead_letter_max_size", None) or min(config.max_size, 10000))
+        )
 
         # Subscription management
         self.subscriptions: dict[SubscriptionId, QueueSubscription] = {}
@@ -280,6 +289,7 @@ class MessageQueue(ManagedObject):
                 int(in_flight.delivery_attempt or 1),
             )
             self.pending_messages.appendleft(message)
+            self._delivery_wake.set()
             await self._queue_store.requeue(message)
             queue_log.info(
                 f"Restored in-flight message {message_id} to pending for redelivery "
@@ -381,18 +391,15 @@ class MessageQueue(ManagedObject):
 
             # Add to pending queue
             if self.config.queue_type == QueueType.PRIORITY:
-                # Insert based on priority (higher priority first)
-                inserted = False
-                for i, pending_msg in enumerate(self.pending_messages):
-                    if message.priority > pending_msg.priority:
-                        self.pending_messages.insert(i, message)
-                        inserted = True
-                        break
-                if not inserted:
-                    self.pending_messages.append(message)
+                # PERF-06: bisect by (-priority) for O(log n) position; deque insert still O(n)
+                # but avoids full linear scan comparisons on every enqueue.
+                priorities = [-m.priority for m in self.pending_messages]
+                idx = bisect.bisect_left(priorities, -message.priority)
+                self.pending_messages.insert(idx, message)
             else:
                 # FIFO or DELAY queue
                 self.pending_messages.append(message)
+            self._delivery_wake.set()
 
             if self._queue_store is not None:
                 await self._queue_store.enqueue(message)
@@ -433,6 +440,8 @@ class MessageQueue(ManagedObject):
 
         self.subscriptions[subscription.subscription_id] = subscription
         self.topic_subscribers[topic_pattern].add(subscriber_id)
+        # Wake delivery so pending messages are not stuck waiting for poll.
+        self._delivery_wake.set()
 
         queue_log.info(
             f"Added subscription {subscription.subscription_id} for {subscriber_id} to {topic_pattern}"
@@ -532,14 +541,26 @@ class MessageQueue(ManagedObject):
             )
 
     async def _delivery_worker(self) -> None:
-        """Background worker to process pending messages."""
+        """Background worker to process pending messages.
+
+        PERF-01: event-driven wake instead of a fixed 100ms empty poll.
+        Uses clear-then-recheck so a concurrent enqueue cannot lose its wake.
+        """
         try:
             while True:
                 try:
-                    await asyncio.sleep(0.1)  # Process every 100ms
-
                     if not self.pending_messages:
-                        continue
+                        self._delivery_wake.clear()
+                        # Recheck after clear: enqueue may have set the event
+                        # between the empty check and clear (lost-wake race).
+                        if not self.pending_messages:
+                            try:
+                                await asyncio.wait_for(
+                                    self._delivery_wake.wait(), timeout=1.0
+                                )
+                            except asyncio.TimeoutError:
+                                pass
+                            continue
 
                     # Get next message ready for delivery
                     message = None
@@ -555,6 +576,8 @@ class MessageQueue(ManagedObject):
                             break
 
                     if not message:
+                        # Delayed messages only — brief yield, not a 100ms floor.
+                        await asyncio.sleep(0.01)
                         continue
 
                     # Deliver the message
@@ -576,7 +599,7 @@ class MessageQueue(ManagedObject):
         try:
             while True:
                 try:
-                    await asyncio.sleep(0.1)  # Check every 100ms for responsiveness
+                    await asyncio.sleep(0.25)  # Timeout scan; not the delivery latency floor
 
                     expired_messages = []
                     current_time = time.time()
@@ -653,8 +676,15 @@ class MessageQueue(ManagedObject):
             subscribers = self._find_subscribers(message.topic)
 
             if not subscribers:
-                queue_log.warning(f"No subscribers found for topic {message.topic}")
-                await self._move_to_dead_letter_queue(message, "No subscribers")
+                # Pull-based receive (queue_receive) often subscribes after send.
+                # Re-queue and wait for a subscriber wake instead of DLQ-on-empty
+                # (which raced under event-driven delivery — PERF-01).
+                self.pending_messages.appendleft(message)
+                self._delivery_wake.clear()
+                try:
+                    await asyncio.wait_for(self._delivery_wake.wait(), timeout=0.25)
+                except asyncio.TimeoutError:
+                    pass
                 return
 
             # Create in-flight tracking
@@ -688,7 +718,9 @@ class MessageQueue(ManagedObject):
                         queue_log.error(f"Delivery failed to {subscriber_id}: {e}")
 
             if delivered_count == 0:
-                await self._move_to_dead_letter_queue(message, "All deliveries failed")
+                # Transient callback failures: re-queue rather than instant DLQ.
+                self.pending_messages.appendleft(message)
+                self._delivery_wake.set()
                 return
 
             # Handle immediate completion for auto-acknowledged messages
@@ -729,6 +761,7 @@ class MessageQueue(ManagedObject):
 
             # Re-queue for delivery
             self.pending_messages.appendleft(message)
+            self._delivery_wake.set()
             if self._queue_store is not None:
                 await self._queue_store.requeue(message)
             del self.in_flight_messages[message_id]
@@ -759,6 +792,12 @@ class MessageQueue(ManagedObject):
     ) -> None:
         """Move a message to the dead letter queue."""
         if self.config.enable_dead_letter_queue:
+            max_dlq = getattr(self, "_dead_letter_maxsize", 10000)
+            while len(self.dead_letter_queue) >= max_dlq:
+                try:
+                    self.dead_letter_queue.popleft()
+                except IndexError:
+                    break
             self.dead_letter_queue.append(message)
             queue_log.warning(f"Moved message {message.id} to DLQ: {reason}")
             if self._queue_store is not None:

@@ -11,6 +11,7 @@ Modules
 - ``discovery_metrics`` — discovery summary/cache/policy/lag metric builders
 - ``mgmt_summary`` — normalized ``/mgmt/v1`` read models
 - ``mgmt_mutations`` — drain/detach/policy apply + audit log
+- ``gossip_admission`` — fabric gossip HMAC admission (PERF-02 peel)
 - ``consensus.md`` — canonical consensus API matrix (docs)
 """
 

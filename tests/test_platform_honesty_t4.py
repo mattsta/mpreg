@@ -597,3 +597,64 @@ async def test_create_queue_honors_namespace_policy() -> None:
             assert ok is True
     finally:
         await mgr.shutdown()
+
+def test_cli_admin_policy_registered() -> None:
+    """ERG-02: admin policy CLI exists."""
+    from click.testing import CliRunner
+    from mpreg.cli.main import cli
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["admin", "--help"])
+    assert result.exit_code == 0
+    assert "policy" in result.output
+
+def test_cli_client_plane_smokes_registered() -> None:
+    """ERG-05: queue/cache/publish client commands registered."""
+    from click.testing import CliRunner
+    from mpreg.cli.main import cli
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ["client", "--help"])
+    assert result.exit_code == 0
+    for name in ("queue-send", "cache-get", "cache-put", "publish"):
+        assert name in result.output, name
+
+def test_openapi_covers_golden_extra_routes() -> None:
+    """ERG-09: OpenAPI lists topology/metrics splits/alerts/config."""
+    from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
+
+    paths = build_monitoring_openapi()["paths"]
+    for p in (
+        "/health/clusters",
+        "/metrics/rpc",
+        "/metrics/cache",
+        "/topology",
+        "/alerts",
+        "/config",
+        "/discovery/summary",
+    ):
+        assert p in paths, p
+
+def test_readme_honesty_no_bft_planet_private_api() -> None:
+    """ERG-03: root README front door is honest."""
+    from pathlib import Path
+    import re
+
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    assert "Honesty banner" in readme or "honesty banner" in readme.lower()
+    assert "_client.request" not in readme
+    assert "not BFT" in readme or "not Byzantine" in readme
+    # Product claims must not sell planet-scale; lab tool filenames may remain.
+    body = re.sub(r"debug_planet_scale\S*", "", readme, flags=re.I)
+    body = re.sub(r"planet_scale\S*", "", body, flags=re.I)
+    assert "planet-scale" not in body.lower()
+
+def test_support_only_section_in_claims() -> None:
+    """B3: unclaimed invariant tests listed as support_only."""
+    from pathlib import Path
+    import yaml
+
+    path = Path(__file__).resolve().parents[1] / "tests" / "invariants" / "claims.yaml"
+    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    assert "support_only" in data
+    assert any("test_fault_injector" in s for s in data["support_only"])

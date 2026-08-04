@@ -132,6 +132,104 @@ def call(
 
     asyncio.run(_call())
 
+@client.command("queue-send")
+@click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
+@click.option("--queue", "queue_name", required=True, help="Queue name")
+@click.option("--payload", required=True, help="JSON or raw string payload")
+@click.option("--topic", default=None, help="Optional topic")
+def client_queue_send(
+    url: str | None, queue_name: str, payload: str, topic: str | None
+) -> None:
+    """Smoke: send a message via MPREGClient.queue_send (ERG-05)."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    def _parse(value: str) -> Any:
+        try:
+            return json.loads(value)
+        except Exception:
+            return value
+
+    async def _run() -> None:
+        from mpreg.client.unified_client import MPREGClient
+
+        async with MPREGClient(url) as c:
+            result = await c.queue_send(
+                queue_name, _parse(payload), topic=topic or queue_name
+            )
+            console.print(result)
+
+    asyncio.run(_run())
+
+@client.command("cache-get")
+@click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
+@click.option("--namespace", required=True)
+@click.option("--key", "identifier", required=True)
+def client_cache_get(url: str | None, namespace: str, identifier: str) -> None:
+    """Smoke: cache_get via MPREGClient (ERG-05)."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _run() -> None:
+        from mpreg.client.unified_client import MPREGClient
+
+        async with MPREGClient(url) as c:
+            result = await c.cache_get(namespace, identifier)
+            console.print(result)
+
+    asyncio.run(_run())
+
+@client.command("cache-put")
+@click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
+@click.option("--namespace", required=True)
+@click.option("--key", "identifier", required=True)
+@click.option("--value", required=True, help="JSON or raw string value")
+def client_cache_put(
+    url: str | None, namespace: str, identifier: str, value: str
+) -> None:
+    """Smoke: cache_put via MPREGClient (ERG-05)."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    def _parse(v: str) -> Any:
+        try:
+            return json.loads(v)
+        except Exception:
+            return v
+
+    async def _run() -> None:
+        from mpreg.client.unified_client import MPREGClient
+
+        async with MPREGClient(url) as c:
+            result = await c.cache_put(namespace, identifier, _parse(value))
+            console.print(result)
+
+    asyncio.run(_run())
+
+@client.command("publish")
+@click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
+@click.option("--topic", required=True)
+@click.option("--payload", required=True, help="JSON or raw string payload")
+def client_publish(url: str | None, topic: str, payload: str) -> None:
+    """Smoke: fail-closed publish via MPREGClient (ERG-05)."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    def _parse(v: str) -> Any:
+        try:
+            return json.loads(v)
+        except Exception:
+            return v
+
+    async def _run() -> None:
+        from mpreg.client.unified_client import MPREGClient
+
+        async with MPREGClient(url) as c:
+            result = await c.publish(topic, _parse(payload))
+            console.print(result)
+
+    asyncio.run(_run())
+
 @client.command("list-peers")
 @click.option(
     "--url",
@@ -1574,11 +1672,17 @@ def config_check(settings_path: str, output_format: str) -> None:
         warnings.append("monitoring CORS is enabled — disable in production unless needed")
     if settings.monitoring_enabled and not settings.monitoring_auth_token:
         warnings.append("monitoring has no auth token — set monitoring_auth_token for production")
-    if not settings.enable_default_queue and not settings.enable_default_cache:
+    if not settings.enable_default_queue or not settings.enable_default_cache:
+        missing = []
+        if not settings.enable_default_queue:
+            missing.append("queue")
+        if not settings.enable_default_cache:
+            missing.append("cache")
         warnings.append(
-            "enable_default_queue and enable_default_cache are both false — "
-            "MPREGClient queue_*/cache_* RPCs need managers attached "
-            "(--enable-queue / --enable-cache or profile flags)"
+            "four-plane incomplete: enable_default_"
+            + "/enable_default_".join(missing)
+            + " false — MPREGClient plane RPCs need managers "
+            "(--enable-queue / --enable-cache or a profile such as dev.toml)"
         )
     if settings.discovery_summary_export_enabled and not settings.discovery_summary_signing_secret:
         warnings.append("summary export enabled without signing secret")
@@ -1638,7 +1742,7 @@ def config_check(settings_path: str, output_format: str) -> None:
 
 @cli.group("admin")
 def admin_group():
-    """Management mutations: drain, detach, audit (monitoring HTTP)."""
+    """Management mutations: drain, detach, policy, audit (monitoring HTTP)."""
     pass
 
 def _admin_base_url(url: str | None) -> str:
@@ -1802,6 +1906,86 @@ def admin_audit(
                         str(m.get("detail"))[:80],
                     )
                 console.print(table)
+                if resp.status >= 400:
+                    raise SystemExit(1)
+
+    asyncio.run(_run())
+
+@admin_group.command("policy")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_MONITORING_URL",
+    help="Monitoring base URL",
+)
+@click.option(
+    "--token",
+    default=None,
+    envvar="MPREG_MONITORING_TOKEN",
+    help="Bearer token for monitoring auth",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Validate only via /mgmt/v1/policy/dry-run (no apply)",
+)
+@click.option(
+    "--file",
+    "policy_file",
+    type=click.Path(exists=True, dir_okay=False),
+    default=None,
+    help="JSON file body for policy apply/dry-run",
+)
+@click.option("--json-body", default=None, help="Inline JSON body (overrides --file)")
+@click.option("--actor", default=None, help="Actor name for audit")
+@click.option("--reason", default=None, help="Reason for audit")
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON")
+def admin_policy(
+    url: str | None,
+    token: str | None,
+    dry_run: bool,
+    policy_file: str | None,
+    json_body: str | None,
+    actor: str | None,
+    reason: str | None,
+    as_json: bool,
+) -> None:
+    """Apply or dry-run discovery/namespace policy via monitoring HTTP (ERG-02)."""
+    import json as _json
+    from pathlib import Path
+
+    async def _run() -> None:
+        base = _admin_base_url(url)
+        if json_body:
+            body = _json.loads(json_body)
+        elif policy_file:
+            body = _json.loads(Path(policy_file).read_text(encoding="utf-8"))
+        else:
+            body = {}
+        if not isinstance(body, dict):
+            raise click.UsageError("Policy body must be a JSON object")
+        if actor is not None:
+            body.setdefault("actor", actor)
+        if reason is not None:
+            body.setdefault("reason", reason)
+        path = "/mgmt/v1/policy/dry-run" if dry_run else "/mgmt/v1/policy/apply"
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{base}{path}",
+                json=body,
+                headers=_admin_headers(token),
+            ) as resp:
+                data = await resp.json(content_type=None)
+                if as_json:
+                    console.print(data)
+                else:
+                    console.print(
+                        f"[{'green' if resp.status == 200 else 'red'}]"
+                        f"HTTP {resp.status} policy {'dry-run' if dry_run else 'apply'} "
+                        f"applied={data.get('applied', data.get('ok'))}[/]"
+                    )
+                    if isinstance(data, dict) and data.get("detail"):
+                        console.print(str(data.get("detail"))[:200])
                 if resp.status >= 400:
                     raise SystemExit(1)
 
