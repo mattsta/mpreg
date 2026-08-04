@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+
+from mpreg.core.native_codec import dumps_pretty_text, load_path, loads_text
+
 """
 Main CLI Entry Point for MPREG Fabric Federation Management.
 
@@ -12,7 +15,6 @@ Provides command-line interface for comprehensive fabric federation operations:
 """
 
 import asyncio
-import json
 import os
 import sys
 import time
@@ -115,7 +117,7 @@ def call(
 
     def _parse_arg(value: str) -> Any:
         try:
-            return json.loads(value)
+            return loads_text(value)
         except Exception:
             return value
 
@@ -148,7 +150,7 @@ def client_queue_send(
 
     def _parse(value: str) -> Any:
         try:
-            return json.loads(value)
+            return loads_text(value)
         except Exception:
             return value
 
@@ -195,7 +197,7 @@ def client_cache_put(
 
     def _parse(v: str) -> Any:
         try:
-            return json.loads(v)
+            return loads_text(v)
         except Exception:
             return v
 
@@ -282,7 +284,7 @@ def client_publish(url: str | None, topic: str, payload: str) -> None:
 
     def _parse(v: str) -> Any:
         try:
-            return json.loads(v)
+            return loads_text(v)
         except Exception:
             return v
 
@@ -374,7 +376,7 @@ def _parse_metadata_items(items: tuple[str, ...]) -> dict[str, MetadataValue]:
             if not key:
                 continue
             try:
-                parsed = json.loads(value)
+                parsed = loads_text(value)
                 if isinstance(parsed, (str, int, float, bool)):
                     metadata[key] = parsed
                 else:
@@ -678,7 +680,7 @@ def namespace_policy_validate(url: str | None, rules_file: str, actor: str | Non
         raise click.UsageError("Provide --url or set MPREG_URL.")
 
     with open(rules_file, encoding="utf-8") as handle:
-        rules = json.load(handle)
+        rules = loads_text(handle.read())
 
     async def _validate():
         async with MPREGClientAPI(url) as client:
@@ -732,7 +734,7 @@ def namespace_policy_apply(
         raise click.UsageError("Provide --url or set MPREG_URL.")
 
     with open(rules_file, encoding="utf-8") as handle:
-        rules = json.load(handle)
+        rules = loads_text(handle.read())
 
     async def _apply():
         async with MPREGClientAPI(url) as client:
@@ -2150,15 +2152,14 @@ def admin_policy(
     as_json: bool,
 ) -> None:
     """Apply or dry-run discovery/namespace policy via monitoring HTTP (ERG-02)."""
-    import json as _json
     from pathlib import Path
 
     async def _run() -> None:
         base = _admin_base_url(url)
         if json_body:
-            body = _json.loads(json_body)
+            body = loads_text(json_body)
         elif policy_file:
-            body = _json.loads(Path(policy_file).read_text(encoding="utf-8"))
+            body = load_path(policy_file)
         else:
             body = {}
         if not isinstance(body, dict):
@@ -2318,7 +2319,6 @@ def discover(config: str | None, output: str):
         if output == "table":
             federation_cli.display_cluster_list(clusters)
         elif output == "json":
-            import json
 
             # Convert dataclasses to dict for JSON serialization
             clusters_dict = [
@@ -2335,7 +2335,7 @@ def discover(config: str | None, output: str):
                 }
                 for cluster in clusters
             ]
-            console.print(json.dumps(clusters_dict, indent=2))
+            console.print(dumps_pretty_text(clusters_dict))
 
     asyncio.run(_discover())
 
@@ -2405,7 +2405,6 @@ def health(cluster: str | None, output: str):
         if output == "report":
             federation_cli.display_health_report(health_results)
         elif output == "json":
-            import json
 
             # Convert dataclasses to dict for JSON serialization
             serializable_results: dict[str, JsonDict] = {}
@@ -2417,7 +2416,7 @@ def health(cluster: str | None, output: str):
                         serializable_results[cluster_id][key] = asdict(value)
                     else:
                         serializable_results[cluster_id][key] = value
-            console.print(json.dumps(serializable_results, indent=2, default=str))
+            console.print(dumps_pretty_text(serializable_results))
 
     asyncio.run(_health())
 
@@ -3280,7 +3279,6 @@ def run(config: str | None, output: str):
         if output == "table":
             federation_cli.display_cluster_list(clusters)
         elif output == "json":
-            import json
 
             clusters_dict = [
                 {
@@ -3296,7 +3294,7 @@ def run(config: str | None, output: str):
                 }
                 for cluster in clusters
             ]
-            console.print(json.dumps(clusters_dict, indent=2))
+            console.print(dumps_pretty_text(clusters_dict))
 
     asyncio.run(_auto_discover())
 
@@ -3341,12 +3339,11 @@ def generate(output_path: str):
         }
     }
 
-    import json
     from pathlib import Path
 
     output_file = Path(output_path)
     with open(output_file, "w") as f:
-        json.dump(discovery_config, f, indent=2)
+        f.write(dumps_pretty_text(discovery_config))
 
     console.print(
         f"[green]✅ Auto-discovery configuration generated: {output_path}[/green]"
@@ -3377,25 +3374,24 @@ def template(template_name: str, output_path: str):
 @click.option("--key", help="Specific configuration key to show")
 def show(config_path: str, key: str | None):
     """Show configuration file contents."""
-    import json
 
     from rich.panel import Panel
     from rich.syntax import Syntax
 
     try:
         with open(config_path) as f:
-            config_data = json.load(f)
+            config_data = loads_text(f.read())
 
         if key:
             # Show specific key
             if key in config_data:
-                console.print(json.dumps(config_data[key], indent=2))
+                console.print(dumps_pretty_text(config_data[key]))
             else:
                 console.print(f"[red]❌ Key '{key}' not found in configuration[/red]")
         else:
             # Show entire configuration
             config_syntax = Syntax(
-                json.dumps(config_data, indent=2),
+                dumps_pretty_text(config_data),
                 "json",
                 theme="monokai",
                 line_numbers=True,

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 import click
 from rich.console import Console
 from rich.table import Table
+
+from mpreg.core.native_codec import dumps_pretty_text, dumps_text
 
 console = Console()
 
@@ -34,7 +35,7 @@ def emit(
         return
     if fmt == "plain":
         if isinstance(data, (dict, list)):
-            console.print(json.dumps(_jsonable(data), indent=2, default=str))
+            console.print(dumps_pretty_text(_jsonable(data)))
         else:
             console.print(str(data))
         return
@@ -78,7 +79,7 @@ def emit(
 
 def _cell(value: Any) -> str:
     if isinstance(value, (dict, list)):
-        text = json.dumps(value, default=str)
+        text = dumps_text(value)
         return text if len(text) < 80 else text[:77] + "..."
     return str(value)
 

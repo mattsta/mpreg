@@ -12,7 +12,6 @@ Provides comprehensive command-line interface for managing fabric federated clus
 
 from __future__ import annotations
 
-import json
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -40,6 +39,8 @@ from ..fabric.federation_resilience import (
     HealthCheckConfiguration,
     RetryConfiguration,
 )
+
+from mpreg.core.native_codec import JSONDecodeError, dumps_pretty_text, loads_text
 
 console = Console()
 
@@ -82,7 +83,7 @@ class FederationCLI:
             config_file = Path(config_path)
             if config_file.exists():
                 with open(config_file) as f:
-                    config_data = json.load(f)
+                    config_data = loads_text(f.read())
 
                 # Check if auto-discovery is configured
                 auto_discovery_config = config_data.get("auto_discovery", {})
@@ -509,7 +510,7 @@ class FederationCLI:
 
         output_file = Path(output_path)
         with open(output_file, "w") as f:
-            json.dump(config_template, f, indent=2)
+            f.write(dumps_pretty_text(config_template))
 
         self.console.print(
             f"[green]✅ Configuration template generated: {output_path}[/green]"
@@ -541,7 +542,7 @@ class FederationCLI:
 
         try:
             with open(config_file) as f:
-                config = json.load(f)
+                config = loads_text(f.read())
 
             validation_results = []
 
@@ -605,7 +606,7 @@ class FederationCLI:
 
             return all_passed
 
-        except json.JSONDecodeError as e:
+        except JSONDecodeError as e:
             self.console.print(f"[red]❌ Invalid JSON in configuration file: {e}[/red]")
             return False
         except Exception as e:
@@ -626,7 +627,7 @@ class FederationCLI:
 
         try:
             with open(config_path) as f:
-                config = json.load(f)
+                config = loads_text(f.read())
 
             clusters = config.get("clusters", [])
             federation_config = config.get("federation", {})
