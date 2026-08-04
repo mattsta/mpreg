@@ -266,13 +266,23 @@ class GossipMessage:
             self.checksum = self._compute_checksum()
 
     def _compute_digest(self) -> str:
-        """Compute digest for anti-entropy."""
+        """Compute digest for anti-entropy (metadata only — never payload body)."""
         content = f"{self.message_type.value}:{self.sender_id}:{self.sequence_number}"
         return hashlib.md5(content.encode()).hexdigest()[:8]
 
     def _compute_checksum(self) -> str:
-        """Compute checksum for integrity."""
-        content = f"{self.payload}:{self.vector_clock.to_dict()}:{self.sequence_number}"
+        """Compute integrity fingerprint without nested ``str(payload)``.
+
+        Historical implementation used ``f\"{self.payload}:...\"``, which
+        forced full recursive ``dict.__repr__`` on catalog-delta payloads and
+        stalled the event loop under 50-node gossip fan-out. Fingerprints now
+        use a bounded structural hash (see :mod:`mpreg.core.native_codec`).
+        """
+        from mpreg.core.native_codec import payload_fingerprint_hex
+
+        payload_fp = payload_fingerprint_hex(self.payload, truncate=16)
+        clock = self.vector_clock.to_dict()
+        content = f"{payload_fp}:{clock}:{self.sequence_number}"
         return hashlib.sha256(content.encode()).hexdigest()[:16]
 
     def is_expired(self) -> bool:
@@ -1274,12 +1284,19 @@ class GossipProtocol:
         return None
 
     def _coalesce_pending_catalog_update(self, incoming: GossipMessage) -> bool:
-        """Coalesce duplicate catalog updates without dropping unrelated payloads."""
+        """Coalesce duplicate catalog updates without dropping unrelated payloads.
+
+        Only merge messages that share the same logical ``update_id``. Distinct
+        local registrations must not be collapsed by sequence number alone —
+        that previously dropped pending function announcements under bursty
+        register/announce traffic.
+        """
         if incoming.message_type != GossipMessageType.CATALOG_UPDATE:
             return True
-        incoming_sender = incoming.sender_id
-        incoming_sequence = int(incoming.sequence_number)
         incoming_update_id = self._catalog_update_id(incoming)
+        if incoming_update_id is None:
+            # Unknown identity: never coalesce (keep all pending).
+            return True
         filtered: deque[Any] = deque()
         enqueue_incoming = True
         for existing in self.pending_messages:
@@ -1288,26 +1305,12 @@ class GossipProtocol:
                 continue
 
             existing_update_id = self._catalog_update_id(existing)
-            if (
-                incoming_update_id is not None
-                and existing_update_id is not None
-                and incoming_update_id == existing_update_id
-            ):
-                # Keep one pending copy of the same logical catalog delta.
+            if existing_update_id == incoming_update_id:
+                # Same logical catalog delta: keep the lower-hop copy.
                 if int(existing.hop_count) <= int(incoming.hop_count):
                     filtered.append(existing)
                     enqueue_incoming = False
-                # Otherwise drop older-hop existing entry and keep incoming.
-                continue
-
-            # Sequence-based coalescing is safe only for local-origin updates where
-            # sender_id remains stable and monotonic.
-            if incoming_sender == self.node_id and existing.sender_id == self.node_id:
-                existing_sequence = int(existing.sequence_number)
-                if existing_sequence >= incoming_sequence:
-                    filtered.append(existing)
-                    enqueue_incoming = False
-                # Drop older local pending update.
+                # Else drop existing (higher hop) and keep incoming.
                 continue
 
             filtered.append(existing)
@@ -1518,10 +1521,20 @@ class GossipProtocol:
             logger.error(f"Error handling consensus vote: {e}")
 
     async def _handle_catalog_update(self, message: GossipMessage) -> bool:
-        """Handle routing catalog updates."""
+        """Handle routing catalog updates.
+
+        Returns whether the *message* should continue epidemic fan-out.
+
+        Important: re-propagation is based on message novelty (``message_id`` /
+        hop budget), not whether local apply changed state. Gating on apply
+        effect breaks sparse multi-hub topologies — a node that already learned
+        a function via connect-time snapshot would refuse to forward the gossip
+        copy to peers that still need it.
+        """
         if not self.catalog_applier:
             logger.debug("Catalog update received but no catalog applier configured.")
-            return False
+            # Still allow epidemic forward when we cannot apply locally.
+            return message.can_propagate()
         if isinstance(message.payload, RoutingCatalogDelta):
             delta = message.payload
         elif isinstance(message.payload, dict):
@@ -1531,9 +1544,11 @@ class GossipProtocol:
                 f"Invalid catalog update payload type: {type(message.payload)}"
             )
             return False
-        counts = self.catalog_applier.apply(delta, now=delta.sent_at)
-        has_effect = any(value > 0 for value in counts.values())
-        return has_effect
+        self.catalog_applier.apply(delta, now=delta.sent_at)
+        # Epidemic forward: first sighting of this message_id (checked by
+        # MessageFilter / can_propagate on the outer path). Always request
+        # repropagation when hop budget remains.
+        return message.can_propagate()
 
     async def _handle_route_advertisement(self, message: GossipMessage) -> None:
         """Handle path-vector route advertisements."""
