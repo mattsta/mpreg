@@ -318,6 +318,18 @@ class TopicExchange:
             self.active_subscribers = len(self.client_subscriptions)
             return True
 
+    def has_matching_subscribers(self, topic: str) -> bool:
+        """True if any live subscription would receive ``topic``.
+
+        Used to skip expensive payload materialization for control-plane
+        topics (discovery deltas) when nothing is watching.
+        """
+        with self._lock:
+            for subscription_id in self.trie.match_topic(topic):
+                if subscription_id in self.subscriptions:
+                    return True
+            return False
+
     def publish_message(self, message: PubSubMessage) -> list[PubSubNotification]:
         """Publish a message and return notifications for subscribers.
 

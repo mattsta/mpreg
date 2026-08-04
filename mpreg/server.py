@@ -5933,10 +5933,22 @@ class MPREGServer:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             return
+        namespaces = self._delta_namespaces(delta)
+        # Skip full delta materialization when nothing is subscribed. Under
+        # epidemic gossip every node re-applies and would otherwise rebuild
+        # multi-MB nested dicts with zero consumers (live 50-node profile).
+        topics_to_check = (DISCOVERY_DELTA_TOPIC, *(
+            f"{DISCOVERY_DELTA_TOPIC}.{ns}" for ns in namespaces
+        ))
+        if not any(
+            self.topic_exchange.has_matching_subscribers(topic)
+            for topic in topics_to_check
+        ):
+            return
         message = DiscoveryDeltaMessage(
             delta=delta,
             counts=CatalogDeltaCounts.from_dict(counts),
-            namespaces=self._delta_namespaces(delta),
+            namespaces=namespaces,
             source_node=self.cluster.local_url,
             source_cluster=self.settings.cluster_id,
             published_at=time.time(),
