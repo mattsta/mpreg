@@ -9190,7 +9190,10 @@ class MPREGServer:
         self._rpc_actor_context = actor_ctx
         token = _current_rpc_actor_context.set(actor_ctx)
         try:
+            from mpreg.core.observability.trace_context import bind_current_trace
+
             with (
+                bind_current_trace(inbound_tp),
                 trace_context(
                     request_u=str(req_u) if req_u else None,
                     traceparent=inbound_tp,
@@ -9317,11 +9320,9 @@ class MPREGServer:
                     response_model = drain_unavailable_response(parsed_msg.get("u"))
                     try:
                         await transport.send(
-                            self.serializer.serialize(
-                                response_model.model_dump()
-                                if hasattr(response_model, "model_dump")
-                                else response_model
-                            )
+                            self.serializer.serialize_model(response_model)
+                            if hasattr(response_model, "model_dump")
+                            else self.serializer.serialize(response_model)
                         )
                     except Exception:
                         pass

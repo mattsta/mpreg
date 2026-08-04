@@ -63,7 +63,7 @@ cache geo/capacity
 - `/routing/decisions?limit=5`
 - `/mgmt/v1/cluster` and `/mgmt/v1/catalog`
 
-Exit non-zero if any probe fails. Pass token via `MPREG_MONITORING_TOKEN` or
+Exit non-zero if any probe fails. Optional `--data-plane` smokes RPC via `MPREG_URL` / `--rpc-url` (USE-T10-02). Optional `--deep` probes raft/link-state. Pass token via `MPREG_MONITORING_TOKEN` or
 `--token` when auth is enabled.
 
 ## Config check

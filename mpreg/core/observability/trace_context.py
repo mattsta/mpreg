@@ -8,10 +8,20 @@ fabric messages can carry ``traceparent`` / ``tracestate`` in
 from __future__ import annotations
 
 import secrets
-from typing import Any, Mapping, MutableMapping
+from contextlib import contextmanager
+from contextvars import ContextVar
+from typing import Any, Iterator, Mapping, MutableMapping
 
 TRACEPARENT_KEY = "traceparent"
 TRACESTATE_KEY = "tracestate"
+
+# OBS-T10-05: request-scoped W3C parent so fabric hops continue RPC ingress.
+_current_traceparent: ContextVar[str | None] = ContextVar(
+    "mpreg_current_traceparent", default=None
+)
+_current_tracestate: ContextVar[str | None] = ContextVar(
+    "mpreg_current_tracestate", default=None
+)
 
 def generate_trace_id() -> str:
     """Return a 16-byte trace id as 32 lowercase hex characters."""
@@ -49,18 +59,50 @@ def ensure_traceparent(metadata: MutableMapping[str, Any] | None = None) -> str:
     meta[TRACEPARENT_KEY] = tp
     return tp
 
+def get_current_traceparent() -> str | None:
+    """Return the task-local ingress/outbound traceparent if bound."""
+    return _current_traceparent.get()
+
+def get_current_tracestate() -> str | None:
+    return _current_tracestate.get()
+
+@contextmanager
+def bind_current_trace(
+    traceparent: str | None = None,
+    *,
+    tracestate: str | None = None,
+) -> Iterator[None]:
+    """Bind W3C fields for the duration of an RPC/fabric request (OBS-T10-05)."""
+    token_tp = _current_traceparent.set(traceparent)
+    token_ts = _current_tracestate.set(tracestate)
+    try:
+        yield
+    finally:
+        _current_traceparent.reset(token_tp)
+        _current_tracestate.reset(token_ts)
+
 def inject_trace_metadata(
     metadata: MutableMapping[str, Any] | None = None,
     *,
     traceparent: str | None = None,
     tracestate: str | None = None,
 ) -> dict[str, Any]:
-    """Return a metadata dict with W3C trace fields injected."""
+    """Return a metadata dict with W3C trace fields injected.
+
+    Preference order: explicit arg → existing metadata → task-local bind
+    (RPC ingress) → freshly generated parent.
+    """
     result: dict[str, Any] = dict(metadata or {})
-    tp = traceparent or extract_traceparent(result) or generate_traceparent()
+    tp = (
+        traceparent
+        or extract_traceparent(result)
+        or _current_traceparent.get()
+        or generate_traceparent()
+    )
     result[TRACEPARENT_KEY] = tp
-    if tracestate is not None:
-        result[TRACESTATE_KEY] = tracestate
+    ts = tracestate if tracestate is not None else _current_tracestate.get()
+    if ts is not None:
+        result[TRACESTATE_KEY] = ts
     elif TRACESTATE_KEY not in result:
         # Leave tracestate absent unless provided — valid per W3C.
         pass

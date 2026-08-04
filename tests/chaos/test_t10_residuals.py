@@ -128,3 +128,92 @@ def test_openapi_covers_drain_and_extra_routes() -> None:
     assert "/mgmt/v1/nodes/drain" in paths
     assert "/performance/trends" in paths
     assert "/transport/endpoints" in paths
+
+def test_rpc_to_fabric_traceparent_continuity() -> None:
+    """OBS-T10-05: inject_trace_metadata continues bound RPC ingress parent."""
+    from mpreg.core.observability.trace_context import (
+        bind_current_trace,
+        extract_traceparent,
+        inject_trace_metadata,
+    )
+
+    ingress = "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01"
+    with bind_current_trace(ingress):
+        meta = inject_trace_metadata({"mpreg.hop_entered_mono": "1.0"})
+    assert extract_traceparent(meta) == ingress
+    # Outside bind, a fresh parent is minted (not the ingress).
+    meta2 = inject_trace_metadata({})
+    assert extract_traceparent(meta2) != ingress
+    assert extract_traceparent(meta2) is not None
+
+def test_no_subscriber_requeue_bound_config() -> None:
+    """COR-T10-10: QueueConfiguration exposes no-sub requeue bound."""
+    from mpreg.core.message_queue import QueueConfiguration
+
+    cfg = QueueConfiguration(name="t10-q", no_subscriber_max_requeues=5)
+    assert cfg.no_subscriber_max_requeues == 5
+    assert cfg.max_in_flight is None
+
+@pytest.mark.asyncio
+async def test_no_subscriber_eventually_dlq() -> None:
+    """COR-T10-10: messages without subscribers hit DLQ after bound requeues."""
+    from mpreg.core.message_queue import (
+        DeliveryGuarantee,
+        MessageQueue,
+        QueueConfiguration,
+        QueuedMessage,
+    )
+
+    cfg = QueueConfiguration(
+        name="t10-nosub",
+        no_subscriber_max_requeues=3,
+        enable_dead_letter_queue=True,
+    )
+    q = MessageQueue(cfg, autostart=False)
+    msg = QueuedMessage(
+        id="msg-t10-nosub",  # type: ignore[arg-type]
+        topic="topic.t10",
+        payload={"x": 1},
+        delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
+    )
+    for _ in range(8):
+        await q._deliver_message(msg)
+        if len(q.dead_letter_queue) >= 1:
+            break
+    assert len(q.dead_letter_queue) >= 1
+
+def test_status_fingerprint_dedup_on_server_method() -> None:
+    """COR-T10-02: _handle_remote_status marks fingerprints via tracker."""
+    from types import SimpleNamespace
+
+    from mpreg.server import MPREGServer
+
+    # Avoid slots/__del__ of real MPREGServer — bind the method onto a plain object.
+    class _S:
+        peer_status: dict = {}
+        _peer_instance_ids: dict = {}
+        _departed_peers: dict = {}
+        _status_announcement_tracker = None
+
+        def _is_peer_departed(self, *a, **k):
+            return False
+
+    s = _S()
+    s.peer_status = {}
+    s._peer_instance_ids = {}
+    s._departed_peers = {}
+    status = SimpleNamespace(
+        server_url="ws://peer:1",
+        instance_id="i1",
+        funs=("echo",),
+        locs=("default",),
+    )
+    bound = MPREGServer._handle_remote_status.__get__(s, _S)
+    assert bound(status) is True
+    tracker = s._status_announcement_tracker
+    assert tracker is not None
+    assert tracker.announcement_count >= 1
+    before = tracker.announcement_count
+    assert bound(status) is True
+    assert tracker.announcement_count == before
+

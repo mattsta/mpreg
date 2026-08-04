@@ -1,0 +1,51 @@
+# Lab-only federated baseline (ERG-T10-12 / COR-T10-06).
+# discovery_policy_enabled=false and change-me secrets are intentional.
+# For multi-tenant production: copy federated.toml, enable policy, rotate secrets.
+# Prefer: mpreg config-check mpreg/profiles/federated-lab.toml
+
+# Cross-cluster fabric member with path-vector routing emphasis.
+# Client HA default: ClientCallPolicy / default_ha_policy() (M1 async retries).
+# For soft-RT federated calls, use soft-rt.toml + RpcExecutionMode.M2_SOFT_RT.
+#
+# Secure-by-profile defaults:
+# - route announcements require signatures (unsigned rejected)
+# - discovery summary export requires HMAC signing secret
+# Override only for lab/dev; production must rotate the placeholder secret.
+
+[mpreg]
+name = "federated-lab-node"
+cluster_id = "region-east"
+host = "0.0.0.0"
+monitoring_enabled = true
+# ERG-T10-11: durable mgmt mutation audit (relative to cwd / data dir).
+mgmt_audit_path = "mpreg-mgmt-audit.jsonl"
+monitoring_enable_cors = false
+enable_default_cache = true
+enable_default_queue = true
+enable_cache_federation = true
+fabric_routing_enabled = true
+fabric_routing_max_hops = 5
+fabric_route_ttl_seconds = 30.0
+fabric_route_announce_interval_seconds = 10.0
+# Path-vector primary; enable LS PREFER when multi-area SPF is desired.
+fabric_link_state_mode = "disabled"
+fabric_link_state_ecmp_paths = 1
+# Federated control plane: reject unsigned route announcements.
+fabric_route_require_signatures = true
+fabric_route_allow_unsigned = false
+# Gossip envelope HMAC (route signing ≠ gossip authenticity). Placeholder secret —
+# rotate before production. Peers must share the same secret.
+fabric_gossip_require_hmac = true
+fabric_gossip_hmac_secret = "change-me-gossip-hmac"
+gossip_interval = 5.0
+log_level = "INFO"
+discovery_summary_export_enabled = true
+# Placeholder enables signing; replace via env/override before production.
+discovery_summary_signing_secret = "change-me-federated-summary-hmac"
+# Snapshot restore: prefer fail-closed boot when catalog/route keys corrupt.
+fabric_snapshot_fail_on_restore_error = true
+# Tenant-aware discovery is recommended when multi-tenant catalogs share a fabric.
+# Lab default remains off; `mpreg config-check` warns when policy is disabled on
+# federated/multi-peer nodes (COR-09). Enable for multi-tenant production.
+discovery_policy_enabled = false
+discovery_policy_default_allow = true

@@ -92,9 +92,6 @@ class QueuedMessage:
     delay_seconds: float = 0.0
     visibility_timeout_seconds: float = 30.0
     max_retries: int = 3
-    # COR-T10-10: bound AT_LEAST_ONCE requeue-when-no-subscriber loops.
-    no_subscriber_max_requeues: int = 120  # ~30s at 0.25s wake
-    max_in_flight: int | None = None  # PERF-T10-07; None = max_size
     acknowledgment_timeout_seconds: float = 300.0  # 5 minutes default
     required_acknowledgments: int = 1  # For quorum delivery
     created_at: Timestamp = field(default_factory=time.time)
@@ -167,6 +164,10 @@ class QueueConfiguration:
     enable_deduplication: bool = False
     deduplication_window_seconds: float = 300.0
     max_retries: int = 3
+    # COR-T10-10: bound AT_LEAST_ONCE requeue-when-no-subscriber loops.
+    no_subscriber_max_requeues: int = 120  # ~30s at 0.25s wake
+    # PERF-T10-07: max concurrent in-flight; None = max_size.
+    max_in_flight: int | None = None
 
 @dataclass(slots=True)
 class QueueStatistics:

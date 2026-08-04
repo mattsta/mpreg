@@ -30,3 +30,11 @@ Copy a profile, set `name`, `cluster_id`, ports, and secrets
 ## Security note (ERG-T10-13)
 
 `soft-rt.toml` and `cluster.toml` optimize latency defaults and may omit federated control-plane hardening (route signatures / gossip HMAC / discovery policy). Treat them as single trust-domain profiles. For multi-cluster untrusted links use `federated.toml` (and rotate `change-me` secrets; enable `discovery_policy_enabled`).
+
+## federated-lab.toml
+
+Lab-only multi-cluster baseline with placeholder HMAC secrets and
+`discovery_policy_enabled=false`. Use for local multi-node experiments.
+For production multi-tenant: start from `federated.toml`, enable discovery
+policy, and rotate all `change-me` secrets. Always run `mpreg config-check`.
+

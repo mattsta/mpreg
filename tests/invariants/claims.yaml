@@ -139,10 +139,11 @@ rpc:
     tests:
       - tests/invariants/test_rpc_modality.py
   - id: INV-P6
-    claim: "outbound traceparent is stored on route decisions and filterable"
+    claim: "outbound traceparent is stored on route decisions; RPC ingress binds task-local parent for fabric hop inject"
     proof: [L1]
     tests:
       - tests/invariants/test_trace_decisions.py
+      - tests/chaos/test_t10_residuals.py
   - id: INV-P7
     claim: "federated announcement u-ids and STATUS fingerprints do not double-apply under retry (dedup)"
     proof: [L1]

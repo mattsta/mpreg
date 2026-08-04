@@ -928,6 +928,20 @@ observe a prefix of levels without a final — never a silent wrong success.
 
 See architecture claims INV-P1–P5 in ``tests/invariants/claims.yaml``.
 
+## Four-plane HA limits (USE-T10-03 / ERG-T10-08)
+
+`MPREGClusterClient` provides **RPC-path** endpoint failover via `ClientCallPolicy`.
+It does **not** automatically HA-fanout queue, cache, or pub/sub operations across
+endpoints.
+
+- Use `cluster.plane_client(url)` (or `MPREGClient(url)`) for queue/cache/pubsub against
+  **one** chosen endpoint.
+- Bare servers without `--enable-cache` / `--enable-queue` (or a profile that sets them)
+  return `COMMAND_NOT_FOUND` for plane RPCs — run `mpreg config-check` first.
+- `EXACTLY_ONCE` delivery and cache `STRONG` consistency are **refused**
+  (`MpregErrorCode` 1011 / 1012). Prefer at-least-once + idempotent handlers.
+- Proof ledger: `tests/invariants/claims.yaml` (`non_claims` lists what is out of scope).
+
 ## Default HA call policy
 
 `MPREGClusterClient` applies `default_ha_policy()` (3 attempts, retry timeout/unavailable only)

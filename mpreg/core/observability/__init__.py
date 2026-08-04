@@ -6,16 +6,20 @@ from .slo import GOLDEN_SIGNALS, GoldenSignal, prometheus_alert_rules_yaml
 from .trace_context import (
     TRACEPARENT_KEY,
     TRACESTATE_KEY,
+    bind_current_trace,
     ensure_traceparent,
     extract_traceparent,
     generate_traceparent,
+    get_current_traceparent,
     inject_trace_metadata,
 )
 
 __all__ = [
     "TRACEPARENT_KEY",
     "TRACESTATE_KEY",
+    "bind_current_trace",
     "ensure_traceparent",
+    "get_current_traceparent",
     "extract_traceparent",
     "generate_traceparent",
     "inject_trace_metadata",
