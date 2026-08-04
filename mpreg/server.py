@@ -1538,6 +1538,8 @@ class MPREGServer:
     _unified_monitor: Any = field(init=False, default=None)
     _monitoring_system: Any = field(init=False, default=None)
     _mgmt_draining: bool = field(init=False, default=False)
+    # COR-05: per-request actor identity bound by run_rpc (connection viewer).
+    _rpc_actor_context: dict[str, Any] | None = field(init=False, default=None)
     _mgmt_audit_log: Any = field(init=False, default=None)
     _queue_rpc_registered: bool = field(init=False, default=False)
     _cache_rpc_registered: bool = field(init=False, default=False)
@@ -9134,63 +9136,83 @@ class MPREGServer:
                     inbound_tp = extract_traceparent(meta)
         except Exception:
             inbound_tp = None
-        with (
-            trace_context(
-                request_u=str(req_u) if req_u else None,
-                traceparent=inbound_tp,
-            ),
-            self._request_viewer_context(
-                viewer_cluster_id, viewer_tenant_id=viewer_tenant_id
-            ),
-        ):
-            try:
-                # Create an RPC object from the incoming request. This handles
-                # the topological sorting of commands.
-                rpc = RPC(req)
+        # COR-05: bind plane_rpc actor identity from connection/session viewer
+        # for the duration of this request (not spoofable RPC body fields).
+        prev_actor_ctx = getattr(self, "_rpc_actor_context", None)
+        self._rpc_actor_context = {
+            "cluster_id": viewer_cluster_id
+            if viewer_cluster_id is not None
+            else getattr(self.settings, "cluster_id", None),
+            "tenant_id": viewer_tenant_id,
+        }
+        try:
+            with (
+                trace_context(
+                    request_u=str(req_u) if req_u else None,
+                    traceparent=inbound_tp,
+                ),
+                self._request_viewer_context(
+                    viewer_cluster_id, viewer_tenant_id=viewer_tenant_id
+                ),
+            ):
+                return await self._run_rpc_body(req, start_time)
+        finally:
+            self._rpc_actor_context = prev_actor_ctx
 
-                # Check if enhanced execution is requested
-                if (
-                    req.return_intermediate_results
-                    or req.include_execution_summary
-                    or req.debug_mode
-                ):
-                    logger.info("Using enhanced RPC execution with debugging features")
-                    # Use enhanced execution with intermediate results tracking
-                    (
-                        result,
-                        intermediate_results,
-                        execution_summary,
-                    ) = await self.cluster.run_with_intermediate_results(rpc, req)
+    async def _run_rpc_body(
+        self, req: RPCRequest, start_time: float
+    ) -> RPCResponse:
+        """Inner RPC execution (after trace + actor context are bound)."""
+        success = False
+        error_code: str | int | None = None
+        try:
+            # Create an RPC object from the incoming request. This handles
+            # the topological sorting of commands.
+            rpc = RPC(req)
 
-                    success = True
-                    return RPCResponse(
-                        r=result,
-                        u=req.u,
-                        intermediate_results=intermediate_results,
-                        execution_summary=execution_summary,
-                    )
-                else:
-                    # Use standard execution for backward compatibility
-                    response = RPCResponse(r=await self.cluster.run(rpc), u=req.u)
-                    success = True
-                    return response
+            # Check if enhanced execution is requested
+            if (
+                req.return_intermediate_results
+                or req.include_execution_summary
+                or req.debug_mode
+            ):
+                logger.info("Using enhanced RPC execution with debugging features")
+                # Use enhanced execution with intermediate results tracking
+                (
+                    result,
+                    intermediate_results,
+                    execution_summary,
+                ) = await self.cluster.run_with_intermediate_results(rpc, req)
 
-            except MPREGException as exc:
-                if exc.rpc_error is not None:
-                    error_code = getattr(exc.rpc_error, "code", None)
-                return RPCResponse(r=None, error=exc.rpc_error, u=req.u)
-            except Exception:
-                # Catch any exceptions during RPC execution and return an error response.
-                logger.exception("Error running RPC")
-                from mpreg.server_pkg.rpc_responses import internal_response
-
-                error_code = "internal"
-                return internal_response(req.u, traceback.format_exc())
-            finally:
-                duration_ms = (time.time() - start_time) * 1000.0
-                self._metrics_tracker.record_rpc(
-                    duration_ms, success, error_code=error_code if not success else None
+                success = True
+                return RPCResponse(
+                    r=result,
+                    u=req.u,
+                    intermediate_results=intermediate_results,
+                    execution_summary=execution_summary,
                 )
+            else:
+                # Use standard execution for backward compatibility
+                response = RPCResponse(r=await self.cluster.run(rpc), u=req.u)
+                success = True
+                return response
+
+        except MPREGException as exc:
+            if exc.rpc_error is not None:
+                error_code = getattr(exc.rpc_error, "code", None)
+            return RPCResponse(r=None, error=exc.rpc_error, u=req.u)
+        except Exception:
+            # Catch any exceptions during RPC execution and return an error response.
+            logger.exception("Error running RPC")
+            from mpreg.server_pkg.rpc_responses import internal_response
+
+            error_code = "internal"
+            return internal_response(req.u, traceback.format_exc())
+        finally:
+            duration_ms = (time.time() - start_time) * 1000.0
+            self._metrics_tracker.record_rpc(
+                duration_ms, success, error_code=error_code if not success else None
+            )
 
     @logger.catch
     async def opened(self, transport: TransportInterface) -> None:
@@ -9236,24 +9258,17 @@ class MPREGServer:
                 pending_summary_backlog: PubSubSubscription | None = None
                 # ERG-01 / C1: when draining, refuse client data-plane roles so
                 # drain is more than a /ready flag (control/server/gossip still flow).
-                role = parsed_msg.get("role")
-                if (
-                    getattr(self, "_mgmt_draining", False)
-                    and role
-                    in {
-                        "rpc",
-                        "pubsub-publish",
-                        "pubsub-subscribe",
-                        "pubsub-unsubscribe",
-                        "pubsub",
-                    }
-                ):
-                    from mpreg.server_pkg.rpc_responses import unavailable_response
+                from mpreg.server_pkg.drain_admission import (
+                    drain_unavailable_response,
+                    should_refuse_for_drain,
+                )
 
-                    u = str(parsed_msg.get("u") or "drain")
-                    response_model = unavailable_response(
-                        u, "node_draining: data-plane admission refused"
-                    )
+                role = parsed_msg.get("role")
+                if should_refuse_for_drain(
+                    draining=bool(getattr(self, "_mgmt_draining", False)),
+                    role=role,
+                ):
+                    response_model = drain_unavailable_response(parsed_msg.get("u"))
                     try:
                         await transport.send(
                             self.serializer.serialize(

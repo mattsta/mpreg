@@ -202,7 +202,11 @@ def test_chaos_drain_flag_on_server_instance() -> None:
 
     src = inspect.getsource(MPREGServer)
     assert "_mgmt_draining" in src
-    assert "node_draining" in src
+    assert "should_refuse_for_drain" in src or "drain_admission" in src
+    from mpreg.server_pkg.drain_admission import drain_unavailable_response
+
+    resp = drain_unavailable_response("x")
+    assert "drain" in f"{resp.error.message} {resp.error.details}".lower()
 
 def test_chaos_rpc_request_accepts_traceparent_fields() -> None:
     """OBS-02: RPCRequest model carries W3C fields."""
@@ -228,3 +232,20 @@ def test_chaos_serialize_model_one_hop() -> None:
     back = ser.deserialize(raw)
     assert back["role"] == "fabric-message"
     assert back["payload"] == {"a": 1}
+
+def test_chaos_drain_admission_helper() -> None:
+    """ERG-01: drain role gate is pure and unit-testable."""
+    from mpreg.server_pkg.drain_admission import (
+        DATA_PLANE_ROLES,
+        drain_unavailable_response,
+        should_refuse_for_drain,
+    )
+
+    assert should_refuse_for_drain(draining=True, role="rpc") is True
+    assert should_refuse_for_drain(draining=True, role="server") is False
+    assert should_refuse_for_drain(draining=False, role="rpc") is False
+    assert "rpc" in DATA_PLANE_ROLES
+    resp = drain_unavailable_response("u1")
+    assert resp.error is not None
+    text = f"{resp.error.message} {resp.error.details}".lower()
+    assert "drain" in text

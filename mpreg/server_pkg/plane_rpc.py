@@ -24,27 +24,27 @@ def rpc_actor_ids(server: Any, body: dict[str, Any]) -> tuple[str, str | None]:
     the RPC body (those are spoofable). Body fields remain a convenience
     only while policy is disabled (lab/dev).
 
-    Fall back to this node's ``settings.cluster_id`` so local unauthenticated
-    RPC still has a stable owner identity when no session is bound.
+    Session identity is bound by ``MPREGServer.run_rpc`` into
+    ``_rpc_actor_context`` from the accepting connection's viewer ids.
+    Local same-cluster clients receive ``settings.cluster_id`` as the
+    session viewer (node-local owner). Cross-cluster peer RPC uses the
+    peer's advertised cluster. Body spoof fields are ignored when policy is on.
     """
     settings = getattr(server, "settings", None)
     policy_on = bool(getattr(settings, "discovery_policy_enabled", False))
-    # Connection-bound identity (set by server on the accepting session).
+    # Connection/session-bound identity (set by run_rpc / accepting session).
     conn_cluster = getattr(server, "_rpc_session_cluster_id", None)
     conn_tenant = getattr(server, "_rpc_session_tenant_id", None)
-    if conn_cluster is None:
-        # Optional per-request context set by the connection handler.
-        ctx = getattr(server, "_rpc_actor_context", None)
-        if isinstance(ctx, dict):
+    ctx = getattr(server, "_rpc_actor_context", None)
+    if isinstance(ctx, dict):
+        if conn_cluster is None:
             conn_cluster = ctx.get("cluster_id")
+        if conn_tenant is None:
             conn_tenant = ctx.get("tenant_id")
 
     if policy_on:
-        cluster_raw = (
-            conn_cluster
-            or getattr(settings, "cluster_id", None)
-            or ""
-        )
+        # Never read body identity under policy — spoofable.
+        cluster_raw = conn_cluster or getattr(settings, "cluster_id", None) or ""
         tenant_raw = conn_tenant
     else:
         cluster_raw = (

@@ -678,3 +678,48 @@ def test_openapi_ready_documents_drain_semantics() -> None:
     assert "503" in ready.get("responses", {})
     desc = (ready.get("description") or "") + ready.get("summary", "")
     assert "drain" in desc.lower() or "503" in desc
+
+def test_rpc_actor_ids_ignores_body_when_policy_on() -> None:
+    """COR-05: under discovery policy, body cluster_id cannot spoof actor."""
+    from types import SimpleNamespace
+
+    from mpreg.server_pkg.plane_rpc import rpc_actor_ids
+
+    server = SimpleNamespace(
+        settings=SimpleNamespace(
+            discovery_policy_enabled=True,
+            cluster_id="local-cluster",
+        ),
+        _rpc_session_cluster_id=None,
+        _rpc_session_tenant_id=None,
+        _rpc_actor_context={"cluster_id": "local-cluster", "tenant_id": None},
+    )
+    # Attacker body claims owner-cluster
+    cluster, tenant = rpc_actor_ids(
+        server,
+        {"cluster_id": "owner-cluster", "tenant_id": "evil-tenant", "queue_name": "q"},
+    )
+    assert cluster == "local-cluster"
+    assert tenant is None
+
+def test_rpc_actor_ids_body_ok_when_policy_off() -> None:
+    """COR-05 lab path: body identity allowed only when policy disabled."""
+    from types import SimpleNamespace
+
+    from mpreg.server_pkg.plane_rpc import rpc_actor_ids
+
+    server = SimpleNamespace(
+        settings=SimpleNamespace(
+            discovery_policy_enabled=False,
+            cluster_id="local-cluster",
+        ),
+        _rpc_session_cluster_id=None,
+        _rpc_session_tenant_id=None,
+        _rpc_actor_context=None,
+    )
+    cluster, tenant = rpc_actor_ids(
+        server,
+        {"cluster_id": "lab-actor", "tenant_id": "t1"},
+    )
+    assert cluster == "lab-actor"
+    assert tenant == "t1"
