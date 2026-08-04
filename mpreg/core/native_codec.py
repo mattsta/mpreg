@@ -69,47 +69,63 @@ def _stable_sequence(items: Any) -> list[Any]:
     except Exception:
         return list(items)
 
-# orjson only accepts signed 64-bit integers; property tests and some
-# blockchain counters can exceed that. Coerce out-of-range ints to decimal
-# strings so encode never raises and digests stay deterministic.
-_I64_MIN = -(1 << 63)
-_I64_MAX = (1 << 63) - 1
+# orjson encodes the full unsigned 64-bit integer range as JSON numbers
+# (i64 min .. u64 max). Values outside that raise TypeError and do *not*
+# invoke ``default`` — so we only walk the tree on that rare failure path.
+# (JS consumers lose precision above 2^53-1 either way; wire peers are Python.)
+_ORJSON_INT_MIN = -(1 << 63)
+_ORJSON_INT_MAX = (1 << 64) - 1  # u64 max
+
+# Fast-path options: non-str keys handled in Rust; no Python pre-walk.
+_ORJSON_BASE_OPTS = orjson.OPT_NON_STR_KEYS
+
+def _json_safe_int(n: int) -> int | str:
+    """Pass through ints orjson can emit; decimal-string the rest."""
+    if _ORJSON_INT_MIN <= n <= _ORJSON_INT_MAX:
+        return n
+    return str(n)
 
 def _coerce_orjson_tree(data: Any, *, _depth: int = 0) -> Any:
-    """Return a tree orjson can encode (bigint → decimal str)."""
+    """Slow path only: rewrite a tree after orjson TypeError.
+
+    Not used on the hot path. Handles true bigints (outside u64) that orjson
+    rejects without calling ``default``. Non-str keys are normally covered by
+    ``OPT_NON_STR_KEYS``; this walk still normalizes them for the retry.
+    """
     if isinstance(data, bool) or data is None:
         return data
     if isinstance(data, int):
-        if data < _I64_MIN or data > _I64_MAX:
-            return str(data)
-        return data
+        return _json_safe_int(data)
     if isinstance(data, (str, float, bytes, bytearray, memoryview)):
         return data
     if _depth > 64:
         return data
     if isinstance(data, Mapping):
-        return {
-            (
-                k
-                if isinstance(k, str)
-                else str(k)
-                if not isinstance(k, (int, float, bool)) or isinstance(k, bool)
-                else k
-            ): _coerce_orjson_tree(v, _depth=_depth + 1)
-            for k, v in data.items()
-        }
+        out: dict[Any, Any] = {}
+        for k, v in data.items():
+            key: Any = k if isinstance(k, str) else str(k)
+            out[key] = _coerce_orjson_tree(v, _depth=_depth + 1)
+        return out
     if isinstance(data, (list, tuple)):
         return [_coerce_orjson_tree(v, _depth=_depth + 1) for v in data]
     if isinstance(data, (set, frozenset)):
         return [
-            _coerce_orjson_tree(v, _depth=_depth + 1)
-            for v in _stable_sequence(data)
+            _coerce_orjson_tree(v, _depth=_depth + 1) for v in _stable_sequence(data)
         ]
     return data
 
 def _orjson_default(obj: Any) -> Any:
+    """Adapter for types orjson does not natively encode.
+
+    Called per exotic leaf (set, dataclass, pydantic, …) — not a tree walk.
+    Note: oversized integers raise TypeError *before* default is consulted;
+    those hit ``_orjson_dumps``'s TypeError retry instead.
+    """
     if isinstance(obj, (set, frozenset)):
         return _stable_sequence(obj)
+    if isinstance(obj, int) and not isinstance(obj, bool):
+        # Reached only for int subclasses or odd paths; plain bigint TypeErrors.
+        return _json_safe_int(obj)
     dump = getattr(obj, "model_dump", None)
     if callable(dump):
         return dump()
@@ -121,11 +137,29 @@ def _orjson_default(obj: Any) -> Any:
         }
     if isinstance(obj, (bytes, bytearray, memoryview)):
         return bytes(obj)
-    if isinstance(obj, int) and not isinstance(obj, bool):
-        # Safety net if a bigint slips past _coerce_orjson_tree.
-        return str(obj)
     # Last resort for signature/digest paths: type name only — never nested repr.
     return f"<{type(obj).__name__}>"
+
+def _orjson_dumps(data: Any, *, option: int = 0) -> bytes:
+    """Encode with orjson; no pre-walk on the common path.
+
+    Live suite profiles showed eager ``_coerce_orjson_tree`` dominating every
+    envelope send. Catalog/gossip payloads are already JSON-shaped from
+    ``to_dict()``, so the hot path is a single Rust encode with:
+
+    * ``default`` — exotic types (set/dataclass/pydantic) at the leaf
+    * ``OPT_NON_STR_KEYS`` — int/bool keys without a Python walk
+    * TypeError retry + walk — only true bigints outside u64 (rare)
+    """
+    opts = _ORJSON_BASE_OPTS | option
+    try:
+        return orjson.dumps(data, option=opts, default=_orjson_default)
+    except TypeError:
+        # Almost always "Integer exceeds 64-bit range" — walk once, stringify
+        # those leaves, retry. Not the gossip hot path.
+        return orjson.dumps(
+            _coerce_orjson_tree(data), option=opts, default=_orjson_default
+        )
 
 @dataclass(slots=True, frozen=True)
 class OrjsonBackend:
@@ -134,17 +168,13 @@ class OrjsonBackend:
     name: str = "orjson"
 
     def dumps(self, data: Any) -> bytes:
-        return orjson.dumps(_coerce_orjson_tree(data), default=_orjson_default)
+        return _orjson_dumps(data)
 
     def loads(self, data: bytes) -> Any:
         return orjson.loads(data)
 
     def canonical_dumps(self, data: Any) -> bytes:
-        return orjson.dumps(
-            _coerce_orjson_tree(data),
-            option=orjson.OPT_SORT_KEYS,
-            default=_orjson_default,
-        )
+        return _orjson_dumps(data, option=orjson.OPT_SORT_KEYS)
 
 _BACKEND: CodecBackend = OrjsonBackend()
 _BACKEND_FACTORIES: dict[str, Callable[[], CodecBackend]] = {
