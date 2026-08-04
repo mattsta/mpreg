@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 from pathlib import Path
 
 from mpreg.testing.hang_observe import HangStateDir, enable_faulthandler
@@ -60,3 +62,32 @@ def test_advance_fabric_headers_fail_closed_budget() -> None:
             max_hops=1,
         )
     assert ei.value.code == int(MpregErrorCode.HOP_BUDGET_EXCEEDED)
+
+def test_hang_profiler_writes_dump(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from mpreg.testing.hang_observe import HangProfiler
+
+    monkeypatch.setenv("MPREG_TEST_STATE_DIR", str(tmp_path / "state"))
+    profile_dir = tmp_path / "profiles"
+    profiler = HangProfiler(profile_dir=profile_dir, use_sudo_for_pyspy=False)
+    # Dump for current process — faulthandler path must not raise.
+    out = profiler.dump(label="unit", pids=[os.getpid()], breadcrumbs=[], top_n=1)
+    assert out.is_dir()
+    assert (out / "watchdog.log").is_file()
+
+def test_concurrent_runner_builds_command_shape(tmp_path: Path) -> None:
+    """Runner config is self-describing without invoking full pytest."""
+    from mpreg.testing.concurrent_runner import ConcurrentSuiteRunner
+
+    runner = ConcurrentSuiteRunner(
+        workers=2,
+        root=tmp_path,
+        log_path=tmp_path / "run.log",
+        junit_path=tmp_path / "junit.xml",
+        state_dir=tmp_path / "state",
+        profile_dir=tmp_path / "prof",
+        stall_seconds=30.0,
+        extra_pytest_args=["tests/test_native_codec.py"],
+    )
+    assert runner.workers == 2
+    assert runner.open_file_target == 1_048_576
+    assert "test_native_codec" in " ".join(runner.extra_pytest_args)
