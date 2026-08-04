@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import sqlite3
 import time
 from dataclasses import dataclass
@@ -11,6 +10,8 @@ from pathlib import Path
 from .block import Block
 from .blockchain import Blockchain
 from .blockchain_types import ConsensusConfig, ConsensusType, CryptoConfig
+
+from mpreg.core.native_codec import dumps_text, loads_text
 
 @dataclass(slots=True)
 class BlockchainStore:
@@ -62,8 +63,8 @@ class BlockchainStore:
 
     def save_chain(self, blockchain: Blockchain) -> None:
         payload = blockchain.to_dict()
-        consensus_config = json.dumps(payload["consensus_config"])
-        crypto_config = json.dumps(payload.get("crypto_config", {}))
+        consensus_config = dumps_text(payload["consensus_config"])
+        crypto_config = dumps_text(payload.get("crypto_config", {}))
         created_at = blockchain.genesis_block.timestamp
 
         with self._connect() as conn:
@@ -80,7 +81,7 @@ class BlockchainStore:
 
             all_blocks = [blockchain.genesis_block] + list(blockchain.blocks)
             for block in all_blocks:
-                block_json = json.dumps(block.to_dict())
+                block_json = dumps_text(block.to_dict())
                 conn.execute(
                     """
                     INSERT INTO blocks (chain_id, height, block_hash, timestamp, block_json)
@@ -107,7 +108,7 @@ class BlockchainStore:
                     f"Block height mismatch: expected {expected_height}, got {block.height}"
                 )
             if not self.has_chain(chain_id):
-                consensus_config = json.dumps(
+                consensus_config = dumps_text(
                     {
                         "consensus_type": ConsensusType.PROOF_OF_AUTHORITY.value,
                         "block_time_target": 10,
@@ -117,7 +118,7 @@ class BlockchainStore:
                         "authority_threshold": 0.67,
                     }
                 )
-                crypto_config = json.dumps(
+                crypto_config = dumps_text(
                     {
                         "hash_algorithm": "sha256",
                         "signature_algorithm": "ed25519",
@@ -132,7 +133,7 @@ class BlockchainStore:
                     """,
                     (chain_id, consensus_config, crypto_config, time.time()),
                 )
-            block_json = json.dumps(block.to_dict())
+            block_json = dumps_text(block.to_dict())
             conn.execute(
                 """
                 INSERT INTO blocks (chain_id, height, block_hash, timestamp, block_json)
@@ -155,8 +156,8 @@ class BlockchainStore:
             ).fetchone()
             if row is None:
                 raise ValueError(f"Chain {chain_id} not found")
-            consensus_payload = json.loads(row[0])
-            crypto_payload = json.loads(row[1])
+            consensus_payload = loads_text(row[0])
+            crypto_payload = loads_text(row[1])
 
             consensus_config = ConsensusConfig(
                 consensus_type=ConsensusType(consensus_payload["consensus_type"]),
@@ -189,7 +190,7 @@ class BlockchainStore:
             ).fetchall()
             if not block_rows:
                 raise ValueError(f"Chain {chain_id} has no blocks")
-            blocks = [Block.from_dict(json.loads(row[0])) for row in block_rows]
+            blocks = [Block.from_dict(loads_text(row[0])) for row in block_rows]
             genesis_block = blocks[0]
             return Blockchain(
                 chain_id=chain_id,

@@ -8,7 +8,6 @@ automated execution of organizational decisions.
 
 from __future__ import annotations
 
-import json
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -46,6 +45,8 @@ from .dao_types import (
     generate_dao_id,
 )
 from .transaction import Transaction
+
+from mpreg.core.native_codec import dumps
 
 @dataclass(frozen=True, slots=True)
 class DecentralizedAutonomousOrganization:
@@ -126,7 +127,7 @@ class DecentralizedAutonomousOrganization:
             sender=member.member_id,
             receiver=self.dao_id,
             operation_type=OperationType.FEDERATION_JOIN,
-            payload=json.dumps(
+            payload=dumps(
                 {
                     "action": "dao_join",
                     "dao_id": self.dao_id,
@@ -137,7 +138,7 @@ class DecentralizedAutonomousOrganization:
                         "metadata": member.metadata,
                     },
                 }
-            ).encode(),
+            ),
             fee=0,  # No fee for membership
         )
 
@@ -185,14 +186,14 @@ class DecentralizedAutonomousOrganization:
             sender=member_id,
             receiver=self.dao_id,
             operation_type=OperationType.NODE_UPDATE,
-            payload=json.dumps(
+            payload=dumps(
                 {
                     "action": "update_voting_power",
                     "dao_id": self.dao_id,
                     "old_power": member.voting_power,
                     "new_power": new_voting_power,
                 }
-            ).encode(),
+            ),
             fee=1,
         )
 
@@ -292,7 +293,7 @@ class DecentralizedAutonomousOrganization:
             sender=proposer_id,
             receiver=self.dao_id,
             operation_type=OperationType.CONSENSUS_VOTE,
-            payload=json.dumps(
+            payload=dumps(
                 {
                     "action": "create_proposal",
                     "dao_id": self.dao_id,
@@ -306,7 +307,7 @@ class DecentralizedAutonomousOrganization:
                         "execution_time": final_proposal.execution_time,
                     },
                 }
-            ).encode(),
+            ),
             fee=self.config.proposal_deposit,
         )
 
@@ -397,7 +398,7 @@ class DecentralizedAutonomousOrganization:
             sender=voter_id,
             receiver=self.dao_id,
             operation_type=OperationType.CONSENSUS_VOTE,
-            payload=json.dumps(
+            payload=dumps(
                 {
                     "action": "cast_vote",
                     "dao_id": self.dao_id,
@@ -406,7 +407,7 @@ class DecentralizedAutonomousOrganization:
                     "voting_power": vote.voting_power_used,
                     "reason": reason,
                 }
-            ).encode(),
+            ),
             fee=1,
         )
 
@@ -526,7 +527,7 @@ class DecentralizedAutonomousOrganization:
             sender="dao_manager",
             receiver=self.dao_id,
             operation_type=OperationType.CONSENSUS_VOTE,
-            payload=json.dumps(
+            payload=dumps(
                 {
                     "action": "finalize_proposal",
                     "dao_id": self.dao_id,
@@ -539,7 +540,7 @@ class DecentralizedAutonomousOrganization:
                         "quorum_reached": result.quorum_reached,
                     },
                 }
-            ).encode(),
+            ),
             fee=0,
         )
 
@@ -605,7 +606,7 @@ class DecentralizedAutonomousOrganization:
             sender=executor_id,
             receiver=self.dao_id,
             operation_type=OperationType.SMART_CONTRACT,
-            payload=json.dumps(
+            payload=dumps(
                 {
                     "action": "execute_proposal",
                     "dao_id": self.dao_id,
@@ -613,7 +614,7 @@ class DecentralizedAutonomousOrganization:
                     "execution_data": proposal.execution_data.hex(),
                     "executor": executor_id,
                 }
-            ).encode(),
+            ),
             fee=10,
         )
 

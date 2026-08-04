@@ -8,7 +8,6 @@ blockchain audit trails, and federated routing capabilities.
 from __future__ import annotations
 
 import bisect
-import json
 import time
 from collections import deque
 from dataclasses import dataclass, field, replace
@@ -44,6 +43,8 @@ from .blockchain_message_queue_types import (
     RouteStatus,
     RoutingCriteria,
 )
+
+from mpreg.core.native_codec import dumps, loads
 
 class UnsupportedDeliveryGuaranteeError(ValueError):
     """Raised when a reserved/unsupported delivery guarantee is requested (COR-08)."""
@@ -101,7 +102,7 @@ class MessageQueueGovernance:
             proposal_type=ProposalType.PARAMETER_CHANGE,
             title=f"Routing Policy: {policy_spec['name']}",
             description=f"Update message routing policy: {policy_spec['description']}",
-            execution_data=json.dumps(policy_spec).encode(),
+            execution_data=dumps(policy_spec),
             metadata={
                 "policy_type": "routing",
                 "affects_routes": policy_spec.get("routes", []),
@@ -125,7 +126,7 @@ class MessageQueueGovernance:
             proposal_type=ProposalType.PARAMETER_CHANGE,
             title=f"Fee Structure Update: {fee_structure['name']}",
             description=f"Update message processing fees: {fee_structure['description']}",
-            execution_data=json.dumps(fee_structure).encode(),
+            execution_data=dumps(fee_structure),
             metadata={
                 "policy_type": "fees",
                 "progressive": fee_structure.get("progressive", True),
@@ -147,7 +148,7 @@ class MessageQueueGovernance:
             proposal_type=ProposalType.PARAMETER_CHANGE,
             title=f"Priority Algorithm: {algorithm_spec['name']}",
             description=f"Update message prioritization: {algorithm_spec['description']}",
-            execution_data=json.dumps(algorithm_spec).encode(),
+            execution_data=dumps(algorithm_spec),
             metadata={
                 "policy_type": "prioritization",
                 "fairness_score": algorithm_spec.get("fairness", 0.8),
@@ -170,7 +171,7 @@ class MessageQueueGovernance:
             raise ValueError("Only passed proposals can be executed")
 
         # Parse proposal execution data
-        policy_spec = json.loads(proposal.execution_data.decode())
+        policy_spec = loads(proposal.execution_data)
 
         # Create type-safe policy parameters
         parameters = PolicyParameters(
@@ -305,7 +306,7 @@ class MessageQueueGovernance:
             sender=policy.created_by or "governance",
             receiver="message_queue_governance",
             operation_type=OperationType.SMART_CONTRACT,
-            payload=json.dumps(
+            payload=dumps(
                 {
                     "action": "policy_change",
                     "policy_id": policy.policy_id,
@@ -314,7 +315,7 @@ class MessageQueueGovernance:
                     "approved": policy.approved_by_dao,
                     "effective_from": policy.effective_from,
                 }
-            ).encode(),
+            ),
             fee=0,
         )
         policy_tx = self._sign_transaction(policy_tx)
@@ -555,7 +556,7 @@ class BlockchainMessageRouter:
             sender=registrar_id,
             receiver="message_queue_system",
             operation_type=OperationType.FEDERATION_JOIN,
-            payload=json.dumps(
+            payload=dumps(
                 {
                     "action": "register_route",
                     "route_data": {
@@ -569,7 +570,7 @@ class BlockchainMessageRouter:
                         "cost_per_mb": route.cost_per_mb,
                     },
                 }
-            ).encode(),
+            ),
             fee=10,
         )
         registration_tx = self._sign_transaction(registration_tx)
@@ -600,7 +601,7 @@ class BlockchainMessageRouter:
             sender="message_queue_router",
             receiver=message.recipient_id,
             operation_type=OperationType.SMART_CONTRACT,
-            payload=json.dumps(
+            payload=dumps(
                 {
                     "action": "route_message",
                     "message_id": message.message_id,
@@ -611,7 +612,7 @@ class BlockchainMessageRouter:
                     "fee_paid": message.processing_fee,
                     "routing_timestamp": time.time(),
                 }
-            ).encode(),
+            ),
             fee=message.processing_fee,
         )
         routing_tx = self._sign_transaction(routing_tx)
@@ -738,7 +739,7 @@ class BlockchainMessageRouter:
             sender="message_queue_monitor",
             receiver="message_queue_system",
             operation_type=OperationType.NODE_UPDATE,
-            payload=json.dumps(
+            payload=dumps(
                 {
                     "action": "record_metrics",
                     "metrics": {
@@ -754,7 +755,7 @@ class BlockchainMessageRouter:
                         "sla_compliance_rate": metrics.sla_compliance_rate,
                     },
                 }
-            ).encode(),
+            ),
             fee=1,
         )
         metrics_tx = self._sign_transaction(metrics_tx)
@@ -949,7 +950,7 @@ class BlockchainMessageQueue:
             sender=message.sender_id,
             receiver=self.queue_id,
             operation_type=OperationType.SMART_CONTRACT,
-            payload=json.dumps(
+            payload=dumps(
                 {
                     "action": "submit_message",
                     "message_id": message.message_id,
@@ -957,7 +958,7 @@ class BlockchainMessageQueue:
                     "fee": message.processing_fee,
                     "timestamp": time.time(),
                 }
-            ).encode(),
+            ),
             fee=1,
         )
         submission_tx = self._sign_transaction(submission_tx)
@@ -978,14 +979,14 @@ class BlockchainMessageQueue:
             sender=self.queue_id,
             receiver=message.recipient_id,
             operation_type=OperationType.SMART_CONTRACT,
-            payload=json.dumps(
+            payload=dumps(
                 {
                     "action": "process_message",
                     "message_id": message.message_id,
                     "route_id": route.route_id,
                     "processed_at": time.time(),
                 }
-            ).encode(),
+            ),
             fee=0,
         )
         processing_tx = self._sign_transaction(processing_tx)
@@ -1008,14 +1009,14 @@ class BlockchainMessageQueue:
             sender=message.sender_id,
             receiver=self.queue_id,
             operation_type=OperationType.MESSAGE,
-            payload=json.dumps(
+            payload=dumps(
                 {
                     "action": "submit_failed",
                     "message_id": message.message_id,
                     "error": error,
                     "timestamp": time.time(),
                 }
-            ).encode(),
+            ),
             fee=0,
         )
         failure_tx = self._sign_transaction(failure_tx)
@@ -1036,14 +1037,14 @@ class BlockchainMessageQueue:
             sender=self.queue_id,
             receiver=message.recipient_id,
             operation_type=OperationType.MESSAGE,
-            payload=json.dumps(
+            payload=dumps(
                 {
                     "action": "process_failed",
                     "message_id": message.message_id,
                     "error": error,
                     "timestamp": time.time(),
                 }
-            ).encode(),
+            ),
             fee=0,
         )
         failure_tx = self._sign_transaction(failure_tx)
