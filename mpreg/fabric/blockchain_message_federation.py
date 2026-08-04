@@ -16,6 +16,7 @@ from ..core.blockchain_ledger import BlockchainLedger
 from ..core.blockchain_message_queue import (
     BlockchainMessageQueue,
     MessageQueueGovernance,
+    UnsupportedDeliveryGuaranteeError,
 )
 from ..core.blockchain_message_queue_types import (
     BlockchainMessage,
@@ -93,10 +94,6 @@ class HubMessageQueue:
         underlying queue ``submit_message`` typed error — not swallowed as
         a soft ``None`` success-shaped miss.
         """
-        from mpreg.core.blockchain_message_queue import (
-            UnsupportedDeliveryGuaranteeError,
-        )
-
         try:
             # Enhanced message with federation metadata
             federation_message = self._create_federation_message(
@@ -447,15 +444,20 @@ class CrossRegionCoordinator:
         source_region: RegionName,
         destination_region: RegionName,
     ) -> bool:
-        """Coordinate message delivery across regions."""
+        """Coordinate message delivery across regions.
+
+        COR-08: EXACTLY_ONCE is typed fail-closed (not a soft ``False``).
+        """
+        if message.delivery_guarantee == DeliveryGuarantee.EXACTLY_ONCE:
+            raise UnsupportedDeliveryGuaranteeError(
+                "exactly_once",
+                detail=(
+                    "cross-region DeliveryGuarantee.EXACTLY_ONCE is unsupported "
+                    "(fail closed; no idempotent barrier)"
+                ),
+            )
 
         try:
-            # Create delivery request
-            if message.delivery_guarantee == DeliveryGuarantee.EXACTLY_ONCE:
-                logger.warning(
-                    "Rejecting cross-region delivery with unsupported EXACTLY_ONCE"
-                )
-                return False
             delivery_request = CrossRegionDeliveryRequest(
                 message_id=f"cross_region_{message.message_id}",
                 original_message_id=message.message_id,
@@ -496,6 +498,8 @@ class CrossRegionCoordinator:
 
             return success
 
+        except UnsupportedDeliveryGuaranteeError:
+            raise
         except Exception as e:
             logger.error(
                 f"Cross-region coordination failed {source_region} -> {destination_region}: {e}"
@@ -632,8 +636,11 @@ class BlockchainFederationBridge:
         message: BlockchainMessage,
         destination_hub_id: HubId,
     ) -> bool:
-        """Send message through the federated blockchain queue system."""
+        """Send message through the federated blockchain queue system.
 
+        COR-08: EXACTLY_ONCE propagates as ``UnsupportedDeliveryGuaranteeError``
+        (not a soft ``False``).
+        """
         sender_hub = self.hub_queues.get(sender_hub_id)
         if not sender_hub:
             logger.error(f"Sender hub {sender_hub_id} not found")
@@ -657,6 +664,8 @@ class BlockchainFederationBridge:
 
             return route is not None
 
+        except UnsupportedDeliveryGuaranteeError:
+            raise
         except Exception as e:
             logger.error(
                 f"Federated message send failed {sender_hub_id} -> {destination_hub_id}: {e}"

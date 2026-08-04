@@ -1735,6 +1735,17 @@ def config_check(settings_path: str, output_format: str) -> None:
         warnings.append(
             "fabric_gossip_require_hmac=true without fabric_gossip_hmac_secret"
         )
+    # COR-09 / multi-tenant: federated peers without discovery policy leave
+    # namespace gates off (lab default). Warn so operators do not ship open CP.
+    if (
+        (settings.peers and len(settings.peers) > 0)
+        or settings.enable_cache_federation
+        or getattr(settings, "fabric_routing_enabled", False)
+    ) and not getattr(settings, "discovery_policy_enabled", False):
+        warnings.append(
+            "discovery_policy_enabled=false on a federated/multi-peer node — "
+            "namespace/tenant gates are off (lab default; enable for multi-tenant)"
+        )
     report = {"groups": groups, "warnings": warnings, "ok": len(warnings) == 0}
     emit(report, output_format=output_format, table_title="Config check")
     if warnings:

@@ -38,5 +38,7 @@ discovery_summary_signing_secret = "change-me-federated-summary-hmac"
 # Snapshot restore: prefer fail-closed boot when catalog/route keys corrupt.
 fabric_snapshot_fail_on_restore_error = true
 # Tenant-aware discovery is recommended when multi-tenant catalogs share a fabric.
+# Lab default remains off; `mpreg config-check` warns when policy is disabled on
+# federated/multi-peer nodes (COR-09). Enable for multi-tenant production.
 discovery_policy_enabled = false
 discovery_policy_default_allow = true

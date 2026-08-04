@@ -423,6 +423,22 @@ discovery_summary_export_enabled = true
     assert result.exit_code == 2
     assert "fabric_route_require_signatures" in result.output
 
+def test_config_check_warns_discovery_policy_off_on_federated_profile() -> None:
+    """COR-09: federated profile keeps policy lab-off but config-check must warn."""
+    from pathlib import Path
+
+    from click.testing import CliRunner
+
+    from mpreg.cli.main import cli
+
+    profile = (
+        Path(__file__).resolve().parents[1] / "mpreg" / "profiles" / "federated.toml"
+    )
+    runner = CliRunner()
+    result = runner.invoke(cli, ["config-check", str(profile), "--format", "json"])
+    assert result.exit_code == 2
+    assert "discovery_policy_enabled" in result.output
+
 # ---------------------------------------------------------------------------
 # P1: Pub/sub delivery under simple drop oracle (local exchange)
 # ---------------------------------------------------------------------------

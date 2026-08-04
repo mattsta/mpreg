@@ -420,6 +420,28 @@ class TestCrossRegionCoordinator:
 
         assert success is False
 
+    @pytest.mark.asyncio
+    async def test_cross_region_exactly_once_refused(self):
+        """COR-08: cross-region EO is typed fail-closed (not soft False)."""
+        from mpreg.core.blockchain_message_queue import (
+            UnsupportedDeliveryGuaranteeError,
+        )
+
+        message = BlockchainMessage(
+            sender_id="west_client",
+            recipient_id="east_client",
+            priority=MessagePriority.HIGH,
+            delivery_guarantee=DeliveryGuarantee.EXACTLY_ONCE,
+            processing_fee=200,
+            payload=b"eo must not coordinate",
+        )
+        with pytest.raises(
+            UnsupportedDeliveryGuaranteeError, match="exactly_once|EXACTLY_ONCE"
+        ):
+            await self.coordinator.coordinate_cross_region_delivery(
+                message, "us_west", "us_east"
+            )
+
     def test_cross_region_performance_metrics(self):
         """Test cross-region performance metrics collection."""
         # Create test metrics and add them
@@ -575,6 +597,30 @@ class TestBlockchainFederationBridge:
         )
 
         assert success is True
+
+    @pytest.mark.asyncio
+    async def test_send_federated_exactly_once_refused(self):
+        """COR-08: bridge send does not swallow EO as soft False."""
+        from mpreg.core.blockchain_message_queue import (
+            UnsupportedDeliveryGuaranteeError,
+        )
+
+        await self.bridge.integrate_hub(self.local_hub)
+        await self.bridge.integrate_hub(self.regional_hub)
+        message = BlockchainMessage(
+            sender_id="local_client",
+            recipient_id="regional_client",
+            priority=MessagePriority.NORMAL,
+            delivery_guarantee=DeliveryGuarantee.EXACTLY_ONCE,
+            processing_fee=100,
+            payload=b"eo must not send",
+        )
+        with pytest.raises(
+            UnsupportedDeliveryGuaranteeError, match="exactly_once|EXACTLY_ONCE"
+        ):
+            await self.bridge.send_federated_message(
+                "local_test", message, "regional_test"
+            )
 
     @pytest.mark.asyncio
     async def test_federation_policy_proposal(self):
