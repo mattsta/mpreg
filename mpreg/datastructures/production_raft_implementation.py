@@ -460,6 +460,17 @@ class ProductionRaft(ProductionRaftRPCs):
     # Snapshot state
     installing_snapshot: bool = field(default=False, init=False)
     snapshot_chunks: dict[str, list[bytes]] = field(default_factory=dict, init=False)
+    # COR-T13-02 / PERF-T13-01: bound partial InstallSnapshot buffers
+    _snapshot_chunk_started_at: dict[str, float] = field(
+        default_factory=dict, init=False, repr=False
+    )
+    _snapshot_chunk_bytes: int = field(default=0, init=False, repr=False)
+    _snapshot_chunk_max_ids: int = field(default=4, init=False, repr=False)
+    _snapshot_chunk_max_bytes: int = field(
+        default=64 * 1024 * 1024, init=False, repr=False
+    )
+    _snapshot_chunk_ttl_seconds: float = field(default=120.0, init=False, repr=False)
+    snapshot_chunk_aborts: int = field(default=0, init=False)
     # COR-T11-01: absolute Raft index covered by latest snapshot (0 = none).
     # Log array is a suffix of entries with index > _snapshot_last_index.
     _snapshot_last_index: int = field(default=0, init=False)
@@ -677,12 +688,12 @@ class ProductionRaft(ProductionRaftRPCs):
                 client_id=client_id,
             )
 
-            # Append to local log
-            new_log = list(self.persistent_state.log_entries) + [entry]
+            # PERF-T13-02: append in place (log_entries is owned mutable list)
+            self.persistent_state.log_entries.append(entry)
             self.persistent_state = PersistentState(
                 current_term=self.persistent_state.current_term,
                 voted_for=self.persistent_state.voted_for,
-                log_entries=new_log,
+                log_entries=self.persistent_state.log_entries,
             )
 
             # Persist state
@@ -1054,11 +1065,12 @@ class ProductionRaft(ProductionRaftRPCs):
             client_id=self.node_id,
         )
 
-        new_log = list(self.persistent_state.log_entries) + [noop_entry]
+        # PERF-T13-02: append in place
+        self.persistent_state.log_entries.append(noop_entry)
         self.persistent_state = PersistentState(
             current_term=self.persistent_state.current_term,
             voted_for=self.persistent_state.voted_for,
-            log_entries=new_log,
+            log_entries=self.persistent_state.log_entries,
         )
 
         await self.storage.save_persistent_state(self.persistent_state)

@@ -9,6 +9,26 @@ from __future__ import annotations
 
 from typing import Any
 
+# ERG-T13-04: stable plane façade error codes (see mpreg/core/error_codes.json).
+PLANE_ERR_UNAVAILABLE = 1007  # UNAVAILABLE
+PLANE_ERR_INVALID_ARGUMENT = 1008  # INVALID_ARGUMENT
+PLANE_ERR_UNSUPPORTED_DELIVERY = 1011  # UNSUPPORTED_DELIVERY (EO)
+PLANE_ERR_UNSUPPORTED_CONSISTENCY = 1012  # UNSUPPORTED_CONSISTENCY (STRONG)
+
+def _plane_err(
+    message: str,
+    *,
+    code: int,
+    **extra: Any,
+) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "success": False,
+        "error_message": message,
+        "error_code": int(code),
+    }
+    out.update(extra)
+    return out
+
 def rpc_payload_dict(payload: object) -> dict[str, Any]:
     if payload is None:
         return {}
@@ -107,10 +127,10 @@ async def queue_create(
         body.update({k: v for k, v in kwargs.items() if v is not None})
     manager = getattr(server, "_queue_manager", None)
     if manager is None:
-        return {"success": False, "error_message": "queue_manager_unavailable"}
+        return _plane_err("queue_manager_unavailable", code=PLANE_ERR_UNAVAILABLE)
     name = str(body.get("queue_name") or body.get("name") or "")
     if not name:
-        return {"success": False, "error_message": "queue_name_required"}
+        return _plane_err("queue_name_required", code=PLANE_ERR_INVALID_ARGUMENT)
     cluster_id, tenant_id = rpc_actor_ids(server, body)
     with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
         ok = await manager.create_queue(name)
@@ -127,10 +147,10 @@ async def queue_send(
         body.update({k: v for k, v in kwargs.items() if v is not None})
     manager = getattr(server, "_queue_manager", None)
     if manager is None:
-        return {"success": False, "error_message": "queue_manager_unavailable"}
+        return _plane_err("queue_manager_unavailable", code=PLANE_ERR_UNAVAILABLE)
     queue_name = str(body.get("queue_name") or body.get("name") or "")
     if not queue_name:
-        return {"success": False, "error_message": "queue_name_required"}
+        return _plane_err("queue_name_required", code=PLANE_ERR_INVALID_ARGUMENT)
     topic = str(body.get("topic") or f"mpreg.queue.{queue_name}")
     payload_data = body.get("payload", body.get("message"))
     dg_raw = str(body.get("delivery_guarantee") or "at_least_once").strip().lower()
@@ -139,19 +159,19 @@ async def queue_send(
         return {
             "success": False,
             "error_message": "unsupported_delivery_guarantee:exactly_once",
-            "error_code": 1011,
+            "error_code": PLANE_ERR_UNSUPPORTED_DELIVERY,
             "queue_name": queue_name,
             "topic": topic,
         }
     try:
         dg = DeliveryGuarantee(dg_raw)
     except ValueError:
-        return {
-            "success": False,
-            "error_message": f"unsupported_delivery_guarantee:{dg_raw}",
-            "queue_name": queue_name,
-            "topic": topic,
-        }
+        return _plane_err(
+            f"unsupported_delivery_guarantee:{dg_raw}",
+            code=PLANE_ERR_UNSUPPORTED_DELIVERY,
+            queue_name=queue_name,
+            topic=topic,
+        )
     cluster_id, tenant_id = rpc_actor_ids(server, body)
     with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
         result = await manager.send_message(
@@ -176,15 +196,15 @@ async def queue_ack(
         body.update({k: v for k, v in kwargs.items() if v is not None})
     manager = getattr(server, "_queue_manager", None)
     if manager is None:
-        return {"success": False, "error_message": "queue_manager_unavailable"}
+        return _plane_err("queue_manager_unavailable", code=PLANE_ERR_UNAVAILABLE)
     queue_name = str(body.get("queue_name") or body.get("name") or "")
     message_id = str(body.get("message_id") or body.get("id") or "")
     subscriber_id = str(body.get("subscriber_id") or body.get("subscriber") or "")
     if not queue_name or not message_id or not subscriber_id:
-        return {
-            "success": False,
-            "error_message": "queue_name_message_id_subscriber_id_required",
-        }
+        return _plane_err(
+            "queue_name_message_id_subscriber_id_required",
+            code=PLANE_ERR_INVALID_ARGUMENT,
+        )
     cluster_id, tenant_id = rpc_actor_ids(server, body)
     with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
         ok = await manager.acknowledge_message(queue_name, message_id, subscriber_id)
@@ -206,10 +226,10 @@ async def queue_receive(
         body.update({k: v for k, v in kwargs.items() if v is not None})
     manager = getattr(server, "_queue_manager", None)
     if manager is None:
-        return {"success": False, "error_message": "queue_manager_unavailable"}
+        return _plane_err("queue_manager_unavailable", code=PLANE_ERR_UNAVAILABLE)
     queue_name = str(body.get("queue_name") or body.get("name") or "")
     if not queue_name:
-        return {"success": False, "error_message": "queue_name_required"}
+        return _plane_err("queue_name_required", code=PLANE_ERR_INVALID_ARGUMENT)
     subscriber_id = str(
         body.get("subscriber_id") or body.get("subscriber") or ""
     ).strip() or None
@@ -262,7 +282,7 @@ async def cache_get(
         body.update({k: v for k, v in kwargs.items() if v is not None})
     manager = getattr(server, "_cache_manager", None)
     if manager is None:
-        return {"success": False, "error_message": "cache_manager_unavailable"}
+        return _plane_err("cache_manager_unavailable", code=PLANE_ERR_UNAVAILABLE)
     namespace = str(body.get("namespace") or "")
     identifier = str(body.get("identifier") or body.get("key") or "")
     if not namespace or not identifier:
@@ -299,7 +319,7 @@ async def cache_put(
         body.update({k: v for k, v in kwargs.items() if v is not None})
     manager = getattr(server, "_cache_manager", None)
     if manager is None:
-        return {"success": False, "error_message": "cache_manager_unavailable"}
+        return _plane_err("cache_manager_unavailable", code=PLANE_ERR_UNAVAILABLE)
     namespace = str(body.get("namespace") or "")
     identifier = str(body.get("identifier") or body.get("key") or "")
     if not namespace or not identifier:
@@ -308,7 +328,7 @@ async def cache_put(
             "error_message": "namespace_and_identifier_required",
         }
     if "value" not in body:
-        return {"success": False, "error_message": "value_required"}
+        return _plane_err("value_required", code=PLANE_ERR_INVALID_ARGUMENT)
     key = GlobalCacheKey(
         namespace=namespace,
         identifier=identifier,
@@ -331,7 +351,7 @@ async def cache_put(
             return {
                 "success": False,
                 "error_message": f"invalid_consistency_level:{raw_cl}",
-                "error_code": 1012,
+                "error_code": PLANE_ERR_UNSUPPORTED_CONSISTENCY,
                 "namespace": namespace,
                 "identifier": identifier,
             }
@@ -350,7 +370,7 @@ async def cache_put(
         "STRONG" in str(err) or "strong" in str(err).lower()
         or "not implemented" in str(err).lower()
     ):
-        out["error_code"] = 1012
+        out["error_code"] = PLANE_ERR_UNSUPPORTED_CONSISTENCY
     return out
 
 async def cache_invalidate(
@@ -363,10 +383,10 @@ async def cache_invalidate(
         body.update({k: v for k, v in kwargs.items() if v is not None})
     manager = getattr(server, "_cache_manager", None)
     if manager is None:
-        return {"success": False, "error_message": "cache_manager_unavailable"}
+        return _plane_err("cache_manager_unavailable", code=PLANE_ERR_UNAVAILABLE)
     pattern = str(body.get("pattern") or body.get("namespace") or "")
     if not pattern:
-        return {"success": False, "error_message": "pattern_required"}
+        return _plane_err("pattern_required", code=PLANE_ERR_INVALID_ARGUMENT)
     cluster_id, tenant_id = rpc_actor_ids(server, body)
     with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
         result = await manager.invalidate(pattern)

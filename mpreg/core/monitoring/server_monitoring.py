@@ -69,10 +69,13 @@ class ServerMetricsTracker:
     cache_pubsub_drops: int = 0
     drain_refusals: int = 0
     accept_rejects: int = 0
+    peer_accept_rejects: int = 0
     queue_dlq_total: int = 0
     federation_in_flight_drops: int = 0
     catalog_dedup_skips: int = 0
     raft_snapshot_installs: int = 0
+    raft_snapshot_chunk_aborts: int = 0
+    raft_snapshot_chunk_bytes: int = 0
     node_draining: int = 0
     node_ready: int = 1
     # OBS-T11-02: wall-clock RPS from monotonic counters (not maxlen deques)
@@ -176,7 +179,10 @@ class ServerMetricsTracker:
         self.mgmt_mutations[key] = self.mgmt_mutations.get(key, 0) + 1
 
     def set_draining(self, draining: bool) -> None:
+        """OBS-T13-01: drain flag; also clear ready when entering drain."""
         self.node_draining = 1 if draining else 0
+        if draining:
+            self.node_ready = 0
 
     def set_notification_drops(self, count: int) -> None:
         self.notification_drops = max(0, int(count))
@@ -202,8 +208,24 @@ class ServerMetricsTracker:
         )
 
     def record_accept_reject(self, n: int = 1) -> None:
-        """PERF-T11-01: inbound connection rejected at cap."""
+        """PERF-T11-01: inbound client connection rejected at cap."""
         self.accept_rejects = max(0, int(getattr(self, "accept_rejects", 0)) + max(0, int(n)))
+
+    def record_peer_accept_reject(self, n: int = 1) -> None:
+        """OBS-T13-03 / COR-T13-06: peer mesh connection refused at cap."""
+        self.peer_accept_rejects = max(
+            0, int(getattr(self, "peer_accept_rejects", 0)) + max(0, int(n))
+        )
+
+    def record_raft_snapshot_chunk_abort(self, n: int = 1) -> None:
+        """OBS-T13-02: partial InstallSnapshot buffer dropped (TTL/bound)."""
+        self.raft_snapshot_chunk_aborts = max(
+            0, int(getattr(self, "raft_snapshot_chunk_aborts", 0)) + max(0, int(n))
+        )
+
+    def set_raft_snapshot_chunk_bytes(self, n: int) -> None:
+        """OBS-T13-02: current buffered snapshot chunk bytes."""
+        self.raft_snapshot_chunk_bytes = max(0, int(n))
 
     def record_drain_refusal(self, role: str = "unknown", n: int = 1) -> None:
         """OBS-T11-01: data-plane messages refused while draining."""
@@ -298,6 +320,33 @@ class ServerMetricsTracker:
         lines.append("# TYPE mpreg_accept_rejects_total counter")
         lines.append(
             f"mpreg_accept_rejects_total{{{labels}}} {getattr(self, 'accept_rejects', 0)}"
+        )
+        lines.append(
+            "# HELP mpreg_peer_accept_rejects_total "
+            "Peer mesh connections refused at max_peer_connections."
+        )
+        lines.append("# TYPE mpreg_peer_accept_rejects_total counter")
+        lines.append(
+            f"mpreg_peer_accept_rejects_total{{{labels}}} "
+            f"{getattr(self, 'peer_accept_rejects', 0)}"
+        )
+        lines.append(
+            "# HELP mpreg_raft_snapshot_chunk_aborts_total "
+            "Partial InstallSnapshot buffers dropped (TTL/bound/error)."
+        )
+        lines.append("# TYPE mpreg_raft_snapshot_chunk_aborts_total counter")
+        lines.append(
+            f"mpreg_raft_snapshot_chunk_aborts_total{{{labels}}} "
+            f"{getattr(self, 'raft_snapshot_chunk_aborts', 0)}"
+        )
+        lines.append(
+            "# HELP mpreg_raft_snapshot_chunk_bytes "
+            "Bytes currently buffered for in-progress InstallSnapshot."
+        )
+        lines.append("# TYPE mpreg_raft_snapshot_chunk_bytes gauge")
+        lines.append(
+            f"mpreg_raft_snapshot_chunk_bytes{{{labels}}} "
+            f"{getattr(self, 'raft_snapshot_chunk_bytes', 0)}"
         )
         lines.append(
             "# HELP mpreg_queue_dlq_total Messages moved to dead-letter queue."

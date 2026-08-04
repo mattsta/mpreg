@@ -2330,6 +2330,8 @@ class MPREGServer:
         self._raft_plane.bind_transport(self._fabric_raft_transport)
 
     def register_raft_node(self, node: Any) -> None:
+        # OBS-T13-02: surface InstallSnapshot chunk pressure on unified Prom path
+        self._wire_raft_snapshot_chunk_metrics(node)
         if self._raft_plane is not None:
             self._raft_plane.register_node(node)
             if node not in self._registered_raft_nodes:
@@ -8584,6 +8586,28 @@ class MPREGServer:
         # Cache federation peer coordination is handled by the transport layer.
         return
 
+    def _peer_connection_count(self) -> int:
+        """COR-T13-06: outbound + inbound peer mesh size."""
+        return len(self.peer_connections) + len(
+            getattr(self, "_inbound_peer_connections", {}) or {}
+        )
+
+    def _peer_connections_at_cap(self, *, reserving: bool = True) -> bool:
+        """Return True when a new peer slot must be refused."""
+        max_p = int(getattr(self.settings, "max_peer_connections", 0) or 0)
+        if max_p <= 0:
+            return False
+        n = self._peer_connection_count()
+        # Replacing an existing url does not grow the set — callers check that.
+        return n >= max_p if reserving else n > max_p
+
+    def _note_peer_accept_reject(self, n: int = 1) -> None:
+        tracker = getattr(self, "_metrics_tracker", None)
+        if tracker is not None and hasattr(tracker, "record_peer_accept_reject"):
+            tracker.record_peer_accept_reject(n)
+        elif tracker is not None and hasattr(tracker, "record_accept_reject"):
+            tracker.record_accept_reject(n)
+
     def _track_inbound_peer_connection(
         self, peer_url: str, connection: Connection
     ) -> None:
@@ -8591,6 +8615,15 @@ class MPREGServer:
             return
         existing = self._inbound_peer_connections.get(peer_url)
         if existing is connection:
+            return
+        # COR-T13-06: refuse new peer identity when at cap (replace same url OK)
+        if existing is None and self._peer_connections_at_cap(reserving=True):
+            self._note_peer_accept_reject(1)
+            logger.warning(
+                "Peer inbound refused at max_peer_connections={} peer={}",
+                getattr(self.settings, "max_peer_connections", 0),
+                peer_url,
+            )
             return
         self._inbound_peer_connections[peer_url] = connection
         event = ConnectionEvent.established(peer_url, self.cluster.local_url)
@@ -10096,6 +10129,19 @@ class MPREGServer:
                     self._remove_cache_fabric_peer(peer_url)
 
                     del self.peer_connections[peer_url]
+
+            # COR-T13-06: refuse new outbound peer when mesh at cap
+            if peer_url not in self.peer_connections and self._peer_connections_at_cap(
+                reserving=True
+            ):
+                self._note_peer_accept_reject(1)
+                logger.warning(
+                    "[{}] Peer outbound refused at max_peer_connections={} peer={}",
+                    self.settings.name,
+                    getattr(self.settings, "max_peer_connections", 0),
+                    peer_url,
+                )
+                return False
 
             target_url = dial_url or peer_url
             if target_url != peer_url:

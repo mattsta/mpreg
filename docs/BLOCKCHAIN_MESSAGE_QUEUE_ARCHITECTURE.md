@@ -348,12 +348,13 @@ class MessageQueueGovernance:
                 MessagePriority.BULK: fee_params.get("bulk_multiplier", 0.1)
             }.get(message.priority, 1.0)
 
-            # Guarantee multiplier
+            # Guarantee multiplier — EXACTLY_ONCE is refused (non_claim); never priced.
+            if message.delivery_guarantee == DeliveryGuarantee.EXACTLY_ONCE:
+                raise ValueError("EXACTLY_ONCE delivery is unsupported (fail-closed)")
             guarantee_multiplier = {
                 DeliveryGuarantee.AT_MOST_ONCE: 0.5,
                 DeliveryGuarantee.AT_LEAST_ONCE: 1.0,
-                DeliveryGuarantee.EXACTLY_ONCE: 2.0,
-                DeliveryGuarantee.ORDERED: 1.5
+                DeliveryGuarantee.ORDERED: 1.5,
             }.get(message.delivery_guarantee, 1.0)
 
             calculated_fee = int(

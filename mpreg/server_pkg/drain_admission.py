@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Container
 
-# Roles refused when the node is draining. Control/server/gossip still flow.
+# Roles refused when the node is draining (known data-plane).
 DATA_PLANE_ROLES: frozenset[str] = frozenset(
     {
         "rpc",
@@ -21,8 +21,36 @@ DATA_PLANE_ROLES: frozenset[str] = frozenset(
     }
 )
 
+# COR-T13-05: under drain, only these roles (plus fabric CONTROL peel) are admitted.
+# Unknown roles fail-closed (refused) so new data-plane names cannot slip through.
+CONTROL_PLANE_ROLES: frozenset[str] = frozenset(
+    {
+        "server",
+        "gossip",
+        "fabric-gossip",
+        "fabric-control",
+        "consensus-vote",
+        "consensus-proposal",
+        "hello",
+        "peer",
+        "goodbye",
+        "status",
+        "STATUS",
+        "GOODBYE",
+    }
+)
+
 def is_data_plane_role(role: str | None) -> bool:
     return bool(role) and str(role) in DATA_PLANE_ROLES
+
+def is_control_plane_role(role: str | None) -> bool:
+    if not role:
+        return False
+    r = str(role)
+    if r in CONTROL_PLANE_ROLES:
+        return True
+    # Case-insensitive match for STATUS/GOODBYE style roles
+    return r.lower() in {c.lower() for c in CONTROL_PLANE_ROLES}
 
 def is_fabric_control_plane(
     *,
@@ -36,6 +64,10 @@ def is_fabric_control_plane(
     Raft RPCs are UnifiedMessage with MessageType.CONTROL on raft topics, but
     the wire envelope is always role ``fabric-message``. Inspect inner type.
     """
+    if role is not None and is_control_plane_role(role):
+        # Explicit control roles are control-plane even without fabric payload.
+        if str(role) != "fabric-message":
+            return True
     mt = (message_type or "").lower()
     top = (topic or "").lower()
     if fabric_payload:
@@ -73,7 +105,11 @@ def should_refuse_for_drain(
     topic: str | None = None,
     fabric_payload: dict[str, Any] | None = None,
 ) -> bool:
-    """Return True when a message role must be refused under drain."""
+    """Return True when a message role must be refused under drain.
+
+    COR-T13-05: admit only known control-plane roles (and fabric CONTROL peel).
+    Unknown roles and known data-plane roles are refused (fail-closed).
+    """
     if not draining:
         return False
     if is_fabric_control_plane(
@@ -83,7 +119,10 @@ def should_refuse_for_drain(
         fabric_payload=fabric_payload,
     ):
         return False
-    return is_data_plane_role(role)
+    if is_control_plane_role(role):
+        return False
+    # Known data-plane or unknown / empty role → refuse
+    return True
 
 def drain_unavailable_response(u: str | None = None) -> Any:
     """Build the canonical RPC unavailable response for drain refusal."""

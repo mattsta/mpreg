@@ -7,7 +7,7 @@ Starter TOML files for `mpreg server start-config <path>` or
 |---------|----------|
 | `dev.toml` | Local hacking, minimal systems |
 | `single-node.toml` | One process with cache + queue |
-| `cluster.toml` | Multi-node same cluster (set `connect`/`peers`) |
+| `cluster.toml` | Multi-node same cluster (set `connect`/`peers`) — **risk: open data bind; mon loopback** |
 | `federated.toml` | Cross-cluster fabric member (path-vector; **requires route signatures + summary HMAC**) |
 | `soft-rt.toml` | Soft real-time: tighter hop/TTL, LS PREFER, fail-closed client deadlines |
 | `discovery-resolver.toml` | Dedicated discovery resolver |
@@ -38,3 +38,12 @@ Lab-only multi-cluster baseline with placeholder HMAC secrets and
 For production multi-tenant: start from `federated.toml`, enable discovery
 policy, and rotate all `change-me` secrets. Always run `mpreg config-check`.
 
+## Risk tags (ERG-T13-09)
+
+| Profile | Tag | Notes |
+|---------|-----|-------|
+| `dev.toml` / `single-node.toml` | lab | Local development |
+| `cluster.toml` | prod-baseline (same trust) | Mon on 127.0.0.1; set peers/token |
+| `soft-rt.toml` | soft-rt | Latency defaults; not multi-tenant hardened |
+| `federated.toml` | federated baseline | Signatures + policy on; rotate secrets |
+| `federated-lab.toml` | lab federated | Intentionally open CP for tests |

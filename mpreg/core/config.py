@@ -64,6 +64,9 @@ class MPREGSettings:
     ready_min_score: float = 0.4
     # PERF-T11-01: hard cap on concurrent inbound client connections (0 = unlimited).
     max_inbound_connections: int = 10_000
+    # COR-T13-06 / PERF-T13-04: hard cap on peer mesh connections (outbound+inbound).
+    # 0 = unlimited. Counted as len(peer_connections)+len(_inbound_peer_connections).
+    max_peer_connections: int = 2_000
     # PERF-T11-09: max WS/TCP frame size (bytes). Default 32 MiB (was ~4 GiB).
     max_message_size: int = 32 * 1024 * 1024
     on_port_assigned: PortAssignmentCallback | None = None

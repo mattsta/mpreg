@@ -65,9 +65,14 @@ def serialize_request_vote_response(response: RequestVoteResponse) -> dict[str, 
     return asdict(response)
 
 def deserialize_request_vote_response(data: dict[str, Any]) -> RequestVoteResponse:
+    # COR-T13-01: missing vote_granted → False (fail-closed), same as InstallSnapshot.
+    if "vote_granted" in data:
+        vote_granted = bool(data["vote_granted"])
+    else:
+        vote_granted = False
     return RequestVoteResponse(
         term=int(data["term"]),
-        vote_granted=bool(data["vote_granted"]),
+        vote_granted=vote_granted,
         voter_id=str(data["voter_id"]),
     )
 
@@ -99,9 +104,14 @@ def serialize_append_entries_response(
 def deserialize_append_entries_response(
     data: dict[str, Any],
 ) -> AppendEntriesResponse:
+    # COR-T13-01: missing success → False (fail-closed), same as InstallSnapshot.
+    if "success" in data:
+        success = bool(data["success"])
+    else:
+        success = False
     return AppendEntriesResponse(
         term=int(data["term"]),
-        success=bool(data["success"]),
+        success=success,
         follower_id=str(data["follower_id"]),
         match_index=int(data.get("match_index", 0)),
         conflict_index=int(data.get("conflict_index", -1)),

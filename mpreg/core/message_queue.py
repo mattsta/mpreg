@@ -229,6 +229,8 @@ class MessageQueue(ManagedObject):
         # PERF-T11-02: O(log n) priority path (heap of (-priority, seq, message))
         self._priority_heap: list[tuple[int, int, QueuedMessage]] = []
         self._priority_seq: int = 0
+        # PERF-T13-05: id → message for O(1) pending remove on priority dequeue
+        self._pending_by_id: dict[str, QueuedMessage] = {}
         self.in_flight_messages: dict[MessageIdStr, InFlightMessage] = {}
         self.dead_letter_queue: deque[QueuedMessage] = deque()
         # PERF-01: wake delivery worker instead of 100ms empty poll.
@@ -277,7 +279,49 @@ class MessageQueue(ManagedObject):
         except RuntimeError:
             queue_log.debug("No event loop running, skipping background workers")
 
+    def _is_priority_queue(self) -> bool:
+        return self.config.queue_type == QueueType.PRIORITY
+
+    def _pending_count(self) -> int:
+        """Pending size: id-map for priority (PERF-T13-05), else deque."""
+        if self._is_priority_queue():
+            return len(self._pending_by_id)
+        return len(self.pending_messages)
+
+    def _pending_empty(self) -> bool:
+        if self._is_priority_queue():
+            return not self._pending_by_id
+        return not self.pending_messages
+
+    def _priority_enqueue(self, message: QueuedMessage) -> None:
+        """O(log n) heap + O(1) id map (no dual deque membership)."""
+        self._priority_seq += 1
+        heapq.heappush(
+            self._priority_heap,
+            (-int(message.priority), self._priority_seq, message),
+        )
+        self._pending_by_id[str(message.id)] = message
+
+    def _priority_requeue(self, message: QueuedMessage) -> None:
+        """Re-queue after delivery deferral (same as enqueue for priority)."""
+        self._priority_enqueue(message)
+
+    def _priority_drop_id(self, message_id: str) -> None:
+        self._pending_by_id.pop(str(message_id), None)
+
+    def _rebuild_priority_heap_from_pending(self) -> None:
+        """Rebuild heap after bulk restore/cleanup of priority pending set."""
+        self._priority_heap.clear()
+        self._priority_seq = 0
+        for msg in self._pending_by_id.values():
+            self._priority_seq += 1
+            heapq.heappush(
+                self._priority_heap,
+                (-int(msg.priority), self._priority_seq, msg),
+            )
+
     async def restore_from_store(self) -> None:
+
         """Restore queue state from persistence store.
 
         AT_LEAST_ONCE crash recovery: any in-flight (delivered, unacked) messages
@@ -291,6 +335,13 @@ class MessageQueue(ManagedObject):
             self.config = state.config
         self.pending_messages = state.pending
         self.dead_letter_queue = state.dead_letter
+        self._pending_by_id.clear()
+        self._priority_heap.clear()
+        if self._is_priority_queue():
+            for msg in list(self.pending_messages):
+                self._pending_by_id[str(msg.id)] = msg
+            self._rebuild_priority_heap_from_pending()
+            self.pending_messages.clear()  # priority uses id-map only
         # Requeue unacked in-flight messages for redelivery (crash × visibility).
         self.in_flight_messages = {}
         for message_id, in_flight in state.in_flight.items():
@@ -300,7 +351,10 @@ class MessageQueue(ManagedObject):
                 int(getattr(message, "_delivery_attempt", 1) or 1),
                 int(in_flight.delivery_attempt or 1),
             )
-            self.pending_messages.appendleft(message)
+            if self._is_priority_queue():
+                self._priority_requeue(message)
+            else:
+                self.pending_messages.appendleft(message)
             self._delivery_wake.set()
             await self._queue_store.requeue(message)
             queue_log.info(
@@ -313,7 +367,7 @@ class MessageQueue(ManagedObject):
             old_entries = self.fingerprint_history.irange(maximum=(cutoff_time, ""))
             for entry in list(old_entries):
                 self.fingerprint_history.remove(entry)
-        self.statistics.current_queue_size = len(self.pending_messages)
+        self.statistics.current_queue_size = self._pending_count()
         self.statistics.current_in_flight_count = 0
 
     async def send_message(
@@ -390,7 +444,7 @@ class MessageQueue(ManagedObject):
                     )
 
             # Check queue capacity
-            if len(self.pending_messages) >= self.config.max_size:
+            if self._pending_count() >= self.config.max_size:
                 return DeliveryResult(
                     success=False,
                     message_id=message_id,
@@ -403,13 +457,8 @@ class MessageQueue(ManagedObject):
 
             # Add to pending queue
             if self.config.queue_type == QueueType.PRIORITY:
-                # PERF-T11-02: heap O(log n) enqueue; pending_messages mirrors for size/scan paths
-                self._priority_seq += 1
-                heapq.heappush(
-                    self._priority_heap,
-                    (-int(message.priority), self._priority_seq, message),
-                )
-                self.pending_messages.append(message)
+                # PERF-T11-02 / PERF-T13-05: heap + id map only (no O(n) deque remove)
+                self._priority_enqueue(message)
             else:
                 # FIFO or DELAY queue
                 self.pending_messages.append(message)
@@ -419,7 +468,7 @@ class MessageQueue(ManagedObject):
                 await self._queue_store.enqueue(message)
 
             self.statistics.messages_sent += 1
-            self.statistics.current_queue_size = len(self.pending_messages)
+            self.statistics.current_queue_size = self._pending_count()
 
             queue_log.debug(f"Queued message {message_id} for topic {topic}")
 
@@ -500,7 +549,7 @@ class MessageQueue(ManagedObject):
 
     def get_statistics(self) -> QueueStatistics:
         """Get current queue statistics."""
-        self.statistics.current_queue_size = len(self.pending_messages)
+        self.statistics.current_queue_size = self._pending_count()
         self.statistics.current_in_flight_count = len(self.in_flight_messages)
         return self.statistics
 
@@ -563,11 +612,11 @@ class MessageQueue(ManagedObject):
         try:
             while True:
                 try:
-                    if not self.pending_messages:
+                    if self._pending_empty():
                         self._delivery_wake.clear()
                         # Recheck after clear: enqueue may have set the event
                         # between the empty check and clear (lost-wake race).
-                        if not self.pending_messages:
+                        if self._pending_empty():
                             try:
                                 await asyncio.wait_for(
                                     self._delivery_wake.wait(), timeout=1.0
@@ -582,16 +631,17 @@ class MessageQueue(ManagedObject):
                         self.config.queue_type == QueueType.PRIORITY
                         and self._priority_heap
                     ):
-                        # PERF-T11-02: pop highest priority ready message
+                        # PERF-T11-02 / PERF-T13-05: pop heap; O(1) id-map drop
                         deferred: list[tuple[int, int, QueuedMessage]] = []
                         while self._priority_heap:
                             pri, seq, pending_msg = heapq.heappop(self._priority_heap)
+                            mid = str(getattr(pending_msg, "id", "") or "")
+                            if mid and mid not in self._pending_by_id:
+                                continue  # stale after TTL/cleanup
                             if pending_msg.is_ready_for_delivery():
                                 message = pending_msg
-                                try:
-                                    self.pending_messages.remove(pending_msg)
-                                except ValueError:
-                                    pass
+                                if mid:
+                                    self._pending_by_id.pop(mid, None)
                                 break
                             deferred.append((pri, seq, pending_msg))
                         for item in deferred:
@@ -678,17 +728,35 @@ class MessageQueue(ManagedObject):
 
                     # Clean up expired messages
                     if self.config.message_ttl_seconds:
-                        expired_pending = []
-                        for i, message in enumerate(self.pending_messages):
-                            if message.is_expired(self.config.message_ttl_seconds):
-                                expired_pending.append(i)
+                        if self._is_priority_queue():
+                            expired_ids = [
+                                mid
+                                for mid, message in list(self._pending_by_id.items())
+                                if message.is_expired(self.config.message_ttl_seconds)
+                            ]
+                            for mid in expired_ids:
+                                expired_msg = self._pending_by_id.pop(mid, None)
+                                if expired_msg is not None:
+                                    self.statistics.messages_expired += 1
+                                    queue_log.debug(
+                                        f"Expired pending message {expired_msg.id}"
+                                    )
+                            # Heap entries for expired ids become stale and are
+                            # skipped on pop (mid not in _pending_by_id).
+                        else:
+                            expired_pending = []
+                            for i, message in enumerate(self.pending_messages):
+                                if message.is_expired(self.config.message_ttl_seconds):
+                                    expired_pending.append(i)
 
-                        # Remove expired messages (in reverse order to maintain indices)
-                        for i in reversed(expired_pending):
-                            expired_msg = self.pending_messages[i]
-                            del self.pending_messages[i]
-                            self.statistics.messages_expired += 1
-                            queue_log.debug(f"Expired pending message {expired_msg.id}")
+                            # Remove expired messages (reverse to keep indices)
+                            for i in reversed(expired_pending):
+                                expired_msg = self.pending_messages[i]
+                                del self.pending_messages[i]
+                                self.statistics.messages_expired += 1
+                                queue_log.debug(
+                                    f"Expired pending message {expired_msg.id}"
+                                )
 
                     queue_log.debug(f"Queue cleanup completed for {self.config.name}")
 
@@ -725,7 +793,7 @@ class MessageQueue(ManagedObject):
                         message, f"no_subscriber_requeue_exceeded:{n}"
                     )
                     return
-                self.pending_messages.appendleft(message)
+                self._priority_requeue(message) if self._is_priority_queue() else self.pending_messages.appendleft(message)
                 self._delivery_wake.clear()
                 try:
                     await asyncio.wait_for(self._delivery_wake.wait(), timeout=0.25)
@@ -743,7 +811,7 @@ class MessageQueue(ManagedObject):
                 max_if = int(getattr(self.config, "max_size", 10000) or 10000)
             if len(self.in_flight_messages) >= max(1, int(max_if)):
                 # Backpressure: requeue briefly rather than unbounded growth.
-                self.pending_messages.appendleft(message)
+                self._priority_requeue(message) if self._is_priority_queue() else self.pending_messages.appendleft(message)
                 self._delivery_wake.clear()
                 try:
                     await asyncio.wait_for(self._delivery_wake.wait(), timeout=0.1)
@@ -781,7 +849,7 @@ class MessageQueue(ManagedObject):
 
             if delivered_count == 0:
                 # Transient callback failures: re-queue rather than instant DLQ.
-                self.pending_messages.appendleft(message)
+                self._priority_requeue(message) if self._is_priority_queue() else self.pending_messages.appendleft(message)
                 self._delivery_wake.set()
                 return
 
@@ -822,7 +890,7 @@ class MessageQueue(ManagedObject):
             )
 
             # Re-queue for delivery
-            self.pending_messages.appendleft(message)
+            self._priority_requeue(message) if self._is_priority_queue() else self.pending_messages.appendleft(message)
             self._delivery_wake.set()
             if self._queue_store is not None:
                 await self._queue_store.requeue(message)
@@ -915,6 +983,8 @@ class MessageQueue(ManagedObject):
         self.pending_messages.clear()
         if hasattr(self, "_priority_heap"):
             self._priority_heap.clear()
+        if hasattr(self, "_pending_by_id"):
+            self._pending_by_id.clear()
         self.in_flight_messages.clear()
         self.dead_letter_queue.clear()
         self.subscriptions.clear()
@@ -937,6 +1007,8 @@ class MessageQueue(ManagedObject):
             self.pending_messages.clear()
             if hasattr(self, "_priority_heap"):
                 self._priority_heap.clear()
+            if hasattr(self, "_pending_by_id"):
+                self._pending_by_id.clear()
             self.in_flight_messages.clear()
             self.dead_letter_queue.clear()
             self.subscriptions.clear()

@@ -22,6 +22,21 @@ from ..core.transport.interfaces import TransportConfig
 
 unified_log = logger
 
+def _result_error_code(raw: Any) -> int | None:
+    """ERG-T13-03: promote plane/server error_code onto façade results."""
+    if isinstance(raw, dict) and raw.get("error_code") is not None:
+        try:
+            return int(raw["error_code"])
+        except (TypeError, ValueError):
+            return None
+    code = getattr(raw, "error_code", None)
+    if code is None:
+        return None
+    try:
+        return int(code)
+    except (TypeError, ValueError):
+        return None
+
 @dataclass(slots=True)
 class QueueSendResult:
     """Normalized result from a queue send attempt."""
@@ -29,13 +44,15 @@ class QueueSendResult:
     success: bool
     message_id: str | None = None
     error_message: str | None = None
+    error_code: int | None = None
     raw: Any = None
 
     @classmethod
     def from_raw(cls, raw: Any) -> QueueSendResult:
         if isinstance(raw, dict):
             return cls(
-                success=bool(raw.get("success", False)),
+                # COR-T13-04: missing success → False (fail-closed)
+                success=bool(raw["success"]) if "success" in raw else False,
                 message_id=(
                     str(raw["message_id"])
                     if raw.get("message_id") is not None
@@ -48,6 +65,7 @@ class QueueSendResult:
                         str(raw["error"]) if raw.get("error") is not None else None
                     )
                 ),
+                error_code=_result_error_code(raw),
                 raw=raw,
             )
         if hasattr(raw, "success"):
@@ -56,9 +74,10 @@ class QueueSendResult:
                 success=bool(raw.success),
                 message_id=str(mid) if mid is not None else None,
                 error_message=getattr(raw, "error_message", None),
+                error_code=_result_error_code(raw),
                 raw=raw,
             )
-        return cls(success=bool(raw), raw=raw)
+        return cls(success=False, raw=raw)
 
 @dataclass(slots=True)
 class CacheOpResult:
@@ -67,19 +86,26 @@ class CacheOpResult:
     success: bool
     value: Any = None
     error_message: str | None = None
+    error_code: int | None = None
     raw: Any = None
 
     @classmethod
     def from_raw(cls, raw: Any, *, value_key: str = "value") -> CacheOpResult:
         if isinstance(raw, dict):
+            # COR-T13-04 / ERG-T13-03: require explicit success; never infer from entry key
+            if "success" in raw:
+                success = bool(raw["success"])
+            else:
+                success = False
             return cls(
-                success=bool(raw.get("success", value_key in raw or "entry" in raw)),
+                success=success,
                 value=raw.get(value_key, raw.get("entry", raw.get("data"))),
                 error_message=(
                     str(raw["error_message"])
                     if raw.get("error_message") is not None
                     else (str(raw["error"]) if raw.get("error") is not None else None)
                 ),
+                error_code=_result_error_code(raw),
                 raw=raw,
             )
         if hasattr(raw, "success"):
@@ -89,9 +115,10 @@ class CacheOpResult:
                 success=bool(raw.success),
                 value=value,
                 error_message=getattr(raw, "error_message", None),
+                error_code=_result_error_code(raw),
                 raw=raw,
             )
-        return cls(success=raw is not None, value=raw, raw=raw)
+        return cls(success=False, value=None, raw=raw)
 
 @dataclass(slots=True)
 class MPREGClient:

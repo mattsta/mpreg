@@ -1,9 +1,14 @@
 # Multi-node cluster member (set connect/peers at deploy time)
+# Risk tag: same-trust-domain cluster baseline (not multi-tenant federated).
+# Soft-RT / single trust domain — for untrusted cross-cluster use federated.toml.
 [mpreg]
 name = "cluster-node"
 cluster_id = "cluster-a"
 host = "0.0.0.0"
 monitoring_enabled = true
+# ERG-T13-02: bind mon to loopback by default (public data plane stays 0.0.0.0).
+# Override monitoring_host only behind a private network + auth token.
+monitoring_host = "127.0.0.1"
 # ERG-T10-11: durable mgmt mutation audit (relative to cwd / data dir).
 mgmt_audit_path = "mpreg-mgmt-audit.jsonl"
 monitoring_enable_cors = false
@@ -14,4 +19,5 @@ gossip_interval = 5.0
 log_level = "INFO"
 # connect = "ws://seed-host:<port>"
 # peers = ["ws://peer1:<port>", "ws://peer2:<port>"]
+# Prefer setting monitoring_auth_token for any non-loopback mon exposure:
 # monitoring_auth_token = "set-me"

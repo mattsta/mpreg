@@ -940,6 +940,11 @@ endpoints.
   return `COMMAND_NOT_FOUND` for plane RPCs — run `mpreg config-check` first.
 - `EXACTLY_ONCE` delivery and cache `STRONG` consistency are **refused**
   (`MpregErrorCode` 1011 / 1012). Prefer at-least-once + idempotent handlers.
+- `CacheOpResult` / `QueueSendResult` expose `error_code` (ERG-T13-03) so callers
+  need not dig into `.raw` for plane refusals. Missing `success` on dict payloads
+  is fail-closed (`success=False`).
+- Soft plane failures also carry stable codes: `1007` unavailable, `1008` invalid
+  argument (ERG-T13-04).
 - Proof ledger: `tests/invariants/claims.yaml` (`non_claims` lists what is out of scope).
 
 ## Default HA call policy

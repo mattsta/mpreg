@@ -444,11 +444,11 @@ class FederatedAnnouncementTracker:
         return announcement_id in self.seen_announcements
 
     def mark_seen(self, announcement_id: AnnouncementID, timestamp: Timestamp) -> None:
-        """Mark an announcement as seen at the given timestamp."""
-        # We need to modify the dict, so we create a new one
-        new_registry = dict(self.seen_announcements)
-        new_registry[announcement_id] = timestamp
-        self.seen_announcements = new_registry
+        """Mark an announcement as seen at the given timestamp.
+
+        COR-T13-03 / PERF-T13-03: mutate registry in place (no full-dict copy).
+        """
+        self.seen_announcements[announcement_id] = timestamp
 
     def cleanup_expired(self, current_time: Timestamp) -> int:
         """Remove expired announcements and return the number removed."""
@@ -458,13 +458,8 @@ class FederatedAnnouncementTracker:
             if current_time - timestamp > self.ttl_seconds
         ]
 
-        if expired_ids:
-            new_registry = {
-                aid: timestamp
-                for aid, timestamp in self.seen_announcements.items()
-                if aid not in expired_ids
-            }
-            self.seen_announcements = new_registry
+        for aid in expired_ids:
+            self.seen_announcements.pop(aid, None)
 
         return len(expired_ids)
 

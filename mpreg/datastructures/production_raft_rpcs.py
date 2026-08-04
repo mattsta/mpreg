@@ -48,6 +48,12 @@ class ProductionRaftRPCs:
         heartbeat_task: Any
         apply_entries_task: Any
         snapshot_chunks: dict[str, list[bytes]]
+        _snapshot_chunk_started_at: dict[str, float]
+        _snapshot_chunk_bytes: int
+        _snapshot_chunk_max_ids: int
+        _snapshot_chunk_max_bytes: int
+        _snapshot_chunk_ttl_seconds: float
+        snapshot_chunk_aborts: int
         cluster_members: set[str]
         state_machine: Any
         current_leader: str | None
@@ -69,6 +75,82 @@ class ProductionRaftRPCs:
         _snapshot_last_term: int
         async def _start_election_timer(self) -> None: ...
         async def _apply_committed_entries(self) -> None: ...
+
+    # COR-T13-02 / PERF-T13-01: bound partial InstallSnapshot buffers
+    def _snapshot_chunk_drop(self, snapshot_id: str, *, reason: str = "") -> None:
+        chunks = self.snapshot_chunks.pop(snapshot_id, None)
+        self._snapshot_chunk_started_at.pop(snapshot_id, None)
+        if chunks:
+            freed = sum(len(c) for c in chunks)
+            self._snapshot_chunk_bytes = max(
+                0, int(getattr(self, "_snapshot_chunk_bytes", 0)) - freed
+            )
+        self.snapshot_chunk_aborts = int(getattr(self, "snapshot_chunk_aborts", 0)) + 1
+        # OBS-T13-02: optional Prom / metrics hook (server wires ServerMetricsTracker)
+        cb = getattr(self, "on_snapshot_chunk_abort", None)
+        if callable(cb):
+            try:
+                cb(1, int(getattr(self, "_snapshot_chunk_bytes", 0) or 0))
+            except Exception:
+                pass
+        if reason:
+            rpc_log.warning(
+                f"Dropped snapshot chunks id={snapshot_id} reason={reason}"
+            )
+
+    def _snapshot_chunk_prune_stale(self, now: float | None = None) -> None:
+        now = float(now if now is not None else time.time())
+        ttl = float(getattr(self, "_snapshot_chunk_ttl_seconds", 120.0) or 120.0)
+        started = getattr(self, "_snapshot_chunk_started_at", None)
+        if not isinstance(started, dict):
+            return
+        stale = [
+            sid
+            for sid, ts in list(started.items())
+            if (now - float(ts)) > ttl
+        ]
+        for sid in stale:
+            self._snapshot_chunk_drop(sid, reason="ttl_expired")
+
+    def _snapshot_chunk_can_accept(
+        self, snapshot_id: str, chunk_len: int
+    ) -> bool:
+        """Return False if accepting this chunk would exceed bounds."""
+        self._snapshot_chunk_prune_stale()
+        max_ids = int(getattr(self, "_snapshot_chunk_max_ids", 4) or 4)
+        max_bytes = int(
+            getattr(self, "_snapshot_chunk_max_bytes", 64 * 1024 * 1024)
+            or (64 * 1024 * 1024)
+        )
+        if snapshot_id not in self.snapshot_chunks:
+            # Evict oldest incomplete install if at id cap
+            while len(self.snapshot_chunks) >= max_ids:
+                # Prefer non-active ids; drop arbitrary oldest by start time
+                started = getattr(self, "_snapshot_chunk_started_at", {}) or {}
+                if not started:
+                    victim = next(iter(self.snapshot_chunks))
+                else:
+                    victim = min(started.items(), key=lambda kv: kv[1])[0]
+                self._snapshot_chunk_drop(victim, reason="max_concurrent_installs")
+        cur_bytes = int(getattr(self, "_snapshot_chunk_bytes", 0) or 0)
+        if cur_bytes + max(0, int(chunk_len)) > max_bytes:
+            return False
+        return True
+
+    def _snapshot_chunk_note_append(self, snapshot_id: str, data: bytes) -> None:
+        if snapshot_id not in self.snapshot_chunks:
+            self.snapshot_chunks[snapshot_id] = []
+            self._snapshot_chunk_started_at[snapshot_id] = time.time()
+        self.snapshot_chunks[snapshot_id].append(data)
+        self._snapshot_chunk_bytes = int(
+            getattr(self, "_snapshot_chunk_bytes", 0) or 0
+        ) + len(data)
+        cb = getattr(self, "on_snapshot_chunk_bytes", None)
+        if callable(cb):
+            try:
+                cb(int(self._snapshot_chunk_bytes))
+            except Exception:
+                pass
 
     # RequestVote RPC Handler
     async def handle_request_vote(
@@ -339,36 +421,57 @@ class ProductionRaftRPCs:
 
             # Handle snapshot chunks
             snapshot_id = f"{request.leader_id}:{request.last_included_index}:{request.last_included_term}"
+            chunk_data = request.data if isinstance(request.data, (bytes, bytearray)) else b""
 
             # Rules 2 & 3: Handle snapshot data
             if request.offset == 0:
-                # First chunk - initialize chunk storage
-                self.snapshot_chunks[snapshot_id] = []
-                self.installing_snapshot = True
-                rpc_log.info(
-                    f"Starting snapshot installation from {request.leader_id}, "
-                    f"last_included_index={request.last_included_index}"
-                )
-
-            # Store chunk data
-            if snapshot_id in self.snapshot_chunks:
-                expected_offset = sum(
-                    len(chunk) for chunk in self.snapshot_chunks[snapshot_id]
-                )
-                if request.offset == expected_offset:
-                    self.snapshot_chunks[snapshot_id].append(request.data)
-                else:
-                    rpc_log.error(
-                        f"Unexpected snapshot chunk offset: expected {expected_offset}, got {request.offset}"
-                    )
-                    # Reset snapshot installation
-                    self.snapshot_chunks.pop(snapshot_id, None)
+                # First chunk — drop any prior buffer for this id, start fresh
+                if snapshot_id in self.snapshot_chunks:
+                    self._snapshot_chunk_drop(snapshot_id, reason="restart_offset_0")
+                if not self._snapshot_chunk_can_accept(snapshot_id, len(chunk_data)):
                     self.installing_snapshot = False
                     return InstallSnapshotResponse(
                         term=self.persistent_state.current_term,
                         follower_id=self.node_id,
                         success=False,
                     )
+                self._snapshot_chunk_note_append(snapshot_id, bytes(chunk_data))
+                self.installing_snapshot = True
+                rpc_log.info(
+                    f"Starting snapshot installation from {request.leader_id}, "
+                    f"last_included_index={request.last_included_index}"
+                )
+            elif snapshot_id in self.snapshot_chunks:
+                expected_offset = sum(
+                    len(chunk) for chunk in self.snapshot_chunks[snapshot_id]
+                )
+                if request.offset != expected_offset:
+                    rpc_log.error(
+                        f"Unexpected snapshot chunk offset: expected {expected_offset}, got {request.offset}"
+                    )
+                    self._snapshot_chunk_drop(snapshot_id, reason="offset_mismatch")
+                    self.installing_snapshot = False
+                    return InstallSnapshotResponse(
+                        term=self.persistent_state.current_term,
+                        follower_id=self.node_id,
+                        success=False,
+                    )
+                if not self._snapshot_chunk_can_accept(snapshot_id, len(chunk_data)):
+                    self._snapshot_chunk_drop(snapshot_id, reason="max_bytes")
+                    self.installing_snapshot = False
+                    return InstallSnapshotResponse(
+                        term=self.persistent_state.current_term,
+                        follower_id=self.node_id,
+                        success=False,
+                    )
+                self._snapshot_chunk_note_append(snapshot_id, bytes(chunk_data))
+            else:
+                # Mid-stream chunk without prior offset=0 — reject
+                return InstallSnapshotResponse(
+                    term=self.persistent_state.current_term,
+                    follower_id=self.node_id,
+                    success=False,
+                )
 
             # Rule 4: Wait for more chunks if not done
             if not request.done:
@@ -382,7 +485,7 @@ class ProductionRaftRPCs:
             # COR-T10-01: never ACK success after apply/persist failure.
             try:
                 # Combine all chunks
-                complete_snapshot_data = b"".join(self.snapshot_chunks[snapshot_id])
+                complete_snapshot_data = b"".join(self.snapshot_chunks.get(snapshot_id, []))
 
                 # Create snapshot object
                 cfg = set(getattr(request, "configuration", ()) or ())
@@ -401,8 +504,14 @@ class ProductionRaftRPCs:
                 # Save snapshot to storage
                 await self.storage.save_snapshot(snapshot)
 
-                # Clean up
-                self.snapshot_chunks.pop(snapshot_id, None)
+                # Clean up without counting as abort
+                chunks = self.snapshot_chunks.pop(snapshot_id, None)
+                self._snapshot_chunk_started_at.pop(snapshot_id, None)
+                if chunks:
+                    freed = sum(len(c) for c in chunks)
+                    self._snapshot_chunk_bytes = max(
+                        0, int(getattr(self, "_snapshot_chunk_bytes", 0)) - freed
+                    )
                 self.installing_snapshot = False
 
                 self.metrics.snapshots_installed += 1
@@ -417,7 +526,7 @@ class ProductionRaftRPCs:
 
             except Exception as e:
                 rpc_log.error(f"Error installing snapshot: {e}")
-                self.snapshot_chunks.pop(snapshot_id, None)
+                self._snapshot_chunk_drop(snapshot_id, reason="apply_or_persist_failed")
                 self.installing_snapshot = False
                 return InstallSnapshotResponse(
                     term=self.persistent_state.current_term,

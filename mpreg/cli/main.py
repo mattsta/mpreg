@@ -1752,9 +1752,22 @@ def doctor(
 
 @cli.command("config-check")
 @click.argument("settings_path", type=click.Path(exists=True))
+@click.option(
+    "--strict",
+    is_flag=True,
+    default=False,
+    help="ERG-T13-01: exit 2 on any warning (CI production gate). "
+    "Default exits 0 with warnings listed (lab_ok).",
+)
 @add_format_option
-def config_check(settings_path: str, output_format: str) -> None:
-    """Validate a settings file and report grouped configuration summary."""
+def config_check(settings_path: str, output_format: str, strict: bool) -> None:
+    """Validate a settings file and report grouped configuration summary.
+
+    Exit codes (ERG-T13-01 / USE-T13-02):
+      0 — ok or lab_ok (warnings present, non-strict)
+      1 — load/parse failure (raised by Click / from_path)
+      2 — strict mode with warnings, or fatal config errors
+    """
     settings = MPREGSettings.from_path(settings_path)
     groups = {
         "identity": {
@@ -1903,9 +1916,17 @@ def config_check(settings_path: str, output_format: str) -> None:
             "federated profile still uses change-me placeholder secrets — "
             "rotate before any shared deployment (ERG-T10-12)"
         )
-    report = {"groups": groups, "warnings": warnings, "ok": len(warnings) == 0}
+    # ERG-T13-01: severity tiers — stock profiles are lab_ok by default.
+    status = "ok" if not warnings else "lab_ok"
+    report = {
+        "groups": groups,
+        "warnings": warnings,
+        "ok": len(warnings) == 0,
+        "status": status,
+        "strict": bool(strict),
+    }
     emit(report, output_format=output_format, table_title="Config check")
-    if warnings:
+    if warnings and strict:
         raise SystemExit(2)
 
 @cli.group("admin")

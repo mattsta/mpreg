@@ -1,6 +1,8 @@
 > **Honesty banner:** Raft in MPREG is **CFT**, not BFT. Rows that mention
-> “Byzantine fault tolerance” describe **theoretical topology classes**, not
-> shipped MPREG guarantees. See `tests/invariants/claims.yaml`.
+> “Byzantine fault tolerance” or “Self-Healing” describe **theoretical topology
+> classes / lab sketches**, not shipped MPREG product guarantees. The
+> `federation_resilience` control loop is a **non_claim** (stubs only). See
+> `tests/invariants/claims.yaml`.
 
 # MPREG Fabric Topology Comparison Matrix
 
