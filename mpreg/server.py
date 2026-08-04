@@ -8610,13 +8610,18 @@ class MPREGServer:
 
     def _track_inbound_peer_connection(
         self, peer_url: str, connection: Connection
-    ) -> None:
+    ) -> bool:
+        """Track inbound peer; return False when refused at max_peer_connections.
+
+        COR-T15-01: callers must close the connection when False so refused
+        peers do not linger half-open outside the mesh maps.
+        """
         if peer_url == self.cluster.local_url:
-            return
+            return True
         existing = self._inbound_peer_connections.get(peer_url)
         if existing is connection:
-            return
-        # COR-T13-06: refuse new peer identity when at cap (replace same url OK)
+            return True
+        # COR-T13-06 / COR-T15-01: refuse new peer identity when at cap
         if existing is None and self._peer_connections_at_cap(reserving=True):
             self._note_peer_accept_reject(1)
             logger.warning(
@@ -8624,11 +8629,12 @@ class MPREGServer:
                 getattr(self.settings, "max_peer_connections", 0),
                 peer_url,
             )
-            return
+            return False
         self._inbound_peer_connections[peer_url] = connection
         event = ConnectionEvent.established(peer_url, self.cluster.local_url)
         self.cluster.connection_event_bus.publish(event)
         self._schedule_catalog_snapshot(peer_url)
+        return True
 
     def _drop_inbound_peer_connection(
         self, peer_url: str, connection: Connection
@@ -9477,31 +9483,38 @@ class MPREGServer:
                                     peer_cluster_id = remote_cluster_id
                                     peer_node_id = remote_node_id
                                     connection.url = peer_url
-                                    is_server_connection = True
-                                    self._track_inbound_peer_connection(
+                                    if not self._track_inbound_peer_connection(
                                         peer_url, connection
-                                    )
-                                    self._register_cache_fabric_peer(peer_url)
-
-                                    if (
-                                        remote_cluster_id
-                                        and remote_cluster_id
-                                        != self.settings.cluster_id
                                     ):
-                                        self.federation_manager.notify_connection_established(
-                                            remote_cluster_id,
-                                            remote_node_id or peer_url,
+                                        close_connection = True
+                                        logger.debug(
+                                            "Inbound peer refused at cap; "
+                                            "scheduling connection close peer={}",
                                             peer_url,
                                         )
-                                        self._register_fabric_graph_peer(
+                                    else:
+                                        is_server_connection = True
+                                        self._register_cache_fabric_peer(peer_url)
+
+                                        if (
                                             remote_cluster_id
-                                        )
-                                    if isinstance(
-                                        server_request.server, RPCServerStatus
-                                    ):
-                                        await self._send_status_to_connection(
-                                            connection
-                                        )
+                                            and remote_cluster_id
+                                            != self.settings.cluster_id
+                                        ):
+                                            self.federation_manager.notify_connection_established(
+                                                remote_cluster_id,
+                                                remote_node_id or peer_url,
+                                                peer_url,
+                                            )
+                                            self._register_fabric_graph_peer(
+                                                remote_cluster_id
+                                            )
+                                        if isinstance(
+                                            server_request.server, RPCServerStatus
+                                        ):
+                                            await self._send_status_to_connection(
+                                                connection
+                                            )
 
                         if response_model is None:
                             response_model = self.run_server(connection, server_request)
@@ -9541,18 +9554,25 @@ class MPREGServer:
                                 peer_url = message.sender_id
                                 peer_node_id = message.sender_id
                                 connection.url = peer_url
-                                is_server_connection = True
-                                self._track_inbound_peer_connection(
+                                if not self._track_inbound_peer_connection(
                                     peer_url, connection
-                                )
-                                peer_cluster_id = self.cluster.cluster_id_for_node_url(
-                                    peer_url
-                                )
-                                if (
-                                    peer_cluster_id
-                                    and peer_cluster_id != self.settings.cluster_id
                                 ):
-                                    self._register_fabric_graph_peer(peer_cluster_id)
+                                    close_connection = True
+                                    logger.debug(
+                                        "Inbound peer refused at cap; "
+                                        "scheduling connection close peer={}",
+                                        peer_url,
+                                    )
+                                else:
+                                    is_server_connection = True
+                                    peer_cluster_id = (
+                                        self.cluster.cluster_id_for_node_url(peer_url)
+                                    )
+                                    if (
+                                        peer_cluster_id
+                                        and peer_cluster_id != self.settings.cluster_id
+                                    ):
+                                        self._register_fabric_graph_peer(peer_cluster_id)
                             await self._fabric_control_plane.gossip.handle_received_message(
                                 message
                             )
@@ -9666,16 +9686,25 @@ class MPREGServer:
                                 peer_url = sender_id
                                 peer_node_id = sender_id
                                 connection.url = peer_url
-                                is_server_connection = True
-                                self._track_inbound_peer_connection(
+                                if not self._track_inbound_peer_connection(
                                     peer_url, connection
-                                )
-                                peer_cluster_id = fabric_message.headers.source_cluster
-                                if (
-                                    peer_cluster_id
-                                    and peer_cluster_id != self.settings.cluster_id
                                 ):
-                                    self._register_fabric_graph_peer(peer_cluster_id)
+                                    close_connection = True
+                                    logger.debug(
+                                        "Inbound peer refused at cap; "
+                                        "scheduling connection close peer={}",
+                                        peer_url,
+                                    )
+                                else:
+                                    is_server_connection = True
+                                    peer_cluster_id = (
+                                        fabric_message.headers.source_cluster
+                                    )
+                                    if (
+                                        peer_cluster_id
+                                        and peer_cluster_id != self.settings.cluster_id
+                                    ):
+                                        self._register_fabric_graph_peer(peer_cluster_id)
                         try:
                             from mpreg.core.observability.trace_context import (
                                 bind_current_trace,

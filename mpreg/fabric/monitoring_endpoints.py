@@ -671,17 +671,9 @@ use /health and federation health_score for full status. Drain alone forces 503.
                 "ready_min_score": self._ready_min_score(),
                 "timestamp": time.time(),
             }
-            # OBS-T11-03: mirror admission into Prom gauge
-            tracker = getattr(self, "metrics_tracker", None) or getattr(
-                self, "_metrics_tracker", None
-            )
-            if tracker is None:
-                provider = getattr(self, "metrics_tracker_provider", None)
-                if callable(provider):
-                    try:
-                        tracker = provider()
-                    except Exception:
-                        tracker = None
+            # OBS-T11-03 / OBS-T15-01: mirror admission into Prom gauge
+            # (field is server_metrics_tracker — prior lookup missed it)
+            tracker = self._resolve_server_metrics_tracker()
             if tracker is not None and hasattr(tracker, "set_ready"):
                 tracker.set_ready(bool(ready))
             return web.json_response(body, status=200 if ready else 503)
@@ -2162,6 +2154,24 @@ use /health and federation health_score for full status. Drain alone forces 503.
             charset="utf-8",
         )
 
+    def _resolve_server_metrics_tracker(self) -> object | None:
+        """OBS-T15-01: canonical ServerMetricsTracker resolution for mon handlers."""
+        tracker = getattr(self, "server_metrics_tracker", None)
+        if tracker is not None:
+            return tracker
+        tracker = getattr(self, "metrics_tracker", None) or getattr(
+            self, "_metrics_tracker", None
+        )
+        if tracker is not None:
+            return tracker
+        provider = getattr(self, "metrics_tracker_provider", None)
+        if callable(provider):
+            try:
+                return provider()
+            except Exception:
+                return None
+        return None
+
     def _refresh_raft_bridge_metrics(self) -> None:
         """OBS-T14-01: pull Raft node metrics into ServerMetricsTracker for Prom."""
         tracker = self.server_metrics_tracker
@@ -2317,6 +2327,18 @@ use /health and federation health_score for full status. Drain alone forces 503.
             self._refresh_raft_bridge_metrics()
         except Exception as exc:  # noqa: BLE001
             logger.debug("Raft bridge refresh unavailable: {}", exc)
+
+        # OBS-T15-01: at least clear ready when draining without requiring /ready hit
+        try:
+            tracker = self._resolve_server_metrics_tracker()
+            drain_fn = getattr(self, "draining_provider", None)
+            if tracker is not None and drain_fn is not None and hasattr(tracker, "set_draining"):
+                draining = bool(drain_fn())
+                tracker.set_draining(draining)
+                # set_draining already clears ready when True; when False leave gauge
+                # until /ready recomputes score-based admission (avoid false ready=1).
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Prom drain/ready refresh unavailable: {}", exc)
 
         # RPC / pubsub counters + latency histograms + per-error-code
         try:

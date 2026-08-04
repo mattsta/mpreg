@@ -519,6 +519,10 @@ class FederatedRPCAnnouncement:
         """
         Check if this announcement should be processed by the local node.
 
+        .. note:: COR-T15-02 / INV-P7 — **API-only**. The live wire path uses
+           catalog gossip + ``RoutingCatalogApplier`` dedup, not this method.
+           Do not assume callers on the network path invoke ``should_process``.
+
         Returns False if:
         - Already seen this announcement (deduplication)
         - Exceeded hop limit

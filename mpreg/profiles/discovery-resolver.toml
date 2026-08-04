@@ -4,6 +4,8 @@ name = "discovery-resolver"
 cluster_id = "discovery"
 host = "0.0.0.0"
 monitoring_enabled = true
+# ERG-T15-01: mon loopback by default
+monitoring_host = "127.0.0.1"
 monitoring_enable_cors = false
 fabric_routing_enabled = true
 discovery_resolver_mode = true

@@ -6,6 +6,8 @@ cluster_id = "dev-cluster"
 host = "127.0.0.1"
 # port omitted → auto-allocate
 monitoring_enabled = true
+# ERG-T15-01: mon loopback by default
+monitoring_host = "127.0.0.1"
 monitoring_enable_cors = false
 enable_default_cache = true
 enable_default_queue = true

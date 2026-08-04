@@ -1823,6 +1823,16 @@ def config_check(settings_path: str, output_format: str, strict: bool) -> None:
         warnings.append("monitoring CORS is enabled — disable in production unless needed")
     if settings.monitoring_enabled and not settings.monitoring_auth_token:
         warnings.append("monitoring has no auth token — set monitoring_auth_token for production")
+    mon_host = str(getattr(settings, "monitoring_host", None) or settings.host or "")
+    if (
+        settings.monitoring_enabled
+        and mon_host not in ("127.0.0.1", "localhost", "::1")
+        and not settings.monitoring_auth_token
+    ):
+        warnings.append(
+            "monitoring bound on non-loopback host without monitoring_auth_token "
+            f"(host={mon_host!r}) — set token or monitoring_host=127.0.0.1 (ERG-T15-01)"
+        )
     if not settings.enable_default_queue or not settings.enable_default_cache:
         missing = []
         if not settings.enable_default_queue:
@@ -2196,6 +2206,7 @@ _PROFILE_RISK_TAGS: dict[str, str] = {
     "soft-rt": "soft-rt (latency; not multi-tenant)",
     "federated": "federated baseline (rotate secrets)",
     "federated-lab": "lab federated (open CP intentional)",
+    "discovery-resolver": "lab/ops (discovery CP; mon loopback)",
 }
 
 @profile_group.command("list")
