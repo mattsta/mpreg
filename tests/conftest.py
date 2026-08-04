@@ -555,8 +555,28 @@ async def enhanced_server(
 
 # Pytest configuration
 def pytest_configure(config: Any) -> None:
-    """Configure pytest for async testing."""
-    # Ensure we're using the right event loop policy
+    """Configure pytest for async testing + hang observability."""
     asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
+    from mpreg.testing.hang_observe import HangStateDir, enable_faulthandler
+    from mpreg.testing.resource_limits import raise_open_file_limit
+
+    # Workers inherit a low macOS soft maxfiles unless raised here too.
+    raise_open_file_limit(1_048_576)
+    enable_faulthandler()
+    state = HangStateDir()
+    state.write_pid()
+    config._mpreg_hang_state = state  # type: ignore[attr-defined]
+
+def pytest_runtest_logstart(nodeid: str, location: Any) -> None:
+    """Breadcrumb current nodeid for hang profilers (py-spy / HangWatchdog)."""
+    from mpreg.testing.hang_observe import HangStateDir
+
+    HangStateDir().write_current(nodeid)
+
+def pytest_runtest_logfinish(nodeid: str, location: Any) -> None:
+    """Clear current-test breadcrumb when a test completes."""
+    from mpreg.testing.hang_observe import HangStateDir
+
+    HangStateDir().clear_current()
 
 # Remove deprecated event_loop fixture - use pytest-asyncio defaults

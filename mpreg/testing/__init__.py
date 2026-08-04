@@ -12,12 +12,38 @@ from mpreg.testing.oracles import (
     RpcStreamEvent,
 )
 
+# Concurrent runner is intentionally NOT imported here: `python -m
+# mpreg.testing.concurrent_runner` must load a fresh module (avoids runpy warning).
+
 __all__ = [
+    "ConcurrentSuiteResult",
+    "ConcurrentSuiteRunner",
     "FaultInjector",
     "FaultKind",
+    "HangProfiler",
+    "HangStateDir",
+    "HangWatchdog",
     "NetworkView",
+    "NoFileLimit",
     "RaftOracle",
     "RoutingOracle",
     "RpcOracle",
     "RpcStreamEvent",
+    "raise_open_file_limit",
 ]
+
+def __getattr__(name: str) -> object:
+    """Lazy exports for concurrent/hang infrastructure."""
+    if name in {"ConcurrentSuiteResult", "ConcurrentSuiteRunner"}:
+        from mpreg.testing import concurrent_runner as _cr
+
+        return getattr(_cr, name)
+    if name in {"HangProfiler", "HangStateDir", "HangWatchdog"}:
+        from mpreg.testing import hang_observe as _ho
+
+        return getattr(_ho, name)
+    if name in {"NoFileLimit", "raise_open_file_limit"}:
+        from mpreg.testing import resource_limits as _rl
+
+        return getattr(_rl, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
