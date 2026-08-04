@@ -182,11 +182,9 @@ class RouteAnnouncement:
         }
 
     def to_bytes(self) -> bytes:
-        return json.dumps(
-            self.signature_payload(),
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode()
+        from mpreg.core.native_codec import canonical_dumps
+
+        return canonical_dumps(self.signature_payload())
 
     def with_signature(
         self, *, signature: bytes, public_key: bytes, algorithm: str
@@ -267,11 +265,9 @@ class RouteWithdrawal:
         }
 
     def to_bytes(self) -> bytes:
-        return json.dumps(
-            self.signature_payload(),
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode()
+        from mpreg.core.native_codec import canonical_dumps
+
+        return canonical_dumps(self.signature_payload())
 
     def with_signature(
         self, *, signature: bytes, public_key: bytes, algorithm: str

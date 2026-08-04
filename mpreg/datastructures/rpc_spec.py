@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import inspect
-import json
 import time
 import types
 import uuid
@@ -494,9 +493,10 @@ def _namespace_from_name(name: RpcName) -> RpcNamespace:
     return ""
 
 def _compute_spec_digest(spec: RpcSpec) -> RpcSpecDigest:
+    from mpreg.core.native_codec import canonical_hash_hex
+
     payload = spec.to_dict(include_digest=False)
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), default=str)
-    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+    return canonical_hash_hex(payload, algorithm="sha256")
 
 def _parse_docstring(doc: str) -> RpcDocSpec:
     if not doc:

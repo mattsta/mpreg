@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 
 from mpreg.datastructures.rpc_spec import RpcSpec
@@ -26,9 +25,10 @@ class RpcSpecSharePolicy:
             if not namespace_match:
                 return False
         if self.max_bytes is not None:
+            from mpreg.core.native_codec import canonical_dumps
+
             payload = spec.to_dict()
-            encoded = json.dumps(payload, separators=(",", ":"), sort_keys=True)
-            if len(encoded.encode("utf-8")) > self.max_bytes:
+            if len(canonical_dumps(payload)) > self.max_bytes:
                 return False
         return True
 

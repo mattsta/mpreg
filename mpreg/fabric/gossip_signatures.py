@@ -9,15 +9,16 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-import json
 from typing import Any, Mapping
+
+from mpreg.core.native_codec import canonical_dumps
 
 SIGNATURE_KEY = "mpreg_gossip_hmac"
 SIGNATURE_ALG = "hmac-sha256"
 
 def _canonical_bytes(payload: Mapping[str, Any]) -> bytes:
     body = {k: v for k, v in payload.items() if k != SIGNATURE_KEY}
-    return json.dumps(body, sort_keys=True, separators=(",", ":"), default=str).encode()
+    return canonical_dumps(body)
 
 def sign_gossip_payload(payload: Mapping[str, Any], secret: str) -> dict[str, Any]:
     """Return a copy of payload with HMAC field attached."""
