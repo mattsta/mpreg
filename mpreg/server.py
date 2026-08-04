@@ -2329,6 +2329,28 @@ class MPREGServer:
         self._raft_plane = RaftPlane()
         self._raft_plane.bind_transport(self._fabric_raft_transport)
 
+    def _wire_raft_snapshot_chunk_metrics(self, node: Any) -> None:
+        """OBS-T13-02: bind raft chunk abort/bytes counters to ServerMetricsTracker."""
+        tracker = getattr(self, "_metrics_tracker", None)
+        if tracker is None:
+            return
+
+        def _on_abort(n: int = 1, bytes_now: int = 0) -> None:
+            if hasattr(tracker, "record_raft_snapshot_chunk_abort"):
+                tracker.record_raft_snapshot_chunk_abort(n)
+            if hasattr(tracker, "set_raft_snapshot_chunk_bytes"):
+                tracker.set_raft_snapshot_chunk_bytes(bytes_now)
+
+        def _on_bytes(n: int) -> None:
+            if hasattr(tracker, "set_raft_snapshot_chunk_bytes"):
+                tracker.set_raft_snapshot_chunk_bytes(n)
+
+        try:
+            node.on_snapshot_chunk_abort = _on_abort  # type: ignore[attr-defined]
+            node.on_snapshot_chunk_bytes = _on_bytes  # type: ignore[attr-defined]
+        except Exception:
+            pass
+
     def register_raft_node(self, node: Any) -> None:
         # OBS-T13-02: surface InstallSnapshot chunk pressure on unified Prom path
         self._wire_raft_snapshot_chunk_metrics(node)
