@@ -1656,11 +1656,12 @@ class ProductionRaft(ProductionRaftRPCs):
                         await self._update_term(response.term)
                         await self._convert_to_follower()
                         return
-                    # COR-T10-01: do not advance match/next after failed install.
-                    if not getattr(response, "success", True):
+                    # COR-T10-01 / COR-T12-01: fail-closed — missing success ⇒ reject.
+                    if not bool(getattr(response, "success", False)):
                         raft_log.warning(
                             f"InstallSnapshot rejected by {follower_id} "
-                            f"(success=False, term={response.term})"
+                            f"(success={getattr(response, 'success', None)}, "
+                            f"term={getattr(response, 'term', None)})"
                         )
                         return
                 else:

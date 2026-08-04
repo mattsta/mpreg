@@ -11,6 +11,7 @@ import asyncio
 import time
 import uuid
 from dataclasses import dataclass, field
+from collections.abc import Callable
 from typing import Any
 
 from loguru import logger
@@ -108,6 +109,8 @@ class MessageQueueManager(ManagedObject):
         # Queue management
         self.queues: dict[QueueName, MessageQueue] = {}
         self.queue_configs: dict[QueueName, QueueConfiguration] = {}
+        # OBS-T12-02: optional Prom hook propagated to every MessageQueue.on_dlq
+        self.on_dlq: Callable[[int], None] | None = None
 
         # Global statistics
         self.statistics = QueueManagerStatistics()
@@ -123,6 +126,12 @@ class MessageQueueManager(ManagedObject):
     def attach_namespace_policy(self, engine: NamespacePolicyEngine | None) -> None:
         """Bind or replace the namespace/tenant data-plane gate."""
         self.namespace_policy = engine
+
+    def set_on_dlq(self, callback: Callable[[int], None] | None) -> None:
+        """OBS-T12-02: bind DLQ counter hook on manager and all existing queues."""
+        self.on_dlq = callback
+        for queue in self.queues.values():
+            queue.on_dlq = callback
 
     def _data_plane_allowed(
         self, namespace: str, *, write: bool
@@ -186,6 +195,9 @@ class MessageQueueManager(ManagedObject):
                 queue_store=queue_store,
                 autostart=queue_store is None,
             )
+            # OBS-T12-02: inherit manager-level DLQ Prom hook
+            if self.on_dlq is not None:
+                queue.on_dlq = self.on_dlq
             if queue_store is not None:
                 await queue.restore_from_store()
                 await queue_store.save_config(queue.config)

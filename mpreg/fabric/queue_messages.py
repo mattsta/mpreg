@@ -130,7 +130,8 @@ class QueueFederationAck:
     message_id: MessageIdString
     acknowledging_cluster: ClusterId
     acknowledging_subscriber: SubscriberId
-    success: bool = True
+    # COR-T12-02: default False so missing/unset cannot look like delivery success
+    success: bool = False
     error_message: str | None = None
     ack_timestamp: Timestamp = field(default_factory=time.time)
 
@@ -153,7 +154,8 @@ class QueueFederationAck:
             message_id=str(payload.get("message_id", "")),
             acknowledging_cluster=str(payload.get("acknowledging_cluster", "")),
             acknowledging_subscriber=str(payload.get("acknowledging_subscriber", "")),
-            success=bool(payload.get("success", True)),
+            # COR-T12-02: missing success → False (fail-closed). Explicit True still works.
+            success=bool(payload["success"]) if "success" in payload else False,
             error_message=payload.get("error_message"),
             ack_timestamp=float(payload.get("ack_timestamp", time.time())),
         )

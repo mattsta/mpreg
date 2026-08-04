@@ -2181,6 +2181,16 @@ class MPREGServer:
             link_state_area=self.settings.fabric_link_state_area,
             link_state_area_policy=self.settings.fabric_link_state_area_policy,
         )
+        # OBS-T12-01: catalog empty-id / dedup skips → Prom
+        applier = getattr(self._fabric_control_plane, "applier", None)
+        if applier is not None:
+
+            def _on_catalog_dedup_skip(n: int = 1) -> None:
+                tracker = getattr(self, "_metrics_tracker", None)
+                if tracker is not None and hasattr(tracker, "record_catalog_dedup_skip"):
+                    tracker.record_catalog_dedup_skip(n)
+
+            applier.on_dedup_skip = _on_catalog_dedup_skip
         if self._fabric_control_plane.route_withdrawal_coordinator:
             self.cluster.connection_event_bus.subscribe(
                 self._fabric_control_plane.route_withdrawal_coordinator
@@ -2265,6 +2275,15 @@ class MPREGServer:
             messenger=messenger,
             allowed_clusters=self._fabric_allowed_clusters(),
         )
+        # OBS-T12-01: federation in_flight admission refusals → Prom
+        def _on_fed_in_flight_drop(n: int = 1) -> None:
+            tracker = getattr(self, "_metrics_tracker", None)
+            if tracker is not None and hasattr(
+                tracker, "record_federation_in_flight_drop"
+            ):
+                tracker.record_federation_in_flight_drop(n)
+
+        self._fabric_queue_federation.on_in_flight_drop = _on_fed_in_flight_drop
         self._fabric_queue_delivery = FabricQueueDeliveryCoordinator(
             cluster_id=self.settings.cluster_id,
             queue_federation=self._fabric_queue_federation,
@@ -11638,6 +11657,15 @@ class MPREGServer:
                     pass
         if hasattr(queue_manager, "attach_namespace_policy"):
             queue_manager.attach_namespace_policy(self._namespace_policy_engine)
+        # OBS-T12-02: DLQ moves → Prom
+        if hasattr(queue_manager, "set_on_dlq"):
+
+            def _on_queue_dlq(n: int = 1) -> None:
+                tracker = getattr(self, "_metrics_tracker", None)
+                if tracker is not None and hasattr(tracker, "record_queue_dlq"):
+                    tracker.record_queue_dlq(n)
+
+            queue_manager.set_on_dlq(_on_queue_dlq)
         self._initialize_fabric_queue_federation()
         if self._unified_monitor is not None:
             from .core.monitoring.system_adapters import QueueSystemMonitor

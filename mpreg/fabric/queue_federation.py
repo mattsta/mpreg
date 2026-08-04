@@ -123,6 +123,8 @@ class FabricQueueFederationManager(ManagedObject):
     in_flight: dict[str, FabricQueueInFlight] = field(default_factory=dict)
     in_flight_maxsize: int = 10000  # PERF-T10-06
     in_flight_drops: int = 0
+    # OBS-T12-01: optional Prom hook for admission refusals
+    on_in_flight_drop: Callable[[int], None] | None = field(default=None, repr=False)
     stats: FabricQueueStatistics = field(default_factory=FabricQueueStatistics)
     _local_subscription_handles: dict[str, list[tuple[QueueName, str]]] = field(
         default_factory=lambda: defaultdict(list)
@@ -345,9 +347,16 @@ class FabricQueueFederationManager(ManagedObject):
         in_flight = self.in_flight.get(ack.ack_token)
         if not in_flight:
             return
-        in_flight.acknowledged_by.add(ack.acknowledging_cluster)
         self.stats.acknowledgments_received += 1
+        # COR-T12-02: failed ACKs must not satisfy quorum / successful_deliveries
+        if not bool(getattr(ack, "success", False)):
+            self.stats.failed_deliveries += 1
+            self.in_flight.pop(ack.ack_token, None)
+            in_flight.status = FabricQueueDeliveryStatus.FAILED
+            return
+        in_flight.acknowledged_by.add(ack.acknowledging_cluster)
         if in_flight.is_acknowledged():
+            in_flight.status = FabricQueueDeliveryStatus.ACKNOWLEDGED
             self.stats.successful_deliveries += 1
             self.in_flight.pop(ack.ack_token, None)
 
@@ -506,6 +515,12 @@ class FabricQueueFederationManager(ManagedObject):
             max_if = max(1, int(getattr(self, "in_flight_maxsize", 10000) or 10000))
             if len(self.in_flight) >= max_if:
                 self.in_flight_drops += 1  # admission refusal counter
+                cb = self.on_in_flight_drop
+                if callable(cb):
+                    try:
+                        cb(1)
+                    except Exception:
+                        pass
                 return DeliveryResult(
                     success=False,
                     message_id=None,  # type: ignore[arg-type]

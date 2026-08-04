@@ -239,6 +239,8 @@ class MessageQueue(ManagedObject):
         self._dead_letter_maxsize: int = max(
             1, int(getattr(config, "dead_letter_max_size", None) or min(config.max_size, 10000))
         )
+        # OBS-T12-02: optional Prom hook (also checked as _metrics_on_dlq)
+        self.on_dlq: Any | None = None
 
         # Subscription management
         self.subscriptions: dict[SubscriptionId, QueueSubscription] = {}

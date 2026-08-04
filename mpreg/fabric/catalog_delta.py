@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Protocol
 
 from mpreg.datastructures.type_aliases import (
@@ -153,6 +154,16 @@ class RoutingCatalogApplier:
     _seen_max: int = 50_000
     _empty_update_id_rejects: int = 0
     _dedup_skips: int = 0
+    # OBS-T12-01: optional Prom hook for empty-id / dedup skips
+    on_dedup_skip: Callable[[int], None] | None = field(default=None, repr=False)
+
+    def _note_dedup_skip(self, n: int = 1) -> None:
+        cb = self.on_dedup_skip
+        if callable(cb):
+            try:
+                cb(n)
+            except Exception:
+                pass
 
     def _is_duplicate_update_id(self, update_id: str, now: float) -> bool:
         """Return True if update_id was already successfully applied within TTL."""
@@ -179,6 +190,7 @@ class RoutingCatalogApplier:
         # COR-T11-08: empty update_id fail-closed (no apply)
         if not uid:
             self._empty_update_id_rejects += 1
+            self._note_dedup_skip(1)
             return {
                 "functions_added": 0,
                 "functions_removed": 0,
@@ -198,6 +210,7 @@ class RoutingCatalogApplier:
             }
         if self._is_duplicate_update_id(uid, applied_at):
             self._dedup_skips += 1
+            self._note_dedup_skip(1)
             return {
                 "functions_added": 0,
                 "functions_removed": 0,
