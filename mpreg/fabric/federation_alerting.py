@@ -18,7 +18,6 @@ Features:
 from __future__ import annotations
 
 import asyncio
-import json
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
@@ -29,6 +28,8 @@ import aiohttp
 from loguru import logger
 
 from mpreg.fabric.performance_metrics import AlertSeverity, PerformanceAlert
+
+from mpreg.core.native_codec import JSONDecodeError, loads_text
 
 class NotificationBackend(Enum):
     """Supported notification backends."""
@@ -941,8 +942,8 @@ class SlackNotificationBackend:
             formatted_body = self._format_template(template.body_template, alert)
             try:
                 # Try to parse as JSON for rich formatting
-                payload = json.loads(formatted_body)
-            except json.JSONDecodeError:
+                payload = loads_text(formatted_body)
+            except JSONDecodeError:
                 # Fall back to simple text
                 payload = {"text": formatted_body}
         else:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import tomllib
 from dataclasses import dataclass, fields
 from pathlib import Path
@@ -27,6 +26,8 @@ from mpreg.fabric.route_control import RoutePolicy
 from mpreg.fabric.route_keys import RouteKeyProvider, RouteKeyRegistry
 from mpreg.fabric.route_policy_directory import RoutePolicyDirectory
 from mpreg.fabric.route_security import RouteAnnouncementSigner, RouteSecurityConfig
+
+from mpreg.core.native_codec import load_path
 
 @dataclass(slots=True)
 class MPREGSettings:
@@ -313,7 +314,7 @@ class MPREGSettings:
 
     @classmethod
     def from_json(cls, path: str | Path) -> MPREGSettings:
-        payload = json.loads(Path(path).read_text())
+        payload = load_path(path)
         if isinstance(payload, dict) and isinstance(payload.get("mpreg"), dict):
             payload = payload["mpreg"]
         if not isinstance(payload, dict):

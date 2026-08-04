@@ -16,7 +16,6 @@ Features:
 from __future__ import annotations
 
 import asyncio
-import json
 import time
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -40,6 +39,8 @@ from ..core.statistics import (
 )
 from .federation_optimized import ClusterIdentity
 from .federation_resilience import HealthStatus
+
+from mpreg.core.native_codec import loads_text
 
 # Optional imports for different discovery backends
 try:
@@ -509,7 +510,7 @@ class StaticConfigDiscoveryBackend(DiscoveryBackend):
 
             async with aiofiles.open(config_path) as f:
                 content = await f.read()
-                config_data = json.loads(content)
+                config_data = loads_text(content)
 
             # Parse clusters from configuration
             for cluster_config in config_data.get("clusters", []):

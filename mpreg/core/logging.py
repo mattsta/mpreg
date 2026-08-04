@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-import json
 import sys
 from collections.abc import Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from typing import Any, TextIO
 
 from loguru import logger
+
+from mpreg.core.native_codec import dumps_text
 
 DEFAULT_LOG_FORMAT = (
     "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | "
@@ -36,7 +37,7 @@ def _json_sink(message: Any) -> None:
         payload["extra"] = cleaned
     if record["exception"] is not None:
         payload["exception"] = str(record["exception"])
-    sys.stderr.write(json.dumps(payload, default=str) + "\n")
+    sys.stderr.write(dumps_text(payload) + "\n")
     sys.stderr.flush()
 
 def configure_logging(

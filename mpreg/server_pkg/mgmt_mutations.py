@@ -8,13 +8,14 @@ ops forensics; the in-memory ring remains the primary /mgmt/v1/audit source.
 
 from __future__ import annotations
 
-import json
 import time
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import RLock
 from typing import Any
+
+from mpreg.core.native_codec import JSONDecodeError, dumps_text, loads_text
 
 @dataclass(frozen=True, slots=True)
 class MgmtAuditEntry:
@@ -62,8 +63,8 @@ class MgmtAuditLog:
             if not line:
                 continue
             try:
-                raw = json.loads(line)
-            except json.JSONDecodeError:
+                raw = loads_text(line)
+            except JSONDecodeError:
                 continue
             if not isinstance(raw, dict):
                 continue
@@ -88,7 +89,7 @@ class MgmtAuditLog:
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("a", encoding="utf-8") as fh:
-                fh.write(json.dumps(entry.to_dict(), default=str) + "\n")
+                fh.write(dumps_text(entry.to_dict()) + "\n")
         except OSError:
             pass
 
