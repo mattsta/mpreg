@@ -7,6 +7,8 @@ router that uses the fabric message envelope, routing index, and planners.
 
 from __future__ import annotations
 
+from collections import OrderedDict
+
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -332,7 +334,7 @@ class FabricRouter:
 
         self.handler_registry = RouteHandlerRegistry()
         self.metrics = RoutingMetrics()
-        self.route_cache: dict[str, tuple[FabricRouteResult, float]] = {}
+        self.route_cache: OrderedDict[str, tuple[FabricRouteResult, float]] = OrderedDict()
         from mpreg.fabric.route_decision_log import RouteDecisionLog
 
         # Per-router log (not process-global) so multi-server processes stay isolated.
@@ -960,15 +962,20 @@ class FabricRouter:
         if cache_key in self.route_cache:
             route, cached_at = self.route_cache[cache_key]
             if time.time() - cached_at <= (self.config.routing_cache_ttl_ms / 1000):
+                self.route_cache.move_to_end(cache_key)
                 return route
             del self.route_cache[cache_key]
         return None
 
     def _cache_route(self, cache_key: str, route: FabricRouteResult) -> None:
-        if len(self.route_cache) >= self.config.max_cached_routes:
-            oldest_keys = list(self.route_cache.keys())[: len(self.route_cache) // 4]
-            for key in oldest_keys:
-                del self.route_cache[key]
+        # PERF-T11-04: true LRU via OrderedDict
+        if cache_key in self.route_cache:
+            del self.route_cache[cache_key]
+        elif len(self.route_cache) >= self.config.max_cached_routes:
+            # drop oldest quarter
+            drop_n = max(1, len(self.route_cache) // 4)
+            for _ in range(drop_n):
+                self.route_cache.popitem(last=False)
         self.route_cache[cache_key] = (route, time.time())
 
     def _extract_rpc_command(self, message: UnifiedMessage) -> str | None:

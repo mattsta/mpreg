@@ -437,26 +437,65 @@ class FederationMonitoringSystem:
                         status=401,
                     )
                 return await handler(request)
-            if is_mutation:
+            peer = ""
+            try:
+                peer = str(request.remote or "")
+            except Exception:
                 peer = ""
-                try:
-                    peer = str(request.remote or "")
-                except Exception:
-                    peer = ""
-                loopback = peer in {"127.0.0.1", "::1", "localhost"} or peer.startswith(
-                    "127."
+            loopback = peer in {"127.0.0.1", "::1", "localhost"} or peer.startswith(
+                "127."
+            )
+            bind_host = str(
+                getattr(self, "host", None)
+                or getattr(getattr(self, "settings", None), "monitoring_host", "")
+                or "127.0.0.1"
+            ).strip()
+            bind_loopback = bind_host in {
+                "127.0.0.1",
+                "::1",
+                "localhost",
+            } or bind_host.startswith("127.")
+            require_reads = bool(
+                getattr(self, "monitoring_auth_required_for_reads", False)
+                or getattr(
+                    getattr(self, "settings", None),
+                    "monitoring_auth_required_for_reads",
+                    False,
                 )
-                if not loopback:
-                    return web.json_response(
-                        {
-                            "error": "unauthorized",
-                            "detail": (
-                                "monitoring mutations require monitoring_auth_token "
-                                "when not on loopback (ERG-T10-04)"
-                            ),
-                        },
-                        status=401,
-                    )
+            )
+            # Default ERG-T11-03: public bind without token → require token for
+            # non-loopback clients on ALL methods (scrapers must set token or
+            # bind mon to loopback).
+            if not token and not bind_loopback and not loopback:
+                return web.json_response(
+                    {
+                        "error": "unauthorized",
+                        "detail": (
+                            "monitoring requires monitoring_auth_token when bound "
+                            "non-loopback (ERG-T11-03); use 127.0.0.1 or set token"
+                        ),
+                    },
+                    status=401,
+                )
+            if is_mutation and not token and not loopback:
+                return web.json_response(
+                    {
+                        "error": "unauthorized",
+                        "detail": (
+                            "monitoring mutations require monitoring_auth_token "
+                            "when not on loopback (ERG-T10-04)"
+                        ),
+                    },
+                    status=401,
+                )
+            if require_reads and not token and not loopback:
+                return web.json_response(
+                    {
+                        "error": "unauthorized",
+                        "detail": "monitoring_auth_required_for_reads",
+                    },
+                    status=401,
+                )
             return await handler(request)
 
         @web.middleware
@@ -629,8 +668,22 @@ use /health and federation health_score for full status. Drain alone forces 503.
                 "draining": draining,
                 "health_score": score,
                 "overall_status": status_value,
+                "ready_min_score": self._ready_min_score(),
                 "timestamp": time.time(),
             }
+            # OBS-T11-03: mirror admission into Prom gauge
+            tracker = getattr(self, "metrics_tracker", None) or getattr(
+                self, "_metrics_tracker", None
+            )
+            if tracker is None:
+                provider = getattr(self, "metrics_tracker_provider", None)
+                if callable(provider):
+                    try:
+                        tracker = provider()
+                    except Exception:
+                        tracker = None
+            if tracker is not None and hasattr(tracker, "set_ready"):
+                tracker.set_ready(bool(ready))
             return web.json_response(body, status=200 if ready else 503)
         except Exception as e:
             logger.error("Error computing readiness: {}", e)
@@ -658,9 +711,16 @@ use /health and federation health_score for full status. Drain alone forces 503.
             return web.json_response(
                 {
                     "status": "ok",
-                    "ready": status_value.lower()
-                    not in {"critical", "unavailable", "unhealthy"}
-                    and score >= self._ready_min_score(),
+                    "ready": (
+                        status_value.lower()
+                        not in {"critical", "unavailable", "unhealthy"}
+                        and score >= self._ready_min_score()
+                        and not (
+                            bool(self.draining_provider())
+                            if callable(getattr(self, "draining_provider", None))
+                            else False
+                        )
+                    ),
                     "federation_health": {
                         "overall_status": status_value,
                         "health_score": health_summary.overall_health_score,

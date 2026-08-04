@@ -501,15 +501,16 @@ class FabricQueueFederationManager(ManagedObject):
             options=options,
         )
         if ack_token:
-            # PERF-T10-06: bound federation in_flight under lost-ACK storms.
+            # COR-T11-09 / PERF-T10-06: backpressure when full — never drop ACK
+            # state after a successful send. Refuse new federated sends instead.
             max_if = max(1, int(getattr(self, "in_flight_maxsize", 10000) or 10000))
-            while len(self.in_flight) >= max_if:
-                # drop oldest by insertion order (dict preserves order)
-                try:
-                    self.in_flight.pop(next(iter(self.in_flight)))
-                    self.in_flight_drops += 1
-                except StopIteration:
-                    break
+            if len(self.in_flight) >= max_if:
+                self.in_flight_drops += 1  # admission refusal counter
+                return DeliveryResult(
+                    success=False,
+                    message_id=None,  # type: ignore[arg-type]
+                    error_message="federation_in_flight_full",
+                )
             self.in_flight[ack_token] = FabricQueueInFlight(
                 request=request,
                 federation_path=[],

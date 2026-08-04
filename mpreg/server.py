@@ -304,7 +304,8 @@ except RuntimeError:
     pass
 
 # maximum 4 GB messages should be enough for anybody, right?
-MPREG_DATA_MAX = 2**32
+# PERF-T11-09: profile/settings may override (default 32 MiB).
+MPREG_DATA_MAX = 32 * 1024 * 1024
 
 ############################################
 #
@@ -9279,6 +9280,17 @@ class MPREGServer:
         is_server_connection = False
 
         try:
+            # PERF-T11-01: hard cap concurrent inbound connections
+            max_in = int(getattr(self.settings, "max_inbound_connections", 0) or 0)
+            if max_in > 0 and len(self.clients) >= max_in:
+                tracker = getattr(self, "_metrics_tracker", None)
+                if tracker is not None and hasattr(tracker, "record_accept_reject"):
+                    tracker.record_accept_reject(1)
+                try:
+                    await transport.close()
+                except Exception:
+                    pass
+                return
             self.clients.add(connection)
             while not self._shutdown_event.is_set():
                 try:
@@ -9313,11 +9325,22 @@ class MPREGServer:
                 )
 
                 role = parsed_msg.get("role")
+                _drain_payload = (
+                    parsed_msg.get("payload")
+                    if role == "fabric-message"
+                    else None
+                )
                 if should_refuse_for_drain(
                     draining=bool(getattr(self, "_mgmt_draining", False)),
                     role=role,
+                    fabric_payload=_drain_payload
+                    if isinstance(_drain_payload, dict)
+                    else None,
                 ):
                     response_model = drain_unavailable_response(parsed_msg.get("u"))
+                    tracker = getattr(self, "_metrics_tracker", None)
+                    if tracker is not None and hasattr(tracker, "record_drain_refusal"):
+                        tracker.record_drain_refusal(str(role or "unknown"))
                     try:
                         await transport.send(
                             self.serializer.serialize_model(response_model)
@@ -9601,10 +9624,26 @@ class MPREGServer:
                                     and peer_cluster_id != self.settings.cluster_id
                                 ):
                                     self._register_fabric_graph_peer(peer_cluster_id)
-                        await self._handle_fabric_message(
-                            fabric_message,
-                            source_peer_url=peer_url if is_server_connection else None,
-                        )
+                        try:
+                            from mpreg.core.observability.trace_context import (
+                                bind_current_trace,
+                            )
+                            headers = getattr(fabric_message, "headers", None)
+                            tp = getattr(headers, "traceparent", None) if headers else None
+                            with bind_current_trace(tp):
+                                await self._handle_fabric_message(
+                                    fabric_message,
+                                    source_peer_url=peer_url
+                                    if is_server_connection
+                                    else None,
+                                )
+                        except TypeError:
+                            await self._handle_fabric_message(
+                                fabric_message,
+                                source_peer_url=peer_url
+                                if is_server_connection
+                                else None,
+                            )
                         continue
 
                     case "pubsub-publish":
@@ -9711,9 +9750,16 @@ class MPREGServer:
                         subscribe_success = False
                         try:
                             subscribe_req = PubSubSubscribe.model_validate(parsed_msg)
-                            # Tenant may ride on first pattern metadata via headers
-                            # is not on subscription; use viewer context default.
-                            actor_tenant = self._effective_viewer_tenant_id(None)
+                            # COR-T11-07: session tenant under discovery policy (mirror publish)
+                            if getattr(
+                                self.settings, "discovery_policy_enabled", False
+                            ):
+                                actor_tenant = (
+                                    getattr(connection, "tenant_id", None)
+                                    or self._effective_viewer_tenant_id(None)
+                                )
+                            else:
+                                actor_tenant = self._effective_viewer_tenant_id(None)
                             with actor_context(
                                 tenant_id=actor_tenant,
                                 cluster_id=self.settings.cluster_id,
@@ -10299,11 +10345,26 @@ class MPREGServer:
                         should_refuse_for_drain,
                     )
 
+                    _peer_role = parsed_msg.get("role")
+                    _peer_payload = (
+                        parsed_msg.get("payload")
+                        if _peer_role == "fabric-message"
+                        else None
+                    )
                     if should_refuse_for_drain(
                         draining=bool(getattr(self, "_mgmt_draining", False)),
-                        role=parsed_msg.get("role"),
+                        role=_peer_role,
+                        fabric_payload=_peer_payload
+                        if isinstance(_peer_payload, dict)
+                        else None,
                     ):
                         self._msg_stats.total_processed += 1
+                        # OBS-T11-01: count drain refusals
+                        tracker = getattr(self, "_metrics_tracker", None)
+                        if tracker is not None and hasattr(
+                            tracker, "record_drain_refusal"
+                        ):
+                            tracker.record_drain_refusal(str(_peer_role or "unknown"))
                         continue
 
                     # Track message processing statistics for verification
@@ -10342,9 +10403,20 @@ class MPREGServer:
                                 e,
                             )
                             continue
-                        await self._handle_fabric_message(
-                            fabric_message, source_peer_url=peer_url
-                        )
+                        try:
+                            from mpreg.core.observability.trace_context import (
+                                bind_current_trace,
+                            )
+                            headers = getattr(fabric_message, "headers", None)
+                            tp = getattr(headers, "traceparent", None) if headers else None
+                            with bind_current_trace(tp):
+                                await self._handle_fabric_message(
+                                    fabric_message, source_peer_url=peer_url
+                                )
+                        except TypeError:
+                            await self._handle_fabric_message(
+                                fabric_message, source_peer_url=peer_url
+                            )
                         continue
                     if parsed_msg.get("role") == "fabric-gossip":
                         envelope = FabricGossipEnvelope.model_validate(parsed_msg)
@@ -11889,7 +11961,11 @@ class MPREGServer:
         # No need to register them again here
 
         transport_config = TransportConfig(
-            protocol_options={"max_message_size": MPREG_DATA_MAX}
+            protocol_options={
+                "max_message_size": int(
+                    getattr(self.settings, "max_message_size", None) or MPREG_DATA_MAX
+                )
+            }
         )
         self._transport_listener = TransportFactory.create_listener(
             "ws",

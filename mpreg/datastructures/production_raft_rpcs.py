@@ -62,6 +62,11 @@ class ProductionRaftRPCs:
         ) -> None: ...
         def _last_log_index(self) -> int: ...
         def _last_log_term(self) -> int: ...
+        def _get_term_at_index(self, index: int) -> int: ...
+        def _get_entry_at_index(self, raft_index: int) -> Any: ...
+        def _truncate_log_through(self, prev_log_index: int) -> list: ...
+        _snapshot_last_index: int
+        _snapshot_last_term: int
         async def _start_election_timer(self) -> None: ...
         async def _apply_committed_entries(self) -> None: ...
 
@@ -195,25 +200,28 @@ class ProductionRaftRPCs:
             self.current_leader = request.leader_id
             self.last_heartbeat_time = time.time()
 
-            # Rule 2: Reply false if log doesn't contain entry at prevLogIndex with matching term
+            # Rule 2: COR-T11-01 absolute index consistency (snapshot-aware)
             if request.prev_log_index > 0:
-                if (
-                    request.prev_log_index > len(self.persistent_state.log_entries)
-                    or self.persistent_state.log_entries[
-                        request.prev_log_index - 1
-                    ].term
-                    != request.prev_log_term
-                ):
-                    # Find conflict information to help leader optimize
-                    conflict_index = min(
-                        request.prev_log_index, len(self.persistent_state.log_entries)
-                    )
-                    conflict_term = -1
+                base = int(getattr(self, "_snapshot_last_index", 0) or 0)
+                local_term = -1
+                if request.prev_log_index == base:
+                    local_term = int(getattr(self, "_snapshot_last_term", 0) or 0)
+                elif request.prev_log_index < base:
+                    local_term = -1  # compacted away; reject
+                else:
+                    entry_prev = self._get_entry_at_index(request.prev_log_index)
+                    if entry_prev is not None:
+                        local_term = int(entry_prev.term)
 
-                    if conflict_index > 0:
-                        conflict_term = self.persistent_state.log_entries[
-                            conflict_index - 1
-                        ].term
+                if local_term < 0 or local_term != request.prev_log_term:
+                    conflict_index = request.prev_log_index
+                    conflict_term = local_term if local_term >= 0 else -1
+                    last = self._last_log_index()
+                    if last < request.prev_log_index:
+                        conflict_index = last + 1
+                        conflict_term = -1
+                    elif local_term >= 0:
+                        conflict_term = local_term
 
                     rpc_log.debug(
                         f"Log consistency check failed for AppendEntries from {request.leader_id}. "
@@ -229,19 +237,15 @@ class ProductionRaftRPCs:
                         conflict_term=conflict_term,
                     )
 
-            # Rules 3 & 4: Handle log entries
+            # Rules 3 & 4: Handle log entries (truncate by absolute entry.index)
             success = True
             match_index = request.prev_log_index
 
             if request.entries:
                 try:
-                    # Create new log by taking entries up to prev_log_index and appending new entries
-                    new_log = list(
-                        self.persistent_state.log_entries[: request.prev_log_index]
-                    )
+                    new_log = self._truncate_log_through(request.prev_log_index)
 
                     for entry in request.entries:
-                        # Verify entry integrity
                         if not entry.verify_integrity():
                             rpc_log.error(
                                 f"Log entry {entry.index} failed integrity check"
@@ -253,14 +257,12 @@ class ProductionRaftRPCs:
                         match_index = entry.index
 
                     if success:
-                        # Update persistent state with new log
                         self.persistent_state = PersistentState(
                             current_term=self.persistent_state.current_term,
                             voted_for=self.persistent_state.voted_for,
                             log_entries=new_log,
                         )
 
-                        # Persist state
                         await self.storage.save_persistent_state(self.persistent_state)
 
                         self.metrics.log_entries_replicated += len(request.entries)
@@ -272,11 +274,11 @@ class ProductionRaftRPCs:
                     rpc_log.error(f"Error processing log entries: {e}")
                     success = False
 
-            # Rule 5: Update commit index
+            # Rule 5: Update commit index (absolute last index, never bare len)
             if success and request.leader_commit > self.volatile_state.commit_index:
                 old_commit_index = self.volatile_state.commit_index
                 self.volatile_state.commit_index = min(
-                    request.leader_commit, len(self.persistent_state.log_entries)
+                    request.leader_commit, self._last_log_index()
                 )
 
                 if self.volatile_state.commit_index > old_commit_index:
@@ -383,11 +385,14 @@ class ProductionRaftRPCs:
                 complete_snapshot_data = b"".join(self.snapshot_chunks[snapshot_id])
 
                 # Create snapshot object
+                cfg = set(getattr(request, "configuration", ()) or ())
+                if not cfg:
+                    cfg = set(self.cluster_members)
                 snapshot = RaftSnapshot(
                     last_included_index=request.last_included_index,
                     last_included_term=request.last_included_term,
                     state_machine_state=complete_snapshot_data,
-                    configuration=set(self.cluster_members),
+                    configuration=cfg,
                 )
 
                 # Apply snapshot
@@ -421,24 +426,24 @@ class ProductionRaftRPCs:
                 )
 
     async def _apply_snapshot(self, snapshot: RaftSnapshot) -> None:
-        """Apply snapshot to state machine and update state."""
+        """Apply snapshot (COR-T11-01/05). Overridden by ProductionRaft when both exist."""
         try:
-            # Restore state machine from snapshot
             await self.state_machine.restore_from_snapshot(snapshot.state_machine_state)
 
-            # Update volatile state
             self.volatile_state.last_applied = snapshot.last_included_index
             self.volatile_state.commit_index = max(
                 self.volatile_state.commit_index, snapshot.last_included_index
             )
 
-            # Trim log entries that are included in snapshot
-            remaining_entries = []
-            for entry in self.persistent_state.log_entries:
-                if entry.index > snapshot.last_included_index:
-                    remaining_entries.append(entry)
+            self._snapshot_last_index = int(snapshot.last_included_index)
+            self._snapshot_last_term = int(snapshot.last_included_term)
 
-            # Update persistent state
+            remaining_entries = [
+                entry
+                for entry in self.persistent_state.log_entries
+                if int(entry.index) > snapshot.last_included_index
+            ]
+
             self.persistent_state = PersistentState(
                 current_term=self.persistent_state.current_term,
                 voted_for=self.persistent_state.voted_for,
@@ -446,6 +451,10 @@ class ProductionRaftRPCs:
             )
 
             await self.storage.save_persistent_state(self.persistent_state)
+
+            cfg = getattr(snapshot, "configuration", None) or set()
+            if cfg:
+                self.cluster_members = set(str(m) for m in cfg)
 
             rpc_log.info(
                 f"Applied snapshot up to index {snapshot.last_included_index}, "

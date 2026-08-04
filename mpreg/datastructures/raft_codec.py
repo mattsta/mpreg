@@ -109,6 +109,7 @@ def deserialize_append_entries_response(
     )
 
 def serialize_install_snapshot(request: InstallSnapshotRequest) -> dict[str, Any]:
+    cfg = getattr(request, "configuration", ()) or ()
     return {
         "term": request.term,
         "leader_id": request.leader_id,
@@ -117,9 +118,15 @@ def serialize_install_snapshot(request: InstallSnapshotRequest) -> dict[str, Any
         "data": encode_bytes(request.data),
         "done": request.done,
         "offset": request.offset,
+        "configuration": list(cfg),
     }
 
 def deserialize_install_snapshot(data: dict[str, Any]) -> InstallSnapshotRequest:
+    raw_cfg = data.get("configuration") or ()
+    if isinstance(raw_cfg, (list, tuple, set)):
+        cfg = tuple(str(x) for x in raw_cfg)
+    else:
+        cfg = ()
     return InstallSnapshotRequest(
         term=int(data["term"]),
         leader_id=str(data["leader_id"]),
@@ -128,6 +135,7 @@ def deserialize_install_snapshot(data: dict[str, Any]) -> InstallSnapshotRequest
         data=decode_bytes(data.get("data", "")),
         done=bool(data["done"]),
         offset=int(data.get("offset", 0)),
+        configuration=cfg,
     )
 
 def serialize_install_snapshot_response(
@@ -138,10 +146,13 @@ def serialize_install_snapshot_response(
 def deserialize_install_snapshot_response(
     data: dict[str, Any],
 ) -> InstallSnapshotResponse:
-    # COR-T10-01: default True only for legacy peers missing the field;
-    # new followers always send an explicit success bit.
+    # COR-T11-10: missing success → False (fail-closed). Explicit True still works.
+    if "success" in data:
+        success = bool(data["success"])
+    else:
+        success = False
     return InstallSnapshotResponse(
         term=int(data["term"]),
         follower_id=str(data["follower_id"]),
-        success=bool(data.get("success", True)),
+        success=success,
     )

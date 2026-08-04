@@ -42,5 +42,8 @@ fabric_snapshot_fail_on_restore_error = true
 # Tenant-aware discovery is recommended when multi-tenant catalogs share a fabric.
 # Lab default remains off; `mpreg config-check` warns when policy is disabled on
 # federated/multi-peer nodes (COR-09). Enable for multi-tenant production.
-discovery_policy_enabled = false
-discovery_policy_default_allow = true
+discovery_policy_enabled = true
+discovery_policy_default_allow = false
+discovery_tenant_allow_request_override = false
+ready_min_score = 0.85
+monitoring_host = "127.0.0.1"

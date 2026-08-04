@@ -460,6 +460,14 @@ class ProductionRaft(ProductionRaftRPCs):
     # Snapshot state
     installing_snapshot: bool = field(default=False, init=False)
     snapshot_chunks: dict[str, list[bytes]] = field(default_factory=dict, init=False)
+    # COR-T11-01: absolute Raft index covered by latest snapshot (0 = none).
+    # Log array is a suffix of entries with index > _snapshot_last_index.
+    _snapshot_last_index: int = field(default=0, init=False)
+    _snapshot_last_term: int = field(default=0, init=False)
+    # COR-T11-02: waiters for single-path apply completion
+    _apply_waiters: dict[int, asyncio.Future[Any]] = field(
+        default_factory=dict, init=False, repr=False
+    )
 
     def __post_init__(self) -> None:
         """Initialize Raft node."""
@@ -688,23 +696,30 @@ class ProductionRaft(ProductionRaftRPCs):
         try:
             await self._replicate_log_entries()
 
-            # Wait for entry to be committed
+            # COR-T11-02: wait for single-path apply (commit + SM), never re-apply.
             commit_start_time = time.time()
-            while self.volatile_state.commit_index < entry.index:
-                if time.time() - commit_start_time > 5.0:  # 5 second timeout
-                    raft_log.warning(f"Command commit timeout for entry {entry.index}")
-                    return None
-                await asyncio.sleep(0.01)
+            loop = asyncio.get_running_loop()
+            fut: asyncio.Future[Any] = loop.create_future()
+            self._apply_waiters[entry.index] = fut
+            # If already applied (fast path), resolve immediately.
+            if self.volatile_state.last_applied >= entry.index:
+                if not fut.done():
+                    fut.set_result(True)
+            try:
+                await asyncio.wait_for(fut, timeout=5.0)
+            except TimeoutError:
+                raft_log.warning(f"Command commit/apply timeout for entry {entry.index}")
+                self._apply_waiters.pop(entry.index, None)
+                return None
+            finally:
+                self._apply_waiters.pop(entry.index, None)
 
-            # Apply to state machine and return result
-            result = await self.state_machine.apply_command(command, entry.index)
-
-            # Update metrics
             commit_latency = (time.time() - commit_start_time) * 1000
             self._update_command_commit_latency(commit_latency)
 
             raft_log.info(f"Successfully committed command at index {entry.index}")
-            return result
+            # Result is not retained on SM; return a stable ack token.
+            return f"committed_{entry.index}"
 
         except Exception as e:
             raft_log.error(f"Error submitting command: {e}")
@@ -1145,37 +1160,32 @@ class ProductionRaft(ProductionRaftRPCs):
 
         try:
             next_index = self.leader_volatile_state.next_index[follower_id]
+            last_idx = self._last_log_index()
+            base = int(getattr(self, "_snapshot_last_index", 0) or 0)
 
-            # Check if we need to send snapshot
-            if next_index <= 0 or (
-                next_index <= len(self.persistent_state.log_entries)
-                and len(self.persistent_state.log_entries) - next_index
-                > self.config.max_log_entries_behind
+            # Need snapshot if follower is behind the compacted prefix
+            if next_index <= 0 or (base > 0 and next_index <= base):
+                await self._send_snapshot_to_follower(follower_id)
+                return
+            if (
+                last_idx - next_index > self.config.max_log_entries_behind
+                and base > 0
+                and next_index <= base + 1
             ):
+                await self._send_snapshot_to_follower(follower_id)
+                return
+            # Also snapshot if next_index points into compacted region
+            if next_index > 0 and next_index <= base:
                 await self._send_snapshot_to_follower(follower_id)
                 return
 
             # Prepare AppendEntries request
             prev_log_index = max(0, next_index - 1)
-            prev_log_term = 0
+            prev_log_term = self._get_term_at_index(prev_log_index) if prev_log_index > 0 else 0
 
-            if prev_log_index > 0 and prev_log_index <= len(
-                self.persistent_state.log_entries
-            ):
-                prev_log_term = self.persistent_state.log_entries[
-                    prev_log_index - 1
-                ].term
-
-            # Get entries to send
-            entries = []
-            if next_index <= len(self.persistent_state.log_entries):
-                max_entries = min(
-                    self.config.max_log_entries_per_request,
-                    len(self.persistent_state.log_entries) - next_index + 1,
-                )
-                entries = self.persistent_state.log_entries[
-                    next_index - 1 : next_index - 1 + max_entries
-                ]
+            entries = self._entries_from_index(
+                next_index, self.config.max_log_entries_per_request
+            )
 
             request = AppendEntriesRequest(
                 term=self.persistent_state.current_term,
@@ -1308,11 +1318,11 @@ class ProductionRaft(ProductionRaftRPCs):
                 # Use conflict optimization
                 conflict_index = response.conflict_index
 
-                # Find last entry in our log with conflict_term
+                # Find last entry in our log with conflict_term (absolute index)
                 last_term_index = 0
-                for i, entry in enumerate(self.persistent_state.log_entries):
+                for entry in self.persistent_state.log_entries:
                     if entry.term == response.conflict_term:
-                        last_term_index = i + 1
+                        last_term_index = int(entry.index)
 
                 if last_term_index > 0:
                     self.leader_volatile_state.next_index[follower_id] = (
@@ -1351,11 +1361,11 @@ class ProductionRaft(ProductionRaftRPCs):
             new_commit_index = match_indices[majority_threshold - 1]
 
             # Only commit entries from current term (safety requirement)
+            entry_at = self._get_entry_at_index(new_commit_index)
             if (
                 new_commit_index > self.volatile_state.commit_index
-                and new_commit_index <= len(self.persistent_state.log_entries)
-                and self.persistent_state.log_entries[new_commit_index - 1].term
-                == self.persistent_state.current_term
+                and entry_at is not None
+                and int(entry_at.term) == self.persistent_state.current_term
             ):
                 old_commit_index = self.volatile_state.commit_index
                 self.volatile_state.commit_index = new_commit_index
@@ -1439,39 +1449,55 @@ class ProductionRaft(ProductionRaftRPCs):
             raft_log.error(f"Error in heartbeat loop: {e}")
 
     async def _apply_committed_entries(self) -> None:
-        """Apply committed entries to state machine."""
+        """Apply committed entries to state machine (single path; COR-T11-02/03)."""
         try:
             while self.volatile_state.last_applied < self.volatile_state.commit_index:
                 next_index = self.volatile_state.last_applied + 1
+                base = int(getattr(self, "_snapshot_last_index", 0) or 0)
 
-                if next_index <= len(self.persistent_state.log_entries):
-                    entry = self.persistent_state.log_entries[next_index - 1]
-
-                    # Only apply command entries to state machine
-                    if (
-                        entry.entry_type == LogEntryType.COMMAND
-                        and entry.command is not None
-                    ):
-                        try:
-                            await self.state_machine.apply_command(
-                                entry.command, entry.index
-                            )
-                            self.metrics.commands_applied += 1
-                            raft_log.debug(f"Applied command at index {entry.index}")
-                        except Exception as e:
-                            raft_log.error(
-                                f"Error applying command at index {entry.index}: {e}"
-                            )
-
+                # Indices covered by snapshot are already in the SM
+                if next_index <= base:
                     self.volatile_state.last_applied = next_index
                     self.metrics.last_applied = next_index
-                else:
-                    # Gap in log entries - this shouldn't happen
-                    raft_log.error(f"Gap in log entries at index {next_index}")
+                    self._resolve_apply_waiter(next_index)
+                    continue
+
+                entry = self._get_entry_at_index(next_index)
+                if entry is None:
+                    raft_log.error(f"Gap in log entries at absolute index {next_index}")
                     break
+
+                if (
+                    entry.entry_type == LogEntryType.COMMAND
+                    and entry.command is not None
+                ):
+                    try:
+                        await self.state_machine.apply_command(
+                            entry.command, entry.index
+                        )
+                        self.metrics.commands_applied += 1
+                        raft_log.debug(f"Applied command at index {entry.index}")
+                    except Exception as e:
+                        # COR-T11-03: do not advance last_applied on SM failure
+                        raft_log.error(
+                            f"Error applying command at index {entry.index}: {e}"
+                        )
+                        break
+
+                self.volatile_state.last_applied = next_index
+                self.metrics.last_applied = next_index
+                self._resolve_apply_waiter(next_index)
+
+            # PERF-T11-10: trigger local compaction when log suffix is large
+            await self._maybe_compact_log()
 
         except Exception as e:
             raft_log.error(f"Error applying committed entries: {e}")
+
+    def _resolve_apply_waiter(self, index: int) -> None:
+        fut = self._apply_waiters.get(index)
+        if fut is not None and not fut.done():
+            fut.set_result(True)
 
     async def _check_majority_contact(self) -> None:
         """Check if we have majority contact and update last_majority_contact_time."""
@@ -1588,11 +1614,15 @@ class ProductionRaft(ProductionRaftRPCs):
             # Create snapshot
             snapshot_data = await self.state_machine.create_snapshot()
 
+            last_idx = int(self.volatile_state.last_applied)
+            last_term = self._get_term_at_index(last_idx)
+            if last_term == 0 and last_idx == int(
+                getattr(self, "_snapshot_last_index", 0) or 0
+            ):
+                last_term = int(getattr(self, "_snapshot_last_term", 0) or 0)
             snapshot = RaftSnapshot(
-                last_included_index=self.volatile_state.last_applied,
-                last_included_term=self._get_term_at_index(
-                    self.volatile_state.last_applied
-                ),
+                last_included_index=last_idx,
+                last_included_term=last_term,
                 state_machine_state=snapshot_data,
                 configuration=set(self.cluster_members),
             )
@@ -1614,6 +1644,7 @@ class ProductionRaft(ProductionRaftRPCs):
                     data=chunk,
                     done=is_last_chunk,
                     offset=offset,
+                    configuration=tuple(sorted(snapshot.configuration)),
                 )
 
                 response = await self.transport.send_install_snapshot(
@@ -1653,22 +1684,85 @@ class ProductionRaft(ProductionRaftRPCs):
         except Exception as e:
             raft_log.error(f"Error sending snapshot to {follower_id}: {e}")
 
-    # Utility Methods
+    # Utility Methods — COR-T11-01 absolute index model (post-snapshot safe)
     def _last_log_index(self) -> int:
-        """Get index of last log entry (0 if log is empty)."""
-        return len(self.persistent_state.log_entries)
+        """Absolute index of last log entry (snapshot base if suffix empty)."""
+        log = self.persistent_state.log_entries
+        if log:
+            return int(log[-1].index)
+        return int(getattr(self, "_snapshot_last_index", 0) or 0)
 
     def _last_log_term(self) -> int:
-        """Get term of last log entry (0 if log is empty)."""
-        if not self.persistent_state.log_entries:
-            return 0
-        return self.persistent_state.log_entries[-1].term
+        """Term of last log entry (snapshot base term if suffix empty)."""
+        log = self.persistent_state.log_entries
+        if log:
+            return int(log[-1].term)
+        return int(getattr(self, "_snapshot_last_term", 0) or 0)
+
+    def _log_array_index(self, raft_index: int) -> int | None:
+        """Map absolute Raft index → position in log_entries, or None."""
+        if raft_index <= 0:
+            return None
+        base = int(getattr(self, "_snapshot_last_index", 0) or 0)
+        if raft_index <= base:
+            return None  # covered by snapshot
+        log = self.persistent_state.log_entries
+        if not log:
+            return None
+        # Fast path: dense suffix starting at base+1
+        pos = raft_index - base - 1
+        if 0 <= pos < len(log) and int(log[pos].index) == raft_index:
+            return pos
+        # Slow path: scan by entry.index (handles sparse/gaps)
+        for i, entry in enumerate(log):
+            if int(entry.index) == raft_index:
+                return i
+        return None
+
+    def _get_entry_at_index(self, raft_index: int):
+        """Return LogEntry at absolute index or None."""
+        pos = self._log_array_index(raft_index)
+        if pos is None:
+            return None
+        return self.persistent_state.log_entries[pos]
 
     def _get_term_at_index(self, index: int) -> int:
-        """Get term of entry at given index (0 if index is 0 or out of bounds)."""
-        if index <= 0 or index > len(self.persistent_state.log_entries):
+        """Get term of entry at absolute index (snapshot base / 0 if unknown)."""
+        if index <= 0:
             return 0
-        return self.persistent_state.log_entries[index - 1].term
+        base = int(getattr(self, "_snapshot_last_index", 0) or 0)
+        if index == base:
+            return int(getattr(self, "_snapshot_last_term", 0) or 0)
+        if index < base:
+            return 0
+        entry = self._get_entry_at_index(index)
+        if entry is None:
+            return 0
+        return int(entry.term)
+
+    def _entries_from_index(self, start_index: int, max_entries: int) -> list:
+        """Return up to max_entries starting at absolute start_index."""
+        if start_index <= 0 or max_entries <= 0:
+            return []
+        pos = self._log_array_index(start_index)
+        if pos is None:
+            # start may be just past end
+            return []
+        return list(self.persistent_state.log_entries[pos : pos + max_entries])
+
+    def _truncate_log_through(self, prev_log_index: int) -> list:
+        """Keep entries with index <= prev_log_index (absolute)."""
+        if prev_log_index <= 0:
+            base = int(getattr(self, "_snapshot_last_index", 0) or 0)
+            if base > 0:
+                # prev=0 with snapshot is inconsistent; keep empty suffix
+                return []
+            return []
+        return [
+            e
+            for e in self.persistent_state.log_entries
+            if int(e.index) <= prev_log_index
+        ]
 
     async def _update_term(self, new_term: int) -> None:
         """Update current term and clear voted_for."""
@@ -1783,24 +1877,25 @@ class ProductionRaft(ProductionRaftRPCs):
         )
 
     async def _apply_snapshot(self, snapshot: RaftSnapshot) -> None:
-        """Apply snapshot to state machine and update state."""
+        """Apply snapshot to state machine and update state (COR-T11-01/05)."""
         try:
-            # Restore state machine from snapshot
             await self.state_machine.restore_from_snapshot(snapshot.state_machine_state)
 
-            # Update volatile state
             self.volatile_state.last_applied = snapshot.last_included_index
             self.volatile_state.commit_index = max(
                 self.volatile_state.commit_index, snapshot.last_included_index
             )
 
-            # Trim log entries that are included in snapshot
-            remaining_entries = []
-            for entry in self.persistent_state.log_entries:
-                if entry.index > snapshot.last_included_index:
-                    remaining_entries.append(entry)
+            # COR-T11-01: record absolute base so dense-array math is not used
+            self._snapshot_last_index = int(snapshot.last_included_index)
+            self._snapshot_last_term = int(snapshot.last_included_term)
 
-            # Update persistent state
+            remaining_entries = [
+                entry
+                for entry in self.persistent_state.log_entries
+                if int(entry.index) > snapshot.last_included_index
+            ]
+
             self.persistent_state = PersistentState(
                 current_term=self.persistent_state.current_term,
                 voted_for=self.persistent_state.voted_for,
@@ -1808,6 +1903,11 @@ class ProductionRaft(ProductionRaftRPCs):
             )
 
             await self.storage.save_persistent_state(self.persistent_state)
+
+            # COR-T11-05: install membership from snapshot when present
+            cfg = getattr(snapshot, "configuration", None) or set()
+            if cfg:
+                self.cluster_members = set(str(m) for m in cfg)
 
             raft_log.info(
                 f"Applied snapshot up to index {snapshot.last_included_index}, "
@@ -1817,3 +1917,47 @@ class ProductionRaft(ProductionRaftRPCs):
         except Exception as e:
             raft_log.error(f"Error applying snapshot: {e}")
             raise
+
+    async def _maybe_compact_log(self) -> None:
+        """PERF-T11-10: create local snapshot when suffix exceeds threshold."""
+        try:
+            threshold = int(getattr(self.config, "snapshot_threshold", 0) or 0)
+            if threshold <= 0:
+                return
+            log = self.persistent_state.log_entries
+            if len(log) < threshold:
+                return
+            # Only compact through last_applied
+            target = int(self.volatile_state.last_applied)
+            base = int(getattr(self, "_snapshot_last_index", 0) or 0)
+            if target <= base:
+                return
+            if len([e for e in log if int(e.index) <= target]) < threshold:
+                return
+            sm_bytes = await self.state_machine.create_snapshot()
+            last_term = self._get_term_at_index(target)
+            snapshot = RaftSnapshot(
+                last_included_index=target,
+                last_included_term=last_term,
+                state_machine_state=sm_bytes,
+                configuration=set(self.cluster_members),
+            )
+            await self.storage.save_snapshot(snapshot)
+            # Trim in-memory log
+            remaining = [e for e in log if int(e.index) > target]
+            self.persistent_state = PersistentState(
+                current_term=self.persistent_state.current_term,
+                voted_for=self.persistent_state.voted_for,
+                log_entries=remaining,
+            )
+            await self.storage.save_persistent_state(self.persistent_state)
+            self._snapshot_last_index = target
+            self._snapshot_last_term = last_term
+            self.metrics.snapshots_created += 1
+            self.metrics.log_size = len(remaining)
+            raft_log.info(
+                f"Compacted log via snapshot through index {target}, "
+                f"suffix={len(remaining)}"
+            )
+        except Exception as e:
+            raft_log.warning(f"Log compaction skipped: {e}")

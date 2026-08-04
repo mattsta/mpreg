@@ -151,28 +151,53 @@ class RoutingCatalogApplier:
     _seen_update_ids: dict[str, float] = field(default_factory=dict, repr=False)
     _seen_ttl_seconds: float = 300.0
     _seen_max: int = 50_000
+    _empty_update_id_rejects: int = 0
+    _dedup_skips: int = 0
 
-    def _remember_update_id(self, update_id: str, now: float) -> bool:
-        """Return True if this update_id is new (should apply)."""
+    def _is_duplicate_update_id(self, update_id: str, now: float) -> bool:
+        """Return True if update_id was already successfully applied within TTL."""
         if not update_id:
-            return True
-        ts = self._seen_update_ids.get(update_id)
-        if ts is not None and (now - ts) < self._seen_ttl_seconds:
             return False
+        ts = self._seen_update_ids.get(update_id)
+        return ts is not None and (now - ts) < self._seen_ttl_seconds
+
+    def _commit_update_id(self, update_id: str, now: float) -> None:
+        """COR-T11-08: remember only after successful apply."""
+        if not update_id:
+            return
         self._seen_update_ids[update_id] = now
         if len(self._seen_update_ids) > self._seen_max:
             cutoff = now - self._seen_ttl_seconds
             self._seen_update_ids = {
                 k: v for k, v in self._seen_update_ids.items() if v >= cutoff
             }
-        return True
-
     def apply(
         self, delta: RoutingCatalogDelta, *, now: Timestamp | None = None
     ) -> dict[str, int]:
         applied_at = float(now if now is not None else time.time())
         uid = str(getattr(delta, "update_id", "") or "")
-        if uid and not self._remember_update_id(uid, applied_at):
+        # COR-T11-08: empty update_id fail-closed (no apply)
+        if not uid:
+            self._empty_update_id_rejects += 1
+            return {
+                "functions_added": 0,
+                "functions_removed": 0,
+                "topics_added": 0,
+                "topics_removed": 0,
+                "queues_added": 0,
+                "queues_removed": 0,
+                "services_added": 0,
+                "services_removed": 0,
+                "caches_added": 0,
+                "caches_removed": 0,
+                "cache_profiles_added": 0,
+                "cache_profiles_removed": 0,
+                "nodes_added": 0,
+                "nodes_removed": 0,
+                "skipped_empty_update_id": 1,
+            }
+        if self._is_duplicate_update_id(uid, applied_at):
+            self._dedup_skips += 1
             return {
                 "functions_added": 0,
                 "functions_removed": 0,
@@ -337,4 +362,6 @@ class RoutingCatalogApplier:
         for observer in self.observers:
             observer.on_catalog_delta(filtered_delta, counts)
 
+        # COR-T11-08: remember only after successful mutations + observers
+        self._commit_update_id(uid, applied_at)
         return counts

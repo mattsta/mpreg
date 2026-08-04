@@ -238,6 +238,8 @@ class InstallSnapshotRequest:
     data: bytes  # Raw bytes of the snapshot chunk
     done: bool  # True if this is the last chunk
     offset: int = 0  # Byte offset where chunk is positioned in the snapshot file
+    # COR-T11-05: membership at snapshot time (empty = leave local config unchanged)
+    configuration: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.term < 0:
@@ -259,7 +261,8 @@ class InstallSnapshotResponse:
 
     term: int  # Current term, for leader to update itself
     follower_id: str  # ID of the responding follower
-    success: bool = True  # False when install/apply/persist failed
+    # COR-T11-10: default False so missing/legacy-unset cannot advance match/next
+    success: bool = False
 
     def __post_init__(self) -> None:
         if self.term < 0:

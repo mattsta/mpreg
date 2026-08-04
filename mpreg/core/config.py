@@ -57,8 +57,15 @@ class MPREGSettings:
     # When set, monitoring HTTP endpoints require Authorization: Bearer <token>
     # (or X-MPREG-Monitoring-Token). Empty/None disables auth (dev default).
     monitoring_auth_token: str | None = None
-    # OBS-T10-07: /ready admits score >= this (default 0.4 = DEGRADED ok).
+    # ERG-T11-03: when True, require token for non-loopback reads even on loopback bind.
+    monitoring_auth_required_for_reads: bool = False
+    # OBS-T10-07 / ERG-T11-09: /ready admits score >= this (default 0.4 = DEGRADED ok).
+    # Federated/prod profiles should raise (e.g. 0.85).
     ready_min_score: float = 0.4
+    # PERF-T11-01: hard cap on concurrent inbound client connections (0 = unlimited).
+    max_inbound_connections: int = 10_000
+    # PERF-T11-09: max WS/TCP frame size (bytes). Default 32 MiB (was ~4 GiB).
+    max_message_size: int = 32 * 1024 * 1024
     on_port_assigned: PortAssignmentCallback | None = None
     on_monitoring_port_assigned: PortAssignmentCallback | None = None
 

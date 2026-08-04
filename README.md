@@ -59,7 +59,7 @@ Why is this useful? I made this because I had some models with datasets I wanted
 
 - 🔒 **Consensus Algorithms**: Production Raft implementation (**CFT**, not Byzantine/BFT)
 - 🌍 **Geographic Routing**: Hub-and-spoke federation with Dijkstra/A\* path optimization
-- 🔧 **Self-Healing Systems**: Automatic failure detection, recovery, and graceful degradation
+- 🔧 **Resilience helpers**: Peer reconnect and graceful degradation (not a full self-healing control plane; see `claims.yaml` non_claims)
 
 ### 📈 **Reliability & Monitoring**
 
@@ -671,7 +671,7 @@ MPREG is organized into a clean, modular architecture with well-separated concer
 - **`connection.py`** - WebSocket connection management
 - **`topic_exchange.py`** - Topic-based message routing
 - **`caching.py`** - Multi-tier cache manager with S4LRU algorithm
-- **`message_queue.py`** - SQS-compatible message queues with delivery guarantees
+- **`message_queue.py`** - SQS-like message queues with delivery guarantees (not AWS SQS protocol-compatible)
 - **`enhanced_rpc.py`** - Advanced RPC features with circuit breakers
 - **`statistics.py`** - Performance metrics and monitoring data structures
 
@@ -942,7 +942,7 @@ MPREG continues evolving toward an even more comprehensive distributed computing
 **🤖 Intelligent Automation**
 
 - **Auto-scaling Based on Load**: Dynamic cluster scaling with predictive capacity planning
-- **Self-Healing Infrastructure**: Automatic recovery from node failures and network partitions
+- **Resilience paths**: Reconnect and drain/detach ops (full self-healing control loop is non-claim / roadmap)
 - **Performance-Driven Optimization**: AI-powered resource allocation and routing optimization
 - **Cost-Aware Scaling**: Cloud cost optimization with intelligent instance management
 

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import bisect
+import heapq
 import time
 import uuid
 from collections import defaultdict, deque
@@ -225,6 +226,9 @@ class MessageQueue(ManagedObject):
 
         # Message storage
         self.pending_messages: deque[QueuedMessage] = deque()
+        # PERF-T11-02: O(log n) priority path (heap of (-priority, seq, message))
+        self._priority_heap: list[tuple[int, int, QueuedMessage]] = []
+        self._priority_seq: int = 0
         self.in_flight_messages: dict[MessageIdStr, InFlightMessage] = {}
         self.dead_letter_queue: deque[QueuedMessage] = deque()
         # PERF-01: wake delivery worker instead of 100ms empty poll.
@@ -397,11 +401,13 @@ class MessageQueue(ManagedObject):
 
             # Add to pending queue
             if self.config.queue_type == QueueType.PRIORITY:
-                # PERF-06: bisect by (-priority) for O(log n) position; deque insert still O(n)
-                # but avoids full linear scan comparisons on every enqueue.
-                priorities = [-m.priority for m in self.pending_messages]
-                idx = bisect.bisect_left(priorities, -message.priority)
-                self.pending_messages.insert(idx, message)
+                # PERF-T11-02: heap O(log n) enqueue; pending_messages mirrors for size/scan paths
+                self._priority_seq += 1
+                heapq.heappush(
+                    self._priority_heap,
+                    (-int(message.priority), self._priority_seq, message),
+                )
+                self.pending_messages.append(message)
             else:
                 # FIFO or DELAY queue
                 self.pending_messages.append(message)
@@ -570,16 +576,35 @@ class MessageQueue(ManagedObject):
 
                     # Get next message ready for delivery
                     message = None
-                    for i, pending_msg in enumerate(self.pending_messages):
-                        if pending_msg.is_ready_for_delivery():
-                            message = (
-                                self.pending_messages.popleft()
-                                if i == 0
-                                else self.pending_messages[i]
-                            )
-                            if i > 0:
-                                del self.pending_messages[i]
-                            break
+                    if (
+                        self.config.queue_type == QueueType.PRIORITY
+                        and self._priority_heap
+                    ):
+                        # PERF-T11-02: pop highest priority ready message
+                        deferred: list[tuple[int, int, QueuedMessage]] = []
+                        while self._priority_heap:
+                            pri, seq, pending_msg = heapq.heappop(self._priority_heap)
+                            if pending_msg.is_ready_for_delivery():
+                                message = pending_msg
+                                try:
+                                    self.pending_messages.remove(pending_msg)
+                                except ValueError:
+                                    pass
+                                break
+                            deferred.append((pri, seq, pending_msg))
+                        for item in deferred:
+                            heapq.heappush(self._priority_heap, item)
+                    else:
+                        for i, pending_msg in enumerate(self.pending_messages):
+                            if pending_msg.is_ready_for_delivery():
+                                message = (
+                                    self.pending_messages.popleft()
+                                    if i == 0
+                                    else self.pending_messages[i]
+                                )
+                                if i > 0:
+                                    del self.pending_messages[i]
+                                break
 
                     if not message:
                         # Delayed messages only — brief yield, not a 100ms floor.
@@ -834,6 +859,12 @@ class MessageQueue(ManagedObject):
                 except IndexError:
                     break
             self.dead_letter_queue.append(message)
+            cb = getattr(self, "on_dlq", None) or getattr(self, "_metrics_on_dlq", None)
+            if callable(cb):
+                try:
+                    cb(1)
+                except Exception:
+                    pass
             queue_log.warning(f"Moved message {message.id} to DLQ: {reason}")
             if self._queue_store is not None:
                 await self._queue_store.move_to_dead_letter(message)
@@ -880,6 +911,8 @@ class MessageQueue(ManagedObject):
 
         # Clear all data structures
         self.pending_messages.clear()
+        if hasattr(self, "_priority_heap"):
+            self._priority_heap.clear()
         self.in_flight_messages.clear()
         self.dead_letter_queue.clear()
         self.subscriptions.clear()
@@ -900,6 +933,8 @@ class MessageQueue(ManagedObject):
         except RuntimeError:
             # No event loop running, just clear resources
             self.pending_messages.clear()
+            if hasattr(self, "_priority_heap"):
+                self._priority_heap.clear()
             self.in_flight_messages.clear()
             self.dead_letter_queue.clear()
             self.subscriptions.clear()

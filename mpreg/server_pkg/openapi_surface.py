@@ -14,6 +14,9 @@ def build_monitoring_openapi() -> dict[str, Any]:
     # When monitoring_auth_token is configured, mutations and metrics require bearer.
     _bearer = [{"bearerAuth": []}]
     paths: dict[str, Any] = {
+        "/health/clusters/{cluster_id}": {"get": {"summary": "Per-cluster health", "tags": ["health"]}},
+        "/performance/bottlenecks": {"get": {"summary": "Performance bottlenecks", "tags": ["performance"]}},
+        "/performance/clusters/{cluster_id}": {"get": {"summary": "Per-cluster performance", "tags": ["performance"]}},
         "/live": {
             "get": {
                 "summary": "Process liveness (always 200 if HTTP is up)",

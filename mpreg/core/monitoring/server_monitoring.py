@@ -67,7 +67,21 @@ class ServerMetricsTracker:
     gossip_pending_drops: int = 0
     replication_drops: int = 0
     cache_pubsub_drops: int = 0
+    drain_refusals: int = 0
+    accept_rejects: int = 0
+    queue_dlq_total: int = 0
+    federation_in_flight_drops: int = 0
+    catalog_dedup_skips: int = 0
+    raft_snapshot_installs: int = 0
     node_draining: int = 0
+    node_ready: int = 1
+    # OBS-T11-02: wall-clock RPS from monotonic counters (not maxlen deques)
+    _rpc_window_start: float = field(default_factory=time.time)
+    _rpc_window_count: int = 0
+    _rpc_rps_ewma: float = 0.0
+    _pubsub_window_start: float = field(default_factory=time.time)
+    _pubsub_window_count: int = 0
+    _pubsub_rps_ewma: float = 0.0
     rpc_latency_buckets: list[int] = field(
         default_factory=lambda: [0] * (len(_LATENCY_BUCKETS_MS) + 1)
     )
@@ -98,6 +112,15 @@ class ServerMetricsTracker:
     ) -> None:
         now = time.time()
         self.rpc_total += 1
+        self._rpc_window_count += 1
+        elapsed = now - self._rpc_window_start
+        if elapsed >= 1.0:
+            inst = self._rpc_window_count / max(elapsed, 1e-6)
+            self._rpc_rps_ewma = (
+                inst if self._rpc_rps_ewma <= 0 else (0.3 * inst + 0.7 * self._rpc_rps_ewma)
+            )
+            self._rpc_window_start = now
+            self._rpc_window_count = 0
         if not success:
             self.rpc_errors += 1
             code_key = str(error_code) if error_code is not None else "unknown"
@@ -116,6 +139,17 @@ class ServerMetricsTracker:
     def record_pubsub(self, latency_ms: float, success: bool) -> None:
         now = time.time()
         self.pubsub_total += 1
+        self._pubsub_window_count += 1
+        elapsed = now - self._pubsub_window_start
+        if elapsed >= 1.0:
+            inst = self._pubsub_window_count / max(elapsed, 1e-6)
+            self._pubsub_rps_ewma = (
+                inst
+                if self._pubsub_rps_ewma <= 0
+                else (0.3 * inst + 0.7 * self._pubsub_rps_ewma)
+            )
+            self._pubsub_window_start = now
+            self._pubsub_window_count = 0
         if not success:
             self.pubsub_errors += 1
         self.pubsub_events.append(now)
@@ -166,6 +200,39 @@ class ServerMetricsTracker:
         self.gossip_pending_drops = max(
             0, int(self.gossip_pending_drops) + max(0, int(n))
         )
+
+    def record_accept_reject(self, n: int = 1) -> None:
+        """PERF-T11-01: inbound connection rejected at cap."""
+        self.accept_rejects = max(0, int(getattr(self, "accept_rejects", 0)) + max(0, int(n)))
+
+    def record_drain_refusal(self, role: str = "unknown", n: int = 1) -> None:
+        """OBS-T11-01: data-plane messages refused while draining."""
+        self.drain_refusals = max(0, int(self.drain_refusals) + max(0, int(n)))
+
+    def record_queue_dlq(self, n: int = 1) -> None:
+        """OBS-T11-01: messages moved to DLQ (e.g. no-subscriber)."""
+        self.queue_dlq_total = max(0, int(self.queue_dlq_total) + max(0, int(n)))
+
+    def record_federation_in_flight_drop(self, n: int = 1) -> None:
+        """OBS-T11-01: federation in_flight admission refusals."""
+        self.federation_in_flight_drops = max(
+            0, int(self.federation_in_flight_drops) + max(0, int(n))
+        )
+
+    def record_catalog_dedup_skip(self, n: int = 1) -> None:
+        """OBS-T11-01: catalog update_id dedup skips."""
+        self.catalog_dedup_skips = max(
+            0, int(self.catalog_dedup_skips) + max(0, int(n))
+        )
+
+    def record_raft_snapshot_install(self, n: int = 1) -> None:
+        self.raft_snapshot_installs = max(
+            0, int(self.raft_snapshot_installs) + max(0, int(n))
+        )
+
+    def set_ready(self, ready: bool) -> None:
+        """OBS-T11-03: mirror /ready predicate for Prom."""
+        self.node_ready = 1 if ready else 0
 
     def set_replication_drops(self, count: int) -> None:
         self.replication_drops = max(0, int(count))
@@ -218,6 +285,53 @@ class ServerMetricsTracker:
         lines.append(
             f"mpreg_gossip_pending_drops_total{{{labels}}} {self.gossip_pending_drops}"
         )
+        lines.append(
+            "# HELP mpreg_drain_refusals_total Data-plane messages refused while draining."
+        )
+        lines.append("# TYPE mpreg_drain_refusals_total counter")
+        lines.append(
+            f"mpreg_drain_refusals_total{{{labels}}} {self.drain_refusals}"
+        )
+        lines.append(
+            "# HELP mpreg_accept_rejects_total Inbound connections rejected at cap."
+        )
+        lines.append("# TYPE mpreg_accept_rejects_total counter")
+        lines.append(
+            f"mpreg_accept_rejects_total{{{labels}}} {getattr(self, 'accept_rejects', 0)}"
+        )
+        lines.append(
+            "# HELP mpreg_queue_dlq_total Messages moved to dead-letter queue."
+        )
+        lines.append("# TYPE mpreg_queue_dlq_total counter")
+        lines.append(f"mpreg_queue_dlq_total{{{labels}}} {self.queue_dlq_total}")
+        lines.append(
+            "# HELP mpreg_queue_federation_in_flight_drops_total "
+            "Federation in_flight admission refusals when full."
+        )
+        lines.append("# TYPE mpreg_queue_federation_in_flight_drops_total counter")
+        lines.append(
+            f"mpreg_queue_federation_in_flight_drops_total{{{labels}}} "
+            f"{self.federation_in_flight_drops}"
+        )
+        lines.append(
+            "# HELP mpreg_catalog_dedup_skips_total Catalog update_id dedup skips."
+        )
+        lines.append("# TYPE mpreg_catalog_dedup_skips_total counter")
+        lines.append(
+            f"mpreg_catalog_dedup_skips_total{{{labels}}} {self.catalog_dedup_skips}"
+        )
+        lines.append(
+            "# HELP mpreg_raft_snapshot_installs_total Successful InstallSnapshot applies."
+        )
+        lines.append("# TYPE mpreg_raft_snapshot_installs_total counter")
+        lines.append(
+            f"mpreg_raft_snapshot_installs_total{{{labels}}} {self.raft_snapshot_installs}"
+        )
+        lines.append(
+            "# HELP mpreg_node_ready 1 if node would pass /ready admission."
+        )
+        lines.append("# TYPE mpreg_node_ready gauge")
+        lines.append(f"mpreg_node_ready{{{labels}}} {int(self.node_ready)}")
         lines.append(
             "# HELP mpreg_cache_replication_drops_total "
             "Cache replication operations dropped due to backpressure."
@@ -309,8 +423,12 @@ class ServerMetricsTracker:
     ) -> SystemPerformanceMetrics:
         now = time.time()
         _prune_events(self.rpc_events, now, _HOUR_WINDOW_SECONDS)
-        recent_rps = sum(1 for ts in self.rpc_events if now - ts <= _RPS_WINDOW_SECONDS)
-        rps = recent_rps / _RPS_WINDOW_SECONDS if self.rpc_events else 0.0
+        # OBS-T11-02: prefer EWMA from counter windows; fall back to lifetime rate
+        if self._rpc_rps_ewma > 0:
+            rps = float(self._rpc_rps_ewma)
+        else:
+            uptime = max(now - self.started_at, 1e-6)
+            rps = float(self.rpc_total) / uptime
         latencies = list(self.rpc_latencies_ms)
         average_latency = sum(latencies) / len(latencies) if latencies else 0.0
         error_rate = (
@@ -325,7 +443,7 @@ class ServerMetricsTracker:
             p99_latency_ms=_calculate_percentile(latencies, 99.0),
             error_rate_percent=error_rate,
             active_connections=active_connections,
-            total_operations_last_hour=len(self.rpc_events),
+            total_operations_last_hour=int(self.rpc_total),
             last_updated=now,
         )
 
@@ -334,10 +452,11 @@ class ServerMetricsTracker:
     ) -> SystemPerformanceMetrics:
         now = time.time()
         _prune_events(self.pubsub_events, now, _HOUR_WINDOW_SECONDS)
-        recent_rps = sum(
-            1 for ts in self.pubsub_events if now - ts <= _RPS_WINDOW_SECONDS
-        )
-        rps = recent_rps / _RPS_WINDOW_SECONDS if self.pubsub_events else 0.0
+        if self._pubsub_rps_ewma > 0:
+            rps = float(self._pubsub_rps_ewma)
+        else:
+            uptime = max(now - self.started_at, 1e-6)
+            rps = float(self.pubsub_total) / uptime
         latencies = list(self.pubsub_latencies_ms)
         average_latency = sum(latencies) / len(latencies) if latencies else 0.0
         error_rate = (
@@ -354,7 +473,7 @@ class ServerMetricsTracker:
             p99_latency_ms=_calculate_percentile(latencies, 99.0),
             error_rate_percent=error_rate,
             active_connections=active_connections,
-            total_operations_last_hour=len(self.pubsub_events),
+            total_operations_last_hour=int(self.pubsub_total),
             last_updated=now,
         )
 

@@ -171,7 +171,17 @@ class MPREGClusterClient:
             )
         if not target:
             raise RuntimeError("No endpoint available for plane_client")
-        return MPREGClient(target)
+        # ERG-T11-07: inherit cluster HA call_policy (and auth if present)
+        kwargs: dict = {}
+        if self.call_policy is not None:
+            kwargs["call_policy"] = self.call_policy
+        for attr in ("auth_token", "timeout", "default_timeout"):
+            if hasattr(self, attr) and getattr(self, attr) is not None:
+                kwargs[attr] = getattr(self, attr)
+        try:
+            return MPREGClient(target, **kwargs)
+        except TypeError:
+            return MPREGClient(target)
 
     async def call(
         self,

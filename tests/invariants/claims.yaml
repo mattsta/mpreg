@@ -145,11 +145,15 @@ rpc:
       - tests/invariants/test_trace_decisions.py
       - tests/chaos/test_t10_residuals.py
   - id: INV-P7
-    claim: "federated announcement u-ids and STATUS fingerprints do not double-apply under retry (dedup)"
+    claim: >
+      STATUS fingerprints and FederatedRPCAnnouncement.should_process unit API
+      do not double-apply under retry; live federated RPC capability path uses
+      fabric catalog gossip update_id dedup (not the typed RPC announcement wire)
     proof: [L1]
     tests:
       - tests/invariants/test_rpc_dedup.py
       - tests/chaos/test_t10_residuals.py
+      - tests/chaos/test_t11_residuals.py
 
 encapsulation:
   - id: INV-E1

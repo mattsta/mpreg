@@ -139,6 +139,7 @@ async def queue_send(
         return {
             "success": False,
             "error_message": "unsupported_delivery_guarantee:exactly_once",
+            "error_code": 1011,
             "queue_name": queue_name,
             "topic": topic,
         }
@@ -313,15 +314,44 @@ async def cache_put(
         identifier=identifier,
         version=str(body.get("version") or "v1.0.0"),
     )
+    # ERG-T11-06: honor consistency_level; refuse STRONG with error_code 1012
+    from mpreg.core.cache_models import CacheOptions, ConsistencyLevel
+
+    raw_cl = body.get("consistency_level") or body.get("consistency")
+    opts = CacheOptions()
+    if raw_cl is not None:
+        try:
+            if isinstance(raw_cl, ConsistencyLevel):
+                opts = CacheOptions(consistency_level=raw_cl)
+            else:
+                opts = CacheOptions(
+                    consistency_level=ConsistencyLevel(str(raw_cl).lower())
+                )
+        except Exception:
+            return {
+                "success": False,
+                "error_message": f"invalid_consistency_level:{raw_cl}",
+                "error_code": 1012,
+                "namespace": namespace,
+                "identifier": identifier,
+            }
     cluster_id, tenant_id = rpc_actor_ids(server, body)
     with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
-        result = await manager.put(key, body.get("value"))
-    return {
-        "success": bool(getattr(result, "success", False)),
-        "error_message": getattr(result, "error_message", None),
+        result = await manager.put(key, body.get("value"), options=opts)
+    success = bool(getattr(result, "success", False))
+    err = getattr(result, "error_message", None)
+    out: dict[str, Any] = {
+        "success": success,
+        "error_message": err,
         "namespace": namespace,
         "identifier": identifier,
     }
+    if not success and err and (
+        "STRONG" in str(err) or "strong" in str(err).lower()
+        or "not implemented" in str(err).lower()
+    ):
+        out["error_code"] = 1012
+    return out
 
 async def cache_invalidate(
     server: Any, payload: object = None, **kwargs: object
