@@ -658,3 +658,23 @@ def test_support_only_section_in_claims() -> None:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert "support_only" in data
     assert any("test_fault_injector" in s for s in data["support_only"])
+
+def test_docs_no_guaranteed_single_delivery_claim() -> None:
+    """ERG-07: blockchain arch must not market EO as guaranteed single delivery."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    blob = (root / "docs" / "BLOCKCHAIN_MESSAGE_QUEUE_ARCHITECTURE.md").read_text(
+        encoding="utf-8"
+    )
+    assert "Guaranteed single delivery" not in blob
+    assert "Honesty banner" in blob or "honesty banner" in blob.lower()
+
+def test_openapi_ready_documents_drain_semantics() -> None:
+    """OBS-06/07: OpenAPI /ready describes drain and 503."""
+    from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
+
+    ready = build_monitoring_openapi()["paths"]["/ready"]["get"]
+    assert "503" in ready.get("responses", {})
+    desc = (ready.get("description") or "") + ready.get("summary", "")
+    assert "drain" in desc.lower() or "503" in desc

@@ -222,7 +222,7 @@ This quad tuple of `(name, function, args, dataset)` actually simplifies your wo
 
 ## Complete System Showcase
 
-MPREG has grown into a comprehensive distributed platform with multiple production-ready systems working together:
+MPREG has grown into a comprehensive distributed platform with multiple integrated systems working together (CFT Raft; see honesty banner):
 
 ### 🌐 Topic Exchange (AMQP-Style Pub/Sub)
 

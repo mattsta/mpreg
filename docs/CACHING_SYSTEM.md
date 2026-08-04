@@ -19,7 +19,7 @@
 
 ## Purpose and Goals
 
-The MPREG Smart Caching System is a **production-ready, memory-aware caching solution** designed to optimize distributed computing workloads by intelligently managing result caching with precise memory tracking and advanced eviction strategies.
+The MPREG Smart Caching System is a **memory-aware caching solution** (STRONG is refuse-by-default; see honesty banner) designed to optimize distributed computing workloads by intelligently managing result caching with precise memory tracking and advanced eviction strategies.
 
 ### Primary Goals
 
@@ -1193,7 +1193,7 @@ def cleanup():
 
 ## Conclusion
 
-The MPREG Smart Caching System represents a **production-ready solution** for the unique challenges of distributed AI/ML workloads. By combining accurate memory tracking, intelligent eviction strategies, and sophisticated algorithms like S4LRU, it provides the foundation for scalable, efficient distributed computing.
+The MPREG Smart Caching System is a **practical solution** for the unique challenges of distributed AI/ML workloads. By combining accurate memory tracking, intelligent eviction strategies, and sophisticated algorithms like S4LRU, it provides the foundation for scalable, efficient distributed computing.
 
 The system's design philosophy of **"measure everything, cache intelligently"** ensures that it can adapt to diverse workload characteristics while maintaining predictable performance and resource usage in production environments.
 

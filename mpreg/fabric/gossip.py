@@ -1049,6 +1049,16 @@ class GossipProtocol:
         else:
             self.pending_messages.append(message)
 
+    def _trim_pending_to_max(self) -> None:
+        """Drop oldest pending messages until under maxsize (PERF-07)."""
+        max_n = max(1, int(self.pending_messages_maxsize or 10000))
+        while len(self.pending_messages) > max_n:
+            try:
+                self.pending_messages.pop()
+                self.pending_messages_dropped += 1
+            except IndexError:
+                break
+
     def _get_messages_to_propagate(
         self, *, limit: int
     ) -> tuple[list[GossipMessage], int]:
@@ -1137,6 +1147,7 @@ class GossipProtocol:
                     valid_pending.append(message)
 
             self.pending_messages = valid_pending
+            self._trim_pending_to_max()
 
             # Update scheduler with pending count
             self.scheduler.update_pending_messages(len(self.pending_messages))
@@ -1287,6 +1298,7 @@ class GossipProtocol:
 
             filtered.append(existing)
         self.pending_messages = filtered
+        self._trim_pending_to_max()
         return enqueue_incoming
 
     async def _broadcast_local_catalog_update(self, message: GossipMessage) -> None:

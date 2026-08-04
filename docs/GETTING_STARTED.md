@@ -1265,7 +1265,7 @@ MPREG gives you the power to build distributed systems that feel like single-mac
 
 ---
 
-_This guide represents the current state of MPREG after comprehensive modernization and testing. All performance metrics are based on real benchmarks and production-ready examples._
+_This guide represents the current state of MPREG after comprehensive modernization and testing. All performance metrics are based on real benchmarks and verified examples (CFT Raft; not BFT/EO/STRONG)._
 
 ## Simple registration (defaults)
 

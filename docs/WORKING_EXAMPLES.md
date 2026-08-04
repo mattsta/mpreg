@@ -163,7 +163,7 @@ results = await asyncio.gather(*tasks)  # Blazing fast parallel execution!
 
 ## 🎉 **Summary**
 
-**MPREG is production-ready** with:
+**MPREG examples are verified under tests** (not BFT/EO/STRONG guarantees) with:
 
 - ✅ **41+ comprehensive tests** (all core functionality verified)
 - ✅ **Low-latency performance** under local workloads

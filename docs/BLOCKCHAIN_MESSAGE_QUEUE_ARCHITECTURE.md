@@ -90,7 +90,7 @@ class DeliveryGuarantee(Enum):
     """Delivery guarantee levels."""
     AT_MOST_ONCE = "at_most_once"    # Fire and forget
     AT_LEAST_ONCE = "at_least_once"  # Retry until success
-    EXACTLY_ONCE = "exactly_once"    # Guaranteed single delivery
+    EXACTLY_ONCE = "exactly_once"    # Reserved — unsupported / fail-closed (not a product guarantee)
     ORDERED = "ordered"              # Maintain message order
 
 class RouteStatus(Enum):

@@ -1012,7 +1012,7 @@ Indicative results from local testing; re-measure per environment:
 
    def add_blockchain_cache_sync():
        # Use blockchain for cache sync consensus
-       # Ensure Byzantine fault tolerance
+       # Wishlist only — MPREG Raft is CFT, not BFT (do not ship as BFT)
        pass
    ```
 

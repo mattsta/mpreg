@@ -21,7 +21,7 @@
 │  • Auto-discovery mesh                    └─────────┘ └─────────┘ └─────────┘   │
 │  • Node failure resilience                                                     │
 │  • 83% connection efficiency              • 3 regions × 3 nodes               │
-│  • Best for: Edge/IoT                     • 33% Byzantine fault tolerance      │
+│  • Best for: Edge/IoT                     • 33% BFT (theoretical class only)   │
 │                                           • Best for: Financial/Crypto         │
 │                                                                                 │
 ├─────────────────────────────────────────────────────────────────────────────────┤
@@ -190,7 +190,7 @@ Start Here: What's your primary use case?
 │
 └── Mission-Critical / Healthcare / Safety
     ├── Self-Healing ← Primary choice for fault tolerance
-    ├── Byzantine Tolerant ← If you need Byzantine fault tolerance
+    ├── Byzantine Tolerant ← Theoretical class only; MPREG Raft is CFT, not BFT
     └── Dynamic Mesh ← If you need rapid reconfiguration
 ```
 

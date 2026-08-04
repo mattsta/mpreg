@@ -17,13 +17,38 @@ def build_monitoring_openapi() -> dict[str, Any]:
         "/live": {
             "get": {
                 "summary": "Process liveness (always 200 if HTTP is up)",
+                "description": "Liveness probe responses — process up only.",
                 "tags": ["health"],
+                "responses": {"200": {"description": "Process alive"}},
             }
         },
         "/ready": {
             "get": {
-                "summary": "Readiness / traffic admission (503 when not ready)",
+                "summary": "Readiness / traffic admission (503 when draining or unhealthy)",
+                "description": (
+                    "HTTP 200 means the node admits traffic under current health score "
+                    "and is not draining. HTTP 503 when draining or below ready threshold. "
+                    "Not a full-health certificate (OBS-07)."
+                ),
                 "tags": ["health"],
+                "responses": {
+                    "200": {
+                        "description": "Ready to admit traffic",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "ready": {"type": "boolean"},
+                                        "draining": {"type": "boolean"},
+                                        "health_score": {"type": "number"},
+                                    },
+                                }
+                            }
+                        },
+                    },
+                    "503": {"description": "Not ready (draining or degraded)"},
+                },
             }
         },
         "/health": {

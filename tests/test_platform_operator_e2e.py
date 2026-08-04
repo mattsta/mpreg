@@ -134,3 +134,65 @@ async def test_operator_drain_admission_and_drop_metrics() -> None:
     cc = MPREGClusterClient(seed_urls=(f"ws://127.0.0.1:{port}",))
     pc = cc.plane_client(f"ws://127.0.0.1:{port}")
     assert pc is not None
+
+@pytest.mark.asyncio
+async def test_operator_live_drain_refuses_client_rpc() -> None:
+    """ERG-01 live: draining node refuses data-plane RPC over the wire."""
+    from mpreg.core.errors import MpregError, MpregErrorCode
+
+    port = allocate_port("servers")
+    settings = MPREGSettings(
+        host="127.0.0.1",
+        port=port,
+        name="e2e-drain-live",
+        cluster_id="e2e-cluster",
+        enable_default_cache=False,
+        enable_default_queue=False,
+        monitoring_enabled=False,
+        fabric_routing_enabled=False,
+        gossip_interval=30.0,
+    )
+    server = MPREGServer(settings)
+
+    def ping() -> str:
+        return "pong"
+
+    server.register_command(
+        "ping", ping, ["compute"], function_id="ping", version="1.0.0"
+    )
+    task = asyncio.create_task(server.server())
+    try:
+        # Wait until the accept loop is actually listening.
+        for _ in range(100):
+            await asyncio.sleep(0.05)
+            listener = getattr(server, "_server", None) or getattr(
+                server, "websocket_server", None
+            )
+            if listener is not None or getattr(server, "_started", False):
+                break
+            # Fallback: cluster + short settle after task scheduled
+            if getattr(server, "cluster", None) is not None and _ > 4:
+                break
+        url = f"ws://127.0.0.1:{port}"
+        async with MPREGClient(url) as client:
+            assert await client.call("ping", locs=frozenset(["compute"])) == "pong"
+        server._mgmt_draining = True
+        err: BaseException | None = None
+        async with MPREGClient(url) as client:
+            with pytest.raises(Exception) as ei:
+                await client.call("ping", locs=frozenset(["compute"]), timeout=3.0)
+            err = ei.value
+        assert err is not None
+        text = (
+            f"{err!s} {getattr(err, 'details', '')} "
+            f"{getattr(err, 'rpc_error', '')}"
+        ).lower()
+        assert "drain" in text or "unavailable" in text or isinstance(err, MpregError)
+        if isinstance(err, MpregError):
+            assert err.code == MpregErrorCode.UNAVAILABLE or "drain" in text
+    finally:
+        with contextlib.suppress(Exception):
+            await server.shutdown_async()
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError, Exception):
+            await task
