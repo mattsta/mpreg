@@ -76,6 +76,17 @@ class ServerMetricsTracker:
     raft_snapshot_installs: int = 0
     raft_snapshot_chunk_aborts: int = 0
     raft_snapshot_chunk_bytes: int = 0
+    # OBS-T14-01: bridge from ProductionRaft.metrics (gauges; last scrape wins)
+    raft_term: int = 0
+    raft_commit_index: int = 0
+    raft_last_applied: int = 0
+    raft_log_size: int = 0
+    raft_elections_started: int = 0
+    raft_elections_won: int = 0
+    raft_append_entries_success: int = 0
+    raft_append_entries_failure: int = 0
+    raft_commands_applied: int = 0
+    raft_state: str = "unknown"
     node_draining: int = 0
     node_ready: int = 1
     # OBS-T11-02: wall-clock RPS from monotonic counters (not maxlen deques)
@@ -226,6 +237,32 @@ class ServerMetricsTracker:
     def set_raft_snapshot_chunk_bytes(self, n: int) -> None:
         """OBS-T13-02: current buffered snapshot chunk bytes."""
         self.raft_snapshot_chunk_bytes = max(0, int(n))
+
+    def set_raft_bridge(
+        self,
+        *,
+        term: int = 0,
+        commit_index: int = 0,
+        last_applied: int = 0,
+        log_size: int = 0,
+        elections_started: int = 0,
+        elections_won: int = 0,
+        append_entries_success: int = 0,
+        append_entries_failure: int = 0,
+        commands_applied: int = 0,
+        state: str = "unknown",
+    ) -> None:
+        """OBS-T14-01: snapshot internal Raft metrics onto unified Prom path."""
+        self.raft_term = max(0, int(term))
+        self.raft_commit_index = max(0, int(commit_index))
+        self.raft_last_applied = max(0, int(last_applied))
+        self.raft_log_size = max(0, int(log_size))
+        self.raft_elections_started = max(0, int(elections_started))
+        self.raft_elections_won = max(0, int(elections_won))
+        self.raft_append_entries_success = max(0, int(append_entries_success))
+        self.raft_append_entries_failure = max(0, int(append_entries_failure))
+        self.raft_commands_applied = max(0, int(commands_applied))
+        self.raft_state = str(state or "unknown")
 
     def record_drain_refusal(self, role: str = "unknown", n: int = 1) -> None:
         """OBS-T11-01: data-plane messages refused while draining."""
@@ -381,6 +418,65 @@ class ServerMetricsTracker:
         )
         lines.append("# TYPE mpreg_node_ready gauge")
         lines.append(f"mpreg_node_ready{{{labels}}} {int(self.node_ready)}")
+        # OBS-T14-01: Raft internal gauges (bridged from ProductionRaft)
+        lines.append("# HELP mpreg_raft_term Current Raft term (bridged).")
+        lines.append("# TYPE mpreg_raft_term gauge")
+        lines.append(f"mpreg_raft_term{{{labels}}} {int(getattr(self, 'raft_term', 0))}")
+        lines.append("# HELP mpreg_raft_commit_index Raft commit_index (bridged).")
+        lines.append("# TYPE mpreg_raft_commit_index gauge")
+        lines.append(
+            f"mpreg_raft_commit_index{{{labels}}} {int(getattr(self, 'raft_commit_index', 0))}"
+        )
+        lines.append("# HELP mpreg_raft_last_applied Raft last_applied (bridged).")
+        lines.append("# TYPE mpreg_raft_last_applied gauge")
+        lines.append(
+            f"mpreg_raft_last_applied{{{labels}}} {int(getattr(self, 'raft_last_applied', 0))}"
+        )
+        lines.append("# HELP mpreg_raft_log_size Raft log entry count (bridged).")
+        lines.append("# TYPE mpreg_raft_log_size gauge")
+        lines.append(
+            f"mpreg_raft_log_size{{{labels}}} {int(getattr(self, 'raft_log_size', 0))}"
+        )
+        lines.append(
+            "# HELP mpreg_raft_elections_started_total Elections started (bridged)."
+        )
+        lines.append("# TYPE mpreg_raft_elections_started_total counter")
+        lines.append(
+            f"mpreg_raft_elections_started_total{{{labels}}} "
+            f"{int(getattr(self, 'raft_elections_started', 0))}"
+        )
+        lines.append(
+            "# HELP mpreg_raft_elections_won_total Elections won (bridged)."
+        )
+        lines.append("# TYPE mpreg_raft_elections_won_total counter")
+        lines.append(
+            f"mpreg_raft_elections_won_total{{{labels}}} "
+            f"{int(getattr(self, 'raft_elections_won', 0))}"
+        )
+        lines.append(
+            "# HELP mpreg_raft_append_entries_success_total AE success (bridged)."
+        )
+        lines.append("# TYPE mpreg_raft_append_entries_success_total counter")
+        lines.append(
+            f"mpreg_raft_append_entries_success_total{{{labels}}} "
+            f"{int(getattr(self, 'raft_append_entries_success', 0))}"
+        )
+        lines.append(
+            "# HELP mpreg_raft_append_entries_failure_total AE failure (bridged)."
+        )
+        lines.append("# TYPE mpreg_raft_append_entries_failure_total counter")
+        lines.append(
+            f"mpreg_raft_append_entries_failure_total{{{labels}}} "
+            f"{int(getattr(self, 'raft_append_entries_failure', 0))}"
+        )
+        lines.append(
+            "# HELP mpreg_raft_commands_applied_total SM commands applied (bridged)."
+        )
+        lines.append("# TYPE mpreg_raft_commands_applied_total counter")
+        lines.append(
+            f"mpreg_raft_commands_applied_total{{{labels}}} "
+            f"{int(getattr(self, 'raft_commands_applied', 0))}"
+        )
         lines.append(
             "# HELP mpreg_cache_replication_drops_total "
             "Cache replication operations dropped due to backpressure."

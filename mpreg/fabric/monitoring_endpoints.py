@@ -2162,6 +2162,53 @@ use /health and federation health_score for full status. Drain alone forces 503.
             charset="utf-8",
         )
 
+    def _refresh_raft_bridge_metrics(self) -> None:
+        """OBS-T14-01: pull Raft node metrics into ServerMetricsTracker for Prom."""
+        tracker = self.server_metrics_tracker
+        if tracker is None or not hasattr(tracker, "set_raft_bridge"):
+            return
+        provider = getattr(self, "raft_status_provider", None)
+        if provider is None:
+            return
+        payload = provider()
+        if inspect.isawaitable(payload):
+            return  # scrape path is sync; async provider skipped
+        if not isinstance(payload, dict):
+            return
+        nodes = payload.get("nodes") or []
+        if not isinstance(nodes, list) or not nodes:
+            return
+        # Aggregate: prefer LEADER node, else first
+        chosen = None
+        for n in nodes:
+            if not isinstance(n, dict):
+                continue
+            role = str(n.get("role") or "").lower()
+            if role == "leader":
+                chosen = n
+                break
+            if chosen is None:
+                chosen = n
+        if not isinstance(chosen, dict):
+            return
+        metrics = chosen.get("metrics") if isinstance(chosen.get("metrics"), dict) else {}
+        tracker.set_raft_bridge(
+            term=int(chosen.get("term") or metrics.get("current_term") or 0),
+            commit_index=int(
+                chosen.get("commit_index") or metrics.get("commit_index") or 0
+            ),
+            last_applied=int(
+                chosen.get("last_applied") or metrics.get("last_applied") or 0
+            ),
+            log_size=int(metrics.get("log_size") or chosen.get("log_size") or 0),
+            elections_started=int(metrics.get("elections_started") or 0),
+            elections_won=int(metrics.get("elections_won") or 0),
+            append_entries_success=int(metrics.get("append_entries_success") or 0),
+            append_entries_failure=int(metrics.get("append_entries_failure") or 0),
+            commands_applied=int(metrics.get("commands_applied") or 0),
+            state=str(chosen.get("role") or metrics.get("current_state") or "unknown"),
+        )
+
     async def _build_prometheus_text(self) -> list[str]:
         """Build OpenMetrics-ish Prometheus text from available monitors."""
         cluster = self._prom_escape(str(self.settings.cluster_id))
@@ -2264,6 +2311,12 @@ use /health and federation health_score for full status. Drain alone forces 503.
             )
         except Exception as exc:  # noqa: BLE001
             logger.debug("Prometheus route decision metrics unavailable: {}", exc)
+
+        # OBS-T14-01: bridge Raft internal metrics onto tracker before emit
+        try:
+            self._refresh_raft_bridge_metrics()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("Raft bridge refresh unavailable: {}", exc)
 
         # RPC / pubsub counters + latency histograms + per-error-code
         try:

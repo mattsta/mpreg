@@ -143,7 +143,8 @@ def deserialize_install_snapshot(data: dict[str, Any]) -> InstallSnapshotRequest
         last_included_index=int(data["last_included_index"]),
         last_included_term=int(data["last_included_term"]),
         data=decode_bytes(data.get("data", "")),
-        done=bool(data["done"]),
+        # COR-T14-01: missing done → False (fail-closed; never treat as complete)
+        done=bool(data["done"]) if "done" in data else False,
         offset=int(data.get("offset", 0)),
         configuration=cfg,
     )

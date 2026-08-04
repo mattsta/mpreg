@@ -26,7 +26,7 @@ import math
 import os
 import random
 import time
-from collections import deque
+from collections import OrderedDict, deque
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field, is_dataclass
 from enum import Enum
@@ -423,7 +423,8 @@ class GossipFilter:
     """
 
     # Message tracking
-    seen_messages: set[str] = field(default_factory=set)
+    # PERF-T14-01: OrderedDict as insertion-order LRU (not arbitrary set prefix).
+    seen_messages: OrderedDict[str, None] = field(default_factory=OrderedDict)
     recent_digests: deque[Any] = field(default_factory=lambda: deque(maxlen=1000))
 
     # Filter configuration
@@ -477,16 +478,19 @@ class GossipFilter:
         return True
 
     def _record_message(self, message: GossipMessage) -> None:
-        """Record message to prevent future duplicates."""
-        self.seen_messages.add(message.message_id)
+        """Record message to prevent future duplicates (PERF-T14-01 LRU)."""
+        mid = message.message_id
+        if mid in self.seen_messages:
+            # Refresh recency
+            self.seen_messages.move_to_end(mid)
+        else:
+            self.seen_messages[mid] = None
         self.recent_digests.append(message.digest)
 
-        # Cleanup old messages
-        if len(self.seen_messages) > self.max_seen_messages:
-            # Remove oldest 10% of messages
-            to_remove = list(self.seen_messages)[: self.max_seen_messages // 10]
-            for msg_id in to_remove:
-                self.seen_messages.discard(msg_id)
+        # Evict oldest (FIFO by insertion / last-refresh) when over cap
+        max_n = max(1, int(self.max_seen_messages or 10000))
+        while len(self.seen_messages) > max_n:
+            self.seen_messages.popitem(last=False)
 
     def get_filter_statistics(self) -> FilterStatistics:
         """Get filter statistics."""

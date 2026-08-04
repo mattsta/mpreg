@@ -7,6 +7,8 @@ name = "soft-rt-node"
 cluster_id = "soft-rt-cluster"
 host = "0.0.0.0"
 monitoring_enabled = true
+# ERG-T14-03: mon loopback by default (data plane may stay 0.0.0.0)
+monitoring_host = "127.0.0.1"
 # ERG-T10-11: durable mgmt mutation audit (relative to cwd / data dir).
 mgmt_audit_path = "mpreg-mgmt-audit.jsonl"
 monitoring_enable_cors = false

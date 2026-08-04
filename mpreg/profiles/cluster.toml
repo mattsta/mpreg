@@ -21,3 +21,5 @@ log_level = "INFO"
 # peers = ["ws://peer1:<port>", "ws://peer2:<port>"]
 # Prefer setting monitoring_auth_token for any non-loopback mon exposure:
 # monitoring_auth_token = "set-me"
+# ERG-T14-03: cluster baseline admits less degraded traffic than bare default
+ready_min_score = 0.7

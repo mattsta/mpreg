@@ -77,6 +77,21 @@ def status_dict(node: ProductionRaft) -> dict[str, Any]:
     except Exception:  # noqa: BLE001
         pass
     members = sorted(getattr(node, "cluster_members", ()) or ())
+    metrics: dict[str, Any] = {}
+    try:
+        m = getattr(node, "metrics", None)
+        if m is not None and hasattr(m, "to_dict"):
+            raw = m.to_dict()
+            if isinstance(raw, dict):
+                metrics = raw
+        # Absolute log size includes snapshot base when available
+        if not metrics.get("log_size"):
+            try:
+                metrics["log_size"] = int(getattr(node, "_last_log_index", lambda: last_log_index)())
+            except Exception:
+                metrics.setdefault("log_size", last_log_index)
+    except Exception:  # noqa: BLE001
+        metrics = {}
     return {
         "node_id": getattr(node, "node_id", ""),
         "role": role,
@@ -88,6 +103,9 @@ def status_dict(node: ProductionRaft) -> dict[str, Any]:
         "cluster_members": members,
         "membership_change_supported": False,
         "snapshot_supported": True,
+        # OBS-T14-01: internal counters for Prom bridge / mgmt
+        "metrics": metrics,
+        "log_size": int(metrics.get("log_size") or last_log_index or 0),
     }
 
 __all__ = [

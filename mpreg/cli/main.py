@@ -2188,18 +2188,30 @@ def profile_group():
 def _profiles_dir() -> Path:
     return Path(__file__).resolve().parent.parent / "profiles"
 
+# ERG-T14-02 / ERG-T13-09: operator risk tags for packaged profiles
+_PROFILE_RISK_TAGS: dict[str, str] = {
+    "dev": "lab",
+    "single-node": "lab",
+    "cluster": "prod-baseline (same-trust; mon loopback)",
+    "soft-rt": "soft-rt (latency; not multi-tenant)",
+    "federated": "federated baseline (rotate secrets)",
+    "federated-lab": "lab federated (open CP intentional)",
+}
+
 @profile_group.command("list")
 def profile_list() -> None:
-    """List packaged TOML settings profiles."""
+    """List packaged TOML settings profiles with risk tags."""
     root = _profiles_dir()
     if not root.is_dir():
         console.print("[red]No profiles directory found.[/red]")
         return
     table = Table(title="MPREG settings profiles")
     table.add_column("Name")
+    table.add_column("Risk")
     table.add_column("Path")
     for path in sorted(root.glob("*.toml")):
-        table.add_row(path.stem, str(path))
+        tag = _PROFILE_RISK_TAGS.get(path.stem, "unspecified — read profile header")
+        table.add_row(path.stem, tag, str(path))
     console.print(table)
     console.print(
         "Start with: [bold]mpreg server start-config "

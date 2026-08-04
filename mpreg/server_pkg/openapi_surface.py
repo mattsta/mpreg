@@ -275,3 +275,79 @@ def build_monitoring_openapi() -> dict[str, Any]:
         },
         "paths": paths,
     }
+
+def monitoring_route_table() -> list[tuple[str, str]]:
+    """ERG-T14-01: canonical (method, path) pairs matching FederationMonitoringSystem.
+
+    Kept next to the OpenAPI document so drift tests have one import surface.
+    When adding a route on the aiohttp app, add it here and to build_monitoring_openapi.
+    """
+    gets = [
+        "/",
+        "/live",
+        "/ready",
+        "/health",
+        "/health/summary",
+        "/health/clusters",
+        "/health/clusters/{cluster_id}",
+        "/metrics",
+        "/metrics/performance",
+        "/metrics/connections",
+        "/metrics/timeseries",
+        "/metrics/unified",
+        "/metrics/rpc",
+        "/metrics/pubsub",
+        "/metrics/queue",
+        "/metrics/cache",
+        "/metrics/transport",
+        "/metrics/persistence",
+        "/metrics/prometheus",
+        "/transport/endpoints",
+        "/mgmt/v1/cluster",
+        "/mgmt/v1/nodes",
+        "/mgmt/v1/routes",
+        "/mgmt/v1/catalog",
+        "/mgmt/v1/health",
+        "/mgmt/v1/raft",
+        "/mgmt/v1/audit",
+        "/mgmt/v1/schema",
+        "/discovery/summary",
+        "/discovery/cache",
+        "/discovery/policy",
+        "/discovery/lag",
+        "/dns/metrics",
+        "/topology",
+        "/topology/graph",
+        "/topology/paths",
+        "/topology/analysis",
+        "/performance",
+        "/performance/bottlenecks",
+        "/performance/trends",
+        "/performance/clusters/{cluster_id}",
+        "/alerts",
+        "/alerts/history",
+        "/config",
+        "/config/policies",
+        "/config/validation",
+        "/routing/trace",
+        "/routing/decisions",
+        "/routing/link-state",
+        "/endpoints",
+        "/openapi.json",
+    ]
+    posts = [
+        "/alerts/acknowledge",
+        "/mgmt/v1/policy/dry-run",
+        "/mgmt/v1/nodes/drain",
+        "/mgmt/v1/peers/detach",
+        "/mgmt/v1/policy/apply",
+    ]
+    return [("GET", p) for p in gets] + [("POST", p) for p in posts]
+
+def openapi_path_set() -> set[str]:
+    """Paths declared in the OpenAPI document."""
+    doc = build_monitoring_openapi()
+    return set((doc.get("paths") or {}).keys())
+
+def route_table_path_set() -> set[str]:
+    return {p for _, p in monitoring_route_table()}
