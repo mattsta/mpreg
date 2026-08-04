@@ -39,7 +39,7 @@
     "code": 1005,
     "name": "ROUTE_NOT_FOUND",
     "message": "No route to target",
-    "retryable": true
+    "retryable": false
   },
   {
     "code": 1006,
@@ -69,6 +69,18 @@
     "code": 1010,
     "name": "AUTH_FAILED",
     "message": "Authentication failed",
+    "retryable": false
+  },
+  {
+    "code": 1011,
+    "name": "UNSUPPORTED_DELIVERY",
+    "message": "Delivery guarantee not supported (EXACTLY_ONCE is refused)",
+    "retryable": false
+  },
+  {
+    "code": 1012,
+    "name": "UNSUPPORTED_CONSISTENCY",
+    "message": "Consistency level not supported (STRONG is residual-free refused)",
     "retryable": false
   },
   {

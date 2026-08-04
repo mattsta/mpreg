@@ -121,6 +121,8 @@ class FabricQueueFederationManager(ManagedObject):
 
     subscriptions: dict[str, FabricQueueSubscription] = field(default_factory=dict)
     in_flight: dict[str, FabricQueueInFlight] = field(default_factory=dict)
+    in_flight_maxsize: int = 10000  # PERF-T10-06
+    in_flight_drops: int = 0
     stats: FabricQueueStatistics = field(default_factory=FabricQueueStatistics)
     _local_subscription_handles: dict[str, list[tuple[QueueName, str]]] = field(
         default_factory=lambda: defaultdict(list)
@@ -499,6 +501,15 @@ class FabricQueueFederationManager(ManagedObject):
             options=options,
         )
         if ack_token:
+            # PERF-T10-06: bound federation in_flight under lost-ACK storms.
+            max_if = max(1, int(getattr(self, "in_flight_maxsize", 10000) or 10000))
+            while len(self.in_flight) >= max_if:
+                # drop oldest by insertion order (dict preserves order)
+                try:
+                    self.in_flight.pop(next(iter(self.in_flight)))
+                    self.in_flight_drops += 1
+                except StopIteration:
+                    break
             self.in_flight[ack_token] = FabricQueueInFlight(
                 request=request,
                 federation_path=[],

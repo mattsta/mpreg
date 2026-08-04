@@ -793,6 +793,7 @@ class GossipProtocol:
     pending_messages: deque[Any] = field(default_factory=deque)
     pending_messages_maxsize: int = 10000
     pending_messages_dropped: int = 0
+    on_pending_drop: Any | None = field(default=None, repr=False)
     recent_messages: dict[str, GossipMessage] = field(default_factory=dict)
     state_cache: dict[str, Any] = field(default_factory=dict)
     known_nodes: dict[NodeId, NodeMetadata] = field(default_factory=dict)
@@ -1035,13 +1036,22 @@ class GossipProtocol:
         """Get list of available nodes for gossiping."""
         return list(self.transport.peer_ids(exclude=self.node_id))
 
+    def _note_pending_drop(self, n: int = 1) -> None:
+        self.pending_messages_dropped += n
+        cb = self.on_pending_drop
+        if cb is not None:
+            try:
+                cb(n)
+            except Exception:
+                pass
+
     def _enqueue_pending(self, message: Any, *, front: bool = False) -> None:
         """Bound pending gossip queue (PERF-07); drop oldest on overflow."""
         max_n = max(1, int(self.pending_messages_maxsize or 10000))
         while len(self.pending_messages) >= max_n:
             try:
                 self.pending_messages.pop()
-                self.pending_messages_dropped += 1
+                self._note_pending_drop(1)
             except IndexError:
                 break
         if front:
@@ -1055,7 +1065,7 @@ class GossipProtocol:
         while len(self.pending_messages) > max_n:
             try:
                 self.pending_messages.pop()
-                self.pending_messages_dropped += 1
+                self._note_pending_drop(1)
             except IndexError:
                 break
 

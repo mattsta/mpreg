@@ -21,8 +21,12 @@ Starter TOML files for `mpreg server start-config <path>` or
 | `soft-rt.toml` | `M2_SOFT_RT` | Shared wall deadline; no retry past remaining |
 
 Server profiles encode fabric/routing knobs. Client deadlines live on
-`ClientCallPolicy` / `MpregClient(..., call_policy=...)` so the same binary
+`ClientCallPolicy` / `MPREGClient(..., call_policy=...)` so the same binary
 can mix modalities per call.
 
 Copy a profile, set `name`, `cluster_id`, ports, and secrets
 (`monitoring_auth_token`) before production use.
+
+## Security note (ERG-T10-13)
+
+`soft-rt.toml` and `cluster.toml` optimize latency defaults and may omit federated control-plane hardening (route signatures / gossip HMAC / discovery policy). Treat them as single trust-domain profiles. For multi-cluster untrusted links use `federated.toml` (and rotate `change-me` secrets; enable `discovery_policy_enabled`).

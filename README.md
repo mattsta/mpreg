@@ -18,8 +18,8 @@ Why is this useful? I made this because I had some models with datasets I wanted
 
 - **Dependency-resolving RPC** that figures out function call ordering automatically across servers
 - **Unified fabric routing** with gossip control plane and path-vector federation
-- **AMQP-style topic exchange** for million+ message/second hierarchical pub/sub
-- **SQS-like message queues** with multiple delivery guarantees and dead letter handling
+- **AMQP-style topic exchange** for hierarchical pub/sub (throughput depends on hardware and topology)
+- **message queues with delivery guarantees** with multiple delivery guarantees and dead letter handling
 - **Multi-tier caching** with intelligent eviction policies and dependency tracking
 - **Production Raft consensus** for distributed coordination and state management
 - **Blockchain components** for immutable state and transaction management
@@ -28,8 +28,8 @@ Why is this useful? I made this because I had some models with datasets I wanted
 ## Summary the Second
 
 - 🎪 Distributed RPC (Multi-node dependency resolution for request routing)
-- 🌐 Topic Exchange (AMQP-style pub/sub with million+ msg/sec)
-- 📬 Message Queues (SQS-like with multiple delivery guarantees)
+- 🌐 Topic Exchange (AMQP-style hierarchical pub/sub)
+- 📬 Message Queues (multiple delivery guarantees)
 - 🗄️ Smart Caching (S4LRU, dependency-aware, cost-based eviction)
 - 🌍 Fabric Federation (path-vector routing, hub-and-spoke/mesh)
 - ⛓️ Blockchain & Consensus (production Raft **CFT**; not BFT)
@@ -45,8 +45,8 @@ Why is this useful? I made this because I had some models with datasets I wanted
 
 ### 🚀 **Message & Communication Systems**
 
-- 🌐 **Topic Exchange**: AMQP-style hierarchical pub/sub with million+ message/second throughput
-- 📬 **Message Queues**: SQS-compatible queues with multiple delivery guarantees and dead letter handling
+- 🌐 **Topic Exchange**: AMQP-style hierarchical pub/sub (capacity is deployment-dependent; see claims.yaml)
+- 📬 **Message Queues**: queues with multiple delivery guarantees and dead letter handling
 - 🔗 **WebSocket Transport**: Persistent connections with pooling, reconnection, and circuit breakers
 
 ### 🧠 **Intelligent Data Management**
@@ -243,7 +243,7 @@ exchange.publish_message("order.us.12345.created", {"amount": 99.99, "region": "
 # Try it: uv run python mpreg/examples/tier1_single_system_full.py --system pubsub
 ```
 
-### 📬 Message Queues (SQS-Like Reliability)
+### 📬 Message Queues (delivery guarantees)
 
 ```python
 # Multiple delivery guarantees for different reliability needs
@@ -908,7 +908,7 @@ MPREG is a **capable distributed platform** with strong tests on fabric routing,
 
 **🔗 Message Queues & Pub/Sub**:
 
-- **SQS-Compatible Queues**: Multiple delivery guarantees (fire-and-forget, at-least-once, broadcast, quorum)
+- **Message Queues**: Delivery guarantees (fire-and-forget, at-least-once, broadcast, quorum; EXACTLY_ONCE refused)
 - **AMQP-Style Topic Exchange**: Hierarchical topic routing with wildcard matching (`user.*.login`, `order.#`)
 - **Dead Letter Handling**: Automatic retry and dead letter queue management for failed messages
 - **Federated Pub/Sub**: Cross-cluster message routing with bloom filter optimization
@@ -966,6 +966,6 @@ MPREG continues evolving toward an even more comprehensive distributed computing
 - ✅ ~~Fabric federation routing~~ **DONE!** (path-vector / LS; hubs library-only)
 - ✅ ~~Production-ready consensus algorithms~~ **DONE!** (Raft implementation with safety guarantees)
 - ✅ ~~Advanced caching with multiple eviction policies~~ **DONE!** (S4LRU, dependency-aware, cost-based)
-- ✅ ~~Message queues and pub/sub systems~~ **DONE!** (SQS-like queues, AMQP-style topics)
+- ✅ ~~Message queues and pub/sub systems~~ **DONE!** (queues + AMQP-style topics; see claims.yaml non_claims)
 
 **Contributing**: The codebase is well-documented with comprehensive tests. New features are designed with backwards compatibility and extensive error handling. See the `docs/`, `mpreg/examples/`, `tests/`, and `tools/` directories for architectural decision records and implementation guides.

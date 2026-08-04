@@ -293,6 +293,10 @@ class FederationMonitoringSystem:
     auth_token: str | None = None
     metrics_retention_hours: int = 24
     metrics_ingest_interval_seconds: float = 5.0
+    # PERF-T10-08: scrape snapshot cache TTL (seconds); 0 disables.
+    prom_cache_ttl_seconds: float = 1.0
+    _prom_cache_text: list[str] | None = field(default=None, init=False, repr=False)
+    _prom_cache_at: float = field(default=0.0, init=False, repr=False)
 
     _metrics_task: asyncio.Task | None = field(default=None, init=False)
     _metrics_running: bool = field(default=False, init=False)
@@ -389,22 +393,68 @@ class FederationMonitoringSystem:
         self.app.router.add_get("/openapi.json", self._get_openapi)
         self.app.router.add_get("/mgmt/v1/schema", self._get_openapi)
 
+    def _ready_min_score(self) -> float:
+        """OBS-T10-07: minimum federation health score for /ready 200.
+
+        Default 0.4 admits DEGRADED. Operators may raise via settings.ready_min_score
+        or instance attribute ready_min_score (e.g. 0.85 for strict).
+        """
+        raw = getattr(self, "ready_min_score", None)
+        if raw is None and getattr(self, "settings", None) is not None:
+            raw = getattr(self.settings, "ready_min_score", None)
+        try:
+            return float(raw if raw is not None else 0.4)
+        except (TypeError, ValueError):
+            return 0.4
+
     def _setup_middleware(self) -> None:
         """Configure middleware for request processing."""
 
         @web.middleware
         async def auth_middleware(request: web.Request, handler) -> web.Response:
-            """Optional bearer-token gate for monitoring endpoints."""
+            """Bearer-token gate for monitoring endpoints.
+
+            ERG-T10-04: when no token is configured, mutation methods (POST/PUT/
+            PATCH/DELETE) are refused except from loopback — fail-closed by default.
+            GET/HEAD/OPTIONS stay open for local doctor/scrape unless a token is set
+            (then all methods require the token).
+            """
             token = self.auth_token or getattr(
                 self.settings, "monitoring_auth_token", None
             )
+            method = (request.method or "GET").upper()
+            is_mutation = method in {"POST", "PUT", "PATCH", "DELETE"}
             if token:
                 auth_header = request.headers.get("Authorization", "")
                 alt = request.headers.get("X-MPREG-Monitoring-Token", "")
                 expected = f"Bearer {token}"
                 if auth_header != expected and alt != token:
                     return web.json_response(
-                        {"error": "unauthorized", "detail": "valid monitoring token required"},
+                        {
+                            "error": "unauthorized",
+                            "detail": "valid monitoring token required",
+                        },
+                        status=401,
+                    )
+                return await handler(request)
+            if is_mutation:
+                peer = ""
+                try:
+                    peer = str(request.remote or "")
+                except Exception:
+                    peer = ""
+                loopback = peer in {"127.0.0.1", "::1", "localhost"} or peer.startswith(
+                    "127."
+                )
+                if not loopback:
+                    return web.json_response(
+                        {
+                            "error": "unauthorized",
+                            "detail": (
+                                "monitoring mutations require monitoring_auth_token "
+                                "when not on loopback (ERG-T10-04)"
+                            ),
+                        },
                         status=401,
                     )
             return await handler(request)
@@ -548,7 +598,7 @@ class FederationMonitoringSystem:
     async def _get_ready(self, request: web.Request) -> web.Response:
         """Readiness: refuse traffic when draining or federation health is bad.
 
-OBS-07: returns ready when health score is at least degraded (>= 0.4) and the
+OBS-07/T10-07: returns ready when health score >= ready_min_score (default 0.4) and the
 node is not draining. Operators must not treat HTTP 200 here as "fully healthy";
 use /health and federation health_score for full status. Drain alone forces 503.
 """
@@ -571,7 +621,7 @@ use /health and federation health_score for full status. Drain alone forces 503.
             ready = (
                 not draining
                 and status_value not in not_ready_values
-                and score >= 0.4
+                and score >= self._ready_min_score()
             )
             body = {
                 "status": "ready" if ready else "not_ready",
@@ -610,7 +660,7 @@ use /health and federation health_score for full status. Drain alone forces 503.
                     "status": "ok",
                     "ready": status_value.lower()
                     not in {"critical", "unavailable", "unhealthy"}
-                    and score >= 0.4,
+                    and score >= self._ready_min_score(),
                     "federation_health": {
                         "overall_status": status_value,
                         "health_score": health_summary.overall_health_score,
@@ -2034,7 +2084,17 @@ use /health and federation health_score for full status. Drain alone forces 503.
 
     async def _get_prometheus_metrics(self, request: web.Request) -> web.Response:
         """Expose golden-signal metrics in Prometheus text exposition format."""
-        lines = await self._build_prometheus_text()
+        # PERF-T10-08: short TTL cache cuts concurrent scrape p99.
+        now = time.time()
+        ttl = float(getattr(self, "prom_cache_ttl_seconds", 1.0) or 0.0)
+        cached = getattr(self, "_prom_cache_text", None)
+        cached_at = float(getattr(self, "_prom_cache_at", 0.0) or 0.0)
+        if cached is not None and ttl > 0 and (now - cached_at) < ttl:
+            lines = cached
+        else:
+            lines = await self._build_prometheus_text()
+            self._prom_cache_text = lines
+            self._prom_cache_at = now
         body = "\n".join(lines) + "\n"
         return web.Response(
             text=body,

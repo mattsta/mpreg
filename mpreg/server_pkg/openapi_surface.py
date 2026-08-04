@@ -213,6 +213,38 @@ def build_monitoring_openapi() -> dict[str, Any]:
             }
         },
         "/mgmt/v1/schema": {"get": {"summary": "This OpenAPI document", "tags": ["mgmt"]}},
+                "/": {"get": {"summary": "Monitoring landing", "tags": ["meta"]}},
+        "/alerts/history": {"get": {"summary": "Alert history", "tags": ["alerts"]}},
+        "/alerts/acknowledge": {
+            "post": {
+                "summary": "Acknowledge alert",
+                "tags": ["alerts"],
+                "security": [{"MonitoringBearer": []}],
+            }
+        },
+        "/config/policies": {"get": {"summary": "Config policies", "tags": ["config"]}},
+        "/config/validation": {
+            "get": {"summary": "Config validation report", "tags": ["config"]}
+        },
+        "/metrics/connections": {
+            "get": {"summary": "Connection metrics", "tags": ["metrics"]}
+        },
+        "/metrics/performance": {
+            "get": {"summary": "Performance metrics", "tags": ["metrics"]}
+        },
+        "/metrics/timeseries": {
+            "get": {"summary": "Timeseries metrics", "tags": ["metrics"]}
+        },
+        "/performance": {"get": {"summary": "Performance overview", "tags": ["ops"]}},
+        "/performance/trends": {
+            "get": {"summary": "Performance trends", "tags": ["ops"]}
+        },
+        "/topology/analysis": {
+            "get": {"summary": "Topology analysis", "tags": ["topology"]}
+        },
+        "/transport/endpoints": {
+            "get": {"summary": "Transport endpoints", "tags": ["transport"]}
+        },
         "/openapi.json": {"get": {"summary": "This OpenAPI document", "tags": ["meta"]}},
         "/endpoints": {"get": {"summary": "Endpoint directory", "tags": ["meta"]}},
         "/discovery/cache": {"get": {"summary": "Discovery cache stats", "tags": ["discovery"]}},

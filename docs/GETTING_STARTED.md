@@ -1,5 +1,7 @@
 # 🚀 Getting Started with MPREG
 
+> **Honesty banner:** Raft is CFT (not BFT). `EXACTLY_ONCE` and cache `STRONG` are refuse-by-default. Prefer profiles + `mpreg config-check`. Proof ledger: `tests/invariants/claims.yaml`.
+
 Welcome to **MPREG** (Matt's Protocol for Results Everywhere Guaranteed) - the distributed RPC system that makes complex distributed computing feel effortless. This guide will take you from zero to hero with comprehensive examples, performance insights, and architectural best practices.
 
 For the full documentation path, see `docs/BOOK.md` (narrative) and `docs/README.md` (index).

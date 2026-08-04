@@ -17,10 +17,10 @@ scrape_configs:
 
 | Signal | Metric / source | Warning | Critical |
 |--------|-----------------|---------|----------|
-| Traffic | unified request counters (JSON `/metrics/unified` + prom flatten) | −50% vs baseline | near zero with peers |
-| Errors | `mpreg_federation_health_score` | < 0.85 | < 0.6 |
-| Latency | RPC p95 (unified) / `mpreg_http_request_duration_ms` | p95 > 250ms | p95 > 1s |
-| Saturation | `mpreg_federation_active_connections`, queue depth | unexpected growth | connection storms |
+| Traffic | `mpreg_rpc_requests_total` (+ pubsub series) | −50% vs baseline | near zero with peers |
+| Errors | `mpreg_federation_health_score`, `mpreg_rpc_errors_total` | score < 0.85 | score < 0.6 |
+| Latency | `mpreg_rpc_latency_ms` histogram p95 | p95 > 250ms | p95 > 1s |
+| Saturation | `mpreg_federation_active_connections`, `mpreg_gossip_pending_drops_total` | unexpected growth | connection/gossip storms |
 
 ## Example alert rules
 

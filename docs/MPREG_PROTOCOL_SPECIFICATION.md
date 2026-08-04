@@ -1091,7 +1091,7 @@ The schema is defined in `mpreg/fabric/message.py` and is summarized here.
 - `message_id`: Unique message identifier (string).
 - `topic`: Routing topic (string).
 - `message_type`: `rpc` | `pubsub` | `queue` | `cache` | `control` | `data`.
-- `delivery`: `fire_and_forget` | `at_least_once` | `exactly_once` | `broadcast` | `quorum`.
+- `delivery`: `fire_and_forget` | `at_least_once` | `broadcast` | `quorum`. (`exactly_once` is **reserved/refused** — servers return UNSUPPORTED_DELIVERY / MpregErrorCode 1011; do not implement client EO barriers against current servers.)
 - `payload`: Message-specific payload (object).
 - `headers`: Routing headers (object, see below).
 - `timestamp`: Unix timestamp (float).
@@ -1279,7 +1279,7 @@ The topic exchange maintains time-windowed message backlogs:
 
 - **Backlog Window**: Configurable time window (default: 5 minutes)
 - **Late Subscribers**: Receive historical messages within window
-- **Performance**: Optimized for millions of topics
+- **Performance**: Designed for large topic namespaces (capacity is deployment-dependent)
 
 ### Code References
 

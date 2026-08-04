@@ -138,7 +138,10 @@ def serialize_install_snapshot_response(
 def deserialize_install_snapshot_response(
     data: dict[str, Any],
 ) -> InstallSnapshotResponse:
+    # COR-T10-01: default True only for legacy peers missing the field;
+    # new followers always send an explicit success bit.
     return InstallSnapshotResponse(
         term=int(data["term"]),
         follower_id=str(data["follower_id"]),
+        success=bool(data.get("success", True)),
     )

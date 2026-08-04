@@ -92,6 +92,9 @@ class QueuedMessage:
     delay_seconds: float = 0.0
     visibility_timeout_seconds: float = 30.0
     max_retries: int = 3
+    # COR-T10-10: bound AT_LEAST_ONCE requeue-when-no-subscriber loops.
+    no_subscriber_max_requeues: int = 120  # ~30s at 0.25s wake
+    max_in_flight: int | None = None  # PERF-T10-07; None = max_size
     acknowledgment_timeout_seconds: float = 300.0  # 5 minutes default
     required_acknowledgments: int = 1  # For quorum delivery
     created_at: Timestamp = field(default_factory=time.time)
@@ -225,6 +228,8 @@ class MessageQueue(ManagedObject):
         self.dead_letter_queue: deque[QueuedMessage] = deque()
         # PERF-01: wake delivery worker instead of 100ms empty poll.
         self._delivery_wake: asyncio.Event = asyncio.Event()
+        # COR-T10-10: per-message no-subscriber requeue counts → DLQ bound.
+        self._no_sub_requeues: dict[str, int] = {}
         # PERF-05: bound DLQ growth under poison storms.
         self._dead_letter_maxsize: int = max(
             1, int(getattr(config, "dead_letter_max_size", None) or min(config.max_size, 10000))
@@ -679,6 +684,19 @@ class MessageQueue(ManagedObject):
                 # Pull-based receive (queue_receive) often subscribes after send.
                 # Re-queue and wait for a subscriber wake instead of DLQ-on-empty
                 # (which raced under event-driven delivery — PERF-01).
+                # COR-T10-10: after N empty requeues, DLQ so CPU/pending cannot spin forever.
+                mid = str(getattr(message, "id", "") or id(message))
+                n = int(self._no_sub_requeues.get(mid, 0)) + 1
+                self._no_sub_requeues[mid] = n
+                max_rq = int(
+                    getattr(self.config, "no_subscriber_max_requeues", 120) or 120
+                )
+                if n > max_rq:
+                    self._no_sub_requeues.pop(mid, None)
+                    await self._move_to_dead_letter_queue(
+                        message, f"no_subscriber_requeue_exceeded:{n}"
+                    )
+                    return
                 self.pending_messages.appendleft(message)
                 self._delivery_wake.clear()
                 try:
@@ -688,6 +706,22 @@ class MessageQueue(ManagedObject):
                 return
 
             # Create in-flight tracking
+            try:
+                self._no_sub_requeues.pop(str(getattr(message, "id", "") or ""), None)
+            except Exception:
+                pass
+            max_if = getattr(self.config, "max_in_flight", None)
+            if max_if is None:
+                max_if = int(getattr(self.config, "max_size", 10000) or 10000)
+            if len(self.in_flight_messages) >= max(1, int(max_if)):
+                # Backpressure: requeue briefly rather than unbounded growth.
+                self.pending_messages.appendleft(message)
+                self._delivery_wake.clear()
+                try:
+                    await asyncio.wait_for(self._delivery_wake.wait(), timeout=0.1)
+                except asyncio.TimeoutError:
+                    pass
+                return
             in_flight = InFlightMessage(
                 message=message,
                 delivery_attempt=message._delivery_attempt,

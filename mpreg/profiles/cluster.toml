@@ -4,6 +4,8 @@ name = "cluster-node"
 cluster_id = "cluster-a"
 host = "0.0.0.0"
 monitoring_enabled = true
+# ERG-T10-11: durable mgmt mutation audit (relative to cwd / data dir).
+mgmt_audit_path = "mpreg-mgmt-audit.jsonl"
 monitoring_enable_cors = false
 enable_default_cache = true
 enable_default_queue = true

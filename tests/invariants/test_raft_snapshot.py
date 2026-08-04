@@ -67,6 +67,49 @@ async def test_install_snapshot_restores_state_machine() -> None:
     resp = await node.handle_install_snapshot(req)
     assert resp is not None
     assert resp.term >= 1
+    assert resp.success is True
     # State machine restored
     assert follower_sm.state.get("k") == 1 or "k" in follower_sm.state
     assert node.volatile_state.last_applied >= 5
+
+@pytest.mark.asyncio
+async def test_install_snapshot_failure_returns_success_false() -> None:
+    """COR-T10-01: apply/persist failure must not ACK success."""
+
+    class _BoomSM(TestableStateMachine):
+        async def restore_from_snapshot(self, data: bytes) -> None:  # type: ignore[override]
+            raise RuntimeError("restore exploded")
+
+    storage = RaftStorageFactory.create_memory_storage("f-fail")
+    node = ProductionRaft(
+        node_id="f-fail",
+        cluster_members={"f-fail", "l1"},
+        storage=storage,
+        transport=_NullTransport(),
+        state_machine=_BoomSM(),
+        config=RaftConfiguration(
+            election_timeout_min=0.15,
+            election_timeout_max=0.30,
+            heartbeat_interval=0.025,
+        ),
+    )
+    node.persistent_state = node.persistent_state.__class__(
+        current_term=1,
+        voted_for=None,
+        log_entries=[],
+    )
+    node.current_state = RaftState.FOLLOWER
+    req = InstallSnapshotRequest(
+        term=1,
+        leader_id="l1",
+        last_included_index=5,
+        last_included_term=1,
+        offset=0,
+        data=b"not-a-valid-sm-blob",
+        done=True,
+    )
+    resp = await node.handle_install_snapshot(req)
+    assert resp.success is False
+    assert resp.term >= 1
+    # Leader must not treat this as catch-up complete.
+    assert node.volatile_state.last_applied < 5 or node.volatile_state.last_applied == 0

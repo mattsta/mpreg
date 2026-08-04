@@ -107,6 +107,37 @@ async def test_restart_recovers_committed_entries() -> None:
             for n in nodes2.values()
             for e in n.persistent_state.log_entries
         )
+        # COR-T10-11 / INV-C8: majority of restarted nodes re-apply committed
+        # command into the state machine (not only log presence).
+        for _ in range(80):
+            applied = sum(
+                1
+                for n in nodes2.values()
+                if getattr(n.state_machine, "state", None)
+                and (
+                    n.state_machine.state.get("persist") == 42
+                    or "persist=42" in str(n.state_machine.state)
+                    or any(
+                        "persist" in str(v)
+                        for v in getattr(n.state_machine, "state", {}).values()
+                    )
+                )
+            )
+            if applied >= 2:  # majority of 3
+                break
+            # also accept last_applied catching up with commit on majority
+            applied_idx = sum(
+                1
+                for n in nodes2.values()
+                if n.volatile_state.last_applied >= 1
+            )
+            if applied_idx >= 2:
+                applied = applied_idx
+                break
+            await asyncio.sleep(0.05)
+        assert applied >= 2, (
+            f"INV-C8: expected majority SM/last_applied recovery, got {applied}"
+        )
     finally:
         for n in list(nodes.values()):
             try:

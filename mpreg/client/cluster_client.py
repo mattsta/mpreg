@@ -154,11 +154,12 @@ class MPREGClusterClient:
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.disconnect()
 
-    def plane_client(self, url: str | None = None) -> Any:
-        """Return an ``MPREGClient`` bound to one endpoint for four-plane ops (ERG-04).
+    def plane_client(self, url: str | None = None) -> "MPREGClient":
+        """Return an ``MPREGClient`` bound to one endpoint for four-plane ops (ERG-04/T10).
 
         Does not auto-failover queue/cache/pubsub; callers pick ``url`` or the
         first healthy seed. Prefer this over inventing multi-plane HA on RPC-only paths.
+        Copies call policy is not HA across planes — document as single-endpoint.
         """
         from mpreg.client.unified_client import MPREGClient
 

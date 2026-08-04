@@ -321,7 +321,9 @@ class ProductionRaftRPCs:
             # Rule 1: Reply immediately if term < currentTerm
             if request.term < self.persistent_state.current_term:
                 return InstallSnapshotResponse(
-                    term=self.persistent_state.current_term, follower_id=self.node_id
+                    term=self.persistent_state.current_term,
+                    follower_id=self.node_id,
+                    success=False,
                 )
 
             # Update term and convert to follower if necessary
@@ -363,15 +365,19 @@ class ProductionRaftRPCs:
                     return InstallSnapshotResponse(
                         term=self.persistent_state.current_term,
                         follower_id=self.node_id,
+                        success=False,
                     )
 
             # Rule 4: Wait for more chunks if not done
             if not request.done:
                 return InstallSnapshotResponse(
-                    term=self.persistent_state.current_term, follower_id=self.node_id
+                    term=self.persistent_state.current_term,
+                    follower_id=self.node_id,
+                    success=True,
                 )
 
             # Rules 5-8: Complete snapshot installation
+            # COR-T10-01: never ACK success after apply/persist failure.
             try:
                 # Combine all chunks
                 complete_snapshot_data = b"".join(self.snapshot_chunks[snapshot_id])
@@ -398,15 +404,21 @@ class ProductionRaftRPCs:
                 rpc_log.info(
                     f"Successfully installed snapshot up to index {request.last_included_index}"
                 )
+                return InstallSnapshotResponse(
+                    term=self.persistent_state.current_term,
+                    follower_id=self.node_id,
+                    success=True,
+                )
 
             except Exception as e:
                 rpc_log.error(f"Error installing snapshot: {e}")
                 self.snapshot_chunks.pop(snapshot_id, None)
                 self.installing_snapshot = False
-
-            return InstallSnapshotResponse(
-                term=self.persistent_state.current_term, follower_id=self.node_id
-            )
+                return InstallSnapshotResponse(
+                    term=self.persistent_state.current_term,
+                    follower_id=self.node_id,
+                    success=False,
+                )
 
     async def _apply_snapshot(self, snapshot: RaftSnapshot) -> None:
         """Apply snapshot to state machine and update state."""

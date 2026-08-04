@@ -29,6 +29,9 @@ class MpregErrorCode(IntEnum):
     INVALID_ARGUMENT = 1008
     AUTH_REQUIRED = 1009
     AUTH_FAILED = 1010
+    # Modality refuse (ERG-T10-06) — not available as production semantics
+    UNSUPPORTED_DELIVERY = 1011  # EXACTLY_ONCE etc. refused
+    UNSUPPORTED_CONSISTENCY = 1012  # STRONG etc. residual-free refuse
     # Discovery / control plane (1100+)
     DISCOVERY_ACCESS_DENIED = 1101
     DISCOVERY_RATE_LIMITED = 1102
@@ -52,6 +55,12 @@ _DEFAULT_MESSAGES: dict[MpregErrorCode, str] = {
     MpregErrorCode.INVALID_ARGUMENT: "Invalid argument",
     MpregErrorCode.AUTH_REQUIRED: "Authentication required",
     MpregErrorCode.AUTH_FAILED: "Authentication failed",
+    MpregErrorCode.UNSUPPORTED_DELIVERY: (
+        "Delivery guarantee not supported (EXACTLY_ONCE is refused)"
+    ),
+    MpregErrorCode.UNSUPPORTED_CONSISTENCY: (
+        "Consistency level not supported (STRONG is residual-free refused)"
+    ),
     MpregErrorCode.DISCOVERY_ACCESS_DENIED: "Discovery access denied",
     MpregErrorCode.DISCOVERY_RATE_LIMITED: "Discovery rate limit exceeded",
     MpregErrorCode.INTERNAL: "Internal error",
@@ -328,6 +337,23 @@ def map_exception(exc: BaseException) -> MpregError:
         return route_not_found(text)
     if "rate limit" in text.lower() or "rate_limited" in text.lower():
         return discovery_rate_limited(text)
+    if name == "UnsupportedDeliveryGuaranteeError" or "exactly_once" in text.lower():
+        if "exactly" in text.lower() or name == "UnsupportedDeliveryGuaranteeError":
+            return MpregError(
+                code=int(MpregErrorCode.UNSUPPORTED_DELIVERY),
+                message=_DEFAULT_MESSAGES[MpregErrorCode.UNSUPPORTED_DELIVERY],
+                details=text or None,
+                retryable=False,
+            )
+    if "consistencylevel.strong" in text.lower() or (
+        "strong" in text.lower() and "not implemented" in text.lower()
+    ):
+        return MpregError(
+            code=int(MpregErrorCode.UNSUPPORTED_CONSISTENCY),
+            message=_DEFAULT_MESSAGES[MpregErrorCode.UNSUPPORTED_CONSISTENCY],
+            details=text or None,
+            retryable=False,
+        )
     return internal_error(text, exception_type=name)
 
 def error_code_catalog() -> list[dict[str, Any]]:

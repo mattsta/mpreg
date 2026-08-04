@@ -16,6 +16,8 @@ DATA_PLANE_ROLES: frozenset[str] = frozenset(
         "pubsub-subscribe",
         "pubsub-unsubscribe",
         "pubsub",
+        # COR-T10-03: fabric data-plane rides peer + client connections.
+        "fabric-message",
     }
 )
 

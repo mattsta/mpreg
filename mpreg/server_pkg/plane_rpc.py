@@ -35,7 +35,16 @@ def rpc_actor_ids(server: Any, body: dict[str, Any]) -> tuple[str, str | None]:
     # Connection/session-bound identity (set by run_rpc / accepting session).
     conn_cluster = getattr(server, "_rpc_session_cluster_id", None)
     conn_tenant = getattr(server, "_rpc_session_tenant_id", None)
-    ctx = getattr(server, "_rpc_actor_context", None)
+    # COR-T10-04: prefer task-local ContextVar over instance field.
+    ctx = None
+    try:
+        from mpreg.server import _current_rpc_actor_context
+
+        ctx = _current_rpc_actor_context.get()
+    except Exception:
+        ctx = None
+    if not isinstance(ctx, dict):
+        ctx = getattr(server, "_rpc_actor_context", None)
     if isinstance(ctx, dict):
         if conn_cluster is None:
             conn_cluster = ctx.get("cluster_id")

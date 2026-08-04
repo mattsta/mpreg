@@ -1625,13 +1625,20 @@ class ProductionRaft(ProductionRaftRPCs):
                         await self._update_term(response.term)
                         await self._convert_to_follower()
                         return
+                    # COR-T10-01: do not advance match/next after failed install.
+                    if not getattr(response, "success", True):
+                        raft_log.warning(
+                            f"InstallSnapshot rejected by {follower_id} "
+                            f"(success=False, term={response.term})"
+                        )
+                        return
                 else:
                     raft_log.warning(f"Failed to send snapshot chunk to {follower_id}")
                     return
 
                 offset = chunk_end
 
-            # Update next_index for this follower
+            # Update next_index for this follower only after all chunks succeeded.
             if self.leader_volatile_state:
                 self.leader_volatile_state.next_index[follower_id] = (
                     snapshot.last_included_index + 1

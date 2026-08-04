@@ -264,6 +264,10 @@ _current_viewer_cluster_id: ContextVar[str | None] = ContextVar(
 _current_viewer_tenant_id: ContextVar[TenantId | None] = ContextVar(
     "mpreg_viewer_tenant_id", default=None
 )
+# COR-T10-04: session actor identity must be task-local (not instance field).
+_current_rpc_actor_context: ContextVar[dict[str, Any] | None] = ContextVar(
+    "mpreg_rpc_actor_context", default=None
+)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from mpreg.core.model import PubSubSubscription
@@ -2121,6 +2125,13 @@ class MPREGServer:
             transport=transport,
             gossip_interval=self.settings.gossip_interval,
         )
+        # OBS-T10-01 / PERF-T10-05: export pending overflow drops to Prom.
+        def _on_gossip_pending_drop(n: int = 1) -> None:
+            tracker = getattr(self, "_metrics_tracker", None)
+            if tracker is not None and hasattr(tracker, "record_gossip_pending_drop"):
+                tracker.record_gossip_pending_drop(n)
+
+        gossip.on_pending_drop = _on_gossip_pending_drop
         link_state_router = None
         if self.settings.fabric_link_state_mode is not None:
             from mpreg.fabric.link_state import LinkStateMode
@@ -8894,6 +8905,37 @@ class MPREGServer:
                         )
                     )
             return False
+        # COR-T10-02 / INV-P7: dedup STATUS announcements by (url, instance, funs fingerprint).
+        # Retried identical STATUS must not re-apply as a fresh announcement.
+        try:
+            funs = getattr(status, "funs", None) or ()
+            locs = getattr(status, "locs", None) or ()
+            fingerprint = (
+                f"status:{status.server_url}:"
+                f"{getattr(status, 'instance_id', '') or ''}:"
+                f"{hash(tuple(sorted(str(f) for f in funs)))}:"
+                f"{hash(tuple(sorted(str(l) for l in locs)))}"
+            )
+            tracker = getattr(self, "_status_announcement_tracker", None)
+            if tracker is None:
+                from mpreg.datastructures.federated_types import (
+                    FederatedAnnouncementTracker,
+                )
+
+                tracker = FederatedAnnouncementTracker(ttl_seconds=60.0)
+                self._status_announcement_tracker = tracker
+            now = time.time()
+            if tracker.has_seen(fingerprint):
+                # Still refresh peer_status for liveness, but skip side-effect apply.
+                self.peer_status[status.server_url] = status
+                if status.instance_id:
+                    self._peer_instance_ids[status.server_url] = status.instance_id
+                return True
+            tracker.mark_seen(fingerprint, now)
+            if tracker.announcement_count > 10_000:
+                tracker.cleanup_expired(now)
+        except Exception:
+            pass
         self.peer_status[status.server_url] = status
         if status.instance_id:
             self._peer_instance_ids[status.server_url] = status.instance_id
@@ -9136,15 +9178,17 @@ class MPREGServer:
                     inbound_tp = extract_traceparent(meta)
         except Exception:
             inbound_tp = None
-        # COR-05: bind plane_rpc actor identity from connection/session viewer
-        # for the duration of this request (not spoofable RPC body fields).
-        prev_actor_ctx = getattr(self, "_rpc_actor_context", None)
-        self._rpc_actor_context = {
+        # COR-05 / COR-T10-04: bind plane_rpc actor identity as task-local
+        # ContextVar (not instance field) so concurrent run_rpc cannot cross-bind.
+        actor_ctx = {
             "cluster_id": viewer_cluster_id
             if viewer_cluster_id is not None
             else getattr(self.settings, "cluster_id", None),
             "tenant_id": viewer_tenant_id,
         }
+        # Keep instance field for any legacy readers outside the request task.
+        self._rpc_actor_context = actor_ctx
+        token = _current_rpc_actor_context.set(actor_ctx)
         try:
             with (
                 trace_context(
@@ -9157,7 +9201,9 @@ class MPREGServer:
             ):
                 return await self._run_rpc_body(req, start_time)
         finally:
-            self._rpc_actor_context = prev_actor_ctx
+            _current_rpc_actor_context.reset(token)
+            if _current_rpc_actor_context.get() is None:
+                self._rpc_actor_context = None
 
     async def _run_rpc_body(
         self, req: RPCRequest, start_time: float
@@ -9567,11 +9613,20 @@ class MPREGServer:
                         try:
                             publish_req = PubSubPublish.model_validate(parsed_msg)
                             msg_headers = publish_req.message.headers or {}
-                            actor_tenant = (
-                                msg_headers.get("tenant_id")
-                                or msg_headers.get("viewer_tenant_id")
-                                or self._effective_viewer_tenant_id(None)
-                            )
+                            # COR-T10-05: under discovery policy, tenant is session-bound
+                            # (connection.tenant_id / viewer ContextVar) — not headers.
+                            if getattr(self.settings, "discovery_policy_enabled", False):
+                                actor_tenant = (
+                                    connection.tenant_id
+                                    or self._effective_viewer_tenant_id(None)
+                                )
+                            else:
+                                actor_tenant = (
+                                    msg_headers.get("tenant_id")
+                                    or msg_headers.get("viewer_tenant_id")
+                                    or connection.tenant_id
+                                    or self._effective_viewer_tenant_id(None)
+                                )
                             topic_ns = ""
                             if hasattr(self.topic_exchange, "_topic_namespace"):
                                 topic_ns = self.topic_exchange._topic_namespace(
@@ -9781,7 +9836,7 @@ class MPREGServer:
                     )
                     try:
                         await transport.send(
-                            self.serializer.serialize(response_model.model_dump())
+                            self.serializer.serialize_model(response_model)
                         )
                         logger.debug("Response sent successfully")
                     except Exception as exc:
@@ -9857,7 +9912,7 @@ class MPREGServer:
         notification_start = time.time()
         notification_success = False
         try:
-            await transport.send(self.serializer.serialize(notification.model_dump()))
+            await transport.send(self.serializer.serialize_model(notification))
             notification_success = True
             logger.debug(
                 f"Sent notification to client {client_id} for subscription {subscription_id}"
@@ -10238,6 +10293,18 @@ class MPREGServer:
                         msg.encode("utf-8") if isinstance(msg, str) else msg
                     )
 
+                    # COR-T10-03: drain gates peer-path data-plane (incl. fabric-message).
+                    from mpreg.server_pkg.drain_admission import (
+                        should_refuse_for_drain,
+                    )
+
+                    if should_refuse_for_drain(
+                        draining=bool(getattr(self, "_mgmt_draining", False)),
+                        role=parsed_msg.get("role"),
+                    ):
+                        self._msg_stats.total_processed += 1
+                        continue
+
                     # Track message processing statistics for verification
 
                     self._msg_stats.total_processed += 1
@@ -10439,7 +10506,7 @@ class MPREGServer:
         )
 
         # Broadcast to all connected peers
-        message_bytes = self.serializer.serialize(goodbye_request.model_dump())
+        message_bytes = self.serializer.serialize_model(goodbye_request)
         active_connections = {
             peer_url: connection
             for peer_url, connection in all_connections.items()
@@ -10974,7 +11041,7 @@ class MPREGServer:
             server=self._build_status_message(cache_metrics=cache_metrics),
             u=str(ulid.new()),
         )
-        status_data = self.serializer.serialize(status_message.model_dump())
+        status_data = self.serializer.serialize_model(status_message)
 
         for peer_url, connection in active_connections:
             try:
@@ -10996,7 +11063,7 @@ class MPREGServer:
             server=self._build_status_message(),
             u=str(ulid.new()),
         )
-        status_data = self.serializer.serialize(status_message.model_dump())
+        status_data = self.serializer.serialize_model(status_message)
         try:
             await connection.send(status_data)
         except Exception as e:
@@ -11592,7 +11659,7 @@ class MPREGServer:
         )
 
         # Serialize and send to all cluster peers concurrently
-        proposal_data_bytes = self.serializer.serialize(proposal_message.model_dump())
+        proposal_data_bytes = self.serializer.serialize_model(proposal_message)
 
         async def send_to_peer(peer_url: str, connection) -> None:
             try:
@@ -11670,7 +11737,7 @@ class MPREGServer:
         )
 
         # Serialize and send to all cluster peers concurrently
-        vote_data_bytes = self.serializer.serialize(vote_message.model_dump())
+        vote_data_bytes = self.serializer.serialize_model(vote_message)
 
         async def send_vote_to_peer(peer_url: str, connection) -> None:
             try:
@@ -11799,6 +11866,23 @@ class MPREGServer:
             self.settings.port,
             self.settings.name,
         )
+        # ERG-T10-01 / USE-T10-01: bare defaults leave cache/queue off — four-plane incomplete.
+        if not getattr(self.settings, "enable_default_cache", False) or not getattr(
+            self.settings, "enable_default_queue", False
+        ):
+            missing = []
+            if not getattr(self.settings, "enable_default_cache", False):
+                missing.append("cache")
+            if not getattr(self.settings, "enable_default_queue", False):
+                missing.append("queue")
+            logger.warning(
+                "[{}] Four-plane incomplete at start ({} off). "
+                "MPREGClient cache/queue RPCs need --enable-cache/--enable-queue "
+                "or a profile (dev.toml / federated.toml). "
+                "Run: mpreg config-check <settings>",
+                self.settings.name,
+                "+".join(missing),
+            )
 
         # Default commands and RPC commands are already registered in __init__
         # No need to register them again here

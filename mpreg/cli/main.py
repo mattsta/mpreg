@@ -120,7 +120,9 @@ def call(
             return value
 
     async def _call():
-        async with MPREGClientAPI(url) as client:
+        from mpreg.client.unified_client import MPREGClient
+
+        async with MPREGClient(url) as client:
             parsed_args = tuple(_parse_arg(arg) for arg in args)
             result = await client.call(
                 fun,
@@ -202,6 +204,69 @@ def client_cache_put(
 
         async with MPREGClient(url) as c:
             result = await c.cache_put(namespace, identifier, _parse(value))
+            console.print(result)
+
+    asyncio.run(_run())
+
+@client.command("queue-receive")
+@click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
+@click.option("--queue", "queue_name", required=True, help="Queue name")
+@click.option("--subscriber-id", default="cli-subscriber", help="Subscriber id")
+@click.option("--timeout", type=float, default=5.0, help="Receive timeout seconds")
+def client_queue_receive(
+    url: str | None, queue_name: str, subscriber_id: str, timeout: float
+) -> None:
+    """Smoke: queue_receive via MPREGClient (ERG-T10-10)."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _run() -> None:
+        from mpreg.client.unified_client import MPREGClient
+
+        async with MPREGClient(url) as c:
+            result = await c.queue_receive(
+                queue_name,
+                subscriber_id=subscriber_id,
+                timeout_seconds=timeout,
+            )
+            console.print(result)
+
+    asyncio.run(_run())
+
+@client.command("queue-ack")
+@click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
+@click.option("--queue", "queue_name", required=True, help="Queue name")
+@click.option("--message-id", required=True, help="Message id to acknowledge")
+@click.option("--subscriber-id", default="cli-subscriber", help="Subscriber id")
+def client_queue_ack(
+    url: str | None, queue_name: str, message_id: str, subscriber_id: str
+) -> None:
+    """Smoke: queue_ack via MPREGClient (ERG-T10-10)."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _run() -> None:
+        from mpreg.client.unified_client import MPREGClient
+
+        async with MPREGClient(url) as c:
+            result = await c.queue_ack(queue_name, message_id, subscriber_id)
+            console.print(result)
+
+    asyncio.run(_run())
+
+@client.command("cache-invalidate")
+@click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
+@click.option("--pattern", required=True, help="Invalidation pattern")
+def client_cache_invalidate(url: str | None, pattern: str) -> None:
+    """Smoke: cache_invalidate via MPREGClient (ERG-T10-10)."""
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _run() -> None:
+        from mpreg.client.unified_client import MPREGClient
+
+        async with MPREGClient(url) as c:
+            result = await c.cache_invalidate(pattern)
             console.print(result)
 
     asyncio.run(_run())
@@ -1454,6 +1519,19 @@ def start_config(settings_path: str) -> None:
     default=False,
     help="Also probe Raft status and link-state (DS validation deep checks)",
 )
+@click.option(
+    "--data-plane",
+    "data_plane",
+    is_flag=True,
+    default=False,
+    help="Also smoke RPC echo via MPREG_URL / --rpc-url (USE-T10-02)",
+)
+@click.option(
+    "--rpc-url",
+    default=None,
+    envvar="MPREG_URL",
+    help="WebSocket RPC URL for --data-plane smoke (or MPREG_URL)",
+)
 @add_format_option
 def doctor(
     url: str | None,
@@ -1461,6 +1539,8 @@ def doctor(
     timeout: float,
     output_format: str,
     deep: bool,
+    data_plane: bool,
+    rpc_url: str | None,
 ) -> None:
     """Probe monitoring health, discovery, and persistence endpoints."""
 
@@ -1580,6 +1660,64 @@ def doctor(
                             "detail": str(exc)[:120],
                         }
                     )
+        if data_plane:
+            target = (rpc_url or "").strip()
+            if not target:
+                failures += 1
+                rows.append(
+                    {
+                        "check": "data_plane",
+                        "status": "ERROR",
+                        "detail": "set --rpc-url or MPREG_URL for --data-plane",
+                    }
+                )
+            else:
+                try:
+                    from mpreg.client.unified_client import MPREGClient
+
+                    async with MPREGClient(target) as client:
+                        # Lightweight connectivity: empty DAG / status-style call may
+                        # 1001; success is establishing session + round-trip.
+                        try:
+                            await client.call("echo", "doctor", timeout=timeout)
+                            detail = "echo ok"
+                            ok_dp = True
+                        except Exception as exc:  # noqa: BLE001
+                            msg = str(exc).lower()
+                            # Command-not-found still proves data-plane RPC path works.
+                            if "not found" in msg or "1001" in msg:
+                                detail = f"rpc reachable ({exc})"
+                                ok_dp = True
+                            else:
+                                detail = str(exc)[:120]
+                                ok_dp = False
+                    if ok_dp:
+                        rows.append(
+                            {
+                                "check": "data_plane",
+                                "status": "OK",
+                                "detail": detail,
+                            }
+                        )
+                    else:
+                        failures += 1
+                        rows.append(
+                            {
+                                "check": "data_plane",
+                                "status": "ERROR",
+                                "detail": detail,
+                            }
+                        )
+                except Exception as exc:  # noqa: BLE001
+                    failures += 1
+                    rows.append(
+                        {
+                            "check": "data_plane",
+                            "status": "ERROR",
+                            "detail": str(exc)[:120],
+                        }
+                    )
+
         report = {
             "base": base,
             "failures": failures,
@@ -1744,7 +1882,26 @@ def config_check(settings_path: str, output_format: str) -> None:
     ) and not getattr(settings, "discovery_policy_enabled", False):
         warnings.append(
             "discovery_policy_enabled=false on a federated/multi-peer node — "
-            "namespace/tenant gates are off (lab default; enable for multi-tenant)"
+            "namespace/tenant gates are off (lab default; enable for multi-tenant). "
+            "Use federated.toml only as a lab baseline or set discovery_policy_enabled=true"
+        )
+    # ERG-T10-12: federated profile name with placeholders is a prod footgun.
+    name = str(getattr(settings, "name", "") or "")
+    if name.startswith("federated") and (
+        (
+            settings.discovery_summary_signing_secret
+            and str(settings.discovery_summary_signing_secret).startswith("change-me")
+        )
+        or (
+            getattr(settings, "fabric_gossip_hmac_secret", None)
+            and str(getattr(settings, "fabric_gossip_hmac_secret", "")).startswith(
+                "change-me"
+            )
+        )
+    ):
+        warnings.append(
+            "federated profile still uses change-me placeholder secrets — "
+            "rotate before any shared deployment (ERG-T10-12)"
         )
     report = {"groups": groups, "warnings": warnings, "ok": len(warnings) == 0}
     emit(report, output_format=output_format, table_title="Config check")

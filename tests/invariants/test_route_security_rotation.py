@@ -87,3 +87,56 @@ def test_after_overlap_expiry_old_key_gone() -> None:
     keys = registry.resolve_public_keys("adv", now=now + 11)
     assert new.public_key in keys
     assert old.public_key not in keys
+
+def test_processor_rejects_unsigned_when_required() -> None:
+    """COR-T10-09 / INV-R9: processor path refuses unsigned under require_signatures."""
+    from mpreg.fabric.route_announcer import RouteAnnouncementProcessor
+    from mpreg.fabric.route_control import RouteTable
+
+    cfg = RouteSecurityConfig(require_signatures=True, allow_unsigned=False)
+    proc = RouteAnnouncementProcessor(
+        local_cluster="local",
+        route_table=RouteTable(local_cluster="local"),
+        sender_cluster_resolver=lambda _url: "adv",
+        security_config=cfg,
+    )
+    ann = _announcement(advertiser="adv")
+    assert proc._is_announcement_authorized(ann, sender_cluster="adv") is False
+
+def test_processor_accepts_valid_signature_with_resolver() -> None:
+    """COR-T10-09: signed announcement authorized via public_key_resolver pin."""
+    from mpreg.fabric.route_announcer import RouteAnnouncementProcessor
+    from mpreg.fabric.route_control import RouteTable
+
+    signer = RouteAnnouncementSigner.create()
+    cfg = RouteSecurityConfig(require_signatures=True, allow_unsigned=False)
+    proc = RouteAnnouncementProcessor(
+        local_cluster="local",
+        route_table=RouteTable(local_cluster="local"),
+        sender_cluster_resolver=lambda _url: "adv",
+        security_config=cfg,
+        public_key_resolver=lambda cluster: (
+            signer.public_key if cluster == "adv" else None
+        ),
+    )
+    signed = signer.sign(_announcement(advertiser="adv"))
+    assert proc._is_announcement_authorized(signed, sender_cluster="adv") is True
+
+def test_processor_rejects_self_attested_key_when_required() -> None:
+    """COR-T10-09: self-attested public_key is ignored when require_signatures."""
+    from mpreg.fabric.route_announcer import RouteAnnouncementProcessor
+    from mpreg.fabric.route_control import RouteTable
+
+    signer = RouteAnnouncementSigner.create()
+    cfg = RouteSecurityConfig(require_signatures=True, allow_unsigned=False)
+    # No resolver / registry — only self-attested key on the announcement.
+    proc = RouteAnnouncementProcessor(
+        local_cluster="local",
+        route_table=RouteTable(local_cluster="local"),
+        sender_cluster_resolver=lambda _url: "adv",
+        security_config=cfg,
+        public_key_resolver=None,
+    )
+    signed = signer.sign(_announcement(advertiser="adv"))
+    # Even if announcement carries public_key, COR-04 ignores it under require_signatures.
+    assert proc._is_announcement_authorized(signed, sender_cluster="adv") is False

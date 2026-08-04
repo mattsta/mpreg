@@ -160,9 +160,10 @@ class MPREGClient:
         function_id: str | None = None,
         version_constraint: str | None = None,
         target_cluster: str | None = None,
+        routing_topic: str | None = None,
         **kwargs: Any,
     ) -> Any:
-        """Call a remote function (signature parity with MPREGClientAPI — ERG-08)."""
+        """Call a remote function (signature parity with MPREGClientAPI — ERG-08/T10)."""
         if locs is not None:
             kwargs["locs"] = locs
         if timeout is not None:
@@ -173,6 +174,8 @@ class MPREGClient:
             kwargs["version_constraint"] = version_constraint
         if target_cluster is not None:
             kwargs["target_cluster"] = target_cluster
+        if routing_topic is not None:
+            kwargs["routing_topic"] = routing_topic
         return await self.api.call(fun, *args, **kwargs)
 
     async def request(

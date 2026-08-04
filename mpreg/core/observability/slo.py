@@ -15,8 +15,8 @@ class GoldenSignal:
 GOLDEN_SIGNALS: tuple[GoldenSignal, ...] = (
     GoldenSignal(
         name="traffic",
-        prometheus_metric="mpreg_unified_.*_request",
-        description="RPC/request rate across unified metrics",
+        prometheus_metric="mpreg_rpc_requests_total",
+        description="RPC request counter (also scrape pubsub via mpreg_pubsub_* series)",
         warning_threshold="sustained drop >50% vs 1h baseline",
         critical_threshold="near-zero traffic with peers present",
     ),
@@ -78,4 +78,18 @@ def prometheus_alert_rules_yaml() -> str:
           severity: warning
         annotations:
           summary: "Elevated fabric route blackhole decisions"
+      - alert: MPREGRPCLatencyP95High
+        expr: histogram_quantile(0.95, sum(rate(mpreg_rpc_latency_ms_bucket[5m])) by (le, cluster_id)) > 250
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MPREG RPC p95 latency high"
+      - alert: MPREGGossipPendingDrops
+        expr: increase(mpreg_gossip_pending_drops_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Gossip pending queue dropping messages (storm loss)"
 """

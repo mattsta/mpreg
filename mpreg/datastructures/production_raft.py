@@ -251,10 +251,15 @@ class InstallSnapshotRequest:
 
 @dataclass(frozen=True, slots=True)
 class InstallSnapshotResponse:
-    """InstallSnapshot RPC response."""
+    """InstallSnapshot RPC response.
+
+    COR-T10-01: ``success`` is required so leaders do not advance
+    match/next index after a failed apply/persist on the follower.
+    """
 
     term: int  # Current term, for leader to update itself
     follower_id: str  # ID of the responding follower
+    success: bool = True  # False when install/apply/persist failed
 
     def __post_init__(self) -> None:
         if self.term < 0:

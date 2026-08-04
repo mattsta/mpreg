@@ -57,6 +57,8 @@ class MPREGSettings:
     # When set, monitoring HTTP endpoints require Authorization: Bearer <token>
     # (or X-MPREG-Monitoring-Token). Empty/None disables auth (dev default).
     monitoring_auth_token: str | None = None
+    # OBS-T10-07: /ready admits score >= this (default 0.4 = DEGRADED ok).
+    ready_min_score: float = 0.4
     on_port_assigned: PortAssignmentCallback | None = None
     on_monitoring_port_assigned: PortAssignmentCallback | None = None
 

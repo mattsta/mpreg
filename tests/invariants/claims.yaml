@@ -91,8 +91,8 @@ raft:
     tests:
       - tests/test_raft_safety_properties.py
   - id: INV-C5
-    claim: "after InstallSnapshot, follower last_applied ≥ snapshot index"
-    proof: [L2]
+    claim: "InstallSnapshot restores SM on success; failure returns success=False and leader does not advance match/next"
+    proof: [L1]
     tests:
       - tests/invariants/test_raft_snapshot.py
   - id: INV-C6
@@ -106,8 +106,8 @@ raft:
     tests:
       - tests/invariants/test_raft_prevote_minority.py
   - id: INV-C8
-    claim: "crash/restart recovers committed log prefix from storage"
-    proof: [L2]
+    claim: "crash restart recovers committed log prefix and majority last_applied/SM re-apply"
+    proof: [L1, L2]
     tests:
       - tests/invariants/test_raft_persistence_crash.py
 
@@ -144,10 +144,11 @@ rpc:
     tests:
       - tests/invariants/test_trace_decisions.py
   - id: INV-P7
-    claim: "federated announcement u-ids do not double-apply under retry (dedup)"
+    claim: "federated announcement u-ids and STATUS fingerprints do not double-apply under retry (dedup)"
     proof: [L1]
     tests:
       - tests/invariants/test_rpc_dedup.py
+      - tests/chaos/test_t10_residuals.py
 
 encapsulation:
   - id: INV-E1
@@ -172,6 +173,7 @@ encapsulation:
       - tests/invariants/test_settings_profiles_ds.py
 
 non_claims:
+  - "Atomic multi-store fabric snapshot save (catalog+keys single blob); restore has COR-10 rollback on key failure"
   - "Full OSPF adjacency FSM / LSA flooding reliability"
   - "Full BGP RIB / communities ecosystem"
   - "Byzantine fault tolerant consensus (Raft is CFT)"

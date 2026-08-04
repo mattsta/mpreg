@@ -16,8 +16,6 @@ groups:
           severity: critical
         annotations:
           summary: "MPREG federation health critical"
-      # mpreg_monitoring_up is always 1 when the process answers scrapes.
-      # Detect down targets via Prometheus `up` or absent(mpreg_info).
       - alert: MPREGMonitoringDown
         expr: up{job=~".*mpreg.*"} == 0 or absent(mpreg_info)
         for: 1m
@@ -25,9 +23,6 @@ groups:
           severity: critical
         annotations:
           summary: "MPREG monitoring scrape target down"
-          description: >-
-            Scrape job is down or mpreg_info is absent. Prefer job-level `up`
-            over mpreg_monitoring_up (which cannot be 0 while serving).
       - alert: MPREGRouteBlackholeSpike
         expr: increase(mpreg_route_blackhole_total[5m]) > 50
         for: 2m
@@ -35,4 +30,17 @@ groups:
           severity: warning
         annotations:
           summary: "Elevated fabric route blackhole decisions"
-
+      - alert: MPREGRPCLatencyP95High
+        expr: histogram_quantile(0.95, sum(rate(mpreg_rpc_latency_ms_bucket[5m])) by (le, cluster_id)) > 250
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MPREG RPC p95 latency high"
+      - alert: MPREGGossipPendingDrops
+        expr: increase(mpreg_gossip_pending_drops_total[5m]) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Gossip pending queue dropping messages (storm loss)"

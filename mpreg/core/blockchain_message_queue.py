@@ -7,6 +7,7 @@ blockchain audit trails, and federated routing capabilities.
 
 from __future__ import annotations
 
+import bisect
 import json
 import time
 from collections import deque
@@ -405,23 +406,24 @@ class EquitablePriorityQueue:
         return True  # No quota policy active
 
     def _insert_with_fairness(self, message: BlockchainMessage) -> None:
-        """Insert message maintaining priority order with fairness."""
+        """Insert message maintaining priority order with fairness.
 
-        # Calculate fairness-adjusted priority
+        PERF-T10-02: O(log n) position via bisect on cached adjusted priorities
+        rather than O(n) linear scan + insert.
+        """
         adjusted_priority = self._calculate_adjusted_priority(message)
-
-        # Insert maintaining priority order
-        inserted = False
-        for i, existing_msg in enumerate(self.message_queue):
-            existing_priority = self._calculate_adjusted_priority(existing_msg)
-
-            if adjusted_priority > existing_priority:
-                self.message_queue.insert(i, message)
-                inserted = True
-                break
-
-        if not inserted:
-            self.message_queue.append(message)
+        # message_queue is highest-priority-first; bisect on negated scores.
+        # Cache priorities lazily on the instance to avoid recompute storms.
+        scores = getattr(self, "_priority_scores", None)
+        if scores is None or len(scores) != len(self.message_queue):
+            scores = [
+                -self._calculate_adjusted_priority(m) for m in self.message_queue
+            ]
+            self._priority_scores = scores
+        neg = -adjusted_priority
+        idx = bisect.bisect_left(scores, neg)
+        self.message_queue.insert(idx, message)
+        scores.insert(idx, neg)
 
     def _calculate_adjusted_priority(self, message: BlockchainMessage) -> float:
         """Calculate priority adjusted for fairness."""
@@ -472,6 +474,9 @@ class EquitablePriorityQueue:
 
         # Normally dequeue highest priority
         message = self.message_queue.pop(0)
+        scores = getattr(self, "_priority_scores", None)
+        if scores:
+            scores.pop(0)
 
         # Check for fairness violations
         priority_policies = self.governance.get_active_policies("prioritization")

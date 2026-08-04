@@ -15,7 +15,9 @@ from .unified_monitoring import (
 _RPS_WINDOW_SECONDS = 60.0
 _HOUR_WINDOW_SECONDS = 3600.0
 # Cap in-memory event timestamps used for RPS windows (OBS-08).
-_EVENT_DEQUE_MAXLEN = 50_000
+_EVENT_DEQUE_MAXLEN = 50
+_ERROR_CODE_LABEL_MAX = 64
+_MGMT_EVENT_LABEL_MAX = 32_000
 
 def _calculate_percentile(values: list[float], percentile: float) -> float:
     if not values:
@@ -62,6 +64,7 @@ class ServerMetricsTracker:
     rpc_error_codes: dict[str, int] = field(default_factory=dict)
     mgmt_mutations: dict[str, int] = field(default_factory=dict)
     notification_drops: int = 0
+    gossip_pending_drops: int = 0
     replication_drops: int = 0
     cache_pubsub_drops: int = 0
     node_draining: int = 0
@@ -98,6 +101,11 @@ class ServerMetricsTracker:
         if not success:
             self.rpc_errors += 1
             code_key = str(error_code) if error_code is not None else "unknown"
+            if (
+                code_key not in self.rpc_error_codes
+                and len(self.rpc_error_codes) >= _ERROR_CODE_LABEL_MAX
+            ):
+                code_key = "_other"
             self.rpc_error_codes[code_key] = self.rpc_error_codes.get(code_key, 0) + 1
         self.rpc_events.append(now)
         _prune_events(self.rpc_events, now, _HOUR_WINDOW_SECONDS)
@@ -129,6 +137,8 @@ class ServerMetricsTracker:
 
     def record_mgmt_mutation(self, event: str, *, success: bool = True) -> None:
         key = f"{event}:{'ok' if success else 'err'}"
+        if key not in self.mgmt_mutations and len(self.mgmt_mutations) >= _MGMT_EVENT_LABEL_MAX:
+            key = "_other"
         self.mgmt_mutations[key] = self.mgmt_mutations.get(key, 0) + 1
 
     def set_draining(self, draining: bool) -> None:
@@ -149,6 +159,12 @@ class ServerMetricsTracker:
         """Increment cache-pubsub notification queue drops (OBS-04)."""
         self.cache_pubsub_drops = max(
             0, int(self.cache_pubsub_drops) + max(0, int(n))
+        )
+
+    def record_gossip_pending_drop(self, n: int = 1) -> None:
+        """OBS-T10-01 / PERF-T10-05: gossip pending overflow drops."""
+        self.gossip_pending_drops = max(
+            0, int(self.gossip_pending_drops) + max(0, int(n))
         )
 
     def set_replication_drops(self, count: int) -> None:
@@ -176,13 +192,31 @@ class ServerMetricsTracker:
             lines.append(
                 f'mpreg_mgmt_mutations_total{{{labels},event="{safe}"}} {count}'
             )
+        # OBS-T10-04: canonical name is server-side; keep legacy client_* alias.
+        lines.append(
+            "# HELP mpreg_server_notification_drops_total "
+            "Pubsub notifications dropped on the server send path."
+        )
+        lines.append("# TYPE mpreg_server_notification_drops_total counter")
+        lines.append(
+            f"mpreg_server_notification_drops_total{{{labels}}} {self.notification_drops}"
+        )
         lines.append(
             "# HELP mpreg_client_notification_drops_total "
-            "Pubsub notifications dropped (server-observed delivery failures)."
+            "DEPRECATED alias of mpreg_server_notification_drops_total "
+            "(server-observed delivery failures, not client-local drops)."
         )
         lines.append("# TYPE mpreg_client_notification_drops_total counter")
         lines.append(
             f"mpreg_client_notification_drops_total{{{labels}}} {self.notification_drops}"
+        )
+        lines.append(
+            "# HELP mpreg_gossip_pending_drops_total "
+            "Gossip pending-queue overflow drops (storm loss signal)."
+        )
+        lines.append("# TYPE mpreg_gossip_pending_drops_total counter")
+        lines.append(
+            f"mpreg_gossip_pending_drops_total{{{labels}}} {self.gossip_pending_drops}"
         )
         lines.append(
             "# HELP mpreg_cache_replication_drops_total "

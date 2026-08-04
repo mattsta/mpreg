@@ -12,7 +12,7 @@ import asyncio
 import contextlib
 import hashlib
 import time
-from collections import defaultdict, deque
+from collections import OrderedDict, defaultdict, deque
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, TypeVar
@@ -522,7 +522,7 @@ class SmartCacheManager[T](ManagedObject):
         super().__init__(name=f"SmartCacheManager-{id(self)}")
         self.config = config
         self.l1_cache: dict[CacheKey, CacheEntry] = {}
-        self.access_order: deque[CacheKey] = deque()  # For LRU tracking
+        self.access_order: OrderedDict[CacheKey, None] = OrderedDict()  # PERF-T10-01 O(1) LRU
         self.dependency_graph: dict[CacheKey, set[CacheKey]] = defaultdict(set)
         self.reverse_deps: dict[CacheKey, set[CacheKey]] = defaultdict(set)
         self.statistics = CacheStatistics()
@@ -640,8 +640,9 @@ class SmartCacheManager[T](ManagedObject):
                     self.statistics.memory_bytes -= evicted_entry.size_bytes
                     cache_store_log.debug(f"S4LRU evicted {evicted_key}")
         else:
-            # Use traditional access order tracking
-            self.access_order.append(key)
+            # Use traditional access order tracking (O(1) move-to-end)
+            self.access_order.pop(key, None)
+            self.access_order[key] = None
 
         # Update statistics
         self.statistics.entry_count = len(self.l1_cache)
@@ -681,12 +682,9 @@ class SmartCacheManager[T](ManagedObject):
                     self.statistics.memory_bytes -= evicted_entry.size_bytes
                     cache_store_log.debug(f"S4LRU evicted {evicted_key}")
         else:
-            # Update LRU order for traditional policies
-            try:
-                self.access_order.remove(key)
-            except ValueError:
-                pass  # Key might not be in access order
-            self.access_order.append(key)
+            # Update LRU order for traditional policies (O(1))
+            self.access_order.pop(key, None)
+            self.access_order[key] = None
 
         cache_store_log.debug(f"Cache hit for {key}")
         return entry.value
@@ -715,8 +713,7 @@ class SmartCacheManager[T](ManagedObject):
             self.s4lru_cache.remove(key)
         else:
             # Remove from traditional access order
-            with contextlib.suppress(ValueError):
-                self.access_order.remove(key)
+            self.access_order.pop(key, None)
 
         # Update statistics
         self.statistics.evictions += 1
