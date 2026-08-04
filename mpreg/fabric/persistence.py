@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 
 from loguru import logger
@@ -12,6 +11,8 @@ from mpreg.datastructures.type_aliases import JsonDict
 
 from .catalog import RoutingCatalog
 from .route_keys import RouteKeyRegistry
+
+from mpreg.core.native_codec import canonical_dumps, loads
 
 CATALOG_SNAPSHOT_KEY = "fabric.catalog.snapshot"
 ROUTE_KEYS_SNAPSHOT_KEY = "fabric.route_keys.snapshot"
@@ -55,7 +56,7 @@ class FabricSnapshotStore:
         if raw is None:
             return None
         try:
-            payload = json.loads(raw.decode("utf-8"))
+            payload = loads(raw)
         except Exception as exc:
             logger.warning("Fabric snapshot decode failed for {}: {}", key, exc)
             return None
@@ -65,5 +66,5 @@ class FabricSnapshotStore:
         return payload
 
     async def _save_payload(self, key: str, payload: JsonDict) -> None:
-        data = json.dumps(payload, sort_keys=True).encode("utf-8")
+        data = canonical_dumps(payload)
         await self.kv_store.put(key, data)

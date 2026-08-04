@@ -42,7 +42,6 @@ Usage Examples:
 from __future__ import annotations
 
 import hashlib
-import json
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -61,6 +60,8 @@ from .federated_cache_coherence import (
 )
 from .merkle_tree import MerkleHash, MerkleProofPath, MerkleTree
 from .type_aliases import JsonDict, RequestId, Timestamp
+
+from mpreg.core.native_codec import canonical_dumps
 
 @dataclass(frozen=True, slots=True)
 class MerkleAwareFederatedCacheKey:
@@ -124,9 +125,7 @@ class MerkleAwareFederatedCacheKey:
             MerkleAwareFederatedCacheKey with integrity verification data
         """
         # Serialize cache value for hashing (deterministic JSON)
-        serialized_data = json.dumps(
-            cache_value, sort_keys=True, separators=(",", ":"), ensure_ascii=True
-        ).encode()
+        serialized_data = canonical_dumps(cache_value)
 
         # Calculate data checksum
         data_checksum = hashlib.sha256(serialized_data).hexdigest()
@@ -183,9 +182,7 @@ class MerkleAwareFederatedCacheKey:
             return False
 
         # Serialize and hash the provided cache value
-        serialized_data = json.dumps(
-            cache_value, sort_keys=True, separators=(",", ":"), ensure_ascii=True
-        ).encode()
+        serialized_data = canonical_dumps(cache_value)
 
         calculated_checksum = hashlib.sha256(serialized_data).hexdigest()
 

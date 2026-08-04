@@ -39,13 +39,14 @@ Safety Properties Guaranteed:
 from __future__ import annotations
 
 import hashlib
-import json
 import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Protocol
 
 import ulid
+
+from mpreg.core.native_codec import canonical_dumps
 
 # Core Raft State Enumerations
 class RaftState(Enum):
@@ -99,7 +100,7 @@ class LogEntry:
             "timestamp": self.timestamp,
         }
 
-        serialized = json.dumps(entry_data, sort_keys=True).encode()
+        serialized = canonical_dumps(entry_data)
         object.__setattr__(self, "checksum", hashlib.sha256(serialized).hexdigest())
 
     def verify_integrity(self) -> bool:
@@ -154,7 +155,7 @@ class RaftSnapshot:
             "state_machine_state": self.state_machine_state.hex(),
         }
 
-        serialized = json.dumps(snapshot_data, sort_keys=True).encode()
+        serialized = canonical_dumps(snapshot_data)
         object.__setattr__(self, "checksum", hashlib.sha256(serialized).hexdigest())
 
 # RPC Message Types
