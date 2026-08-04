@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any
 
-import orjson
+from mpreg.core.native_codec import canonical_dumps, dumps, loads
 
 class Serializer(ABC):
     """Abstract base class for data serialization."""
@@ -21,34 +21,31 @@ class Serializer(ABC):
 
 @dataclass(slots=True)
 class JsonSerializer(Serializer):
-    """Serializer implementation using orjson for JSON serialization."""
+    """Wire serializer via the process :mod:`native_codec` backend (orjson).
+
+    All hot-path encode/decode should go through this type or
+    :func:`mpreg.core.native_codec.dumps` so a future msgpack/simdjson backend
+    can be swapped without rewriting call sites.
+    """
 
     def serialize(self, data: Any) -> bytes:
-        """Serializes data to JSON bytes using orjson."""
+        """Serializes data to JSON bytes using the active native backend."""
+        return dumps(data)
 
-        # orjson can't serialize frozenset directly, convert to list
-        def default(obj: Any) -> Any:
-            if isinstance(obj, frozenset):
-                return list(obj)
-            # PERF-03: accept pydantic / objects with model_dump without a
-            # prior materialize step on the call site.
-            dump = getattr(obj, "model_dump", None)
-            if callable(dump):
-                return dump()
-            raise TypeError
-
-        return orjson.dumps(data, default=default)
+    def serialize_canonical(self, data: Any) -> bytes:
+        """Key-sorted encode for HMAC / content digests."""
+        return canonical_dumps(data)
 
     def serialize_model(self, model: Any) -> bytes:
         """Serialize a pydantic-like model in one hop (PERF-03).
 
         Prefer this over ``serialize(model.model_dump())`` on hot paths so
-        frozenset conversion and dump share a single orjson pass when possible.
+        frozenset conversion and dump share a single native pass when possible.
         """
         if hasattr(model, "model_dump") and callable(model.model_dump):
             return self.serialize(model.model_dump())
         return self.serialize(model)
 
     def deserialize(self, data: bytes) -> Any:
-        """Deserializes JSON bytes to data using orjson."""
-        return orjson.loads(data)
+        """Deserializes JSON bytes to data using the active native backend."""
+        return loads(data)
