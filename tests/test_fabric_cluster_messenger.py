@@ -86,6 +86,8 @@ def test_next_headers_appends_paths() -> None:
     assert headers.target_cluster == "cluster-b"
 
 def test_next_headers_loop_detected() -> None:
+    from mpreg.core.errors import MpregError, MpregErrorCode
+
     transport = DummyTransport()
     messenger = ClusterMessenger(
         cluster_id="cluster-a",
@@ -97,12 +99,13 @@ def test_next_headers_loop_detected() -> None:
         correlation_id="corr-loop",
         routing_path=("node-a",),
     )
-    assert (
+    with pytest.raises(MpregError) as ei:
         messenger.next_headers("corr-loop", existing, target_cluster="cluster-b")
-        is None
-    )
+    assert ei.value.code == int(MpregErrorCode.ROUTE_LOOP)
 
 def test_next_headers_hop_budget_exceeded() -> None:
+    from mpreg.core.errors import MpregError, MpregErrorCode
+
     transport = DummyTransport()
     messenger = ClusterMessenger(
         cluster_id="cluster-a",
@@ -116,9 +119,9 @@ def test_next_headers_hop_budget_exceeded() -> None:
         routing_path=("node-1", "node-2", "node-3"),
         hop_budget=1,
     )
-    assert (
-        messenger.next_headers("corr-hop", existing, target_cluster="cluster-b") is None
-    )
+    with pytest.raises(MpregError) as ei:
+        messenger.next_headers("corr-hop", existing, target_cluster="cluster-b")
+    assert ei.value.code == int(MpregErrorCode.HOP_BUDGET_EXCEEDED)
 
 @pytest.mark.asyncio
 async def test_send_to_cluster_with_planner() -> None:

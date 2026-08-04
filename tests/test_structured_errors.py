@@ -5,6 +5,7 @@ from mpreg.core.errors import (
     hop_budget_exceeded,
     map_exception,
     policy_denied,
+    route_loop_detected,
     version_mismatch,
 )
 
@@ -12,6 +13,7 @@ def test_error_codes_stable() -> None:
     assert int(MpregErrorCode.COMMAND_NOT_FOUND) == 1001
     assert int(MpregErrorCode.VERSION_MISMATCH) == 1002
     assert int(MpregErrorCode.HOP_BUDGET_EXCEEDED) == 1003
+    assert int(MpregErrorCode.ROUTE_LOOP) == 1013
 
 def test_helpers_build_rpc_error() -> None:
     err = command_not_found("foo")
@@ -27,6 +29,10 @@ def test_helpers_build_rpc_error() -> None:
 
     err = policy_denied("namespace blocked")
     assert err.code == 1004
+
+    err = route_loop_detected(node_id="ws://a")
+    assert err.code == 1013
+    assert err.retryable is False
 
 def test_map_timeout() -> None:
     mapped = map_exception(TimeoutError("deadline"))

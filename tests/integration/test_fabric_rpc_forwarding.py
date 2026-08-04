@@ -252,6 +252,7 @@ async def test_fabric_rpc_resource_filtering() -> None:
                 )
 
 def test_fabric_hop_budget_blocks_forward_headers() -> None:
+    from mpreg.core.errors import MpregError, MpregErrorCode
     from mpreg.fabric.message import MessageHeaders
 
     port_manager = TestPortManager()
@@ -273,9 +274,10 @@ def test_fabric_hop_budget_blocks_forward_headers() -> None:
         routing_path=("ws://node-a", "ws://node-b"),
         hop_budget=1,
     )
-    next_headers = server._next_fabric_headers(
-        "req-1",
-        headers,
-        max_hops=server.settings.fabric_routing_max_hops,
-    )
-    assert next_headers is None
+    with pytest.raises(MpregError) as ei:
+        server._next_fabric_headers(
+            "req-1",
+            headers,
+            max_hops=server.settings.fabric_routing_max_hops,
+        )
+    assert ei.value.code == int(MpregErrorCode.HOP_BUDGET_EXCEEDED)

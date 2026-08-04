@@ -459,13 +459,21 @@ class ServerCacheTransport:
         target_node: NodeId,
         source_peer_url: str | None = None,
     ) -> None:
-        next_headers = self.server._next_fabric_headers(
-            message.message_id,
-            message.headers,
-            max_hops=self.server.settings.fabric_routing_max_hops,
-        )
-        if next_headers is None:
-            return
+        from mpreg.core.errors import MpregError, MpregErrorCode
+
+        try:
+            next_headers = self.server._next_fabric_headers(
+                message.message_id,
+                message.headers,
+                max_hops=self.server.settings.fabric_routing_max_hops,
+            )
+        except MpregError as exc:
+            if exc.code in (
+                int(MpregErrorCode.HOP_BUDGET_EXCEEDED),
+                int(MpregErrorCode.ROUTE_LOOP),
+            ):
+                return
+            raise
         resolved = self._resolve_target_peer(target_node, headers=next_headers)
         if resolved is None:
             return

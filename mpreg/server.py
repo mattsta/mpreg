@@ -3301,52 +3301,28 @@ class MPREGServer:
         headers: MessageHeaders | None,
         *,
         max_hops: int | None,
-    ) -> MessageHeaders | None:
-        from mpreg.fabric.message import MessageHeaders
+    ) -> MessageHeaders:
+        """Advance fabric headers for the next hop (fail-closed).
+
+        Raises:
+            MpregError (ROUTE_LOOP): local node already on ``routing_path``.
+            MpregError (HOP_BUDGET_EXCEEDED): hop count would exceed budget.
+        """
+        from mpreg.core.observability.trace_context import inject_trace_metadata
+        from mpreg.core.rpc_deadline import decrement_deadline_headers
+        from mpreg.fabric.hop_headers import advance_fabric_headers
 
         if headers is None:
-            from mpreg.core.observability.trace_context import inject_trace_metadata
-
-            return MessageHeaders(
+            return advance_fabric_headers(
                 correlation_id=correlation_id,
-                source_cluster=self.settings.cluster_id,
-                routing_path=(self.cluster.local_url,),
-                federation_path=(self.settings.cluster_id,),
-                hop_budget=max_hops,
+                headers=None,
+                node_id=self.cluster.local_url,
+                cluster_id=self.settings.cluster_id,
+                max_hops=max_hops,
                 metadata=inject_trace_metadata(),
             )
 
-        if self.cluster.local_url in headers.routing_path:
-            return None
-
-        hop_budget = headers.hop_budget
-        if hop_budget is None:
-            hop_budget = max_hops
-        elif max_hops is not None:
-            hop_budget = min(hop_budget, max_hops)
-
-        routing_path = headers.routing_path
-        if not routing_path or routing_path[-1] != self.cluster.local_url:
-            routing_path = (*routing_path, self.cluster.local_url)
-
-        federation_path = headers.federation_path
-        if not federation_path or federation_path[-1] != self.settings.cluster_id:
-            federation_path = (*federation_path, self.settings.cluster_id)
-
-        hop_count = max(0, len(routing_path) - 1)
-        if hop_budget is not None and hop_count > hop_budget:
-            from mpreg.core.errors import hop_budget_exceeded
-
-            raise hop_budget_exceeded(
-                int(hop_budget),
-                hop_count=hop_count,
-                correlation_id=headers.correlation_id or correlation_id,
-            )
-
-        from mpreg.core.observability.trace_context import inject_trace_metadata
-        from mpreg.core.rpc_deadline import decrement_deadline_headers
-
-        meta = dict(headers.metadata) if headers is not None else {}
+        meta = dict(headers.metadata)
         hop_ms = 5.0  # conservative floor when ingress mono stamp missing
         raw_entered = meta.get("mpreg.hop_entered_mono")
         if raw_entered is not None:
@@ -3356,16 +3332,13 @@ class MPREGServer:
             except (TypeError, ValueError):
                 hop_ms = 5.0
         meta["mpreg.hop_entered_mono"] = f"{time.monotonic():.6f}"
-        next_headers = MessageHeaders(
-            correlation_id=headers.correlation_id or correlation_id,
-            source_cluster=headers.source_cluster or self.settings.cluster_id,
-            target_cluster=headers.target_cluster,
-            routing_path=routing_path,
-            federation_path=federation_path,
-            hop_budget=hop_budget,
-            priority=headers.priority,
+        next_headers = advance_fabric_headers(
+            correlation_id=correlation_id,
+            headers=headers,
+            node_id=self.cluster.local_url,
+            cluster_id=self.settings.cluster_id,
+            max_hops=max_hops,
             metadata=inject_trace_metadata(meta),
-            deadline_remaining_ms=headers.deadline_remaining_ms,
         )
         # Soft-RT: charge measured on-node time when stamped, else conservative floor.
         return decrement_deadline_headers(next_headers, hop_latency_ms=hop_ms)
@@ -3394,7 +3367,7 @@ class MPREGServer:
 
     def _next_pubsub_headers(
         self, correlation_id: str, headers: MessageHeaders | None
-    ) -> MessageHeaders | None:
+    ) -> MessageHeaders:
         return self._next_fabric_headers(
             correlation_id,
             headers,
@@ -3420,9 +3393,17 @@ class MPREGServer:
             UnifiedMessage,
         )
 
-        next_headers = self._next_pubsub_headers(message.message_id, headers)
-        if next_headers is None:
-            return
+        from mpreg.core.errors import MpregError, MpregErrorCode
+
+        try:
+            next_headers = self._next_pubsub_headers(message.message_id, headers)
+        except MpregError as exc:
+            if exc.code in (
+                int(MpregErrorCode.HOP_BUDGET_EXCEEDED),
+                int(MpregErrorCode.ROUTE_LOOP),
+            ):
+                return
+            raise
 
         summary_topic_diag = DISCOVERY_SUMMARY_DIAG_ENABLED and (
             message.topic == DISCOVERY_SUMMARY_TOPIC
@@ -3917,24 +3898,44 @@ class MPREGServer:
             )
             return
 
-        next_headers = self._next_fabric_headers(
-            payload.request_id,
-            message.headers,
-            max_hops=self.settings.fabric_routing_max_hops,
-        )
-        if next_headers is None:
-            await self._send_fabric_rpc_response(
-                request_id=payload.request_id,
-                reply_to=payload.reply_to,
-                reply_cluster=message.headers.source_cluster,
-                success=False,
-                error={
-                    "error": "fabric_hop_budget_exhausted",
-                    "command": payload.command,
-                },
-                routing_path=message.headers.routing_path,
+        from mpreg.core.errors import MpregError, MpregErrorCode
+
+        try:
+            next_headers = self._next_fabric_headers(
+                payload.request_id,
+                message.headers,
+                max_hops=self.settings.fabric_routing_max_hops,
             )
-            return
+        except MpregError as exc:
+            if exc.code == int(MpregErrorCode.HOP_BUDGET_EXCEEDED):
+                await self._send_fabric_rpc_response(
+                    request_id=payload.request_id,
+                    reply_to=payload.reply_to,
+                    reply_cluster=message.headers.source_cluster,
+                    success=False,
+                    error={
+                        "error": "fabric_hop_budget_exhausted",
+                        "code": int(MpregErrorCode.HOP_BUDGET_EXCEEDED),
+                        "command": payload.command,
+                    },
+                    routing_path=message.headers.routing_path,
+                )
+                return
+            if exc.code == int(MpregErrorCode.ROUTE_LOOP):
+                await self._send_fabric_rpc_response(
+                    request_id=payload.request_id,
+                    reply_to=payload.reply_to,
+                    reply_cluster=message.headers.source_cluster,
+                    success=False,
+                    error={
+                        "error": "fabric_route_loop",
+                        "code": int(MpregErrorCode.ROUTE_LOOP),
+                        "command": payload.command,
+                    },
+                    routing_path=message.headers.routing_path,
+                )
+                return
+            raise
 
         updated_payload = FabricRPCRequest(
             request_id=payload.request_id,
@@ -4002,13 +4003,21 @@ class MPREGServer:
                 if connection and connection.is_connected:
                     previous_hop = candidate
 
-        next_headers = self._next_fabric_headers(
-            response.request_id,
-            message.headers,
-            max_hops=self.settings.fabric_routing_max_hops,
-        )
-        if next_headers is None:
-            return
+        from mpreg.core.errors import MpregError, MpregErrorCode
+
+        try:
+            next_headers = self._next_fabric_headers(
+                response.request_id,
+                message.headers,
+                max_hops=self.settings.fabric_routing_max_hops,
+            )
+        except MpregError as exc:
+            if exc.code in (
+                int(MpregErrorCode.HOP_BUDGET_EXCEEDED),
+                int(MpregErrorCode.ROUTE_LOOP),
+            ):
+                return
+            raise
 
         forward_message = UnifiedMessage(
             message_id=message.message_id,

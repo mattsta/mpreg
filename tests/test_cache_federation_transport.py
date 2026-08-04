@@ -126,7 +126,8 @@ class StubServer:
         headers: MessageHeaders | None,
         *,
         max_hops: int | None,
-    ) -> MessageHeaders | None:
+    ) -> MessageHeaders:
+        assert headers is not None
         return headers
 
     def _fabric_next_hop_for_cluster(

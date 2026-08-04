@@ -31,7 +31,9 @@ class MpregErrorCode(IntEnum):
     AUTH_FAILED = 1010
     # Modality refuse (ERG-T10-06) — not available as production semantics
     UNSUPPORTED_DELIVERY = 1011  # EXACTLY_ONCE etc. refused
-    UNSUPPORTED_CONSISTENCY = 1012  # STRONG etc. residual-free refuse
+    UNSUPPORTED_CONSISTENCY = 1012  # STRONG etc. residual-free refused
+    # Fabric routing (fail-closed hop advancement)
+    ROUTE_LOOP = 1013
     # Discovery / control plane (1100+)
     DISCOVERY_ACCESS_DENIED = 1101
     DISCOVERY_RATE_LIMITED = 1102
@@ -61,6 +63,7 @@ _DEFAULT_MESSAGES: dict[MpregErrorCode, str] = {
     MpregErrorCode.UNSUPPORTED_CONSISTENCY: (
         "Consistency level not supported (STRONG is residual-free refused)"
     ),
+    MpregErrorCode.ROUTE_LOOP: "Fabric routing path loop detected",
     MpregErrorCode.DISCOVERY_ACCESS_DENIED: "Discovery access denied",
     MpregErrorCode.DISCOVERY_RATE_LIMITED: "Discovery rate limit exceeded",
     MpregErrorCode.INTERNAL: "Internal error",
@@ -179,6 +182,14 @@ def hop_budget_exceeded(hop_budget: int, **context: Any) -> MpregError:
         MpregErrorCode.HOP_BUDGET_EXCEEDED,
         details=f"Hop budget {hop_budget} exceeded",
         hop_budget=hop_budget,
+        **context,
+    )
+
+def route_loop_detected(**context: Any) -> MpregError:
+    """Fail-closed when a node already appears on the fabric routing path."""
+    return MpregError.of(
+        MpregErrorCode.ROUTE_LOOP,
+        details=context.pop("details", "Routing path loop detected"),
         **context,
     )
 

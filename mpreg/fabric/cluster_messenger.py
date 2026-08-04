@@ -40,49 +40,22 @@ class ClusterMessenger:
         headers: MessageHeaders | None,
         *,
         target_cluster: ClusterId | None,
-    ) -> MessageHeaders | None:
-        if headers is None:
-            federation_path = (self.cluster_id,)
-            return MessageHeaders(
-                correlation_id=correlation_id,
-                source_cluster=self.cluster_id,
-                target_cluster=target_cluster,
-                routing_path=(self.node_id,),
-                federation_path=federation_path,
-                hop_budget=self.max_hops,
-            )
+    ) -> MessageHeaders:
+        """Advance headers for the next hop (fail-closed).
 
-        if self.node_id in headers.routing_path:
-            return None
+        Raises:
+            MpregError (ROUTE_LOOP): local node already on ``routing_path``.
+            MpregError (HOP_BUDGET_EXCEEDED): hop count would exceed budget.
+        """
+        from mpreg.fabric.hop_headers import advance_fabric_headers
 
-        hop_budget = headers.hop_budget
-        if hop_budget is None:
-            hop_budget = self.max_hops
-        else:
-            hop_budget = min(hop_budget, self.max_hops)
-
-        routing_path = headers.routing_path
-        if not routing_path or routing_path[-1] != self.node_id:
-            routing_path = (*routing_path, self.node_id)
-
-        federation_path = headers.federation_path
-        if not federation_path or federation_path[-1] != self.cluster_id:
-            federation_path = (*federation_path, self.cluster_id)
-
-        hop_count = max(0, len(routing_path) - 1)
-        if hop_budget is not None and hop_count > hop_budget:
-            return None
-
-        return MessageHeaders(
-            correlation_id=headers.correlation_id or correlation_id,
-            source_cluster=headers.source_cluster or self.cluster_id,
-            target_cluster=target_cluster or headers.target_cluster,
-            routing_path=routing_path,
-            federation_path=federation_path,
-            hop_budget=hop_budget,
-            priority=headers.priority,
-            metadata=dict(headers.metadata),
-            deadline_remaining_ms=headers.deadline_remaining_ms,
+        return advance_fabric_headers(
+            correlation_id=correlation_id,
+            headers=headers,
+            node_id=self.node_id,
+            cluster_id=self.cluster_id,
+            max_hops=self.max_hops,
+            target_cluster=target_cluster,
         )
 
     async def send_to_cluster(
