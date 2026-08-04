@@ -156,8 +156,8 @@ class Client:
             The result of the RPC call.
 
         Raises:
-            asyncio.TimeoutError: If the request times out.
-            Exception: For other RPC errors returned by the server.
+            MpregError: TIMEOUT when the wait budget expires; other structured
+                codes for server-returned RPC errors.
         """
         req = RPCRequest(cmds=tuple(cmds), u=str(ulid.new()))
         wait_timeout = self._effective_timeout(timeout)
@@ -187,11 +187,17 @@ class Client:
             # Ensure we got an RPCResponse
             if not isinstance(response, RPCResponse):
                 raise Exception(f"Expected RPCResponse, got {type(response)}")
-        except TimeoutError:
+        except TimeoutError as exc:
             client_log.error(
                 "[{}] Request timed out after {} seconds.", req.u, wait_timeout
             )
-            raise
+            from mpreg.core.errors import timeout_error
+
+            raise timeout_error(
+                f"request {req.u} timed out after {wait_timeout} seconds",
+                request_id=req.u,
+                timeout_seconds=wait_timeout,
+            ) from exc
         finally:
             # Clean up the pending request
             self._pending_requests.pop(req.u, None)
@@ -232,8 +238,8 @@ class Client:
             Full RPCResponse including intermediate results and execution summary.
 
         Raises:
-            asyncio.TimeoutError: If the request times out.
-            Exception: For other RPC errors returned by the server.
+            MpregError: TIMEOUT when the wait budget expires; other structured
+                codes for server-returned RPC errors.
         """
         send = self.serializer.serialize(self._inject_outbound_trace(request.model_dump()))
         wait_timeout = self._effective_timeout(timeout)
@@ -258,6 +264,14 @@ class Client:
         # Wait for the response with timeout (default applies when None)
         try:
             response = await asyncio.wait_for(response_future, timeout=wait_timeout)
+        except TimeoutError as exc:
+            from mpreg.core.errors import timeout_error
+
+            raise timeout_error(
+                f"enhanced request {request.u} timed out after {wait_timeout} seconds",
+                request_id=request.u,
+                timeout_seconds=wait_timeout,
+            ) from exc
         finally:
             # Clean up the pending request
             self._pending_requests.pop(request.u, None)

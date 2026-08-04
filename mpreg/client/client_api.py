@@ -190,7 +190,8 @@ class MPREGClientAPI:
 
         Raises:
             CommandNotFoundException: If the specified function is not found on any available server.
-            asyncio.TimeoutError: If the RPC call times out.
+            MpregError: TIMEOUT when the wait budget expires; other structured codes
+                for server-returned RPC failures.
             Exception: For other RPC errors returned by the server.
         """
         if not self._connected:

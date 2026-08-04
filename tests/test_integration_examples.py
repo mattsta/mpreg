@@ -432,9 +432,12 @@ class TestErrorHandlingExamples:
         """
         client = await client_factory(single_server.settings.port)
 
-        # This should timeout quickly
-        with pytest.raises(asyncio.TimeoutError):
+        # Public client API maps timeouts to structured MpregError (code TIMEOUT).
+        from mpreg.core.errors import MpregError, MpregErrorCode
+
+        with pytest.raises(MpregError) as ei:
             await client.call("echo", "test", timeout=0.0001)  # Extremely short timeout
+        assert ei.value.code == int(MpregErrorCode.TIMEOUT)
 
     async def test_graceful_degradation(
         self,
