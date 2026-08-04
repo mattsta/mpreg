@@ -1031,11 +1031,16 @@ class TestCacheRealWorldPerformance:
             if result.success:
                 hit_count += 1
 
-        # Should have reasonable hit rate for recent items under memory pressure
-        # With only 100 entries max and 12.8KB per entry, we expect some eviction
+        # Recent items should survive COST_BASED eviction (recency floor +
+        # deficit-sized batches). Memory pressure (~10KB × 150 into 1MB/100
+        # entries) still forces older keys out, so overall retention is not
+        # the full insert set — only the recent window is asserted here.
         hit_rate = hit_count / len(recent_keys)
-        assert hit_rate > 0.3  # At least 30% hit rate for recent items under pressure
-        assert hit_rate < 1.0  # But not 100% due to memory constraints
+        assert hit_rate > 0.3, (
+            f"Poor recent-item hit rate under pressure: {hit_rate:.2%}"
+        )
+        # Capacity proof: we inserted more than max_entries and evicted.
+        assert len(stored_keys) > stats["l1_statistics"]["entry_count"]
 
         await cache_manager.shutdown()
 

@@ -115,17 +115,25 @@ class CacheEntry:
         return self.access_count / age
 
     def cost_benefit_score(self) -> float:
-        """Calculate cost-benefit score for eviction decisions."""
+        """Calculate cost-benefit score for eviction decisions.
+
+        Higher score = more valuable to retain. Under bulk put pressure every
+        virgin entry used to score 0.0 (cost_ms=0 and access_count=0), so
+        COST_BASED batch eviction was effectively random and could wipe nearly
+        the entire working set in one pass. We treat insertion as one virtual
+        access and floor computation cost so recency separates ties and
+        newest entries survive memory/count pressure.
+        """
         if self.size_bytes == 0:
             return float("inf")
 
-        # Higher computation cost = more valuable to cache
-        # Higher frequency = more valuable to cache
-        # Larger size = less valuable to cache
-        benefit = self.computation_cost_ms * self.frequency_score()
-        cost = self.size_bytes
-
-        return benefit / cost if cost > 0 else float("inf")
+        age = max(self.age_seconds(), 1e-6)
+        # Virtual access keeps never-read inserts ranked by recency.
+        effective_freq = (self.access_count + 1.0) / age
+        # Floor cost so zero-cost puts still differentiate by size/recency.
+        effective_cost_ms = max(self.computation_cost_ms, 1.0)
+        benefit = effective_cost_ms * effective_freq
+        return benefit / self.size_bytes
 
 @dataclass(slots=True)
 class CacheStatistics:
@@ -176,8 +184,16 @@ class EvictionCandidate:
     reason: str
 
     def __lt__(self, other: EvictionCandidate) -> bool:
-        """Compare eviction candidates by score (lower = more likely to evict)."""
-        return self.score < other.score
+        """Compare eviction candidates (lower score = more likely to evict).
+
+        Tie-break by older last_access_time then older creation_time so equal
+        cost scores still prefer evicting the coldest/oldest entry (LRU-ish).
+        """
+        if self.score != other.score:
+            return self.score < other.score
+        if self.entry.last_access_time != other.entry.last_access_time:
+            return self.entry.last_access_time < other.entry.last_access_time
+        return self.entry.creation_time < other.entry.creation_time
 
 @dataclass(slots=True)
 class CacheLimits:
@@ -205,7 +221,9 @@ class CacheConfiguration:
     default_ttl_seconds: float | None = None
     eviction_policy: EvictionPolicy = EvictionPolicy.COST_BASED
     memory_pressure_threshold: float = 0.8  # Start eviction at 80% capacity
-    eviction_batch_size: int = 100
+    # Small batches + loop-until-under-limit (see SmartCacheManager._perform_eviction).
+    # Historical default of 100 mass-evicted whole L1 under COST_BASED ties.
+    eviction_batch_size: int = 10
     enable_compression: bool = True
     enable_dependency_tracking: bool = True
     # Default off: pympler walks are accurate but O(object graph) and allocate
@@ -238,7 +256,13 @@ class CacheConfiguration:
         return current_memory >= self.memory_limit_bytes()
 
     def should_evict_by_count(self, current_count: int) -> bool:
-        """Check if eviction should occur based on entry count."""
+        """Check if eviction should occur based on entry count.
+
+        True when the cache is already at or over ``max_entries`` (no room
+        for another distinct key without evicting). Callers that project a
+        post-put count should compare with ``>`` themselves; this helper is
+        the at-capacity predicate used by config validation and put.
+        """
         if self.limits.max_entries is None:
             return False
         return current_count >= self.limits.max_entries
@@ -624,9 +648,26 @@ class SmartCacheManager[T](ManagedObject):
         if self.config.enable_dependency_tracking and dependencies:
             self._update_dependencies(key, dependencies)
 
-        # Check if we need to evict before adding
-        if self._should_evict():
-            self._perform_eviction()
+        # Replace-in-place: remove the prior entry first so capacity checks and
+        # eviction cannot double-count it or accidentally evict-then-subtract.
+        previous = self.l1_cache.pop(key, None)
+        if previous is not None:
+            if self.config.eviction_policy == EvictionPolicy.S4LRU and self.s4lru_cache:
+                self.s4lru_cache.remove(key)
+            else:
+                self.access_order.pop(key, None)
+            self.statistics.memory_bytes -= previous.size_bytes
+            if self.config.enable_dependency_tracking:
+                self._remove_dependencies(key)
+
+        incoming_count = 1  # always a net-new slot after the pop above
+        # Evict until the incoming entry fits under configured limits.
+        # Checking only the pre-put population left a permanent one-entry
+        # overshoot (memory threshold + new size_bytes).
+        if self._should_evict(incoming_size=size_bytes, incoming_count=incoming_count):
+            self._perform_eviction(
+                incoming_size=size_bytes, incoming_count=incoming_count
+            )
 
         # Add to cache
         self.l1_cache[key] = entry
@@ -783,14 +824,57 @@ class SmartCacheManager[T](ManagedObject):
             return self.s4lru_cache.get_segment_stats(self.l1_cache)
         return None
 
-    def _should_evict(self) -> bool:
-        """Check if cache should perform eviction based on configured limits."""
-        current_memory = sum(entry.size_bytes for entry in self.l1_cache.values())
-        current_count = len(self.l1_cache)
-        return self.config.should_evict(current_memory, current_count)
+    def _current_memory_bytes(self) -> int:
+        return sum(entry.size_bytes for entry in self.l1_cache.values())
 
-    def _perform_eviction(self) -> None:
-        """Perform cache eviction based on configured policy."""
+    def _should_evict(
+        self, *, incoming_size: int = 0, incoming_count: int = 0
+    ) -> bool:
+        """True if limits block accepting an optional incoming put.
+
+        * Memory uses projected usage (current + incoming size).
+        * Count uses at-capacity on the current population when adding keys
+          (``should_evict_by_count``), which allows filling exactly to
+          ``max_entries`` then evicting before the next insert.
+        """
+        projected_memory = self._current_memory_bytes() + max(0, incoming_size)
+        memory_exceeded = self.config.should_evict_by_memory(projected_memory)
+        if incoming_count > 0:
+            # Room for N new keys? At capacity ⇒ need eviction first.
+            count_exceeded = self.config.should_evict_by_count(len(self.l1_cache))
+        else:
+            count_exceeded = self.config.should_evict_by_count(len(self.l1_cache))
+
+        if self.config.limits.enforce_both_limits:
+            return memory_exceeded and count_exceeded
+        return memory_exceeded or count_exceeded
+
+    def _eviction_count_deficit(self, *, incoming_count: int = 0) -> int:
+        """How many entries must leave so count stays within max_entries after put."""
+        max_entries = self.config.limits.max_entries
+        if max_entries is None:
+            return 0
+        # At capacity with a new key incoming → free at least one slot (or more
+        # if somehow over limit).
+        if incoming_count > 0:
+            return max(0, len(self.l1_cache) + incoming_count - max_entries)
+        return max(0, len(self.l1_cache) - max_entries + 1) if len(
+            self.l1_cache
+        ) >= max_entries else 0
+
+    def _perform_eviction(
+        self, *, incoming_size: int = 0, incoming_count: int = 0
+    ) -> None:
+        """Evict until under configured limits (policy-ordered, batched).
+
+        Never wipe more than needed in a single batch. Previous behavior took
+        ``eviction_batch_size`` (default 100) candidates in one shot even when
+        only one slot was required — under COST_BASED score ties that emptied
+        L1 down to a handful of survivors and destroyed recent-item hit rate.
+
+        ``incoming_size`` / ``incoming_count`` reserve headroom for the put that
+        triggered eviction so post-put memory/count stay within limits.
+        """
         if self.config.eviction_policy == EvictionPolicy.S4LRU and self.s4lru_cache:
             # S4LRU handles eviction internally when new items are added
             # No explicit eviction needed here as it happens during access()
@@ -799,18 +883,46 @@ class SmartCacheManager[T](ManagedObject):
             )
             return
 
-        candidates = self._select_eviction_candidates()
+        total_evicted = 0
+        batch_cap = max(1, self.config.eviction_batch_size)
+        # Hard ceiling: never more rounds than current population.
+        max_rounds = max(1, len(self.l1_cache))
 
-        evicted_count = 0
-        target_evictions = min(self.config.eviction_batch_size, len(candidates))
+        for _ in range(max_rounds):
+            if not self._should_evict(
+                incoming_size=incoming_size, incoming_count=incoming_count
+            ):
+                break
+            if not self.l1_cache:
+                break
 
-        for candidate in candidates[:target_evictions]:
-            if self.evict(candidate.entry.key, candidate.reason):
-                evicted_count += 1
+            candidates = self._select_eviction_candidates()
+            if not candidates:
+                break
 
-        cache_store_log.info(
-            f"Evicted {evicted_count} entries using {self.config.eviction_policy.value} policy"
-        )
+            count_need = self._eviction_count_deficit(incoming_count=incoming_count)
+            mem_pressure = self.config.should_evict_by_memory(
+                self._current_memory_bytes() + max(0, incoming_size)
+            )
+            # Count-only: free exact deficit. Memory (or both): peel up to batch.
+            if count_need > 0 and not mem_pressure:
+                target = min(batch_cap, count_need, len(candidates))
+            else:
+                target = min(batch_cap, max(count_need, 1), len(candidates))
+
+            round_evicted = 0
+            for candidate in candidates[:target]:
+                if self.evict(candidate.entry.key, candidate.reason):
+                    round_evicted += 1
+                    total_evicted += 1
+            if round_evicted == 0:
+                break
+
+        if total_evicted:
+            cache_store_log.info(
+                f"Evicted {total_evicted} entries using "
+                f"{self.config.eviction_policy.value} policy"
+            )
 
     def _select_eviction_candidates(self) -> list[EvictionCandidate]:
         """Select candidates for eviction based on policy."""

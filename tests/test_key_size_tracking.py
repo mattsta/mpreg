@@ -98,23 +98,27 @@ class TestKeySizeTracking:
         cache.shutdown_sync()
 
     def test_large_key_eviction_scenario(self):
-        """Test eviction behavior with large keys."""
+        """Test eviction when stored key material dominates memory.
+
+        ``CacheKey.create`` content-hashes args/kwargs, so the *retained* key
+        is small (~100B) even when the original call args are huge. Memory
+        pressure from key overhead is exercised via long ``function_name``
+        (and hash fields) that remain on the stored key object — matching
+        production sizing (``estimate_size_bytes`` on the CacheKey, not the
+        pre-image args).
+        """
         # Create cache with very small memory limit to force eviction
         cache = create_memory_only_cache_manager(max_memory_mb=0.005)  # 5KB limit
 
-        # Create entries where keys dominate the memory usage
+        # Create entries where the stored key dominates memory usage
         large_keys = []
         for i in range(20):
-            # Create a key with massive argument structure
-            huge_args = tuple(
-                f"argument_{j}" * 100
-                for j in range(100)  # Many large arguments
+            # Long function_name stays on the key; hashes are fixed-width.
+            key = CacheKey(
+                function_name=("large_key_material_" * 80) + f"_{i}",
+                args_hash=f"{i:016x}"[:16],
+                kwargs_hash=f"{i * 7:016x}"[:16],
             )
-            huge_kwargs = {
-                f"param_{j}": f"value_{j}" * 100
-                for j in range(50)  # Many large parameters
-            }
-            key = CacheKey.create(f"function_{i}", huge_args, huge_kwargs)
             large_keys.append(key)
 
             # Small value - key should dominate memory
@@ -132,6 +136,19 @@ class TestKeySizeTracking:
         ratio = stats.key_to_value_ratio()
         assert ratio > 1  # Keys should be larger than values in this test
 
+        cache.shutdown_sync()
+
+    def test_hashed_args_do_not_inflate_key_size(self):
+        """Content-hashed args must not make CacheKey size track arg pre-image."""
+        cache = create_memory_only_cache_manager(max_memory_mb=1)
+        huge_args = tuple(f"argument_{j}" * 100 for j in range(100))
+        huge_kwargs = {f"param_{j}": f"value_{j}" * 100 for j in range(50)}
+        key = CacheKey.create("function_hashed", huge_args, huge_kwargs)
+        cache.put(key, "small")
+        entry = cache.l1_cache[key]
+        # Hashed key stays tiny; 5KB budget would hold many of these.
+        assert entry.key_size_bytes < 512
+        assert entry.key_size_bytes < 150_000  # pre-image would be ~150KB+
         cache.shutdown_sync()
 
     def test_memory_pressure_includes_key_overhead(self):

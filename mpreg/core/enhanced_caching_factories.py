@@ -1,5 +1,9 @@
 """
 Enhanced factory functions for caching with proper memory and count limits.
+
+Accurate pympler sizing stays opt-in (``enable_accurate_sizing=True`` on a
+custom CacheConfiguration). Factories use bounded native_codec estimates so
+fan-out cache puts stay cheap under nested values.
 """
 
 from __future__ import annotations
@@ -28,7 +32,7 @@ def create_memory_and_count_limited_cache_manager(
         eviction_policy=EvictionPolicy.COST_BASED,
         memory_pressure_threshold=0.8,
         enable_dependency_tracking=True,
-        enable_accurate_sizing=True,
+        enable_accurate_sizing=False,
     )
     return SmartCacheManager(config)
 
@@ -47,7 +51,7 @@ def create_enhanced_s4lru_cache_manager(
         s4lru_segments=segments,
         memory_pressure_threshold=0.9,
         enable_dependency_tracking=True,
-        enable_accurate_sizing=True,
+        enable_accurate_sizing=False,
     )
     return SmartCacheManager(config)
 
@@ -63,7 +67,7 @@ def create_memory_only_cache_manager(max_memory_mb: MemoryMB) -> SmartCacheManag
         eviction_policy=EvictionPolicy.LRU,
         memory_pressure_threshold=0.9,
         enable_dependency_tracking=True,
-        enable_accurate_sizing=True,
+        enable_accurate_sizing=False,
     )
     return SmartCacheManager(config)
 
@@ -77,6 +81,6 @@ def create_count_only_cache_manager(max_entries: int) -> SmartCacheManager[Any]:
         eviction_policy=EvictionPolicy.LRU,
         memory_pressure_threshold=0.8,
         enable_dependency_tracking=True,
-        enable_accurate_sizing=True,
+        enable_accurate_sizing=False,
     )
     return SmartCacheManager(config)
