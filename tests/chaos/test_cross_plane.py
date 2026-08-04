@@ -142,84 +142,94 @@ async def test_x1_leader_election_during_route_withdraw() -> None:
 
 @pytest.mark.asyncio
 async def test_x2_minority_partition_no_commit() -> None:
-    """X2: Minority Raft partition cannot commit; routing still plans."""
-    network = MockNetwork()
-    members = {"a", "b", "c"}
-    nodes: dict[str, ProductionRaft] = {}
-    for nid in members:
-        n = ProductionRaft(
-            node_id=nid,
-            cluster_members=members,
-            storage=RaftStorageFactory.create_memory_storage(nid),
-            transport=NetworkAwareTransport(nid, network),
-            state_machine=TestableStateMachine(),
-            config=RaftConfiguration(
-            election_timeout_min=0.15,
-            election_timeout_max=0.30,
-            heartbeat_interval=0.025,
-        ),
-        )
-        network.register_node(nid, n)
-        nodes[nid] = n
-        await n.start()
+    """X2: Minority Raft partition cannot commit; routing still plans.
 
-    try:
-        leader = None
-        for _ in range(100):
-            for n in nodes.values():
-                if n.current_state == RaftState.LEADER:
-                    leader = n
-                    break
-            if leader:
-                break
-            await asyncio.sleep(0.05)
-        assert leader is not None
-        # Commit one entry while healthy
-        assert await leader.submit_command("x=1") is not None
-        commit_before = leader.volatile_state.commit_index
+    Bounded wall clock: under xdist load MockNetwork + raft election can
+    stall the suite past the hang watchdog if waits are open-ended.
+    """
 
-        # Partition minority {leader} alone if possible — use 1 vs 2
-        majority = set(members) - {leader.node_id}
-        # Actually put leader with one follower vs singleton minority
-        singleton = next(iter(majority))
-        rest = members - {singleton}
-        network.create_partition({singleton}, rest)
-
-        # Minority singleton should not advance commits as sole leader of new term easily;
-        # majority side may elect.
-        await asyncio.sleep(0.5)
-        # Routing plane still works under LS prefer
-        g = GraphBasedFederationRouter()
-        for c in "xyz":
-            g.add_node(_node(c))
-        g.add_edge(
-            FederationGraphEdge(
-                "x", "y", latency_ms=1, bandwidth_mbps=100, reliability_score=1.0
+    async def _body() -> None:
+        network = MockNetwork()
+        members = {"a", "b", "c"}
+        nodes: dict[str, ProductionRaft] = {}
+        for nid in members:
+            n = ProductionRaft(
+                node_id=nid,
+                cluster_members=members,
+                storage=RaftStorageFactory.create_memory_storage(nid),
+                transport=NetworkAwareTransport(nid, network),
+                state_machine=TestableStateMachine(),
+                config=RaftConfiguration(
+                    election_timeout_min=0.15,
+                    election_timeout_max=0.30,
+                    heartbeat_interval=0.025,
+                ),
             )
-        )
-        planner = FabricFederationPlanner(
-            local_cluster="x",
-            graph_router=g,
-            peer_locator=lambda c: [f"ws://{c}:1"],
-            link_state_mode=LinkStateMode.PREFER,
-            link_state_router=g,
-        )
-        plan = planner.plan_next_hop(target_cluster="y")
-        assert plan.can_forward
+            network.register_node(nid, n)
+            nodes[nid] = n
+            await n.start()
 
-        # Heal
-        network.heal_partition()
-        await asyncio.sleep(0.3)
-        # Safety: at most one leader per term observed at end
-        leaders = [n for n in nodes.values() if n.current_state == RaftState.LEADER]
-        if leaders:
-            terms = {n.persistent_state.current_term for n in leaders}
-            # multiple leaders only ok if different terms (shouldn't happen same time)
-            assert len(leaders) <= 1 or len(terms) == len(leaders)
-        assert commit_before >= 0
-    finally:
-        for n in nodes.values():
-            await n.stop()
+        try:
+            leader = None
+            for _ in range(80):
+                for n in nodes.values():
+                    if n.current_state == RaftState.LEADER:
+                        leader = n
+                        break
+                if leader:
+                    break
+                await asyncio.sleep(0.05)
+            assert leader is not None, "no leader elected within budget"
+            # Commit one entry while healthy (bounded)
+            committed = await asyncio.wait_for(leader.submit_command("x=1"), timeout=5.0)
+            assert committed is not None
+            commit_before = leader.volatile_state.commit_index
+
+            # Partition minority singleton vs majority rest
+            majority = set(members) - {leader.node_id}
+            singleton = next(iter(majority))
+            rest = members - {singleton}
+            network.create_partition({singleton}, rest)
+
+            await asyncio.sleep(0.4)
+            # Routing plane still works under LS prefer
+            g = GraphBasedFederationRouter()
+            for c in "xyz":
+                g.add_node(_node(c))
+            g.add_edge(
+                FederationGraphEdge(
+                    "x",
+                    "y",
+                    latency_ms=1,
+                    bandwidth_mbps=100,
+                    reliability_score=1.0,
+                )
+            )
+            planner = FabricFederationPlanner(
+                local_cluster="x",
+                graph_router=g,
+                peer_locator=lambda c: [f"ws://{c}:1"],
+                link_state_mode=LinkStateMode.PREFER,
+                link_state_router=g,
+            )
+            plan = planner.plan_next_hop(target_cluster="y")
+            assert plan.can_forward
+
+            network.heal_partition()
+            await asyncio.sleep(0.25)
+            leaders = [
+                n for n in nodes.values() if n.current_state == RaftState.LEADER
+            ]
+            if leaders:
+                terms = {n.persistent_state.current_term for n in leaders}
+                assert len(leaders) <= 1 or len(terms) == len(leaders)
+            assert commit_before >= 0
+        finally:
+            await asyncio.gather(
+                *(n.stop() for n in nodes.values()), return_exceptions=True
+            )
+
+    await asyncio.wait_for(_body(), timeout=20.0)
 
 @pytest.mark.asyncio
 async def test_x3_restart_mid_stream_client_timeout() -> None:
