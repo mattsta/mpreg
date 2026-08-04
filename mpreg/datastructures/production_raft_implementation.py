@@ -1125,6 +1125,11 @@ class ProductionRaft(ProductionRaftRPCs):
             f"Leader initialization complete for term {self.persistent_state.current_term}"
         )
 
+        # Unlocked callers (single-node election) flush immediately; locked vote
+        # path flushes after releasing state_lock.
+        if self._pending_task_ops and not self.state_lock.locked():
+            await self._run_pending_task_ops()
+
     # Log Replication Implementation
     async def _replicate_log_entries(self) -> None:
         """
@@ -1871,6 +1876,11 @@ class ProductionRaft(ProductionRaftRPCs):
                     restart_timer,
                     self.last_heartbeat_time,
                 )
+
+        # If the caller is not holding state_lock, flush deferred task ops now.
+        # Locked callers (RPC handlers, vote path) flush after releasing the lock.
+        if self._pending_task_ops and not self.state_lock.locked():
+            await self._run_pending_task_ops()
 
     async def _run_pending_task_ops(self) -> None:
         """Execute deferred task lifecycle work outside ``state_lock``.
