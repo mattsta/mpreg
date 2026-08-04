@@ -966,10 +966,19 @@ class MessageQueue(ManagedObject):
         return TopicValidator.matches_pattern(topic, pattern)
 
     def _create_message_fingerprint(self, message: QueuedMessage) -> str:
-        """Create a fingerprint for deduplication."""
+        """Create a fingerprint for deduplication.
+
+        Never nested ``str(payload)`` / ``str(headers)`` — large nested queue
+        bodies used to force recursive repr on every enqueue (same class of
+        hang as gossip catalog checksums).
+        """
         import hashlib
 
-        content = f"{message.topic}:{message.payload}:{message.headers}"
+        from mpreg.core.native_codec import payload_fingerprint_hex
+
+        payload_fp = payload_fingerprint_hex(message.payload, truncate=32)
+        headers_fp = payload_fingerprint_hex(message.headers, truncate=16)
+        content = f"{message.topic}:{payload_fp}:{headers_fp}"
         return hashlib.sha256(content.encode()).hexdigest()
 
     async def shutdown(self) -> None:
