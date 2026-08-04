@@ -44,6 +44,17 @@ from .blockchain_message_queue_types import (
     RoutingCriteria,
 )
 
+class UnsupportedDeliveryGuaranteeError(ValueError):
+    """Raised when a reserved/unsupported delivery guarantee is requested (COR-08)."""
+
+    def __init__(self, guarantee: str, *, detail: str | None = None) -> None:
+        self.guarantee = guarantee
+        msg = (
+            detail
+            or f"unsupported_delivery_guarantee:{guarantee}"
+        )
+        super().__init__(msg)
+
 class MessageQueueGovernance:
     """DAO governance for message queue operations."""
 
@@ -268,11 +279,12 @@ class MessageQueueGovernance:
                 MessagePriority.BULK: fee_params.priority_fee_multiplier * 0.1,
             }.get(message.priority, 1.0)
 
-            # Guarantee multiplier
+            # Guarantee multiplier (EXACTLY_ONCE is unsupported — no fee theater).
+            if message.delivery_guarantee is DeliveryGuarantee.EXACTLY_ONCE:
+                raise UnsupportedDeliveryGuaranteeError("exactly_once")
             guarantee_multiplier = {
                 DeliveryGuarantee.AT_MOST_ONCE: 0.5,
                 DeliveryGuarantee.AT_LEAST_ONCE: 1.0,
-                DeliveryGuarantee.EXACTLY_ONCE: 2.0,
                 DeliveryGuarantee.ORDERED: 1.5,
             }.get(message.delivery_guarantee, 1.0)
 
@@ -811,7 +823,11 @@ class BlockchainMessageQueue:
         return self.ledger.blockchain
 
     def submit_message(self, message: BlockchainMessage) -> bool:
-        """Submit message to queue with full processing."""
+        """Submit message to queue with full processing.
+
+        Raises:
+            UnsupportedDeliveryGuaranteeError: EXACTLY_ONCE is reserved (COR-08).
+        """
         try:
             # EXACTLY_ONCE is reserved (same honesty as fabric router).
             if getattr(message, "delivery_guarantee", None) is not None:
@@ -823,7 +839,13 @@ class BlockchainMessageQueue:
                         "delivery guarantee (message_id={})",
                         getattr(message, "message_id", None),
                     )
-                    return False
+                    raise UnsupportedDeliveryGuaranteeError(
+                        "exactly_once",
+                        detail=(
+                            "blockchain DeliveryGuarantee.EXACTLY_ONCE is unsupported "
+                            "(fail closed; no idempotent barrier)"
+                        ),
+                    )
             # Enqueue with fairness checks
             stored_message = self.priority_queue.enqueue(message)
 

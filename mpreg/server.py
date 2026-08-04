@@ -4280,10 +4280,9 @@ class MPREGServer:
         fail_closed = bool(
             getattr(self.settings, "fabric_snapshot_fail_on_restore_error", False)
         )
+        catalog = self._fabric_control_plane.catalog
         try:
-            counts = await store.load_catalog(
-                self._fabric_control_plane.catalog, now=snapshot_time
-            )
+            counts = await store.load_catalog(catalog, now=snapshot_time)
             self._fabric_snapshot_last_restored_counts = dict(counts)
             self._fabric_snapshot_last_restored_at = snapshot_time
             if counts:
@@ -4323,6 +4322,30 @@ class MPREGServer:
                     exc,
                 )
                 if fail_closed:
+                    # COR-10: roll back catalog so fail-closed boot does not leave
+                    # a half-applied multi-store control plane.
+                    try:
+                        catalog.load_from_dict(
+                            {
+                                "generated_at": float(snapshot_time),
+                                "functions": [],
+                                "topics": [],
+                                "queues": [],
+                                "services": [],
+                                "caches": [],
+                                "cache_profiles": [],
+                                "nodes": [],
+                            },
+                            now=snapshot_time,
+                        )
+                        self._fabric_snapshot_last_restored_counts = {}
+                        self._fabric_snapshot_last_route_keys_restored = None
+                    except Exception as rollback_exc:  # pragma: no cover - best effort
+                        logger.warning(
+                            "[{}] Catalog rollback after route-key restore failure: {}",
+                            self.settings.name,
+                            rollback_exc,
+                        )
                     raise RuntimeError(
                         f"fabric route key snapshot restore failed (fail-closed): {exc}"
                     ) from exc

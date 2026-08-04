@@ -230,6 +230,15 @@ class LocationConsistencyManager:
     ) -> ReplicatedCacheEntry:
         """Replicate a cache entry to target clusters."""
 
+        effective_level = consistency_level or self.config.default_consistency_level
+        # COR-02: refuse STRONG before local store or enqueue (no residual on fail).
+        if effective_level == ConsistencyLevel.STRONG:
+            raise ValueError(
+                "ConsistencyLevel.STRONG is not implemented on the location "
+                "consistency plane (no multi-replica quorum ACKs). Use EVENTUAL "
+                "or CAUSAL, or the live GlobalCacheManager path which also refuses STRONG."
+            )
+
         # Increment vector clock
         self.vector_clock = self.vector_clock.increment(self.location_info.cluster_id)
 
@@ -244,8 +253,7 @@ class LocationConsistencyManager:
             version=1,
             vector_clock=self.vector_clock,
             origin_cluster=self.location_info.cluster_id,
-            consistency_level=consistency_level
-            or self.config.default_consistency_level,
+            consistency_level=effective_level,
             replication_strategy=self.config.default_replication_strategy,
             metadata=metadata or {},
         )
@@ -260,7 +268,7 @@ class LocationConsistencyManager:
             entry=entry,
             target_clusters=target_clusters,
             source_cluster=self.location_info.cluster_id,
-            priority=3 if consistency_level == ConsistencyLevel.STRONG else 1,
+            priority=1,
         )
 
         # Queue for replication
@@ -268,10 +276,6 @@ class LocationConsistencyManager:
             await self.replication_queue.put(operation)
         except asyncio.QueueFull:
             logger.warning("Replication queue full, dropping operation")
-
-        # For strong consistency, wait for acknowledgments
-        if consistency_level == ConsistencyLevel.STRONG:
-            await self._wait_for_strong_consistency(operation)
 
         logger.info(f"Replicated cache entry {key} to {len(target_clusters)} clusters")
         return entry
@@ -288,6 +292,10 @@ class LocationConsistencyManager:
         prefer_local = (
             prefer_local if prefer_local is not None else self.config.prefer_local_reads
         )
+
+        # COR-02: STRONG get refuses before returning a local hit (not a quorum read).
+        if consistency_level == ConsistencyLevel.STRONG:
+            return await self._get_with_strong_consistency(key)
 
         # Try local first if preferred
         if prefer_local and entry_key in self.replicated_entries:
@@ -323,10 +331,6 @@ class LocationConsistencyManager:
                 )
 
             return updated_entry
-
-        # For strong consistency, query other clusters
-        if consistency_level == ConsistencyLevel.STRONG:
-            return await self._get_with_strong_consistency(key)
 
         # Return local entry if available
         return self.replicated_entries.get(entry_key)

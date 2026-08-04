@@ -145,6 +145,14 @@ class MessageQueueManager(ManagedObject):
         self, name: str, config: QueueConfiguration | None = None
     ) -> bool:
         """Create a new message queue."""
+        # COR-06: provision is a write — same namespace gate as send_message.
+        allowed, reason = self._data_plane_allowed(name, write=True)
+        if not allowed:
+            queue_mgr_log.warning(
+                "create_queue denied by namespace policy: {} ({})", name, reason
+            )
+            return False
+
         if name in self.queues:
             queue_mgr_log.warning(f"Queue {name} already exists")
             return False

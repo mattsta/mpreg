@@ -211,9 +211,10 @@ class TestGlobalCacheManager:
         """Test cache operations with specific options."""
         test_value = {"data": "with_options"}
 
+        # EVENTUAL + L1 is the supported local path (STRONG is refuse-by-default).
         options = CacheOptions(
             cache_levels=frozenset([CacheLevel.L1]),
-            consistency_level=ConsistencyLevel.STRONG,
+            consistency_level=ConsistencyLevel.EVENTUAL,
             timeout_ms=1000,
         )
 

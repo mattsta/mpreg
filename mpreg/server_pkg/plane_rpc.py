@@ -19,23 +19,50 @@ def rpc_payload_dict(payload: object) -> dict[str, Any]:
 def rpc_actor_ids(server: Any, body: dict[str, Any]) -> tuple[str, str | None]:
     """Resolve actor cluster/tenant for queue/cache RPC policy binding.
 
-    Prefer explicit body fields; fall back to this node's cluster_id so
-    local unauthenticated RPC still has a stable owner identity. Tenant
-    remains optional unless the namespace rule requires it.
+    COR-05: when namespace policy is enabled, trust **connection/session**
+    identity only — never client-supplied ``cluster_id`` / ``tenant_id`` in
+    the RPC body (those are spoofable). Body fields remain a convenience
+    only while policy is disabled (lab/dev).
+
+    Fall back to this node's ``settings.cluster_id`` so local unauthenticated
+    RPC still has a stable owner identity when no session is bound.
     """
-    cluster_raw = (
-        body.get("cluster_id")
-        or body.get("actor_cluster")
-        or body.get("source_cluster")
-        or getattr(getattr(server, "settings", None), "cluster_id", None)
-        or ""
-    )
-    cluster_id = str(cluster_raw).strip()
-    tenant_raw = (
-        body.get("tenant_id")
-        or body.get("actor_tenant_id")
-        or body.get("viewer_tenant_id")
-    )
+    settings = getattr(server, "settings", None)
+    policy_on = bool(getattr(settings, "discovery_policy_enabled", False))
+    # Connection-bound identity (set by server on the accepting session).
+    conn_cluster = getattr(server, "_rpc_session_cluster_id", None)
+    conn_tenant = getattr(server, "_rpc_session_tenant_id", None)
+    if conn_cluster is None:
+        # Optional per-request context set by the connection handler.
+        ctx = getattr(server, "_rpc_actor_context", None)
+        if isinstance(ctx, dict):
+            conn_cluster = ctx.get("cluster_id")
+            conn_tenant = ctx.get("tenant_id")
+
+    if policy_on:
+        cluster_raw = (
+            conn_cluster
+            or getattr(settings, "cluster_id", None)
+            or ""
+        )
+        tenant_raw = conn_tenant
+    else:
+        cluster_raw = (
+            body.get("cluster_id")
+            or body.get("actor_cluster")
+            or body.get("source_cluster")
+            or conn_cluster
+            or getattr(settings, "cluster_id", None)
+            or ""
+        )
+        tenant_raw = (
+            body.get("tenant_id")
+            or body.get("actor_tenant_id")
+            or body.get("viewer_tenant_id")
+            or conn_tenant
+        )
+
+    cluster_id = str(cluster_raw).strip() if cluster_raw is not None else ""
     tenant_id = str(tenant_raw).strip() if tenant_raw is not None else None
     if tenant_id == "":
         tenant_id = None

@@ -81,8 +81,8 @@ raft:
     tests:
       - tests/invariants/test_raft_transitions.py
   - id: INV-C3
-    claim: "applied prefix identical for indices ≤ min(commit) across majority"
-    proof: [L2]
+    claim: "sequential leader submits apply on leader state machine (smoke; not Jepsen-class majority prefix under fault)"
+    proof: [L1, L2]
     tests:
       - tests/invariants/test_raft_linearizability_smoke.py
   - id: INV-C4

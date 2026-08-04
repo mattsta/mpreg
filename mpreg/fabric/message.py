@@ -48,6 +48,29 @@ class DeliveryGuarantee(Enum):
             return value
         return cls(str(value))
 
+    @classmethod
+    def from_wire(cls, value: str | DeliveryGuarantee) -> DeliveryGuarantee:
+        """Parse a wire/string guarantee onto the fabric enum (COR-14)."""
+        if isinstance(value, cls):
+            return value
+        raw = getattr(value, "value", value)
+        return cls(str(raw))
+
+    def to_queue_guarantee(self) -> Any:
+        """Map fabric guarantee onto the queue-plane enum.
+
+        Raises:
+            ValueError: EXACTLY_ONCE has no queue member (COR-14).
+        """
+        from mpreg.core.message_queue import DeliveryGuarantee as QueueDG
+
+        if self is DeliveryGuarantee.EXACTLY_ONCE:
+            raise ValueError(
+                "unsupported_delivery_guarantee:exactly_once "
+                "(queue plane has no EXACTLY_ONCE member)"
+            )
+        return QueueDG(self.value)
+
 class RoutingPriority(Enum):
     """Routing priority levels."""
 

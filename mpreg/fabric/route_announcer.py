@@ -210,8 +210,15 @@ class RouteAnnouncementProcessor:
         if announcement.signature_algorithm != self.security_config.signature_algorithm:
             return False
 
+        # COR-04: when signatures are required, only pinned/registry keys verify —
+        # never the announcement's self-attested public_key.
+        fallback = (
+            None
+            if self.security_config.require_signatures
+            else announcement.public_key
+        )
         keys = self._resolve_public_keys(
-            announcement.advertiser, fallback_key=announcement.public_key
+            announcement.advertiser, fallback_key=fallback
         )
         if not keys:
             return False
@@ -252,8 +259,13 @@ class RouteAnnouncementProcessor:
         if withdrawal.signature_algorithm != self.security_config.signature_algorithm:
             return False
 
+        fallback = (
+            None
+            if self.security_config.require_signatures
+            else withdrawal.public_key
+        )
         keys = self._resolve_public_keys(
-            withdrawal.advertiser, fallback_key=withdrawal.public_key
+            withdrawal.advertiser, fallback_key=fallback
         )
         if not keys:
             return False
@@ -269,6 +281,12 @@ class RouteAnnouncementProcessor:
     def _resolve_public_keys(
         self, cluster_id: ClusterId, *, fallback_key: bytes | None
     ) -> tuple[bytes, ...]:
+        """Resolve verification keys for an advertiser.
+
+        When ``require_signatures`` is set, callers pass ``fallback_key=None`` so
+        only the configured ``public_key_resolver`` (pinned registry) is used.
+        Self-attested keys on the wire are never trusted in that mode (COR-04).
+        """
         if self.public_key_resolver:
             resolved = normalize_public_keys(self.public_key_resolver(cluster_id))
             if resolved:

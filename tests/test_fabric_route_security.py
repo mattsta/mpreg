@@ -103,6 +103,42 @@ async def test_route_processor_requires_signature() -> None:
     assert updated is False
 
 @pytest.mark.asyncio
+async def test_require_signatures_rejects_self_attested_key_without_registry() -> None:
+    """COR-04: signed with embedded public_key but no pinned resolver → reject."""
+    table = RouteTable(local_cluster="cluster-a")
+    signer = RouteAnnouncementSigner.create()
+    processor = RouteAnnouncementProcessor(
+        local_cluster="cluster-a",
+        route_table=table,
+        sender_cluster_resolver=lambda _: "cluster-b",
+        security_config=RouteSecurityConfig(
+            require_signatures=True,
+            allow_unsigned=False,
+            signature_algorithm=signer.algorithm,
+        ),
+        public_key_resolver=None,
+    )
+    signed = signer.sign(_base_announcement())
+    assert signed.public_key  # self-attested on wire
+    updated = await processor.handle_announcement(signed, sender_id="node-b", now=100.0)
+    assert updated is False
+
+    # Empty resolver (knows no keys) also rejects
+    processor2 = RouteAnnouncementProcessor(
+        local_cluster="cluster-a",
+        route_table=table,
+        sender_cluster_resolver=lambda _: "cluster-b",
+        security_config=RouteSecurityConfig(
+            require_signatures=True,
+            allow_unsigned=False,
+            signature_algorithm=signer.algorithm,
+        ),
+        public_key_resolver=lambda _cid: None,
+    )
+    updated = await processor2.handle_announcement(signed, sender_id="node-b", now=100.0)
+    assert updated is False
+
+@pytest.mark.asyncio
 async def test_route_processor_accepts_rotated_keys() -> None:
     table = RouteTable(local_cluster="cluster-a")
     signer_old = RouteAnnouncementSigner.create()

@@ -377,6 +377,19 @@ class GlobalCacheManager(ManagedObject):
                 error_message=f"namespace_policy_denied:{reason}",
             )
 
+        # COR-01: refuse STRONG before any local write. Live path has no majority-ack
+        # barrier; writing L1/L2 then failing on L3 left dirty residuals on "failed" puts.
+        # L1-only + STRONG is also refused (paper success is not strong consistency).
+        if options.consistency_level is ConsistencyLevel.STRONG:
+            return CacheOperationResult(
+                success=False,
+                error_message=(
+                    "ConsistencyLevel.STRONG is not implemented on the live fabric "
+                    "cache path (no majority-ack barrier). Use EVENTUAL or WEAK, or "
+                    "await a future quorum-backed put."
+                ),
+            )
+
         operation_id = str(uuid.uuid4())
         start_time = time.time()
 
@@ -684,11 +697,12 @@ class GlobalCacheManager(ManagedObject):
         return CacheOperationResult(success=False, error_message="L3 miss")
 
     async def _put_to_l3(self, entry: GlobalCacheEntry, options: CacheOptions) -> None:
-        """Store entry in L3 distributed cache."""
+        """Store entry in L3 distributed cache.
+
+        STRONG is refused at :meth:`put` entry (COR-01) before any local write.
+        Keep a defensive check here for direct callers / future paths.
+        """
         if options.consistency_level is ConsistencyLevel.STRONG:
-            # Fail closed: live FabricCacheProtocol does not wait for majority.
-            # Checked before protocol-None short-circuit so STRONG never silently
-            # degrades to local-only success.
             raise ValueError(
                 "ConsistencyLevel.STRONG is not implemented on the live fabric "
                 "cache path (no majority-ack barrier). Use EVENTUAL or WEAK, or "

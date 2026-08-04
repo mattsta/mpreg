@@ -473,10 +473,35 @@ class FabricRouter:
         except Exception:  # never break routing for observability
             router_log.opt(lazy=True).debug("route decision log record failed")
 
+    def _unsupported_delivery_result(self, message: UnifiedMessage, route_id: str) -> FabricRouteResult:
+        """COR-03: EXACTLY_ONCE is fabric-wide unsupported (not queue-only)."""
+        router_log.warning(
+            "EXACTLY_ONCE delivery rejected (unsupported): type={} topic={} message_id={}",
+            message.message_type.value,
+            message.topic,
+            message.message_id,
+        )
+        return FabricRouteResult(
+            route_id=route_id,
+            targets=[],
+            routing_path=[],
+            federation_path=[],
+            estimated_latency_ms=0.0,
+            route_cost=0.0,
+            federation_required=False,
+            hops_required=0,
+            reason=FabricRouteReason.UNSUPPORTED_DELIVERY,
+            cluster_routes={},
+        )
+
     async def _compute_route(
         self, message: UnifiedMessage, policy: FabricRoutingPolicy
     ) -> FabricRouteResult:
         route_id = create_route_id(message)
+
+        # COR-03: refuse EO for every message type before any side effects.
+        if message.delivery == DeliveryGuarantee.EXACTLY_ONCE:
+            return self._unsupported_delivery_result(message, route_id)
 
         if (
             self._is_federation_message(message)
@@ -723,6 +748,8 @@ class FabricRouter:
             return await self._compute_local_route(
                 message, policy, route_id, reason=FabricRouteReason.NO_MATCH
             )
+        # COR-07: EO already refused in _compute_route before this method runs.
+        # Auto-create only for supported delivery guarantees.
         if self.message_queue and queue_name not in self.message_queue.list_queues():
             await self.message_queue.create_queue(queue_name)
         entries = self.routing_index.find_queues(QueueQuery(queue_name=queue_name))
@@ -774,26 +801,6 @@ class FabricRouter:
             ]
         estimated_latency = 15.0
         route_cost = 3.0
-        if message.delivery == DeliveryGuarantee.EXACTLY_ONCE:
-            # Fail closed: no idempotent barrier / dedup store on the fabric hop.
-            # Previously we only inflated cost — a silent paper guarantee.
-            router_log.warning(
-                "EXACTLY_ONCE delivery rejected (unsupported): topic={} message_id={}",
-                message.topic,
-                message.message_id,
-            )
-            return FabricRouteResult(
-                route_id=route_id,
-                targets=[],
-                routing_path=[],
-                federation_path=[],
-                estimated_latency_ms=0.0,
-                route_cost=0.0,
-                federation_required=False,
-                hops_required=0,
-                reason=FabricRouteReason.UNSUPPORTED_DELIVERY,
-                cluster_routes={},
-            )
         remote_routes = {
             cluster_id: plan
             for cluster_id, plan in cluster_routes.items()

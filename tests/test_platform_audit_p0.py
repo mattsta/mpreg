@@ -93,6 +93,28 @@ async def test_strong_cache_put_fails_closed_when_l3_requested() -> None:
         assert result.success is False
         assert result.error_message is not None
         assert "STRONG" in result.error_message
+        # COR-01: no dirty L1 residual after refused STRONG put
+        get_result = await mgr.get(key, CacheOptions(cache_levels=frozenset({CacheLevel.L1})))
+        assert get_result.success is False
+    finally:
+        mgr.shutdown_sync()
+
+@pytest.mark.asyncio
+async def test_strong_cache_put_l1_only_fails_closed_no_residual() -> None:
+    """L1-only + STRONG must not paper-succeed (COR-01)."""
+    mgr = GlobalCacheManager(GlobalCacheConfiguration(enable_l2_persistent=False))
+    try:
+        key = GlobalCacheKey(namespace="t", identifier="k-l1-strong")
+        options = CacheOptions(
+            cache_levels=frozenset({CacheLevel.L1}),
+            consistency_level=ConsistencyLevel.STRONG,
+        )
+        result = await mgr.put(key, {"v": 2}, CacheMetadata(), options)
+        assert result.success is False
+        assert result.error_message is not None
+        assert "STRONG" in result.error_message
+        get_result = await mgr.get(key, CacheOptions(cache_levels=frozenset({CacheLevel.L1})))
+        assert get_result.success is False
     finally:
         mgr.shutdown_sync()
 
@@ -132,6 +154,80 @@ async def test_exactly_once_queue_route_unsupported() -> None:
     result = await router.route_message(msg)
     assert result.reason == FabricRouteReason.UNSUPPORTED_DELIVERY
     assert result.targets == []
+
+@pytest.mark.asyncio
+async def test_exactly_once_all_message_types_unsupported() -> None:
+    """COR-03: EO is fabric-wide, not queue-route-only."""
+    from mpreg.fabric.engine import RoutingEngine
+    from mpreg.fabric.index import RoutingIndex
+    from mpreg.fabric.router import FabricRoutingConfig, FabricRouter
+
+    index = RoutingIndex()
+    config = FabricRoutingConfig(
+        local_cluster_id="c-local",
+        local_node_id="n-local",
+    )
+    engine = RoutingEngine(local_cluster="c-local", routing_index=index)
+    router = FabricRouter(
+        config=config,
+        routing_index=index,
+        routing_engine=engine,
+    )
+    for mtype in (
+        MessageType.RPC,
+        MessageType.PUBSUB,
+        MessageType.QUEUE,
+        MessageType.CACHE,
+        MessageType.CONTROL,
+        MessageType.DATA,
+    ):
+        msg = UnifiedMessage(
+            message_id=f"eo-{mtype.value}",
+            topic=f"mpreg.test.{mtype.value}",
+            message_type=mtype,
+            delivery=DeliveryGuarantee.EXACTLY_ONCE,
+            payload={},
+            headers=MessageHeaders(correlation_id="c-eo"),
+        )
+        result = await router.route_message(msg)
+        assert result.reason == FabricRouteReason.UNSUPPORTED_DELIVERY, mtype
+        assert result.targets == []
+
+@pytest.mark.asyncio
+async def test_exactly_once_does_not_auto_create_queue() -> None:
+    """COR-07: EO reject must not create queue side effects."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from mpreg.fabric.engine import RoutingEngine
+    from mpreg.fabric.index import RoutingIndex
+    from mpreg.fabric.router import FabricRoutingConfig, FabricRouter
+
+    index = RoutingIndex()
+    config = FabricRoutingConfig(
+        local_cluster_id="c-local",
+        local_node_id="n-local",
+    )
+    engine = RoutingEngine(local_cluster="c-local", routing_index=index)
+    mq = MagicMock()
+    mq.list_queues.return_value = []
+    mq.create_queue = AsyncMock()
+    router = FabricRouter(
+        config=config,
+        routing_index=index,
+        routing_engine=engine,
+        message_queue=mq,
+    )
+    msg = UnifiedMessage(
+        message_id="eo-side",
+        topic="mpreg.queue.never-create-me",
+        message_type=MessageType.QUEUE,
+        delivery=DeliveryGuarantee.EXACTLY_ONCE,
+        payload={},
+        headers=MessageHeaders(correlation_id="c-eo"),
+    )
+    result = await router.route_message(msg)
+    assert result.reason == FabricRouteReason.UNSUPPORTED_DELIVERY
+    mq.create_queue.assert_not_called()
 
 def test_openapi_includes_live_ready_traceparent() -> None:
     doc = build_monitoring_openapi()

@@ -110,7 +110,39 @@ async def test_location_strong_wait_and_get_fail_closed() -> None:
     with pytest.raises(ValueError, match="STRONG is not implemented"):
         await LocationConsistencyManager._get_with_strong_consistency(mgr, key)
 
+@pytest.mark.asyncio
+async def test_location_replicate_strong_no_residual() -> None:
+    """COR-02: full replicate_cache_entry(STRONG) leaves no local entry or queue item."""
+    import asyncio
+
+    from mpreg.core.location_consistency import (
+        LocationConsistencyConfig,
+        LocationInfo,
+    )
+    from mpreg.datastructures.vector_clock import VectorClock as VC
+
+    loc = LocationInfo(cluster_id="c1", region="r1", zone="az1")
+    cfg = LocationConsistencyConfig(default_consistency_level=ConsistencyLevel.EVENTUAL)
+    mgr = object.__new__(LocationConsistencyManager)
+    mgr.location_info = loc
+    mgr.config = cfg
+    mgr.vector_clock = VC.from_dict({"c1": 0})
+    mgr.replicated_entries = {}
+    mgr.replication_queue = asyncio.Queue(maxsize=100)
+    mgr.cluster_locations = {"c1": loc}
+
+    key = GlobalCacheKey(namespace="ns", identifier="strong-k", version="v1")
+    with pytest.raises(ValueError, match="STRONG is not implemented"):
+        await mgr.replicate_cache_entry(
+            key, {"v": 1}, consistency_level=ConsistencyLevel.STRONG
+        )
+    entry_key = mgr._entry_key(key)
+    assert entry_key not in mgr.replicated_entries
+    assert mgr.replication_queue.empty()
+
 def test_blockchain_exactly_once_submit_rejected() -> None:
+    from mpreg.core.blockchain_message_queue import UnsupportedDeliveryGuaranteeError
+
     q = BlockchainMessageQueue(queue_id="honesty-eo")
     msg = BlockchainMessage(
         sender_id="alice",
@@ -121,7 +153,8 @@ def test_blockchain_exactly_once_submit_rejected() -> None:
         payload=b"nope",
         processing_fee=1,
     )
-    assert q.submit_message(msg) is False
+    with pytest.raises(UnsupportedDeliveryGuaranteeError, match="EXACTLY_ONCE|exactly_once"):
+        q.submit_message(msg)
 
 def test_queue_plane_has_no_exactly_once_member() -> None:
     names = {m.name for m in QueueDeliveryGuarantee}
@@ -505,3 +538,62 @@ def test_accept_fabric_gossip_strips_hmac_field() -> None:
     assert out["message_id"] == "m1"
     # reject unsigned when required
     assert server._accept_fabric_gossip_payload(payload) is None
+
+# --- T9 COR residual closeout ---
+
+def test_delivery_guarantee_cross_plane_conversion() -> None:
+    """COR-14: fabric EO cannot convert onto queue plane; shared wires round-trip."""
+    from mpreg.core.message_queue import DeliveryGuarantee as QueueDG
+    from mpreg.fabric.message import DeliveryGuarantee as FabricDG
+
+    assert FabricDG.from_wire("at_least_once") is FabricDG.AT_LEAST_ONCE
+    assert FabricDG.AT_LEAST_ONCE.to_queue_guarantee() is QueueDG.AT_LEAST_ONCE
+    assert FabricDG.BROADCAST.to_queue_guarantee() is QueueDG.BROADCAST
+    with pytest.raises(ValueError, match="exactly_once"):
+        FabricDG.EXACTLY_ONCE.to_queue_guarantee()
+
+def test_name_vote_experimental_off_in_shipped_profiles() -> None:
+    """COR-15: no profile enables name-vote theater."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1] / "mpreg" / "profiles"
+    for path in sorted(root.glob("*.toml")):
+        text = path.read_text(encoding="utf-8")
+        assert "experimental_name_vote_consensus" not in text, path.name
+
+@pytest.mark.asyncio
+async def test_create_queue_honors_namespace_policy() -> None:
+    """COR-06: queue provision is a write gated by namespace policy."""
+    from mpreg.core.message_queue_manager import (
+        MessageQueueManager,
+        QueueManagerConfiguration,
+    )
+    from mpreg.core.namespace_policy import (
+        NamespacePolicyEngine,
+        NamespacePolicyRule,
+        actor_context,
+    )
+
+    engine = NamespacePolicyEngine(
+        enabled=True,
+        default_allow=False,
+        rules=(
+            NamespacePolicyRule(
+                namespace="owned",
+                owners=("owner-cluster",),
+            ),
+        ),
+    )
+    mgr = MessageQueueManager(
+        QueueManagerConfiguration(enable_auto_queue_creation=False),
+        namespace_policy=engine,
+    )
+    try:
+        with actor_context(cluster_id="intruder", tenant_id=None):
+            ok = await mgr.create_queue("owned.q1")
+            assert ok is False
+        with actor_context(cluster_id="owner-cluster", tenant_id=None):
+            ok = await mgr.create_queue("owned.q1")
+            assert ok is True
+    finally:
+        await mgr.shutdown()
