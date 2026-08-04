@@ -18,7 +18,8 @@ from enum import Enum
 from typing import Any, TypeVar
 
 from loguru import logger
-from pympler import asizeof
+
+from mpreg.core.native_codec import estimate_size_bytes
 
 from .task_manager import ManagedObject
 
@@ -207,7 +208,9 @@ class CacheConfiguration:
     eviction_batch_size: int = 100
     enable_compression: bool = True
     enable_dependency_tracking: bool = True
-    enable_accurate_sizing: bool = True  # Use pympler for accurate object sizing
+    # Default off: pympler walks are accurate but O(object graph) and allocate
+    # heavily under fan-out. Bounded native_codec estimates are the production path.
+    enable_accurate_sizing: bool = False
     # S4LRU configuration
     s4lru_segments: int = 4  # Number of segments for S4LRU (parameterizable)
 
@@ -870,23 +873,22 @@ class SmartCacheManager[T](ManagedObject):
             self.dependency_graph[dependent].discard(key)
 
     def _estimate_size(self, value: Any) -> int:
-        """Estimate memory size of cached value using pympler for accuracy."""
+        """Bounded size estimate — never nested str/repr or full pympler walks.
+
+        Accurate pympler sizing is opt-in and still falls back to the bounded
+        walk on failure. The default path must stay cheap under large nested
+        payloads (same class of blow-up as topic backlog ``len(str(payload))``).
+        """
         if self.config.enable_accurate_sizing:
             try:
-                # Use pympler for accurate memory measurement
-                return asizeof.asizeof(value)
+                from pympler import asizeof
+
+                return int(asizeof.asizeof(value))
             except Exception as e:
                 cache_store_log.warning(
                     f"Failed to calculate accurate size with pympler: {e}"
                 )
-                # Fall back to simple estimation
-                pass
-
-        # Simple estimation fallback
-        try:
-            return len(str(value).encode("utf-8"))
-        except Exception:
-            return 1024  # Default estimate
+        return estimate_size_bytes(value)
 
     async def shutdown(self) -> None:
         """Shutdown cache manager and cleanup resources."""

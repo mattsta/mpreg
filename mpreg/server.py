@@ -1754,6 +1754,13 @@ class MPREGServer:
         self.topic_exchange = TopicExchange(
             server_url=self.cluster.local_url, cluster_id=self.settings.cluster_id
         )
+        # Discovery control-plane topics are high-churn and fan out under gossip.
+        # Storing them in the pub/sub backlog multiplies memory and CPU without
+        # helping live subscribers (deltas are already applied via gossip).
+        self.topic_exchange.set_backlog_enabled(DISCOVERY_DELTA_TOPIC, enabled=False)
+        self.topic_exchange.set_backlog_prefix_enabled(
+            f"{DISCOVERY_DELTA_TOPIC}.", enabled=False
+        )
         if self.settings.discovery_summary_export_store_forward_seconds > 0:
             self.topic_exchange.set_backlog_prefix_enabled(
                 f"{DISCOVERY_SUMMARY_TOPIC}.", enabled=False

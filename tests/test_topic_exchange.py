@@ -26,6 +26,7 @@ from mpreg.core.topic_exchange import (
     TopicExchange,
     TopicMatchingBenchmark,
     TopicTrie,
+    estimate_payload_size_bytes,
 )
 
 @contextmanager
@@ -334,8 +335,8 @@ class TestMessageBacklog:
         )
         backlog.add_message(msg)
 
-        # Trigger cleanup by adding more messages
-        for i in range(10):
+        # Trigger periodic cleanup (runs every 32 adds) by adding enough messages
+        for i in range(32):
             new_msg = PubSubMessage(
                 topic=f"test.topic.{i}",
                 payload={"data": f"new_{i}"},
@@ -349,6 +350,61 @@ class TestMessageBacklog:
         messages = backlog.get_backlog("test.topic", 5)
         message_ids = [msg.message_id for msg in messages]
         assert "expired_msg" not in message_ids
+
+    def test_maxlen_eviction_updates_totals(self):
+        """Deque maxlen drops must keep total_messages/size coherent."""
+        backlog = MessageBacklog(max_age_seconds=3600, max_messages_per_topic=3)
+        for i in range(10):
+            backlog.add_message(
+                PubSubMessage(
+                    topic="burst.topic",
+                    payload={"i": i, "blob": "x" * 32},
+                    timestamp=time.time(),
+                    message_id=f"burst_{i}",
+                    publisher="test_client",
+                )
+            )
+        stats = backlog.get_stats()
+        assert stats.total_messages == 3
+        assert len(backlog.backlogs["burst.topic"]) == 3
+        assert stats.total_size_bytes > 0
+
+class TestPayloadSizeEstimate:
+    """Payload size estimation must stay cheap for nested discovery payloads."""
+
+    def test_primitives_and_bytes(self):
+        assert estimate_payload_size_bytes(None) == 0
+        assert estimate_payload_size_bytes(b"abc") == 3
+        assert estimate_payload_size_bytes("hello") == 5
+        assert estimate_payload_size_bytes(42) > 0
+
+    def test_nested_dict_bounded_and_fast(self):
+        # Simulate a gossip catalog-delta style nested payload that used to
+        # stall the event loop via len(str(payload)) under fan-out.
+        nested: dict = {"nodes": []}
+        for i in range(500):
+            nested["nodes"].append(
+                {
+                    "node_id": f"node-{i}",
+                    "cluster_id": "c1",
+                    "functions": [
+                        {"name": f"fn-{j}", "resources": ["r1", "r2"]} for j in range(20)
+                    ],
+                    "meta": {"k": "v" * 50},
+                }
+            )
+        # Must complete quickly (pathological str() would take seconds+).
+        start = time.perf_counter()
+        size = estimate_payload_size_bytes(nested)
+        elapsed = time.perf_counter() - start
+        assert size > 0
+        assert elapsed < 0.05, f"estimate took {elapsed:.3f}s (must be O(bounded))"
+
+    def test_cyclic_structure_does_not_loop(self):
+        cyclic: dict = {"a": 1}
+        cyclic["self"] = cyclic
+        size = estimate_payload_size_bytes(cyclic)
+        assert size > 0
 
 class TestTopicExchange:
     """Test the main topic exchange engine."""

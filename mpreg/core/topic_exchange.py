@@ -22,6 +22,7 @@ from threading import RLock
 # Import for type annotations
 from typing import Any
 
+from mpreg.core.native_codec import estimate_size_bytes
 from mpreg.core.statistics import (
     BacklogStatistics,
     TopicExchangeComprehensiveStats,
@@ -34,6 +35,10 @@ from .model import (
     PubSubSubscription,
     TopicAdvertisement,
 )
+
+def estimate_payload_size_bytes(payload: Any) -> int:
+    """Bounded payload size for backlog stats (never nested str/repr)."""
+    return estimate_size_bytes(payload)
 
 @dataclass(slots=True, frozen=True)
 class StoredMessage:
@@ -57,7 +62,9 @@ class MessageBacklog:
     cleanup_heap: list[tuple[float, str, str]] = field(default_factory=list)
     total_messages: int = 0
     total_size_bytes: int = 0
+    _message_ids_in_backlog: set[str] = field(default_factory=set)
     _lock: RLock = field(default_factory=RLock)
+    _adds_since_cleanup: int = 0
 
     def __post_init__(self) -> None:
         """Initialize backlogs with correct maxlen after dataclass creation."""
@@ -69,24 +76,39 @@ class MessageBacklog:
             stored_msg = StoredMessage(
                 message=message,
                 stored_at=time.time(),
-                size_bytes=len(str(message.payload)),  # Rough size estimate
+                size_bytes=estimate_payload_size_bytes(message.payload),
             )
 
-            # Add to topic backlog
+            # Add to topic backlog. When maxlen drops an older entry, account for it.
             topic_backlog = self.backlogs[message.topic]
+            dropped: StoredMessage | None = None
+            if (
+                topic_backlog.maxlen is not None
+                and len(topic_backlog) >= topic_backlog.maxlen
+            ):
+                dropped = topic_backlog[0]
             topic_backlog.append(stored_msg)
+            if dropped is not None:
+                self.total_messages = max(0, self.total_messages - 1)
+                self.total_size_bytes = max(
+                    0, self.total_size_bytes - dropped.size_bytes
+                )
+                self._message_ids_in_backlog.discard(dropped.message.message_id)
 
             # Add to cleanup heap (using message timestamp for proper expiration)
             heapq.heappush(
                 self.cleanup_heap,
                 (message.timestamp, message.topic, message.message_id),
             )
+            self._message_ids_in_backlog.add(message.message_id)
 
             self.total_messages += 1
             self.total_size_bytes += stored_msg.size_bytes
 
-            # Periodic cleanup
-            if self.total_messages % 10 == 0:  # More frequent cleanup for testing
+            # Periodic cleanup (age-based + stale heap entries from maxlen drops)
+            self._adds_since_cleanup += 1
+            if self._adds_since_cleanup >= 32:
+                self._adds_since_cleanup = 0
                 self._cleanup_expired()
 
     def get_backlog(
@@ -123,12 +145,16 @@ class MessageBacklog:
         return re.match(regex_pattern, topic) is not None
 
     def _cleanup_expired(self) -> None:
-        """Remove expired messages from backlogs."""
+        """Remove expired messages from backlogs and prune stale heap entries."""
         cutoff_time = time.time() - self.max_age_seconds
 
-        # Efficiently remove expired messages using the heap
+        # Efficiently remove expired messages using the heap. Heap entries may
+        # outlive their messages when deque maxlen drops them; discard those.
         while self.cleanup_heap and self.cleanup_heap[0][0] < cutoff_time:
             _, topic, message_id = heapq.heappop(self.cleanup_heap)
+
+            if message_id not in self._message_ids_in_backlog:
+                continue
 
             # Remove from topic backlog if it exists
             if topic in self.backlogs:
@@ -136,12 +162,24 @@ class MessageBacklog:
                 # Remove expired messages from the front (deque is ordered by time)
                 while backlog and backlog[0].message.timestamp < cutoff_time:
                     removed = backlog.popleft()
-                    self.total_messages -= 1
-                    self.total_size_bytes -= removed.size_bytes
+                    self.total_messages = max(0, self.total_messages - 1)
+                    self.total_size_bytes = max(
+                        0, self.total_size_bytes - removed.size_bytes
+                    )
+                    self._message_ids_in_backlog.discard(removed.message.message_id)
 
                 # Clean up empty backlogs
                 if not backlog:
                     del self.backlogs[topic]
+
+        # Cap heap growth from maxlen-evicted entries that are still "fresh".
+        if len(self.cleanup_heap) > max(self.total_messages * 4, 1024):
+            self.cleanup_heap = [
+                entry
+                for entry in self.cleanup_heap
+                if entry[2] in self._message_ids_in_backlog
+            ]
+            heapq.heapify(self.cleanup_heap)
 
     def get_stats(self) -> BacklogStatistics:
         """Get backlog statistics."""
