@@ -72,3 +72,29 @@ def test_gossip_checksum_avoids_str_payload() -> None:
     assert len(msg.checksum) == 16
     assert len(msg.digest) == 8
     assert dt < 0.05, f"GossipMessage init too slow under huge payload: {dt:.3f}s"
+
+def test_bigint_canonical_and_text_helpers(tmp_path) -> None:
+    """orjson rejects >i64; codec coerces to decimal str for stable digests."""
+    from mpreg.core.native_codec import (
+        JSONDecodeError,
+        dumps_pretty_text,
+        dumps_text,
+        load_path,
+        loads_text,
+    )
+
+    huge = (1 << 63) + 99
+    data = {"n": huge, "ok": 1}
+    raw = canonical_dumps(data)
+    assert b'"n":"' in raw  # bigint as decimal string
+    assert loads(raw)["ok"] == 1
+    assert loads_text(dumps_text({"a": 1})) == {"a": 1}
+    path = tmp_path / "x.json"
+    path.write_text(dumps_pretty_text({"z": 2, "a": 1}))
+    loaded = load_path(path)
+    assert loaded["a"] == 1
+    try:
+        loads_text("{not-json")
+        raise AssertionError("expected JSONDecodeError")
+    except JSONDecodeError:
+        pass

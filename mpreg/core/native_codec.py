@@ -14,7 +14,11 @@ Design goals
   simdjson / loadable native module can drop in without touching call sites.
 
 This module is the single place mechanical encoding should live for fabric
-control-plane and pub/sub data plane code.
+control-plane, consensus, persistence, and pub/sub data plane code.
+
+Text/file helpers (``dumps_text``, ``loads_text``, ``dumps_pretty``,
+``dump_path``, ``load_path``) cover operator JSON and on-disk snapshots so
+call sites never import stdlib ``json`` for product paths.
 """
 
 from __future__ import annotations
@@ -65,6 +69,44 @@ def _stable_sequence(items: Any) -> list[Any]:
     except Exception:
         return list(items)
 
+# orjson only accepts signed 64-bit integers; property tests and some
+# blockchain counters can exceed that. Coerce out-of-range ints to decimal
+# strings so encode never raises and digests stay deterministic.
+_I64_MIN = -(1 << 63)
+_I64_MAX = (1 << 63) - 1
+
+def _coerce_orjson_tree(data: Any, *, _depth: int = 0) -> Any:
+    """Return a tree orjson can encode (bigint → decimal str)."""
+    if isinstance(data, bool) or data is None:
+        return data
+    if isinstance(data, int):
+        if data < _I64_MIN or data > _I64_MAX:
+            return str(data)
+        return data
+    if isinstance(data, (str, float, bytes, bytearray, memoryview)):
+        return data
+    if _depth > 64:
+        return data
+    if isinstance(data, Mapping):
+        return {
+            (
+                k
+                if isinstance(k, str)
+                else str(k)
+                if not isinstance(k, (int, float, bool)) or isinstance(k, bool)
+                else k
+            ): _coerce_orjson_tree(v, _depth=_depth + 1)
+            for k, v in data.items()
+        }
+    if isinstance(data, (list, tuple)):
+        return [_coerce_orjson_tree(v, _depth=_depth + 1) for v in data]
+    if isinstance(data, (set, frozenset)):
+        return [
+            _coerce_orjson_tree(v, _depth=_depth + 1)
+            for v in _stable_sequence(data)
+        ]
+    return data
+
 def _orjson_default(obj: Any) -> Any:
     if isinstance(obj, (set, frozenset)):
         return _stable_sequence(obj)
@@ -79,6 +121,9 @@ def _orjson_default(obj: Any) -> Any:
         }
     if isinstance(obj, (bytes, bytearray, memoryview)):
         return bytes(obj)
+    if isinstance(obj, int) and not isinstance(obj, bool):
+        # Safety net if a bigint slips past _coerce_orjson_tree.
+        return str(obj)
     # Last resort for signature/digest paths: type name only — never nested repr.
     return f"<{type(obj).__name__}>"
 
@@ -89,14 +134,14 @@ class OrjsonBackend:
     name: str = "orjson"
 
     def dumps(self, data: Any) -> bytes:
-        return orjson.dumps(data, default=_orjson_default)
+        return orjson.dumps(_coerce_orjson_tree(data), default=_orjson_default)
 
     def loads(self, data: bytes) -> Any:
         return orjson.loads(data)
 
     def canonical_dumps(self, data: Any) -> bytes:
         return orjson.dumps(
-            data,
+            _coerce_orjson_tree(data),
             option=orjson.OPT_SORT_KEYS,
             default=_orjson_default,
         )
@@ -148,6 +193,51 @@ def canonical_hash_hex(
     if truncate is not None:
         return digest[:truncate]
     return digest
+
+# orjson.JSONDecodeError is a ValueError subclass (not json.JSONDecodeError).
+# Export one name so call sites can catch decode failures without stdlib json.
+JSONDecodeError = orjson.JSONDecodeError
+
+def dumps_text(data: Any) -> str:
+    """UTF-8 text form of :func:`dumps` (compact wire JSON as str)."""
+    return dumps(data).decode("utf-8")
+
+def loads_text(data: str | bytes | bytearray | memoryview) -> Any:
+    """Decode from ``str`` or bytes via the active backend."""
+    if isinstance(data, str):
+        return loads(data.encode("utf-8"))
+    return loads(bytes(data))
+
+def dumps_pretty(data: Any) -> bytes:
+    """Human-indented JSON bytes (operator files, CLI, debug snapshots)."""
+    return orjson.dumps(
+        data,
+        option=orjson.OPT_INDENT_2,
+        default=_orjson_default,
+    )
+
+def dumps_pretty_text(data: Any) -> str:
+    """Human-indented JSON as UTF-8 text."""
+    return dumps_pretty(data).decode("utf-8")
+
+def dump_path(path: str | Any, data: Any, *, pretty: bool = True) -> None:
+    """Write JSON bytes to a filesystem path (creates parent dirs).
+
+    ``path`` may be ``str`` or ``pathlib.Path``. Uses a single write of
+    encoded bytes — no stdlib ``json.dump`` text incremental path.
+    """
+    from pathlib import Path as _Path
+
+    p = _Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    blob = dumps_pretty(data) if pretty else dumps(data)
+    p.write_bytes(blob)
+
+def load_path(path: str | Any) -> Any:
+    """Read and decode JSON from a filesystem path."""
+    from pathlib import Path as _Path
+
+    return loads(_Path(path).read_bytes())
 
 def estimate_size_bytes(value: Any) -> int:
     """Bounded O(items) memory estimate; never calls nested str/repr.
