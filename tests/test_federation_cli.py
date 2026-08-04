@@ -24,7 +24,7 @@ class TestFederationCLI:
         result = runner.invoke(cli, ["--help"])
 
         assert result.exit_code == 0
-        assert "MPREG Fabric Federation Management CLI" in result.output
+        assert "MPREG Fabric Management CLI" in result.output
         assert "discover" in result.output
         assert "register" in result.output
         assert "health" in result.output
@@ -337,9 +337,9 @@ class TestFederationCLI:
         assert "No clusters available" in result.output
 
     def test_metrics_no_clusters(self):
-        """Test metrics display with no clusters."""
+        """Test metrics display with no clusters (top-level alias is federation-metrics)."""
         runner = CliRunner()
-        result = runner.invoke(cli, ["metrics"])
+        result = runner.invoke(cli, ["federation-metrics"])
 
         assert result.exit_code == 0
         assert "No clusters available" in result.output

@@ -1077,7 +1077,7 @@ async def test_discovery_rate_limit_blocks_excess_queries(
             await client.catalog_query(entry_type="functions")
             with pytest.raises(MPREGException) as exc:
                 await client.catalog_query(entry_type="functions")
-            assert exc.value.rpc_error.code == 429
+            assert exc.value.rpc_error.code in (429, 1102)  # 1102 = DISCOVERY_RATE_LIMITED
 
 @pytest.mark.asyncio
 async def test_summary_query_returns_service_summaries(
