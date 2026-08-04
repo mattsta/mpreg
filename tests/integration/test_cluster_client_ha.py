@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import time
 
 import pytest
@@ -152,9 +153,18 @@ async def test_cluster_map_and_client_pool_failover(
             nodes = snapshot.nodes
             assert any(node.advertised_urls for node in nodes)
 
-        cluster_client = MPREGClusterClient(seed_urls=(hub1_url,))
+        # Seed both hubs so failover does not depend solely on map refresh
+        # discovering hub-2 after hub-1 dies mid-call. Short cooldown so a
+        # dead hub is skipped quickly on the post-fault call.
+        cluster_client = MPREGClusterClient(
+            seed_urls=(hub1_url, hub2_url),
+            failure_cooldown_seconds=0.25,
+            refresh_interval=1.0,
+        )
         await cluster_client.connect()
         await cluster_client.refresh_cluster_map()
+        # Ensure hub-2 is a known scored endpoint before fault injection.
+        assert hub2_url in cluster_client._endpoint_scores or hub2_url in cluster_client.seed_urls
         result = await cluster_client.call(
             "quote", "EURUSD", function_id=FUNCTION_ID, version_constraint=">=1.0.0"
         )
@@ -165,7 +175,12 @@ async def test_cluster_map_and_client_pool_failover(
                 await server.shutdown_async()
                 break
 
-        await asyncio.sleep(0.5)
+        # Allow peers to process GOODBYE and re-form hub-2 ↔ provider edges
+        # before the client rotates. Product path also expands seeds on the
+        # first retryable transport failure.
+        await asyncio.sleep(1.0)
+        with contextlib.suppress(Exception):
+            await cluster_client.refresh_cluster_map()
 
         result_after = await cluster_client.call(
             "quote", "EURUSD", function_id=FUNCTION_ID, version_constraint=">=1.0.0"

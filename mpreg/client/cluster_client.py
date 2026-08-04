@@ -210,10 +210,20 @@ class MPREGClusterClient:
 
         candidates = self._candidate_urls(preferred_urls=effective_preferred)
         if not candidates:
-            candidates = list(self.seed_urls)
+            candidates = self._fallback_candidate_urls(
+                preferred_urls=effective_preferred
+            )
+        else:
+            # Keep multi-seed HA durable: map scoring may only list the live
+            # hub's view; still enqueue other seeds after scored peers so a
+            # hub death can rotate without waiting for refresh.
+            for seed in self.seed_urls:
+                if seed not in candidates:
+                    candidates.append(seed)
 
         last_error: Exception | None = None
         saw_command_not_found = False
+        map_refreshed_after_failure = False
         allow_summary_redirect = (
             self.auto_summary_redirect
             if enable_summary_redirect is None
@@ -252,7 +262,10 @@ class MPREGClusterClient:
             deadline_mono = time.monotonic() + float(policy.deadline_seconds)
 
         attempts_used = 0
-        for url in candidates:
+        candidate_i = 0
+        while candidate_i < len(candidates):
+            url = candidates[candidate_i]
+            candidate_i += 1
             if attempts_used >= max(1, self.max_endpoint_attempts):
                 break
             if deadline_mono is not None:
@@ -267,9 +280,11 @@ class MPREGClusterClient:
             # Budget remaining attempts across the outer loop.
             remaining_slots = max(1, self.max_endpoint_attempts - attempts_used)
             if policy is not None:
+                # One attempt per endpoint on the HA path: rotate peers before
+                # burning the shared attempt budget on a dead hub.
                 per_ep = replace(
                     policy,
-                    max_attempts=min(max(1, policy.max_attempts), remaining_slots),
+                    max_attempts=min(1, remaining_slots),
                     # Deadline already enforced via ep_timeout / deadline_mono.
                     deadline_seconds=None,
                     share_deadline_across_attempts=False,
@@ -293,7 +308,7 @@ class MPREGClusterClient:
 
             try:
                 result = await call_with_policy(_once, per_ep)
-                attempts_used += per_ep.max_attempts  # upper bound; actual may be lower
+                attempts_used += 1
                 return result
             except Exception as exc:
                 attempts_used += 1
@@ -318,9 +333,33 @@ class MPREGClusterClient:
                     else:
                         raise mapped from exc
                 self._last_failure[url] = time.time()
+                await self._invalidate_client(url)
                 cluster_client_log.warning(
                     "Cluster client call failed on {}: {}", url, exc
                 )
+                # After a retryable transport failure, expand the candidate pool:
+                # 1) opportunistic map refresh (may fail if only the dead hub is open)
+                # 2) always merge seeds + known map endpoints via fallback ranking
+                #    so hub failover does not depend on a successful refresh.
+                if isinstance(mapped, MpregError) and mapped.retryable:
+                    if not map_refreshed_after_failure:
+                        map_refreshed_after_failure = True
+                        with contextlib.suppress(Exception):
+                            await self.refresh_cluster_map()
+                    expanded = self._candidate_urls(
+                        preferred_urls=effective_preferred
+                    )
+                    if not expanded:
+                        expanded = []
+                    for nxt in self._fallback_candidate_urls(
+                        preferred_urls=effective_preferred
+                    ):
+                        if nxt not in expanded:
+                            expanded.append(nxt)
+                    tried = set(candidates[:candidate_i])
+                    for nxt in expanded:
+                        if nxt not in tried and nxt not in candidates:
+                            candidates.append(nxt)
                 continue
         if (
             allow_summary_redirect
@@ -539,6 +578,14 @@ class MPREGClusterClient:
             self._clients[url] = client
         return client
 
+    async def _invalidate_client(self, url: str) -> None:
+        """Drop a dead pooled client so the next attempt opens a fresh transport."""
+        client = self._clients.pop(url, None)
+        if client is None:
+            return
+        with contextlib.suppress(Exception):
+            await client.disconnect()
+
     async def _ensure_connected(self, client: Client) -> None:
         transport = getattr(client, "_transport", None)
         if transport is not None and transport.connected:
@@ -589,6 +636,34 @@ class MPREGClusterClient:
             urls = urls[offset:] + urls[:offset]
         self._rr_index += 1
         return urls
+
+    def _fallback_candidate_urls(
+        self, *, preferred_urls: Iterable[str] | None = None
+    ) -> list[str]:
+        """Endpoints to try when cooldown emptied the healthy candidate set.
+
+        Prefer known cluster map URLs ordered by oldest failure (or never
+        failed), then seed URLs. Avoids sticky retries against a single dead
+        seed after a hub shutdown when every scored peer is briefly cooling.
+        """
+        now = time.time()
+        known = set(self._endpoint_scores) | set(self.seed_urls)
+        if preferred_urls is not None:
+            preferred = tuple(preferred_urls)
+            preferred_set = {u for u in preferred if u in known}
+            if preferred_set:
+                known = preferred_set
+        ranked = sorted(
+            known,
+            key=lambda u: (self._last_failure.get(u, 0.0), u),
+        )
+        # Skip still-hot failures when alternatives exist.
+        cooled = [
+            u
+            for u in ranked
+            if now - self._last_failure.get(u, 0.0) >= self.failure_cooldown_seconds
+        ]
+        return cooled or ranked
 
     async def _call_on_url(
         self,
@@ -649,7 +724,11 @@ class MPREGClusterClient:
     async def _call_any(self, fun: str, *args: Any) -> Any:
         candidates = self._candidate_urls()
         if not candidates:
-            candidates = list(self.seed_urls)
+            candidates = self._fallback_candidate_urls()
+        else:
+            for seed in self.seed_urls:
+                if seed not in candidates:
+                    candidates.append(seed)
         last_error: Exception | None = None
         for url in candidates:
             try:
@@ -667,6 +746,7 @@ class MPREGClusterClient:
             except Exception as exc:
                 last_error = exc
                 self._last_failure[url] = time.time()
+                await self._invalidate_client(url)
                 continue
         if last_error:
             raise last_error
