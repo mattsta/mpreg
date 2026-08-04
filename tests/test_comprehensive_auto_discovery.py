@@ -69,6 +69,22 @@ class AutoDiscoveryTestResult:
 class AutoDiscoveryTestHelpers:
     """Shared helper methods for auto-discovery testing."""
 
+    @staticmethod
+    def _membership_peer_count(server: MPREGServer) -> int:
+        """Count discovered peers via membership (catalog nodes / peer directory).
+
+        ``cluster.servers`` is a *function-catalog* view and under-reports pure
+        membership while default RPC catalogs are still announcing. Large fan-out
+        discovery must measure membership, not function advertisement.
+        """
+        known = server.cluster.known_node_ids
+        if known:
+            return max(len(known) - 1, 0)
+        if server._peer_directory is not None:
+            return max(len(server._peer_directory.nodes()) - 1, 0)
+        # Last resort: function-bearing nodes (legacy path).
+        return max(len(server.cluster.servers) - 1, 0)
+
     async def _test_cluster_auto_discovery(
         self,
         test_context: AsyncTestContext,
@@ -92,28 +108,31 @@ class AutoDiscoveryTestHelpers:
 
         # Allow time for all servers to fully initialize before starting discovery timing
         if len(ports) >= 30:
-            startup_timeout = max(5.0, len(ports) * 0.1)
+            startup_timeout = max(10.0, len(ports) * 0.25)
             print(
                 f"Waiting up to {startup_timeout}s for all {len(ports)} servers to fully initialize..."
             )
             await wait_for_condition(
                 lambda: all(
-                    server._transport_listener is not None for server in servers
+                    server._transport_listener is not None
+                    and server.cluster.fabric_engine is not None
+                    for server in servers
                 ),
                 timeout=startup_timeout * concurrency_factor,
                 interval=0.1,
                 error_message=(
-                    "Not all servers started transport listeners within "
+                    "Not all servers started transport/fabric within "
                     f"{startup_timeout:.1f}s"
                 ),
             )
 
-        # For large clusters, use more lenient success criteria
+        # Large clusters: require near-complete membership (not just function catalog).
+        # Hang-path backlog amplification used to make full convergence impossible;
+        # with that fixed we can demand real fan-out fidelity.
         if len(ports) >= 30:
-            # Large clusters: accept if 80% of nodes discover 80% of peers
-            min_discovery_threshold = int(expected_peers * 0.8)
+            min_discovery_threshold = max(1, int(expected_peers * 0.95))
             nodes_meeting_threshold = 0
-            min_nodes_threshold = int(len(ports) * 0.8)
+            min_nodes_threshold = max(1, int(len(ports) * 0.95))
         else:
             # Small/medium clusters: expect full discovery
             min_discovery_threshold = expected_peers
@@ -122,8 +141,8 @@ class AutoDiscoveryTestHelpers:
 
         # Wait for auto-discovery - realistic timing since algorithms converge fast
         if len(ports) >= 30:
-            # Large clusters: algorithms converge quickly, just need time for all connections
-            discovery_timeout = max(45.0, len(ports) * 1.0)
+            # Large clusters: allow time for last-batch joiners + catalog snapshots
+            discovery_timeout = max(60.0, len(ports) * 1.2)
         elif len(ports) >= 10:
             # Medium clusters need moderate time
             discovery_timeout = max(15.0, len(ports) * 1.0)
@@ -138,7 +157,7 @@ class AutoDiscoveryTestHelpers:
         def discovery_ready() -> bool:
             meeting_threshold = 0
             for server in servers:
-                discovered_count = max(len(server.cluster.servers) - 1, 0)
+                discovered_count = self._membership_peer_count(server)
                 if discovered_count >= min_discovery_threshold:
                     meeting_threshold += 1
             return meeting_threshold >= min_nodes_threshold
@@ -156,7 +175,7 @@ class AutoDiscoveryTestHelpers:
                 pass
             else:
                 discovered_counts = [
-                    max(len(server.cluster.servers) - 1, 0) for server in servers
+                    self._membership_peer_count(server) for server in servers
                 ]
                 discovery_missing_nodes = [
                     idx
@@ -188,6 +207,7 @@ class AutoDiscoveryTestHelpers:
                             if server._fabric_control_plane is not None
                             else -1
                         ),
+                        max(len(server.cluster.servers) - 1, 0),
                     )
                     for idx, server in enumerate(servers)
                 ]
@@ -198,7 +218,8 @@ class AutoDiscoveryTestHelpers:
                     f"avg_discovered={sum(discovered_counts) / max(len(discovered_counts), 1):.2f} "
                     f"max_discovered={max(discovered_counts)} "
                     f"missing_nodes={discovery_missing_nodes[:12]} "
-                    "node_samples(index,peer_connections,active_connections,peer_directory_discovered,node_catalog_discovered)="
+                    "node_samples(index,peer_connections,active_connections,"
+                    "peer_directory_discovered,node_catalog_discovered,function_catalog_peers)="
                     f"{connectivity_samples[:12]}"
                 ) from exc
 
@@ -208,8 +229,7 @@ class AutoDiscoveryTestHelpers:
 
         discovery_ok_nodes: list[int] = []
         for i, server in enumerate(servers):
-            cluster_servers = server.cluster.servers
-            discovered_count = len(cluster_servers) - 1  # Exclude self
+            discovered_count = self._membership_peer_count(server)
             discovered = discovered_count >= min_discovery_threshold
 
             result.nodes_discovered[i] = discovered_count
@@ -246,22 +266,20 @@ class AutoDiscoveryTestHelpers:
         # Register function on node 0
         servers[0].register_command("test_function", test_function, ["test-resource"])
 
-        # Wait for propagation - realistic timing since gossip is fast
+        # Wait for propagation — large sparse fabrics need multi-hop epidemic time
         if len(ports) >= 30:
-            # Large clusters: function propagation is fast via gossip
-            propagation_time = max(8.0, len(ports) * 0.2)  # Much more realistic
+            propagation_time = max(20.0, len(ports) * 0.4)
         elif len(ports) >= 10:
-            # Medium clusters need moderate time
             propagation_time = max(6.0, len(ports) * 0.3)
         else:
-            # Small clusters can use original timing
             propagation_time = max(3.0, len(ports) * 0.3)
 
         print(f"Waiting up to {propagation_time}s for function propagation...")
 
         if len(ports) >= 30:
-            min_propagation_nodes = max(int(len(ports) * 0.8), 1)
-            propagation_targets = set(discovery_ok_nodes)
+            min_propagation_nodes = max(int(len(ports) * 0.95), 1)
+            # Prefer membership-healthy nodes; fall back to full set if empty.
+            propagation_targets = set(discovery_ok_nodes) or set(range(len(servers)))
 
             def propagation_ready() -> bool:
                 propagated = 0
@@ -304,6 +322,7 @@ class AutoDiscoveryTestHelpers:
                     (
                         idx,
                         len(servers[idx].peer_connections),
+                        self._membership_peer_count(servers[idx]),
                         max(len(servers[idx].cluster.servers) - 1, 0),
                     )
                     for idx in missing_targets[:12]
@@ -313,7 +332,7 @@ class AutoDiscoveryTestHelpers:
                     f"propagated={len(propagated_targets)}/{len(target_population)} "
                     f"required={min_propagation_nodes if len(ports) >= 30 else len(servers)} "
                     f"missing_nodes={missing_targets[:12]} "
-                    f"missing_connectivity(peer_connections,discovered_peers)={missing_connectivity}"
+                    f"missing_connectivity(peer_connections,membership_peers,function_catalog_peers)={missing_connectivity}"
                 ) from exc
 
         # Check propagation results
@@ -337,7 +356,7 @@ class AutoDiscoveryTestHelpers:
                 all_propagated = False
 
         if len(ports) >= 30:
-            min_propagation_nodes = max(int(len(ports) * 0.8), 1)
+            min_propagation_nodes = max(int(len(ports) * 0.95), 1)
             all_propagated = propagated_target_count >= min_propagation_nodes
             print(
                 f"Large cluster propagation: {propagated_target_count}/{min_propagation_nodes} nodes with function"
@@ -458,16 +477,21 @@ class AutoDiscoveryTestHelpers:
 
         print(f"Starting {len(servers)} servers...")
 
-        # For large clusters, start servers in smaller batches to prevent resource exhaustion
+        # Batch starts still help under low ulimit / xdist pressure, but the
+        # pathological backlog str() hang is fixed so we no longer need multi-
+        # second stagger that leaves last-batch nodes half-joined at check time.
         if len(servers) >= 50:
-            batch_size = 5  # Very small batches for 50+ nodes to prevent file descriptor exhaustion
-            batch_delay = 1.0  # Longer delay to allow connections to stabilize
+            batch_size = 10
+            batch_delay = 0.25
+            per_server_delay = 0.05
         elif len(servers) >= 20:
-            batch_size = 8  # Medium batches for 20-49 nodes
-            batch_delay = 0.5  # Moderate delay
+            batch_size = 10
+            batch_delay = 0.15
+            per_server_delay = 0.03
         else:
-            batch_size = len(servers)  # Start all at once for small clusters
+            batch_size = len(servers)
             batch_delay = 0.0
+            per_server_delay = 0.02
 
         for batch_start in range(0, len(servers), batch_size):
             batch_end = min(batch_start + batch_size, len(servers))
@@ -477,19 +501,12 @@ class AutoDiscoveryTestHelpers:
                 f"  Starting batch {batch_start // batch_size + 1}: servers {batch_start + 1}-{batch_end}"
             )
 
-            # Start this batch of servers
-            for i, server in enumerate(batch_servers):
+            for server in batch_servers:
                 task = asyncio.create_task(server.server())
                 test_context.tasks.append(task)
-                # Scale delay based on cluster size to prevent resource exhaustion
-                if len(servers) >= 50:
-                    await asyncio.sleep(0.5)  # Longer delay for 50+ nodes
-                elif len(servers) >= 20:
-                    await asyncio.sleep(0.3)  # Medium delay for 20-49 nodes
-                else:
-                    await asyncio.sleep(0.1)  # Quick start for small clusters
+                if per_server_delay > 0:
+                    await asyncio.sleep(per_server_delay)
 
-            # Wait between batches for large clusters
             if batch_delay > 0 and batch_end < len(servers):
                 print(f"  Waiting {batch_delay}s before next batch...")
                 await asyncio.sleep(batch_delay)
@@ -692,12 +709,7 @@ class TestAutoDiscoveryLargeClusters(AutoDiscoveryTestHelpers):
         test_context: AsyncTestContext,
         large_cluster_ports: list[int],
     ):
-        """Test 50-node multi-hub auto-discovery."""
-        if os.environ.get("PYTEST_XDIST_WORKER"):
-            pytest.xfail(
-                "Known 50-node convergence gap under xdist load; see "
-                "tools/debug/auto_discovery_topology_probe.py evidence workflow."
-            )
+        """Test 50-node multi-hub auto-discovery (membership + function fan-out)."""
         result = await self._test_cluster_auto_discovery(
             test_context, large_cluster_ports[:50], "MULTI_HUB", expected_peers=49
         )
@@ -724,7 +736,8 @@ class TestAutoDiscoveryFunctionPropagation(AutoDiscoveryTestHelpers):
         discovery_timeout = max(5.0, len(ports) * 0.5) * concurrency_factor
         await wait_for_condition(
             lambda: all(
-                len(server.cluster.servers) >= len(ports) for server in servers
+                self._membership_peer_count(server) >= len(ports) - 1
+                for server in servers
             ),
             timeout=discovery_timeout,
             interval=0.2,
@@ -804,7 +817,8 @@ class TestAutoDiscoveryFunctionPropagation(AutoDiscoveryTestHelpers):
         discovery_timeout = max(5.0, len(ports) * 0.5) * concurrency_factor
         await wait_for_condition(
             lambda: all(
-                len(server.cluster.servers) >= len(ports) for server in servers
+                self._membership_peer_count(server) >= len(ports) - 1
+                for server in servers
             ),
             timeout=discovery_timeout,
             interval=0.2,
@@ -910,7 +924,8 @@ class TestAutoDiscoveryFunctionPropagation(AutoDiscoveryTestHelpers):
         discovery_timeout = max(5.0, len(ports) * 0.5) * concurrency_factor
         await wait_for_condition(
             lambda: all(
-                len(server.cluster.servers) >= len(ports) for server in servers
+                self._membership_peer_count(server) >= len(ports) - 1
+                for server in servers
             ),
             timeout=discovery_timeout,
             interval=0.2,
@@ -985,7 +1000,8 @@ class TestAutoDiscoveryFunctionPropagation(AutoDiscoveryTestHelpers):
         discovery_timeout = max(5.0, len(ports) * 0.5) * concurrency_factor
         await wait_for_condition(
             lambda: all(
-                len(server.cluster.servers) >= len(ports) for server in servers
+                self._membership_peer_count(server) >= len(ports) - 1
+                for server in servers
             ),
             timeout=discovery_timeout,
             interval=0.2,

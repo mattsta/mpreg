@@ -516,12 +516,37 @@ class Cluster:
 
     @property
     def servers(self) -> set[str]:
-        """Get all known servers with advertised functions."""
+        """Node IDs that currently advertise at least one function.
+
+        This is a **function-catalog** view, not pure membership. For peer
+        auto-discovery / membership convergence use :meth:`known_node_ids`.
+        """
         engine = self.fabric_engine
         if not engine:
             return set()
         entries = engine.routing_index.catalog.functions.entries()
         return {endpoint.node_id for endpoint in entries}
+
+    @property
+    def known_node_ids(self) -> set[str]:
+        """Membership view: all known node IDs from the routing catalog.
+
+        Prefer this over :attr:`servers` when measuring peer auto-discovery.
+        Falls back to the peer directory when the fabric engine is not bound.
+        """
+        engine = self.fabric_engine
+        if engine is not None:
+            try:
+                entries = engine.routing_index.catalog.nodes.entries()
+                ids = {endpoint.node_id for endpoint in entries}
+                if ids:
+                    return ids
+            except Exception:
+                pass
+        directory = self.peer_directory
+        if directory is not None:
+            return {node.node_id for node in directory.nodes()}
+        return set()
 
     @property
     def dead_peer_timeout(self) -> float:
