@@ -219,18 +219,33 @@ class TestMessageQueueGovernance:
         fee = self.governance.calculate_message_fee(message)
         assert fee >= 5  # Minimum fee
 
-        # Test emergency priority (should be higher)
+        # Test emergency priority (should be higher). EO is unsupported — no fee theater.
         emergency_message = BlockchainMessage(
             sender_id="alice",
             recipient_id="bob",
             message_type="emergency",
             priority=MessagePriority.EMERGENCY,
-            delivery_guarantee=DeliveryGuarantee.EXACTLY_ONCE,
+            delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
             payload=b"emergency message",
         )
 
         emergency_fee = self.governance.calculate_message_fee(emergency_message)
         assert emergency_fee >= fee  # Emergency should be at least as much, often more
+
+        from mpreg.core.blockchain_message_queue import (
+            UnsupportedDeliveryGuaranteeError,
+        )
+
+        eo_message = BlockchainMessage(
+            sender_id="alice",
+            recipient_id="bob",
+            message_type="emergency",
+            priority=MessagePriority.EMERGENCY,
+            delivery_guarantee=DeliveryGuarantee.EXACTLY_ONCE,
+            payload=b"eo must not price",
+        )
+        with pytest.raises(UnsupportedDeliveryGuaranteeError, match="exactly_once"):
+            self.governance.calculate_message_fee(eo_message)
 
         # Test bulk priority (should be lower)
         bulk_message = BlockchainMessage(

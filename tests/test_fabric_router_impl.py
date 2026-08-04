@@ -808,6 +808,11 @@ class TestFabricRouter:
         assert route_result is not None
         assert isinstance(route_result, FabricRouteResult)
         assert route_result.route_id is not None
+        # COR-03: EXACTLY_ONCE is fabric-wide unsupported — empty targets, no side effects.
+        if message.delivery == DeliveryGuarantee.EXACTLY_ONCE:
+            assert route_result.reason == FabricRouteReason.UNSUPPORTED_DELIVERY
+            assert route_result.targets == []
+            return
         assert len(route_result.targets) >= 1
         assert router.metrics.total_routes_computed >= 1
 

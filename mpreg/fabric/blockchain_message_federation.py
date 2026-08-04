@@ -87,7 +87,15 @@ class HubMessageQueue:
     async def process_federation_message(
         self, message: BlockchainMessage, destination_hub: HubId
     ) -> FederationMessageRoute | None:
-        """Process message for federation routing."""
+        """Process message for federation routing.
+
+        COR-08: ``DeliveryGuarantee.EXACTLY_ONCE`` is fail-closed via the
+        underlying queue ``submit_message`` typed error — not swallowed as
+        a soft ``None`` success-shaped miss.
+        """
+        from mpreg.core.blockchain_message_queue import (
+            UnsupportedDeliveryGuaranteeError,
+        )
 
         try:
             # Enhanced message with federation metadata
@@ -95,7 +103,7 @@ class HubMessageQueue:
                 message, destination_hub
             )
 
-            # Submit to blockchain queue
+            # Submit to blockchain queue (raises on unsupported EO)
             success = self.queue.submit_message(federation_message)
 
             if success:
@@ -111,6 +119,8 @@ class HubMessageQueue:
 
             return None
 
+        except UnsupportedDeliveryGuaranteeError:
+            raise
         except Exception as e:
             logger.error(f"Hub {self.hub_id} federation message processing failed: {e}")
             return None

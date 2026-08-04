@@ -134,12 +134,12 @@ class TestHubMessageQueue:
 
     @pytest.mark.asyncio
     async def test_emergency_message_priority(self):
-        """Test emergency message handling."""
+        """Test emergency message handling (AT_LEAST_ONCE — EO is unsupported)."""
         emergency_message = BlockchainMessage(
             sender_id="emergency_service",
             recipient_id="response_team",
             priority=MessagePriority.EMERGENCY,
-            delivery_guarantee=DeliveryGuarantee.EXACTLY_ONCE,
+            delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
             processing_fee=500,
             payload=b"EMERGENCY: Immediate response required",
         )
@@ -152,6 +152,28 @@ class TestHubMessageQueue:
         assert route.sla_tier == 1  # Premium SLA for emergency
         # Emergency should get fast routing
         assert route.base_route.latency_ms <= 100
+
+    @pytest.mark.asyncio
+    async def test_exactly_once_federation_refused(self):
+        """COR-08: EO is fail-closed on hub federation path (typed error)."""
+        from mpreg.core.blockchain_message_queue import (
+            UnsupportedDeliveryGuaranteeError,
+        )
+
+        eo_message = BlockchainMessage(
+            sender_id="emergency_service",
+            recipient_id="response_team",
+            priority=MessagePriority.EMERGENCY,
+            delivery_guarantee=DeliveryGuarantee.EXACTLY_ONCE,
+            processing_fee=500,
+            payload=b"EO must not route",
+        )
+        with pytest.raises(
+            UnsupportedDeliveryGuaranteeError, match="exactly_once|EXACTLY_ONCE"
+        ):
+            await self.hub_queue.process_federation_message(
+                eo_message, "emergency_hub"
+            )
 
     def test_hub_metrics_collection(self):
         """Test hub performance metrics collection."""
