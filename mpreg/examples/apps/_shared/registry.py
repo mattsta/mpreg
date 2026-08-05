@@ -264,6 +264,13 @@ APPS: tuple[ExampleApp, ...] = (
         "publish_with_reply request/response over topics.",
         ("pubsub",),
     ),
+    _app(
+        "job_queue_dlq",
+        "Job Queue DLQ",
+        AppLevel.L1,
+        "Poison message retries then dead-letter queue.",
+        ("queue",),
+    ),
     # L2 — moderate composition
     _app(
         "order_intake",
@@ -332,6 +339,14 @@ APPS: tuple[ExampleApp, ...] = (
         "Router + vision/NLP specialized inference workers.",
         ("rpc", "cluster"),
     ),
+    _app(
+        "cache_event_bus",
+        "Cache Event Bus",
+        AppLevel.L2,
+        "CachePubSubIntegration: cache ops fan out as topic events.",
+        ("cache", "pubsub"),
+        kind="integration",
+    ),
     # L3 — complex mesh
     _app(
         "multi_region_shop",
@@ -384,6 +399,21 @@ APPS: tuple[ExampleApp, ...] = (
         "Full multi-system expansion sketch (legacy tier3).",
         ("rpc", "cache", "pubsub", "queue", "fabric", "monitoring"),
         kind="legacy",
+    ),
+    _app(
+        "discovery_watch_summary",
+        "Discovery Watch + Summary",
+        AppLevel.L3,
+        "catalog_watch deltas plus summary_query/watch topic shapes.",
+        ("discovery", "pubsub"),
+    ),
+    _app(
+        "fabric_graph_resilience",
+        "Fabric Graph + Resilience",
+        AppLevel.L3,
+        "FederationGraph Dijkstra paths and circuit-breaker recovery.",
+        ("fabric",),
+        kind="plane",
     ),
     # L4 — world
     _app(

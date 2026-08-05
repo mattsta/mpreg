@@ -48,6 +48,7 @@ QUEUE_SUBSCRIBE: Final = "queue.subscribe"
 QUEUE_TOPIC_ROUTE: Final = "queue.topic_route"
 QUEUE_FACTORIES: Final = "queue.factories"
 QUEUE_RPC_SURFACE: Final = "queue.rpc_surface"
+QUEUE_DLQ: Final = "queue.dlq"
 
 CACHE_PUT_GET: Final = "cache.put_get"
 CACHE_TTL: Final = "cache.ttl"
@@ -64,6 +65,7 @@ CACHE_ATOMIC: Final = "cache.atomic"
 CACHE_STRUCTURES: Final = "cache.structures"
 CACHE_NAMESPACE_OPS: Final = "cache.namespace_ops"
 CACHE_RPC_SURFACE: Final = "cache.rpc_surface"
+CACHE_PUBSUB_EVENTS: Final = "cache.pubsub_events"
 
 FABRIC_PERMISSIVE: Final = "fabric.permissive"
 FABRIC_STRICT: Final = "fabric.strict"
@@ -76,6 +78,8 @@ FABRIC_ROUTE_POLICY: Final = "fabric.route_policy"
 FABRIC_ROUTE_KEYS: Final = "fabric.route_keys"
 FABRIC_SNAPSHOT: Final = "fabric.snapshot"
 FABRIC_HUBS: Final = "fabric.hubs"
+FABRIC_GRAPH: Final = "fabric.graph"
+FABRIC_RESILIENCE: Final = "fabric.resilience"
 
 DISCO_LIST_PEERS: Final = "disco.list_peers"
 DISCO_CLUSTER_MAP: Final = "disco.cluster_map"
@@ -83,6 +87,9 @@ DISCO_CATALOG_QUERY: Final = "disco.catalog_query"
 DISCO_JOIN: Final = "disco.join"
 DISCO_DNS_REGISTER: Final = "disco.dns_register"
 DISCO_DNS_RESOLVE: Final = "disco.dns_resolve"
+DISCO_CATALOG_WATCH: Final = "disco.catalog_watch"
+DISCO_SUMMARY_QUERY: Final = "disco.summary_query"
+DISCO_SUMMARY_WATCH: Final = "disco.summary_watch"
 
 NS_STATUS: Final = "ns.status"
 NS_EXPORT: Final = "ns.export"
@@ -362,6 +369,31 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         PUBSUB_HEADERS,
         PUBSUB_CLIENT_WIRE,
         PUBSUB_FANOUT,
+    ),
+    "discovery_watch_summary": (
+        DISCO_CATALOG_WATCH,
+        DISCO_SUMMARY_QUERY,
+        DISCO_SUMMARY_WATCH,
+        DISCO_CATALOG_QUERY,
+        PUBSUB_CLIENT_WIRE,
+        CLIENT_API,
+    ),
+    "fabric_graph_resilience": (
+        FABRIC_GRAPH,
+        FABRIC_RESILIENCE,
+    ),
+    "cache_event_bus": (
+        CACHE_PUBSUB_EVENTS,
+        CACHE_PUT_GET,
+        CACHE_INVALIDATE,
+        PUBSUB_EXCHANGE,
+    ),
+    "job_queue_dlq": (
+        QUEUE_DLQ,
+        QUEUE_ALO,
+        QUEUE_SEND,
+        QUEUE_SUBSCRIBE,
+        QUEUE_CREATE,
     ),
 }
 
