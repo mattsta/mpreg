@@ -1,0 +1,136 @@
+"""Live validation of curriculum example apps.
+
+Each test runs the app's real async ``main()`` (same path as
+``uv run mpreg-example run <id>``). These are platform proof under real
+local workloads — not mock-only unit stubs.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from mpreg.examples.apps._shared.registry import (
+    ALIASES,
+    DEMO_BUNDLES,
+    APPS,
+    ExampleApp,
+    get_app,
+    list_apps,
+    resolve_app_id,
+)
+from mpreg.examples.apps._shared.runtime import run_app_main
+
+# Per-app ceilings (live servers + multi-plane composition).
+_TIMEOUT_S: dict[str, float] = {
+    "hello_rpc": 60.0,
+    "hello_cluster": 90.0,
+    "hello_trace": 60.0,
+    "hello_pubsub": 30.0,
+    "hello_cache": 30.0,
+    "hello_ports": 60.0,
+    "ha_client_failover": 90.0,
+    "job_queue_worker": 90.0,
+    "url_shortener_rpc": 90.0,
+    "sensor_ingest_pubsub": 30.0,
+    "session_cache": 30.0,
+    "auto_port_bootstrap": 90.0,
+    "plane_rpc": 90.0,
+    "plane_pubsub": 30.0,
+    "plane_queue": 30.0,
+    "plane_cache": 60.0,
+    "plane_fabric": 90.0,
+    "plane_monitoring": 30.0,
+    "order_intake": 120.0,
+    "media_pipeline": 120.0,
+    "feature_flag_mesh": 60.0,
+    "webhook_dispatcher": 60.0,
+    "config_reload_live": 120.0,
+    "rpc_plus_cache": 90.0,
+    "pubsub_plus_queue": 60.0,
+    "cache_plus_federation": 60.0,
+    "ml_inference_mesh": 120.0,
+    "multi_region_shop": 180.0,
+    "signed_route_border": 180.0,
+    "partition_safe_counter": 30.0,
+    "discovery_join": 120.0,
+    "chaos_checkout": 120.0,
+    "fabric_snapshot_restart": 180.0,
+    "tier3_expansion": 180.0,
+    "global_edge_control_plane": 180.0,
+}
+
+def _ids(apps: list[ExampleApp]) -> list[str]:
+    return [a.id for a in apps]
+
+SMOKE_IDS = _ids(list_apps(smoke_only=True))
+SUITE_IDS = _ids(list_apps(suite_only=True))
+ALL_IDS = [a.id for a in APPS]
+
+@pytest.mark.example_apps
+@pytest.mark.unit
+def test_registry_unique_ids() -> None:
+    assert len(ALL_IDS) == len(set(ALL_IDS))
+    assert len(ALL_IDS) >= 30, f"expected full matrix, got {len(ALL_IDS)}"
+
+@pytest.mark.example_apps
+@pytest.mark.unit
+def test_registry_smoke_subset_of_suite() -> None:
+    smoke = set(SMOKE_IDS)
+    suite = set(SUITE_IDS)
+    assert smoke, "smoke bundle must not be empty"
+    assert smoke <= suite, f"smoke apps missing from suite: {smoke - suite}"
+    assert len(smoke) >= 6, f"smoke too small: {smoke}"
+
+@pytest.mark.example_apps
+@pytest.mark.unit
+def test_aliases_resolve() -> None:
+    assert resolve_app_id("tier1_rpc") == "plane_rpc"
+    assert resolve_app_id("fabric_route_security_demo") == "signed_route_border"
+    assert get_app("tier1_cache").id == "plane_cache"
+
+@pytest.mark.example_apps
+@pytest.mark.unit
+def test_demo_bundles_resolve() -> None:
+    for name, ids in DEMO_BUNDLES.items():
+        assert ids, f"empty bundle {name}"
+        for i in ids:
+            get_app(i)  # must not raise
+
+@pytest.mark.example_apps
+@pytest.mark.unit
+@pytest.mark.parametrize("app_id", ALL_IDS)
+def test_app_module_exports_async_main(app_id: str) -> None:
+    app = get_app(app_id)
+    main = app.load_main()
+    assert callable(main)
+    assert app.path.endswith(f"{app_id}/")
+    assert app.module.endswith(".run")
+
+@pytest.mark.example_apps
+@pytest.mark.example_smoke
+@pytest.mark.integration
+@pytest.mark.parametrize("app_id", SMOKE_IDS)
+async def test_smoke_app_live(app_id: str) -> None:
+    """CI-friendly smoke under real servers / in-process planes."""
+    app = get_app(app_id)
+    report = await run_app_main(
+        app.id,
+        app.load_main(),
+        timeout_s=_TIMEOUT_S.get(app_id, 120.0),
+    )
+    assert report.ok, f"{app_id} failed ({report.duration_s:.2f}s): {report.error}"
+
+@pytest.mark.example_apps
+@pytest.mark.example_suite
+@pytest.mark.integration
+@pytest.mark.slow
+@pytest.mark.parametrize("app_id", SUITE_IDS)
+async def test_suite_app_live(app_id: str) -> None:
+    """Full curriculum suite — every shipped app's real main()."""
+    app = get_app(app_id)
+    report = await run_app_main(
+        app.id,
+        app.load_main(),
+        timeout_s=_TIMEOUT_S.get(app_id, 180.0),
+    )
+    assert report.ok, f"{app_id} failed ({report.duration_s:.2f}s): {report.error}"
