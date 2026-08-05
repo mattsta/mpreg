@@ -98,189 +98,189 @@ async def main() -> None:
             ),
         ]
 
-    async def _run(servers: list[MPREGServer]) -> None:
-        intake, processing, analytics = servers
+        async def _run(servers: list[MPREGServer]) -> None:
+            intake, processing, analytics = servers
 
-        def ingest(sensor_id: str, readings: list[float]) -> dict[str, Any]:
-            return {
-                "sensor_id": sensor_id,
-                "readings": readings,
-                "ingested_at": time.time(),
-            }
+            def ingest(sensor_id: str, readings: list[float]) -> dict[str, Any]:
+                return {
+                    "sensor_id": sensor_id,
+                    "readings": readings,
+                    "ingested_at": time.time(),
+                }
 
-        def normalize(payload: dict[str, Any]) -> dict[str, Any]:
-            readings = payload["readings"]
-            normalized = [(r - 50) / 50 for r in readings]
-            return {**payload, "normalized": normalized}
+            def normalize(payload: dict[str, Any]) -> dict[str, Any]:
+                readings = payload["readings"]
+                normalized = [(r - 50) / 50 for r in readings]
+                return {**payload, "normalized": normalized}
 
-        def detect(payload: dict[str, Any]) -> dict[str, Any]:
-            anomaly = any(abs(r) > 0.9 for r in payload["normalized"])
-            return {**payload, "anomaly": anomaly, "analyzed_at": time.time()}
+            def detect(payload: dict[str, Any]) -> dict[str, Any]:
+                anomaly = any(abs(r) > 0.9 for r in payload["normalized"])
+                return {**payload, "anomaly": anomaly, "analyzed_at": time.time()}
 
-        intake.register_command("ingest", ingest, ["ingestion", "raw"])
-        processing.register_command("normalize", normalize, ["processing", "compute"])
-        analytics.register_command("detect", detect, ["analytics", "ml"])
+            intake.register_command("ingest", ingest, ["ingestion", "raw"])
+            processing.register_command("normalize", normalize, ["processing", "compute"])
+            analytics.register_command("detect", detect, ["analytics", "ml"])
 
-        await _await_fabric_ready(
-            intake, target_cluster="cluster-b", function_name="detect"
-        )
-
-        exchange = TopicExchange("ws://local", "system_demo")
-        queue_manager = create_reliable_queue_manager()
-        await queue_manager.create_queue("alerts")
-        exchange.add_subscription(
-            PubSubSubscription(
-                subscription_id="alerts",
-                patterns=(TopicPattern(pattern="sensor.*.alert"),),
-                subscriber="queue-bridge",
-                created_at=time.time(),
-            )
-        )
-
-        alert_messages: list[str] = []
-
-        def alert_worker(message: Any) -> None:
-            alert_messages.append(str(message.payload))
-
-        queue_manager.subscribe_to_queue(
-            "alerts", "alert-worker", "alerts.*", alert_worker
-        )
-
-        monitor = create_unified_system_monitor()
-        await monitor.start()
-
-        cache_transport = InProcessCacheTransport()
-        cache_protocol = FabricCacheProtocol(
-            "node-a", transport=cache_transport, gossip_interval=60.0
-        )
-
-        cache = GlobalCacheManager(
-            GlobalCacheConfiguration(
-                enable_l2_persistent=False,
-                enable_l3_distributed=True,
-                enable_l4_federation=True,
-                local_cluster_id="cluster-a",
-                local_region="us-west",
-            ),
-            cache_protocol=cache_protocol,
-        )
-
-        async with MPREGClientAPI(f"ws://127.0.0.1:{ports[0]}") as client:
-            tracking_id = await monitor.record_cross_system_event(
-                correlation_id="full-system",
-                event_type=EventType.REQUEST_START,
-                source_system=SystemType.RPC,
-                metadata={"workflow": "sensor-pipeline"},
+            await _await_fabric_ready(
+                intake, target_cluster="cluster-b", function_name="detect"
             )
 
-            workflow = await client._client.request(
-                [
-                    RPCCommand(
-                        name="ingested",
-                        fun="ingest",
-                        args=("sensor-1", [49.0, 50.1, 100.0]),
-                        locs=frozenset(["ingestion", "raw"]),
-                    ),
-                    RPCCommand(
-                        name="normalized",
-                        fun="normalize",
-                        args=("ingested",),
-                        locs=frozenset(["processing", "compute"]),
-                    ),
-                    RPCCommand(
-                        name="analyzed",
-                        fun="detect",
-                        args=("normalized",),
-                        locs=frozenset(["analytics", "ml"]),
-                    ),
-                ]
-            )
-
-            await monitor.record_cross_system_event(
-                correlation_id="full-system",
-                event_type=EventType.CROSS_SYSTEM_CORRELATION,
-                source_system=SystemType.RPC,
-                target_system=SystemType.CACHE,
-                tracking_id=tracking_id,
-                latency_ms=12.0,
-            )
-
-            cache_key = GlobalCacheKey.from_data(
-                "pipeline.results", workflow["analyzed"]
-            )
-            cache_options = CacheOptions(
-                cache_levels=frozenset([CacheLevel.L1, CacheLevel.L4])
-            )
-            await cache.put(
-                cache_key,
-                workflow["analyzed"],
-                CacheMetadata(computation_cost_ms=15.0, ttl_seconds=120.0),
-                options=cache_options,
-            )
-
-            if workflow["analyzed"]["anomaly"]:
-                notifications = exchange.publish_message(
-                    PubSubMessage(
-                        message_id="alert-1",
-                        topic="sensor.1.alert",
-                        payload={
-                            "sensor": "sensor-1",
-                            "severity": "high",
-                            "ts": time.time(),
-                        },
-                        publisher="pipeline",
-                        headers={},
-                        timestamp=time.time(),
-                    )
+            exchange = TopicExchange("ws://local", "system_demo")
+            queue_manager = create_reliable_queue_manager()
+            await queue_manager.create_queue("alerts")
+            exchange.add_subscription(
+                PubSubSubscription(
+                    subscription_id="alerts",
+                    patterns=(TopicPattern(pattern="sensor.*.alert"),),
+                    subscriber="queue-bridge",
+                    created_at=time.time(),
                 )
-                for notification in notifications:
-                    await queue_manager.send_message(
-                        "alerts",
-                        "alerts.sensor",
-                        notification.message.payload,
-                        DeliveryGuarantee.AT_LEAST_ONCE,
+            )
+
+            alert_messages: list[str] = []
+
+            def alert_worker(message: Any) -> None:
+                alert_messages.append(str(message.payload))
+
+            queue_manager.subscribe_to_queue(
+                "alerts", "alert-worker", "alerts.*", alert_worker
+            )
+
+            monitor = create_unified_system_monitor()
+            await monitor.start()
+
+            cache_transport = InProcessCacheTransport()
+            cache_protocol = FabricCacheProtocol(
+                "node-a", transport=cache_transport, gossip_interval=60.0
+            )
+
+            cache = GlobalCacheManager(
+                GlobalCacheConfiguration(
+                    enable_l2_persistent=False,
+                    enable_l3_distributed=True,
+                    enable_l4_federation=True,
+                    local_cluster_id="cluster-a",
+                    local_region="us-west",
+                ),
+                cache_protocol=cache_protocol,
+            )
+
+            async with MPREGClientAPI(f"ws://127.0.0.1:{ports[0]}") as client:
+                tracking_id = await monitor.record_cross_system_event(
+                    correlation_id="full-system",
+                    event_type=EventType.REQUEST_START,
+                    source_system=SystemType.RPC,
+                    metadata={"workflow": "sensor-pipeline"},
+                )
+
+                workflow = await client._client.request(
+                    [
+                        RPCCommand(
+                            name="ingested",
+                            fun="ingest",
+                            args=("sensor-1", [49.0, 50.1, 100.0]),
+                            locs=frozenset(["ingestion", "raw"]),
+                        ),
+                        RPCCommand(
+                            name="normalized",
+                            fun="normalize",
+                            args=("ingested",),
+                            locs=frozenset(["processing", "compute"]),
+                        ),
+                        RPCCommand(
+                            name="analyzed",
+                            fun="detect",
+                            args=("normalized",),
+                            locs=frozenset(["analytics", "ml"]),
+                        ),
+                    ]
+                )
+
+                await monitor.record_cross_system_event(
+                    correlation_id="full-system",
+                    event_type=EventType.CROSS_SYSTEM_CORRELATION,
+                    source_system=SystemType.RPC,
+                    target_system=SystemType.CACHE,
+                    tracking_id=tracking_id,
+                    latency_ms=12.0,
+                )
+
+                cache_key = GlobalCacheKey.from_data(
+                    "pipeline.results", workflow["analyzed"]
+                )
+                cache_options = CacheOptions(
+                    cache_levels=frozenset([CacheLevel.L1, CacheLevel.L4])
+                )
+                await cache.put(
+                    cache_key,
+                    workflow["analyzed"],
+                    CacheMetadata(computation_cost_ms=15.0, ttl_seconds=120.0),
+                    options=cache_options,
+                )
+
+                if workflow["analyzed"]["anomaly"]:
+                    notifications = exchange.publish_message(
+                        PubSubMessage(
+                            message_id="alert-1",
+                            topic="sensor.1.alert",
+                            payload={
+                                "sensor": "sensor-1",
+                                "severity": "high",
+                                "ts": time.time(),
+                            },
+                            publisher="pipeline",
+                            headers={},
+                            timestamp=time.time(),
+                        )
                     )
-                await asyncio.sleep(0.2)
+                    for notification in notifications:
+                        await queue_manager.send_message(
+                            "alerts",
+                            "alerts.sensor",
+                            notification.message.payload,
+                            DeliveryGuarantee.AT_LEAST_ONCE,
+                        )
+                    await asyncio.sleep(0.2)
 
-            await monitor.record_cross_system_event(
-                correlation_id="full-system",
-                event_type=EventType.CROSS_SYSTEM_CORRELATION,
-                source_system=SystemType.CACHE,
-                target_system=SystemType.PUBSUB,
-                tracking_id=tracking_id,
-                latency_ms=8.0,
-            )
+                await monitor.record_cross_system_event(
+                    correlation_id="full-system",
+                    event_type=EventType.CROSS_SYSTEM_CORRELATION,
+                    source_system=SystemType.CACHE,
+                    target_system=SystemType.PUBSUB,
+                    tracking_id=tracking_id,
+                    latency_ms=8.0,
+                )
 
-            l4_result = await cache.get(cache_key, cache_options)
+                l4_result = await cache.get(cache_key, cache_options)
 
-            await monitor.record_cross_system_event(
-                correlation_id="full-system",
-                event_type=EventType.REQUEST_COMPLETE,
-                source_system=SystemType.RPC,
-                tracking_id=tracking_id,
-                latency_ms=60.0,
-            )
+                await monitor.record_cross_system_event(
+                    correlation_id="full-system",
+                    event_type=EventType.REQUEST_COMPLETE,
+                    source_system=SystemType.RPC,
+                    tracking_id=tracking_id,
+                    latency_ms=60.0,
+                )
 
-            print("Workflow result:", workflow["analyzed"])
-            print("Alerts queued:", alert_messages)
-            print("Federated cache hit:", l4_result.success)
-            print("Tracking events:", len(monitor.get_tracking_timeline(tracking_id)))
-            _ensure(
-                workflow["analyzed"]["anomaly"] is True,
-                "Tier 3 demo: anomaly flag missing",
-            )
-            _ensure(l4_result.success, "Tier 3 demo: federation cache miss")
-            _ensure(
-                len(monitor.get_tracking_timeline(tracking_id)) >= 3,
-                "Tier 3 demo: incomplete monitoring timeline",
-            )
-            if workflow["analyzed"]["anomaly"]:
-                _ensure(alert_messages, "Tier 3 demo: missing alert delivery")
+                print("Workflow result:", workflow["analyzed"])
+                print("Alerts queued:", alert_messages)
+                print("Federated cache hit:", l4_result.success)
+                print("Tracking events:", len(monitor.get_tracking_timeline(tracking_id)))
+                _ensure(
+                    workflow["analyzed"]["anomaly"] is True,
+                    "Tier 3 demo: anomaly flag missing",
+                )
+                _ensure(l4_result.success, "Tier 3 demo: federation cache miss")
+                _ensure(
+                    len(monitor.get_tracking_timeline(tracking_id)) >= 3,
+                    "Tier 3 demo: incomplete monitoring timeline",
+                )
+                if workflow["analyzed"]["anomaly"]:
+                    _ensure(alert_messages, "Tier 3 demo: missing alert delivery")
 
-        await cache.shutdown()
-        await cache_protocol.shutdown()
-        await queue_manager.shutdown()
-        await monitor.stop()
+            await cache.shutdown()
+            await cache_protocol.shutdown()
+            await queue_manager.shutdown()
+            await monitor.stop()
 
         await run_with_servers(settings, _run)
 

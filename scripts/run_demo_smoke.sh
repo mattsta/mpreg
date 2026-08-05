@@ -1,23 +1,15 @@
 #!/usr/bin/env bash
+# Unified demo smoke — entrypoints only (never python -m / uv run python).
 set -euo pipefail
 
-echo "== MPREG Demo Smoke Suite =="
-echo "Running fast validation for CI."
-echo
+echo "== MPREG Demo Smoke (unified mpreg-example) =="
 
-if ! command -v uv >/dev/null 2>&1; then
-  echo "uv is required to run the demo smoke suite." >&2
-  exit 1
+if command -v uv >/dev/null 2>&1; then
+  RUN=(uv run)
+else
+  RUN=()
 fi
 
-run() {
-  echo
-  echo "==> $*"
-  "$@"
-}
-
-run uv run python mpreg/examples/tier1_single_system_full.py --system rpc
-run uv run python mpreg/examples/tier2_integrations.py
-
+"${RUN[@]}" mpreg-example smoke
 echo
-echo "Demo smoke suite completed successfully."
+echo "Demo smoke completed successfully."

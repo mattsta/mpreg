@@ -6,14 +6,23 @@ index when learning the system.
 ## 1. Getting started
 
 1. [GETTING_STARTED.md](GETTING_STARTED.md) — install, first server, first RPC  
-2. [EXAMPLES.md](EXAMPLES.md) / `mpreg/examples/` — tiered demos  
-3. [ops/SETTINGS_GROUPS.md](ops/SETTINGS_GROUPS.md) — profiles and config groups  
+2. [examples-curriculum/](examples-curriculum/) — **product-shaped example apps** (preferred)  
+3. [EXAMPLES.md](EXAMPLES.md) / `mpreg/examples/` — capability demos + catalog  
+4. [ops/SETTINGS_GROUPS.md](ops/SETTINGS_GROUPS.md) — profiles and config groups  
 
 ```bash
 uv sync
 uv run mpreg profile list
 uv run mpreg server start-config $(uv run mpreg profile path dev)
+
+# Curriculum (entrypoints only — never python -m / uv run python)
+uv run mpreg-example list          # 35 apps
+uv run mpreg-example smoke         # 8 apps
+uv run mpreg-example suite         # all 35
+uv run mpreg-example demo tier1    # unified former tier demos
 ```
+
+Operate examples + platform day-2: [examples-curriculum/OPERATE.md](examples-curriculum/OPERATE.md).
 
 ## 2. Core concepts
 

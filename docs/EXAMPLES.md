@@ -6,7 +6,39 @@ Note: Examples use dynamic port allocation (via `allocate_port("servers")`) to a
 
 For the full documentation index, see `docs/README.md`.
 
-## 🎯 Quick Start Examples
+## Curriculum example apps (preferred)
+
+Product-shaped apps with a tracked growth cycle (L0→L4):
+
+| Resource | Link |
+|----------|------|
+| Curriculum home | [examples-curriculum/README.md](examples-curriculum/README.md) |
+| Catalog + status | [examples-curriculum/APP_CATALOG.md](examples-curriculum/APP_CATALOG.md) |
+| Stages A–D | [examples-curriculum/STAGES.md](examples-curriculum/STAGES.md) |
+| Operate guide | [examples-curriculum/OPERATE.md](examples-curriculum/OPERATE.md) |
+| Code | `mpreg/examples/apps/` |
+
+```bash
+uv run mpreg-example list                 # 35 shipped apps
+uv run mpreg-example run hello_rpc
+uv run mpreg-example smoke                # 8 apps, CI-friendly
+uv run mpreg-example suite                # all 35
+uv run mpreg-example demo tier1           # plane_* capability tours
+uv run mpreg-example demo product_vertical
+uv run mpreg examples list                # same runner
+uv run mpreg demo tier1                   # delegates to mpreg-example
+uv run pytest tests/examples_apps -m example_smoke
+uv run pytest tests/examples_apps -m example_suite
+scripts/run_example_apps_smoke.sh
+scripts/run_example_apps_suite.sh
+```
+
+Full matrix: [examples-curriculum/APP_CATALOG.md](examples-curriculum/APP_CATALOG.md).
+
+Learning path: `hello_rpc` → … → `order_intake` → `multi_region_shop` →
+`global_edge_control_plane` (see curriculum README).
+
+## 🎯 Quick Start Examples (capability demos)
 
 ### 1. Run the Quick Demo
 

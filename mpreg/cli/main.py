@@ -2256,47 +2256,159 @@ def profile_path(name: str) -> None:
 
 @cli.group()
 def demo():
-    """Run tiered MPREG demos."""
+    """Run capability demos via the unified mpreg-example runner.
+
+    Preferred::
+
+        uv run mpreg-example demo tier1
+        uv run mpreg-example run plane_rpc
+        uv run mpreg-example smoke
+    """
     pass
+
+def _demo_via_example(argv: list[str]) -> None:
+    """Delegate demo CLI to the unified curriculum runner (entrypoints only)."""
+    from mpreg.examples.apps._shared.runner import main as examples_main
+
+    examples_main(argv)
 
 @demo.command("tier1")
 @click.argument(
     "system",
-    type=click.Choice(["rpc", "pubsub", "queue", "cache", "federation", "monitoring"]),
+    type=click.Choice(
+        ["rpc", "pubsub", "queue", "cache", "federation", "fabric", "monitoring", "all"]
+    ),
+    required=False,
+    default="all",
 )
 def demo_tier1(system: str) -> None:
-    """Run a tier 1 single-system demo."""
-    from mpreg.examples.tier1_single_system_full import SYSTEMS
-
-    asyncio.run(SYSTEMS[system]())
+    """Run tier-1 plane tour(s) via mpreg-example."""
+    if system in ("all",):
+        _demo_via_example(["demo", "tier1"])
+        return
+    # federation is historical alias for fabric
+    plane = "fabric" if system in ("federation", "fabric") else system
+    _demo_via_example(["run", f"plane_{plane}"])
 
 @demo.command("tier2")
 def demo_tier2() -> None:
-    """Run the tier 2 integration demos."""
-    from mpreg.examples.tier2_integrations import main as tier2_main
-
-    asyncio.run(tier2_main())
+    """Run tier-2 integration tours via mpreg-example."""
+    _demo_via_example(["demo", "tier2"])
 
 @demo.command("tier3")
 def demo_tier3() -> None:
-    """Run the tier 3 full-system demo."""
-    from mpreg.examples.tier3_full_system_expansion import main as tier3_main
-
-    asyncio.run(tier3_main())
+    """Run tier-3 expansion via mpreg-example."""
+    _demo_via_example(["demo", "tier3"])
 
 @demo.command("all")
 def demo_all() -> None:
-    """Run tier 1 (RPC), tier 2, and tier 3 demos."""
-    from mpreg.examples.tier1_single_system_full import demo_rpc
-    from mpreg.examples.tier2_integrations import main as tier2_main
-    from mpreg.examples.tier3_full_system_expansion import main as tier3_main
+    """Run tier1 + tier2 + tier3 bundles via mpreg-example."""
+    from mpreg.examples.apps._shared.runner import main as examples_main
 
-    async def _run():
-        await demo_rpc()
-        await tier2_main()
-        await tier3_main()
+    examples_main(["demo", "tier1"])
+    examples_main(["demo", "tier2"])
+    examples_main(["demo", "tier3"])
 
-    asyncio.run(_run())
+@demo.command("quick")
+def demo_quick() -> None:
+    """Fast demo bundle (hello_rpc + plane_rpc)."""
+    _demo_via_example(["demo", "quick"])
+
+@demo.command("list")
+def demo_list() -> None:
+    """List demo bundles."""
+    _demo_via_example(["bundles"])
+
+@cli.group("examples")
+def examples_group() -> None:
+    """Curriculum example apps (product-shaped learning path).
+
+    See docs/examples-curriculum/ and ``mpreg examples list``.
+    """
+
+@examples_group.command("list")
+@click.option("--level", type=click.Choice(["L0", "L1", "L2", "L3", "L4"]), default=None)
+@click.option("--smoke", is_flag=True, help="Only smoke-bundle apps")
+@click.option("--suite", is_flag=True, help="Only suite-bundle apps")
+@click.option(
+    "--kind",
+    type=click.Choice(["product", "plane", "integration", "legacy"]),
+    default=None,
+    help="Filter by app kind",
+)
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["table", "json"]),
+    default="table",
+    help="Output format",
+)
+def examples_list(
+    level: str | None, smoke: bool, suite: bool, kind: str | None, fmt: str
+) -> None:
+    """List curriculum apps."""
+    from mpreg.examples.apps._shared.runner import main as examples_main
+
+    argv = ["list"]
+    if level:
+        argv.extend(["--level", level])
+    if smoke:
+        argv.append("--smoke")
+    if suite:
+        argv.append("--suite")
+    if kind:
+        argv.extend(["--kind", kind])
+    argv.extend(["--format", fmt])
+    examples_main(argv)
+
+@examples_group.command("describe")
+@click.argument("app_id")
+def examples_describe(app_id: str) -> None:
+    """Describe one curriculum app."""
+    from mpreg.examples.apps._shared.runner import main as examples_main
+
+    examples_main(["describe", app_id])
+
+@examples_group.command("path")
+@click.argument("app_id")
+def examples_path(app_id: str) -> None:
+    """Print on-disk path for an app."""
+    from mpreg.examples.apps._shared.runner import main as examples_main
+
+    examples_main(["path", app_id])
+
+@examples_group.command("run")
+@click.argument("app_id")
+@click.option("--timeout", type=float, default=120.0, show_default=True)
+def examples_run(app_id: str, timeout: float) -> None:
+    """Run one curriculum app (assertable)."""
+    from mpreg.examples.apps._shared.runner import main as examples_main
+
+    examples_main(["run", app_id, "--timeout", str(timeout)])
+
+@examples_group.command("smoke")
+@click.option("--timeout", type=float, default=120.0, show_default=True)
+@click.option("--no-fail-fast", is_flag=True)
+def examples_smoke(timeout: float, no_fail_fast: bool) -> None:
+    """Run smoke bundle (L0 + selected L1)."""
+    from mpreg.examples.apps._shared.runner import main as examples_main
+
+    argv = ["smoke", "--timeout", str(timeout)]
+    if no_fail_fast:
+        argv.append("--no-fail-fast")
+    examples_main(argv)
+
+@examples_group.command("suite")
+@click.option("--timeout", type=float, default=180.0, show_default=True)
+@click.option("--no-fail-fast", is_flag=True)
+def examples_suite(timeout: float, no_fail_fast: bool) -> None:
+    """Run full shipped curriculum suite."""
+    from mpreg.examples.apps._shared.runner import main as examples_main
+
+    argv = ["suite", "--timeout", str(timeout)]
+    if no_fail_fast:
+        argv.append("--no-fail-fast")
+    examples_main(argv)
 
 @cli.command()
 @click.option(

@@ -28,6 +28,7 @@ dependencies = [
 
 [project.scripts]
 mpreg = "mpreg.cli:main"
+mpreg-example = "mpreg.examples.apps._shared.runner:main"
 
 [dependency-groups]
 dev = [
@@ -79,6 +80,9 @@ markers = [
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
     "chaos: cross-plane chaos scenarios (DS validation)",
+    "example_apps: curriculum example apps (live servers, real workloads)",
+    "example_smoke: curriculum smoke-bundle apps (CI-friendly)",
+    "example_suite: full curriculum suite apps",
 ]
 # Test discovery
 testpaths = ["tests"]

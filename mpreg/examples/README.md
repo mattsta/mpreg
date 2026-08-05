@@ -1,103 +1,68 @@
 # MPREG Examples
 
-This directory is organized into three tiers of examples:
+## Unified curriculum (only supported user path)
 
-## Tier 1: Single-System Full Capability
+All learning apps, capability plane tours, and former “legacy demos” run through
+one entrypoint:
 
-These show the complete feature set of one system at a time.
+```bash
+uv run mpreg-example list
+uv run mpreg-example run hello_rpc
+uv run mpreg-example smoke          # fast CI path (8 apps)
+uv run mpreg-example suite          # all 35 shipped apps
+uv run mpreg-example demo tier1     # all plane_* tours
+uv run mpreg-example demo tier2
+uv run mpreg-example demo tier3
+uv run mpreg-example demo quick
+uv run mpreg-example demo product_vertical
 
-Run a specific system demo:
+# Same runner via main CLI
+uv run mpreg examples list
+uv run mpreg demo tier1
 
-```
-uv run python mpreg/examples/tier1_single_system_full.py --system rpc
-uv run python mpreg/examples/tier1_single_system_full.py --system cache
-uv run python mpreg/examples/tier1_single_system_full.py --system pubsub
-uv run python mpreg/examples/tier1_single_system_full.py --system queue
-uv run python mpreg/examples/tier1_single_system_full.py --system fabric  # Fabric federation
-uv run python mpreg/examples/tier1_single_system_full.py --system monitoring
-uv run python mpreg/examples/fabric_route_security_demo.py  # Route security + policy
-```
-
-## Tier 2: Two-System Integrations
-
-These show how two systems work together in realistic workflows.
-
-```
-uv run python mpreg/examples/tier2_integrations.py
-```
-
-Includes:
-
-- RPC + Cache
-- Pub/Sub + Queue
-- Cache + Fabric Federation
-
-## Tier 3: Full System Expansion
-
-This is the full-system demo that combines RPC, caching (L1-L4), pub/sub,
-queues, fabric federation, and monitoring into one end-to-end workflow.
-
-Note: Federation demos are powered by the unified fabric control plane (no
-deprecated federation modules remain).
-
-```
-uv run python mpreg/examples/tier3_full_system_expansion.py
+# Pytest (live app mains)
+uv run pytest tests/examples_apps -m example_smoke
+uv run pytest tests/examples_apps -m example_suite
 ```
 
-## Quick Entry Points
+**Never** `python -m` or `uv run python` for examples.
 
+Docs + tracker: [`docs/examples-curriculum/`](../../docs/examples-curriculum/).  
+Code: [`mpreg/examples/apps/`](apps/).  
+Operate: [`docs/examples-curriculum/OPERATE.md`](../../docs/examples-curriculum/OPERATE.md).
+
+### Levels
+
+| Dir | Level | Role |
+|-----|-------|------|
+| `apps/00_getting_started/` | L0 | Hellos |
+| `apps/01_simple/` | L1 | Product + plane tours |
+| `apps/02_moderate/` | L2 | Multi-plane composition |
+| `apps/03_complex/` | L3 | Fabric / chaos / join |
+| `apps/04_world/` | L4 | World reference |
+| `apps/_shared/` | — | Registry, runner, runtime |
+
+### Legacy module files
+
+Files like `tier1_single_system_full.py`, `tier2_integrations.py`,
+`fabric_route_security_demo.py`, etc. remain as **implementation backends**
+imported by curriculum apps (`plane_*`, integrations, wrappers). Prefer:
+
+| Instead of | Use |
+|------------|-----|
+| `uv run python mpreg/examples/tier1_….py` | `uv run mpreg-example run plane_rpc` |
+| `uv run python …/tier2_….py` | `uv run mpreg-example demo tier2` |
+| `uv run python …/tier3_….py` | `uv run mpreg-example run tier3_expansion` |
+| `uv run python …/quick_demo.py` | `uv run mpreg-example demo quick` |
+| `uv run python …/fabric_route_security_demo.py` | `uv run mpreg-example run signed_route_border` |
+| `uv run python …/persistence_restart_demo.py` | `uv run mpreg-example run config_reload_live` |
+| `uv run python …/auto_port_cluster_bootstrap.py` | `uv run mpreg-example run auto_port_bootstrap` |
+
+Scripts:
+
+```bash
+scripts/run_example_apps_smoke.sh
+scripts/run_example_apps_suite.sh
+scripts/run_demo_smoke.sh    # → mpreg-example smoke
+scripts/run_demo_suite.sh    # → mpreg-example suite
 ```
-uv run python mpreg/examples/quick_demo.py
-uv run python mpreg/examples/simple_working_demo.py
-uv run python mpreg/examples/real_world_examples.py
-uv run python mpreg/examples/fabric_route_security_demo.py
-uv run python mpreg/examples/auto_port_cluster_bootstrap.py
-uv run python mpreg/examples/persistence_restart_demo.py
-uv run python mpreg/examples/fabric_snapshot_restart_demo.py
-```
-
-## Demo Launcher (CLI)
-
-Use the unified CLI to run demos:
-
-```
-uv run mpreg demo tier1 rpc
-uv run mpreg demo tier2
-uv run mpreg demo tier3
-uv run mpreg demo all
-```
-
-## Settings File Example
-
-Start a server from the bundled settings file:
-
-```
-uv run mpreg server start-config mpreg/examples/persistence_settings.toml
-```
-
-## Demo Suite (CI Friendly)
-
-Run the full demo suite with fail-fast validation:
-
-```
-scripts/run_demo_suite.sh
-```
-
-Run the smoke suite for faster CI checks:
-
-```
-scripts/run_demo_smoke.sh
-```
-
-## Demo-as-Test Expectation
-
-These demos are meant to run successfully in CI or local validation. If a demo
-fails, treat it as a functional regression and fix it before publishing.
-
-## Performance + Correctness Tips
-
-- Prefer running tiered demos over older filenames to keep behavior consistent.
-- Example suites allocate ports dynamically to avoid collisions in CI and parallel runs.
-- Use `CacheOptions(cache_levels=...)` in custom scripts to target L3/L4.
-- `DeliveryGuarantee.QUORUM` requires multiple subscribers and acknowledgments.
-- Keep logging at INFO for stable latency measurements.
