@@ -26,7 +26,9 @@ uv run mpreg demo tier1   # delegates to mpreg-example
 
 **Never** `python -m` / `uv run python`.
 
-## Matrix (40 shipped)
+Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · Friction: [API_FRICTION.md](./API_FRICTION.md)
+
+## Matrix (56 shipped)
 
 | ID | Level | Kind | Primary lesson | Systems |
 |----|-------|------|----------------|---------|
@@ -36,8 +38,11 @@ uv run mpreg demo tier1   # delegates to mpreg-example
 | `hello_pubsub` | L0 | product | Topic wildcards + fan-out | pubsub |
 | `hello_cache` | L0 | product | Cache put/get | cache |
 | `hello_ports` | L0 | product | Dynamic port allocation | rpc, ports |
+| `hello_queue` | L0 | product | Smallest queue send + subscribe | queue |
+| `hello_dns` | L0 | product | Minimal DNS register + SRV resolve | dns, discovery |
 | `ha_client_failover` | L1 | product | Multi-seed HA client | rpc, ha-client |
 | `job_queue_worker` | L1 | product | At-least-once + quorum | queue |
+| `job_queue_dlq` | L1 | product | Poison retries → dead-letter | queue |
 | `url_shortener_rpc` | L1 | product | CRUD-ish RPC + cache | rpc, cache |
 | `sensor_ingest_pubsub` | L1 | product | Multi-pattern sensor bus | pubsub |
 | `session_cache` | L1 | product | Session TTL put/rotate | cache |
@@ -53,6 +58,8 @@ uv run mpreg demo tier1   # delegates to mpreg-example
 | `plane_dns` | L1 | plane | DNS register/list/describe/resolve | dns, discovery |
 | `unified_client_tour` | L1 | product | Four-plane MPREGClient façade | rpc, cache, queue |
 | `pubsub_request_reply` | L1 | product | publish_with_reply round-trip | pubsub |
+| `rpc_versioned_topic` | L1 | product | function_id + version_constraint | rpc |
+| `client_auth_token` | L1 | product | Monitoring bearer + client auth_token | client, security |
 | `order_intake` | L2 | product | RPC+cache+pubsub+queue | multi-plane |
 | `media_pipeline` | L2 | product | Multi-stage ETL RPC | rpc, cluster |
 | `feature_flag_mesh` | L2 | product | Federated L4 flags | cache, fabric |
@@ -62,6 +69,12 @@ uv run mpreg demo tier1   # delegates to mpreg-example
 | `pubsub_plus_queue` | L2 | integration | Fan-out → queue | pubsub, queue |
 | `cache_plus_federation` | L2 | integration | L4 cache federation | cache, fabric |
 | `ml_inference_mesh` | L2 | product | Router + vision/NLP | rpc, cluster |
+| `cache_event_bus` | L2 | integration | Cache ops → topic events | cache, pubsub |
+| `ops_cli_tour` | L2 | legacy | mpreg CLI call/dns/doctor friction | ops, rpc, dns |
+| `notification_fanout` | L2 | product | Email/push/audit wildcards | pubsub |
+| `billing_ledger` | L2 | product | Charge RPC + balance cache + settle queue | rpc, cache, queue |
+| `inventory_reserve` | L2 | product | Stock reserve/release + cache | rpc, cache |
+| `topic_queue_bridge` | L2 | integration | Topic hits → durable queue | pubsub, queue |
 | `multi_region_shop` | L3 | product | Two-cluster fabric RPC | fabric, multi-cluster |
 | `signed_route_border` | L3 | legacy | Signed routes + policy + rotation | fabric, security |
 | `partition_safe_counter` | L3 | product | Majority vs minority quorum | consensus, chaos |
@@ -69,6 +82,11 @@ uv run mpreg demo tier1   # delegates to mpreg-example
 | `chaos_checkout` | L3 | product | Deadlines + fail-closed partition | chaos, rpc |
 | `fabric_snapshot_restart` | L3 | legacy | Fabric snapshot across restart | fabric, persistence |
 | `tier3_expansion` | L3 | legacy | Full multi-system expansion | multi-plane |
+| `discovery_watch_summary` | L3 | product | catalog_watch + summary query/watch | discovery, pubsub |
+| `fabric_graph_resilience` | L3 | plane | Dijkstra paths + circuit breaker | fabric |
+| `chaos_transport` | L3 | plane | Skew/dup/reorder/drop model | chaos |
+| `rpc_deadline_budget` | L3 | product | M1 vs M2/M3 shared wall deadline | rpc, client |
+| `multi_region_dns_policy` | L3 | product | US/EU DNS namespaces + regional RPC | dns, rpc, fabric |
 | `global_edge_control_plane` | L4 | product | Hub + US/EU edges + timeline | fabric, monitoring |
 
 ## Legacy → unified mapping
@@ -78,47 +96,18 @@ uv run mpreg demo tier1   # delegates to mpreg-example
 | `tier1_single_system_full --system rpc` | `plane_rpc` |
 | `… pubsub/queue/cache/fabric/monitoring` | `plane_*` |
 | `tier2_integrations` | `rpc_plus_cache` + `pubsub_plus_queue` + `cache_plus_federation` |
-| `tier3_full_system_expansion` | `tier3_expansion` |
-| `quick_demo` / `simple_working_demo` | `demo quick` / `plane_rpc` |
-| `auto_port_cluster_bootstrap` | `auto_port_bootstrap` |
-| `persistence_restart_demo` | `config_reload_live` |
-| `fabric_route_security_demo` | `signed_route_border` |
-| `fabric_snapshot_restart_demo` | `fabric_snapshot_restart` |
-| `mpreg demo tier1\|tier2\|tier3\|all` | `mpreg-example demo …` |
+| `tier3_multi_system_expansion` | `tier3_expansion` |
+| `federation_hierarchical_demo` | `multi_region_shop` / `global_edge_control_plane` |
 
-Legacy `.py` files remain as implementation backends for plane/integration wrappers; **user-facing execution is only via entrypoints**.
+## Planned / residual (not empty shells)
 
-## Bundles
+| ID | Level | Notes |
+|----|-------|-------|
+| second L4 world tour | L4 | optional when catalog needs it |
+| deeper mTLS local-cert | L1–L2 | blocked on turnkey cert helper (F12) |
+| live WS partition chaos | L3 | injector is lab model (F10) |
 
-| Bundle | Command | Contents |
-|--------|---------|----------|
-| **smoke** | `mpreg-example smoke` | L0 hellos + ha_client + job_queue (8) |
-| **suite** | `mpreg-example suite` | All 40 shipped apps |
-| **tier1** | `mpreg-example demo tier1` | Core `plane_*` (rpc…monitoring) |
-| **tier2** | `mpreg-example demo tier2` | Three integration apps |
-| **tier3** | `mpreg-example demo tier3` | `tier3_expansion` |
-| **quick** | `mpreg-example demo quick` | `hello_rpc` + `plane_rpc` |
-| **product_vertical** | `mpreg-example demo product_vertical` | Learning path slice |
-| **all_planes** | `mpreg-example demo all_planes` | Core planes + dns + atomic + ns policy |
+## Depth contract
 
-## Pytest
-
-```bash
-uv run pytest tests/examples_apps -m example_smoke
-uv run pytest tests/examples_apps -m example_suite
-uv run pytest tests/examples_apps
-```
-
-Markers: `example_apps`, `example_smoke`, `example_suite`.
-
-## Path on disk
-
-```text
-mpreg/examples/apps/
-  _shared/           # runtime, registry, runner
-  00_getting_started/
-  01_simple/
-  02_moderate/
-  03_complex/
-  04_world/
-```
+Every **shipped** row must satisfy FEATURE_CATALOG depth contract (≥2 scenarios;
+L0 ≥3 ensures; L1+ ≥5 ensures) and appear in `features.py` APP_FEATURES.

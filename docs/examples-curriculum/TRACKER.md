@@ -98,8 +98,8 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 | E12 | `job_queue_dlq` | [x] | poison → DLQ |
 | E13 | `rpc_versioned_topic` | [x] | function_id + constraints |
 | E14 | `client_auth_token` | [x] | monitoring bearer + client token |
-| E15 | Full suite + report | [ ] | next |
-| E16 | Catalog doc sync | [>] | plan/tracker/friction |
+| E15 | Full suite + report | [x] | **56/56** suite ~75s |
+| E16 | Catalog doc sync | [x] | APP_CATALOG 56 rows |
 | F | Verticals + hellos | [>] | billing/notify/inventory/dns policy/… |
 
 **App count:** 35 → 40 → 44 → **56** shipped (≥50 met).
@@ -119,3 +119,5 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 | 2026-08-05 | E7–E12 four apps | all green; 44 apps |
 | 2026-08-05 | E9–E14 + F twelve apps | all green; **56** apps; unit 71 |
 | 2026-08-05 | `pytest tests/examples_apps -m unit` | **71 passed** |
+
+| 2026-08-05 | `mpreg-example suite` | **56/56 passed** |

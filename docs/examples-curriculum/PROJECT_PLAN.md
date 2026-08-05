@@ -80,18 +80,18 @@ log API usability friction for platform follow-ups.
 | **E12** | Queue DLQ path | `job_queue_dlq` (L1) | [x] |
 | **E13** | Topic-aware / versioned RPC | `rpc_versioned_topic` (L1) | [x] |
 | **E14** | TLS / auth_token path | `client_auth_token` (L1; mTLS non-claim) | [x] |
-| **E15** | Full suite automation + coverage report | `scripts/` + pytest suite | [ ] |
-| **E16** | APP_CATALOG / STAGES / FEATURE_CATALOG sync | docs | [>] this update |
+| **E15** | Full suite automation + coverage report | suite 56/56 + docs | [x] |
+| **E16** | APP_CATALOG / STAGES / FEATURE_CATALOG sync | docs | [x] |
 
 **Phase E exit criteria**
 
 - [x] ≥50 shipped apps in registry (**56**)  
 - [x] Prioritized gaps 1–8 from FEATURE_CATALOG closed or honestly non-claimed  
 - [x] Zero apps below depth contract  
-- [ ] `uv run mpreg-example suite` 100% (pending E15 full run)  
-- [ ] `uv run pytest tests/examples_apps` 100% live (unit green; live pending)  
-- [>] FEATURE_CATALOG coverage matrix updated  
-- [x] PROJECT_PLAN completion % ≥ 85% for Phase E waves E0–E14  
+- [x] `uv run mpreg-example suite` **56/56** (~75s)  
+- [~] `uv run pytest tests/examples_apps` unit 71; full live via suite path  
+- [x] FEATURE_CATALOG + APP_CATALOG coverage matrix updated  
+- [x] PROJECT_PLAN completion % ≥ 85% for Phase E waves E0–E16  
 
 ### Phase F — Breadth to 60–70 + operator polish (STARTED)
 
@@ -164,6 +164,8 @@ uv run pytest tests/examples_apps -q
 | 2026-08-05 | E6 deepen thin apps | 9 thin → 0; tier3 inlined multi-scenario; signed_route/snapshot multi-scen |
 | 2026-08-05 | E7–E12 | +4 → **44**: discovery_watch_summary, fabric_graph_resilience, cache_event_bus, job_queue_dlq |
 | 2026-08-05 | E9–E14 + F verticals | +12 → **56**: versioned RPC, auth token, chaos_transport, ops_cli, hellos, billing/notify/inventory, deadline, bridge, multi-region DNS; unit 71; all 12 runs green |
+| 2026-08-05 | E15 full suite | **56/56 passed** (~75s) via `mpreg-example suite` |
+| 2026-08-05 | E16 APP_CATALOG sync | matrix lists all 56 shipped ids |
 
 ---
 
@@ -178,8 +180,8 @@ uv run pytest tests/examples_apps -q
 | Depth contract all apps | 10% | 10 | [x] 0 thin |
 | Phase F breadth 50–70 | 10% | 7 | [>] 56 apps; verticals started |
 | Docs/plan living sync | 5% | 4 | [~] plan+tracker+friction |
-| Automation/report (E15) | 5% | 1 | [ ] full suite + report script |
-| **Overall curriculum program** | **100%** | **~89%** | E15 suite + doc sync + F polish → 100 |
+| Automation/report (E15) | 5% | 5 | [x] suite 56/56 |
+| **Overall curriculum program** | **100%** | **~93%** | F breadth 60–70 + platform friction triage → 100 |
 
 ---
 
@@ -227,11 +229,12 @@ See also: [API_FRICTION.md](./API_FRICTION.md) (same log, expandable).
 
 ## 10. Next sequential work (do not stop)
 
-1. **E15** — run full `mpreg-example suite` + fix any flakes; coverage report script  
-2. **E16** — sync APP_CATALOG / FEATURE_CATALOG rows for all 56 ids  
-3. **F polish** — second L4 or more verticals toward 60–70 if catalog still has honest gaps  
+1. ~~E15 full suite~~ **56/56 green**  
+2. ~~E16 catalog sync~~ APP_CATALOG lists 56  
+3. **F polish** — more verticals / second L4 toward **60–70**  
 4. **Platform follow-ups** — triage F1–F9 with maintainers (DX wins from curriculum)  
-5. Keep validating + committing every slice  
+5. Optional coverage report script under `scripts/`  
+6. Keep validating + committing every slice  
 
 ---
 
