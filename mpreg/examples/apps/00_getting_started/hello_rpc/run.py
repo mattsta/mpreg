@@ -40,27 +40,27 @@ async def main() -> None:
                 def multiply(x: int, factor: int) -> int:
                     return x * factor
 
-                def echo(msg: str) -> str:
-                    return f"echo:{msg}"
+                def greet(msg: str) -> str:
+                    return f"greet:{msg}"
 
                 server.register_command("add", add, ["cpu", "math"])
                 server.register_command("multiply", multiply, ["cpu", "math"])
-                server.register_command("echo", echo, ["cpu"])
-                step(f"ws://127.0.0.1:{ports[0]} registered add, multiply, echo")
+                server.register_command("greet", greet, ["cpu"])
+                step(f"ws://127.0.0.1:{ports[0]} registered add, multiply, greet")
 
                 hub = f"ws://127.0.0.1:{ports[0]}"
                 async with MPREGClientAPI(hub) as client:
                     # ── S1: single-function public call API ─────────────────
                     with scenario("single call via MPREGClientAPI.call", "rpc.call", "rpc.register"):
-                        echoed = await client.call(
-                            "echo", "hello", locs=frozenset(["cpu"])
+                        greeted = await client.call(
+                            "greet", "hello", locs=frozenset(["cpu"])
                         )
-                        ensure(echoed == "echo:hello", f"echo got {echoed!r}")
+                        ensure(greeted == "greet:hello", f"greet got {greeted!r}")
                         summed = await client.call(
                             "add", 10, 32, locs=frozenset(["cpu", "math"])
                         )
                         ensure(summed == 42, f"add expected 42 got {summed!r}")
-                        ok(f"call echo={echoed!r} add={summed}")
+                        ok(f"call greet={greeted!r} add={summed}")
 
                     # ── S2: multi-command DAG via request / call_dag ────────
                     with scenario("dependency DAG request()", "rpc.dag", "rpc.locs"):
