@@ -168,6 +168,7 @@ uv run pytest tests/examples_apps -q
 | 2026-08-05 | E15 full suite | **56/56 passed** (~75s) via `mpreg-example suite` |
 | 2026-08-05 | E16 APP_CATALOG sync | matrix lists all 56 shipped ids |
 | 2026-08-05 | F breadth wave | +6 → **62**: taxonomy, persistence_kv, profiles, intermediate RPC, routing oracle, deadline hop; F17–F19 friction |
+| 2026-08-05 | Full suite re-run | **62/62 passed** (~76s) |
 
 ---
 
