@@ -76,4 +76,30 @@ Legend: `[x]` done · `[~]` partial · `[ ]` not started
 - Shared `features.py` + registry `features` field + pytest join tests.
 - L0–L4 apps deepened with multi-scenario API drills (not thin wrappers).
 - Planes inlined (no 18-line tier1-only shims).
-- Gaps remain: DNS plane app, namespace policy app, atomic cache ops, unified client queue/cache RPC on live servers.
+
+## Phase E — Gap fill (ACTIVE)
+
+Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
+
+| Wave | Item | Status | Notes |
+|------|------|--------|-------|
+| E0 | Living PROJECT_PLAN | [x] | goals, waves, dashboard |
+| E1 | `cache_atomic_ops` | [x] | CAS/incr/structures/ns bulk |
+| E2 | `namespace_policy_gate` | [x] | validate/apply/status/export/audit |
+| E3 | `plane_dns` | [x] | register/list/describe + UDP/TCP resolve |
+| E4 | `unified_client_tour` | [x] | MPREGClient RPC+cache+queue |
+| E5 | `pubsub_request_reply` | [x] | publish_with_reply |
+| E6 | Deepen 9 thin apps | [ ] | tier3, signed_route, fabric_snapshot, … |
+| E7+ | Remaining catalog gaps | [ ] | graph, watches, dlq, ops, … |
+
+**App count:** 35 → **40** shipped.
+
+## Verification log (append)
+
+| Date | Command | Result |
+|------|---------|--------|
+| 2026-08-05 | `mpreg-example run cache_atomic_ops` | pass (5 scen, ~21 ens) |
+| 2026-08-05 | `mpreg-example run namespace_policy_gate` | pass (6 scen, ~9 ens) |
+| 2026-08-05 | `mpreg-example run plane_dns` | pass (5 scen, ~9 ens) |
+| 2026-08-05 | `mpreg-example run unified_client_tour` | pass (4 scen, ~12 ens) |
+| 2026-08-05 | `mpreg-example run pubsub_request_reply` | pass (4 scen, ~12 ens) |

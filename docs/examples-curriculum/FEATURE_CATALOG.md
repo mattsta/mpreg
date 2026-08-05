@@ -68,7 +68,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | ID | Feature | Primary APIs | Depth | Apps |
 |----|---------|--------------|-------|------|
 | `client.api` | RPC-focused client | `MPREGClientAPI` | shipped | most apps |
-| `client.unified` | Four-plane façade | `MPREGClient` (call/publish/queue_*/cache_*) | partial | `order_intake` (expand), planes |
+| `client.unified` | Four-plane façade | `MPREGClient` (call/publish/queue_*/cache_*) | shipped | `unified_client_tour`, `order_intake` |
 | `client.cluster` | Multi-seed HA client | `MPREGClusterClient(seed_urls=…)` | shipped | `ha_client_failover` |
 | `client.cluster_map` | Live cluster map refresh | `cluster_map`, `refresh_cluster_map` | partial | `ha_client_failover`, `discovery_join` |
 | `client.summary` | Discovery summary routing | `summary_query`, `call_with_summary` | gap | — |
@@ -77,7 +77,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `client.policy.m3` | Streaming modality defaults | `for_mode(M3_STREAMING)` | partial | `plane_rpc` |
 | `client.default_ha` | HA retry defaults | `default_ha_policy()` | shipped | `ha_client_failover` |
 | `client.pubsub` | Dedicated pubsub client | `MPREGPubSubClient`, `MPREGPubSubExtendedClient` | partial | `sensor_ingest_pubsub` |
-| `client.dns` | DNS resolve client | `MPREGDnsClient.resolve` | gap | — |
+| `client.dns` | DNS resolve client | `MPREGDnsClient.resolve` | shipped | `plane_dns` |
 | `client.trace` | Last W3C trace context | `last_trace_context()` | partial | `hello_trace`, `global_edge_control_plane` |
 | `client.auth` | Token / API key on wire | `auth_token`, `api_key`, `SecurityConfig` | gap | — |
 
@@ -92,8 +92,8 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `pubsub.wildcard_hash` | Multi-segment `#` | `TopicPattern("order.#")` | shipped | `plane_pubsub`, `webhook_dispatcher` |
 | `pubsub.fanout` | Multi-subscriber match | multiple `PubSubSubscription` | shipped | `hello_pubsub`, `plane_pubsub` |
 | `pubsub.backlog` | Subscribe with backlog | `subscribe(..., get_backlog=True)` | partial | `plane_pubsub` (client path) |
-| `pubsub.publish_reply` | Request/reply over topics | `publish_with_reply` | gap | — |
-| `pubsub.client_wire` | Wire pubsub via client | `MPREGClient.publish/subscribe` | partial | `sensor_ingest_pubsub` |
+| `pubsub.publish_reply` | Request/reply over topics | `publish_with_reply` | shipped | `pubsub_request_reply` |
+| `pubsub.client_wire` | Wire pubsub via client | `MPREGClient.publish/subscribe` | shipped | `pubsub_request_reply`, `sensor_ingest_pubsub` |
 | `pubsub.headers` | Message headers | `PubSubMessage.headers` | partial | `webhook_dispatcher` |
 | `pubsub.fabric_forward` | Cross-cluster topic forward | `fabric.pubsub_forwarding` | partial | `tier3_expansion` |
 
@@ -114,7 +114,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `queue.receive` | Poll receive | `receive_message` / client `queue_receive` | partial | `plane_queue` |
 | `queue.dlq` | Dead-letter path | queue timeout → DLQ | gap | — |
 | `queue.topic_route` | Topic → queue bridge | `route_topic_to_queue` | shipped | `pubsub_plus_queue`, `webhook_dispatcher` |
-| `queue.rpc_surface` | Queue via unified client RPC | `MPREGClient.queue_send/receive/ack` | gap | needs server RPC registration demo |
+| `queue.rpc_surface` | Queue via unified client RPC | `MPREGClient.queue_send/receive/ack` | shipped | `unified_client_tour` |
 | `queue.factories` | Standard / HT / reliable mgr | `create_*_queue_manager` | shipped | `plane_queue` |
 
 ---
@@ -134,11 +134,11 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `cache.geo_hints` | Geographic placement hints | `CacheMetadata.geographic_hints` | partial | `plane_cache` |
 | `cache.replication` | Replication strategy | `ReplicationStrategy`, `CacheReplicationPolicy` | partial | `feature_flag_mesh` |
 | `cache.invalidate` | Pattern invalidate | `invalidate` / client `cache_invalidate` | partial | `session_cache` |
-| `cache.atomic` | CAS / incr / append | `AdvancedCacheOperations.atomic_operation` | gap | — |
-| `cache.structures` | Set/list/map/counter ops | `data_structure_operation` | gap | — |
-| `cache.namespace_ops` | Clear/list/scan namespace | `namespace_operation` | gap | — |
+| `cache.atomic` | CAS / incr / append | `AdvancedCacheOperations.atomic_operation` | shipped | `cache_atomic_ops` |
+| `cache.structures` | Set/list/map/counter ops | `data_structure_operation` | shipped | `cache_atomic_ops` |
+| `cache.namespace_ops` | Clear/list/scan namespace | `namespace_operation` | shipped | `cache_atomic_ops` |
 | `cache.pubsub_events` | Cache→pubsub integration | `CachePubSubIntegration` | gap | — |
-| `cache.rpc_surface` | Cache via unified client | `MPREGClient.cache_get/put` | gap | — |
+| `cache.rpc_surface` | Cache via unified client | `MPREGClient.cache_get/put` | shipped | `unified_client_tour` |
 
 ---
 
@@ -179,8 +179,8 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `disco.access_audit` | Discovery access audit | `discovery_access_audit` | gap | — |
 | `disco.resolver_stats` | Resolver cache stats | `resolver_cache_stats` | gap | — |
 | `disco.resolver_resync` | Force catalog resync | `resolver_resync` | gap | — |
-| `disco.dns_register` | DNS service register | `dns_register` / CLI | gap | — |
-| `disco.dns_resolve` | DNS gateway resolve | `MPREGDnsClient`, `DnsGateway` | gap | — |
+| `disco.dns_register` | DNS service register | `dns_register` / CLI | shipped | `plane_dns` |
+| `disco.dns_resolve` | DNS gateway resolve | `MPREGDnsClient`, `DnsGateway` | shipped | `plane_dns` |
 | `disco.join` | Live node join visibility | peers + new resources | shipped | `discovery_join` |
 | `disco.signatures` | Signed discovery summaries | `discovery_signatures` | gap | — |
 
@@ -190,12 +190,12 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 
 | ID | Feature | Primary APIs | Depth | Apps |
 |----|---------|--------------|-------|------|
-| `ns.status` | Namespace status | `namespace_status` | gap | — |
-| `ns.export` | Export policy | `namespace_policy_export` | gap | — |
-| `ns.validate` | Validate rules | `namespace_policy_validate` | gap | — |
-| `ns.apply` | Apply rules | `namespace_policy_apply` | gap | — |
-| `ns.audit` | Policy audit log | `namespace_policy_audit` | gap | — |
-| `ns.engine` | In-process engine | `NamespacePolicyEngine` | gap | — |
+| `ns.status` | Namespace status | `namespace_status` | shipped | `namespace_policy_gate` |
+| `ns.export` | Export policy | `namespace_policy_export` | shipped | `namespace_policy_gate` |
+| `ns.validate` | Validate rules | `namespace_policy_validate` | shipped | `namespace_policy_gate` |
+| `ns.apply` | Apply rules | `namespace_policy_apply` | shipped | `namespace_policy_gate` |
+| `ns.audit` | Policy audit log | `namespace_policy_audit` | shipped | `namespace_policy_gate` |
+| `ns.engine` | In-process engine | `NamespacePolicyEngine` | partial | `namespace_policy_gate` (via apply) |
 
 ---
 
@@ -328,22 +328,25 @@ Legend: ● primary teach · ○ supporting · · absent
 | Monitoring timeline | ● | ● | · | ○ | ● |
 | Chaos / partition | · | · | · | ● | · |
 | Persistence restart | · | · | ● | ● | · |
-| DNS / namespace / atomic cache | · | · | · | · | · (gaps) |
+| DNS / namespace / atomic cache | · | ● | · | · | · |
 
 ---
 
 ## Gap backlog (platform has it; curriculum thin or missing)
 
-Prioritized for next deepen pass:
+**Closed in Phase E waves E1–E5 (2026-08-05):** DNS plane, namespace policy,
+advanced cache ops, unified client surfaces, publish-with-reply.
 
-1. **DNS plane app** — register/list/describe/resolve (`disco.dns_*`)
-2. **Namespace policy app** — validate/apply/audit (`ns.*`)
-3. **Advanced cache ops** — CAS, counters, structures (`cache.atomic*`)
-4. **Unified client RPC surfaces** — `queue_*` / `cache_*` on live server commands
-5. **Publish-with-reply** pubsub drill
-6. **Graph router / resilience** fabric drills
-7. **TLS / auth_token** client security path
-8. **Topic-aware enhanced RPC** progress stream
+Still open (prioritized):
+
+1. **Graph router / resilience** fabric drills (`fabric.graph`, `fabric.resilience`)
+2. **Discovery watches + summary query** (`disco.catalog_watch`, `disco.summary_*`)
+3. **Cache→pubsub events** (`cache.pubsub_events`)
+4. **Queue DLQ path** (`queue.dlq`)
+5. **TLS / auth_token** client security path (`client.auth`, `tx.security`)
+6. **Topic-aware / versioned RPC** (`rpc.topic_aware`, `rpc.function_id`)
+7. **Chaos extras** (clock skew, duplicate/reorder)
+8. **Ops CLI teaching app** (`ops.cli_*`)
 
 Until those ship, READMEs must **non-claim** them.
 
@@ -388,6 +391,11 @@ Until those ship, READMEs must **non-claim** them.
 | `fabric_snapshot_restart` | L3 | `pers.fabric_snap`, `fabric.catalog` |
 | `tier3_expansion` | L3 | multi-plane expansion |
 | `global_edge_control_plane` | L4 | `fabric.hubs`, `mon.timeline`, multi-cluster |
+| `cache_atomic_ops` | L1 | `cache.atomic`, `cache.structures`, `cache.namespace_ops` |
+| `namespace_policy_gate` | L1 | `ns.validate`, `ns.apply`, `ns.status`, `ns.export`, `ns.audit` |
+| `plane_dns` | L1 | `disco.dns_register`, `disco.dns_resolve`, `client.dns` |
+| `unified_client_tour` | L1 | `client.unified`, `cache.rpc_surface`, `queue.rpc_surface` |
+| `pubsub_request_reply` | L1 | `pubsub.publish_reply`, `pubsub.client_wire` |
 
 ---
 

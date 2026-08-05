@@ -26,7 +26,7 @@ uv run mpreg demo tier1   # delegates to mpreg-example
 
 **Never** `python -m` / `uv run python`.
 
-## Matrix (35 shipped)
+## Matrix (40 shipped)
 
 | ID | Level | Kind | Primary lesson | Systems |
 |----|-------|------|----------------|---------|
@@ -48,6 +48,11 @@ uv run mpreg demo tier1   # delegates to mpreg-example
 | `plane_cache` | L1 | plane | Full cache plane tour | cache |
 | `plane_fabric` | L1 | plane | Full fabric plane tour | fabric |
 | `plane_monitoring` | L1 | plane | Full monitoring plane tour | monitoring |
+| `cache_atomic_ops` | L1 | plane | CAS / incr / structures / ns bulk | cache |
+| `namespace_policy_gate` | L1 | plane | Validate/apply/status/export/audit | namespace |
+| `plane_dns` | L1 | plane | DNS register/list/describe/resolve | dns, discovery |
+| `unified_client_tour` | L1 | product | Four-plane MPREGClient façade | rpc, cache, queue |
+| `pubsub_request_reply` | L1 | product | publish_with_reply round-trip | pubsub |
 | `order_intake` | L2 | product | RPC+cache+pubsub+queue | multi-plane |
 | `media_pipeline` | L2 | product | Multi-stage ETL RPC | rpc, cluster |
 | `feature_flag_mesh` | L2 | product | Federated L4 flags | cache, fabric |
@@ -88,13 +93,13 @@ Legacy `.py` files remain as implementation backends for plane/integration wrapp
 | Bundle | Command | Contents |
 |--------|---------|----------|
 | **smoke** | `mpreg-example smoke` | L0 hellos + ha_client + job_queue (8) |
-| **suite** | `mpreg-example suite` | All 35 shipped apps |
-| **tier1** | `mpreg-example demo tier1` | All `plane_*` |
+| **suite** | `mpreg-example suite` | All 40 shipped apps |
+| **tier1** | `mpreg-example demo tier1` | Core `plane_*` (rpc…monitoring) |
 | **tier2** | `mpreg-example demo tier2` | Three integration apps |
 | **tier3** | `mpreg-example demo tier3` | `tier3_expansion` |
 | **quick** | `mpreg-example demo quick` | `hello_rpc` + `plane_rpc` |
 | **product_vertical** | `mpreg-example demo product_vertical` | Learning path slice |
-| **all_planes** | `mpreg-example demo all_planes` | Same as tier1 |
+| **all_planes** | `mpreg-example demo all_planes` | Core planes + dns + atomic + ns policy |
 
 ## Pytest
 

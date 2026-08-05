@@ -35,6 +35,8 @@ PUBSUB_WILDCARD_STAR: Final = "pubsub.wildcard_star"
 PUBSUB_WILDCARD_HASH: Final = "pubsub.wildcard_hash"
 PUBSUB_FANOUT: Final = "pubsub.fanout"
 PUBSUB_HEADERS: Final = "pubsub.headers"
+PUBSUB_PUBLISH_REPLY: Final = "pubsub.publish_reply"
+PUBSUB_CLIENT_WIRE: Final = "pubsub.client_wire"
 
 QUEUE_CREATE: Final = "queue.create"
 QUEUE_SEND: Final = "queue.send"
@@ -45,6 +47,7 @@ QUEUE_FNF: Final = "queue.fnf"
 QUEUE_SUBSCRIBE: Final = "queue.subscribe"
 QUEUE_TOPIC_ROUTE: Final = "queue.topic_route"
 QUEUE_FACTORIES: Final = "queue.factories"
+QUEUE_RPC_SURFACE: Final = "queue.rpc_surface"
 
 CACHE_PUT_GET: Final = "cache.put_get"
 CACHE_TTL: Final = "cache.ttl"
@@ -57,6 +60,10 @@ CACHE_SYNC: Final = "cache.sync"
 CACHE_GEO: Final = "cache.geo_hints"
 CACHE_INVALIDATE: Final = "cache.invalidate"
 CACHE_REPLICATION: Final = "cache.replication"
+CACHE_ATOMIC: Final = "cache.atomic"
+CACHE_STRUCTURES: Final = "cache.structures"
+CACHE_NAMESPACE_OPS: Final = "cache.namespace_ops"
+CACHE_RPC_SURFACE: Final = "cache.rpc_surface"
 
 FABRIC_PERMISSIVE: Final = "fabric.permissive"
 FABRIC_STRICT: Final = "fabric.strict"
@@ -74,6 +81,16 @@ DISCO_LIST_PEERS: Final = "disco.list_peers"
 DISCO_CLUSTER_MAP: Final = "disco.cluster_map"
 DISCO_CATALOG_QUERY: Final = "disco.catalog_query"
 DISCO_JOIN: Final = "disco.join"
+DISCO_DNS_REGISTER: Final = "disco.dns_register"
+DISCO_DNS_RESOLVE: Final = "disco.dns_resolve"
+
+NS_STATUS: Final = "ns.status"
+NS_EXPORT: Final = "ns.export"
+NS_VALIDATE: Final = "ns.validate"
+NS_APPLY: Final = "ns.apply"
+NS_AUDIT: Final = "ns.audit"
+
+CLIENT_DNS: Final = "client.dns"
 
 MON_UNIFIED: Final = "mon.unified"
 MON_EVENTS: Final = "mon.events"
@@ -307,6 +324,44 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         MON_TIMELINE,
         MON_EVENTS,
         RPC_TARGET_CLUSTER,
+    ),
+    # Phase E gap apps
+    "cache_atomic_ops": (
+        CACHE_ATOMIC,
+        CACHE_STRUCTURES,
+        CACHE_NAMESPACE_OPS,
+        CACHE_PUT_GET,
+    ),
+    "namespace_policy_gate": (
+        NS_VALIDATE,
+        NS_APPLY,
+        NS_STATUS,
+        NS_EXPORT,
+        NS_AUDIT,
+        CLIENT_API,
+    ),
+    "plane_dns": (
+        DISCO_DNS_REGISTER,
+        DISCO_DNS_RESOLVE,
+        CLIENT_DNS,
+        CLIENT_API,
+        BOOT_PORT_RANGE,
+    ),
+    "unified_client_tour": (
+        CLIENT_UNIFIED,
+        RPC_CALL,
+        RPC_REGISTER,
+        CACHE_RPC_SURFACE,
+        CACHE_PUT_GET,
+        QUEUE_RPC_SURFACE,
+        QUEUE_SEND,
+    ),
+    "pubsub_request_reply": (
+        PUBSUB_PUBLISH_REPLY,
+        PUBSUB_EXCHANGE,
+        PUBSUB_HEADERS,
+        PUBSUB_CLIENT_WIRE,
+        PUBSUB_FANOUT,
     ),
 }
 

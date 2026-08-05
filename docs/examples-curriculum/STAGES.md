@@ -58,10 +58,10 @@ Each phase has **scope**, **POC apps**, **runner/docs deliverables**, and
 | ID | Story | Planes |
 |----|--------|--------|
 | `order_intake` | Create order → cache idempotency key → notify → queue fulfill | RPC + cache + pubsub + queue |
-| `media_pipeline` *(planned)* | Multi-stage ETL-style RPC across resources | RPC multi-node |
-| `feature_flag_mesh` *(planned)* | Flags in cache + fabric gossip | Cache federation |
-| `webhook_dispatcher` *(planned)* | Event in, durable out | Pubsub + queue + monitoring |
-| `config_reload_live` *(planned)* | Restart retains catalog/routes | Persistence + fabric snapshot |
+| `media_pipeline` | Multi-stage ETL-style RPC across resources | RPC multi-node |
+| `feature_flag_mesh` | Flags in cache + fabric gossip | Cache federation |
+| `webhook_dispatcher` | Event in, durable out | Pubsub + queue + monitoring |
+| `config_reload_live` | Restart retains catalog/routes | Persistence + fabric snapshot |
 
 ### Exit criteria
 
@@ -84,10 +84,10 @@ Each phase has **scope**, **POC apps**, **runner/docs deliverables**, and
 | ID | Story | Operators |
 |----|--------|-----------|
 | `multi_region_shop` | Two clusters, federated RPC | Fabric bridging, cluster_id, locs |
-| `signed_route_border` *(planned)* | Key rotation under traffic | Route security |
-| `partition_safe_counter` *(planned)* | Minority cannot commit | Raft teaching |
-| `discovery_join` *(planned)* | Node joins via discovery | Membership |
-| `chaos_checkout` *(planned)* | Fault inject + deadlines | FaultInjector + call policy |
+| `signed_route_border` | Key rotation under traffic | Route security |
+| `partition_safe_counter` | Minority cannot commit | Raft teaching |
+| `discovery_join` | Node joins via discovery | Membership |
+| `chaos_checkout` | Fault inject + deadlines | FaultInjector + call policy |
 
 ### Exit criteria
 
@@ -111,6 +111,29 @@ Each phase has **scope**, **POC apps**, **runner/docs deliverables**, and
 - [x] Flagship README + runnable `global_edge_control_plane`  
 - [x] Included in full suite (35 apps)  
 - [x] Explicit non-claims section  
+
+---
+
+## Phase E — Feature-catalog gap fill + depth (active)
+
+See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for waves E0–E16.
+
+### Shipped in E1–E5
+
+| ID | Lesson |
+|----|--------|
+| `cache_atomic_ops` | CAS / incr / structures / namespace bulk |
+| `namespace_policy_gate` | ns validate/apply/status/export/audit |
+| `plane_dns` | DNS register + UDP/TCP resolve |
+| `unified_client_tour` | MPREGClient four-plane façade |
+| `pubsub_request_reply` | publish_with_reply |
+
+### Exit criteria (Phase E)
+
+- [ ] ≥50 shipped apps  
+- [ ] Depth contract on every app  
+- [ ] Prioritized FEATURE_CATALOG gaps closed or non-claimed  
+- [x] E1–E5 gap apps green via `mpreg-example run`  
 
 ---
 
