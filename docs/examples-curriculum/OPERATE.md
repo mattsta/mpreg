@@ -1,0 +1,232 @@
+# Operate: Configure, Start, Run, Manage (Examples + Platform)
+
+This guide is the **day-0 → day-2** companion for curriculum apps and for MPREG
+as a whole. Prefer the BOOK for deep architecture; use this for muscle memory.
+
+---
+
+## 0. Prerequisites
+
+```bash
+uv sync
+uv run mpreg --help
+uv run mpreg-example --help
+uv run mpreg examples --help
+```
+
+Raise file descriptor limits for dense local clusters (tests and multi-app):
+
+```bash
+ulimit -n 1048576   # macOS/Linux shells as permitted
+```
+
+---
+
+## 1. Configure
+
+### Profiles (recommended for real servers)
+
+```bash
+uv run mpreg profile list
+uv run mpreg profile path dev
+uv run mpreg config-check $(uv run mpreg profile path dev)
+```
+
+### Settings in examples
+
+Curriculum apps build `MPREGSettings` in code with **dynamic ports**. For a
+long-lived process, copy patterns from:
+
+- `mpreg/examples/persistence_settings.toml`
+- `mpreg/profiles/*.toml`
+
+Important fields:
+
+| Field | Role |
+|-------|------|
+| `port` / auto | Client WebSocket endpoint |
+| `name` | Human node id |
+| `resources` | Routing `locs` sets |
+| `peers` | Bootstrap mesh |
+| `cluster_id` | Fabric / multi-cluster identity |
+| `federation_config` | Bridging policy between clusters |
+| `monitoring_port` | HTTP ops surface (or auto) |
+| `log_level` | Prefer INFO for demos |
+
+### Environment
+
+| Variable | Use |
+|----------|-----|
+| `MPREG_MONITORING_URL` | CLI monitor commands |
+| `MPREG_MONITORING_TOKEN` | If auth enabled |
+| `MPREG_DEBUG_RAFT` | Raft diagnostics (off by default) |
+
+---
+
+## 2. Start
+
+### Ephemeral (curriculum default)
+
+Apps start servers in-process and stop them on exit:
+
+```bash
+uv run mpreg-example run hello_rpc
+```
+
+### Long-lived local server
+
+```bash
+uv run mpreg server start-config mpreg/profiles/dev.toml
+# or
+uv run mpreg server start-config mpreg/examples/persistence_settings.toml
+```
+
+Note printed URLs and monitoring base URL.
+
+### Multi-node local mesh
+
+Either:
+
+1. Run a curriculum multi-node app (`hello_cluster`, `multi_region_shop`), or  
+2. Start multiple `server start-config` processes with distinct ports and `peers`.
+
+Always prefer **allocator-driven ports** when scripting.
+
+---
+
+## 3. Run (clients & apps)
+
+### Curriculum runner
+
+```bash
+uv run mpreg-example list                 # 35 apps
+uv run mpreg-example list --kind plane
+uv run mpreg-example describe order_intake
+uv run mpreg-example run order_intake
+uv run mpreg-example smoke                 # 8 apps
+uv run mpreg-example suite                 # all 35
+uv run mpreg-example demo tier1
+uv run mpreg-example demo product_vertical
+uv run mpreg-example bundles
+uv run mpreg-example path hello_rpc
+
+# Same runner via main CLI
+uv run mpreg examples list
+uv run mpreg examples run order_intake
+uv run mpreg demo tier1                    # delegates to mpreg-example
+
+# Pytest (live app mains)
+uv run pytest tests/examples_apps -m example_smoke
+uv run pytest tests/examples_apps -m example_suite
+uv run pytest tests/examples_apps
+```
+
+**Do not** use `python -m`, `uv run python`, or bare script paths for examples.
+
+### Direct client patterns (best practice)
+
+**Single endpoint:**
+
+```python
+async with MPREGClientAPI(f"ws://127.0.0.1:{port}") as client:
+    result = await client.call("my_fn", arg, locs=frozenset(["resource"]))
+```
+
+**HA multi-seed:**
+
+```python
+async with MPREGClusterClient(seed_urls=(url_a, url_b)) as client:
+    result = await client.call("my_fn", arg, locs=frozenset(["resource"]))
+```
+
+**Dependency graph** — use `RPCCommand` chains (see `hello_rpc` / `hello_cluster`).
+
+**Call policies** — deadlines and retries via `ClientCallPolicy` /
+`default_ha_policy()` (cluster client applies HA policy by default).
+
+### Legacy capability demos
+
+```bash
+uv run mpreg demo tier1 rpc
+uv run mpreg demo all
+scripts/run_demo_smoke.sh
+scripts/run_example_apps_smoke.sh
+```
+
+---
+
+## 4. Manage & observe
+
+### Health / doctor
+
+```bash
+export MPREG_MONITORING_URL=http://127.0.0.1:<monitoring-port>
+uv run mpreg doctor
+uv run mpreg monitor status --url "$MPREG_MONITORING_URL"
+uv run mpreg monitor decisions --limit 20 --format table
+uv run mpreg monitor prometheus | head
+```
+
+### HTTP contract
+
+- OpenAPI: `GET {MPREG_MONITORING_URL}/openapi.json`
+- Routing decisions: `GET .../routing/decisions`
+- Status endpoints as documented in OpenAPI surface
+
+### Correlation
+
+- Fabric hops may carry W3C `traceparent` in metadata.  
+- Curriculum `hello_trace` shows **in-process** unified monitoring timelines
+  (always on, no external collector required).
+
+---
+
+## 5. Operate under failure (teaching stance)
+
+| Scenario | What to run | What to expect |
+|----------|-------------|----------------|
+| Seed down | `ha_client_failover` | Other seed serves call |
+| Cross-cluster path | `multi_region_shop` | Federated RPC with bridging config |
+| Slow mesh | raise timeouts in client policy | Structured timeout errors, not hangs |
+| Full test pressure | concurrent runner + `ulimit` | See testing docs |
+
+For chaos injection, prefer `mpreg.testing.faults.FaultInjector` in **planned**
+`chaos_checkout` — do not randomize production defaults.
+
+---
+
+## 6. Production exit ramp (checklist)
+
+When promoting an example pattern:
+
+1. **Config** — real profile TOML; `config-check` clean.  
+2. **Identity** — stable `cluster_id`, resource taxonomy, function names.  
+3. **Client** — `MPREGClusterClient` + explicit deadlines.  
+4. **Observability** — monitoring URL, scrape prometheus, alert rules under `mpreg/ops/`.  
+5. **Data planes** — choose queue delivery guarantees and cache levels deliberately.  
+6. **Fabric** — route policies and security before exposing clusters.  
+7. **Consensus** — only if you need it; Raft is not free.  
+8. **Load & soak** — do not ship on demo-only timings.  
+
+---
+
+## 7. Troubleshooting examples
+
+| Symptom | Check |
+|---------|--------|
+| Port in use | Another demo still running; wait for cleanup; use curriculum apps (dynamic ports) |
+| `ExampleFailed` | Read assertion message; often settle time under load — re-run smoke |
+| HA call fails | Both seeds dead; discovery interval; see cluster client docs |
+| Federated miss | `cluster_id` / bridging config / peer URL; fabric ready wait |
+| FD exhaustion | `ulimit -n`; fewer parallel suites |
+
+---
+
+## 8. Related docs
+
+- [GETTING_STARTED.md](../GETTING_STARTED.md)  
+- [MPREG_CLIENT_GUIDE.md](../MPREG_CLIENT_GUIDE.md)  
+- [PRODUCTION_DEPLOYMENT.md](../PRODUCTION_DEPLOYMENT.md)  
+- [OBSERVABILITY_TROUBLESHOOTING.md](../OBSERVABILITY_TROUBLESHOOTING.md)  
+- [FABRIC_ROUTE_POLICIES.md](../FABRIC_ROUTE_POLICIES.md)  
+- [ops/SETTINGS_GROUPS.md](../ops/SETTINGS_GROUPS.md)  
