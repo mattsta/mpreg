@@ -117,8 +117,9 @@ async def main() -> None:
                 success_threshold=2,
                 timeout_seconds=0.3,
                 max_timeout_seconds=2.0,
-                current_timeout=0.3,  # active open-state timer (not only default 60s)
+                # Phase G F9 fix: current_timeout syncs from timeout_seconds in __post_init__
             )
+            ensure(cb.current_timeout == 0.3, f"F9 current_timeout={cb.current_timeout}")
             ensure(cb.can_execute() is True, "closed breaker should allow")
             ensure(cb.state == "closed", f"state={cb.state}")
             for _ in range(3):

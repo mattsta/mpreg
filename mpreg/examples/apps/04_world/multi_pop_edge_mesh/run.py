@@ -22,6 +22,7 @@ from mpreg.core.port_allocator import port_range_context
 from mpreg.examples.apps._shared.runtime import (
     app_run,
     ensure,
+    get_probe,
     ok,
     run_with_servers,
     scenario,
@@ -36,7 +37,10 @@ async def main() -> None:
         "multi_pop_edge_mesh",
         "Multi-POP Edge Mesh — hub + US/EU/AP edges",
         level="L4",
+        probe=True,
     ):
+        probe = get_probe()
+        assert probe is not None
         mon = create_unified_system_monitor()
         await mon.start()
         try:
@@ -146,10 +150,13 @@ async def main() -> None:
                         async with MPREGClientAPI(hub_url) as client:
                             plans = {}
                             for dest in ("us", "eu", "ap"):
-                                plans[dest] = await client.call(
-                                    "route_plan",
-                                    dest,
-                                    locs=frozenset(["hub", "control"]),
+                                plans[dest] = await probe.measure_await(
+                                    "rpc.call",
+                                    client.call(
+                                        "route_plan",
+                                        dest,
+                                        locs=frozenset(["hub", "control"]),
+                                    ),
                                 )
                         for dest, expect_pop in (
                             ("us", "mesh-us"),
@@ -169,23 +176,32 @@ async def main() -> None:
                         "prod.edge",
                     ):
                         async with MPREGClientAPI(hub_url) as client:
-                            us_h = await client.call(
-                                "edge_ping",
-                                "us",
-                                "/health",
-                                locs=frozenset(["edge", "us"]),
+                            us_h = await probe.measure_await(
+                                "rpc.edge",
+                                client.call(
+                                    "edge_ping",
+                                    "us",
+                                    "/health",
+                                    locs=frozenset(["edge", "us"]),
+                                ),
                             )
-                            eu_h = await client.call(
-                                "edge_ping",
-                                "eu",
-                                "/health",
-                                locs=frozenset(["edge", "eu"]),
+                            eu_h = await probe.measure_await(
+                                "rpc.edge",
+                                client.call(
+                                    "edge_ping",
+                                    "eu",
+                                    "/health",
+                                    locs=frozenset(["edge", "eu"]),
+                                ),
                             )
-                            ap_h = await client.call(
-                                "edge_ping",
-                                "ap",
-                                "/health",
-                                locs=frozenset(["edge", "ap"]),
+                            ap_h = await probe.measure_await(
+                                "rpc.edge",
+                                client.call(
+                                    "edge_ping",
+                                    "ap",
+                                    "/health",
+                                    locs=frozenset(["edge", "ap"]),
+                                ),
                             )
                         for name, hit, region in (
                             ("us", us_h, "us"),
@@ -206,11 +222,14 @@ async def main() -> None:
                     ):
                         body = {"sku": "X-1", "qty": 2}
                         async with MPREGClientAPI(hub_url) as client:
-                            echo_ap = await client.call(
-                                "edge_echo",
-                                "ap",
-                                body,
-                                locs=frozenset(["edge", "ap"]),
+                            echo_ap = await probe.measure_await(
+                                "rpc.edge",
+                                client.call(
+                                    "edge_echo",
+                                    "ap",
+                                    body,
+                                    locs=frozenset(["edge", "ap"]),
+                                ),
                             )
                         ensure(echo_ap.get("ok") is True, echo_ap)
                         ensure(echo_ap.get("echo") == body, echo_ap)
@@ -230,11 +249,14 @@ async def main() -> None:
                                 ("ap", frozenset(["edge", "ap"])),
                             ):
                                 for path in paths:
-                                    hit = await client.call(
-                                        "edge_ping",
-                                        region,
-                                        path,
-                                        locs=locs,
+                                    hit = await probe.measure_await(
+                                        "rpc.edge",
+                                        client.call(
+                                            "edge_ping",
+                                            region,
+                                            path,
+                                            locs=locs,
+                                        ),
                                     )
                                     ensure(hit.get("path") == path, hit)
                                     results.append(f"{region}:{path}")
@@ -272,6 +294,29 @@ async def main() -> None:
                             "routing; not a multi-continent SLA proof"
                         )
                         ok(f"timeline={len(timeline)} tp_ok")
+
+                    with scenario(
+                        "mesh latency/throughput probe",
+                        "mon.slo",
+                    ):
+                        edge_op = probe.op("rpc.edge")
+                        hub_op = probe.op("rpc.call")
+                        ensure(edge_op.count >= 9, f"edge ops {edge_op.count}")
+                        ensure(hub_op.count >= 3, f"hub ops {hub_op.count}")
+                        ensure(edge_op.p95_ms < 15000.0, f"edge p95 {edge_op.p95_ms}")
+                        ensure(probe.throughput_ops_s > 0.0, "throughput")
+                        tracker = getattr(hub, "_metrics_tracker", None)
+                        if tracker is not None and hasattr(tracker, "snapshot"):
+                            snap = tracker.snapshot()
+                            probe.absorb_server_tracker(tracker, label="hub")
+                            step(
+                                f"hub server-metrics rpc.total={snap['rpc']['total']} "
+                                f"rps={snap['rpc']['rps']}"
+                            )
+                        ok(
+                            f"probe ops={probe.total_ops} edge_p95={edge_op.p95_ms:.2f} "
+                            f"throughput_ops_s={probe.throughput_ops_s:.1f}"
+                        )
 
                 await run_with_servers(settings, _run)
         finally:

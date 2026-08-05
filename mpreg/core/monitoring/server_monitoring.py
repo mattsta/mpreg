@@ -563,6 +563,54 @@ class ServerMetricsTracker:
     def record_pubsub_notification(self) -> None:
         self.pubsub_notifications += 1
 
+    def snapshot(self) -> dict[str, float | int | dict[str, int]]:
+        """In-process metrics snapshot for curriculum / operator probes (PG7).
+
+        Does not require HTTP scrape. Suitable for example apps asserting
+        latency and throughput after live RPC/pubsub traffic.
+        """
+        now = time.time()
+        rpc_lat = list(self.rpc_latencies_ms)
+        pub_lat = list(self.pubsub_latencies_ms)
+        uptime = max(now - self.started_at, 1e-6)
+        rpc_rps = (
+            float(self._rpc_rps_ewma)
+            if self._rpc_rps_ewma > 0
+            else float(self.rpc_total) / uptime
+        )
+        pub_rps = (
+            float(self._pubsub_rps_ewma)
+            if self._pubsub_rps_ewma > 0
+            else float(self.pubsub_total) / uptime
+        )
+        return {
+            "uptime_s": round(uptime, 4),
+            "rpc": {
+                "total": int(self.rpc_total),
+                "errors": int(self.rpc_errors),
+                "avg_ms": round(
+                    (sum(rpc_lat) / len(rpc_lat)) if rpc_lat else 0.0, 3
+                ),
+                "p50_ms": round(_calculate_percentile(rpc_lat, 50.0), 3),
+                "p95_ms": round(_calculate_percentile(rpc_lat, 95.0), 3),
+                "p99_ms": round(_calculate_percentile(rpc_lat, 99.0), 3),
+                "rps": round(rpc_rps, 3),
+                "error_codes": dict(self.rpc_error_codes),
+            },
+            "pubsub": {
+                "total": int(self.pubsub_total),
+                "errors": int(self.pubsub_errors),
+                "avg_ms": round(
+                    (sum(pub_lat) / len(pub_lat)) if pub_lat else 0.0, 3
+                ),
+                "p50_ms": round(_calculate_percentile(pub_lat, 50.0), 3),
+                "p95_ms": round(_calculate_percentile(pub_lat, 95.0), 3),
+                "p99_ms": round(_calculate_percentile(pub_lat, 99.0), 3),
+                "rps": round(pub_rps, 3),
+                "notifications": int(self.pubsub_notifications),
+            },
+        }
+
     def rpc_metrics(
         self, system_name: str, active_connections: int
     ) -> SystemPerformanceMetrics:

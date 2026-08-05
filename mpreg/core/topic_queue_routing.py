@@ -385,6 +385,17 @@ class TopicQueueRouter:
             self._update_routing_performance_stats(
                 routing_latency_ms, len(enabled_queues)
             )
+            # F21: pure route matches count as successful_routes (not only send_via_topic).
+            if enabled_queues:
+                self.stats = dataclass_replace(
+                    self.stats,
+                    successful_routes=self.stats.successful_routes + 1,
+                )
+            else:
+                self.stats = dataclass_replace(
+                    self.stats,
+                    failed_routes=self.stats.failed_routes + 1,
+                )
 
             return enabled_queues
 
@@ -420,9 +431,7 @@ class TopicQueueRouter:
                     matching_queues = [topic] if await self._queue_exists(topic) else []
 
                 if not matching_queues:
-                    self.stats = dataclass_replace(
-                        self.stats, failed_routes=self.stats.failed_routes + 1
-                    )
+                    # failed_routes already bumped by route_message_to_queues (F21)
                     raise ValueError(f"No queues found for topic pattern: {topic}")
 
             # Apply routing strategy
@@ -442,6 +451,7 @@ class TopicQueueRouter:
 
             # Send to selected queues
             send_results = []
+            send_failed = False
             for queue_name in selected_queues:
                 try:
                     result = await self.message_queue_manager.send_message(
@@ -449,8 +459,14 @@ class TopicQueueRouter:
                     )
                     send_results.append(result)
                 except Exception as e:
+                    send_failed = True
                     # Handle per-queue failures based on failure action
                     await self._handle_routing_failure(queue_name, topic, message, e)
+
+            if send_failed and not send_results:
+                self.stats = dataclass_replace(
+                    self.stats, failed_routes=self.stats.failed_routes + 1
+                )
 
             # Create routing metadata
             routing_latency_ms = (time.time() - start_time) * 1000.0
@@ -464,10 +480,8 @@ class TopicQueueRouter:
                 timestamp=time.time_ns(),
             )
 
-            # Update statistics
-            self.stats = dataclass_replace(
-                self.stats, successful_routes=self.stats.successful_routes + 1
-            )
+            # successful_routes already bumped in route_message_to_queues (F21);
+            # only track strategy usage here to avoid double-count.
             self._update_strategy_usage_stats(strategy)
 
             return TopicQueueMessage(
@@ -478,10 +492,7 @@ class TopicQueueRouter:
                 message=queued_message,
             )
 
-        except Exception as e:
-            self.stats = dataclass_replace(
-                self.stats, failed_routes=self.stats.failed_routes + 1
-            )
+        except Exception:
             raise
 
     async def get_routing_statistics(self) -> TopicQueueRoutingStats:

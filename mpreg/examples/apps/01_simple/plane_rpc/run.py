@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import Any
 
 from mpreg.client.call_policy import ClientCallPolicy, RpcExecutionMode
@@ -13,6 +14,7 @@ from mpreg.core.port_allocator import port_range_context
 from mpreg.examples.apps._shared.runtime import (
     app_run,
     ensure,
+    get_probe,
     ok,
     run_with_servers,
     scenario,
@@ -21,7 +23,14 @@ from mpreg.examples.apps._shared.runtime import (
 from mpreg.server import MPREGServer
 
 async def main() -> None:
-    with app_run("plane_rpc", "Plane RPC — DAG, locs, discovery, policy", level="L1"):
+    with app_run(
+        "plane_rpc",
+        "Plane RPC — DAG, locs, discovery, policy",
+        level="L1",
+        probe=True,
+    ):
+        probe = get_probe()
+        assert probe is not None
         with port_range_context(2, "servers") as ports:
             settings = [
                 MPREGSettings(
@@ -64,27 +73,30 @@ async def main() -> None:
                     "rpc.register",
                 ):
                     async with MPREGClientAPI(hub) as client:
-                        result = await client.request(
-                            [
-                                RPCCommand(
-                                    name="sum",
-                                    fun="add",
-                                    args=(20, 22),
-                                    locs=frozenset(["cpu", "math"]),
-                                ),
-                                RPCCommand(
-                                    name="scaled",
-                                    fun="multiply",
-                                    args=("sum", 3),
-                                    locs=frozenset(["cpu", "math"]),
-                                ),
-                                RPCCommand(
-                                    name="scored",
-                                    fun="model_score",
-                                    args=("scaled",),
-                                    locs=frozenset(["gpu", "ml"]),
-                                ),
-                            ]
+                        result = await probe.measure_await(
+                            "rpc.dag",
+                            client.request(
+                                [
+                                    RPCCommand(
+                                        name="sum",
+                                        fun="add",
+                                        args=(20, 22),
+                                        locs=frozenset(["cpu", "math"]),
+                                    ),
+                                    RPCCommand(
+                                        name="scaled",
+                                        fun="multiply",
+                                        args=("sum", 3),
+                                        locs=frozenset(["cpu", "math"]),
+                                    ),
+                                    RPCCommand(
+                                        name="scored",
+                                        fun="model_score",
+                                        args=("scaled",),
+                                        locs=frozenset(["gpu", "ml"]),
+                                    ),
+                                ]
+                            ),
                         )
                     scored = result.get("scored") if isinstance(result, dict) else None
                     ensure(isinstance(scored, dict), f"missing scored in {result!r}")
@@ -94,26 +106,42 @@ async def main() -> None:
                     )
                     ok(f"DAG scored={scored}")
 
-                with scenario("rpc_list / rpc_describe / rpc_report", "rpc.list", "rpc.describe", "rpc.report"):
+                with scenario(
+                    "rpc_list / rpc_describe / rpc_report",
+                    "rpc.list",
+                    "rpc.describe",
+                    "rpc.report",
+                ):
                     async with MPREGClientAPI(hub) as client:
-                        listed = await client.rpc_list()
+                        listed = await probe.measure_await(
+                            "rpc.list", client.rpc_list()
+                        )
                         ensure(listed is not None, "rpc_list returned None")
                         step(f"rpc_list type={type(listed).__name__}")
                         try:
-                            desc = await client.rpc_describe()
+                            desc = await probe.measure_await(
+                                "rpc.describe", client.rpc_describe()
+                            )
                             step(f"rpc_describe type={type(desc).__name__}")
                             ok("rpc_describe ok")
                         except Exception as exc:
                             step(f"rpc_describe optional path: {type(exc).__name__}")
                         try:
-                            report = await client.rpc_report()
+                            report = await probe.measure_await(
+                                "rpc.report", client.rpc_report()
+                            )
                             step(f"rpc_report type={type(report).__name__}")
                             ok("rpc_report ok")
                         except Exception as exc:
                             step(f"rpc_report optional path: {type(exc).__name__}")
                         ok(f"discovery surfaces exercised list={type(listed).__name__}")
 
-                with scenario("M1 and M3 call policies", "client.policy.m1", "client.policy.m3", "rpc.call"):
+                with scenario(
+                    "M1 and M3 call policies",
+                    "client.policy.m1",
+                    "client.policy.m3",
+                    "rpc.call",
+                ):
                     m1 = ClientCallPolicy.for_mode(RpcExecutionMode.M1_ASYNC)
                     m3 = ClientCallPolicy.for_mode(RpcExecutionMode.M3_STREAMING)
                     ensure(m1.max_attempts >= 2, "M1 should retry")
@@ -122,19 +150,26 @@ async def main() -> None:
                         "M3 shares deadline",
                     )
                     async with MPREGClientAPI(hub, call_policy=m1) as client:
-                        v = await client.call(
-                            "add", 2, 3, locs=frozenset(["cpu", "math"])
+                        v = await probe.measure_await(
+                            "rpc.call",
+                            client.call(
+                                "add", 2, 3, locs=frozenset(["cpu", "math"])
+                            ),
                         )
                         ensure(v == 5, f"M1 add got {v!r}")
                     async with MPREGClientAPI(hub, call_policy=m3) as client:
-                        v = await client.call(
-                            "multiply", 5, 5, locs=frozenset(["cpu", "math"])
+                        v = await probe.measure_await(
+                            "rpc.call",
+                            client.call(
+                                "multiply", 5, 5, locs=frozenset(["cpu", "math"])
+                            ),
                         )
                         ensure(v == 25, f"M3 multiply got {v!r}")
                     ok("M1 + M3 policies on live calls")
 
                 with scenario("concurrent independent calls", "rpc.call"):
                     async with MPREGClientAPI(hub) as client:
+                        t0 = time.perf_counter()
                         a, b, c = await asyncio.gather(
                             client.call("add", 1, 1, locs=frozenset(["cpu", "math"])),
                             client.call("add", 2, 2, locs=frozenset(["cpu", "math"])),
@@ -142,12 +177,44 @@ async def main() -> None:
                                 "model_score", 50, locs=frozenset(["gpu", "ml"])
                             ),
                         )
+                        batch_ms = (time.perf_counter() - t0) * 1000.0
+                        for _ in range(3):
+                            probe.record("rpc.call", batch_ms / 3.0)
                     ensure(a == 2 and b == 4, f"concurrent add {a},{b}")
                     ensure(
                         isinstance(c, dict) and abs(float(c["score"]) - 0.5) < 1e-6,
                         f"concurrent score {c}",
                     )
                     ok(f"concurrent results a={a} b={b} c={c}")
+
+                with scenario(
+                    "client latency/throughput probe",
+                    "mon.slo",
+                ):
+                    async with MPREGClientAPI(hub) as client:
+                        for i in range(6):
+                            await probe.measure_await(
+                                "rpc.call",
+                                client.call(
+                                    "add", i, 1, locs=frozenset(["cpu", "math"])
+                                ),
+                            )
+                    call_op = probe.op("rpc.call")
+                    ensure(call_op.count >= 8, f"ops {call_op.count}")
+                    ensure(call_op.p95_ms < 8000.0, f"p95 {call_op.p95_ms}")
+                    ensure(probe.throughput_ops_s > 0.0, "throughput")
+                    tracker = getattr(cpu, "_metrics_tracker", None)
+                    if tracker is not None and hasattr(tracker, "snapshot"):
+                        snap = tracker.snapshot()
+                        probe.absorb_server_tracker(tracker, label="plane")
+                        step(
+                            f"server-metrics rpc.total={snap['rpc']['total']} "
+                            f"p95_ms={snap['rpc']['p95_ms']} rps={snap['rpc']['rps']}"
+                        )
+                    ok(
+                        f"probe ops={probe.total_ops} p95_ms={call_op.p95_ms:.2f} "
+                        f"throughput_ops_s={probe.throughput_ops_s:.1f}"
+                    )
 
             await run_with_servers(settings, _run)
 

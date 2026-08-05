@@ -29,6 +29,7 @@ from rich.console import Console
 from rich.table import Table
 
 from mpreg import __version__
+from mpreg.cli.async_utils import run_coro
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.client.dns_client import MPREGDnsClient
 from mpreg.client.pubsub_client import MPREGPubSubClient
@@ -134,7 +135,7 @@ def call(
             )
             console.print(result)
 
-    asyncio.run(_call())
+    run_coro(_call())
 
 @client.command("queue-send")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
@@ -163,7 +164,7 @@ def client_queue_send(
             )
             console.print(result)
 
-    asyncio.run(_run())
+    run_coro(_run())
 
 @client.command("cache-get")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
@@ -181,7 +182,7 @@ def client_cache_get(url: str | None, namespace: str, identifier: str) -> None:
             result = await c.cache_get(namespace, identifier)
             console.print(result)
 
-    asyncio.run(_run())
+    run_coro(_run())
 
 @client.command("cache-put")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
@@ -208,7 +209,7 @@ def client_cache_put(
             result = await c.cache_put(namespace, identifier, _parse(value))
             console.print(result)
 
-    asyncio.run(_run())
+    run_coro(_run())
 
 @client.command("queue-receive")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
@@ -233,7 +234,7 @@ def client_queue_receive(
             )
             console.print(result)
 
-    asyncio.run(_run())
+    run_coro(_run())
 
 @client.command("queue-ack")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
@@ -254,7 +255,7 @@ def client_queue_ack(
             result = await c.queue_ack(queue_name, message_id, subscriber_id)
             console.print(result)
 
-    asyncio.run(_run())
+    run_coro(_run())
 
 @client.command("cache-invalidate")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
@@ -271,7 +272,7 @@ def client_cache_invalidate(url: str | None, pattern: str) -> None:
             result = await c.cache_invalidate(pattern)
             console.print(result)
 
-    asyncio.run(_run())
+    run_coro(_run())
 
 @client.command("publish")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
@@ -295,7 +296,7 @@ def client_publish(url: str | None, topic: str, payload: str) -> None:
             result = await c.publish(topic, _parse(payload))
             console.print(result)
 
-    asyncio.run(_run())
+    run_coro(_run())
 
 @client.command("list-peers")
 @click.option(
@@ -327,7 +328,7 @@ def list_peers(
             peers = await client.list_peers(request, target_cluster=target_cluster)
             console.print([peer.to_dict() for peer in peers])
 
-    asyncio.run(_list())
+    run_coro(_list())
 
 @client.command("resolver-cache-stats")
 @click.option(
@@ -346,7 +347,7 @@ def resolver_cache_stats(url: str | None) -> None:
             result = await client.resolver_cache_stats()
             console.print(result.to_dict())
 
-    asyncio.run(_stats())
+    run_coro(_stats())
 
 @client.command("resolver-resync")
 @click.option(
@@ -365,7 +366,7 @@ def resolver_resync(url: str | None) -> None:
             result = await client.resolver_resync()
             console.print(result.to_dict())
 
-    asyncio.run(_resync())
+    run_coro(_resync())
 
 def _parse_metadata_items(items: tuple[str, ...]) -> dict[str, MetadataValue]:
     metadata: dict[str, MetadataValue] = {}
@@ -444,7 +445,7 @@ def dns_register(
             response = await client.dns_register(payload)
             console.print(response.to_dict())
 
-    asyncio.run(_register())
+    run_coro(_register())
 
 @client.command("dns-unregister")
 @click.option(
@@ -480,7 +481,7 @@ def dns_unregister(
             )
             console.print(response.to_dict())
 
-    asyncio.run(_unregister())
+    run_coro(_unregister())
 
 @client.command("dns-list")
 @click.option(
@@ -531,7 +532,7 @@ def dns_list(
             )
             console.print(response.to_dict())
 
-    asyncio.run(_list())
+    run_coro(_list())
 
 @client.command("dns-describe")
 @click.option(
@@ -582,7 +583,7 @@ def dns_describe(
             )
             console.print(response.to_dict())
 
-    asyncio.run(_describe())
+    run_coro(_describe())
 
 @client.command("dns-node-encode")
 @click.argument("node_id")
@@ -653,7 +654,7 @@ def dns_resolve(
             table.add_row(answer.name, answer.rtype, str(answer.ttl), answer.rdata)
         console.print(table)
 
-    asyncio.run(_resolve())
+    run_coro(_resolve())
 
 @client.group("namespace-policy")
 def namespace_policy():
@@ -696,7 +697,7 @@ def namespace_policy_validate(url: str | None, rules_file: str, actor: str | Non
             result = await client.namespace_policy_validate(request)
             console.print(result.to_dict())
 
-    asyncio.run(_validate())
+    run_coro(_validate())
 
 @namespace_policy.command("apply")
 @click.option(
@@ -755,7 +756,7 @@ def namespace_policy_apply(
             result = await client.namespace_policy_apply(request)
             console.print(result.to_dict())
 
-    asyncio.run(_apply())
+    run_coro(_apply())
 
 @namespace_policy.command("export")
 @click.option(
@@ -774,7 +775,7 @@ def namespace_policy_export(url: str | None):
             result = await client.namespace_policy_export()
             console.print(result.to_dict())
 
-    asyncio.run(_export())
+    run_coro(_export())
 
 @namespace_policy.command("audit")
 @click.option(
@@ -795,7 +796,7 @@ def namespace_policy_audit(url: str | None, limit: int | None):
             result = await client.namespace_policy_audit(request)
             console.print(result.to_dict())
 
-    asyncio.run(_audit())
+    run_coro(_audit())
 
 @cli.group()
 def discovery():
@@ -893,7 +894,7 @@ def discovery_query(
             result = await client.catalog_query(request)
             console.print(result.to_dict())
 
-    asyncio.run(_query())
+    run_coro(_query())
 
 @discovery.command("summary")
 @click.option(
@@ -986,7 +987,7 @@ def discovery_summary(
             result = await client.summary_query(request)
             console.print(result.to_dict())
 
-    asyncio.run(_summary())
+    run_coro(_summary())
 
 @discovery.command("watch")
 @click.option(
@@ -1086,7 +1087,7 @@ def discovery_watch(
 
             await pubsub.stop()
 
-    asyncio.run(_watch())
+    run_coro(_watch())
 
 @discovery.command("status")
 @click.option(
@@ -1115,7 +1116,7 @@ def discovery_status(url: str | None) -> None:
                     results[key] = await response.json()
         console.print(results)
 
-    asyncio.run(_status())
+    run_coro(_status())
 
 @discovery.command("access-audit")
 @click.option(
@@ -1136,7 +1137,7 @@ def discovery_access_audit(url: str | None, limit: int | None) -> None:
             result = await client.discovery_access_audit(request)
             console.print(result.to_dict())
 
-    asyncio.run(_audit())
+    run_coro(_audit())
 
 @report.command("namespace-health")
 @click.option(
@@ -1227,7 +1228,7 @@ def report_namespace_health(
 
         console.print(table)
 
-    asyncio.run(_report())
+    run_coro(_report())
 
 @report.command("export-lag")
 @click.option(
@@ -1288,7 +1289,7 @@ def report_export_lag(url: str | None, output: str) -> None:
         table.add_row("Last Summary Export At", last_summary)
         console.print(table)
 
-    asyncio.run(_report())
+    run_coro(_report())
 
 @cli.group()
 def server():
@@ -1458,7 +1459,7 @@ def start_server(
         server_instance = MPREGServer(settings=settings)
         await server_instance.server()
 
-    asyncio.run(_start())
+    run_coro(_start())
 
 @server.command("start-config")
 @click.argument("settings_path", type=click.Path(exists=True))
@@ -1494,7 +1495,7 @@ def start_config(settings_path: str) -> None:
         server_instance = MPREGServer(settings=settings)
         await server_instance.server()
 
-    asyncio.run(_start())
+    run_coro(_start())
 
 @cli.command("doctor")
 @click.option(
@@ -1750,7 +1751,7 @@ def doctor(
             emit(report, output_format=output_format, table_title="Doctor")
         return 1 if failures else 0
 
-    raise SystemExit(asyncio.run(_doctor()))
+    raise SystemExit(run_coro(_doctor()))
 
 @cli.command("config-check")
 @click.argument("settings_path", type=click.Path(exists=True))
@@ -2009,7 +2010,7 @@ def admin_drain(
                 if resp.status >= 400:
                     raise SystemExit(1)
 
-    asyncio.run(_run())
+    run_coro(_run())
 
 @admin_group.command("detach")
 @click.option(
@@ -2059,7 +2060,7 @@ def admin_detach(
                 if resp.status >= 400 or data.get("applied") is False:
                     raise SystemExit(1)
 
-    asyncio.run(_run())
+    run_coro(_run())
 
 @admin_group.command("audit")
 @click.option(
@@ -2110,7 +2111,7 @@ def admin_audit(
                 if resp.status >= 400:
                     raise SystemExit(1)
 
-    asyncio.run(_run())
+    run_coro(_run())
 
 @admin_group.command("policy")
 @click.option(
@@ -2189,7 +2190,7 @@ def admin_policy(
                 if resp.status >= 400:
                     raise SystemExit(1)
 
-    asyncio.run(_run())
+    run_coro(_run())
 
 @cli.group("profile")
 def profile_group():
@@ -2449,7 +2450,7 @@ def discover(config: str | None, output: str):
             ]
             console.print(dumps_pretty_text(clusters_dict))
 
-    asyncio.run(_discover())
+    run_coro(_discover())
 
 @cli.command()
 @click.argument("cluster_id")
@@ -2482,7 +2483,7 @@ def register(
         if not success:
             sys.exit(1)
 
-    asyncio.run(_register())
+    run_coro(_register())
 
 @cli.command()
 @click.argument("cluster_id")
@@ -2496,7 +2497,7 @@ def unregister(cluster_id: str):
         if not success:
             sys.exit(1)
 
-    asyncio.run(_unregister())
+    run_coro(_unregister())
 
 @cli.command()
 @click.option("--cluster", "-c", help="Specific cluster ID to check")
@@ -2530,7 +2531,7 @@ def health(cluster: str | None, output: str):
                         serializable_results[cluster_id][key] = value
             console.print(dumps_pretty_text(serializable_results))
 
-    asyncio.run(_health())
+    run_coro(_health())
 
 @cli.command("federation-metrics")
 @click.option("--cluster", "-c", help="Specific cluster ID to show metrics for")
@@ -2541,7 +2542,7 @@ def federation_metrics(cluster: str | None):
         federation_cli = FederationCLI()
         await federation_cli.show_metrics(cluster)
 
-    asyncio.run(_metrics())
+    run_coro(_metrics())
 
 @cli.command()
 @click.argument("output_path", type=click.Path())
@@ -2562,7 +2563,7 @@ def validate_config(config_path: str):
         if not is_valid:
             sys.exit(1)
 
-    asyncio.run(_validate())
+    run_coro(_validate())
 
 @cli.command()
 @click.argument("config_path", type=click.Path(exists=True))
@@ -2592,7 +2593,7 @@ def deploy(config_path: str, dry_run: bool):
             if not success:
                 sys.exit(1)
 
-    asyncio.run(_deploy())
+    run_coro(_deploy())
 
 @cli.command()
 def topology():
@@ -2617,7 +2618,7 @@ def cleanup(force: bool):
 
         await federation_cli.cleanup_all()
 
-    asyncio.run(_cleanup())
+    run_coro(_cleanup())
 
 @cli.group()
 def monitor():
@@ -2705,7 +2706,7 @@ def health_watch(interval: int, clusters: tuple[str, ...], summary: bool, url: s
         except KeyboardInterrupt:
             console.print("\n[yellow]⚠️ Health monitoring stopped[/yellow]")
 
-    asyncio.run(_health_watch())
+    run_coro(_health_watch())
 
 @monitor.command("health")
 @click.option(
@@ -2749,7 +2750,7 @@ def health_endpoint(cluster: str | None, summary: bool, url: str | None, output_
                     return
                 emit(payload, output_format=output_format, table_title="Health")
 
-    asyncio.run(_health_endpoint())
+    run_coro(_health_endpoint())
 
 @monitor.command()
 @click.option(
@@ -2829,7 +2830,7 @@ def metrics_watch(interval: int, clusters: tuple[str, ...], system: str, url: st
         except KeyboardInterrupt:
             console.print("\n[yellow]⚠️ Metrics monitoring stopped[/yellow]")
 
-    asyncio.run(_metrics_watch())
+    run_coro(_metrics_watch())
 
 @monitor.command("status")
 @click.option(
@@ -2975,7 +2976,7 @@ def status(cluster: str | None, output: str | None, output_format: str, url: str
 
         console.print(table)
 
-    asyncio.run(_status())
+    run_coro(_status())
 
 @monitor.command("decisions")
 @click.option(
@@ -3018,7 +3019,7 @@ def monitor_decisions(
                 payload = await response.json(content_type=None)
                 emit(payload, output_format=output_format, table_title="Route decisions")
 
-    asyncio.run(_run())
+    run_coro(_run())
 
 @monitor.command("route-trace")
 @click.option(
@@ -3062,7 +3063,7 @@ def route_trace(destination: str, avoid: tuple[str, ...], url: str | None, outpu
                     return
                 emit(payload, output_format=output_format, table_title="Route trace")
 
-    asyncio.run(_route_trace())
+    run_coro(_route_trace())
 
 @monitor.command("link-state")
 @click.option(
@@ -3091,7 +3092,7 @@ def link_state(url: str | None, output_format: str) -> None:
                     return
                 emit(payload, output_format=output_format, table_title="Link state")
 
-    asyncio.run(_link_state())
+    run_coro(_link_state())
 
 @monitor.command("transport-endpoints")
 @click.option(
@@ -3120,7 +3121,7 @@ def transport_endpoints(url: str | None, output_format: str) -> None:
                     return
                 emit(payload, output_format=output_format, table_title="Transport endpoints")
 
-    asyncio.run(_transport_endpoints())
+    run_coro(_transport_endpoints())
 
 @monitor.command("metrics")
 @click.option(
@@ -3167,7 +3168,7 @@ def monitor_metrics(system: str, url: str | None, output_format: str) -> None:
                     return
                 emit(payload, output_format=output_format, table_title="Metrics")
 
-    asyncio.run(_metrics())
+    run_coro(_metrics())
 
 @monitor.command("prometheus")
 @click.option(
@@ -3203,7 +3204,7 @@ def monitor_prometheus(url: str | None, token: str | None) -> None:
                     console.print(f"[red]HTTP {response.status}[/red]")
                 console.print(text_body)
 
-    asyncio.run(_prom())
+    run_coro(_prom())
 
 @monitor.command("persistence")
 @click.option(
@@ -3232,7 +3233,7 @@ def persistence(url: str | None, output_format: str) -> None:
                     return
                 emit(payload, output_format=output_format, table_title="Persistence")
 
-    asyncio.run(_persistence())
+    run_coro(_persistence())
 
 @monitor.command("dns")
 @click.option(
@@ -3261,7 +3262,7 @@ def dns_metrics(url: str | None, output_format: str) -> None:
                     return
                 emit(payload, output_format=output_format, table_title="DNS metrics")
 
-    asyncio.run(_dns_metrics())
+    run_coro(_dns_metrics())
 
 @monitor.command("dns-watch")
 @click.option("--interval", default=5.0, help="Polling interval in seconds")
@@ -3296,7 +3297,7 @@ def dns_watch(interval: float, url: str | None, output_format: str) -> None:
             except KeyboardInterrupt:
                 console.print("\n[yellow]⚠️ DNS metrics watch stopped[/yellow]")
 
-    asyncio.run(_dns_watch())
+    run_coro(_dns_watch())
 
 @monitor.command("persistence-watch")
 @click.option(
@@ -3334,7 +3335,7 @@ def persistence_watch(interval: int, url: str | None, output_format: str) -> Non
         except KeyboardInterrupt:
             console.print("\n[yellow]⚠️ Persistence monitoring stopped[/yellow]")
 
-    asyncio.run(_persistence_watch())
+    run_coro(_persistence_watch())
 
 @monitor.command("endpoints")
 @click.option(
@@ -3363,7 +3364,7 @@ def endpoints(url: str | None, output_format: str) -> None:
                     return
                 emit(payload, output_format=output_format, table_title="Endpoints")
 
-    asyncio.run(_endpoints())
+    run_coro(_endpoints())
 
 @cli.group()
 def auto_discovery():
@@ -3408,7 +3409,7 @@ def run(config: str | None, output: str):
             ]
             console.print(dumps_pretty_text(clusters_dict))
 
-    asyncio.run(_auto_discover())
+    run_coro(_auto_discover())
 
 @auto_discovery.command()
 @click.argument("output_path", type=click.Path())

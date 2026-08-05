@@ -41,11 +41,16 @@ class DiscoveryRateLimiter:
         with self._lock:
             events = self._events.get(key)
             if events is None:
+                # F20: hard cap — make room for this new key before insert.
                 if (
                     self.config.max_keys > 0
                     and len(self._events) >= self.config.max_keys
                 ):
-                    self._prune(now=now, window_seconds=window_seconds)
+                    self._prune(
+                        now=now,
+                        window_seconds=window_seconds,
+                        target_size=max(0, self.config.max_keys - 1),
+                    )
                 events = self._events.get(key)
             if events is None:
                 events = deque()
@@ -56,8 +61,13 @@ class DiscoveryRateLimiter:
             events.append(now)
             return True
 
-    def _prune(self, *, now: Timestamp, window_seconds: float) -> None:
-        expired_before = now - window_seconds
+    def _prune(
+        self,
+        *,
+        now: Timestamp,
+        window_seconds: float,
+        target_size: int | None = None,
+    ) -> None:
         expired_keys: list[DiscoveryRateLimitKey] = []
         for key, events in self._events.items():
             self._prune_events(events, now=now, window_seconds=window_seconds)
@@ -67,13 +77,14 @@ class DiscoveryRateLimiter:
             self._events.pop(key, None)
         if self.config.max_keys <= 0:
             return
-        if len(self._events) <= self.config.max_keys:
+        cap = self.config.max_keys if target_size is None else target_size
+        if len(self._events) <= cap:
             return
         ordered = sorted(
             self._events.items(),
             key=lambda item: item[1][-1] if item[1] else 0.0,
         )
-        excess = len(self._events) - self.config.max_keys
+        excess = len(self._events) - cap
         for key, _ in ordered[:excess]:
             self._events.pop(key, None)
 

@@ -1,9 +1,9 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase F complete — 70 apps, suite green)  
-**Owner drive:** sequential iterative completion of every feature-catalog gap,
-depth contract, automation, validation, **and API usability discovery** —
-**not** batch-and-stop.
+**Last updated:** 2026-08-05 (Phase G COMPLETE — platform DX + observability proof)  
+**Owner drive:** sequential iterative completion of curriculum **and** long-term
+platform correctness: API unification, operator ergonomics, latency/throughput
+observability in every example path — **not** batch-and-stop.
 
 Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 
@@ -21,7 +21,10 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G6 | **50–70 apps when catalog requires** | expand matrix beyond thin 35; no bulk-empty shells | [x] **70** shipped (band complete) |
 | G7 | **Living plan** | this file + TRACKER + friction log updated every commit slice | [x] |
 | G8 | **Commit-as-you-go** | clean what/why/how messages per layer | [x] practice; continue |
-| G9 | **API discovery / usability** | curriculum apps surface edge cases + improvement candidates | [x] F1–F21 logged; curriculum-mitigated |
+| G9 | **API discovery / usability** | curriculum apps surface edge cases + improvement candidates | [x] F1–F21 logged; **Phase G fixes platform** |
+| G10 | **Platform DX unification** | High/Med friction fixed in code (not only mitigated in apps) | [x] F1/F9/F18/F20/F21 |
+| G11 | **Observability-proven examples** | Apps emit + assert latency/throughput surfaces; annotated | [x] ≥8 apps + READMEs |
+| G12 | **Long-term interface consistency** | Coerce/sync surprising APIs; hard caps; nested-async CLI | [x] Phase G |
 
 ---
 
@@ -37,8 +40,9 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | Thin apps (scen<2 or L1+ ens<5) | **0** |
 | Branch vs origin | main ahead local only (no push unless asked) |
 | Last new-app validation | Phase F final wave each `mpreg-example run` green |
-| Last unit | `pytest tests/examples_apps -m unit` |
-| Last full suite | **70/70** target (this wave) |
+| Last unit | `pytest tests/examples_apps -m unit` → **85 passed** |
+| Last full suite | **70/70 passed** |
+| Phase G | **COMPLETE** — DX fixes + ExampleProbe + 8 apps obs-proven |
 
 ### Thin backlog
 
@@ -108,6 +112,50 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 - [x] BOOK + EXAMPLES entrypoint-only sync  
 - [x] Full suite green at 70  
 
+### Phase G — Platform DX + observability-proven curriculum (**COMPLETE**)
+
+We are the sole consumers of this platform. Phase G **fixes and unifies**
+interfaces for long-term correctness, operator ergonomics, and measurable
+latency/throughput — not just curriculum workarounds.
+
+#### G goals (detailed)
+
+| ID | Goal | Success measure | Status |
+|----|------|-----------------|--------|
+| PG1 | Fix High/Med friction in platform code | F1, F9, F18, F20, F21 closed in source; apps drop workarounds | [x] |
+| PG2 | Nested-async-safe CLI | `run_coro` helper; no bare `asyncio.run` in hot CLI paths | [x] |
+| PG3 | Shared example observability probe | `ExampleProbe` records ops, latency histogram, throughput; snapshot + print | [x] |
+| PG4 | Runtime integration | `app_run` can attach probe; `obs_ok` / scenario timing annotations | [x] |
+| PG5 | Curriculum apps prove metrics | ≥8 representative apps emit + `ensure` on p50/p95/count/rps | [x] |
+| PG6 | Metrics teaching app | Dedicated L1 `plane_metrics_probe` (or deepen observability app) | [x] |
+| PG7 | ServerMetricsTracker snapshot | In-process snapshot API for curriculum without HTTP scrape | [x] |
+| PG8 | Docs / friction log / plan living | F# marked fixed; TRACKER; completion % | [x] |
+| PG9 | Full validation | unit + suite green after platform changes | [x] |
+| PG10 | Optional: CLI aliases / doctor URL | F2/F3 deferred (Med; apps document real paths) | [~] deferred |
+
+#### Phase G waves (sequential)
+
+| Wave | Deliverables | Status |
+|------|--------------|--------|
+| **G0** | Living plan Phase G section + dashboard reset | [x] |
+| **G1** | Platform fixes: CircuitBreaker F9, SQLite Path F18, rate-limit F20, router stats F21 | [x] |
+| **G2** | CLI `run_coro` nested-loop safe (F1) | [x] |
+| **G3** | `ExampleProbe` + `ServerMetricsTracker.snapshot` + runtime hooks | [x] |
+| **G4** | Wire probe into hello_rpc, plane_rpc, order_intake, shipping, multi_pop, observability, discovery_rate_limit, topic_queue_router | [x] |
+| **G5** | Metrics teaching scenarios + README annotations | [x] |
+| **G6** | Update friction log (fixed rows); suite + unit proof | [x] |
+| **G7** | Commit-as-you-go; plan → Phase G complete when exit met | [x] |
+
+#### Phase G exit criteria
+
+- [x] F9, F18, F20, F21 fixed in platform (not only taught)  
+- [x] F1 nested CLI safe via shared helper on client/dns/doctor paths  
+- [x] `ExampleProbe` in `_shared` used by ≥8 apps with latency/throughput ensures  
+- [x] READMEs annotate where metrics appear in run output  
+- [x] `uv run pytest tests/examples_apps -m unit` green  
+- [x] `uv run mpreg-example suite` green  
+- [x] PROJECT_PLAN dashboard reflects Phase G completion %  
+
 ---
 
 ## 4. Target app matrix growth
@@ -176,17 +224,33 @@ uv run pytest tests/examples_apps -q
 
 ## 7. Completion dashboard
 
+### Curriculum A–F (closed)
+
 | Area | Weight | Done | Notes |
 |------|-------:|-----:|-------|
 | Runner + foundation | 10% | 10 | [x] |
 | L0–L4 baseline matrix | 20% | 20 | [x] 35+ apps |
-| Feature-catalog tagging | 10% | 10 | [x] join tests + catalog |
-| Gap apps (E1–E14) | 30% | 30 | [x] E0–E14 landed |
-| Depth contract all apps | 10% | 10 | [x] 0 thin |
+| Feature-catalog tagging | 10% | 10 | [x] |
+| Gap apps (E1–E14) | 30% | 30 | [x] |
+| Depth contract all apps | 10% | 10 | [x] |
 | Phase F breadth 50–70 | 10% | 10 | [x] **70** apps |
-| Docs/plan living sync | 5% | 5 | [x] plan+tracker+friction+BOOK |
-| Automation/report (E15) | 5% | 5 | [x] suite + CI docs |
-| **Overall curriculum program** | **100%** | **100%** | Phase E+F exit met; residual = platform DX optional |
+| Docs/plan living sync | 5% | 5 | [x] |
+| Automation/report (E15) | 5% | 5 | [x] |
+| **Curriculum A–F** | **100%** | **100%** | closed |
+
+### Phase G (platform + obs) — **COMPLETE 100%**
+
+| Area | Weight | Done | Notes |
+|------|-------:|-----:|-------|
+| G0 living plan | 5% | 5 | [x] |
+| G1 platform friction fixes | 25% | 25 | [x] F9/F18/F20/F21 |
+| G2 nested-async CLI | 10% | 10 | [x] F1 `run_coro` |
+| G3 ExampleProbe + tracker snapshot | 20% | 20 | [x] obs.py + snapshot() |
+| G4 wire ≥8 apps | 20% | 20 | [x] 8 apps probe+ensures |
+| G5 README annotations | 5% | 5 | [x] Observability sections |
+| G6 friction log + suite proof | 10% | 10 | [x] FIXED rows + green |
+| G7 commit + plan close | 5% | 5 | [x] |
+| **Phase G overall** | **100%** | **100%** | complete |
 
 ---
 
@@ -209,7 +273,7 @@ candidates for platform DX improvements (not claims that apps are broken).
 
 | ID | Surface | Finding | Severity | Suggested improvement | Found in |
 |----|---------|---------|----------|----------------------|----------|
-| F1 | CLI nesting | `mpreg` click handlers call `asyncio.run` → **cannot** be invoked from an already-running event loop | High | Offer async entrypoints or thread offload | `ops_cli_tour` |
+| F1 | CLI nesting | `mpreg` click handlers call `asyncio.run` → **cannot** be invoked from an already-running event loop | High | Offer async entrypoints or thread offload | `ops_cli_tour`  **FIXED Phase G** (run_coro) |
 | F2 | CLI IA | Operators guess `mpreg dns …` / `mpreg call …`; real paths are `mpreg client dns-*` / `mpreg client call` | Med | Top-level aliases or clearer `--help` epilog | `ops_cli_tour` |
 | F3 | `mpreg doctor` | `--url` is **monitoring HTTP**, not WS RPC; WS URL fails opaquely | Med | Dual URL flags + better error | `ops_cli_tour` |
 | F4 | RPC registry | Built-in name `echo` already registered | Med | Document reserved builtins | `ops_cli_tour` |
@@ -217,7 +281,7 @@ candidates for platform DX improvements (not claims that apps are broken).
 | F6 | Version miss | Bad constraint → generic command-not-found | Med | Structured version_mismatch | `rpc_versioned_topic` |
 | F7 | Cache events | `add_event_listener` is registration-only | Med | Fire listeners or rename | `cache_event_bus` |
 | F8 | Cache invalidation | Wrong kwargs easy to guess | Med | Keyword-only + clear TypeError | `cache_event_bus` |
-| F9 | CircuitBreaker | `timeout_seconds` ≠ `current_timeout` for half-open | Med | Sync fields on init | `fabric_graph_resilience` |
+| F9 | CircuitBreaker | `timeout_seconds` ≠ `current_timeout` for half-open | Med | Sync fields on init | `fabric_graph_resilience`  **FIXED Phase G** (CB timeout sync) |
 | F10 | Chaos model | `FaultInjector` is lab-only | Info | Server partition hooks | `chaos_*` |
 | F11 | Auth | Client `auth_token` not enforced on local WS RPC by default | Info | Optional require_auth | `client_auth_token` |
 | F12 | mTLS | No turnkey local-cert curriculum path | Info | Dev self-signed helper | non-claim |
@@ -226,10 +290,10 @@ candidates for platform DX improvements (not claims that apps are broken).
 | F15 | M2 deadline | Handler still runs after client fail-closed | Info | Docs / cooperative cancel | `rpc_deadline_budget` |
 | F16 | Port categories | Fixed enum — typos raise late | Low | (error already lists keys) | general |
 | F17 | TopicPattern | `matches_topic` on `{param}` templates → False | Med | Separate format vs wildcard match | `topic_taxonomy_tour` |
-| F18 | SQLite backend | `db_path` must be `Path`, not `str` | Med | Coerce str→Path | `persistence_kv` |
+| F18 | SQLite backend | `db_path` must be `Path`, not `str` | Med | Coerce str→Path | `persistence_kv`  **FIXED Phase G** (Path coerce) |
 | F19 | RaftOracle | Dual-leader raises on `observe_role` | Info | Document fail-fast timing | `routing_oracle_lab` |
-| F20 | DiscoveryRateLimiter | `max_keys` soft cap → steady `max_keys+1` | Med | Prune to max_keys-1 before insert | `discovery_rate_limit` |
-| F21 | TopicQueueRouter | `successful_routes` only on `send_via_topic` | Med | Bump on pure route or rename | `topic_queue_router_lab` |
+| F20 | DiscoveryRateLimiter | `max_keys` soft cap → steady `max_keys+1` | Med | Prune to max_keys-1 before insert | `discovery_rate_limit`  **FIXED Phase G** (hard max_keys) |
+| F21 | TopicQueueRouter | `successful_routes` only on `send_via_topic` | Med | Bump on pure route or rename | `topic_queue_router_lab`  **FIXED Phase G** (route success stats) |
 
 **Process:** when a new app hits friction, append a row here **and** a `step("friction: …")` in the app so operators see it live.
 
@@ -241,10 +305,18 @@ See also: [API_FRICTION.md](./API_FRICTION.md).
 
 **Curriculum program (Phases A–F): COMPLETE at 100%.**
 
-Residual work is **optional platform DX** (triage F1–F21 with maintainers) and
-honest non-claims (F10 live WS chaos, F12 mTLS helper) — not curriculum gaps.
+**Phase G (platform DX + observability proof): COMPLETE at 100%.**  
+Platform friction F1/F9/F18/F20/F21 fixed in source; nested-async CLI via
+`run_coro`; shared `ExampleProbe` + `ServerMetricsTracker.snapshot()`; eight
+representative apps emit and ensure latency/throughput with README annotations.
 
-Keep validating + committing when extending beyond 70.
+Still honest residual non-claims: F10 live WS chaos hooks, F12 mTLS turnkey
+helper, F5 multi-version same-node registry (docs-loud), F2/F3 CLI aliases
+deferred.
+
+**Probe-wired apps (8):** `hello_rpc`, `plane_rpc`, `order_intake`,
+`shipping_fulfillment`, `multi_pop_edge_mesh`, `observability_slo_trace`,
+`discovery_rate_limit`, `topic_queue_router_lab`.
 
 ---
 

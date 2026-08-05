@@ -15,14 +15,24 @@ from mpreg.core.topic_queue_routing import (
     create_high_performance_topic_router,
     create_topic_queue_router,
 )
-from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
+from mpreg.examples.apps._shared.runtime import (
+    app_run,
+    ensure,
+    get_probe,
+    ok,
+    scenario,
+    step,
+)
 
 async def main() -> None:
     with app_run(
         "topic_queue_router_lab",
         "Topic Queue Router Lab — pattern fanout + strategies",
         level="L2",
+        probe=True,
     ):
+        probe = get_probe()
+        assert probe is not None
         mqm = MessageQueueManager(QueueManagerConfiguration())
         try:
             with scenario(
@@ -58,8 +68,9 @@ async def main() -> None:
                         delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
                     )
                 )
-                matches = await router.route_message_to_queues(
-                    "order.created", {"id": 1}
+                matches = await probe.measure_await(
+                    "router.route",
+                    router.route_message_to_queues("order.created", {"id": 1}),
                 )
                 ensure("orders" in matches, f"orders miss {matches}")
                 ensure("all" in matches, f"all miss {matches}")
@@ -77,13 +88,21 @@ async def main() -> None:
                     )
                 )
                 ensure(
-                    "tmp" in await router.route_message_to_queues("tmp.x", {}),
+                    "tmp"
+                    in await probe.measure_await(
+                        "router.route",
+                        router.route_message_to_queues("tmp.x", {}),
+                    ),
                     "pre-unreg",
                 )
                 removed = await router.unregister_queue_pattern("tmp")
                 ensure(removed is True, "unregister false")
                 ensure(
-                    "tmp" not in await router.route_message_to_queues("tmp.x", {}),
+                    "tmp"
+                    not in await probe.measure_await(
+                        "router.route",
+                        router.route_message_to_queues("tmp.x", {}),
+                    ),
                     "still matched",
                 )
                 gone = await router.unregister_queue_pattern("nope")
@@ -106,11 +125,14 @@ async def main() -> None:
                     RoutingStrategy.ROUND_ROBIN,
                     RoutingStrategy.LOAD_BALANCED,
                 ):
-                    msg = await router.send_via_topic(
-                        topic="strat.ping",
-                        message={"s": strategy.value},
-                        delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
-                        routing_strategy=strategy,
+                    msg = await probe.measure_await(
+                        "router.send",
+                        router.send_via_topic(
+                            topic="strat.ping",
+                            message={"s": strategy.value},
+                            delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
+                            routing_strategy=strategy,
+                        ),
                     )
                     ensure(msg.topic == "strat.ping", msg.topic)
                     ensure(
@@ -130,28 +152,24 @@ async def main() -> None:
                         delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
                     )
                 )
-                await router.route_message_to_queues("stats.a", {})
-                await router.route_message_to_queues("stats.b", {})
-                # Also send_via_topic so successful_routes increments (F21:
-                # route_message_to_queues only bumps total_routes / cache_*;
-                # successful_routes is send_via_topic-only).
-                await mqm.create_queue("stats-q")
-                await router.send_via_topic(
-                    topic="stats.c",
-                    message={"n": 1},
-                    delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
+                await probe.measure_await(
+                    "router.route", router.route_message_to_queues("stats.a", {})
+                )
+                await probe.measure_await(
+                    "router.route", router.route_message_to_queues("stats.b", {})
                 )
                 stats = await router.get_routing_statistics()
                 ensure(stats.total_routes >= 2, f"total {stats.total_routes}")
+                # Phase G F21 fix: pure route matches bump successful_routes
                 ensure(
-                    stats.successful_routes >= 1,
+                    stats.successful_routes >= 2,
                     f"successful_routes {stats.successful_routes}",
                 )
                 ensure(stats.cache_misses >= 1, f"misses {stats.cache_misses}")
                 ensure(stats.active_queue_patterns >= 1, "no patterns")
                 step(
-                    "friction F21: successful_routes only on send_via_topic; "
-                    "route_message_to_queues updates total_routes/cache_* only"
+                    "F21 fixed: route_message_to_queues increments successful_routes "
+                    "on non-empty match"
                 )
                 ok(
                     f"routes={stats.total_routes} ok={stats.successful_routes} "
@@ -180,9 +198,23 @@ async def main() -> None:
                         delivery_guarantee=DeliveryGuarantee.AT_LEAST_ONCE,
                     )
                 )
-                empty = await router.route_message_to_queues("beta.x", {})
+                empty = await probe.measure_await(
+                    "router.route", router.route_message_to_queues("beta.x", {})
+                )
                 ensure(empty == [] or len(empty) == 0, f"unexpected {empty}")
                 ok("no-match empty")
+
+            with scenario("router latency/throughput probe", "mon.slo"):
+                route_op = probe.op("router.route")
+                send_op = probe.op("router.send")
+                ensure(route_op.count >= 5, f"routes {route_op.count}")
+                ensure(send_op.count >= 3, f"sends {send_op.count}")
+                ensure(route_op.p95_ms < 5000.0, f"route p95 {route_op.p95_ms}")
+                ensure(probe.throughput_ops_s > 0.0, "throughput")
+                ok(
+                    f"probe ops={probe.total_ops} route_p95={route_op.p95_ms:.2f} "
+                    f"throughput_ops_s={probe.throughput_ops_s:.1f}"
+                )
         finally:
             # MessageQueueManager may not require close; best-effort
             close = getattr(mqm, "shutdown", None) or getattr(mqm, "close", None)

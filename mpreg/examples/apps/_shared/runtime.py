@@ -12,10 +12,14 @@ from dataclasses import dataclass, field
 from typing import Any, TypeVar
 
 from mpreg.core.config import MPREGSettings
+from mpreg.examples.apps._shared.obs import ExampleProbe
 from mpreg.examples.showcase_utils import ServerHandle, run_with_servers, start_servers, stop_servers
 from mpreg.server import MPREGServer
 
 T = TypeVar("T")
+
+# Active probe for the current app_run (optional).
+_ACTIVE_PROBE: ExampleProbe | None = None
 
 class ExampleFailed(RuntimeError):
     """Raised when an example assertion or invariant fails."""
@@ -93,18 +97,39 @@ def scenario(name: str, *feature_ids: str) -> Iterator[None]:
         elapsed = time.monotonic() - started
         print(f"  └─ scenario ok: {name} ({elapsed:.2f}s)")
 
+def get_probe() -> ExampleProbe | None:
+    """Return the active :class:`ExampleProbe` if ``app_run(..., probe=True)``."""
+    return _ACTIVE_PROBE
+
 @contextmanager
-def app_run(app_id: str, title: str, *, level: str = "") -> Iterator[ScenarioStats]:
-    """Top-level banner + scenario stats for a curriculum app."""
-    global _ACTIVE_STATS
+def app_run(
+    app_id: str,
+    title: str,
+    *,
+    level: str = "",
+    probe: bool = False,
+) -> Iterator[ScenarioStats]:
+    """Top-level banner + scenario stats for a curriculum app.
+
+    When ``probe=True``, attaches an :class:`ExampleProbe` for latency/throughput
+    recording. Use :func:`get_probe` inside the app body, and the probe report
+    is printed automatically on exit when ops were recorded.
+    """
+    global _ACTIVE_STATS, _ACTIVE_PROBE
     stats = ScenarioStats()
     prev = _ACTIVE_STATS
+    prev_probe = _ACTIVE_PROBE
     _ACTIVE_STATS = stats
+    active_probe = ExampleProbe(app_id) if probe else None
+    _ACTIVE_PROBE = active_probe
     banner(title, level=level, app_id=app_id)
     try:
         yield stats
     finally:
         _ACTIVE_STATS = prev
+        _ACTIVE_PROBE = prev_probe
+        if active_probe is not None and active_probe.total_ops > 0:
+            active_probe.print_report()
         if stats.scenarios:
             ok(
                 f"{app_id}: {len(stats.scenarios)} scenario(s), "
@@ -184,6 +209,7 @@ def exit_from_report(report: RunReport) -> None:
 # Re-export lifecycle helpers for app authors
 __all__ = [
     "ExampleFailed",
+    "ExampleProbe",
     "RunReport",
     "ScenarioStats",
     "ServerHandle",
@@ -193,6 +219,7 @@ __all__ = [
     "ensure_counted",
     "exit_from_report",
     "feature",
+    "get_probe",
     "ok",
     "run_app_main",
     "run_with_servers",

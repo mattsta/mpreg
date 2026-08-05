@@ -62,16 +62,22 @@ class MemoryPersistenceBackend:
 class SQLitePersistenceBackend:
     """SQLite persistence backend with WAL support."""
 
-    db_path: Path
+    db_path: Path | str
     wal_mode: bool = True
     synchronous_mode: str = "NORMAL"
     foreign_keys: bool = True
     _conn: sqlite3.Connection | None = field(init=False, default=None)
     _lock: asyncio.Lock = field(init=False, default_factory=asyncio.Lock)
 
+    def __post_init__(self) -> None:
+        # F18: coerce str → Path so operators can pass plain paths.
+        if not isinstance(self.db_path, Path):
+            self.db_path = Path(self.db_path)
+
     async def open(self) -> None:
         if self._conn is not None:
             return
+        assert isinstance(self.db_path, Path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
         await self.execute(

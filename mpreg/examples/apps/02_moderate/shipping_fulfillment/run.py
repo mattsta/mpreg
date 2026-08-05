@@ -19,6 +19,7 @@ from mpreg.core.port_allocator import port_range_context
 from mpreg.examples.apps._shared.runtime import (
     app_run,
     ensure,
+    get_probe,
     ok,
     run_with_servers,
     scenario,
@@ -33,7 +34,10 @@ async def main() -> None:
         "shipping_fulfillment",
         "Shipping Fulfillment — label RPC + track cache + dispatch queue",
         level="L2",
+        probe=True,
     ):
+        probe = get_probe()
+        assert probe is not None
         with port_range_context(1, "servers") as ports:
             settings = [
                 MPREGSettings(
@@ -121,24 +125,32 @@ async def main() -> None:
                             "rpc.call",
                             "rpc.register",
                         ):
-                            s1 = await client.call(
-                                "create_shipment",
-                                "ORD-9",
-                                "US-NY",
-                                1.5,
-                                locs=frozenset(["shipping", "api"]),
+                            s1 = await probe.measure_await(
+                                "rpc.call",
+                                client.call(
+                                    "create_shipment",
+                                    "ORD-9",
+                                    "US-NY",
+                                    1.5,
+                                    locs=frozenset(["shipping", "api"]),
+                                ),
                             )
                             ensure(s1.get("ok") is True, f"s1 {s1}")
                             ensure(s1.get("tracking", "").startswith("TRK-"), s1)
-                            s1b = await client.call(
-                                "create_shipment",
-                                "ORD-9",
-                                "US-NY",
-                                1.5,
-                                locs=frozenset(["shipping", "api"]),
+                            s1b = await probe.measure_await(
+                                "rpc.call",
+                                client.call(
+                                    "create_shipment",
+                                    "ORD-9",
+                                    "US-NY",
+                                    1.5,
+                                    locs=frozenset(["shipping", "api"]),
+                                ),
                             )
                             ensure(s1b.get("replay") is True, f"replay {s1b}")
-                            ensure(s1b.get("tracking") == s1["tracking"], "tracking drift")
+                            ensure(
+                                s1b.get("tracking") == s1["tracking"], "tracking drift"
+                            )
                             ok(f"tracking={s1['tracking']} replay=True")
 
                         with scenario(
@@ -150,25 +162,29 @@ async def main() -> None:
                             key = GlobalCacheKey.from_data(
                                 "ship.track", {"tracking": s1["tracking"]}
                             )
-                            await cache.put(
-                                key,
-                                {
-                                    "tracking": s1["tracking"],
-                                    "status": s1["status"],
-                                    "order_id": "ORD-9",
-                                },
-                                CacheMetadata(
-                                    computation_cost_ms=1.0,
-                                    ttl_seconds=300.0,
-                                    created_by="ship",
-                                ),
-                            )
-                            got = await cache.get(key)
+                            with probe.measure("cache.put"):
+                                await cache.put(
+                                    key,
+                                    {
+                                        "tracking": s1["tracking"],
+                                        "status": s1["status"],
+                                        "order_id": "ORD-9",
+                                    },
+                                    CacheMetadata(
+                                        computation_cost_ms=1.0,
+                                        ttl_seconds=300.0,
+                                        created_by="ship",
+                                    ),
+                                )
+                            with probe.measure("cache.get"):
+                                got = await cache.get(key)
                             ensure(
                                 got.success and got.entry is not None,
                                 "cache miss",
                             )
-                            ensure(got.entry.value["status"] == "labeled", got.entry.value)
+                            ensure(
+                                got.entry.value["status"] == "labeled", got.entry.value
+                            )
                             ok(f"cache status={got.entry.value['status']}")
 
                         with scenario(
@@ -177,27 +193,32 @@ async def main() -> None:
                             "rpc.call",
                             "cache.put_get",
                         ):
-                            adv = await client.call(
-                                "advance",
-                                s1["tracking"],
-                                "in_transit",
-                                locs=frozenset(["shipping", "api"]),
-                            )
-                            ensure(adv.get("ok") is True, adv)
-                            await cache.put(
-                                key,
-                                {
-                                    "tracking": s1["tracking"],
-                                    "status": "in_transit",
-                                    "order_id": "ORD-9",
-                                },
-                                CacheMetadata(
-                                    computation_cost_ms=1.0,
-                                    ttl_seconds=300.0,
-                                    created_by="ship",
+                            adv = await probe.measure_await(
+                                "rpc.call",
+                                client.call(
+                                    "advance",
+                                    s1["tracking"],
+                                    "in_transit",
+                                    locs=frozenset(["shipping", "api"]),
                                 ),
                             )
-                            got2 = await cache.get(key)
+                            ensure(adv.get("ok") is True, adv)
+                            with probe.measure("cache.put"):
+                                await cache.put(
+                                    key,
+                                    {
+                                        "tracking": s1["tracking"],
+                                        "status": "in_transit",
+                                        "order_id": "ORD-9",
+                                    },
+                                    CacheMetadata(
+                                        computation_cost_ms=1.0,
+                                        ttl_seconds=300.0,
+                                        created_by="ship",
+                                    ),
+                                )
+                            with probe.measure("cache.get"):
+                                got2 = await cache.get(key)
                             ensure(
                                 got2.success and got2.entry is not None,
                                 "miss2",
@@ -215,15 +236,16 @@ async def main() -> None:
                             "queue.alo",
                             "queue.subscribe",
                         ):
-                            await manager.send_message(
-                                "dispatch",
-                                "dispatch.out",
-                                {
-                                    "tracking": s1["tracking"],
-                                    "action": "handoff_carrier",
-                                },
-                                DeliveryGuarantee.AT_LEAST_ONCE,
-                            )
+                            with probe.measure("queue.send"):
+                                await manager.send_message(
+                                    "dispatch",
+                                    "dispatch.out",
+                                    {
+                                        "tracking": s1["tracking"],
+                                        "action": "handoff_carrier",
+                                    },
+                                    DeliveryGuarantee.AT_LEAST_ONCE,
+                                )
                             for _ in range(40):
                                 if dispatch:
                                     break
@@ -240,21 +262,49 @@ async def main() -> None:
                             "prod.shipping",
                             "rpc.call",
                         ):
-                            g = await client.call(
-                                "get_shipment",
-                                "ORD-9",
-                                locs=frozenset(["shipping", "api"]),
+                            g = await probe.measure_await(
+                                "rpc.call",
+                                client.call(
+                                    "get_shipment",
+                                    "ORD-9",
+                                    locs=frozenset(["shipping", "api"]),
+                                ),
                             )
                             ensure(g.get("ok") is True, g)
                             ensure(g.get("status") == "in_transit", g)
-                            missing = await client.call(
-                                "get_shipment",
-                                "NOPE",
-                                locs=frozenset(["shipping", "api"]),
+                            missing = await probe.measure_await(
+                                "rpc.call",
+                                client.call(
+                                    "get_shipment",
+                                    "NOPE",
+                                    locs=frozenset(["shipping", "api"]),
+                                ),
                             )
                             ensure(missing.get("ok") is False, missing)
                             step("read model after advance")
                             ok(f"get status={g.get('status')}")
+
+                        with scenario(
+                            "shipping latency/throughput probe",
+                            "mon.slo",
+                        ):
+                            call_op = probe.op("rpc.call")
+                            ensure(call_op.count >= 5, f"rpc ops {call_op.count}")
+                            ensure(call_op.p95_ms < 8000.0, f"p95 {call_op.p95_ms}")
+                            ensure(probe.op("cache.get").count >= 2, "cache ops")
+                            ensure(probe.throughput_ops_s > 0.0, "throughput")
+                            tracker = getattr(server, "_metrics_tracker", None)
+                            if tracker is not None and hasattr(tracker, "snapshot"):
+                                snap = tracker.snapshot()
+                                probe.absorb_server_tracker(tracker, label="ship")
+                                step(
+                                    f"server-metrics rpc.total={snap['rpc']['total']} "
+                                    f"rps={snap['rpc']['rps']}"
+                                )
+                            ok(
+                                f"probe ops={probe.total_ops} p95_ms={call_op.p95_ms:.2f} "
+                                f"throughput_ops_s={probe.throughput_ops_s:.1f}"
+                            )
                 finally:
                     close = getattr(manager, "shutdown", None) or getattr(
                         manager, "close", None

@@ -265,8 +265,14 @@ class CircuitBreaker:
     failure_count: int = 0
     success_count: int = 0
     last_failure_time: float = 0.0
-    current_timeout: float = 60.0
+    # Default mirrors timeout_seconds; __post_init__ keeps them aligned (F9).
+    current_timeout: float = field(default=-1.0)
     _lock: RLock = field(default_factory=RLock)
+
+    def __post_init__(self) -> None:
+        # F9: constructing with timeout_seconds=0.3 must not leave current_timeout at 60.
+        if self.current_timeout < 0:
+            self.current_timeout = float(self.timeout_seconds)
 
     def record_success(self) -> None:
         """Record a successful operation."""

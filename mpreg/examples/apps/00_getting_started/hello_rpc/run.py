@@ -12,6 +12,7 @@ from mpreg.core.port_allocator import port_range_context
 from mpreg.examples.apps._shared.runtime import (
     app_run,
     ensure,
+    get_probe,
     ok,
     run_with_servers,
     scenario,
@@ -20,7 +21,14 @@ from mpreg.examples.apps._shared.runtime import (
 from mpreg.server import MPREGServer
 
 async def main() -> None:
-    with app_run("hello_rpc", "Hello RPC — call + DAG drill-down", level="L0"):
+    with app_run(
+        "hello_rpc",
+        "Hello RPC — call + DAG drill-down",
+        level="L0",
+        probe=True,
+    ):
+        probe = get_probe()
+        assert probe is not None
         with port_range_context(1, "servers") as ports:
             settings = [
                 MPREGSettings(
@@ -50,60 +58,74 @@ async def main() -> None:
 
                 hub = f"ws://127.0.0.1:{ports[0]}"
                 async with MPREGClientAPI(hub) as client:
-                    # ── S1: single-function public call API ─────────────────
-                    with scenario("single call via MPREGClientAPI.call", "rpc.call", "rpc.register"):
-                        greeted = await client.call(
-                            "greet", "hello", locs=frozenset(["cpu"])
+                    with scenario(
+                        "single call via MPREGClientAPI.call",
+                        "rpc.call",
+                        "rpc.register",
+                    ):
+                        greeted = await probe.measure_await(
+                            "rpc.call",
+                            client.call("greet", "hello", locs=frozenset(["cpu"])),
                         )
                         ensure(greeted == "greet:hello", f"greet got {greeted!r}")
-                        summed = await client.call(
-                            "add", 10, 32, locs=frozenset(["cpu", "math"])
+                        summed = await probe.measure_await(
+                            "rpc.call",
+                            client.call(
+                                "add", 10, 32, locs=frozenset(["cpu", "math"])
+                            ),
                         )
                         ensure(summed == 42, f"add expected 42 got {summed!r}")
                         ok(f"call greet={greeted!r} add={summed}")
 
-                    # ── S2: multi-command DAG via request / call_dag ────────
                     with scenario("dependency DAG request()", "rpc.dag", "rpc.locs"):
-                        result = await client.request(
-                            [
-                                RPCCommand(
-                                    name="sum",
-                                    fun="add",
-                                    args=(20, 22),
-                                    locs=frozenset(["cpu", "math"]),
-                                ),
-                                RPCCommand(
-                                    name="scaled",
-                                    fun="multiply",
-                                    args=("sum", 3),
-                                    locs=frozenset(["cpu", "math"]),
-                                ),
-                            ]
+                        result = await probe.measure_await(
+                            "rpc.dag",
+                            client.request(
+                                [
+                                    RPCCommand(
+                                        name="sum",
+                                        fun="add",
+                                        args=(20, 22),
+                                        locs=frozenset(["cpu", "math"]),
+                                    ),
+                                    RPCCommand(
+                                        name="scaled",
+                                        fun="multiply",
+                                        args=("sum", 3),
+                                        locs=frozenset(["cpu", "math"]),
+                                    ),
+                                ]
+                            ),
                         )
-                        ensure(isinstance(result, dict), f"expected dict got {type(result)}")
+                        ensure(
+                            isinstance(result, dict),
+                            f"expected dict got {type(result)}",
+                        )
                         ensure(
                             result.get("scaled") == 126,
                             f"scaled expected 126 got {result.get('scaled')!r} full={result!r}",
                         )
                         ok(f"DAG terminal scaled={result.get('scaled')} full={result}")
 
-                    # ── S3: call_dag alias parity ───────────────────────────
                     with scenario("call_dag alias", "rpc.dag"):
-                        alias = await client.call_dag(
-                            [
-                                RPCCommand(
-                                    name="s",
-                                    fun="add",
-                                    args=(1, 2),
-                                    locs=frozenset(["cpu", "math"]),
-                                ),
-                                RPCCommand(
-                                    name="m",
-                                    fun="multiply",
-                                    args=("s", 10),
-                                    locs=frozenset(["cpu", "math"]),
-                                ),
-                            ]
+                        alias = await probe.measure_await(
+                            "rpc.dag",
+                            client.call_dag(
+                                [
+                                    RPCCommand(
+                                        name="s",
+                                        fun="add",
+                                        args=(1, 2),
+                                        locs=frozenset(["cpu", "math"]),
+                                    ),
+                                    RPCCommand(
+                                        name="m",
+                                        fun="multiply",
+                                        args=("s", 10),
+                                        locs=frozenset(["cpu", "math"]),
+                                    ),
+                                ]
+                            ),
                         )
                         ensure(
                             isinstance(alias, dict) and alias.get("m") == 30,
@@ -111,7 +133,6 @@ async def main() -> None:
                         )
                         ok(f"call_dag m={alias.get('m')}")
 
-                    # ── S4: wrong locs fails closed (or misses) ─────────────
                     with scenario("locs routing boundary", "rpc.locs"):
                         try:
                             await client.call(
@@ -121,11 +142,49 @@ async def main() -> None:
                                 locs=frozenset(["gpu-only-missing"]),
                                 timeout=3.0,
                             )
-                            # Some builds may still resolve locally; accept either
-                            # hard failure or we at least exercised the kwarg.
-                            step("locs miss did not raise (implementation may broaden match)")
+                            step(
+                                "locs miss did not raise (implementation may broaden match)"
+                            )
                         except Exception as exc:
                             ok(f"locs miss fail-closed: {type(exc).__name__}")
+
+                    with scenario(
+                        "client latency/throughput probe",
+                        "mon.slo",
+                    ):
+                        # Burst a few more calls to populate histogram
+                        for i in range(8):
+                            await probe.measure_await(
+                                "rpc.call",
+                                client.call(
+                                    "add", i, 1, locs=frozenset(["cpu", "math"])
+                                ),
+                            )
+                        call_op = probe.op("rpc.call")
+                        ensure(call_op.count >= 10, f"ops {call_op.count}")
+                        ensure(call_op.p95_ms < 5000.0, f"p95 {call_op.p95_ms}")
+                        ensure(call_op.avg_ms >= 0.0, "avg")
+                        ensure(probe.throughput_ops_s > 0.0, "throughput")
+                        # Server-side tracker if present
+                        tracker = getattr(server, "metrics_tracker", None) or getattr(
+                            server, "_metrics_tracker", None
+                        )
+                        if tracker is not None and hasattr(tracker, "snapshot"):
+                            snap = tracker.snapshot()
+                            probe.absorb_server_tracker(tracker, label="hello")
+                            step(
+                                f"server-metrics rpc.total={snap['rpc']['total']} "
+                                f"avg_ms={snap['rpc']['avg_ms']} rps={snap['rpc']['rps']}"
+                            )
+                        else:
+                            step(
+                                "server metrics_tracker not exposed on this build; "
+                                "client ExampleProbe still proves latency/throughput"
+                            )
+                        ok(
+                            f"probe ops={probe.total_ops} p95_ms={call_op.p95_ms:.2f} "
+                            f"throughput_ops_s={probe.throughput_ops_s:.1f}"
+                        )
 
             await run_with_servers(settings, _run)
 

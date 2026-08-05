@@ -118,3 +118,18 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 | 2026-08-05 | F final +8 each `run` | all green |
 | 2026-08-05 | `mpreg-example suite` (70) | see latest suite run |
 | 2026-08-05 | `pytest tests/examples_apps -m unit` | see latest unit run |
+
+## Phase G — Platform DX + observability (**COMPLETE**)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| F9 CircuitBreaker timeout sync | [x] | `__post_init__` |
+| F18 SQLite Path\|str coerce | [x] | |
+| F20 DiscoveryRateLimiter hard cap | [x] | prune max_keys-1 |
+| F21 TopicQueueRouter successful_routes | [x] | on route match |
+| F1 CLI `run_coro` nested-safe | [x] | async_utils |
+| ExampleProbe + app_run(probe=True) | [x] | `_shared/obs.py` |
+| ServerMetricsTracker.snapshot() | [x] | |
+| ≥8 apps latency/throughput ensures | [x] | 8 apps |
+| README Observability annotations | [x] | |
+| unit + suite validation | [x] | |

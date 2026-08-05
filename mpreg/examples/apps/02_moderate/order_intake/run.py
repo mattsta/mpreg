@@ -23,6 +23,7 @@ from mpreg.core.topic_exchange import TopicExchange
 from mpreg.examples.apps._shared.runtime import (
     app_run,
     ensure,
+    get_probe,
     ok,
     run_with_servers,
     scenario,
@@ -37,7 +38,10 @@ async def main() -> None:
         "order_intake",
         "Order Intake — RPC + cache + pubsub + queue",
         level="L2",
+        probe=True,
     ):
+        probe = get_probe()
+        assert probe is not None
         with port_range_context(1, "servers") as ports:
             settings = [
                 MPREGSettings(
@@ -131,19 +135,25 @@ async def main() -> None:
                         "rpc.register",
                     ):
                         async with MPREGClientAPI(hub) as client:
-                            first = await client.call(
-                                "create_order",
-                                "SKU-1",
-                                2,
-                                idem,
-                                locs=frozenset(["orders", "api"]),
+                            first = await probe.measure_await(
+                                "rpc.call",
+                                client.call(
+                                    "create_order",
+                                    "SKU-1",
+                                    2,
+                                    idem,
+                                    locs=frozenset(["orders", "api"]),
+                                ),
                             )
-                            second = await client.call(
-                                "create_order",
-                                "SKU-1",
-                                2,
-                                idem,
-                                locs=frozenset(["orders", "api"]),
+                            second = await probe.measure_await(
+                                "rpc.call",
+                                client.call(
+                                    "create_order",
+                                    "SKU-1",
+                                    2,
+                                    idem,
+                                    locs=frozenset(["orders", "api"]),
+                                ),
                             )
                         ensure(isinstance(first, dict), "first order not dict")
                         ensure(first.get("replay") is False, "first should not be replay")
@@ -157,15 +167,21 @@ async def main() -> None:
 
                     with scenario("get_order lookup", "rpc.call"):
                         async with MPREGClientAPI(hub) as client:
-                            got = await client.call(
-                                "get_order",
-                                order_id,
-                                locs=frozenset(["orders", "api"]),
+                            got = await probe.measure_await(
+                                "rpc.call",
+                                client.call(
+                                    "get_order",
+                                    order_id,
+                                    locs=frozenset(["orders", "api"]),
+                                ),
                             )
-                            miss = await client.call(
-                                "get_order",
-                                "ord-missing",
-                                locs=frozenset(["orders", "api"]),
+                            miss = await probe.measure_await(
+                                "rpc.call",
+                                client.call(
+                                    "get_order",
+                                    "ord-missing",
+                                    locs=frozenset(["orders", "api"]),
+                                ),
                             )
                         ensure(got.get("found") is True and got.get("sku") == "SKU-1", f"get {got}")
                         ensure(miss.get("found") is False, f"miss {miss}")
@@ -173,20 +189,25 @@ async def main() -> None:
 
                     with scenario("cache idempotency mirror", "cache.put_get", "cache.l1"):
                         key = GlobalCacheKey.from_data("orders.idem", {"key": idem})
-                        await cache.put(
-                            key,
-                            first,
-                            CacheMetadata(computation_cost_ms=5.0, ttl_seconds=300.0),
-                        )
-                        cached = await cache.get(key)
+                        with probe.measure("cache.put"):
+                            await cache.put(
+                                key,
+                                first,
+                                CacheMetadata(
+                                    computation_cost_ms=5.0, ttl_seconds=300.0
+                                ),
+                            )
+                        with probe.measure("cache.get"):
+                            cached = await cache.get(key)
                         ensure(cached.success and cached.entry is not None, "cache miss")
                         ensure(
                             cached.entry.value.get("order_id") == order_id,
                             "cached order mismatch",
                         )
-                        cold = await cache.get(
-                            GlobalCacheKey.from_data("orders.idem", {"key": "nope"})
-                        )
+                        with probe.measure("cache.get"):
+                            cold = await cache.get(
+                                GlobalCacheKey.from_data("orders.idem", {"key": "nope"})
+                            )
                         ensure(
                             (not cold.success) or cold.entry is None,
                             "expected cold miss",
@@ -207,27 +228,35 @@ async def main() -> None:
                             publisher="order-api",
                             headers={"x-idem": idem},
                         )
-                        matched = exchange.publish_message(msg)
-                        ensure(len(matched) >= 2, f"expected notify+audit got {len(matched)}")
-                        noise = exchange.publish_message(
-                            PubSubMessage(
-                                topic="inventory.tick",
-                                payload={},
-                                timestamp=time.time(),
-                                message_id=uuid.uuid4().hex,
-                                publisher="order-api",
-                            )
+                        with probe.measure("pubsub.publish"):
+                            matched = exchange.publish_message(msg)
+                        ensure(
+                            len(matched) >= 2,
+                            f"expected notify+audit got {len(matched)}",
                         )
+                        with probe.measure("pubsub.publish"):
+                            noise = exchange.publish_message(
+                                PubSubMessage(
+                                    topic="inventory.tick",
+                                    payload={},
+                                    timestamp=time.time(),
+                                    message_id=uuid.uuid4().hex,
+                                    publisher="order-api",
+                                )
+                            )
                         ensure(len(noise) == 0, "inventory should not match orders.#")
                         ok(f"pubsub matched={len(matched)}")
 
-                    with scenario("fulfill queue ALO", "queue.alo", "queue.subscribe", "queue.send"):
-                        await manager.send_message(
-                            "fulfill",
-                            "fulfill.new",
-                            {"order_id": order_id},
-                            DeliveryGuarantee.AT_LEAST_ONCE,
-                        )
+                    with scenario(
+                        "fulfill queue ALO", "queue.alo", "queue.subscribe", "queue.send"
+                    ):
+                        with probe.measure("queue.send"):
+                            await manager.send_message(
+                                "fulfill",
+                                "fulfill.new",
+                                {"order_id": order_id},
+                                DeliveryGuarantee.AT_LEAST_ONCE,
+                            )
                         await asyncio.sleep(0.4)
                         ensure(order_id in fulfilled, f"not fulfilled: {fulfilled}")
                         ok(f"fulfill processed {fulfilled}")
@@ -235,18 +264,45 @@ async def main() -> None:
                     with scenario("second distinct order", "rpc.call"):
                         idem2 = f"idem-{uuid.uuid4().hex[:10]}"
                         async with MPREGClientAPI(hub) as client:
-                            other = await client.call(
-                                "create_order",
-                                "SKU-2",
-                                1,
-                                idem2,
-                                locs=frozenset(["orders", "api"]),
+                            other = await probe.measure_await(
+                                "rpc.call",
+                                client.call(
+                                    "create_order",
+                                    "SKU-2",
+                                    1,
+                                    idem2,
+                                    locs=frozenset(["orders", "api"]),
+                                ),
                             )
                         ensure(
-                            other.get("order_id") != order_id and other.get("replay") is False,
+                            other.get("order_id") != order_id
+                            and other.get("replay") is False,
                             f"second order bad {other}",
                         )
                         ok(f"second order_id={other.get('order_id')}")
+
+                    with scenario(
+                        "multi-plane latency/throughput probe",
+                        "mon.slo",
+                    ):
+                        call_op = probe.op("rpc.call")
+                        ensure(call_op.count >= 4, f"rpc ops {call_op.count}")
+                        ensure(call_op.p95_ms < 8000.0, f"rpc p95 {call_op.p95_ms}")
+                        ensure(probe.op("cache.get").count >= 2, "cache ops")
+                        ensure(probe.total_ops >= 8, f"total {probe.total_ops}")
+                        ensure(probe.throughput_ops_s > 0.0, "throughput")
+                        tracker = getattr(server, "_metrics_tracker", None)
+                        if tracker is not None and hasattr(tracker, "snapshot"):
+                            snap = tracker.snapshot()
+                            probe.absorb_server_tracker(tracker, label="order")
+                            step(
+                                f"server-metrics rpc.total={snap['rpc']['total']} "
+                                f"rps={snap['rpc']['rps']}"
+                            )
+                        ok(
+                            f"probe ops={probe.total_ops} rpc_p95={call_op.p95_ms:.2f} "
+                            f"throughput_ops_s={probe.throughput_ops_s:.1f}"
+                        )
 
                 finally:
                     await cache.shutdown()
