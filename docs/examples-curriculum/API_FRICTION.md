@@ -35,6 +35,8 @@ Legend severity: **High** (blocks nested/async use or confuses operators badly) 
 | F17 | TopicPattern | `matches_topic` on `{param}` format templates returns False — templates ≠ AMQP wildcards | Med | Separate `format_match` vs wildcard match APIs or convert `{x}`→`*` in matcher | `topic_taxonomy_tour` |
 | F18 | SQLite backend | `db_path` must be `pathlib.Path`; bare `str` fails on `.parent` | Med | Coerce `str→Path` in `__post_init__` | `persistence_kv` |
 | F19 | RaftOracle | Dual-leader raises on `observe_role`, not deferred to `assert_safe` | Info | Document fail-fast invariant timing | `routing_oracle_lab` |
+| F20 | DiscoveryRateLimiter | `max_keys` prune-then-insert → steady state can be `max_keys+1` (soft cap) | Med | Prune to `max_keys-1` before insert, or document soft cap | `discovery_rate_limit` |
+| F21 | TopicQueueRouter | `successful_routes` only increments on `send_via_topic`; `route_message_to_queues` updates `total_routes`/`cache_*` only | Med | Bump successful on pure route match **or** rename counters | `topic_queue_router_lab` |
 
 ---
 

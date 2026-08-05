@@ -164,6 +164,14 @@ ORACLE_ROUTING: Final = "oracle.routing"
 ORACLE_RAFT: Final = "oracle.raft"
 FABRIC_DEADLINE_HOP: Final = "fabric.deadline_hop"
 
+DISCO_RATE_LIMIT: Final = "disco.rate_limit"
+MON_SLO: Final = "mon.slo"
+MON_GOLDEN_SIGNALS: Final = "mon.golden_signals"
+MON_TRACE_CONTEXT: Final = "mon.trace_context"
+RPC_DEPENDENCY: Final = "rpc.dependency"
+CONS_LEADER_ELECTION: Final = "cons.leader_election"
+PROD_SHIPPING: Final = "prod.shipping"
+
 # App id → feature IDs (must stay aligned with FEATURE_CATALOG.md)
 APP_FEATURES: dict[str, tuple[str, ...]] = {
     "hello_rpc": (
@@ -554,6 +562,57 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
     "deadline_hop_budget": (
         FABRIC_DEADLINE_HOP,
         RPC_DEADLINE,
+    ),
+    "discovery_rate_limit": (
+        DISCO_RATE_LIMIT,
+        DISCO_CATALOG_QUERY,
+        DISCO_SUMMARY_QUERY,
+    ),
+    "observability_slo_trace": (
+        MON_SLO,
+        MON_GOLDEN_SIGNALS,
+        MON_TRACE_CONTEXT,
+        MON_UNIFIED,
+    ),
+    "topic_queue_router_lab": (
+        QUEUE_TOPIC_ROUTE,
+        QUEUE_FACTORIES,
+        QUEUE_SEND,
+        QUEUE_ALO,
+    ),
+    "topic_dependency_lab": (
+        RPC_DEPENDENCY,
+        RPC_TOPIC_AWARE,
+        RPC_DAG,
+    ),
+    "shipping_fulfillment": (
+        PROD_SHIPPING,
+        RPC_CALL,
+        RPC_REGISTER,
+        CACHE_PUT_GET,
+        CACHE_L1,
+        QUEUE_SEND,
+        QUEUE_ALO,
+        QUEUE_SUBSCRIBE,
+    ),
+    "fabric_hub_hierarchy": (
+        FABRIC_HUBS,
+        FABRIC_GRAPH,
+    ),
+    "leader_election_lab": (
+        CONS_LEADER_ELECTION,
+        CONS_QUORUM_TEACH,
+    ),
+    "multi_pop_edge_mesh": (
+        PROD_EDGE,
+        FABRIC_PERMISSIVE,
+        FABRIC_CROSS_RPC,
+        RPC_CALL,
+        RPC_LOCS,
+        MON_TIMELINE,
+        MON_EVENTS,
+        MON_UNIFIED,
+        MON_TRACE_CONTEXT,
     ),
 }
 

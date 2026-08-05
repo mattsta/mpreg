@@ -99,12 +99,12 @@ Always prefer **allocator-driven ports** when scripting.
 ### Curriculum runner
 
 ```bash
-uv run mpreg-example list                 # 35 apps
+uv run mpreg-example list                 # 70 apps
 uv run mpreg-example list --kind plane
 uv run mpreg-example describe order_intake
 uv run mpreg-example run order_intake
 uv run mpreg-example smoke                 # 8 apps
-uv run mpreg-example suite                 # all 35
+uv run mpreg-example suite                 # all suite apps (~70)
 uv run mpreg-example demo tier1
 uv run mpreg-example demo product_vertical
 uv run mpreg-example bundles
@@ -119,6 +119,31 @@ uv run mpreg demo tier1                    # delegates to mpreg-example
 uv run pytest tests/examples_apps -m example_smoke
 uv run pytest tests/examples_apps -m example_suite
 uv run pytest tests/examples_apps
+
+# Shell wrappers (CI + local)
+scripts/run_example_apps_smoke.sh
+scripts/run_example_apps_suite.sh
+# Aliases used by .github/workflows/ci.yml:
+scripts/run_demo_smoke.sh
+scripts/run_demo_suite.sh
+```
+
+### Nightly / CI suite
+
+GitHub Actions workflow `.github/workflows/ci.yml` runs on every push and PR:
+
+| Job | Script | Scope |
+|-----|--------|-------|
+| `demo-smoke` | `scripts/run_demo_smoke.sh` | smoke subset (~8 apps) |
+| `demo-suite` | `scripts/run_demo_suite.sh` | full `mpreg-example suite` |
+
+Both scripts are entrypoint-only (`uv run mpreg-example …`). For a local
+nightly-equivalent run:
+
+```bash
+uv run mpreg-example suite
+# or
+scripts/run_example_apps_suite.sh
 ```
 
 **Do not** use `python -m`, `uv run python`, or bare script paths for examples.

@@ -19,10 +19,10 @@ Product-shaped apps with a tracked growth cycle (L0→L4):
 | Code | `mpreg/examples/apps/` |
 
 ```bash
-uv run mpreg-example list                 # 35 shipped apps
+uv run mpreg-example list                 # 70 shipped apps
 uv run mpreg-example run hello_rpc
 uv run mpreg-example smoke                # 8 apps, CI-friendly
-uv run mpreg-example suite                # all 35
+uv run mpreg-example suite                # full suite (~70)
 uv run mpreg-example demo tier1           # plane_* capability tours
 uv run mpreg-example demo product_vertical
 uv run mpreg examples list                # same runner
@@ -34,98 +34,54 @@ scripts/run_example_apps_suite.sh
 ```
 
 Full matrix: [examples-curriculum/APP_CATALOG.md](examples-curriculum/APP_CATALOG.md).
+Living plan: [examples-curriculum/PROJECT_PLAN.md](examples-curriculum/PROJECT_PLAN.md).
 
 Learning path: `hello_rpc` → … → `order_intake` → `multi_region_shop` →
-`global_edge_control_plane` (see curriculum README).
+`global_edge_control_plane` / `multi_pop_edge_mesh` (see curriculum README).
 
-## 🎯 Quick Start Examples (capability demos)
+## Capability tours (entrypoint-only)
 
-### 1. Run the Quick Demo
-
-The fastest way to see MPREG in action:
-
-```bash
-uv run python mpreg/examples/quick_demo.py
-```
-
-This 3-minute demo shows:
-
-- ✨ Automatic dependency resolution
-- 🎯 Intelligent resource routing
-- ⚡ High-performance concurrency
-- 🌐 Zero-configuration clustering
-
-### 2. Performance Benchmarks
-
-See MPREG's performance characteristics:
+Prefer the unified curriculum runner. Legacy script names map to app ids
+(see APP_CATALOG legacy table).
 
 ```bash
-uv run python mpreg/examples/tier1_single_system_full.py --system rpc
+# Quick hello
+uv run mpreg-example run hello_rpc
+
+# Plane / tier1 capability tours
+uv run mpreg-example demo tier1
+# or individually:
+uv run mpreg-example run plane_rpc
+uv run mpreg-example run plane_pubsub
+uv run mpreg-example run plane_queue
+uv run mpreg-example run plane_cache
+uv run mpreg-example run plane_fabric
+uv run mpreg-example run plane_monitoring
+
+# Integrations (former tier2)
+uv run mpreg-example run rpc_plus_cache
+uv run mpreg-example run pubsub_plus_queue
+uv run mpreg-example run cache_plus_federation
+
+# Product verticals + L3/L4
+uv run mpreg-example run order_intake
+uv run mpreg-example run shipping_fulfillment
+uv run mpreg-example run multi_region_shop
+uv run mpreg-example run signed_route_border
+uv run mpreg-example run auto_port_bootstrap
+uv run mpreg-example run config_reload_live
+uv run mpreg-example run fabric_snapshot_restart
+uv run mpreg-example run global_edge_control_plane
+uv run mpreg-example run multi_pop_edge_mesh
 ```
 
-Measure your own baseline with logging at INFO and a steady warm-up.
+Highlights across the matrix:
 
-### 3. Real-World Applications
-
-Comprehensive production examples:
-
-```bash
-uv run python mpreg/examples/real_world_examples.py
-```
-
-Features:
-
-- 📊 Real-time data processing pipelines
-- 🤖 Distributed ML inference systems
-- 🔄 Event-driven architectures
-- 📈 Analytics and monitoring workflows
-
-### 4. Route Security + Policy Demo
-
-Minimal live demo showing route key rotation and neighbor policy filtering:
-
-```bash
-uv run python mpreg/examples/fabric_route_security_demo.py
-```
-
-### 5. Auto-Port Cluster Bootstrap Demo
-
-Auto-assign ports and capture endpoints via callbacks for cluster bootstrapping:
-
-```bash
-uv run python mpreg/examples/auto_port_cluster_bootstrap.py
-```
-
-### 6. Cache + Queue Integration Demo
-
-Fabric-native cache + queue workflows in one run:
-
-```bash
-uv run python mpreg/examples/tier2_integrations.py
-```
-
-Highlights:
-
-- RPC results cached and reused.
-- Pub/sub fan-out feeding a durable queue.
-- Cache federation using fabric transport.
-
-### 7. Persistence Restart Demo
-
-Unified persistence for cache + queue across restart:
-
-```bash
-uv run python mpreg/examples/persistence_restart_demo.py
-```
-
-Fabric catalog + route key snapshots across restart:
-
-```bash
-uv run python mpreg/examples/fabric_snapshot_restart_demo.py
-```
-
-This demo uses permissive federation bridging to allow a short-lived
-cross-cluster announcement.
+- Automatic dependency resolution and resource routing (`hello_rpc`, `plane_rpc`)
+- Pub/sub fan-out and topic→queue bridges
+- Cache federation and event bus
+- Fabric hubs, graph resilience, multi-POP edges
+- Persistence restart durability
 
 Use the settings file to launch a persistent server:
 

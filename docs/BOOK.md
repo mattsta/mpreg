@@ -16,13 +16,23 @@ uv run mpreg profile list
 uv run mpreg server start-config $(uv run mpreg profile path dev)
 
 # Curriculum (entrypoints only — never python -m / uv run python)
-uv run mpreg-example list          # 35 apps
+uv run mpreg-example list          # 70 apps (L0–L4 curriculum)
 uv run mpreg-example smoke         # 8 apps
-uv run mpreg-example suite         # all 35
+uv run mpreg-example suite         # full suite (~70)
 uv run mpreg-example demo tier1    # unified former tier demos
 ```
 
+Curriculum home: [examples-curriculum/](examples-curriculum/) · catalog
+[APP_CATALOG.md](examples-curriculum/APP_CATALOG.md) · living plan
+[PROJECT_PLAN.md](examples-curriculum/PROJECT_PLAN.md) · API friction
+[API_FRICTION.md](examples-curriculum/API_FRICTION.md).
+
+Flagship L4 tours: `global_edge_control_plane` (hub+US/EU) and
+`multi_pop_edge_mesh` (hub+US/EU/AP).
+
 Operate examples + platform day-2: [examples-curriculum/OPERATE.md](examples-curriculum/OPERATE.md).
+CI: `.github/workflows/ci.yml` runs smoke + full suite via
+`scripts/run_demo_smoke.sh` / `scripts/run_demo_suite.sh`.
 
 ## 2. Core concepts
 

@@ -77,34 +77,28 @@ Legend: `[x]` done · `[~]` partial · `[ ]` not started
 - L0–L4 apps deepened with multi-scenario API drills (not thin wrappers).
 - Planes inlined (no 18-line tier1-only shims).
 
-## Phase E — Gap fill (ACTIVE)
+## Phase E — Gap fill (COMPLETE)
 
 Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 
 | Wave | Item | Status | Notes |
 |------|------|--------|-------|
-| E0 | Living PROJECT_PLAN | [x] | goals, waves, dashboard |
-| E1 | `cache_atomic_ops` | [x] | CAS/incr/structures/ns bulk |
-| E2 | `namespace_policy_gate` | [x] | validate/apply/status/export/audit |
-| E3 | `plane_dns` | [x] | register/list/describe + UDP/TCP resolve |
-| E4 | `unified_client_tour` | [x] | MPREGClient RPC+cache+queue |
-| E5 | `pubsub_request_reply` | [x] | publish_with_reply |
-| E6 | Deepen 9 thin apps | [x] | 0 thin remaining; tier3 inlined |
-| E7 | `discovery_watch_summary` | [x] | catalog_watch + summary_* |
-| E8 | `fabric_graph_resilience` | [x] | Dijkstra + CircuitBreaker |
-| E9 | `chaos_transport` | [x] | skew/dup/reorder/drop model |
-| E10 | `ops_cli_tour` | [x] | CLI + friction log F1–F4 |
-| E11 | `cache_event_bus` | [x] | CachePubSubIntegration |
-| E12 | `job_queue_dlq` | [x] | poison → DLQ |
-| E13 | `rpc_versioned_topic` | [x] | function_id + constraints |
-| E14 | `client_auth_token` | [x] | monitoring bearer + client token |
-| E15 | Full suite + report | [x] | **56/56** suite ~75s |
-| E16 | Catalog doc sync | [x] | APP_CATALOG 56 rows |
-| F | Verticals + hellos | [>] | billing/notify/inventory/dns policy/… |
+| E0–E16 | All Phase E waves | [x] | gaps + depth + suite + catalog |
 
-**App count:** 35 → 40 → 44 → 56 → **62** shipped (≥50 met; mid Phase F).
+## Phase F — Breadth to 70 (COMPLETE)
 
-**API discovery:** [API_FRICTION.md](./API_FRICTION.md) (F1–F16).
+| Wave | Item | Status | Notes |
+|------|------|--------|-------|
+| F | Verticals + hellos + oracles | [x] | → 62 |
+| F | Final breadth → 70 | [x] | +8 apps incl. second L4 |
+| F | CI / BOOK / OPERATE / EXAMPLES sync | [x] | nightly suite docs |
+| F | Friction F20–F21 | [x] | rate limit soft cap; router stats |
+
+**App count:** 35 → 40 → 44 → 56 → 62 → **70** shipped (50–70 band **complete**).
+
+**API discovery:** [API_FRICTION.md](./API_FRICTION.md) (F1–F21).
+
+**Program:** Phases A–F at **100%** per PROJECT_PLAN dashboard.
 
 ## Verification log (append)
 
@@ -119,5 +113,8 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 | 2026-08-05 | E7–E12 four apps | all green; 44 apps |
 | 2026-08-05 | E9–E14 + F twelve apps | all green; **56** apps; unit 71 |
 | 2026-08-05 | `pytest tests/examples_apps -m unit` | **71 passed** |
-
 | 2026-08-05 | `mpreg-example suite` | **56/56 passed** |
+| 2026-08-05 | F breadth +6 | **62/62 suite** |
+| 2026-08-05 | F final +8 each `run` | all green |
+| 2026-08-05 | `mpreg-example suite` (70) | see latest suite run |
+| 2026-08-05 | `pytest tests/examples_apps -m unit` | see latest unit run |
