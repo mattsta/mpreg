@@ -151,6 +151,19 @@ PROD_NOTIFY: Final = "prod.notify"
 PROD_BILLING: Final = "prod.billing"
 PROD_INVENTORY: Final = "prod.inventory"
 
+TOPIC_TAXONOMY: Final = "topic.taxonomy"
+TOPIC_VALIDATE: Final = "topic.validate"
+TOPIC_GENERATE: Final = "topic.generate"
+TOPIC_ACCESS: Final = "topic.access"
+
+PERS_MEMORY_KV: Final = "pers.memory_kv"
+BOOT_PROFILE: Final = "boot.profile"
+
+RPC_INTERMEDIATE: Final = "rpc.intermediate"
+ORACLE_ROUTING: Final = "oracle.routing"
+ORACLE_RAFT: Final = "oracle.raft"
+FABRIC_DEADLINE_HOP: Final = "fabric.deadline_hop"
+
 # App id → feature IDs (must stay aligned with FEATURE_CATALOG.md)
 APP_FEATURES: dict[str, tuple[str, ...]] = {
     "hello_rpc": (
@@ -508,6 +521,39 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         FABRIC_CROSS_RPC,
         NS_VALIDATE,
         NS_STATUS,
+    ),
+    "topic_taxonomy_tour": (
+        TOPIC_TAXONOMY,
+        TOPIC_VALIDATE,
+        TOPIC_GENERATE,
+        TOPIC_ACCESS,
+    ),
+    "persistence_kv": (
+        PERS_SQLITE_KV,
+        PERS_MEMORY_KV,
+        PERS_RESTART,
+    ),
+    "profile_settings_tour": (
+        BOOT_SETTINGS,
+        BOOT_PROFILE,
+        FABRIC_CLUSTER_ID,
+        RPC_DEADLINE,
+    ),
+    "rpc_intermediate_results": (
+        RPC_INTERMEDIATE,
+        RPC_DAG,
+        RPC_CALL,
+        CLIENT_POLICY_M3,
+    ),
+    "routing_oracle_lab": (
+        ORACLE_ROUTING,
+        ORACLE_RAFT,
+        FABRIC_GRAPH,
+        CONS_QUORUM_TEACH,
+    ),
+    "deadline_hop_budget": (
+        FABRIC_DEADLINE_HOP,
+        RPC_DEADLINE,
     ),
 }
 

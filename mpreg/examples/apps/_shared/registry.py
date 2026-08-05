@@ -299,6 +299,29 @@ APPS: tuple[ExampleApp, ...] = (
         "Monitoring bearer auth + client auth_token wiring.",
         ("client", "security", "monitoring"),
     ),
+    _app(
+        "topic_taxonomy_tour",
+        "Topic Taxonomy Tour",
+        AppLevel.L1,
+        "TopicValidator + template engine + taxonomy constants.",
+        ("pubsub", "taxonomy"),
+        kind="plane",
+    ),
+    _app(
+        "persistence_kv",
+        "Persistence KV",
+        AppLevel.L1,
+        "Memory + SQLite key/value put/get/list/TTL.",
+        ("persistence",),
+        kind="plane",
+    ),
+    _app(
+        "profile_settings_tour",
+        "Profile Settings Tour",
+        AppLevel.L1,
+        "Load packaged TOML profiles via MPREGSettings.from_path.",
+        ("boot",),
+    ),
     # L2 — moderate composition
     _app(
         "order_intake",
@@ -412,6 +435,13 @@ APPS: tuple[ExampleApp, ...] = (
         ("pubsub", "queue"),
         kind="integration",
     ),
+    _app(
+        "rpc_intermediate_results",
+        "RPC Intermediate Results",
+        AppLevel.L2,
+        "Per-level IntermediateResultCollector + live DAG.",
+        ("rpc",),
+    ),
     # L3 — complex mesh
     _app(
         "multi_region_shop",
@@ -501,6 +531,22 @@ APPS: tuple[ExampleApp, ...] = (
         AppLevel.L3,
         "US/EU DNS namespaces + regional RPC; honest cross-cluster claims.",
         ("dns", "rpc", "fabric", "multi-cluster"),
+    ),
+    _app(
+        "routing_oracle_lab",
+        "Routing Oracle Lab",
+        AppLevel.L3,
+        "RoutingOracle BFS next hops + RaftOracle single-leader safety.",
+        ("fabric", "consensus", "chaos"),
+        kind="plane",
+    ),
+    _app(
+        "deadline_hop_budget",
+        "Deadline Hop Budget",
+        AppLevel.L3,
+        "DeadlineBudget header stamp + per-hop decrement.",
+        ("rpc", "fabric"),
+        kind="plane",
     ),
     # L4 — world
     _app(

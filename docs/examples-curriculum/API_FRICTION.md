@@ -32,6 +32,9 @@ Legend severity: **High** (blocks nested/async use or confuses operators badly) 
 | F14 | DNS CLI | `--target` not `--targets` | Low | Alias | `ops_cli_tour` |
 | F15 | Deadlines | Server handler not preempted after client fail-closed | Info | Docs / cooperative cancel | `rpc_deadline_budget` |
 | F16 | Ports | Fixed port category enum | Low | (error already lists keys) | general |
+| F17 | TopicPattern | `matches_topic` on `{param}` format templates returns False — templates ≠ AMQP wildcards | Med | Separate `format_match` vs wildcard match APIs or convert `{x}`→`*` in matcher | `topic_taxonomy_tour` |
+| F18 | SQLite backend | `db_path` must be `pathlib.Path`; bare `str` fails on `.parent` | Med | Coerce `str→Path` in `__post_init__` | `persistence_kv` |
+| F19 | RaftOracle | Dual-leader raises on `observe_role`, not deferred to `assert_safe` | Info | Document fail-fast invariant timing | `routing_oracle_lab` |
 
 ---
 

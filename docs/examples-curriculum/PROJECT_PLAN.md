@@ -18,7 +18,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G3 | **Entrypoint-only UX** | `uv run mpreg-example` / `mpreg examples` / `mpreg demo` only | [x] |
 | G4 | **Demo-as-test** | live `main()` via pytest + smoke/suite green | [x] unit 71; per-app runs green; full suite pending E15 |
 | G5 | **Feature join integrity** | every app tagged; pytest `test_every_app_has_feature_tags` | [x] |
-| G6 | **50–70 apps when catalog requires** | expand matrix beyond thin 35; no bulk-empty shells | [>] **56** shipped (target **≥50** met; drive toward **60–70**) |
+| G6 | **50–70 apps when catalog requires** | expand matrix beyond thin 35; no bulk-empty shells | [>] **62** shipped (target **≥50** met; drive toward **70**) |
 | G7 | **Living plan** | this file + TRACKER + friction log updated every commit slice | [>] |
 | G8 | **Commit-as-you-go** | clean what/why/how messages per layer | [x] practice; continue |
 | G9 | **API discovery / usability** | curriculum apps surface edge cases + improvement candidates | [>] see §9 API friction log |
@@ -29,7 +29,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 
 | Metric | Value |
 |--------|------:|
-| Shipped apps | **56** |
+| Shipped apps | **62** |
 | Smoke apps | 8 |
 | Suite apps | 56 (all registry `suite=True`) |
 | Feature IDs in `features.py` constants | ~130+ |
@@ -100,11 +100,12 @@ log API usability friction for platform follow-ups.
 | Additional product verticals (billing, notifications, inventory) | [x] `billing_ledger`, `notification_fanout`, `inventory_reserve` |
 | Multi-region + DNS + policy composition (L3/L4) | [x] `multi_region_dns_policy` |
 | L0 hellos for queue/dns | [x] `hello_queue`, `hello_dns` |
-| Deadline budget teaching | [x] `rpc_deadline_budget` |
+| Deadline budget teaching | [x] `rpc_deadline_budget` + `deadline_hop_budget` |
 | Topic→queue bridge integration | [x] `topic_queue_bridge` |
+| Taxonomy / persistence / profiles / oracles / intermediate | [x] +6 → **62** |
 | Nightly suite in CI docs | [ ] |
 | Curriculum BOOK chapter sync | [ ] |
-| More verticals / second L4 world | [ ] toward 60–70 |
+| More verticals / second L4 world | [ ] toward 70 |
 
 ---
 
@@ -117,7 +118,7 @@ log API usability friction for platform follow-ups.
 | L2 product/integ | ~16 | 14+ | + ops, notify, billing, inventory, bridge |
 | L3 complex | ~11 | 12+ | + graph, watch, chaos_transport, dns policy, deadline |
 | L4 world | 1 | 2–3 | optional second world tour |
-| **Total** | **56** | **50–70** | ≥50 met; continue quality breadth |
+| **Total** | **62** | **50–70** | ≥50 met; mid Phase F toward 70 |
 
 ---
 
@@ -166,6 +167,7 @@ uv run pytest tests/examples_apps -q
 | 2026-08-05 | E9–E14 + F verticals | +12 → **56**: versioned RPC, auth token, chaos_transport, ops_cli, hellos, billing/notify/inventory, deadline, bridge, multi-region DNS; unit 71; all 12 runs green |
 | 2026-08-05 | E15 full suite | **56/56 passed** (~75s) via `mpreg-example suite` |
 | 2026-08-05 | E16 APP_CATALOG sync | matrix lists all 56 shipped ids |
+| 2026-08-05 | F breadth wave | +6 → **62**: taxonomy, persistence_kv, profiles, intermediate RPC, routing oracle, deadline hop; F17–F19 friction |
 
 ---
 
@@ -178,10 +180,10 @@ uv run pytest tests/examples_apps -q
 | Feature-catalog tagging | 10% | 9 | [~] join tests; catalog docs catch-up |
 | Gap apps (E1–E14) | 30% | 28 | [x] E0–E14 landed |
 | Depth contract all apps | 10% | 10 | [x] 0 thin |
-| Phase F breadth 50–70 | 10% | 7 | [>] 56 apps; verticals started |
+| Phase F breadth 50–70 | 10% | 8 | [>] 62 apps; mid-band |
 | Docs/plan living sync | 5% | 4 | [~] plan+tracker+friction |
 | Automation/report (E15) | 5% | 5 | [x] suite 56/56 |
-| **Overall curriculum program** | **100%** | **~93%** | F breadth 60–70 + platform friction triage → 100 |
+| **Overall curriculum program** | **100%** | **~95%** | F to 70 + friction triage + nightly docs → 100 |
 
 ---
 
