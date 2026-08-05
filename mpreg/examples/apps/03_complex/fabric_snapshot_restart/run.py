@@ -11,7 +11,7 @@ from pathlib import Path
 from mpreg.core.config import MPREGSettings
 from mpreg.core.persistence.config import PersistenceConfig, PersistenceMode
 from mpreg.core.port_allocator import port_range_context
-from mpreg.examples.apps._shared.runtime import ensure, ok, step
+from mpreg.examples.apps._shared.runtime import app_run, scenario, ensure, ok, step
 from mpreg.fabric.federation_config import create_permissive_bridging_config
 from mpreg.fabric.route_keys import RouteKeyRegistry
 from mpreg.server import MPREGServer
@@ -78,64 +78,66 @@ async def _wait_for_function(
     return False
 
 async def main() -> None:
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        data_dir = Path(tmp_dir)
-        with port_range_context(2, "servers") as ports:
-            local_port, remote_port = ports
-            remote_url = f"ws://127.0.0.1:{remote_port}"
+    with app_run("fabric_snapshot_restart", "Fabric Snapshot Restart", level="L3"):
+        with scenario("primary drill", "pers.fabric_snap", "fabric.catalog", "fabric.snapshot"):
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                data_dir = Path(tmp_dir)
+                with port_range_context(2, "servers") as ports:
+                    local_port, remote_port = ports
+                    remote_url = f"ws://127.0.0.1:{remote_port}"
 
-            step("start remote + local with persistence")
-            remote_server, remote_task = await _start_server(
-                remote_port, "Fabric-Remote", "cluster-remote"
-            )
-            route_keys = RouteKeyRegistry()
-            local_server, local_task = await _start_server(
-                local_port,
-                "Fabric-Local",
-                "cluster-local",
-                connect=remote_url,
-                persistence_dir=data_dir,
-                route_keys=route_keys,
-            )
-            try:
-                def remote_echo() -> str:
-                    return "ok"
+                    step("start remote + local with persistence")
+                    remote_server, remote_task = await _start_server(
+                        remote_port, "Fabric-Remote", "cluster-remote"
+                    )
+                    route_keys = RouteKeyRegistry()
+                    local_server, local_task = await _start_server(
+                        local_port,
+                        "Fabric-Local",
+                        "cluster-local",
+                        connect=remote_url,
+                        persistence_dir=data_dir,
+                        route_keys=route_keys,
+                    )
+                    try:
+                        def remote_echo() -> str:
+                            return "ok"
 
-                remote_server.register_command("demo.remote", remote_echo, [])
-                seen = await _wait_for_function(local_server, "demo.remote")
-                ensure(seen, "remote function never visible before restart")
-                route_keys.register_key(
-                    cluster_id="cluster-remote",
-                    public_key=b"demo-route-key",
-                )
-                ok("pre-restart catalog + route key registered")
-            finally:
-                await _stop_server(local_server, local_task)
-                await _stop_server(remote_server, remote_task)
+                        remote_server.register_command("demo.remote", remote_echo, [])
+                        seen = await _wait_for_function(local_server, "demo.remote")
+                        ensure(seen, "remote function never visible before restart")
+                        route_keys.register_key(
+                            cluster_id="cluster-remote",
+                            public_key=b"demo-route-key",
+                        )
+                        ok("pre-restart catalog + route key registered")
+                    finally:
+                        await _stop_server(local_server, local_task)
+                        await _stop_server(remote_server, remote_task)
 
-            step("restart local on same data_dir")
-            restored_keys = RouteKeyRegistry()
-            restored_server, restored_task = await _start_server(
-                local_port,
-                "Fabric-Restart",
-                "cluster-local",
-                persistence_dir=data_dir,
-                route_keys=restored_keys,
-            )
-            try:
-                # Catalog may or may not restore remote fn without peer; route keys should.
-                keys_ok = bool(restored_keys.resolve_public_keys("cluster-remote"))
-                # Soft: function restore is best-effort without live peer
-                restored_fn = await _wait_for_function(
-                    restored_server, "demo.remote", timeout=2.0
-                )
-                ensure(keys_ok, "route keys not restored after restart")
-                ok(
-                    f"fabric snapshot restart keys_ok={keys_ok} "
-                    f"fn_restored_without_peer={restored_fn}"
-                )
-            finally:
-                await _stop_server(restored_server, restored_task)
+                    step("restart local on same data_dir")
+                    restored_keys = RouteKeyRegistry()
+                    restored_server, restored_task = await _start_server(
+                        local_port,
+                        "Fabric-Restart",
+                        "cluster-local",
+                        persistence_dir=data_dir,
+                        route_keys=restored_keys,
+                    )
+                    try:
+                        # Catalog may or may not restore remote fn without peer; route keys should.
+                        keys_ok = bool(restored_keys.resolve_public_keys("cluster-remote"))
+                        # Soft: function restore is best-effort without live peer
+                        restored_fn = await _wait_for_function(
+                            restored_server, "demo.remote", timeout=2.0
+                        )
+                        ensure(keys_ok, "route keys not restored after restart")
+                        ok(
+                            f"fabric snapshot restart keys_ok={keys_ok} "
+                            f"fn_restored_without_peer={restored_fn}"
+                        )
+                    finally:
+                        await _stop_server(restored_server, restored_task)
 
 if __name__ == "__main__":
     asyncio.run(main())
