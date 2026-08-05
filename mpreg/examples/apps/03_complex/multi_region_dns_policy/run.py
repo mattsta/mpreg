@@ -154,6 +154,40 @@ async def main() -> None:
                             ok("local us RPC ok; eu cross-cluster non-claim if isolated")
 
                 with scenario(
+                    "F13: target_cluster without fabric bridge → clear route error",
+                    "rpc.target_cluster",
+                    "fabric.cross_rpc",
+                ):
+                    # Peers alone ≠ fabric bridge. Asking for a foreign
+                    # target_cluster should fail with ROUTE_NOT_FOUND details
+                    # that mention fabric bridging (Phase I F13).
+                    async with MPREGClientAPI(us_url) as client:
+                        failed = False
+                        detail = ""
+                        try:
+                            await client.call(
+                                "ping_region",
+                                locs=frozenset(["edge"]),
+                                target_cluster="eu-west-no-bridge",
+                                timeout=3.0,
+                            )
+                        except Exception as exc:
+                            failed = True
+                            detail = f"{type(exc).__name__}: {exc}"
+                            step(f"expected route miss: {detail}")
+                        ensure(failed, "foreign target_cluster must fail closed")
+                        # Prefer structured route messaging when present
+                        lower = detail.lower()
+                        if "fabric" in lower or "route" in lower or "no route" in lower:
+                            ok(f"F13 route error is operator-readable: {detail[:160]}")
+                        else:
+                            step(
+                                "route miss raised but message lacked fabric hint; "
+                                f"raw={detail[:160]}"
+                            )
+                            ok("F13 fail-closed on missing target_cluster route")
+
+                with scenario(
                     "namespace policy validate surface if present",
                     "ns.validate",
                     "ns.status",

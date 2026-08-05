@@ -141,6 +141,24 @@ async def main() -> None:
                         f"share={p.share_deadline_across_attempts}"
                     )
 
+                with scenario(
+                    "F15: client fail-closed ≠ server handler preemption",
+                    "rpc.deadline",
+                    "client.policy.m2",
+                ):
+                    # Honest platform limit: after the client abandons a call,
+                    # a blocking server handler (time.sleep) may still run to
+                    # completion. Cooperative cancel requires async handlers
+                    # that await and check cancellation — not automatic
+                    # thread-kill of sync work.
+                    step(
+                        "friction F15 (documented): M2/client timeout fail-closes "
+                        "the caller; sync handlers are not preempted mid-body. "
+                        "Prefer async handlers + cooperative checkpoints for "
+                        "cancel-sensitive work."
+                    )
+                    ok("F15 non-claim logged for operators")
+
             await run_with_servers(settings, _run)
 
 if __name__ == "__main__":

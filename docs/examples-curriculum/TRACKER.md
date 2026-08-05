@@ -133,3 +133,43 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 | ≥8 apps latency/throughput ensures | [x] | 8 apps |
 | README Observability annotations | [x] | |
 | unit + suite validation | [x] | |
+
+## Phase H — FQN + Med friction + universal obs (**COMPLETE**)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| Universal probe default-on | [x] | `app_run(probe=True)` |
+| CLI F2/F3/F14 | [x] | call/dns aliases; doctor URL; --targets |
+| FQN + `mpreg.*` namespace deny | [x] | `rpc_naming.py` |
+| F5/F6/F7/F8/F17 | [x] | version, cache events/invalidate, TopicPattern |
+| unit + suite at 70 | [x] | |
+
+## Phase I — Residual polish + FQN teach + docs (**COMPLETE**)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| `rpc_fqn_namespace` L1 | [x] | bare/FQN/deny/bound proof |
+| F13 route_not_found fabric hint | [x] | `errors.route_not_found` + multi_region app |
+| F15 deadline preemption honesty | [x] | `rpc_deadline_budget` scenario |
+| F16 `list_port_categories` | [x] | + hello_ports teach |
+| F19 RaftOracle fail-fast docs | [x] | + routing_oracle_lab |
+| F10/F11/F12 honest non-claims | [x] | no fake fixes |
+| FEATURE_CATALOG gap→shipped truth | [x] | |
+| TRACKER/STAGES/APP_CATALOG sync | [x] | **71** apps |
+| unit + suite validation | [x] | see verification log |
+
+## Verification log (Phase I)
+
+| Date | Command | Result |
+|------|---------|--------|
+| 2026-08-05 | `mpreg-example run rpc_fqn_namespace` | pass (6 scen) |
+| 2026-08-05 | `mpreg-example run hello_ports` | pass (F16) |
+| 2026-08-05 | `mpreg-example run multi_region_dns_policy` | pass (F13) |
+| 2026-08-05 | `mpreg-example run rpc_deadline_budget` | pass (F15) |
+| 2026-08-05 | `mpreg-example run routing_oracle_lab` | pass (F19) |
+| 2026-08-05 | `pytest tests/examples_apps -m unit` | **86 passed** |
+| 2026-08-05 | `mpreg-example suite` | **71/71 passed** (~82s) |
+
+**App count:** 35 → … → 70 → **71** (`rpc_fqn_namespace`).
+
+**Program:** Phases A–I at **100%** per PROJECT_PLAN dashboard.

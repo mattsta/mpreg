@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase H COMPLETE — FQN namespace deny + Med friction + universal obs)  
+**Last updated:** 2026-08-05 (Phase I COMPLETE — residual polish + FQN curriculum + doc/catalog sync)  
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -34,18 +34,19 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 
 | Metric | Value |
 |--------|------:|
-| Shipped apps | **70** |
+| Shipped apps | **71** |
 | Smoke apps | 8 |
-| Suite apps | 70 (all registry `suite=True`) |
+| Suite apps | 71 (all registry `suite=True`) |
 | Feature IDs in `features.py` constants | ~140+ |
 | FEATURE_CATALOG prioritized gaps 1–8 | **closed** (honest non-claims where needed) |
 | Thin apps (scen<2 or L1+ ens<5) | **0** |
 | Branch vs origin | main ahead local only (no push unless asked) |
-| Last new-app validation | Phase F final wave each `mpreg-example run` green |
-| Last unit | `pytest tests/examples_apps -m unit` → **85 passed** |
-| Last full suite | **70/70 passed** |
+| Last new-app validation | Phase I `rpc_fqn_namespace` + residual friction apps green |
+| Last unit | `pytest tests/examples_apps -m unit` → **86 passed** |
+| Last full suite | **71/71 passed** (~82s) |
 | Phase G | **COMPLETE** — DX fixes + ExampleProbe + 8 apps obs-proven |
 | Phase H | **COMPLETE** — FQN ns-deny + Med friction + universal probe |
+| Phase I | **COMPLETE** — residual Info polish + FQN curriculum + catalog sync |
 
 ### Thin backlog
 
@@ -224,6 +225,50 @@ Module: `mpreg/core/rpc_naming.py`. Settings:
 `MPREGSettings.default_rpc_namespace`, `bound_rpc_namespace`. Clients:
 `MPREGClientAPI` / `MPREGClient` / `MPREGClusterClient` mirror those fields.
 
+Curriculum proof: **`rpc_fqn_namespace`** (Phase I).
+
+---
+
+### Phase I — Residual polish + FQN curriculum + living-doc sync (**COMPLETE**)
+
+Phase H closed Med friction and FQN platform rules, but satellite docs lagged
+and residual Info/Low items needed honest close-or-document. Phase I finishes
+the program wave without inventing bulk-thin apps.
+
+#### I goals
+
+| ID | Goal | Success measure | Status |
+|----|------|-----------------|--------|
+| PI1 | Living plan Phase I + recover true open work | This section + dashboard | [x] |
+| PI2 | Sync TRACKER / STAGES / API_FRICTION / APP counts | Docs match 71 apps + FIXED rows | [x] |
+| PI3 | Residual friction F13/F15/F16/F19 | Platform or curriculum proof | [x] |
+| PI4 | Honest residual F10/F11/F12 | Non-claims (not fake fixes) | [x] |
+| PI5 | FQN curriculum proof app | `rpc_fqn_namespace` green in suite | [x] |
+| PI6 | FEATURE_CATALOG gap rows = reality | False `gap` → shipped; residual honest | [x] |
+| PI7 | Full validation | unit + suite green; plan 100% | [x] |
+
+#### I waves
+
+| Wave | Deliverables | Status |
+|------|--------------|--------|
+| **I0** | Phase I section + open-work audit | [x] |
+| **I1** | Doc sync (TRACKER/STAGES/friction/APP) | [x] |
+| **I2** | F13 route errors; F15 deadline docs; F16 `list_port_categories`; F19 RaftOracle docs | [x] |
+| **I3** | `rpc_fqn_namespace` L1 app | [x] |
+| **I4** | FEATURE_CATALOG shipped-vs-gap truth | [x] |
+| **I5** | unit + suite + commit | [x] |
+
+#### Phase I exit criteria
+
+- [x] `rpc_fqn_namespace` teaches bare qualify, `mpreg.*` deny, bound ns  
+- [x] F13: `route_not_found` names fabric bridge; proven in `multi_region_dns_policy`  
+- [x] F15: deadline preemption honesty in `rpc_deadline_budget`  
+- [x] F16: `list_port_categories()` + unknown-category error taught in `hello_ports`  
+- [x] F19: RaftOracle dual-leader fail-fast documented + `routing_oracle_lab`  
+- [x] F10/F11/F12 remain honest Info non-claims  
+- [x] FEATURE_CATALOG / TRACKER / STAGES / API_FRICTION / APP_CATALOG current  
+- [x] unit + suite green at **71** apps  
+
 ---
 
 ## 4. Target app matrix growth
@@ -231,11 +276,11 @@ Module: `mpreg/core/rpc_naming.py`. Settings:
 | Band | Now | Target | Notes |
 |------|----:|-------:|-------|
 | L0 hellos | 8 | 6–8 | + hello_queue, hello_dns |
-| L1 product/planes | ~24 | 18+ | + rate limit, SLO/trace, … |
+| L1 product/planes | ~25 | 18+ | + `rpc_fqn_namespace` |
 | L2 product/integ | ~21 | 14+ | + shipping, router, dependency |
 | L3 complex | ~16 | 12+ | + hubs, leader election |
 | L4 world | 2 | 2–3 | global_edge + multi_pop |
-| **Total** | **70** | **50–70** | **band complete** |
+| **Total** | **71** | **50–70+** | band complete; +1 FQN teach |
 
 ---
 
@@ -287,6 +332,9 @@ uv run pytest tests/examples_apps -q
 | 2026-08-05 | F breadth wave | +6 → **62**: taxonomy, persistence_kv, profiles, intermediate RPC, routing oracle, deadline hop; F17–F19 friction |
 | 2026-08-05 | Full suite re-run | **62/62 passed** (~76s) |
 | 2026-08-05 | F final wave → 70 | +8: discovery_rate_limit, observability_slo_trace, topic_queue_router_lab, topic_dependency_lab, shipping_fulfillment, fabric_hub_hierarchy, leader_election_lab, multi_pop_edge_mesh; F20–F21; CI/BOOK/OPERATE/EXAMPLES sync |
+| 2026-08-05 | Phase G complete | F1/F9/F18/F20/F21; ExampleProbe; ≥8 obs apps |
+| 2026-08-05 | Phase H complete | FQN ns-deny; F2–F8/F17; universal probe; 70/70 suite |
+| 2026-08-05 | Phase I complete | `rpc_fqn_namespace`; F13/F15/F16/F19; catalog/doc sync → **71** |
 
 ---
 
@@ -333,6 +381,18 @@ uv run pytest tests/examples_apps -q
 | H6 commit + plan close | 5% | 5 | [x] |
 | **Phase H overall** | **100%** | **100%** | complete |
 
+### Phase I (residual polish + FQN teach + docs) — complete
+
+| Area | Weight | Done | Notes |
+|------|-------:|-----:|-------|
+| I0 living plan / open-work audit | 10% | 10 | [x] |
+| I1 TRACKER/STAGES/friction/APP sync | 20% | 20 | [x] |
+| I2 residual friction F13/F15/F16/F19 | 25% | 25 | [x] |
+| I3 `rpc_fqn_namespace` | 20% | 20 | [x] |
+| I4 FEATURE_CATALOG truth | 15% | 15 | [x] |
+| I5 unit + suite + commit | 10% | 10 | [x] |
+| **Phase I overall** | **100%** | **100%** | complete |
+
 ---
 
 ## 8. Working rules (non-negotiable)
@@ -363,16 +423,16 @@ candidates for platform DX improvements (not claims that apps are broken).
 | F7 | Cache events | `add_event_listener` registration-only | Med | Fire on notify | `cache_event_bus` **FIXED H** |
 | F8 | Cache invalidation | Wrong kwargs | Med | Keyword-only + TypeError | `cache_event_bus` **FIXED H** |
 | F9 | CircuitBreaker | `timeout_seconds` ≠ `current_timeout` | Med | Sync on init | **FIXED G** |
-| F10 | Chaos model | `FaultInjector` is lab-only | Info | Server partition hooks | `chaos_*` |
-| F11 | Auth | Client `auth_token` not enforced on local WS RPC | Info | Optional require_auth | `client_auth_token` |
-| F12 | mTLS | No turnkey local-cert path | Info | Dev self-signed helper | non-claim |
-| F13 | Cross-cluster | Peers alone ≠ fabric bridge | Info | Clearer route errors | `multi_region_dns_policy` |
+| F10 | Chaos model | `FaultInjector` is lab-only | Info | Server partition hooks | `chaos_*` **NON-CLAIM** |
+| F11 | Auth | Client `auth_token` not enforced on local WS RPC | Info | Optional require_auth | `client_auth_token` **NON-CLAIM** |
+| F12 | mTLS | No turnkey local-cert path | Info | Dev self-signed helper | non-claim **NON-CLAIM** |
+| F13 | Cross-cluster | Peers alone ≠ fabric bridge | Info | Clearer route errors | `multi_region_dns_policy` **FIXED I** (`route_not_found` fabric hint) |
 | F14 | DNS CLI | `--target` not `--targets` | Low | Alias | `ops_cli_tour` **FIXED H** |
-| F15 | M2 deadline | Handler runs after client fail-closed | Info | Docs / cooperative cancel | `rpc_deadline_budget` |
-| F16 | Port categories | Fixed enum | Low | (error lists keys) | general |
+| F15 | M2 deadline | Handler runs after client fail-closed | Info | Docs / cooperative cancel | `rpc_deadline_budget` **DOCUMENTED I** |
+| F16 | Port categories | Fixed enum | Low | Discoverable list API | `hello_ports` **FIXED I** (`list_port_categories`) |
 | F17 | TopicPattern | `{param}` templates → False | Med | `{x}`→`*` in matcher | `topic_taxonomy_tour` **FIXED H** |
 | F18 | SQLite backend | `db_path` must be `Path` | Med | Coerce str→Path | **FIXED G** |
-| F19 | RaftOracle | Dual-leader raises on `observe_role` | Info | Document fail-fast | `routing_oracle_lab` |
+| F19 | RaftOracle | Dual-leader raises on `observe_role` | Info | Document fail-fast | `routing_oracle_lab` **DOCUMENTED I** |
 | F20 | DiscoveryRateLimiter | soft max_keys | Med | Hard prune | **FIXED G** |
 | F21 | TopicQueueRouter | route success stats | Med | Bump on pure route | **FIXED G** |
 
@@ -390,15 +450,18 @@ See also: [API_FRICTION.md](./API_FRICTION.md).
 F1/F9/F18/F20/F21 fixed; ExampleProbe + ServerMetricsTracker.snapshot; 8 apps.
 
 **Phase H (FQN ns-deny + Med friction + universal obs): COMPLETE 100%.**  
+Close F2–F8/F17 in platform; default-on probe; CLI aliases; doctor URL clarity.
 
-Close F2–F8/F17 in platform; default-on probe for all curriculum apps;
-operator CLI aliases and doctor URL clarity.
+**Phase I (residual polish + FQN curriculum + doc/catalog sync): COMPLETE 100%.**  
+`rpc_fqn_namespace`; F13/F15/F16/F19 closed or documented; FEATURE_CATALOG truth;
+**71** apps; living docs current.
 
 Still honest residual non-claims until productized: F10 live WS chaos hooks,
-F12 mTLS turnkey helper (Info).
+F11 local WS auth enforcement, F12 mTLS turnkey helper (Info).
 
-**Phase H complete.** Residual Info-severity friction (F10–F13, F15, F19) remains
-honest non-claims / future polish — not Phase H blockers.
+**Program idle only when residual non-claims are accepted product limits** —
+do not invent bulk apps for internal transport/blockchain surfaces without a
+new phase charter.
 
 ---
 

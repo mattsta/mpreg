@@ -6,7 +6,7 @@ import asyncio
 
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
-from mpreg.core.port_allocator import port_range_context
+from mpreg.core.port_allocator import list_port_categories, port_range_context
 from mpreg.examples.apps._shared.runtime import (
     app_run,
     ensure,
@@ -19,6 +19,27 @@ from mpreg.server import MPREGServer
 
 async def main() -> None:
     with app_run("hello_ports", "Hello Ports — allocator + RPC", level="L0"):
+        with scenario(
+            "port categories are a closed discoverable set",
+            "boot.port_range",
+        ):
+            cats = list_port_categories()
+            ensure("servers" in cats, f"missing servers in {cats}")
+            ensure("testing" in cats, f"missing testing in {cats}")
+            ensure(len(cats) >= 4, f"expected several categories, got {cats}")
+            # F16: unknown category lists available keys
+            unknown_ok = False
+            try:
+                with port_range_context(1, "not-a-real-category"):
+                    pass
+            except ValueError as exc:
+                unknown_ok = True
+                msg = str(exc)
+                ensure("servers" in msg or "Available" in msg, f"msg={msg}")
+                step(f"unknown category error: {msg}")
+            ensure(unknown_ok, "unknown category must raise ValueError")
+            ok(f"categories={cats}")
+
         with scenario("allocate distinct ports", "boot.port_range", "boot.auto_port"):
             with port_range_context(2, "servers") as ports:
                 ensure(len(ports) == 2, f"expected 2 ports got {ports}")

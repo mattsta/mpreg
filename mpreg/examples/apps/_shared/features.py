@@ -22,6 +22,9 @@ RPC_DEADLINE: Final = "rpc.deadline"
 RPC_FUNCTION_ID: Final = "rpc.function_id"
 RPC_VERSION_CONSTRAINT: Final = "rpc.version_constraint"
 RPC_TOPIC_AWARE: Final = "rpc.topic_aware"
+RPC_FQN: Final = "rpc.fqn"
+RPC_NAMESPACE_DENY: Final = "rpc.namespace_deny"
+RPC_BOUND_NAMESPACE: Final = "rpc.bound_namespace"
 
 CLIENT_API: Final = "client.api"
 CLIENT_UNIFIED: Final = "client.unified"
@@ -199,7 +202,12 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         PUBSUB_FANOUT,
     ),
     "hello_cache": (CACHE_PUT_GET, CACHE_L1, CACHE_TTL, CACHE_FABRIC),
-    "hello_ports": (BOOT_PORT_RANGE, BOOT_AUTO_PORT, RPC_CALL, RPC_REGISTER),
+    "hello_ports": (
+        BOOT_PORT_RANGE,
+        BOOT_AUTO_PORT,
+        RPC_CALL,
+        RPC_REGISTER,
+    ),
     "ha_client_failover": (
         CLIENT_CLUSTER,
         CLIENT_POLICY_M1,
@@ -442,6 +450,14 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         RPC_CALL,
         RPC_REGISTER,
         RPC_TOPIC_AWARE,
+    ),
+    "rpc_fqn_namespace": (
+        RPC_FQN,
+        RPC_NAMESPACE_DENY,
+        RPC_BOUND_NAMESPACE,
+        RPC_REGISTER,
+        RPC_CALL,
+        CLIENT_API,
     ),
     "client_auth_token": (
         CLIENT_AUTH,

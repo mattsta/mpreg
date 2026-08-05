@@ -114,41 +114,52 @@ Each phase has **scope**, **POC apps**, **runner/docs deliverables**, and
 
 ---
 
-## Phase E — Feature-catalog gap fill + depth (active)
+## Phase E — Feature-catalog gap fill + depth (**COMPLETE**)
 
-See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for waves E0–E16.
+See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for waves E0–E16. All exit criteria met
+(E15 suite + E16 catalog sync closed in later waves).
 
-### Shipped in E1–E14 (+ F verticals start)
+**Registry after E:** 56 apps → continued in F/G/H/I.
+
+---
+
+## Phase F — Breadth to 70 (**COMPLETE**)
+
+Verticals, hellos, oracles, second L4 (`multi_pop_edge_mesh`), CI/BOOK/OPERATE
+sync. **70 apps.**
+
+---
+
+## Phase G — Platform DX + observability (**COMPLETE**)
+
+High/Med friction F1/F9/F18/F20/F21; `ExampleProbe`; ≥8 apps latency/throughput.
+
+---
+
+## Phase H — FQN + Med friction + universal obs (**COMPLETE**)
+
+FQN namespace deny (`mpreg.*`); F2–F8/F17; default-on probe for every app.
+
+---
+
+## Phase I — Residual polish + FQN teach + docs (**COMPLETE**)
 
 | ID | Lesson |
 |----|--------|
-| `cache_atomic_ops` | CAS / incr / structures / namespace bulk |
-| `namespace_policy_gate` | ns validate/apply/status/export/audit |
-| `plane_dns` | DNS register + UDP/TCP resolve |
-| `unified_client_tour` | MPREGClient four-plane façade |
-| `pubsub_request_reply` | publish_with_reply |
-| `discovery_watch_summary` | catalog_watch + summary query/watch |
-| `fabric_graph_resilience` | graph paths + circuit breaker |
-| `cache_event_bus` | cache ops → topic notifications |
-| `job_queue_dlq` | poison retries → DLQ |
-| `rpc_versioned_topic` | function_id + version_constraint |
-| `client_auth_token` | monitoring bearer + client auth_token |
-| `chaos_transport` | FaultInjector skew/dup/reorder/drop |
-| `ops_cli_tour` | mpreg CLI + usability friction |
-| `hello_queue` / `hello_dns` | L0 hellos |
-| `billing_ledger` / `notification_fanout` / `inventory_reserve` | product verticals |
-| `rpc_deadline_budget` / `topic_queue_bridge` / `multi_region_dns_policy` | composition |
+| `rpc_fqn_namespace` | Bare→FQN, `mpreg.*` deny, `bound_rpc_namespace` |
+| F13 | `route_not_found` fabric-bridge messaging |
+| F15 | Deadline client fail-closed ≠ handler preemption (docs) |
+| F16 | `list_port_categories` + unknown-category errors |
+| F19 | RaftOracle dual-leader fail-fast at `observe_role` |
 
-**Registry total: 56 apps.** API friction log: [API_FRICTION.md](./API_FRICTION.md).
+**Registry total: 71 apps.** Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md).
 
-### Exit criteria (Phase E)
+### Exit criteria (Phase I)
 
-- [x] ≥50 shipped apps (**56**)  
-- [x] Depth contract on every app  
-- [x] Prioritized FEATURE_CATALOG gaps closed or non-claimed  
-- [x] E1–E14 gap apps green via `mpreg-example run`  
-- [ ] E15 full suite + coverage report  
-- [>] E16 catalog doc sync  
+- [x] FQN curriculum proof app green  
+- [x] Residual Info friction closed or honest non-claim  
+- [x] FEATURE_CATALOG / TRACKER / APP_CATALOG current  
+- [x] unit + full suite green at 71  
 
 ---
 

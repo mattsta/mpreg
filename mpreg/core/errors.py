@@ -201,9 +201,22 @@ def policy_denied(reason: str, **context: Any) -> MpregError:
     )
 
 def route_not_found(target: str, **context: Any) -> MpregError:
+    """No fabric/cluster route to *target*.
+
+    Phase I F13: peers alone do not create a cross-cluster fabric bridge.
+    The details string names the missing route and points operators at
+    fabric/cluster configuration rather than a bare "no route".
+    """
+    command_name = context.get("command_name")
+    cmd_bit = f" for command '{command_name}'" if command_name else ""
     return MpregError.of(
         MpregErrorCode.ROUTE_NOT_FOUND,
-        details=f"No route to {target}",
+        details=(
+            f"No fabric route to cluster '{target}'{cmd_bit}. "
+            "Peer gossip alone does not bridge clusters — configure fabric "
+            "bridging / target_cluster routing (see multi_region_shop, "
+            "plane_fabric)."
+        ),
         target=target,
         **context,
     )

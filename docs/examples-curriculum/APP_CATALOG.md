@@ -28,7 +28,7 @@ uv run mpreg demo tier1   # delegates to mpreg-example
 
 Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · Friction: [API_FRICTION.md](./API_FRICTION.md)
 
-## Matrix (70 shipped)
+## Matrix (71 shipped)
 
 | ID | Level | Kind | Primary lesson | Systems |
 |----|-------|------|----------------|---------|
@@ -59,6 +59,7 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · Friction: [API_FRICTION.md]
 | `unified_client_tour` | L1 | product | Four-plane MPREGClient façade | rpc, cache, queue |
 | `pubsub_request_reply` | L1 | product | publish_with_reply round-trip | pubsub |
 | `rpc_versioned_topic` | L1 | product | function_id + version_constraint | rpc |
+| `rpc_fqn_namespace` | L1 | product | Bare→FQN, mpreg.* deny, bound ns | rpc |
 | `client_auth_token` | L1 | product | Monitoring bearer + client auth_token | client, security |
 | `topic_taxonomy_tour` | L1 | plane | TopicValidator + taxonomy templates | pubsub, taxonomy |
 | `persistence_kv` | L1 | plane | Memory + SQLite KV TTL | persistence |
@@ -119,7 +120,8 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · Friction: [API_FRICTION.md]
 |----|-------|-------|
 | deeper mTLS local-cert | L1–L2 | blocked on turnkey cert helper (F12) |
 | live WS partition chaos | L3 | injector is lab model (F10) |
-| platform DX for F1–F21 | — | curriculum-mitigated; platform fixes optional |
+| local WS auth enforcement | L1 | client auth_token not enforced on local RPC (F11) |
+| platform DX F1–F21 | — | **G/H/I closed** High/Med + residual Info docs; F10–F12 non-claims |
 
 ## Depth contract
 

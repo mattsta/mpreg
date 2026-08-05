@@ -293,6 +293,13 @@ APPS: tuple[ExampleApp, ...] = (
         ("rpc",),
     ),
     _app(
+        "rpc_fqn_namespace",
+        "RPC FQN Namespace",
+        AppLevel.L1,
+        "Bare→FQN qualify, mpreg.* namespace deny, bound_rpc_namespace.",
+        ("rpc",),
+    ),
+    _app(
         "client_auth_token",
         "Client Auth Token",
         AppLevel.L1,

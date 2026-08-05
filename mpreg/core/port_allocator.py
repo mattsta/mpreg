@@ -329,6 +329,14 @@ def get_port_allocator() -> PortAllocator:
         _port_allocator = PortAllocator()
     return _port_allocator
 
+def list_port_categories() -> tuple[str, ...]:
+    """Return the fixed port-category keys (Phase I F16 discoverability).
+
+    Categories are intentionally a closed enum for worker-aware ranges.
+    Unknown names raise ``ValueError`` listing these keys.
+    """
+    return tuple(PortAllocator.RANGES.keys())
+
 def allocate_port(category: str = "testing", preferred_port: int | None = None) -> int:
     try:
         return get_port_allocator().allocate_port(category, preferred_port)

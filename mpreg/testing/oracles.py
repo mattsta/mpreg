@@ -210,7 +210,14 @@ class RoutingOracle:
 
 @dataclass(slots=True)
 class RaftOracle:
-    """Track leaders-per-term and commit monotonicity across a simulated cluster."""
+    """Track leaders-per-term and commit monotonicity across a simulated cluster.
+
+    **Fail-fast dual-leader (F19):** a second ``leader`` observation for the
+    same term raises ``AssertionError`` *inside* :meth:`observe_role`, not
+    deferred until :meth:`assert_safe`. Callers that want soft collection must
+    catch at observe time; ``assert_safe`` still re-checks residual violations.
+    Curriculum proof: ``routing_oracle_lab``.
+    """
 
     leaders_by_term: dict[int, set[str]] = field(
         default_factory=lambda: defaultdict(set)
@@ -219,6 +226,7 @@ class RaftOracle:
     violations: list[str] = field(default_factory=list)
 
     def observe_role(self, node_id: str, term: int, role: str) -> None:
+        """Record a role observation; dual-leader same term fails immediately."""
         if role.lower() == "leader":
             self.leaders_by_term[term].add(node_id)
             if len(self.leaders_by_term[term]) > 1:

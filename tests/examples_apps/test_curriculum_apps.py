@@ -50,6 +50,7 @@ _TIMEOUT_S: dict[str, float] = {
     "discovery_watch_summary": 120.0,
     "fabric_graph_resilience": 30.0,
     "rpc_versioned_topic": 90.0,
+    "rpc_fqn_namespace": 90.0,
     "client_auth_token": 90.0,
     "hello_queue": 30.0,
     "hello_dns": 90.0,
