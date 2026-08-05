@@ -95,7 +95,15 @@ async def main() -> None:
                     (not miss.success) or miss.entry is None,
                     f"expected miss got {miss}",
                 )
-                ok("cold key isolated")
+                # Writer still has original
+                still_a = await cache_a.get(key, options=options)
+                ensure(
+                    still_a.success
+                    and still_a.entry is not None
+                    and still_a.entry.value.get("status") == "ready",
+                    f"writer lost key after federation {still_a}",
+                )
+                ok("cold key isolated; writer still hot")
                 step("non-claim: not multi-master conflict resolution demo")
         finally:
             await cache_a.shutdown()

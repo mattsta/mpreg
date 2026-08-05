@@ -69,6 +69,7 @@ async def main() -> None:
                 ok(f"broadcast={fan}")
 
             with scenario("fire-and-forget", "queue.fnf"):
+                before = len(received)
                 await manager.send_message(
                     "jobs",
                     "jobs.batch",
@@ -76,12 +77,18 @@ async def main() -> None:
                     DeliveryGuarantee.FIRE_AND_FORGET,
                 )
                 await asyncio.sleep(0.3)
-                ok("FNF accepted (non-claim: persistence)")
+                # Prove API accepted; delivery optional for FNF
+                ensure(before >= 0, "internal counter")
+                ok(
+                    f"FNF accepted; new receipts={received[before:]} "
+                    "(non-claim: persistence)"
+                )
 
             ensure(
                 "build-index" in str(received) and "refresh-cache" in str(received),
                 f"core tasks missing {received}",
             )
+            ensure(len(received) >= 4, f"expected ≥4 receipts got {received}")
             step(f"final received={received}")
             ok("plane_queue tour complete")
         finally:

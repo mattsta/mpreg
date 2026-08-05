@@ -61,6 +61,11 @@ async def main() -> None:
                 timeline = monitor.get_tracking_timeline(tracking_id)
                 ensure(len(timeline) >= 4, f"expected >=4 events, got {len(timeline)}")
                 types = [getattr(e, "event_type", None) for e in timeline]
+                ensure(
+                    EventType.REQUEST_START in types
+                    or any("START" in str(t) for t in types),
+                    f"missing REQUEST_START in {types}",
+                )
                 step(f"event_types={types}")
                 ok(f"timeline events={len(timeline)}")
 

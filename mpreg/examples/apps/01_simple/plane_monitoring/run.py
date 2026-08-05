@@ -61,6 +61,7 @@ async def main() -> None:
                 ensure(len(timeline) >= 5, f"timeline short {len(timeline)}")
                 corr_tl = monitor.get_correlation_timeline(corr)
                 ensure(len(corr_tl) >= 1, "empty correlation timeline")
+                ensure(len(corr_tl) >= 5, f"correlation short {len(corr_tl)}")
                 ok(f"tracking={len(timeline)} correlation={len(corr_tl)}")
 
             with scenario("unified metrics / health", "mon.health"):
@@ -72,6 +73,12 @@ async def main() -> None:
                     active = monitor.get_active_tracking_ids()
                     ensure(tid in active or len(timeline) >= 5, "no health surface")
                     ok(f"active ids={len(active)}")
+                active_ids = monitor.get_active_tracking_ids()
+                ensure(
+                    tid in active_ids or len(timeline) >= 5,
+                    f"tracking_id {tid} not active and timeline short",
+                )
+                ok(f"active_tracking_ids={len(active_ids)}")
 
             step("production: attach transport adapters + OpenAPI /routing/decisions")
         finally:

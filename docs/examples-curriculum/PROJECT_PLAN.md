@@ -32,7 +32,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | Suite apps | 40 |
 | Feature IDs in `features.py` constants | ~105 |
 | FEATURE_CATALOG rows marked `gap` | **~35** (was ~46) |
-| Thin apps (scen<2 or ens<5) | **9** (E6 next) |
+| Thin apps (scen<2 or ens<5) | **0** |
 | Branch vs origin | main ahead **92+** (local only; no push unless asked) |
 | Last new-app validation | E1–E5 each `mpreg-example run` green |
 | Last full suite | pending after E1–E5 commit |
@@ -77,7 +77,7 @@ deepen thin apps, keep automation/tests green, grow matrix toward 50+.
 | **E3** | DNS plane register/list/describe/resolve | `plane_dns` (L1 plane) | [x] |
 | **E4** | Unified client four-plane façade | `unified_client_tour` (L1 product) | [x] |
 | **E5** | Pubsub request/reply | `pubsub_request_reply` (L1 product) | [x] |
-| **E6** | Deepen 9 thin apps to depth contract | listed in §2 | [ ] |
+| **E6** | Deepen 9 thin apps to depth contract | listed in §2 | [x] |
 | **E7** | Discovery watches + summary query | `discovery_watch_summary` (L2/L3) | [ ] |
 | **E8** | Fabric graph / resilience drills | `fabric_graph_resilience` (L3) | [ ] |
 | **E9** | Chaos extras (clock skew, dup) | deepen `chaos_checkout` or `chaos_transport` | [ ] |
@@ -163,6 +163,7 @@ uv run pytest tests/examples_apps -q
 | 2026-08-05 | Phases A–D + feature depth pass | 35 apps; suite 35/35; feature tags + join tests |
 | 2026-08-05 | PROJECT_PLAN.md created | Phase E waves E0–E16 defined; thin list; gates |
 | 2026-08-05 | E1–E5 gap apps | +5 apps → **40**; atomic/ns/dns/unified/reply all green |
+| 2026-08-05 | E6 deepen thin apps | 9 thin → 0; tier3 inlined multi-scenario; signed_route/snapshot multi-scen |
 
 *(append every commit slice below)*
 
@@ -176,10 +177,10 @@ uv run pytest tests/examples_apps -q
 | L0–L4 baseline matrix | 25% | 25 | [x] 35 apps |
 | Feature-catalog tagging | 10% | 8 | [~] join tests; gaps remain |
 | Gap apps (E1–E5, E7–E14) | 30% | 12 | [~] E1–E5 done; E7+ open |
-| Depth contract all apps | 15% | 10 | [~] 9 thin (E6 next) |
+| Depth contract all apps | 15% | 15 | [x] 0 thin |
 | Docs/plan living sync | 5% | 4 | [~] plan+tracker+catalogs updated |
 | Automation/report (E15) | 5% | 1 | [~] suite exists |
-| **Overall curriculum program** | **100%** | **~70%** | drive to 100 via E6–E16 + F |
+| **Overall curriculum program** | **100%** | **~75%** | drive to 100 via E7–E16 + F |
 
 ---
 

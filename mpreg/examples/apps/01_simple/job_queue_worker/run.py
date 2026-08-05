@@ -80,13 +80,17 @@ async def main() -> None:
 
             with scenario("fire-and-forget", "queue.fnf"):
                 before = len(received)
-                await manager.send_message(
+                result = await manager.send_message(
                     "jobs",
                     "jobs.batch",
                     {"task": "metrics-tick"},
                     DeliveryGuarantee.FIRE_AND_FORGET,
                 )
                 await asyncio.sleep(0.4)
+                ensure(
+                    getattr(result, "success", True) is not False,
+                    f"FNF send failed: {result}",
+                )
                 # FNF may or may not hit workers depending on implementation;
                 # prove the send API accepts the guarantee without error.
                 ok(
@@ -98,6 +102,7 @@ async def main() -> None:
                 "build-index" in str(received) and "refresh-cache" in str(received),
                 f"core tasks missing from {received}",
             )
+            ensure(len(received) >= 4, f"expected ≥4 worker receipts got {received}")
             ok(f"final received={received}")
         finally:
             await manager.shutdown()

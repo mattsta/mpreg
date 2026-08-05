@@ -89,7 +89,7 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 | E3 | `plane_dns` | [x] | register/list/describe + UDP/TCP resolve |
 | E4 | `unified_client_tour` | [x] | MPREGClient RPC+cache+queue |
 | E5 | `pubsub_request_reply` | [x] | publish_with_reply |
-| E6 | Deepen 9 thin apps | [ ] | tier3, signed_route, fabric_snapshot, … |
+| E6 | Deepen 9 thin apps | [x] | 0 thin remaining; tier3 inlined |
 | E7+ | Remaining catalog gaps | [ ] | graph, watches, dlq, ops, … |
 
 **App count:** 35 → **40** shipped.
@@ -103,3 +103,5 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 | 2026-08-05 | `mpreg-example run plane_dns` | pass (5 scen, ~9 ens) |
 | 2026-08-05 | `mpreg-example run unified_client_tour` | pass (4 scen, ~12 ens) |
 | 2026-08-05 | `mpreg-example run pubsub_request_reply` | pass (4 scen, ~12 ens) |
+
+| 2026-08-05 | E6 deepen thin apps | all 9 green; 0 thin |

@@ -102,6 +102,29 @@ async def main() -> None:
                     ensure(only_a == "alpha-9", f"local alpha {only_a!r}")
                     ok(f"local alpha_task={only_a}")
 
+                with scenario(
+                    "cluster identities advertised on settings",
+                    "fabric.cluster_id",
+                    "fabric.permissive",
+                ):
+                    ensure(
+                        server_a.settings.cluster_id == "cluster-a",
+                        f"A cluster_id={server_a.settings.cluster_id}",
+                    )
+                    ensure(
+                        server_b.settings.cluster_id == "cluster-b",
+                        f"B cluster_id={server_b.settings.cluster_id}",
+                    )
+                    ensure(
+                        server_a.settings.federation_config is not None,
+                        "A missing federation_config",
+                    )
+                    ensure(
+                        server_b.settings.federation_config is not None,
+                        "B missing federation_config",
+                    )
+                    ok("cluster_id + federation_config present on both nodes")
+
                 step("non-claim: not global linearizability; routing availability only")
 
             await run_with_servers(settings, _run)
