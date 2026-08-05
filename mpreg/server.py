@@ -611,6 +611,37 @@ class Cluster:
         target_cluster = rpc_command.target_cluster
         return not (target_cluster and target_cluster != settings.cluster_id)
 
+    def _raise_route_miss(self, rpc_command: RPCCommand) -> None:
+        """Raise the most specific error when fabric cannot route *rpc_command*.
+
+        Phase H F6: if a version constraint was supplied and the local registry
+        has the name/function_id at *other* versions, raise VERSION_MISMATCH
+        instead of a generic command-not-found. Always raises (never returns).
+        """
+        from mpreg.core.errors import (
+            command_not_found,
+            route_not_found,
+            version_mismatch,
+        )
+
+        if rpc_command.version_constraint:
+            bare_sel = FunctionSelector(
+                name=rpc_command.fun,
+                function_id=rpc_command.function_id,
+            )
+            if self.registry.resolve(bare_sel) is not None:
+                raise version_mismatch(
+                    rpc_command.function_id or rpc_command.fun,
+                    rpc_command.version_constraint,
+                    command_name=rpc_command.fun,
+                )
+        if rpc_command.target_cluster:
+            raise route_not_found(
+                rpc_command.target_cluster,
+                command_name=rpc_command.fun,
+            )
+        raise command_not_found(rpc_command.fun)
+
     def server_for(
         self,
         fun: str,
@@ -1179,14 +1210,7 @@ class Cluster:
                     rpc_command.fun,
                     rpc_command.locs,
                 )
-                from mpreg.core.errors import command_not_found, route_not_found
-
-                if rpc_command.target_cluster:
-                    raise route_not_found(
-                        rpc_command.target_cluster,
-                        command_name=rpc_command.fun,
-                    )
-                raise command_not_found(rpc_command.fun)
+                self._raise_route_miss(rpc_command)
 
             if target.node_id == self.local_url:
                 logger.info("Executing '{}' locally", rpc_command.fun)
@@ -1363,14 +1387,7 @@ class Cluster:
                     rpc_command.fun,
                     rpc_command.locs,
                 )
-                from mpreg.core.errors import command_not_found, route_not_found
-
-                if rpc_command.target_cluster:
-                    raise route_not_found(
-                        rpc_command.target_cluster,
-                        command_name=rpc_command.fun,
-                    )
-                raise command_not_found(rpc_command.fun)
+                self._raise_route_miss(rpc_command)
 
             if target.node_id != self.local_url:
                 target_cluster = target.cluster_id

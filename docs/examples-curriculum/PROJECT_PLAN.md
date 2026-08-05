@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase H ACTIVE — FQN RPC naming + Med friction + universal obs)  
+**Last updated:** 2026-08-05 (Phase H COMPLETE — FQN namespace deny + Med friction + universal obs)  
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -25,8 +25,8 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G10 | **Platform DX unification** | High/Med friction fixed in code (not only mitigated in apps) | [x] F1/F9/F18/F20/F21 |
 | G11 | **Observability-proven examples** | Apps emit + assert latency/throughput surfaces; annotated | [x] ≥8 apps + READMEs |
 | G12 | **Long-term interface consistency** | Coerce/sync surprising APIs; hard caps; nested-async CLI | [x] Phase G |
-| G13 | **Universal example observability** | Every curriculum app emits latency/throughput via probe (default-on) | [>] Phase H |
-| G14 | **Close remaining Med friction** | F2–F8, F17 fixed in platform (or honest non-claim) | [>] Phase H |
+| G13 | **Universal example observability** | Every curriculum app emits latency/throughput via probe (default-on) | [x] Phase H |
+| G14 | **Close remaining Med friction** | F2–F8, F17 fixed in platform (or honest non-claim) | [x] Phase H (F4→FQN ns-deny) |
 
 ---
 
@@ -45,7 +45,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | Last unit | `pytest tests/examples_apps -m unit` → **85 passed** |
 | Last full suite | **70/70 passed** |
 | Phase G | **COMPLETE** — DX fixes + ExampleProbe + 8 apps obs-proven |
-| Phase H | **ACTIVE** — Med friction F2–F8/F17 + universal probe |
+| Phase H | **COMPLETE** — FQN ns-deny + Med friction + universal probe |
 
 ### Thin backlog
 
@@ -159,26 +159,26 @@ latency/throughput — not just curriculum workarounds.
 - [x] `uv run mpreg-example suite` green  
 - [x] PROJECT_PLAN dashboard reflects Phase G completion %  
 
-### Phase H — Remaining Med friction + universal observability (**ACTIVE**)
+### Phase H — Remaining Med friction + universal observability (**COMPLETE**)
 
-Continue sole-consumer platform ownership: close remaining **Med** friction in
-source, and make **every** curriculum app prove latency/throughput (not only
-the Phase G representative eight).
+Sole-consumer platform ownership: remaining **Med** friction closed in source
+(or superseded by better design), and **every** curriculum app proves
+latency/throughput via default-on probe.
 
 #### H goals (detailed)
 
 | ID | Goal | Success measure | Status |
 |----|------|-----------------|--------|
 | PH1 | Universal ExampleProbe | `app_run` defaults `probe=True`; scenario auto-timing | [x] |
-| PH2 | CLI ergonomics F2/F3/F14 | Top-level `mpreg call` / `mpreg dns` aliases; doctor WS URL detect; `--targets` alias | [~] |
+| PH2 | CLI ergonomics F2/F3/F14 | Top-level `mpreg call` / `mpreg dns` aliases; doctor WS URL detect; `--targets` alias | [x] |
 | PH3 | RPC FQN + namespace deny (supersedes F4 short-name denylist) | Every wire name is dotted FQN; bare → active ns; `mpreg.*` user-deny; optional hierarchical `bound_rpc_namespace` | [x] |
 | PH4 | Cache event listeners F7 | `add_event_listener` callbacks fire on `notify_cache_event` | [x] |
 | PH5 | Cache invalidate kwargs F8 | Keyword-only `invalidate` + helpful TypeError on bad kwargs | [x] |
 | PH6 | TopicPattern F17 | `{param}` templates match as single-segment wildcards in `matches_topic` | [x] |
-| PH7 | Versioned RPC F5/F6 | Multi-version same-node where registry already allows; loud errors on collision; version_mismatch path proven | [~] |
-| PH8 | Friction log + apps | FIXED rows; affected apps drop workarounds / prove fixes | [>] |
-| PH9 | README universal note | Shared convention: `◆ obs` appears on every app run | [ ] |
-| PH10 | Full validation | unit + suite green; plan 100% | [ ] |
+| PH7 | Versioned RPC F5/F6 | Multi-version same-node; loud collision; VERSION_MISMATCH (1002) proven | [x] |
+| PH8 | Friction log + apps | FIXED rows; affected apps drop workarounds / prove fixes | [x] |
+| PH9 | README universal note | Shared convention: `◆ obs` appears on every app run | [x] |
+| PH10 | Full validation | unit + suite green; plan 100% | [x] |
 
 #### Phase H waves (sequential)
 
@@ -186,22 +186,22 @@ the Phase G representative eight).
 |------|--------------|--------|
 | **H0** | Living plan Phase H section + dashboard | [x] |
 | **H1** | Runtime: default probe + scenario auto-record | [x] |
-| **H2** | CLI F2/F3/F14 aliases + doctor URL detect | [~] |
+| **H2** | CLI F2/F3/F14 aliases + doctor URL detect | [x] |
 | **H3** | FQN namespace deny (not short-name list); F7 listeners; F8 invalidate; F17 template match | [x] |
-| **H4** | F5/F6 version registry clarity + app proof | [~] |
-| **H5** | Update friction/TRACKER/READMEs; suite + unit | [>] |
-| **H6** | Commit; plan → Phase H complete | [ ] |
+| **H4** | F5/F6 version registry clarity + app proof | [x] |
+| **H5** | Update friction/TRACKER/READMEs; suite + unit | [x] |
+| **H6** | Commit; plan → Phase H complete | [x] |
 
 #### Phase H exit criteria
 
-- [ ] `app_run` probe default-on; ≥60 apps show `◆ obs` in suite (or all that record ops)  
-- [ ] F2, F3, F7, F8, F17 fixed in platform  
-- [ ] F4 superseded by FQN + **namespace deny** (`mpreg.*`); short-name denylist removed  
-- [ ] F5/F6 improved or honest non-claim with loud errors  
-- [ ] Friction log FIXED section updated  
-- [ ] `uv run pytest tests/examples_apps -m unit` green  
-- [ ] `uv run mpreg-example suite` green  
-- [ ] PROJECT_PLAN Phase H dashboard 100%  
+- [x] `app_run` probe default-on; suite apps emit `◆ obs`  
+- [x] F2, F3, F7, F8, F17 fixed in platform  
+- [x] F4 superseded by FQN + **namespace deny** (`mpreg.*`); short-name denylist removed  
+- [x] F5/F6: multi-version same-node + VERSION_MISMATCH path proven (`rpc_versioned_topic`)  
+- [x] Friction log FIXED section updated  
+- [x] `uv run pytest tests/examples_apps -m unit` green (85)  
+- [x] `uv run mpreg-example suite` green (**70/70**)  
+- [x] PROJECT_PLAN Phase H dashboard 100%  
 
 #### RPC FQN naming (Phase H design — north star)
 
@@ -320,18 +320,18 @@ uv run pytest tests/examples_apps -q
 | G7 commit + plan close | 5% | 5 | [x] |
 | **Phase G overall** | **100%** | **100%** | complete |
 
-### Phase H (Med friction + universal obs) — active program
+### Phase H (Med friction + universal obs) — complete
 
 | Area | Weight | Done | Notes |
 |------|-------:|-----:|-------|
 | H0 living plan | 5% | 5 | [x] drafted |
 | H1 universal probe default | 20% | 20 | [x] app_run probe=True |
-| H2 CLI F2/F3/F14 | 15% | 10 | [~] aliases partial |
+| H2 CLI F2/F3/F14 | 15% | 15 | [x] aliases + doctor WS reject + --targets |
 | H3 FQN/F7/F8/F17 platform | 30% | 30 | [x] namespace deny + F7/F8/F17 |
-| H4 F5/F6 version DX | 10% | 5 | [~] multi-version registry OK; app proof pending |
-| H5 docs + suite proof | 15% | 5 | [>] friction log updated; suite pending |
-| H6 commit + plan close | 5% | 0 | |
-| **Phase H overall** | **100%** | **~75%** | FQN + F7/F8/F17 landed; finish CLI/F5/suite |
+| H4 F5/F6 version DX | 10% | 10 | [x] multi-version + VERSION_MISMATCH proven |
+| H5 docs + suite proof | 15% | 15 | [x] friction/READMEs; 85 unit; 70/70 suite |
+| H6 commit + plan close | 5% | 5 | [x] |
+| **Phase H overall** | **100%** | **100%** | complete |
 
 ---
 
@@ -355,26 +355,26 @@ candidates for platform DX improvements (not claims that apps are broken).
 | ID | Surface | Finding | Severity | Suggested improvement | Found in |
 |----|---------|---------|----------|----------------------|----------|
 | F1 | CLI nesting | `mpreg` click handlers call `asyncio.run` → **cannot** be invoked from an already-running event loop | High | Offer async entrypoints or thread offload | `ops_cli_tour`  **FIXED Phase G** (run_coro) |
-| F2 | CLI IA | Operators guess `mpreg dns …` / `mpreg call …`; real paths are `mpreg client dns-*` / `mpreg client call` | Med | Top-level aliases or clearer `--help` epilog | `ops_cli_tour` |
-| F3 | `mpreg doctor` | `--url` is **monitoring HTTP**, not WS RPC; WS URL fails opaquely | Med | Dual URL flags + better error | `ops_cli_tour` |
-| F4 | RPC registry | Built-in name `echo` already registered | Med | Document reserved builtins | `ops_cli_tour` |
-| F5 | Versioned RPC | Same `function_id` cannot register two versions on one node | Med | Multi-version map or loud docs | `rpc_versioned_topic` |
-| F6 | Version miss | Bad constraint → generic command-not-found | Med | Structured version_mismatch | `rpc_versioned_topic` |
-| F7 | Cache events | `add_event_listener` is registration-only | Med | Fire listeners or rename | `cache_event_bus` |
-| F8 | Cache invalidation | Wrong kwargs easy to guess | Med | Keyword-only + clear TypeError | `cache_event_bus` |
-| F9 | CircuitBreaker | `timeout_seconds` ≠ `current_timeout` for half-open | Med | Sync fields on init | `fabric_graph_resilience`  **FIXED Phase G** (CB timeout sync) |
+| F2 | CLI IA | Operators guess `mpreg dns …` / `mpreg call …` | Med | Top-level aliases | `ops_cli_tour` **FIXED H** |
+| F3 | `mpreg doctor` | `--url` is monitoring HTTP; WS URL fails | Med | Dual URL + clear reject | `ops_cli_tour` **FIXED H** |
+| F4 | RPC registry | Built-in `echo` collision | Med | **Superseded:** FQN + `mpreg.*` ns-deny | `ops_cli_tour` **FIXED H** |
+| F5 | Versioned RPC | Multi-version same-node | Med | Registry multi-version + app proof | `rpc_versioned_topic` **FIXED H** |
+| F6 | Version miss | Bad constraint → generic not-found | Med | VERSION_MISMATCH 1002 | `rpc_versioned_topic` **FIXED H** |
+| F7 | Cache events | `add_event_listener` registration-only | Med | Fire on notify | `cache_event_bus` **FIXED H** |
+| F8 | Cache invalidation | Wrong kwargs | Med | Keyword-only + TypeError | `cache_event_bus` **FIXED H** |
+| F9 | CircuitBreaker | `timeout_seconds` ≠ `current_timeout` | Med | Sync on init | **FIXED G** |
 | F10 | Chaos model | `FaultInjector` is lab-only | Info | Server partition hooks | `chaos_*` |
-| F11 | Auth | Client `auth_token` not enforced on local WS RPC by default | Info | Optional require_auth | `client_auth_token` |
-| F12 | mTLS | No turnkey local-cert curriculum path | Info | Dev self-signed helper | non-claim |
-| F13 | Cross-cluster | Peers alone ≠ fabric bridge | Info | Clearer “no fabric route” errors | `multi_region_dns_policy` |
-| F14 | DNS CLI | `--target` not `--targets` | Low | Alias | `ops_cli_tour` |
-| F15 | M2 deadline | Handler still runs after client fail-closed | Info | Docs / cooperative cancel | `rpc_deadline_budget` |
-| F16 | Port categories | Fixed enum — typos raise late | Low | (error already lists keys) | general |
-| F17 | TopicPattern | `matches_topic` on `{param}` templates → False | Med | Separate format vs wildcard match | `topic_taxonomy_tour` |
-| F18 | SQLite backend | `db_path` must be `Path`, not `str` | Med | Coerce str→Path | `persistence_kv`  **FIXED Phase G** (Path coerce) |
-| F19 | RaftOracle | Dual-leader raises on `observe_role` | Info | Document fail-fast timing | `routing_oracle_lab` |
-| F20 | DiscoveryRateLimiter | `max_keys` soft cap → steady `max_keys+1` | Med | Prune to max_keys-1 before insert | `discovery_rate_limit`  **FIXED Phase G** (hard max_keys) |
-| F21 | TopicQueueRouter | `successful_routes` only on `send_via_topic` | Med | Bump on pure route or rename | `topic_queue_router_lab`  **FIXED Phase G** (route success stats) |
+| F11 | Auth | Client `auth_token` not enforced on local WS RPC | Info | Optional require_auth | `client_auth_token` |
+| F12 | mTLS | No turnkey local-cert path | Info | Dev self-signed helper | non-claim |
+| F13 | Cross-cluster | Peers alone ≠ fabric bridge | Info | Clearer route errors | `multi_region_dns_policy` |
+| F14 | DNS CLI | `--target` not `--targets` | Low | Alias | `ops_cli_tour` **FIXED H** |
+| F15 | M2 deadline | Handler runs after client fail-closed | Info | Docs / cooperative cancel | `rpc_deadline_budget` |
+| F16 | Port categories | Fixed enum | Low | (error lists keys) | general |
+| F17 | TopicPattern | `{param}` templates → False | Med | `{x}`→`*` in matcher | `topic_taxonomy_tour` **FIXED H** |
+| F18 | SQLite backend | `db_path` must be `Path` | Med | Coerce str→Path | **FIXED G** |
+| F19 | RaftOracle | Dual-leader raises on `observe_role` | Info | Document fail-fast | `routing_oracle_lab` |
+| F20 | DiscoveryRateLimiter | soft max_keys | Med | Hard prune | **FIXED G** |
+| F21 | TopicQueueRouter | route success stats | Med | Bump on pure route | **FIXED G** |
 
 **Process:** when a new app hits friction, append a row here **and** a `step("friction: …")` in the app so operators see it live.
 
@@ -389,15 +389,16 @@ See also: [API_FRICTION.md](./API_FRICTION.md).
 **Phase G (platform DX + observability proof): COMPLETE at 100%.**  
 F1/F9/F18/F20/F21 fixed; ExampleProbe + ServerMetricsTracker.snapshot; 8 apps.
 
-**Phase H (remaining Med friction + universal obs): ACTIVE ~5%.**  
+**Phase H (FQN ns-deny + Med friction + universal obs): COMPLETE 100%.**  
+
 Close F2–F8/F17 in platform; default-on probe for all curriculum apps;
 operator CLI aliases and doctor URL clarity.
 
 Still honest residual non-claims until productized: F10 live WS chaos hooks,
 F12 mTLS turnkey helper (Info).
 
-**Next sequential work:** H1 runtime default probe → H2 CLI → H3 platform Med
-fixes → H4 version DX → validate → commit → plan 100%.
+**Phase H complete.** Residual Info-severity friction (F10–F13, F15, F19) remains
+honest non-claims / future polish — not Phase H blockers.
 
 ---
 

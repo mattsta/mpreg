@@ -1,13 +1,13 @@
 # Curriculum Example Apps
 
-**35 shipped apps** — product verticals, capability plane tours, integrations,
+**70 shipped apps** — product verticals, capability plane tours, integrations,
 and unified legacy demos. One runner:
 
 ```bash
 uv run mpreg-example list
 uv run mpreg-example run <id>
 uv run mpreg-example smoke          # 8 apps
-uv run mpreg-example suite          # all 35
+uv run mpreg-example suite          # all 70
 uv run mpreg-example demo tier1|tier2|tier3|quick|product_vertical|all_planes
 
 uv run mpreg examples list          # same runner
@@ -18,6 +18,10 @@ uv run pytest tests/examples_apps -m example_suite
 ```
 
 **Never** `python -m` or `uv run python`.
+
+Every successful run emits **`◆ obs:`** latency/throughput lines (`app_run`
+probe default-on). RPC bare names qualify under `app.*`; platform builtins are
+`mpreg.*` (namespace deny for user registration).
 
 Docs: [`docs/examples-curriculum/`](../../../docs/examples-curriculum/).
 

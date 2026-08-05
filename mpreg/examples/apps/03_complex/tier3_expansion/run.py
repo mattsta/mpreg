@@ -44,14 +44,19 @@ async def _await_fabric_ready(
     function_name: str,
     timeout: float = 8.0,
 ) -> None:
+    from mpreg.core.rpc_naming import qualify_rpc_name
+
+    # Catalog keys are FQNs (bare names auto-qualify under default ns).
+    fqn = qualify_rpc_name(function_name)
     deadline = time.time() + timeout
     while time.time() < deadline:
         peers = server.cluster.peer_urls_for_cluster(target_cluster)
-        if peers and function_name in server.cluster.funtimes:
+        funs = server.cluster.funtimes
+        if peers and (fqn in funs or function_name in funs):
             return
         await asyncio.sleep(0.1)
     raise RuntimeError(
-        f"fabric route to {target_cluster} not ready for {function_name}"
+        f"fabric route to {target_cluster} not ready for {function_name} ({fqn})"
     )
 
 async def main() -> None:

@@ -39,10 +39,26 @@ Register every shipped app in `mpreg/examples/apps/_shared/registry.py`.
 
 | Module | Role |
 |--------|------|
-| `runtime.py` | ensure, banners, server lifecycle wrappers |
+| `runtime.py` | ensure, banners, server lifecycle wrappers; **`app_run` defaults `probe=True`** |
+| `obs.py` | `ExampleProbe` latency/throughput surfaces |
 | `registry.py` | app metadata + import paths |
 | `runner.py` | list/run/smoke/suite — console script `mpreg-example` |
 | `__main__.py` | thin hook only; prefer `uv run mpreg-example` |
+
+### Universal observability (Phase H)
+
+Every `app_run` attaches an `ExampleProbe` by default. Successful runs print
+`◆ obs:` lines (ops, errors, elapsed, throughput, per-scenario latency).
+Scenario blocks auto-record wall time under `scenario.<name>`. Do not disable
+the probe unless an app is intentionally non-runtime (docs-only).
+
+### RPC naming (FQN)
+
+- Bare `register_command("add", …)` / `call("add", …)` → `app.add` (default ns).
+- Explicit FQNs pass through (`orders.create`, `mpreg.system.echo`).
+- Users **cannot** register under `mpreg.*` (namespace deny). Platform builtins
+  live there (`PlatformRpc`). Optional `bound_rpc_namespace` locks a hierarchical
+  operator↔client prefix.
 
 **Entrypoints (pyproject `[project.scripts]`):**
 
