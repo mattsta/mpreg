@@ -28,7 +28,7 @@ uv run mpreg demo tier1   # delegates to mpreg-example
 
 Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · Friction: [API_FRICTION.md](./API_FRICTION.md)
 
-## Matrix (56 shipped)
+## Matrix (62 shipped)
 
 | ID | Level | Kind | Primary lesson | Systems |
 |----|-------|------|----------------|---------|
@@ -60,6 +60,9 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · Friction: [API_FRICTION.md]
 | `pubsub_request_reply` | L1 | product | publish_with_reply round-trip | pubsub |
 | `rpc_versioned_topic` | L1 | product | function_id + version_constraint | rpc |
 | `client_auth_token` | L1 | product | Monitoring bearer + client auth_token | client, security |
+| `topic_taxonomy_tour` | L1 | plane | TopicValidator + taxonomy templates | pubsub, taxonomy |
+| `persistence_kv` | L1 | plane | Memory + SQLite KV TTL | persistence |
+| `profile_settings_tour` | L1 | product | Packaged TOML profiles via from_path | boot |
 | `order_intake` | L2 | product | RPC+cache+pubsub+queue | multi-plane |
 | `media_pipeline` | L2 | product | Multi-stage ETL RPC | rpc, cluster |
 | `feature_flag_mesh` | L2 | product | Federated L4 flags | cache, fabric |
@@ -75,6 +78,7 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · Friction: [API_FRICTION.md]
 | `billing_ledger` | L2 | product | Charge RPC + balance cache + settle queue | rpc, cache, queue |
 | `inventory_reserve` | L2 | product | Stock reserve/release + cache | rpc, cache |
 | `topic_queue_bridge` | L2 | integration | Topic hits → durable queue | pubsub, queue |
+| `rpc_intermediate_results` | L2 | product | IntermediateResultCollector + DAG | rpc |
 | `multi_region_shop` | L3 | product | Two-cluster fabric RPC | fabric, multi-cluster |
 | `signed_route_border` | L3 | legacy | Signed routes + policy + rotation | fabric, security |
 | `partition_safe_counter` | L3 | product | Majority vs minority quorum | consensus, chaos |
@@ -87,6 +91,8 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · Friction: [API_FRICTION.md]
 | `chaos_transport` | L3 | plane | Skew/dup/reorder/drop model | chaos |
 | `rpc_deadline_budget` | L3 | product | M1 vs M2/M3 shared wall deadline | rpc, client |
 | `multi_region_dns_policy` | L3 | product | US/EU DNS namespaces + regional RPC | dns, rpc, fabric |
+| `routing_oracle_lab` | L3 | plane | RoutingOracle BFS + RaftOracle safety | fabric, consensus |
+| `deadline_hop_budget` | L3 | plane | DeadlineBudget hop header decrement | rpc, fabric |
 | `global_edge_control_plane` | L4 | product | Hub + US/EU edges + timeline | fabric, monitoring |
 
 ## Legacy → unified mapping

@@ -102,7 +102,7 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 | E16 | Catalog doc sync | [x] | APP_CATALOG 56 rows |
 | F | Verticals + hellos | [>] | billing/notify/inventory/dns policy/… |
 
-**App count:** 35 → 40 → 44 → **56** shipped (≥50 met).
+**App count:** 35 → 40 → 44 → 56 → **62** shipped (≥50 met; mid Phase F).
 
 **API discovery:** [API_FRICTION.md](./API_FRICTION.md) (F1–F16).
 
