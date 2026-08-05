@@ -19,6 +19,9 @@ RPC_LIST: Final = "rpc.list"
 RPC_DESCRIBE: Final = "rpc.describe"
 RPC_REPORT: Final = "rpc.report"
 RPC_DEADLINE: Final = "rpc.deadline"
+RPC_FUNCTION_ID: Final = "rpc.function_id"
+RPC_VERSION_CONSTRAINT: Final = "rpc.version_constraint"
+RPC_TOPIC_AWARE: Final = "rpc.topic_aware"
 
 CLIENT_API: Final = "client.api"
 CLIENT_UNIFIED: Final = "client.unified"
@@ -29,6 +32,8 @@ CLIENT_POLICY_M2: Final = "client.policy.m2"
 CLIENT_POLICY_M3: Final = "client.policy.m3"
 CLIENT_DEFAULT_HA: Final = "client.default_ha"
 CLIENT_TRACE: Final = "client.trace"
+CLIENT_AUTH: Final = "client.auth"
+TX_SECURITY: Final = "tx.security"
 
 PUBSUB_EXCHANGE: Final = "pubsub.exchange"
 PUBSUB_WILDCARD_STAR: Final = "pubsub.wildcard_star"
@@ -110,6 +115,17 @@ CONS_QUORUM_TEACH: Final = "cons.quorum_teach"
 CHAOS_PARTITION: Final = "chaos.partition"
 CHAOS_HEAL: Final = "chaos.heal"
 CHAOS_CRASH: Final = "chaos.crash"
+CHAOS_TRANSPORT: Final = "chaos.transport"
+CHAOS_CLOCK_SKEW: Final = "chaos.clock_skew"
+CHAOS_DUPLICATE: Final = "chaos.duplicate"
+CHAOS_REORDER: Final = "chaos.reorder"
+CHAOS_DROP: Final = "chaos.drop"
+
+OPS_CLI_CALL: Final = "ops.cli_call"
+OPS_CLI_DNS: Final = "ops.cli_dns"
+OPS_CLI_DOCTOR: Final = "ops.cli_doctor"
+OPS_CLI_CONFIG: Final = "ops.cli_config"
+OPS_CLI_EXAMPLES: Final = "ops.cli_examples"
 
 PERS_SQLITE_KV: Final = "pers.sqlite_kv"
 PERS_SQLITE_QUEUE: Final = "pers.sqlite_queue"
@@ -131,6 +147,9 @@ PROD_ML: Final = "prod.ml"
 PROD_SHOP: Final = "prod.shop"
 PROD_EDGE: Final = "prod.edge"
 PROD_TIER3: Final = "prod.tier3"
+PROD_NOTIFY: Final = "prod.notify"
+PROD_BILLING: Final = "prod.billing"
+PROD_INVENTORY: Final = "prod.inventory"
 
 # App id → feature IDs (must stay aligned with FEATURE_CATALOG.md)
 APP_FEATURES: dict[str, tuple[str, ...]] = {
@@ -394,6 +413,101 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         QUEUE_SEND,
         QUEUE_SUBSCRIBE,
         QUEUE_CREATE,
+    ),
+    # Phase E13+ gap / breadth apps
+    "rpc_versioned_topic": (
+        RPC_FUNCTION_ID,
+        RPC_VERSION_CONSTRAINT,
+        RPC_CALL,
+        RPC_REGISTER,
+        RPC_TOPIC_AWARE,
+    ),
+    "client_auth_token": (
+        CLIENT_AUTH,
+        TX_SECURITY,
+        CLIENT_API,
+        RPC_CALL,
+        MON_HEALTH,
+    ),
+    "hello_queue": (
+        QUEUE_CREATE,
+        QUEUE_SEND,
+        QUEUE_ALO,
+        QUEUE_SUBSCRIBE,
+    ),
+    "hello_dns": (
+        DISCO_DNS_REGISTER,
+        DISCO_DNS_RESOLVE,
+        CLIENT_DNS,
+    ),
+    "ops_cli_tour": (
+        OPS_CLI_CALL,
+        OPS_CLI_DNS,
+        OPS_CLI_DOCTOR,
+        OPS_CLI_CONFIG,
+        OPS_CLI_EXAMPLES,
+        RPC_CALL,
+        DISCO_DNS_REGISTER,
+        DISCO_LIST_PEERS,
+    ),
+    "chaos_transport": (
+        CHAOS_TRANSPORT,
+        CHAOS_CLOCK_SKEW,
+        CHAOS_DUPLICATE,
+        CHAOS_REORDER,
+        CHAOS_DROP,
+        CHAOS_PARTITION,
+        CHAOS_CRASH,
+    ),
+    "rpc_deadline_budget": (
+        RPC_DEADLINE,
+        CLIENT_POLICY_M1,
+        CLIENT_POLICY_M2,
+        CLIENT_POLICY_M3,
+        RPC_CALL,
+    ),
+    "notification_fanout": (
+        PROD_NOTIFY,
+        PUBSUB_EXCHANGE,
+        PUBSUB_WILDCARD_STAR,
+        PUBSUB_WILDCARD_HASH,
+        PUBSUB_FANOUT,
+        PUBSUB_HEADERS,
+    ),
+    "billing_ledger": (
+        PROD_BILLING,
+        RPC_CALL,
+        RPC_REGISTER,
+        CACHE_PUT_GET,
+        CACHE_L1,
+        QUEUE_SEND,
+        QUEUE_ALO,
+        QUEUE_SUBSCRIBE,
+    ),
+    "inventory_reserve": (
+        PROD_INVENTORY,
+        RPC_CALL,
+        CACHE_PUT_GET,
+    ),
+    "topic_queue_bridge": (
+        QUEUE_TOPIC_ROUTE,
+        PUBSUB_EXCHANGE,
+        PUBSUB_WILDCARD_HASH,
+        PUBSUB_FANOUT,
+        PUBSUB_HEADERS,
+        QUEUE_CREATE,
+        QUEUE_SEND,
+        QUEUE_ALO,
+        QUEUE_SUBSCRIBE,
+    ),
+    "multi_region_dns_policy": (
+        DISCO_DNS_REGISTER,
+        CLIENT_DNS,
+        RPC_CALL,
+        RPC_LOCS,
+        FABRIC_CROSS_RPC,
+        NS_VALIDATE,
+        NS_STATUS,
     ),
 }
 

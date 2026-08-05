@@ -90,9 +90,21 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 | E4 | `unified_client_tour` | [x] | MPREGClient RPC+cache+queue |
 | E5 | `pubsub_request_reply` | [x] | publish_with_reply |
 | E6 | Deepen 9 thin apps | [x] | 0 thin remaining; tier3 inlined |
-| E7+ | Remaining catalog gaps | [ ] | graph, watches, dlq, ops, … |
+| E7 | `discovery_watch_summary` | [x] | catalog_watch + summary_* |
+| E8 | `fabric_graph_resilience` | [x] | Dijkstra + CircuitBreaker |
+| E9 | `chaos_transport` | [x] | skew/dup/reorder/drop model |
+| E10 | `ops_cli_tour` | [x] | CLI + friction log F1–F4 |
+| E11 | `cache_event_bus` | [x] | CachePubSubIntegration |
+| E12 | `job_queue_dlq` | [x] | poison → DLQ |
+| E13 | `rpc_versioned_topic` | [x] | function_id + constraints |
+| E14 | `client_auth_token` | [x] | monitoring bearer + client token |
+| E15 | Full suite + report | [ ] | next |
+| E16 | Catalog doc sync | [>] | plan/tracker/friction |
+| F | Verticals + hellos | [>] | billing/notify/inventory/dns policy/… |
 
-**App count:** 35 → **40** shipped.
+**App count:** 35 → 40 → 44 → **56** shipped (≥50 met).
+
+**API discovery:** [API_FRICTION.md](./API_FRICTION.md) (F1–F16).
 
 ## Verification log (append)
 
@@ -103,5 +115,7 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 | 2026-08-05 | `mpreg-example run plane_dns` | pass (5 scen, ~9 ens) |
 | 2026-08-05 | `mpreg-example run unified_client_tour` | pass (4 scen, ~12 ens) |
 | 2026-08-05 | `mpreg-example run pubsub_request_reply` | pass (4 scen, ~12 ens) |
-
 | 2026-08-05 | E6 deepen thin apps | all 9 green; 0 thin |
+| 2026-08-05 | E7–E12 four apps | all green; 44 apps |
+| 2026-08-05 | E9–E14 + F twelve apps | all green; **56** apps; unit 71 |
+| 2026-08-05 | `pytest tests/examples_apps -m unit` | **71 passed** |

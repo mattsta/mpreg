@@ -118,7 +118,7 @@ Each phase has **scope**, **POC apps**, **runner/docs deliverables**, and
 
 See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for waves E0–E16.
 
-### Shipped in E1–E5
+### Shipped in E1–E14 (+ F verticals start)
 
 | ID | Lesson |
 |----|--------|
@@ -127,13 +127,28 @@ See [PROJECT_PLAN.md](./PROJECT_PLAN.md) for waves E0–E16.
 | `plane_dns` | DNS register + UDP/TCP resolve |
 | `unified_client_tour` | MPREGClient four-plane façade |
 | `pubsub_request_reply` | publish_with_reply |
+| `discovery_watch_summary` | catalog_watch + summary query/watch |
+| `fabric_graph_resilience` | graph paths + circuit breaker |
+| `cache_event_bus` | cache ops → topic notifications |
+| `job_queue_dlq` | poison retries → DLQ |
+| `rpc_versioned_topic` | function_id + version_constraint |
+| `client_auth_token` | monitoring bearer + client auth_token |
+| `chaos_transport` | FaultInjector skew/dup/reorder/drop |
+| `ops_cli_tour` | mpreg CLI + usability friction |
+| `hello_queue` / `hello_dns` | L0 hellos |
+| `billing_ledger` / `notification_fanout` / `inventory_reserve` | product verticals |
+| `rpc_deadline_budget` / `topic_queue_bridge` / `multi_region_dns_policy` | composition |
+
+**Registry total: 56 apps.** API friction log: [API_FRICTION.md](./API_FRICTION.md).
 
 ### Exit criteria (Phase E)
 
-- [ ] ≥50 shipped apps  
-- [ ] Depth contract on every app  
-- [ ] Prioritized FEATURE_CATALOG gaps closed or non-claimed  
-- [x] E1–E5 gap apps green via `mpreg-example run`  
+- [x] ≥50 shipped apps (**56**)  
+- [x] Depth contract on every app  
+- [x] Prioritized FEATURE_CATALOG gaps closed or non-claimed  
+- [x] E1–E14 gap apps green via `mpreg-example run`  
+- [ ] E15 full suite + coverage report  
+- [>] E16 catalog doc sync  
 
 ---
 

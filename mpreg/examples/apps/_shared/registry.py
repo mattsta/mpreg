@@ -131,6 +131,20 @@ APPS: tuple[ExampleApp, ...] = (
         ("rpc", "ports"),
         smoke=True,
     ),
+    _app(
+        "hello_queue",
+        "Hello Queue",
+        AppLevel.L0,
+        "Smallest durable queue send + subscribe hello.",
+        ("queue",),
+    ),
+    _app(
+        "hello_dns",
+        "Hello DNS",
+        AppLevel.L0,
+        "Minimal DNS register + list + SRV resolve.",
+        ("dns", "discovery"),
+    ),
     # L1 — simple product + planes
     _app(
         "ha_client_failover",
@@ -271,6 +285,20 @@ APPS: tuple[ExampleApp, ...] = (
         "Poison message retries then dead-letter queue.",
         ("queue",),
     ),
+    _app(
+        "rpc_versioned_topic",
+        "RPC Versioned Topic",
+        AppLevel.L1,
+        "function_id + version_constraint routing across nodes.",
+        ("rpc",),
+    ),
+    _app(
+        "client_auth_token",
+        "Client Auth Token",
+        AppLevel.L1,
+        "Monitoring bearer auth + client auth_token wiring.",
+        ("client", "security", "monitoring"),
+    ),
     # L2 — moderate composition
     _app(
         "order_intake",
@@ -347,6 +375,43 @@ APPS: tuple[ExampleApp, ...] = (
         ("cache", "pubsub"),
         kind="integration",
     ),
+    _app(
+        "ops_cli_tour",
+        "Ops CLI Tour",
+        AppLevel.L2,
+        "mpreg CLI: client call, dns-*, doctor friction, examples, config-check.",
+        ("ops", "rpc", "dns"),
+        kind="legacy",
+    ),
+    _app(
+        "notification_fanout",
+        "Notification Fanout",
+        AppLevel.L2,
+        "Multi-subscriber email/push/audit topic wildcards.",
+        ("pubsub",),
+    ),
+    _app(
+        "billing_ledger",
+        "Billing Ledger",
+        AppLevel.L2,
+        "Idempotent charge RPC + balance cache + settlement queue.",
+        ("rpc", "cache", "queue"),
+    ),
+    _app(
+        "inventory_reserve",
+        "Inventory Reserve",
+        AppLevel.L2,
+        "Stock reserve/release RPC with cache snapshot.",
+        ("rpc", "cache"),
+    ),
+    _app(
+        "topic_queue_bridge",
+        "Topic→Queue Bridge",
+        AppLevel.L2,
+        "TopicExchange hits become durable queue work.",
+        ("pubsub", "queue"),
+        kind="integration",
+    ),
     # L3 — complex mesh
     _app(
         "multi_region_shop",
@@ -414,6 +479,28 @@ APPS: tuple[ExampleApp, ...] = (
         "FederationGraph Dijkstra paths and circuit-breaker recovery.",
         ("fabric",),
         kind="plane",
+    ),
+    _app(
+        "chaos_transport",
+        "Chaos Transport",
+        AppLevel.L3,
+        "FaultInjector clock skew, duplicate, reorder, plane drops.",
+        ("chaos",),
+        kind="plane",
+    ),
+    _app(
+        "rpc_deadline_budget",
+        "RPC Deadline Budget",
+        AppLevel.L3,
+        "M1 vs M2/M3 shared wall-clock deadline policies.",
+        ("rpc", "client"),
+    ),
+    _app(
+        "multi_region_dns_policy",
+        "Multi-Region DNS + Policy",
+        AppLevel.L3,
+        "US/EU DNS namespaces + regional RPC; honest cross-cluster claims.",
+        ("dns", "rpc", "fabric", "multi-cluster"),
     ),
     # L4 — world
     _app(

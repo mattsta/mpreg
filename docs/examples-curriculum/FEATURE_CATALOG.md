@@ -334,21 +334,30 @@ Legend: ● primary teach · ○ supporting · · absent
 
 ## Gap backlog (platform has it; curriculum thin or missing)
 
-**Closed in Phase E waves E1–E5 (2026-08-05):** DNS plane, namespace policy,
-advanced cache ops, unified client surfaces, publish-with-reply.
+**Closed in Phase E (2026-08-05):**
 
-Still open (prioritized):
+| # | Gap | App |
+|---|-----|-----|
+| 1 | Graph / resilience | `fabric_graph_resilience` |
+| 2 | Discovery watches + summary | `discovery_watch_summary` |
+| 3 | Cache→pubsub events | `cache_event_bus` |
+| 4 | Queue DLQ | `job_queue_dlq` |
+| 5 | Auth token (monitoring + client wiring; mTLS non-claim) | `client_auth_token` |
+| 6 | Versioned / function_id RPC | `rpc_versioned_topic` |
+| 7 | Chaos extras (skew/dup/reorder/drop) | `chaos_transport` |
+| 8 | Ops CLI tour | `ops_cli_tour` |
 
-1. **Graph router / resilience** fabric drills (`fabric.graph`, `fabric.resilience`)
-2. **Discovery watches + summary query** (`disco.catalog_watch`, `disco.summary_*`)
-3. **Cache→pubsub events** (`cache.pubsub_events`)
-4. **Queue DLQ path** (`queue.dlq`)
-5. **TLS / auth_token** client security path (`client.auth`, `tx.security`)
-6. **Topic-aware / versioned RPC** (`rpc.topic_aware`, `rpc.function_id`)
-7. **Chaos extras** (clock skew, duplicate/reorder)
-8. **Ops CLI teaching app** (`ops.cli_*`)
+Also E1–E5: DNS plane, namespace policy, atomic cache, unified client, publish-with-reply.
 
-Until those ship, READMEs must **non-claim** them.
+**Still open / residual:**
+
+- Full mTLS local-cert story (`tx.tls` deeper than bearer)
+- Live WS partition hooks (chaos injector is lab model — see API_FRICTION F10)
+- E15 full suite automation + coverage report
+- Doc matrix rows for every new app id (E16)
+- Optional second L4 world tour
+
+Usability findings from building these apps: [API_FRICTION.md](./API_FRICTION.md).
 
 ---
 
@@ -396,6 +405,22 @@ Until those ship, READMEs must **non-claim** them.
 | `plane_dns` | L1 | `disco.dns_register`, `disco.dns_resolve`, `client.dns` |
 | `unified_client_tour` | L1 | `client.unified`, `cache.rpc_surface`, `queue.rpc_surface` |
 | `pubsub_request_reply` | L1 | `pubsub.publish_reply`, `pubsub.client_wire` |
+| `job_queue_dlq` | L1 | `queue.dlq`, `queue.alo` |
+| `rpc_versioned_topic` | L1 | `rpc.function_id`, `rpc.version_constraint` |
+| `client_auth_token` | L1 | `client.auth`, `tx.security`, `mon.health` |
+| `hello_queue` | L0 | `queue.send`, `queue.subscribe` |
+| `hello_dns` | L0 | `disco.dns_register`, `disco.dns_resolve` |
+| `discovery_watch_summary` | L3 | `disco.catalog_watch`, `disco.summary_*` |
+| `fabric_graph_resilience` | L3 | `fabric.graph`, `fabric.resilience` |
+| `cache_event_bus` | L2 | `cache.pubsub_events` |
+| `ops_cli_tour` | L2 | `ops.cli_*` |
+| `chaos_transport` | L3 | `chaos.clock_skew`, `chaos.duplicate`, `chaos.reorder`, `chaos.drop` |
+| `rpc_deadline_budget` | L3 | `rpc.deadline`, `client.policy.m1/m2/m3` |
+| `notification_fanout` | L2 | `prod.notify`, `pubsub.*` |
+| `billing_ledger` | L2 | `prod.billing`, rpc+cache+queue |
+| `inventory_reserve` | L2 | `prod.inventory`, rpc+cache |
+| `topic_queue_bridge` | L2 | `queue.topic_route`, pubsub→queue |
+| `multi_region_dns_policy` | L3 | DNS namespaces + regional RPC |
 
 ---
 

@@ -1,8 +1,9 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05  
+**Last updated:** 2026-08-05 (E7–E14 + Phase F verticals wave)  
 **Owner drive:** sequential iterative completion of every feature-catalog gap,
-depth contract, automation, and validation — **not** batch-and-stop.
+depth contract, automation, validation, **and API usability discovery** —
+**not** batch-and-stop.
 
 Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 
@@ -12,44 +13,36 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 
 | # | Goal | Success measure | Status |
 |---|------|-----------------|--------|
-| G1 | **Full-power curriculum** — every honest platform surface taught at the lowest level that can prove it | FEATURE_CATALOG rows `shipped` (or explicit non-claim if product gap) | [~] E1–E5 closed top gaps; ~35 catalog rows still `gap` |
-| G2 | **Depth contract on every app** | ≥2 scenarios; L0 ≥3 ensures; L1+ ≥5 ensures; `app_run` summary | [~] 9/35 thin (see §4) |
+| G1 | **Full-power curriculum** — every honest platform surface taught at the lowest level that can prove it | FEATURE_CATALOG rows `shipped` (or explicit non-claim if product gap) | [~] E1–E14 closed prioritized gaps 1–8; residual polish remains |
+| G2 | **Depth contract on every app** | ≥2 scenarios; L0 ≥3 ensures; L1+ ≥5 ensures; `app_run` summary | [x] 0 thin (E6); new apps meet contract on land |
 | G3 | **Entrypoint-only UX** | `uv run mpreg-example` / `mpreg examples` / `mpreg demo` only | [x] |
-| G4 | **Demo-as-test** | live `main()` via pytest + smoke/suite green | [x] 35/35 suite (baseline); grows with apps |
+| G4 | **Demo-as-test** | live `main()` via pytest + smoke/suite green | [x] unit 71; per-app runs green; full suite pending E15 |
 | G5 | **Feature join integrity** | every app tagged; pytest `test_every_app_has_feature_tags` | [x] |
-| G6 | **50–70 apps when catalog requires** | expand matrix beyond thin 35; no bulk-empty shells | [>] **40** → target **≥50** shipped |
-| G7 | **Living plan** | this file + TRACKER updated every commit slice | [>] |
+| G6 | **50–70 apps when catalog requires** | expand matrix beyond thin 35; no bulk-empty shells | [>] **56** shipped (target **≥50** met; drive toward **60–70**) |
+| G7 | **Living plan** | this file + TRACKER + friction log updated every commit slice | [>] |
 | G8 | **Commit-as-you-go** | clean what/why/how messages per layer | [x] practice; continue |
+| G9 | **API discovery / usability** | curriculum apps surface edge cases + improvement candidates | [>] see §9 API friction log |
 
 ---
 
-## 2. Current baseline (start of Phase E drive)
+## 2. Current baseline
 
 | Metric | Value |
 |--------|------:|
-| Shipped apps | **40** |
+| Shipped apps | **56** |
 | Smoke apps | 8 |
-| Suite apps | 40 |
-| Feature IDs in `features.py` constants | ~105 |
-| FEATURE_CATALOG rows marked `gap` | **~35** (was ~46) |
-| Thin apps (scen<2 or ens<5) | **0** |
-| Branch vs origin | main ahead **92+** (local only; no push unless asked) |
-| Last new-app validation | E1–E5 each `mpreg-example run` green |
-| Last full suite | pending after E1–E5 commit |
+| Suite apps | 56 (all registry `suite=True`) |
+| Feature IDs in `features.py` constants | ~130+ |
+| FEATURE_CATALOG prioritized gaps 1–8 | **closed** (honest non-claims where needed) |
+| Thin apps (scen<2 or L1+ ens<5) | **0** |
+| Branch vs origin | main ahead **95+** (local only; no push unless asked) |
+| Last new-app validation | E7–E14 + F verticals each `mpreg-example run` green |
+| Last unit | `pytest tests/examples_apps -m unit` → **71 passed** |
+| Last full suite | pending (E15) |
 
-### Thin backlog (must deepen before claiming depth-complete)
+### Thin backlog
 
-| App | scen | ens | Action |
-|-----|-----:|----:|--------|
-| `tier3_expansion` | 1 | 0 | Inline multi-scenario; stop pure legacy wrap |
-| `signed_route_border` | 1 | 2 | Multi-scenario security tour + ensures |
-| `fabric_snapshot_restart` | 1 | 2 | Multi-scenario snapshot/restart ensures |
-| `plane_fabric` | 2 | 3 | Explicit bridge + more ensures |
-| `plane_monitoring` | 3 | 4 | +1 ensure / health drill |
-| `plane_queue` | 5 | 4 | +1 ensure (ack/receive) |
-| `job_queue_worker` | 5 | 4 | +1 ensure |
-| `hello_trace` | 3 | 4 | +1 ensure |
-| `cache_plus_federation` | 3 | 4 | +1 ensure / second key |
+**Empty** — E6 closed all nine thin apps.
 
 ---
 
@@ -64,10 +57,11 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | C | L3 mesh / chaos / fabric security | [x] | suite includes L3 |
 | D | L4 `global_edge_control_plane` | [x] | suite includes L4 |
 
-### Phase E — Feature-catalog gap fill + depth (ACTIVE)
+### Phase E — Feature-catalog gap fill + depth (ACTIVE → nearly complete)
 
 **Goal:** close prioritized FEATURE_CATALOG gaps with **real multi-scenario apps**,
-deepen thin apps, keep automation/tests green, grow matrix toward 50+.
+deepen thin apps, keep automation/tests green, grow matrix toward 50+ **and**
+log API usability friction for platform follow-ups.
 
 | Wave | Deliverables | Apps (new or deepen) | Status |
 |------|--------------|----------------------|--------|
@@ -77,36 +71,40 @@ deepen thin apps, keep automation/tests green, grow matrix toward 50+.
 | **E3** | DNS plane register/list/describe/resolve | `plane_dns` (L1 plane) | [x] |
 | **E4** | Unified client four-plane façade | `unified_client_tour` (L1 product) | [x] |
 | **E5** | Pubsub request/reply | `pubsub_request_reply` (L1 product) | [x] |
-| **E6** | Deepen 9 thin apps to depth contract | listed in §2 | [x] |
-| **E7** | Discovery watches + summary query | `discovery_watch_summary` (L2/L3) | [ ] |
-| **E8** | Fabric graph / resilience drills | `fabric_graph_resilience` (L3) | [ ] |
-| **E9** | Chaos extras (clock skew, dup) | deepen `chaos_checkout` or `chaos_transport` | [ ] |
-| **E10** | Ops CLI teaching apps (call/dns/ns) | `ops_cli_tour` (L2 legacy/ops) | [ ] |
-| **E11** | Cache pubsub events integration | `cache_event_bus` (L2) | [ ] |
-| **E12** | Queue DLQ path | deepen `plane_queue` / `job_queue_dlq` | [ ] |
-| **E13** | Topic-aware / versioned RPC | `rpc_versioned_topic` when API honest | [ ] |
-| **E14** | TLS / auth_token path | `client_auth_token` when local-cert story ready | [ ] |
-| **E15** | Full suite automation + coverage report script | `scripts/` + pytest | [ ] |
-| **E16** | APP_CATALOG / STAGES / FEATURE_CATALOG sync to 50+ | docs | [ ] |
+| **E6** | Deepen 9 thin apps to depth contract | listed historically | [x] |
+| **E7** | Discovery watches + summary query | `discovery_watch_summary` (L3) | [x] |
+| **E8** | Fabric graph / resilience drills | `fabric_graph_resilience` (L3) | [x] |
+| **E9** | Chaos extras (clock skew, dup, reorder, drop) | `chaos_transport` (L3) | [x] |
+| **E10** | Ops CLI teaching apps (call/dns/doctor) | `ops_cli_tour` (L2) | [x] |
+| **E11** | Cache pubsub events integration | `cache_event_bus` (L2) | [x] |
+| **E12** | Queue DLQ path | `job_queue_dlq` (L1) | [x] |
+| **E13** | Topic-aware / versioned RPC | `rpc_versioned_topic` (L1) | [x] |
+| **E14** | TLS / auth_token path | `client_auth_token` (L1; mTLS non-claim) | [x] |
+| **E15** | Full suite automation + coverage report | `scripts/` + pytest suite | [ ] |
+| **E16** | APP_CATALOG / STAGES / FEATURE_CATALOG sync | docs | [>] this update |
 
 **Phase E exit criteria**
 
-- [ ] ≥50 shipped apps in registry  
-- [ ] Prioritized gaps 1–6 from FEATURE_CATALOG closed or honestly non-claimed  
-- [ ] Zero apps below depth contract  
-- [ ] `uv run mpreg-example suite` 100%  
-- [ ] `uv run pytest tests/examples_apps` 100%  
-- [ ] FEATURE_CATALOG coverage matrix updated  
-- [ ] PROJECT_PLAN completion % ≥ 85% for Phase E waves E0–E12  
+- [x] ≥50 shipped apps in registry (**56**)  
+- [x] Prioritized gaps 1–8 from FEATURE_CATALOG closed or honestly non-claimed  
+- [x] Zero apps below depth contract  
+- [ ] `uv run mpreg-example suite` 100% (pending E15 full run)  
+- [ ] `uv run pytest tests/examples_apps` 100% live (unit green; live pending)  
+- [>] FEATURE_CATALOG coverage matrix updated  
+- [x] PROJECT_PLAN completion % ≥ 85% for Phase E waves E0–E14  
 
-### Phase F — Breadth to 60–70 + operator polish (planned)
+### Phase F — Breadth to 60–70 + operator polish (STARTED)
 
 | Item | Status |
 |------|--------|
-| Additional product verticals (billing, notifications, inventory) | [ ] |
-| Multi-region + DNS + policy composition (L3/L4) | [ ] |
+| Additional product verticals (billing, notifications, inventory) | [x] `billing_ledger`, `notification_fanout`, `inventory_reserve` |
+| Multi-region + DNS + policy composition (L3/L4) | [x] `multi_region_dns_policy` |
+| L0 hellos for queue/dns | [x] `hello_queue`, `hello_dns` |
+| Deadline budget teaching | [x] `rpc_deadline_budget` |
+| Topic→queue bridge integration | [x] `topic_queue_bridge` |
 | Nightly suite in CI docs | [ ] |
 | Curriculum BOOK chapter sync | [ ] |
+| More verticals / second L4 world | [ ] toward 60–70 |
 
 ---
 
@@ -114,13 +112,12 @@ deepen thin apps, keep automation/tests green, grow matrix toward 50+.
 
 | Band | Now | Target | Notes |
 |------|----:|-------:|-------|
-| L0 hellos | 6 | 6–8 | optional hello_queue / hello_dns |
-| L1 product | 8 | 10+ | + unified client, reply |
-| L1 planes | 9 | 10+ | + plane_dns, atomic, ns policy |
-| L2 product/integ | 10 | 14+ | + cache events, ops tour |
-| L3 complex | 7 | 12+ | + graph, watch, dlq, deepen legacy |
+| L0 hellos | 8 | 6–8 | + hello_queue, hello_dns |
+| L1 product/planes | ~20 | 18+ | + versioned RPC, auth, DLQ, … |
+| L2 product/integ | ~16 | 14+ | + ops, notify, billing, inventory, bridge |
+| L3 complex | ~11 | 12+ | + graph, watch, chaos_transport, dns policy, deadline |
 | L4 world | 1 | 2–3 | optional second world tour |
-| **Total** | **40** | **50–70** | quality over empty shells |
+| **Total** | **56** | **50–70** | ≥50 met; continue quality breadth |
 
 ---
 
@@ -150,9 +147,10 @@ uv run pytest tests/examples_apps -q
 3. `features.py` APP_FEATURES + constants if new IDs  
 4. `registry.py` entry + timeouts in `test_curriculum_apps.py`  
 5. `uv run mpreg-example run <id>` green  
-6. Update FEATURE_CATALOG depth + APP_CATALOG row  
-7. Update this plan accomplishments + %  
-8. **Commit** with what/why/how (no push unless asked)
+6. **Log API friction** in §9 when an edge case or usability issue appears  
+7. Update FEATURE_CATALOG depth + APP_CATALOG row  
+8. Update this plan accomplishments + %  
+9. **Commit** with what/why/how (no push unless asked)
 
 ---
 
@@ -164,8 +162,8 @@ uv run pytest tests/examples_apps -q
 | 2026-08-05 | PROJECT_PLAN.md created | Phase E waves E0–E16 defined; thin list; gates |
 | 2026-08-05 | E1–E5 gap apps | +5 apps → **40**; atomic/ns/dns/unified/reply all green |
 | 2026-08-05 | E6 deepen thin apps | 9 thin → 0; tier3 inlined multi-scenario; signed_route/snapshot multi-scen |
-
-*(append every commit slice below)*
+| 2026-08-05 | E7–E12 | +4 → **44**: discovery_watch_summary, fabric_graph_resilience, cache_event_bus, job_queue_dlq |
+| 2026-08-05 | E9–E14 + F verticals | +12 → **56**: versioned RPC, auth token, chaos_transport, ops_cli, hellos, billing/notify/inventory, deadline, bridge, multi-region DNS; unit 71; all 12 runs green |
 
 ---
 
@@ -174,13 +172,14 @@ uv run pytest tests/examples_apps -q
 | Area | Weight | Done | Notes |
 |------|-------:|-----:|-------|
 | Runner + foundation | 10% | 10 | [x] |
-| L0–L4 baseline matrix | 25% | 25 | [x] 35 apps |
-| Feature-catalog tagging | 10% | 8 | [~] join tests; gaps remain |
-| Gap apps (E1–E5, E7–E14) | 30% | 12 | [~] E1–E5 done; E7+ open |
-| Depth contract all apps | 15% | 15 | [x] 0 thin |
-| Docs/plan living sync | 5% | 4 | [~] plan+tracker+catalogs updated |
-| Automation/report (E15) | 5% | 1 | [~] suite exists |
-| **Overall curriculum program** | **100%** | **~75%** | drive to 100 via E7–E16 + F |
+| L0–L4 baseline matrix | 20% | 20 | [x] 35+ apps |
+| Feature-catalog tagging | 10% | 9 | [~] join tests; catalog docs catch-up |
+| Gap apps (E1–E14) | 30% | 28 | [x] E0–E14 landed |
+| Depth contract all apps | 10% | 10 | [x] 0 thin |
+| Phase F breadth 50–70 | 10% | 7 | [>] 56 apps; verticals started |
+| Docs/plan living sync | 5% | 4 | [~] plan+tracker+friction |
+| Automation/report (E15) | 5% | 1 | [ ] full suite + report script |
+| **Overall curriculum program** | **100%** | **~89%** | E15 suite + doc sync + F polish → 100 |
 
 ---
 
@@ -191,14 +190,55 @@ uv run pytest tests/examples_apps -q
 3. **Honesty** — non-claims for unproven surfaces; never invent APIs.  
 4. **Entrypoints only** — never document `python -m`.  
 5. **Commit as you go** — each wave or app slice is commit-ready.  
-6. **Validate every step** — run the app before the next one.
+6. **Validate every step** — run the app before the next one.  
+7. **Curriculum = API discovery** — every friction is logged in §9 for platform UX work.
+
+---
+
+## 9. API friction / usability discovery log
+
+Curriculum apps are a **forced walk of public APIs**. Findings below are
+candidates for platform DX improvements (not claims that apps are broken).
+
+| ID | Surface | Finding | Severity | Suggested improvement | Found in |
+|----|---------|---------|----------|----------------------|----------|
+| F1 | CLI nesting | `mpreg` click handlers call `asyncio.run` → **cannot** be invoked from an already-running event loop | High | Offer async entrypoints or `anyio`/`asyncioRunner` compatible path; document thread offload | `ops_cli_tour` |
+| F2 | CLI IA | Operators guess `mpreg dns …` / `mpreg call …`; real paths are `mpreg client dns-*` / `mpreg client call` | Med | Top-level aliases or clearer `--help` epilog | `ops_cli_tour` |
+| F3 | `mpreg doctor` | `--url` is **monitoring HTTP**, not WS RPC; WS URL fails opaquely | Med | Accept `ws://` and derive/reject with explicit message; or dual `--rpc-url` / `--monitoring-url` defaults | `ops_cli_tour` |
+| F4 | RPC registry | Built-in name `echo` already registered → user `register_command("echo", …)` raises | Med | Document reserved builtins; `register_command` error should list conflict source | `ops_cli_tour` |
+| F5 | Versioned RPC | Same `function_id` **cannot** register two versions on **one** node (`Function id conflict`); multi-version needs multi-node | Med | Allow multi-version map per function_id on one registry **or** document clearly | `rpc_versioned_topic` |
+| F6 | Version miss | Impossible `version_constraint` surfaces as generic `Command not found` | Med | Distinct `version_mismatch` / structured error always | `rpc_versioned_topic` |
+| F7 | Cache events | `add_event_listener` is **registration-only**; delivery is via topic exchange / `notifications_sent` | Med | Rename or dual-path docs; fire listeners on notify | `cache_event_bus` |
+| F8 | Cache invalidation | `broadcast_cache_invalidation(namespace=)` wrong kwargs — needs `cache_key=` / `pattern=` | Med | Keyword-only API + better TypeError | `cache_event_bus` |
+| F9 | CircuitBreaker | Setting only `timeout_seconds` leaves `current_timeout` at default 60s — half-open demos hang | Med | Sync `current_timeout` when constructing / document both fields | `fabric_graph_resilience` |
+| F10 | Chaos model | `FaultInjector` is lab-only; live WS partition not wired through injector | Info | Server-side partition hooks when ready | `chaos_*` |
+| F11 | Auth | `auth_token` on client wires transport security; local WS RPC does **not** enforce it by default | Info | Optional server `require_auth_token`; document monitoring vs RPC auth split | `client_auth_token` |
+| F12 | mTLS | No turnkey local-cert curriculum path yet | Info | Dev profile self-signed helper | `client_auth_token` non-claim |
+| F13 | Cross-cluster | Peers alone ≠ fabric bridge; EU locs from US client may `Command not found` without fabric mode | Info | Clearer errors: “no fabric route to cluster X” | `multi_region_dns_policy` |
+| F14 | DNS CLI | Under `client` group; `--target` repeatable (not `--targets`) | Low | Alias `--targets` | `ops_cli_tour` |
+| F15 | M2 deadline | Handler `time.sleep` still runs after client fail-closed (no server preemption) | Info | Document; optional cooperative cancellation | `rpc_deadline_budget` |
+| F16 | Port categories | `port_range_context` categories are fixed enum — typos raise late | Low | Clearer error already lists available | general |
+
+**Process:** when a new app hits friction, append a row here **and** a `step("friction: …")` in the app so operators see it live.
+
+See also: [API_FRICTION.md](./API_FRICTION.md) (same log, expandable).
+
+---
+
+## 10. Next sequential work (do not stop)
+
+1. **E15** — run full `mpreg-example suite` + fix any flakes; coverage report script  
+2. **E16** — sync APP_CATALOG / FEATURE_CATALOG rows for all 56 ids  
+3. **F polish** — second L4 or more verticals toward 60–70 if catalog still has honest gaps  
+4. **Platform follow-ups** — triage F1–F9 with maintainers (DX wins from curriculum)  
+5. Keep validating + committing every slice  
 
 ---
 
 ## Related
 
 - [TRACKER.md](./TRACKER.md) — checkbox delivery status  
-- [FEATURE_CATALOG.md](./FEATURE_CATALOG.md) — API inventory + gaps  
-- [APP_CATALOG.md](./APP_CATALOG.md) — matrix + bundles  
-- [STAGES.md](./STAGES.md) — learning path phases  
-- [APP_CONVENTIONS.md](./APP_CONVENTIONS.md) — depth contract  
+- [FEATURE_CATALOG.md](./FEATURE_CATALOG.md) — feature inventory  
+- [APP_CATALOG.md](./APP_CATALOG.md) — app matrix  
+- [STAGES.md](./STAGES.md) — phase narrative  
+- [API_FRICTION.md](./API_FRICTION.md) — usability discovery backlog  
