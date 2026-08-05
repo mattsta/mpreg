@@ -118,6 +118,13 @@ class MPREGSettings:
     fabric_route_key_announce_interval_seconds: DurationSeconds = 60.0
     fabric_raft_request_timeout_seconds: DurationSeconds = 1.0
 
+    # RPC naming (FQN): bare names qualify under default_rpc_namespace;
+    # mpreg.* is a reserved platform root (namespace deny for user registration).
+    # bound_rpc_namespace optionally locks register/call to a hierarchical prefix
+    # (operator↔client conformance binding).
+    default_rpc_namespace: str = "app"
+    bound_rpc_namespace: str | None = None
+
     # RPC spec gossip configuration
     rpc_spec_gossip_mode: str = "summary"
     rpc_spec_gossip_namespaces: tuple[str, ...] = ()

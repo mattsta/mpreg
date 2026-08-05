@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase G COMPLETE — platform DX + observability proof)  
+**Last updated:** 2026-08-05 (Phase H ACTIVE — FQN RPC naming + Med friction + universal obs)  
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -25,6 +25,8 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G10 | **Platform DX unification** | High/Med friction fixed in code (not only mitigated in apps) | [x] F1/F9/F18/F20/F21 |
 | G11 | **Observability-proven examples** | Apps emit + assert latency/throughput surfaces; annotated | [x] ≥8 apps + READMEs |
 | G12 | **Long-term interface consistency** | Coerce/sync surprising APIs; hard caps; nested-async CLI | [x] Phase G |
+| G13 | **Universal example observability** | Every curriculum app emits latency/throughput via probe (default-on) | [>] Phase H |
+| G14 | **Close remaining Med friction** | F2–F8, F17 fixed in platform (or honest non-claim) | [>] Phase H |
 
 ---
 
@@ -43,6 +45,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | Last unit | `pytest tests/examples_apps -m unit` → **85 passed** |
 | Last full suite | **70/70 passed** |
 | Phase G | **COMPLETE** — DX fixes + ExampleProbe + 8 apps obs-proven |
+| Phase H | **ACTIVE** — Med friction F2–F8/F17 + universal probe |
 
 ### Thin backlog
 
@@ -156,6 +159,71 @@ latency/throughput — not just curriculum workarounds.
 - [x] `uv run mpreg-example suite` green  
 - [x] PROJECT_PLAN dashboard reflects Phase G completion %  
 
+### Phase H — Remaining Med friction + universal observability (**ACTIVE**)
+
+Continue sole-consumer platform ownership: close remaining **Med** friction in
+source, and make **every** curriculum app prove latency/throughput (not only
+the Phase G representative eight).
+
+#### H goals (detailed)
+
+| ID | Goal | Success measure | Status |
+|----|------|-----------------|--------|
+| PH1 | Universal ExampleProbe | `app_run` defaults `probe=True`; scenario auto-timing | [x] |
+| PH2 | CLI ergonomics F2/F3/F14 | Top-level `mpreg call` / `mpreg dns` aliases; doctor WS URL detect; `--targets` alias | [~] |
+| PH3 | RPC FQN + namespace deny (supersedes F4 short-name denylist) | Every wire name is dotted FQN; bare → active ns; `mpreg.*` user-deny; optional hierarchical `bound_rpc_namespace` | [x] |
+| PH4 | Cache event listeners F7 | `add_event_listener` callbacks fire on `notify_cache_event` | [x] |
+| PH5 | Cache invalidate kwargs F8 | Keyword-only `invalidate` + helpful TypeError on bad kwargs | [x] |
+| PH6 | TopicPattern F17 | `{param}` templates match as single-segment wildcards in `matches_topic` | [x] |
+| PH7 | Versioned RPC F5/F6 | Multi-version same-node where registry already allows; loud errors on collision; version_mismatch path proven | [~] |
+| PH8 | Friction log + apps | FIXED rows; affected apps drop workarounds / prove fixes | [>] |
+| PH9 | README universal note | Shared convention: `◆ obs` appears on every app run | [ ] |
+| PH10 | Full validation | unit + suite green; plan 100% | [ ] |
+
+#### Phase H waves (sequential)
+
+| Wave | Deliverables | Status |
+|------|--------------|--------|
+| **H0** | Living plan Phase H section + dashboard | [x] |
+| **H1** | Runtime: default probe + scenario auto-record | [x] |
+| **H2** | CLI F2/F3/F14 aliases + doctor URL detect | [~] |
+| **H3** | FQN namespace deny (not short-name list); F7 listeners; F8 invalidate; F17 template match | [x] |
+| **H4** | F5/F6 version registry clarity + app proof | [~] |
+| **H5** | Update friction/TRACKER/READMEs; suite + unit | [>] |
+| **H6** | Commit; plan → Phase H complete | [ ] |
+
+#### Phase H exit criteria
+
+- [ ] `app_run` probe default-on; ≥60 apps show `◆ obs` in suite (or all that record ops)  
+- [ ] F2, F3, F7, F8, F17 fixed in platform  
+- [ ] F4 superseded by FQN + **namespace deny** (`mpreg.*`); short-name denylist removed  
+- [ ] F5/F6 improved or honest non-claim with loud errors  
+- [ ] Friction log FIXED section updated  
+- [ ] `uv run pytest tests/examples_apps -m unit` green  
+- [ ] `uv run mpreg-example suite` green  
+- [ ] PROJECT_PLAN Phase H dashboard 100%  
+
+#### RPC FQN naming (Phase H design — north star)
+
+**Explicit > implicit.** Every RPC name on the wire is a dotted FQN
+(`namespace...leaf`). Bare names (no `.`) are the only exception: they
+auto-qualify by prepending the **active** namespace
+(`bound_rpc_namespace` if set, else `default_rpc_namespace`, default `app`).
+
+| Rule | Behavior |
+|------|----------|
+| Wire identity | Always FQN (`app.add`, `orders.create`, `mpreg.system.echo`) |
+| Bare register/call | `add` → `{active_ns}.add` |
+| Explicit FQN | Pass-through unchanged |
+| **Namespace deny** | Users **cannot** register under `mpreg` / `mpreg.*` — full flexibility everywhere else |
+| Platform builtins | `PlatformRpc.*` under `mpreg.system` / `.disco` / `.dns` / `.rpc` / `.policy` / `.queue` / `.cache`; `allow_platform=True` only |
+| Hierarchical bound | `bound_rpc_namespace` locks register/call to a prefix (operator↔client conformance); bare names qualify under the bound; platform calls still allowed on call path |
+| Same short leaf | `app.echo` ≠ `mpreg.system.echo` — no context-dependent short-name magic |
+
+Module: `mpreg/core/rpc_naming.py`. Settings:
+`MPREGSettings.default_rpc_namespace`, `bound_rpc_namespace`. Clients:
+`MPREGClientAPI` / `MPREGClient` / `MPREGClusterClient` mirror those fields.
+
 ---
 
 ## 4. Target app matrix growth
@@ -252,6 +320,19 @@ uv run pytest tests/examples_apps -q
 | G7 commit + plan close | 5% | 5 | [x] |
 | **Phase G overall** | **100%** | **100%** | complete |
 
+### Phase H (Med friction + universal obs) — active program
+
+| Area | Weight | Done | Notes |
+|------|-------:|-----:|-------|
+| H0 living plan | 5% | 5 | [x] drafted |
+| H1 universal probe default | 20% | 20 | [x] app_run probe=True |
+| H2 CLI F2/F3/F14 | 15% | 10 | [~] aliases partial |
+| H3 FQN/F7/F8/F17 platform | 30% | 30 | [x] namespace deny + F7/F8/F17 |
+| H4 F5/F6 version DX | 10% | 5 | [~] multi-version registry OK; app proof pending |
+| H5 docs + suite proof | 15% | 5 | [>] friction log updated; suite pending |
+| H6 commit + plan close | 5% | 0 | |
+| **Phase H overall** | **100%** | **~75%** | FQN + F7/F8/F17 landed; finish CLI/F5/suite |
+
 ---
 
 ## 8. Working rules (non-negotiable)
@@ -306,17 +387,17 @@ See also: [API_FRICTION.md](./API_FRICTION.md).
 **Curriculum program (Phases A–F): COMPLETE at 100%.**
 
 **Phase G (platform DX + observability proof): COMPLETE at 100%.**  
-Platform friction F1/F9/F18/F20/F21 fixed in source; nested-async CLI via
-`run_coro`; shared `ExampleProbe` + `ServerMetricsTracker.snapshot()`; eight
-representative apps emit and ensure latency/throughput with README annotations.
+F1/F9/F18/F20/F21 fixed; ExampleProbe + ServerMetricsTracker.snapshot; 8 apps.
 
-Still honest residual non-claims: F10 live WS chaos hooks, F12 mTLS turnkey
-helper, F5 multi-version same-node registry (docs-loud), F2/F3 CLI aliases
-deferred.
+**Phase H (remaining Med friction + universal obs): ACTIVE ~5%.**  
+Close F2–F8/F17 in platform; default-on probe for all curriculum apps;
+operator CLI aliases and doctor URL clarity.
 
-**Probe-wired apps (8):** `hello_rpc`, `plane_rpc`, `order_intake`,
-`shipping_fulfillment`, `multi_pop_edge_mesh`, `observability_slo_trace`,
-`discovery_rate_limit`, `topic_queue_router_lab`.
+Still honest residual non-claims until productized: F10 live WS chaos hooks,
+F12 mTLS turnkey helper (Info).
+
+**Next sequential work:** H1 runtime default probe → H2 CLI → H3 platform Med
+fixes → H4 version DX → validate → commit → plan 100%.
 
 ---
 

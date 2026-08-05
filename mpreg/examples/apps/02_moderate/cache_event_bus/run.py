@@ -135,7 +135,7 @@ async def main() -> None:
                 "pubsub.fanout",
             ):
                 before = integration.stats.notifications_sent
-                # Register listener (API surface) — notify path is pubsub-primary today
+                # Phase H F7: listeners fire on notify_cache_event
                 seen_hooks: list[str] = []
                 integration.add_event_listener(
                     CacheEventType.CACHE_PUT,
@@ -156,8 +156,11 @@ async def main() -> None:
                 await asyncio.sleep(0.2)
                 after = integration.stats.notifications_sent
                 ensure(after > before, f"notifications did not increase {before}→{after}")
-                # Prove topic exchange received published notification messages
-                # by replaying a direct publish matching notification_topic
+                ensure(
+                    len(seen_hooks) >= 1 and seen_hooks[-1] == CacheEventType.CACHE_PUT.value,
+                    f"F7 listener not fired: {seen_hooks}",
+                )
+                step(f"F7 fixed: add_event_listener fired hooks={seen_hooks}")
                 msg = PubSubMessage(
                     topic=topic,
                     payload={"event_type": "cache_put", "v": 2},
@@ -169,19 +172,27 @@ async def main() -> None:
                 ensure(len(notes) >= 1, f"topic exchange fanout empty {notes}")
                 ok(
                     f"notifications {before}→{after}; "
-                    f"listeners_registered={len(integration.event_listeners[CacheEventType.CACHE_PUT])}; "
+                    f"listeners_fired={len(seen_hooks)}; "
                     f"exchange_notes={len(notes)}"
-                )
-                step(
-                    "non-claim: add_event_listener is registration API; "
-                    "delivery is via topic exchange notifications_sent"
                 )
 
             with scenario(
-                "broadcast_cache_invalidation API",
+                "invalidate kwargs guard + broadcast API",
                 "cache.pubsub_events",
                 "cache.invalidate",
             ):
+                # Phase H F8: bad kwargs raise clear TypeError
+                raised = False
+                try:
+                    await cache.invalidate("demo.*", namespace="demo")  # type: ignore[call-arg]
+                except TypeError as exc:
+                    raised = True
+                    ensure("unexpected keyword" in str(exc).lower() or "namespace" in str(exc), str(exc))
+                    step(f"F8 fixed: bad kwargs → TypeError: {exc}")
+                ensure(raised is True, "expected TypeError on bad invalidate kwargs")
+                # Valid pattern-only invalidate
+                inv = await cache.invalidate("demo")
+                ensure(inv is not None, "invalidate returned None")
                 if hasattr(integration, "broadcast_cache_invalidation"):
                     await integration.broadcast_cache_invalidation(
                         cache_key=key

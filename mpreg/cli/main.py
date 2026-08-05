@@ -79,6 +79,13 @@ def cli(ctx, verbose: bool, json_logs: bool):
     Operate fabric-enabled MPREG clusters: discovery, RPC, monitoring,
     routing diagnostics, and deployment automation. (Historical "federation"
     subcommands remain as aliases where noted.)
+
+    \b
+    Common entrypoints:
+      mpreg call FUN [ARGS]     — RPC (alias of mpreg client call)
+      mpreg dns …               — DNS plane (alias of mpreg client dns-*)
+      mpreg doctor --url HTTP   — monitoring health (not WS)
+      mpreg examples …          — curriculum apps
     """
     setup_logging(verbose, json_logs=json_logs)
     ctx.ensure_object(dict)
@@ -399,7 +406,7 @@ def _parse_metadata_items(items: tuple[str, ...]) -> dict[str, MetadataValue]:
 @click.option("--namespace", required=True, help="Service namespace")
 @click.option("--protocol", default="tcp", help="Service protocol")
 @click.option("--port", type=int, required=True, help="Service port")
-@click.option("--target", multiple=True, help="Service target host (repeatable)")
+@click.option("--target", "--targets", multiple=True, help="Service target host (repeatable; --targets alias)")
 @click.option("--tag", multiple=True, help="Service tag (repeatable)")
 @click.option("--capability", multiple=True, help="Service capability (repeatable)")
 @click.option("--metadata", multiple=True, help="Metadata key=value (repeatable)")
@@ -1550,7 +1557,18 @@ def doctor(
     monitoring_url = url or os.environ.get("MPREG_MONITORING_URL")
     if not monitoring_url:
         raise click.UsageError(
-            "Provide --url or set MPREG_MONITORING_URL to the monitoring HTTP base."
+            "Provide --url or set MPREG_MONITORING_URL to the monitoring HTTP base "
+            "(e.g. http://127.0.0.1:9090). WebSocket RPC URLs belong in --rpc-url / MPREG_URL."
+        )
+    # Phase H F3: fail closed with a clear hint when operators pass a WS RPC URL.
+    _mu = monitoring_url.strip().lower()
+    if _mu.startswith("ws://") or _mu.startswith("wss://"):
+        raise click.UsageError(
+            f"--url looks like a WebSocket RPC endpoint ({monitoring_url!r}). "
+            "mpreg doctor probes the *monitoring HTTP* base "
+            "(e.g. http://127.0.0.1:9090), not the WS data plane. "
+            "Pass the monitoring URL as --url, and use --rpc-url / MPREG_URL "
+            "with --data-plane for RPC smoke."
         )
 
     headers: dict[str, str] = {}
@@ -1682,7 +1700,7 @@ def doctor(
                         # Lightweight connectivity: empty DAG / status-style call may
                         # 1001; success is establishing session + round-trip.
                         try:
-                            await client.call("echo", "doctor", timeout=timeout)
+                            await client.call("mpreg.system.echo", "doctor", timeout=timeout)
                             detail = "echo ok"
                             ok_dp = True
                         except Exception as exc:  # noqa: BLE001
@@ -3519,6 +3537,28 @@ def show(config_path: str, key: str | None):
 
     except Exception as e:
         console.print(f"[red]❌ Error reading configuration: {e}[/red]")
+
+# ---------------------------------------------------------------------------
+# Phase H F2: top-level aliases operators guess first (call / dns).
+# ---------------------------------------------------------------------------
+cli.add_command(call, "call")
+
+@cli.group("dns")
+def dns_group() -> None:
+    """DNS plane commands (aliases for ``mpreg client dns-*``)."""
+
+for _src, _dest in (
+    ("dns-register", "register"),
+    ("dns-unregister", "unregister"),
+    ("dns-list", "list"),
+    ("dns-describe", "describe"),
+    ("dns-resolve", "resolve"),
+    ("dns-node-encode", "node-encode"),
+    ("dns-node-decode", "node-decode"),
+):
+    _cmd = client.commands.get(_src)
+    if _cmd is not None:
+        dns_group.add_command(_cmd, _dest)
 
 def main():
     """Main CLI entry point."""

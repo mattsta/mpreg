@@ -19,33 +19,8 @@ from urllib.parse import urlparse
 import ulid
 from loguru import logger
 
-LOCAL_ONLY_RPC_COMMANDS: frozenset[str] = frozenset(
-    {
-        "catalog_query",
-        "catalog_watch",
-        "cluster_map",
-        "cluster_map_v2",
-        "dns_describe",
-        "dns_list",
-        "dns_register",
-        "dns_unregister",
-        "discovery_access_audit",
-        "list_peers",
-        "namespace_policy_apply",
-        "namespace_policy_audit",
-        "namespace_policy_export",
-        "namespace_policy_validate",
-        "namespace_status",
-        "resolver_cache_stats",
-        "resolver_resync",
-        "rpc_describe",
-        "rpc_describe_local",
-        "rpc_list",
-        "rpc_report",
-        "summary_query",
-        "summary_watch",
-    }
-)
+# Populated after PlatformRpc import; see _LOCAL_ONLY_RPC_COMMANDS below.
+# Kept as module-level name for existing references; values are mpreg.* FQNs.
 
 _DIAG_TRUE_VALUES = frozenset({"1", "true", "yes", "on", "enabled", "debug"})
 CATALOG_SNAPSHOT_DIAG_ENABLED = (
@@ -229,6 +204,42 @@ from .core.rpc_discovery import (
     RpcReportCount,
     RpcReportRequest,
     RpcReportResponse,
+)
+from .core.rpc_naming import (
+    DEFAULT_USER_NAMESPACE,
+    PlatformRpc,
+    assert_registration_allowed,
+    namespace_of,
+    qualify_rpc_name,
+)
+
+# Local-only platform surfaces (must not federate). FQN form only.
+LOCAL_ONLY_RPC_COMMANDS: frozenset[str] = frozenset(
+    {
+        PlatformRpc.CATALOG_QUERY,
+        PlatformRpc.CATALOG_WATCH,
+        PlatformRpc.CLUSTER_MAP,
+        PlatformRpc.CLUSTER_MAP_V2,
+        PlatformRpc.DNS_DESCRIBE,
+        PlatformRpc.DNS_LIST,
+        PlatformRpc.DNS_REGISTER,
+        PlatformRpc.DNS_UNREGISTER,
+        PlatformRpc.DISCOVERY_ACCESS_AUDIT,
+        PlatformRpc.LIST_PEERS,
+        PlatformRpc.NAMESPACE_POLICY_APPLY,
+        PlatformRpc.NAMESPACE_POLICY_AUDIT,
+        PlatformRpc.NAMESPACE_POLICY_EXPORT,
+        PlatformRpc.NAMESPACE_POLICY_VALIDATE,
+        PlatformRpc.NAMESPACE_STATUS,
+        PlatformRpc.RESOLVER_CACHE_STATS,
+        PlatformRpc.RESOLVER_RESYNC,
+        PlatformRpc.RPC_DESCRIBE,
+        PlatformRpc.RPC_DESCRIBE_LOCAL,
+        PlatformRpc.RPC_LIST,
+        PlatformRpc.RPC_REPORT,
+        PlatformRpc.SUMMARY_QUERY,
+        PlatformRpc.SUMMARY_WATCH,
+    }
 )
 from .core.rpc_registry import RpcRegistry
 from .core.rpc_spec_sharing import RpcSpecSharePolicy
@@ -5808,8 +5819,10 @@ class MPREGServer:
         return value
 
     def _rpc_namespace_for_name(self, name: str) -> str:
-        if "." in name:
-            return name.rsplit(".", 1)[0]
+        """Parent namespace of an FQN; empty for bare legacy names."""
+        parent = namespace_of(name)
+        if parent:
+            return parent
         return ""
 
     def _namespace_filter_matches(self, namespace_filter: str, value: str) -> bool:
@@ -9187,42 +9200,104 @@ class MPREGServer:
         task.add_done_callback(self._background_tasks.discard)
 
     def _register_default_commands(self) -> None:
-        """Registers the default RPC commands (echo, echos)."""
+        """Register platform builtins under ``mpreg.*`` FQNs (namespace deny root)."""
         logger.debug(f"🚀 {self.settings.name}: _register_default_commands() called")
-        self.register_command("echo", echo, [])
-        self.register_command("echos", echos, [])
-        self.register_command("list_peers", self._get_peers_snapshot, [])
-        self.register_command("cluster_map", self._get_cluster_map_snapshot, [])
-        self.register_command("cluster_map_v2", self._get_cluster_map_v2, [])
-        self.register_command("catalog_query", self._catalog_query, [])
-        self.register_command("catalog_watch", self._catalog_watch, [])
-        self.register_command("dns_register", self._dns_register, [])
-        self.register_command("dns_unregister", self._dns_unregister, [])
-        self.register_command("dns_list", self._dns_list, [])
-        self.register_command("dns_describe", self._dns_describe, [])
-        self.register_command("summary_query", self._summary_query, [])
-        self.register_command("summary_watch", self._summary_watch, [])
-        self.register_command("resolver_cache_stats", self._resolver_cache_stats, [])
-        self.register_command("resolver_resync", self._resolver_resync, [])
+        # allow_platform=True: only the server may inject into mpreg.*
+        _p = True
+        self.register_command(PlatformRpc.ECHO, echo, [], allow_platform=_p)
+        self.register_command(PlatformRpc.ECHOS, echos, [], allow_platform=_p)
         self.register_command(
-            "discovery_access_audit", self._discovery_access_audit, []
-        )
-        self.register_command("rpc_list", self._rpc_list, [])
-        self.register_command("rpc_describe_local", self._rpc_describe_local, [])
-        self.register_command("rpc_describe", self._rpc_describe, [])
-        self.register_command("rpc_report", self._rpc_report, [])
-        self.register_command("namespace_status", self._namespace_status, [])
-        self.register_command(
-            "namespace_policy_validate", self._namespace_policy_validate, []
+            PlatformRpc.LIST_PEERS, self._get_peers_snapshot, [], allow_platform=_p
         )
         self.register_command(
-            "namespace_policy_apply", self._namespace_policy_apply, []
+            PlatformRpc.CLUSTER_MAP,
+            self._get_cluster_map_snapshot,
+            [],
+            allow_platform=_p,
         )
         self.register_command(
-            "namespace_policy_export", self._namespace_policy_export, []
+            PlatformRpc.CLUSTER_MAP_V2, self._get_cluster_map_v2, [], allow_platform=_p
         )
         self.register_command(
-            "namespace_policy_audit", self._namespace_policy_audit, []
+            PlatformRpc.CATALOG_QUERY, self._catalog_query, [], allow_platform=_p
+        )
+        self.register_command(
+            PlatformRpc.CATALOG_WATCH, self._catalog_watch, [], allow_platform=_p
+        )
+        self.register_command(
+            PlatformRpc.DNS_REGISTER, self._dns_register, [], allow_platform=_p
+        )
+        self.register_command(
+            PlatformRpc.DNS_UNREGISTER, self._dns_unregister, [], allow_platform=_p
+        )
+        self.register_command(
+            PlatformRpc.DNS_LIST, self._dns_list, [], allow_platform=_p
+        )
+        self.register_command(
+            PlatformRpc.DNS_DESCRIBE, self._dns_describe, [], allow_platform=_p
+        )
+        self.register_command(
+            PlatformRpc.SUMMARY_QUERY, self._summary_query, [], allow_platform=_p
+        )
+        self.register_command(
+            PlatformRpc.SUMMARY_WATCH, self._summary_watch, [], allow_platform=_p
+        )
+        self.register_command(
+            PlatformRpc.RESOLVER_CACHE_STATS,
+            self._resolver_cache_stats,
+            [],
+            allow_platform=_p,
+        )
+        self.register_command(
+            PlatformRpc.RESOLVER_RESYNC, self._resolver_resync, [], allow_platform=_p
+        )
+        self.register_command(
+            PlatformRpc.DISCOVERY_ACCESS_AUDIT,
+            self._discovery_access_audit,
+            [],
+            allow_platform=_p,
+        )
+        self.register_command(
+            PlatformRpc.RPC_LIST, self._rpc_list, [], allow_platform=_p
+        )
+        self.register_command(
+            PlatformRpc.RPC_DESCRIBE_LOCAL,
+            self._rpc_describe_local,
+            [],
+            allow_platform=_p,
+        )
+        self.register_command(
+            PlatformRpc.RPC_DESCRIBE, self._rpc_describe, [], allow_platform=_p
+        )
+        self.register_command(
+            PlatformRpc.RPC_REPORT, self._rpc_report, [], allow_platform=_p
+        )
+        self.register_command(
+            PlatformRpc.NAMESPACE_STATUS, self._namespace_status, [], allow_platform=_p
+        )
+        self.register_command(
+            PlatformRpc.NAMESPACE_POLICY_VALIDATE,
+            self._namespace_policy_validate,
+            [],
+            allow_platform=_p,
+        )
+        self.register_command(
+            PlatformRpc.NAMESPACE_POLICY_APPLY,
+            self._namespace_policy_apply,
+            [],
+            allow_platform=_p,
+        )
+        self.register_command(
+            PlatformRpc.NAMESPACE_POLICY_EXPORT,
+            self._namespace_policy_export,
+            [],
+            allow_platform=_p,
+        )
+        self.register_command(
+            PlatformRpc.NAMESPACE_POLICY_AUDIT,
+            self._namespace_policy_audit,
+            [],
+            allow_platform=_p,
         )
 
     def run_server(
@@ -9342,6 +9417,43 @@ class MPREGServer:
             if _current_rpc_actor_context.get() is None:
                 self._rpc_actor_context = None
 
+    def _qualify_inbound_rpc_command(self, cmd: RPCCommand) -> RPCCommand:
+        """Qualify bare ``fun`` (and bare ``function_id``) under active namespace.
+
+        Clients normally send FQNs already. Low-level / legacy callers may still
+        send bare leaves; the server applies the same rule as register/call so
+        wire resolution is consistent end-to-end. Explicit dotted names pass through.
+        """
+        bound = getattr(self.settings, "bound_rpc_namespace", None)
+        default_ns = (
+            bound
+            or getattr(self.settings, "default_rpc_namespace", None)
+            or DEFAULT_USER_NAMESPACE
+        )
+        fqn = qualify_rpc_name(cmd.fun, default_ns)
+        updates: dict[str, Any] = {}
+        if fqn != cmd.fun:
+            updates["fun"] = fqn
+        fid = cmd.function_id
+        if not fid:
+            # Match register_command default: function_id tracks the FQN name.
+            updates["function_id"] = fqn
+        elif fid == cmd.fun:
+            # function_id was tied to the pre-qualify bare fun — keep them aligned.
+            updates["function_id"] = fqn
+        elif "." not in fid:
+            updates["function_id"] = qualify_rpc_name(fid, default_ns)
+        if not updates:
+            return cmd
+        return cmd.model_copy(update=updates)
+
+    def _qualify_inbound_request(self, req: RPCRequest) -> RPCRequest:
+        """Return a copy of *req* with all command ``fun`` fields FQN-qualified."""
+        cmds = tuple(self._qualify_inbound_rpc_command(c) for c in req.cmds)
+        if cmds == tuple(req.cmds):
+            return req
+        return req.model_copy(update={"cmds": list(cmds)})
+
     async def _run_rpc_body(
         self, req: RPCRequest, start_time: float
     ) -> RPCResponse:
@@ -9349,6 +9461,8 @@ class MPREGServer:
         success = False
         error_code: str | int | None = None
         try:
+            # Bare names → active namespace FQN before graph build / resolve.
+            req = self._qualify_inbound_request(req)
             # Create an RPC object from the incoming request. This handles
             # the topological sorting of commands.
             rpc = RPC(req)
@@ -12057,39 +12171,74 @@ class MPREGServer:
         capabilities: Iterable[str] | None = None,
         doc: RpcDocSpec | None = None,
         examples: Iterable[RpcExampleSpec] | None = None,
+        allow_platform: bool = False,
     ) -> None:
-        """Register a command with the server.
+        """Register a command with the server under a fully-qualified name.
 
         Args:
-            name: The name of the command.
+            name: Command name. Bare names (no ``.``) are auto-qualified under
+                ``namespace`` when provided, else
+                :attr:`MPREGSettings.default_rpc_namespace` (default ``app``).
+                Explicit dotted FQNs pass through unchanged.
             func: The callable function that implements the command.
             resources: An iterable of resource strings associated with the command.
-            function_id: Stable identity for versioned routing. Defaults to ``name``
-                when omitted (simple mode). Prefer reverse-DNS ids in production
-                (for example ``math.add``).
-            version: Semantic version string (default ``1.0.0``).
+            function_id: Stable identity for versioned routing. Defaults to the
+                resolved FQN when omitted.
+            version: Semantic version string (default ``1.0.0``). Multiple versions
+                of the same ``name``/``function_id`` may coexist on one node when
+                versions differ (Phase H F5).
             scope: Optional discovery scope for the function endpoint.
             tags: Optional discovery tags for the function endpoint.
-            namespace: Optional namespace override for discovery grouping.
+            namespace: Active namespace used to qualify bare *name*, and stored on
+                the RPC spec for discovery grouping. Ignored as a qualifier when
+                *name* is already an FQN (parent of FQN is used instead).
             capabilities: Optional capability tags for routing/discovery filters.
             doc: Optional doc metadata override for the RPC spec.
             examples: Optional RPC examples for discovery tooling.
+            allow_platform: When True, permit registration under the reserved
+                ``mpreg.*`` platform namespace (server builtins only). Users must
+                leave this False — the deny list is a **namespace** boundary, not
+                a list of short command names.
 
         Raises:
-            ValueError: If the command name is already registered on this server.
+            ValueError: If the name is under ``mpreg.*`` without allow_platform,
+                outside ``bound_rpc_namespace``, or collides with an existing
+                registration at the same version.
         """
+        bound = getattr(self.settings, "bound_rpc_namespace", None)
+        # When operator locks a hierarchical bound, bare names qualify under
+        # that bound (conformance binding) rather than the free default root.
+        default_ns = (
+            namespace
+            if namespace
+            else (bound or getattr(self.settings, "default_rpc_namespace", None))
+            or DEFAULT_USER_NAMESPACE
+        )
+        fqn = qualify_rpc_name(name, default_ns)
+        assert_registration_allowed(
+            fqn,
+            allow_platform=allow_platform,
+            bound_namespace=bound,
+        )
+        # Spec namespace: parent of FQN (hierarchical), unless caller overrode
+        # with an explicit namespace that still matches the FQN tree.
+        resolved_namespace = namespace_of(fqn) or default_ns
+        if namespace and namespace_of(fqn).startswith(namespace.rstrip(".")):
+            resolved_namespace = namespace.rstrip(".")
+        resolved_function_id = function_id or fqn
         logger.debug(
-            "[{}] Registering function '{}' with resources {}",
+            "[{}] Registering function '{}' (from {!r}) with resources {}",
             self.settings.name,
+            fqn,
             name,
             list(resources),
         )
         registration = RpcRegistration.from_callable(
             func,
-            name=name,
-            function_id=function_id,
+            name=fqn,
+            function_id=resolved_function_id,
             version=version,
-            namespace=namespace,
+            namespace=resolved_namespace,
             resources=resources,
             tags=tags or (),
             scope=scope,
@@ -12097,11 +12246,14 @@ class MPREGServer:
             doc=doc,
             examples=examples or (),
         )
-        if self._fabric_control_plane:
-            self._fabric_control_plane.catalog.functions.validate_identity(
-                registration.spec.identity
-            )
-        self.registry.register(registration)
+        try:
+            if self._fabric_control_plane:
+                self._fabric_control_plane.catalog.functions.validate_identity(
+                    registration.spec.identity
+                )
+            self.registry.register(registration)
+        except ValueError:
+            raise
         self._publish_fabric_function_update(registration)
         # Catalog delta already published for this registration.
 

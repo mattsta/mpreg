@@ -117,10 +117,10 @@ class TestBasicUnifiedSystemIntegration:
         await client1.connect()
         await client2.connect()
 
-        result1 = await client1.call("echo", "test_server_1")
+        result1 = await client1.call("mpreg.system.echo", "test_server_1")
         assert result1 == "test_server_1"
 
-        result2 = await client2.call("echo", "test_server_2")
+        result2 = await client2.call("mpreg.system.echo", "test_server_2")
         assert result2 == "test_server_2"
 
         print(f"✓ Basic cluster formation works: {len(test_context.servers)} servers")

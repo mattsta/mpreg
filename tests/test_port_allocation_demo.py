@@ -277,7 +277,7 @@ async def test_concurrent_servers(test_context):
                 while time.time() < deadline:
                     try:
                         async with MPREGClientAPI(f"ws://127.0.0.1:{port}") as client:
-                            result = await client.call("echo", "hello")
+                            result = await client.call("mpreg.system.echo", "hello")
                             assert result == "hello"
                         last_error = None
                         break
@@ -331,11 +331,11 @@ async def test_server_cluster_startup(test_context):
 
         # Test that both servers are responsive
         async with MPREGClientAPI(f"ws://127.0.0.1:{port1}") as client1:
-            result1 = await client1.call("echo", "hello1")
+            result1 = await client1.call("mpreg.system.echo", "hello1")
             assert result1 == "hello1"
 
         async with MPREGClientAPI(f"ws://127.0.0.1:{port2}") as client2:
-            result2 = await client2.call("echo", "hello2")
+            result2 = await client2.call("mpreg.system.echo", "hello2")
             assert result2 == "hello2"
 
 @pytest.mark.unit

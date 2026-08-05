@@ -53,9 +53,15 @@ class RpcRegistry:
         key = RpcRegistryKey(name=identity.name, function_id=identity.function_id)
         version_map = self._registrations.setdefault(key, {})
         if identity.version in version_map:
+            other_versions = sorted(str(v) for v in version_map if v != identity.version)
+            hint = (
+                f" Other versions present: {', '.join(other_versions)}."
+                if other_versions
+                else " Register a different semantic version to coexist (multi-version OK)."
+            )
             raise ValueError(
-                f"Function '{identity.name}' is already registered "
-                f"(version {identity.version})."
+                f"Function '{identity.name}' (function_id={identity.function_id}) "
+                f"is already registered at version {identity.version}.{hint}"
             )
         if now is not None:
             registration = RpcRegistration(

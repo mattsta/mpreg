@@ -42,6 +42,12 @@ from ..core.dns_registry import (
 )
 from ..core.errors import MpregError, map_exception
 from ..core.model import CommandNotFoundException, MPREGException, RPCCommand
+from ..core.rpc_naming import (
+    DEFAULT_USER_NAMESPACE,
+    PlatformRpc,
+    assert_call_allowed,
+    qualify_rpc_name,
+)
 from .call_policy import ClientCallPolicy, call_with_policy
 from ..core.namespace_policy import (
     NamespacePolicyApplyRequest,
@@ -84,6 +90,11 @@ class MPREGClientAPI:
     call_policy: ClientCallPolicy | None = None
     default_timeout_seconds: float | None = 30.0
     notification_queue_maxsize: int = 1024
+    # FQN: bare names qualify under this namespace (default ``app``).
+    # bound_rpc_namespace optionally locks calls to a hierarchical prefix
+    # (platform mpreg.* calls remain allowed unless locked further).
+    default_rpc_namespace: str = DEFAULT_USER_NAMESPACE
+    bound_rpc_namespace: str | None = None
 
     # Fields assigned in __post_init__
     _client: Client = field(init=False)  # Needs special initialization in __post_init__
@@ -162,6 +173,21 @@ class MPREGClientAPI:
             await self._client.disconnect()
             self._connected = False
 
+    def _qualify_fun(self, fun: str) -> str:
+        """Resolve bare names to FQN; enforce optional bound_namespace on calls.
+
+        When ``bound_rpc_namespace`` is set, bare names qualify under that
+        hierarchical prefix (operator↔client conformance), not the free default.
+        """
+        active_ns = self.bound_rpc_namespace or self.default_rpc_namespace
+        fqn = qualify_rpc_name(fun, active_ns)
+        assert_call_allowed(
+            fqn,
+            allow_platform=True,
+            bound_namespace=self.bound_rpc_namespace,
+        )
+        return fqn
+
     async def call(
         self,
         fun: str,
@@ -177,7 +203,9 @@ class MPREGClientAPI:
         """Calls an RPC function on the MPREG cluster.
 
         Args:
-            fun: The name of the RPC function to call.
+            fun: RPC function name. Bare names (no ``.``) auto-qualify under
+                :attr:`default_rpc_namespace` (default ``app``). Explicit dotted
+                FQNs pass through (e.g. ``mpreg.system.echo``, ``orders.create``).
             *args: Positional arguments for the RPC function.
             locs: Optional set of resource locations where the command can be executed.
             target_cluster: Optional target cluster for federated routing.
@@ -192,17 +220,20 @@ class MPREGClientAPI:
             CommandNotFoundException: If the specified function is not found on any available server.
             MpregError: TIMEOUT when the wait budget expires; other structured codes
                 for server-returned RPC failures.
+            ValueError: If *fun* is outside :attr:`bound_rpc_namespace` when set.
             Exception: For other RPC errors returned by the server.
         """
         if not self._connected:
             await self.connect()
 
+        fqn = self._qualify_fun(fun)
+        resolved_function_id = function_id or fqn
         command = RPCCommand(
-            name=fun,  # Using fun as name for simplicity in this API
-            fun=fun,
+            name=fqn,
+            fun=fqn,
             args=tuple(args),
             locs=locs or frozenset(),
-            function_id=function_id,
+            function_id=resolved_function_id,
             version_constraint=version_constraint,
             target_cluster=target_cluster,
             routing_topic=routing_topic,
@@ -272,12 +303,25 @@ class MPREGClientAPI:
 
         Prefer this over multiple ``call`` round-trips when commands depend on
         each other via ``RPCCommand`` name references. Honors ``call_policy``.
+
+        Each command's ``fun`` is FQN-qualified (bare → default namespace) before
+        the request is sent. DAG step ``name`` fields are left unchanged so
+        inter-command argument references keep working.
         """
         cmds = list(commands)
         if not cmds:
             raise ValueError("request() requires at least one RPCCommand")
         if not self._connected:
             await self.connect()
+
+        qualified: list[RPCCommand] = []
+        for cmd in cmds:
+            fqn = self._qualify_fun(cmd.fun)
+            updates: dict[str, Any] = {"fun": fqn}
+            if not cmd.function_id:
+                updates["function_id"] = fqn
+            qualified.append(cmd.model_copy(update=updates))
+        cmds = qualified
 
         policy = self.call_policy
         request_timeout = timeout
@@ -329,7 +373,7 @@ class MPREGClientAPI:
         """Return the cluster's current peer list (optionally scoped)."""
         payload = self._request_payload(ListPeersRequest, request, kwargs)
         result = await self._call_payload(
-            "list_peers", payload, target_cluster=target_cluster
+            PlatformRpc.LIST_PEERS, payload, target_cluster=target_cluster
         )
         if not isinstance(result, list):
             raise TypeError(f"Expected peer list response, got {type(result).__name__}")
@@ -339,7 +383,7 @@ class MPREGClientAPI:
 
     async def cluster_map(self) -> ClusterMapSnapshot:
         """Return a snapshot of the cluster map for discovery-aware clients."""
-        result = await self.call("cluster_map")
+        result = await self.call(PlatformRpc.CLUSTER_MAP)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected cluster map response, got {type(result).__name__}"
@@ -353,7 +397,7 @@ class MPREGClientAPI:
     ) -> ClusterMapResponse:
         """Return a scoped cluster map snapshot for discovery-aware clients."""
         payload = self._request_payload(ClusterMapRequest, request, kwargs)
-        result = await self._call_payload("cluster_map_v2", payload)
+        result = await self._call_payload(PlatformRpc.CLUSTER_MAP_V2, payload)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected cluster map v2 response, got {type(result).__name__}"
@@ -367,7 +411,7 @@ class MPREGClientAPI:
     ) -> CatalogQueryResponse:
         """Run a scoped catalog query for discovery-aware clients."""
         payload = self._request_payload(CatalogQueryRequest, request, kwargs)
-        result = await self._call_payload("catalog_query", payload)
+        result = await self._call_payload(PlatformRpc.CATALOG_QUERY, payload)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected catalog query response, got {type(result).__name__}"
@@ -381,7 +425,7 @@ class MPREGClientAPI:
     ) -> CatalogWatchResponse:
         """Return catalog watch topic metadata for discovery delta streams."""
         payload = self._request_payload(CatalogWatchRequest, request, kwargs)
-        result = await self._call_payload("catalog_watch", payload)
+        result = await self._call_payload(PlatformRpc.CATALOG_WATCH, payload)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected catalog watch response, got {type(result).__name__}"
@@ -395,7 +439,7 @@ class MPREGClientAPI:
     ) -> DnsRegisterResponse:
         """Register a service endpoint for DNS interoperability."""
         payload = self._request_payload(DnsRegisterRequest, request, kwargs)
-        result = await self._call_payload("dns_register", payload)
+        result = await self._call_payload(PlatformRpc.DNS_REGISTER, payload)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected dns register response, got {type(result).__name__}"
@@ -409,7 +453,7 @@ class MPREGClientAPI:
     ) -> DnsUnregisterResponse:
         """Unregister a service endpoint from DNS interoperability."""
         payload = self._request_payload(DnsUnregisterRequest, request, kwargs)
-        result = await self._call_payload("dns_unregister", payload)
+        result = await self._call_payload(PlatformRpc.DNS_UNREGISTER, payload)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected dns unregister response, got {type(result).__name__}"
@@ -423,7 +467,7 @@ class MPREGClientAPI:
     ) -> DnsListResponse:
         """List DNS-exposed service endpoints from the discovery catalog."""
         payload = self._request_payload(DnsListRequest, request, kwargs)
-        result = await self._call_payload("dns_list", payload)
+        result = await self._call_payload(PlatformRpc.DNS_LIST, payload)
         if not isinstance(result, dict):
             raise TypeError(f"Expected dns list response, got {type(result).__name__}")
         return DnsListResponse.from_dict(result)
@@ -435,7 +479,7 @@ class MPREGClientAPI:
     ) -> DnsDescribeResponse:
         """Return detailed DNS service endpoint records."""
         payload = self._request_payload(DnsDescribeRequest, request, kwargs)
-        result = await self._call_payload("dns_describe", payload)
+        result = await self._call_payload(PlatformRpc.DNS_DESCRIBE, payload)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected dns describe response, got {type(result).__name__}"
@@ -449,7 +493,7 @@ class MPREGClientAPI:
     ) -> SummaryQueryResponse:
         """Return summarized discovery records for local or global scopes."""
         payload = self._request_payload(SummaryQueryRequest, request, kwargs)
-        result = await self._call_payload("summary_query", payload)
+        result = await self._call_payload(PlatformRpc.SUMMARY_QUERY, payload)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected summary query response, got {type(result).__name__}"
@@ -463,7 +507,7 @@ class MPREGClientAPI:
     ) -> SummaryWatchResponse:
         """Return summary export topic metadata for discovery summaries."""
         payload = self._request_payload(SummaryWatchRequest, request, kwargs)
-        result = await self._call_payload("summary_watch", payload)
+        result = await self._call_payload(PlatformRpc.SUMMARY_WATCH, payload)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected summary watch response, got {type(result).__name__}"
@@ -480,7 +524,7 @@ class MPREGClientAPI:
         """Return a filtered list of RPC capabilities with summaries."""
         payload = self._request_payload(RpcListRequest, request, kwargs)
         result = await self._call_payload(
-            "rpc_list", payload, target_cluster=target_cluster
+            PlatformRpc.RPC_LIST, payload, target_cluster=target_cluster
         )
         if not isinstance(result, dict):
             raise TypeError(f"Expected rpc_list response, got {type(result).__name__}")
@@ -496,7 +540,7 @@ class MPREGClientAPI:
         """Return detailed RPC specifications from local, catalog, or scatter modes."""
         payload = self._request_payload(RpcDescribeRequest, request, kwargs)
         result = await self._call_payload(
-            "rpc_describe", payload, target_cluster=target_cluster
+            PlatformRpc.RPC_DESCRIBE, payload, target_cluster=target_cluster
         )
         if not isinstance(result, dict):
             raise TypeError(
@@ -514,7 +558,7 @@ class MPREGClientAPI:
         """Return aggregated RPC inventory metrics for reporting."""
         payload = self._request_payload(RpcReportRequest, request, kwargs)
         result = await self._call_payload(
-            "rpc_report", payload, target_cluster=target_cluster
+            PlatformRpc.RPC_REPORT, payload, target_cluster=target_cluster
         )
         if not isinstance(result, dict):
             raise TypeError(
@@ -529,7 +573,7 @@ class MPREGClientAPI:
     ) -> DiscoveryAccessAuditResponse:
         """Fetch discovery access audit entries."""
         payload = self._request_payload(DiscoveryAccessAuditRequest, request, kwargs)
-        result = await self._call_payload("discovery_access_audit", payload)
+        result = await self._call_payload(PlatformRpc.DISCOVERY_ACCESS_AUDIT, payload)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected discovery access audit response, got {type(result).__name__}"
@@ -538,7 +582,7 @@ class MPREGClientAPI:
 
     async def resolver_cache_stats(self) -> DiscoveryResolverCacheStatsResponse:
         """Return resolver cache statistics for discovery resolver nodes."""
-        result = await self.call("resolver_cache_stats")
+        result = await self.call(PlatformRpc.RESOLVER_CACHE_STATS)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected resolver cache stats response, got {type(result).__name__}"
@@ -547,7 +591,7 @@ class MPREGClientAPI:
 
     async def resolver_resync(self) -> DiscoveryResolverResyncResponse:
         """Trigger a resolver cache resync from the fabric catalog."""
-        result = await self.call("resolver_resync")
+        result = await self.call(PlatformRpc.RESOLVER_RESYNC)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected resolver resync response, got {type(result).__name__}"
@@ -561,7 +605,7 @@ class MPREGClientAPI:
     ) -> NamespaceStatusResponse:
         """Return namespace policy status for the given namespace."""
         payload = self._request_payload(NamespaceStatusRequest, request, kwargs)
-        result = await self._call_payload("namespace_status", payload)
+        result = await self._call_payload(PlatformRpc.NAMESPACE_STATUS, payload)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected namespace status response, got {type(result).__name__}"
@@ -570,7 +614,7 @@ class MPREGClientAPI:
 
     async def namespace_policy_export(self) -> NamespacePolicyExportResponse:
         """Export current namespace policy configuration."""
-        result = await self.call("namespace_policy_export")
+        result = await self.call(PlatformRpc.NAMESPACE_POLICY_EXPORT)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected namespace policy export response, got {type(result).__name__}"
@@ -584,7 +628,7 @@ class MPREGClientAPI:
     ) -> NamespacePolicyValidationResponse:
         """Validate namespace policy rules."""
         payload = self._request_payload(NamespacePolicyApplyRequest, request, kwargs)
-        result = await self._call_payload("namespace_policy_validate", payload)
+        result = await self._call_payload(PlatformRpc.NAMESPACE_POLICY_VALIDATE, payload)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected namespace policy validate response, got {type(result).__name__}"
@@ -598,7 +642,7 @@ class MPREGClientAPI:
     ) -> NamespacePolicyApplyResponse:
         """Apply namespace policy rules."""
         payload = self._request_payload(NamespacePolicyApplyRequest, request, kwargs)
-        result = await self._call_payload("namespace_policy_apply", payload)
+        result = await self._call_payload(PlatformRpc.NAMESPACE_POLICY_APPLY, payload)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected namespace policy apply response, got {type(result).__name__}"
@@ -612,7 +656,7 @@ class MPREGClientAPI:
     ) -> NamespacePolicyAuditResponse:
         """Fetch namespace policy audit entries."""
         payload = self._request_payload(NamespacePolicyAuditRequest, request, kwargs)
-        result = await self._call_payload("namespace_policy_audit", payload)
+        result = await self._call_payload(PlatformRpc.NAMESPACE_POLICY_AUDIT, payload)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected namespace policy audit response, got {type(result).__name__}"

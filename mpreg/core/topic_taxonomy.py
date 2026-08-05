@@ -94,9 +94,24 @@ class TopicPattern:
         """Check if pattern is in internal mpreg.* namespace."""
         return pattern.startswith("mpreg.")
 
+    def as_wildcard_pattern(self) -> str:
+        """Return AMQP-style wildcard form of this pattern (F17).
+
+        Format templates use ``{param}`` placeholders for a single topic
+        segment. Matching treats each ``{…}`` as ``*`` so
+        ``mpreg.rpc.command.{command_id}.started`` matches
+        ``mpreg.rpc.command.abc.started``.
+        """
+        return re.sub(r"\{[^{}]+\}", "*", self.pattern)
+
     def matches_topic(self, topic: str) -> bool:
-        """Check if this pattern matches a specific topic."""
-        return TopicValidator.matches_pattern(topic, self.pattern)
+        """Check if this pattern matches a specific topic.
+
+        Phase H F17: ``{param}`` format templates are converted to single-
+        segment ``*`` wildcards before AMQP-style matching. Exact equality
+        still wins via :meth:`TopicValidator.matches_pattern`.
+        """
+        return TopicValidator.matches_pattern(topic, self.as_wildcard_pattern())
 
     def generate_example_topic(self, **kwargs: Any) -> str:
         """Generate a concrete topic from this pattern template."""

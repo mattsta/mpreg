@@ -98,23 +98,48 @@ def rpc_actor_ids(server: Any, body: dict[str, Any]) -> tuple[str, str | None]:
     return cluster_id, tenant_id
 
 def register_queue_rpc_commands(server: Any) -> None:
-    """Expose queue manager operations on the RPC command surface."""
+    """Expose queue manager operations on the RPC command surface under mpreg.queue.*."""
     if getattr(server, "_queue_rpc_registered", False):
         return
+    from mpreg.core.rpc_naming import PlatformRpc
+
     # Prefer bound server methods (thin wrappers) so registration matches other cmds.
-    server.register_command("queue_create", server._rpc_queue_create, ["queue"])
-    server.register_command("queue_send", server._rpc_queue_send, ["queue"])
-    server.register_command("queue_ack", server._rpc_queue_ack, ["queue"])
-    server.register_command("queue_receive", server._rpc_queue_receive, ["queue"])
+    # allow_platform=True: plane surface is platform-owned (namespace deny root).
+    server.register_command(
+        PlatformRpc.QUEUE_CREATE, server._rpc_queue_create, ["queue"], allow_platform=True
+    )
+    server.register_command(
+        PlatformRpc.QUEUE_SEND, server._rpc_queue_send, ["queue"], allow_platform=True
+    )
+    server.register_command(
+        PlatformRpc.QUEUE_ACK, server._rpc_queue_ack, ["queue"], allow_platform=True
+    )
+    server.register_command(
+        PlatformRpc.QUEUE_RECEIVE,
+        server._rpc_queue_receive,
+        ["queue"],
+        allow_platform=True,
+    )
     server._queue_rpc_registered = True
 
 def register_cache_rpc_commands(server: Any) -> None:
-    """Expose cache manager operations on the RPC command surface."""
+    """Expose cache manager operations on the RPC command surface under mpreg.cache.*."""
     if getattr(server, "_cache_rpc_registered", False):
         return
-    server.register_command("cache_get", server._rpc_cache_get, ["cache"])
-    server.register_command("cache_put", server._rpc_cache_put, ["cache"])
-    server.register_command("cache_invalidate", server._rpc_cache_invalidate, ["cache"])
+    from mpreg.core.rpc_naming import PlatformRpc
+
+    server.register_command(
+        PlatformRpc.CACHE_GET, server._rpc_cache_get, ["cache"], allow_platform=True
+    )
+    server.register_command(
+        PlatformRpc.CACHE_PUT, server._rpc_cache_put, ["cache"], allow_platform=True
+    )
+    server.register_command(
+        PlatformRpc.CACHE_INVALIDATE,
+        server._rpc_cache_invalidate,
+        ["cache"],
+        allow_platform=True,
+    )
     server._cache_rpc_registered = True
 
 async def queue_create(

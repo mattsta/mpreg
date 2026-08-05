@@ -34,11 +34,11 @@ class TestBasicUsageExamples:
         client = await client_factory(single_server.settings.port)
 
         # Basic echo call
-        result = await client.call("echo", "Hello MPREG!")
+        result = await client.call("mpreg.system.echo", "Hello MPREG!")
         assert result == "Hello MPREG!"
 
         # Echo with different data types
-        result = await client.call("echo", {"key": "value", "number": 42})
+        result = await client.call("mpreg.system.echo", {"key": "value", "number": 42})
         assert result == {"key": "value", "number": 42}
 
     async def test_multi_argument_function(
@@ -51,11 +51,11 @@ class TestBasicUsageExamples:
         """
         client = await client_factory(single_server.settings.port)
 
-        result = await client.call("echos", "arg1", "arg2", "arg3")
+        result = await client.call("mpreg.system.echos", "arg1", "arg2", "arg3")
         assert result == ["arg1", "arg2", "arg3"]
 
         # Mix of data types
-        result = await client.call("echos", 1, "two", [3, 4], {"five": 6})
+        result = await client.call("mpreg.system.echos", 1, "two", [3, 4], {"five": 6})
         assert result == [1, "two", [3, 4], {"five": 6}]
 
     async def test_function_with_keyword_arguments(
@@ -111,7 +111,7 @@ class TestWorkflowExamples:
                     name="step1", fun="data_processing", args=([1, 2, 3, 4, 5],)
                 ),
                 RPCCommand(
-                    name="step2", fun="echo", args=("step1",)
+                    name="step2", fun="mpreg.system.echo", args=("step1",)
                 ),  # References step1 result
             ]
         )
@@ -175,7 +175,7 @@ class TestWorkflowExamples:
             [
                 RPCCommand(name="batch1", fun="data_processing", args=([1, 2, 3],)),
                 RPCCommand(name="batch2", fun="data_processing", args=([4, 5, 6],)),
-                RPCCommand(name="combined", fun="echos", args=("batch1", "batch2")),
+                RPCCommand(name="combined", fun="mpreg.system.echos", args=("batch1", "batch2")),
             ]
         )
 
@@ -201,8 +201,8 @@ class TestDistributedExamples:
         client = await client_factory(server1.settings.port)
 
         # These calls should work regardless of which server has the function
-        result1 = await client.call("echo", "distributed call 1")
-        result2 = await client.call("echos", "distributed", "call", "2")
+        result1 = await client.call("mpreg.system.echo", "distributed call 1")
+        result2 = await client.call("mpreg.system.echos", "distributed", "call", "2")
 
         assert result1 == "distributed call 1"
         assert result2 == ["distributed", "call", "2"]
@@ -322,7 +322,7 @@ class TestConcurrencyExamples:
 
         # Make concurrent calls from all clients
         tasks = [
-            client.call("echo", f"message from client {i}")
+            client.call("mpreg.system.echo", f"message from client {i}")
             for i, client in enumerate(clients)
         ]
 
@@ -391,7 +391,7 @@ class TestConcurrencyExamples:
         tasks: list[Any] = []
         for client_idx, client in enumerate(clients):
             for request_idx in range(20):  # 20 requests per client = 200 total
-                task = client.call("echo", f"load_test_{client_idx}_{request_idx}")
+                task = client.call("mpreg.system.echo", f"load_test_{client_idx}_{request_idx}")
                 tasks.append(task)
 
         # Execute all requests concurrently
@@ -436,7 +436,7 @@ class TestErrorHandlingExamples:
         from mpreg.core.errors import MpregError, MpregErrorCode
 
         with pytest.raises(MpregError) as ei:
-            await client.call("echo", "test", timeout=0.0001)  # Extremely short timeout
+            await client.call("mpreg.system.echo", "test", timeout=0.0001)  # Extremely short timeout
         assert ei.value.code == int(MpregErrorCode.TIMEOUT)
 
     async def test_graceful_degradation(
@@ -453,13 +453,13 @@ class TestErrorHandlingExamples:
         client = await client_factory(server1.settings.port)
 
         # First call should work normally
-        result1 = await client.call("echo", "before failure")
+        result1 = await client.call("mpreg.system.echo", "before failure")
         assert result1 == "before failure"
 
         # Simulate server failure by stopping one server
         # In a real test, we'd need to properly simulate this
         # For now, just verify the client can still make calls
-        result2 = await client.call("echo", "after failure")
+        result2 = await client.call("mpreg.system.echo", "after failure")
         assert result2 == "after failure"
 
 # Performance benchmarking example
@@ -480,7 +480,7 @@ class TestPerformanceExamples:
 
         # Measure latency for simple calls
         start_time = time.perf_counter()
-        await client.call("echo", "latency test")
+        await client.call("mpreg.system.echo", "latency test")
         end_time = time.perf_counter()
 
         latency = (end_time - start_time) * 1000  # Convert to milliseconds
@@ -489,7 +489,7 @@ class TestPerformanceExamples:
         # Measure latency for larger payloads
         large_data = {"data": list(range(1000))}
         start_time = time.perf_counter()
-        await client.call("echo", large_data)
+        await client.call("mpreg.system.echo", large_data)
         end_time = time.perf_counter()
 
         large_latency = (end_time - start_time) * 1000
@@ -519,7 +519,7 @@ class TestPerformanceExamples:
         tasks: list[Any] = []
         for _ in range(100):  # 100 requests total
             client = clients[len(tasks) % len(clients)]  # Round-robin clients
-            task = client.call("echo", f"throughput_test_{len(tasks)}")
+            task = client.call("mpreg.system.echo", f"throughput_test_{len(tasks)}")
             tasks.append(task)
 
         results = await asyncio.gather(*tasks)

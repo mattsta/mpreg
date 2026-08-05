@@ -122,10 +122,13 @@ async def main() -> None:
                 def ops_add(a: int, b: int) -> int:
                     return int(a) + int(b)
 
-                # Friction: bare name "echo" collides with a built-in registry entry.
-                server.register_command("ops_echo", ops_echo, ["compute"])
-                server.register_command("ops_add", ops_add, ["compute"])
-                step("registered ops_echo/ops_add (avoid built-in name 'echo')")
+                # FQN: bare names qualify under default namespace (app.*).
+                # Platform builtins live under mpreg.* — users own everything else.
+                server.register_command("ops_echo", ops_echo, ["compute"])  # → app.ops_echo
+                server.register_command("ops_add", ops_add, ["compute"])  # → app.ops_add
+                # Also prove bare "echo" is legal now (app.echo ≠ mpreg.system.echo).
+                server.register_command("echo", ops_echo, ["compute"])
+                step("registered app.ops_echo / app.ops_add / app.echo (mpreg.* denied to users)")
 
                 for _ in range(80):
                     if getattr(server, "_dns_gateway", None) is not None:

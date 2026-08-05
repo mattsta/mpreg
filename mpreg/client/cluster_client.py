@@ -17,6 +17,12 @@ from mpreg.core.discovery_summary import (
     SummaryQueryResponse,
 )
 from mpreg.core.model import MPREGException, RPCCommand
+from mpreg.core.rpc_naming import (
+    DEFAULT_USER_NAMESPACE,
+    PlatformRpc,
+    assert_call_allowed,
+    qualify_rpc_name,
+)
 
 from .client import Client
 
@@ -97,6 +103,8 @@ class MPREGClusterClient:
     default_timeout_seconds: float | None = 30.0
     # Cap total endpoint×attempt work so HA retries cannot storm the mesh.
     max_endpoint_attempts: int = 6
+    default_rpc_namespace: str = DEFAULT_USER_NAMESPACE
+    bound_rpc_namespace: str | None = None
 
     _clients: dict[str, Client] = field(default_factory=dict, init=False)
     _endpoint_scores: dict[str, float] = field(default_factory=dict, init=False)
@@ -172,7 +180,10 @@ class MPREGClusterClient:
         if not target:
             raise RuntimeError("No endpoint available for plane_client")
         # ERG-T11-07: inherit cluster HA call_policy (and auth if present)
-        kwargs: dict = {}
+        kwargs: dict = {
+            "default_rpc_namespace": self.default_rpc_namespace,
+            "bound_rpc_namespace": self.bound_rpc_namespace,
+        }
         if self.call_policy is not None:
             kwargs["call_policy"] = self.call_policy
         for attr in ("auth_token", "timeout", "default_timeout"):
@@ -387,7 +398,7 @@ class MPREGClusterClient:
 
     async def cluster_map(self) -> ClusterMapSnapshot:
         """Fetch a cluster map snapshot and return parsed data."""
-        result = await self._call_any("cluster_map")
+        result = await self._call_any(PlatformRpc.CLUSTER_MAP)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected cluster map response, got {type(result).__name__}"
@@ -439,12 +450,12 @@ class MPREGClusterClient:
             )
             payload = request.to_dict()
             result = (
-                await self._call_any("summary_query", payload)
+                await self._call_any(PlatformRpc.SUMMARY_QUERY, payload)
                 if payload
-                else await self._call_any("summary_query")
+                else await self._call_any(PlatformRpc.SUMMARY_QUERY)
             )
         else:
-            result = await self._call_any("summary_query")
+            result = await self._call_any(PlatformRpc.SUMMARY_QUERY)
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected summary query response, got {type(result).__name__}"
@@ -680,12 +691,20 @@ class MPREGClusterClient:
     ) -> Any:
         client = await self._ensure_client(url)
         await self._ensure_connected(client)
+        active_ns = self.bound_rpc_namespace or self.default_rpc_namespace
+        fqn = qualify_rpc_name(fun, active_ns)
+        assert_call_allowed(
+            fqn,
+            allow_platform=True,
+            bound_namespace=self.bound_rpc_namespace,
+        )
+        resolved_function_id = function_id or fqn
         command = RPCCommand(
-            name=fun,
-            fun=fun,
+            name=fqn,
+            fun=fqn,
             args=tuple(args),
             locs=locs or frozenset(),
-            function_id=function_id,
+            function_id=resolved_function_id,
             version_constraint=version_constraint,
             target_cluster=target_cluster,
             routing_topic=routing_topic,

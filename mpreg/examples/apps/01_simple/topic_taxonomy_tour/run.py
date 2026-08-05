@@ -61,17 +61,19 @@ async def main() -> None:
                 concrete == "mpreg.rpc.command.abc.started",
                 f"format failed {concrete}",
             )
-            # Friction: matches_topic uses validator wildcards; {command_id} is NOT *
+            # Phase H F17: {param} templates match as single-segment wildcards
             matched = pat.matches_topic(concrete)
-            step(
-                f"friction F17: TopicPattern.matches_topic on '{{param}}' templates "
-                f"→ {matched} (format templates ≠ AMQP wildcards)"
-            )
+            ensure(matched is True, f"template should match concrete: {matched}")
             ensure(
-                "{" not in pat.pattern or matched is False or matched is True,
-                "matches_topic callable",
+                pat.as_wildcard_pattern() == "mpreg.rpc.command.*.started",
+                pat.as_wildcard_pattern(),
             )
-            # Prefer validator on expanded/wildcard form
+            ensure(pat.matches_topic("mpreg.rpc.command.other.started") is True, "other id")
+            ensure(pat.matches_topic("mpreg.rpc.command.x.failed") is False, "wrong suffix")
+            step(
+                f"F17 fixed: matches_topic on '{{param}}' → wildcard "
+                f"{pat.as_wildcard_pattern()!r} matched={matched}"
+            )
             ensure(
                 v.matches_pattern(concrete, "mpreg.rpc.command.*.started") is True,
                 "expanded wildcard should match",

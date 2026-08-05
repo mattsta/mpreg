@@ -18,12 +18,12 @@ class TestSimpleIntegration:
         client = await client_factory(single_server.settings.port)
 
         # Test simple echo
-        result = await client.call("echo", "Hello World!")
+        result = await client.call("mpreg.system.echo", "Hello World!")
         assert result == "Hello World!"
 
         # Test echo with different data types
         test_data = {"message": "test", "number": 42, "list": [1, 2, 3]}
-        result = await client.call("echo", test_data)
+        result = await client.call("mpreg.system.echo", test_data)
         assert result == test_data
 
     @pytest.mark.asyncio
@@ -33,7 +33,7 @@ class TestSimpleIntegration:
         """Test multi-argument functions."""
         client = await client_factory(single_server.settings.port)
 
-        result = await client.call("echos", "arg1", "arg2", "arg3")
+        result = await client.call("mpreg.system.echos", "arg1", "arg2", "arg3")
         # JSON serialization converts tuples to lists, so we need to handle that
         assert result == ["arg1", "arg2", "arg3"] or result == ("arg1", "arg2", "arg3")
 
@@ -53,9 +53,9 @@ class TestSimpleIntegration:
         import asyncio
 
         tasks = [
-            clients[0].call("echo", "client_0_message"),
-            clients[1].call("echo", "client_1_message"),
-            clients[2].call("echo", "client_2_message"),
+            clients[0].call("mpreg.system.echo", "client_0_message"),
+            clients[1].call("mpreg.system.echo", "client_1_message"),
+            clients[2].call("mpreg.system.echo", "client_2_message"),
         ]
 
         results = await asyncio.gather(*tasks)

@@ -290,7 +290,7 @@ async def single_server(
             # Server is automatically started and will be cleaned up
             client = MPREGClientAPI(f"ws://127.0.0.1:{single_server.settings.port}")
             await client.connect()
-            result = await client.call("echo", "hello world")
+            result = await client.call("mpreg.system.echo", "hello world")
             assert result == "hello world"
     """
     settings = MPREGSettings(

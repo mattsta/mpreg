@@ -162,8 +162,25 @@ class CachePubSubIntegration(ManagedObject):
     def add_event_listener(
         self, event_type: CacheEventType, listener: Callable[[CacheEvent], None]
     ) -> None:
-        """Add a listener for cache events."""
+        """Add a listener for cache events.
+
+        Phase H F7: listeners are invoked synchronously at the start of
+        :meth:`notify_cache_event` (before pub/sub fan-out). Exceptions in
+        listeners are logged and do not abort notification delivery.
+        """
         self.event_listeners[event_type].append(listener)
+
+    def _fire_event_listeners(self, event: CacheEvent) -> None:
+        """Invoke registered in-process listeners for *event* (F7)."""
+        for listener in list(self.event_listeners.get(event.event_type, ())):
+            try:
+                listener(event)
+            except Exception as exc:  # noqa: BLE001 - isolate listener faults
+                logger.warning(
+                    "cache event listener failed for {}: {}",
+                    event.event_type,
+                    exc,
+                )
 
     async def notify_cache_event(
         self,
@@ -171,7 +188,13 @@ class CachePubSubIntegration(ManagedObject):
         config: CacheNotificationConfig | None = None,
         from_processor: bool = False,
     ) -> None:
-        """Send a cache event notification via pub/sub."""
+        """Send a cache event notification via pub/sub.
+
+        Always fires in-process :meth:`add_event_listener` callbacks first
+        (Phase H F7), then applies namespace notification config for pub/sub.
+        """
+        # F7: local listeners run even when no namespace notification config.
+        self._fire_event_listeners(event)
         try:
             if config is None:
                 config = self.notification_configs.get(event.cache_key.namespace)

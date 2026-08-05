@@ -530,11 +530,25 @@ class GlobalCacheManager(ManagedObject):
                 )
 
     async def invalidate(
-        self, pattern: str, options: CacheOptions | None = None
+        self,
+        pattern: str,
+        /,
+        *,
+        options: CacheOptions | None = None,
+        **kwargs: object,
     ) -> CacheOperationResult:
+        """Invalidate cache entries matching *pattern*.
+
+        Phase H F8: keyword-only ``options``; unexpected kwargs raise a clear
+        ``TypeError`` listing valid names (operators often guess ``key=``,
+        ``namespace=``, ``prefix=``).
         """
-        Invalidate cache entries matching pattern.
-        """
+        if kwargs:
+            bad = ", ".join(sorted(kwargs))
+            raise TypeError(
+                f"GlobalCacheManager.invalidate() got unexpected keyword "
+                f"argument(s): {bad}. Valid: pattern (positional), options=."
+            )
         if options is None:
             options = CacheOptions()
 

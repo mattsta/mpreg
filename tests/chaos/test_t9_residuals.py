@@ -212,7 +212,7 @@ def test_chaos_rpc_request_accepts_traceparent_fields() -> None:
     """OBS-02: RPCRequest model carries W3C fields."""
     tp = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
     req = RPCRequest(
-        cmds=(RPCCommand(name="n", fun="echo", args=("x",), locs=frozenset()),),
+        cmds=(RPCCommand(name="n", fun="mpreg.system.echo", args=("x",), locs=frozenset()),),
         u="u1",
         traceparent=tp,
         headers={"traceparent": tp},

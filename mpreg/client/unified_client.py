@@ -15,6 +15,7 @@ from typing import Any, Callable
 from loguru import logger
 
 from ..core.model import RPCCommand
+from ..core.rpc_naming import DEFAULT_USER_NAMESPACE, PlatformRpc
 from .call_policy import ClientCallPolicy
 from .client_api import MPREGClientAPI
 from .pubsub_client import MPREGPubSubClient, PubSubMessage
@@ -137,6 +138,8 @@ class MPREGClient:
     call_policy: ClientCallPolicy | None = None
     default_timeout_seconds: float | None = 30.0
     notification_queue_maxsize: int = 1024
+    default_rpc_namespace: str = DEFAULT_USER_NAMESPACE
+    bound_rpc_namespace: str | None = None
 
     api: MPREGClientAPI = field(init=False)
     pubsub: MPREGPubSubClient = field(init=False)
@@ -152,6 +155,8 @@ class MPREGClient:
             call_policy=self.call_policy,
             default_timeout_seconds=self.default_timeout_seconds,
             notification_queue_maxsize=self.notification_queue_maxsize,
+            default_rpc_namespace=self.default_rpc_namespace,
+            bound_rpc_namespace=self.bound_rpc_namespace,
         )
         self.pubsub = MPREGPubSubClient(base_client=self.api)
 
@@ -280,7 +285,7 @@ class MPREGClient:
         """
         topic_value = topic or f"mpreg.queue.{queue_name}"
         raw = await self.api.call(
-            "queue_send",
+            PlatformRpc.QUEUE_SEND,
             {
                 "queue_name": queue_name,
                 "topic": topic_value,
@@ -300,7 +305,7 @@ class MPREGClient:
     ) -> Any:
         """Create a queue via the ``queue_create`` RPC command when available."""
         body: dict[str, Any] = {"queue_name": queue_name, **options}
-        return await self.api.call("queue_create", body, timeout=timeout)
+        return await self.api.call(PlatformRpc.QUEUE_CREATE, body, timeout=timeout)
 
     # --- Cache (RPC command surface when server exposes it) ---
     async def cache_get(
@@ -318,7 +323,7 @@ class MPREGClient:
         }
         if version is not None:
             body["version"] = version
-        raw = await self.api.call("cache_get", body, timeout=timeout)
+        raw = await self.api.call(PlatformRpc.CACHE_GET, body, timeout=timeout)
         return CacheOpResult.from_raw(raw)
 
     async def cache_put(
@@ -340,7 +345,7 @@ class MPREGClient:
         }
         if version is not None:
             body["version"] = version
-        raw = await self.api.call("cache_put", body, timeout=timeout)
+        raw = await self.api.call(PlatformRpc.CACHE_PUT, body, timeout=timeout)
         return CacheOpResult.from_raw(raw)
 
     async def cache_invalidate(
@@ -351,7 +356,7 @@ class MPREGClient:
     ) -> CacheOpResult:
         """Invalidate cache entries matching ``pattern`` via ``cache_invalidate`` RPC."""
         raw = await self.api.call(
-            "cache_invalidate", {"pattern": pattern}, timeout=timeout
+            PlatformRpc.CACHE_INVALIDATE, {"pattern": pattern}, timeout=timeout
         )
         return CacheOpResult.from_raw(raw)
 
@@ -365,7 +370,7 @@ class MPREGClient:
     ) -> QueueSendResult:
         """Acknowledge a delivered queue message via ``queue_ack`` RPC."""
         raw = await self.api.call(
-            "queue_ack",
+            PlatformRpc.QUEUE_ACK,
             {
                 "queue_name": queue_name,
                 "message_id": message_id,
@@ -400,7 +405,7 @@ class MPREGClient:
             body["subscriber_id"] = subscriber_id
         # RPC wall clock should cover the server-side poll wait.
         rpc_timeout = timeout if timeout is not None else float(timeout_seconds) + 5.0
-        return await self.api.call("queue_receive", body, timeout=rpc_timeout)
+        return await self.api.call(PlatformRpc.QUEUE_RECEIVE, body, timeout=rpc_timeout)
 
     async def publish_with_reply(
         self,

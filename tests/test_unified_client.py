@@ -28,11 +28,13 @@ async def test_unified_client_composes_api() -> None:
     assert client.pubsub is not None
 
     async def fake_call(self, fun, *args, **kwargs):
-        if fun == "queue_send":
+        from mpreg.core.rpc_naming import PlatformRpc
+
+        if fun in ("queue_send", PlatformRpc.QUEUE_SEND):
             return {"success": True, "message_id": "q1"}
-        if fun == "cache_put":
+        if fun in ("cache_put", PlatformRpc.CACHE_PUT):
             return {"success": True}
-        if fun == "cache_get":
+        if fun in ("cache_get", PlatformRpc.CACHE_GET):
             return {"success": True, "value": "v"}
         return {"ok": True}
 
@@ -63,7 +65,7 @@ async def test_unified_client_composes_api() -> None:
         got = await client.cache_get("ns", "id1")
         assert got.value == "v"
         out = await client.request(
-            [RPCCommand(name="e", fun="echo", args=("x",), kwargs={})]
+            [RPCCommand(name="e", fun="mpreg.system.echo", args=("x",), kwargs={})]
         )
         assert out["r"] == 1
     finally:

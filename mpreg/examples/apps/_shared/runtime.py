@@ -79,6 +79,10 @@ def scenario(name: str, *feature_ids: str) -> Iterator[None]:
         with scenario("idempotent create", "rpc.call", "cache.put_get"):
             ...
             ensure(...)
+
+    Phase H: when an :class:`ExampleProbe` is active, records wall-clock latency
+    under ``scenario.<sanitized_name>`` so every app produces latency/throughput
+    surfaces even without explicit ``probe.measure`` calls.
     """
     global _ACTIVE_STATS
     print()
@@ -86,19 +90,33 @@ def scenario(name: str, *feature_ids: str) -> Iterator[None]:
     for fid in feature_ids:
         feature(fid)
     started = time.monotonic()
+    t0 = time.perf_counter()
     if _ACTIVE_STATS is not None:
         _ACTIVE_STATS.scenarios.append(name)
+    ok_flag = True
     try:
         yield
     except Exception:
+        ok_flag = False
         print(f"  └─ scenario FAILED: {name}")
         raise
     else:
         elapsed = time.monotonic() - started
         print(f"  └─ scenario ok: {name} ({elapsed:.2f}s)")
+    finally:
+        probe = _ACTIVE_PROBE
+        if probe is not None:
+            # Sanitize scenario name for op key stability
+            key = "scenario." + "".join(
+                c if c.isalnum() or c in "._-" else "_" for c in name.lower()
+            )[:64]
+            probe.record(key, (time.perf_counter() - t0) * 1000.0, ok=ok_flag)
 
 def get_probe() -> ExampleProbe | None:
-    """Return the active :class:`ExampleProbe` if ``app_run(..., probe=True)``."""
+    """Return the active :class:`ExampleProbe` if ``app_run`` attached one.
+
+    Phase H: probes are **on by default** (``app_run(..., probe=True)``).
+    """
     return _ACTIVE_PROBE
 
 @contextmanager
@@ -107,13 +125,15 @@ def app_run(
     title: str,
     *,
     level: str = "",
-    probe: bool = False,
+    probe: bool = True,
 ) -> Iterator[ScenarioStats]:
     """Top-level banner + scenario stats for a curriculum app.
 
-    When ``probe=True``, attaches an :class:`ExampleProbe` for latency/throughput
-    recording. Use :func:`get_probe` inside the app body, and the probe report
-    is printed automatically on exit when ops were recorded.
+    Phase H: ``probe=True`` by default. Attaches an :class:`ExampleProbe` for
+    latency/throughput recording (scenario auto-timing + optional explicit
+    ``measure`` calls). Use :func:`get_probe` inside the app body; the probe
+    report is printed automatically on exit when ops were recorded.
+    Pass ``probe=False`` only for apps that must suppress obs output.
     """
     global _ACTIVE_STATS, _ACTIVE_PROBE
     stats = ScenarioStats()
