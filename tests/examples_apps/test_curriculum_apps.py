@@ -134,3 +134,26 @@ async def test_suite_app_live(app_id: str) -> None:
         timeout_s=_TIMEOUT_S.get(app_id, 180.0),
     )
     assert report.ok, f"{app_id} failed ({report.duration_s:.2f}s): {report.error}"
+
+@pytest.mark.example_apps
+@pytest.mark.unit
+def test_every_app_has_feature_tags() -> None:
+    """Feature catalog join: every shipped app lists at least one feature id."""
+    from mpreg.examples.apps._shared.features import APP_FEATURES, all_feature_ids
+
+    missing = [a.id for a in APPS if not a.features]
+    assert not missing, f"apps missing features: {missing}"
+    # Registry features should match APP_FEATURES map
+    for app in APPS:
+        mapped = APP_FEATURES.get(app.id, ())
+        assert app.features == mapped, f"{app.id} features drift from APP_FEATURES"
+    assert len(all_feature_ids()) >= 40, "feature catalog too thin"
+
+@pytest.mark.example_apps
+@pytest.mark.unit
+def test_apps_covering_helper() -> None:
+    from mpreg.examples.apps._shared.registry import apps_covering
+
+    rpc_apps = apps_covering("rpc.call")
+    assert any(a.id == "hello_rpc" for a in rpc_apps)
+    assert apps_covering("this.feature.does.not.exist") == []
