@@ -21,7 +21,12 @@ class ExampleFailed(RuntimeError):
     """Raised when an example assertion or invariant fails."""
 
 def ensure(condition: bool, message: str) -> None:
-    """Assert a demo invariant; raise ExampleFailed on failure."""
+    """Assert a demo invariant; raise ExampleFailed on failure.
+
+    When inside :func:`app_run`, increments scenario ensure counters.
+    """
+    if _ACTIVE_STATS is not None:
+        _ACTIVE_STATS.note_ensure()
     if not condition:
         raise ExampleFailed(message)
 
@@ -58,9 +63,7 @@ class ScenarioStats:
 _ACTIVE_STATS: ScenarioStats | None = None
 
 def ensure_counted(condition: bool, message: str) -> None:
-    """Like ensure(), but increments active ScenarioStats when present."""
-    if _ACTIVE_STATS is not None:
-        _ACTIVE_STATS.note_ensure()
+    """Alias for :func:`ensure` (counters are built into ensure under app_run)."""
     ensure(condition, message)
 
 @contextmanager
