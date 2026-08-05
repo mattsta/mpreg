@@ -69,3 +69,11 @@ Legend: `[x]` done · `[~]` partial · `[ ]` not started
 | 2026-08-05 | `uv run mpreg-example smoke` | **8/8** passed |
 | 2026-08-05 | `uv run mpreg-example suite` | **35/35** passed |
 | 2026-08-05 | `uv run pytest tests/examples_apps` | **91 passed** |
+
+## 2026-08-05 — Feature-catalog depth pass
+
+- FEATURE_CATALOG.md inventories platform APIs (rpc/client/pubsub/queue/cache/fabric/disco/mon/chaos/pers/…).
+- Shared `features.py` + registry `features` field + pytest join tests.
+- L0–L4 apps deepened with multi-scenario API drills (not thin wrappers).
+- Planes inlined (no 18-line tier1-only shims).
+- Gaps remain: DNS plane app, namespace policy app, atomic cache ops, unified client queue/cache RPC on live servers.

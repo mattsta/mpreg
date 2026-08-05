@@ -76,3 +76,16 @@ Optional flags (`--chaos`, `--slow`) must:
 - Not exactly-once unless the queue/app protocol is specified.
 - Multi-cluster demos show routing availability, not global linearizability.
 ```
+
+## Feature catalog depth
+
+Every shipped app must:
+
+1. List feature IDs in `mpreg/examples/apps/_shared/features.py` (joined via registry).
+2. Use `app_run` + one or more `scenario(..., *feature_ids)` blocks.
+3. Assert with `ensure()` (counts appear in run summary under `app_run`).
+4. Prefer public APIs (`MPREGClientAPI.call` / `request` / `call_dag`).
+5. Document API drill-down + non-claims in the app README.
+6. Cross-link `docs/examples-curriculum/FEATURE_CATALOG.md`.
+
+See FEATURE_CATALOG.md for the full platform inventory and gap backlog.
