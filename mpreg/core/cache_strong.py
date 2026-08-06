@@ -163,10 +163,19 @@ def majority_quorum(n: int) -> int:
 
 @dataclass(slots=True)
 class StrongLocalBackend:
-    """Local pending + L1 apply surface for the origin (and in-process peers)."""
+    """Local pending + L1 apply surface for the origin (and in-process peers).
+
+    Optional ``on_visible_apply`` / ``on_visible_uncommit`` bridge peer-side
+    commits into the real GlobalCacheManager L1 so fabric STRONG puts are
+    readable via ``gcm.get`` on every committer (not only the origin).
+    """
 
     node_id: str
     max_pending: int = 128
+    on_visible_apply: Any | None = None  # Callable[[GlobalCacheEntry], None]
+    on_visible_uncommit: Any | None = (
+        None  # Callable[[GlobalCacheKey, GlobalCacheEntry | None], None]
+    )
     _pending: dict[str, StrongPending] = field(default_factory=dict)
     _visible: dict[str, GlobalCacheEntry] = field(default_factory=dict)
     _key_op: dict[str, str] = field(default_factory=dict)  # key_str -> op_id
@@ -251,6 +260,12 @@ class StrongLocalBackend:
             self._pending.pop(op_id, None)
             if pending.pre_commit_backup is not None:
                 self._backups[op_id] = pending.pre_commit_backup
+            apply_cb = self.on_visible_apply
+            if apply_cb is not None:
+                try:
+                    apply_cb(entry)
+                except Exception:  # noqa: BLE001
+                    pass
             return CommitAck(self.node_id, True, applied=True)
 
     async def abort(self, *, op_id: str, key: GlobalCacheKey) -> bool:
@@ -258,16 +273,28 @@ class StrongLocalBackend:
             self._pending.pop(op_id, None)
             ks = self._key_str(key)
             ent = self._visible.get(ks)
+            restored: GlobalCacheEntry | None = None
+            did_uncommit = False
             if ent is not None and _entry_op_id(ent) == op_id:
                 backup = self._backups.pop(op_id, None)
                 if backup is not None:
                     self._visible[ks] = backup
                     self._key_op[ks] = _entry_op_id(backup) or ""
+                    restored = backup
                 else:
                     self._visible.pop(ks, None)
                     self._key_op.pop(ks, None)
+                    restored = None
+                did_uncommit = True
             else:
                 self._backups.pop(op_id, None)
+            if did_uncommit:
+                uncommit_cb = self.on_visible_uncommit
+                if uncommit_cb is not None:
+                    try:
+                        uncommit_cb(key, restored)
+                    except Exception:  # noqa: BLE001
+                        pass
             return True
 
     def get_visible(self, key: GlobalCacheKey) -> GlobalCacheEntry | None:

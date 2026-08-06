@@ -350,13 +350,19 @@ class SharedAuditReplicator:
                 for o, w in self.store.watermarks_snapshot().items()
             },
         }
-        await self.transport.send_epidemic("mgmt_audit_delta", payload)
-        self._last_delta_at = time.time()
+        sent = await self.transport.send_epidemic("mgmt_audit_delta", payload)
+        if sent:
+            self._last_delta_at = time.time()
+        else:
+            # No connected peers yet — re-queue so the next reconcile cycle retries.
+            for rec in reversed(batch):
+                self._outbound.appendleft(rec)
 
     async def _exchange_digests(self) -> None:
         digest = self.build_digest()
-        await self.transport.send_epidemic("mgmt_audit_digest", digest)
-        self._last_digest_at = time.time()
+        sent = await self.transport.send_epidemic("mgmt_audit_digest", digest)
+        if sent:
+            self._last_digest_at = time.time()
 
 @dataclass(slots=True)
 class InProcessSharedAuditTransport:

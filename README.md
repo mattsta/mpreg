@@ -915,7 +915,7 @@ Local Clusters → Regional Hubs → Global Federation
 
 ## 🚀 Production Deployment Status
 
-MPREG is a **capable distributed platform** with strong tests on fabric routing, CFT Raft, RPC modalities, flag-gated shared audit (`INV-SHARED-AUDIT-01`), and flag-gated cache STRONG put (`INV-CACHE-STRONG-01`). Read `tests/invariants/claims.yaml` non_claims before assuming BFT, EO, WAN STRONG, or STRONG quorum reads:
+MPREG is a **capable distributed platform** with strong tests on fabric routing, CFT Raft, RPC modalities, flag-gated shared audit (`INV-SHARED-AUDIT-01`), and flag-gated cache STRONG put (`INV-CACHE-STRONG-01`). Residual honesty beyond MVP: same-host live STRONG RR + peer-loss residual, live shared-audit multi-origin churn, bounded single-key history checker, adversarial fail-closed peers — still **not** WAN/BFT/fsync/Jepsen (see `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`). Read `tests/invariants/claims.yaml` non_claims before assuming BFT, EO, WAN STRONG, or STRONG quorum reads:
 
 ### ✅ **Production Readiness Checklist**
 

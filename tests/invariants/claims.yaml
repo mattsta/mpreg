@@ -184,7 +184,8 @@ encapsulation:
       on GET /mgmt/v1/audit returns the merged window after anti-entropy
       (DELTA epidemic + digest/PULL unicast). Merge is commutative/idempotent;
       watermarks monotonic; no resurrection below watermark; cross-cluster reject;
-      gossip_eligible=false never leaves origin.
+      gossip_eligible=false never leaves origin. Live multi-origin drain + late
+      joiner backfill converge over real fabric gossip (same-host mesh).
     proof: [L1, L2, L4]
     tests:
       - tests/server_pkg/test_shared_audit_store.py
@@ -192,20 +193,29 @@ encapsulation:
       - tests/server_pkg/test_shared_audit_response.py
       - tests/invariants/test_shared_audit_properties.py
       - tests/integration/test_shared_audit_cluster.py
+      - tests/integration/test_shared_audit_live_churn.py
   - id: INV-CACHE-STRONG-01
     claim: >
       When cache_strong_enabled, GlobalCacheManager ConsistencyLevel.STRONG put
       uses a majority-commit barrier (Q = floor(N/2)+1 COMMIT_ACKs, origin-commit-last);
-      failed puts ABORT-uncommit peer+origin L1 for op_id (residual-free). Disabled
-      path remains error_code 1012. Operational codes 1015–1018. Pending invisible;
-      LWW abort-safe; concurrent puts leave no dirty pending.
+      failed puts ABORT-uncommit peer+origin L1 for op_id (residual-free). Peer
+      commits bridge into GCM L1 (on_visible_apply) so gcm.get works on every
+      committer. Disabled path remains error_code 1012. Operational codes
+      1015–1018. Pending invisible; LWW abort-safe; concurrent puts leave no
+      dirty pending. Live 3-node ServerCacheTransport RR + peer-loss residual
+      proven on same-host mesh. Bounded single-key history checker (not Jepsen).
+      Adversarial ACK / cluster mismatch fail-closed (not BFT).
     proof: [L1, L2, L4]
     tests:
       - tests/core/test_cache_strong.py
       - tests/core/test_cache_strong_gcm.py
+      - tests/core/test_cache_strong_gcm_bridge.py
+      - tests/core/test_cache_strong_adversarial.py
       - tests/chaos/test_t9_residuals.py
       - tests/invariants/test_cache_strong_properties.py
+      - tests/invariants/test_cache_strong_history.py
       - tests/integration/test_cache_strong_quorum.py
+      - tests/integration/test_cache_strong_live_mesh.py
 
 non_claims:
   - "Atomic multi-store fabric snapshot save (catalog+keys single blob); restore has COR-10 rollback on key failure"
@@ -218,8 +228,12 @@ non_claims:
   - "location_consistency.ConsistencyLevel.STRONG is not a production guarantee (fail-closed; separate from GlobalCacheManager majority-commit path)"
   - "GlobalCacheManager STRONG get/delete are not majority quorum reads/writes (put-only MVP)"
   - "STRONG put is not WAN multi-region SLA, not BFT, not fsync/disk durability across replicas"
+  - "STRONG put residual proofs use process stop + drop injectors — not kernel/iptables partitions or OS kill -9 + cold restart durability"
+  - "Bounded single-key STRONG history checker is not Jepsen/Elle WAN linearizability"
+  - "Adversarial STRONG peer tests prove fail-closed ACKs only — not Byzantine fault tolerance under a quorum of liars"
   - "Shared audit is not a SIEM / infinite retention store; bounded per-origin watermark window"
   - "Shared audit is not BFT and not multi-tenant isolation beyond cluster_id reject"
+  - "Shared audit live churn is same-host multi-process mesh — not WAN epidemic under sustained partition"
   - "blockchain DeliveryGuarantee.EXACTLY_ONCE is unsupported (fail-closed)"
   - "fabric DeliveryGuarantee.EXACTLY_ONCE is unsupported_delivery until idempotent path exists"
   - "MembershipProtocol (SWIM) is library-only until wired into MPREGServer"

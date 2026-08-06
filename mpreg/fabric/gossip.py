@@ -830,6 +830,9 @@ class GossipProtocol:
     route_applier: RouteAnnouncementProcessor | None = None
     link_state_applier: LinkStateProcessor | None = None
     route_key_applier: Any | None = None
+    # Shared audit MGMT_AUDIT_* dispatch (set by MPREGServer when enabled).
+    # Must be a declared slots field — setattr of unknown attrs raises on slots.
+    mgmt_audit_handler: Any | None = field(default=None, repr=False)
     _background_tasks: set[asyncio.Task[Any]] = field(default_factory=set)
     _shutdown_event: asyncio.Event = field(default_factory=asyncio.Event)
     _gossip_signal: asyncio.Event = field(default_factory=asyncio.Event)

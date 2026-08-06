@@ -377,6 +377,32 @@ class GlobalCacheManager(ManagedObject):
                                 ),
                             )
 
+                    # Peer STRONG commits land in StrongLocalBackend first;
+                    # bridge miss → promote into real L1 for subsequent gets.
+                    be = self._strong_backend
+                    if be is not None and hasattr(be, "get_visible"):
+                        try:
+                            strong_ent = be.get_visible(key)
+                        except Exception:  # noqa: BLE001
+                            strong_ent = None
+                        if strong_ent is not None and isinstance(
+                            strong_ent, GlobalCacheEntry
+                        ):
+                            self._put_to_l1(strong_ent)
+                            self.operation_stats["l1_hits"] += 1
+                            lookup_time = (time.time() - start_time) * 1000
+                            strong_ent.access()
+                            return CacheOperationResult(
+                                success=True,
+                                cache_level=CacheLevel.L1,
+                                entry=strong_ent,
+                                performance=CachePerformanceMetrics(
+                                    lookup_time_ms=lookup_time,
+                                    network_hops=0,
+                                    cache_efficiency=1.0,
+                                ),
+                            )
+
                 # Try L2 persistent cache
                 if (
                     CacheLevel.L2 in options.cache_levels

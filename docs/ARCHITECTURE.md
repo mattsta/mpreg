@@ -149,9 +149,12 @@ Each system uses the same fabric routing plane, but retains its own semantics:
   fabric messages and catalog-driven selection.
 - **Cache STRONG put** (optional, `cache_strong_enabled`): majority-commit
   barrier via `StrongPutCoordinator` (`mpreg/core/cache_strong.py`) and
-  `CacheMessageKind.STRONG_*` RR on `ServerCacheTransport`. Default off
-  (fail-closed `1012`). EVENTUAL/WEAK L3 gossip is unchanged when unused.
-  See `docs/CACHING_SYSTEM.md` and claim `INV-CACHE-STRONG-01`.
+  `CacheMessageKind.STRONG_*` RR on `ServerCacheTransport`. Peer commits
+  bridge into GCM L1 (`on_visible_apply`). Default off (fail-closed `1012`).
+  EVENTUAL/WEAK L3 gossip is unchanged when unused. Same-host live mesh +
+  residual-free peer-loss proven; not WAN/BFT/fsync/Jepsen — see
+  `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`, `docs/CACHING_SYSTEM.md`,
+  claim `INV-CACHE-STRONG-01`.
 
 Why this design:
 
@@ -172,8 +175,12 @@ merged window; `scope=local` remains the default single-node view.
 
 - **Honesty:** shared audit makes the forensic log eventually visible within
   retention windows; it does **not** make drain/detach linearly consistent
-  cluster-wide. Not a SIEM; not BFT. Claim `INV-SHARED-AUDIT-01`.
-- **Design:** `docs/SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md`.
+  cluster-wide. Not a SIEM; not BFT. Live multi-origin + late-joiner
+  convergence proven on same-host mesh
+  (`tests/integration/test_shared_audit_live_churn.py`). Claim
+  `INV-SHARED-AUDIT-01`.
+- **Design:** `docs/SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md`, residual
+  `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`.
 
 ### 4b) Persistence Layer
 

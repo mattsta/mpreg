@@ -8,8 +8,8 @@
 | **Date**                      | 2026-08-05                                                                                                                                                                                                                                                                                                            |
 | **Status**                    | **Shipped** (rev 3 design; Tracks A+S implemented; claims INV-SHARED-AUDIT-01 / INV-CACHE-STRONG-01)                                                                                                                                                                                                                  |
 | **Tracks**                    | Independent PR DAGs (A = Shared Audit, S = STRONG); may ship in either order                                                                                                                                                                                                                                          |
-| **Sequencing**                | **Complete** for v1 MVP. Curriculum Phase Y apps `shared_audit_mesh` / `cache_strong_quorum`. Remaining product gaps: REPL modes / full UI; STRONG get/delete v1.1.                                                                                                                                                   |
-| **Related**                   | `docs/MANAGEMENT_UI_CLI_NEXT_STEPS.md`, `docs/CACHING_SYSTEM.md`, `docs/ARCHITECTURE.md`, `tests/invariants/claims.yaml`                                                                                                                                                                                              |
+| **Sequencing**                | **Complete** for v1 MVP + residual honesty track (live mesh, history, adversarial fail-closed). Remaining: REPL modes / full UI; STRONG get/delete v1.1; WAN/Jepsen/BFT/fsync stay non_claims.                                                                                                                          |
+| **Related**                   | `docs/MANAGEMENT_UI_CLI_NEXT_STEPS.md`, `docs/CACHING_SYSTEM.md`, `docs/ARCHITECTURE.md`, `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`, `tests/invariants/claims.yaml`                                                                                                                                              |
 | **Mechanical conflict zones** | Both tracks touch `mpreg/core/config.py`, `mpreg/server.py` boot, `mpreg/examples/apps/_shared/features.py` + `registry.py`, and optionally monitoring metrics. No logical cross-deps, but parallel long-lived branches will conflict — prefer short-lived branches or sequential integration windows on those files. |
 
 ---
@@ -18,7 +18,11 @@
 
 > **Implementation status (2026-08):** Both tracks are **shipped** flag-gated products.
 > Defaults remain off/fail-closed. Operator docs, curriculum apps, and claims ledger
-> match the design below. Pre-ship “current state” tables in Background are historical.
+> match the design below. Residual honesty (live same-host STRONG RR + peer-loss,
+> live shared-audit multi-origin churn, bounded history checker, adversarial
+> fail-closed) is documented in `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md` —
+> still **not** WAN/BFT/fsync/Jepsen. Pre-ship “current state” tables in Background
+> are historical.
 
 Two product surfaces complete the management and cache honesty story for MPREG:
 

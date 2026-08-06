@@ -5067,7 +5067,29 @@ class MPREGServer:
                 from mpreg.core.cache_strong_handlers import StrongPeerHandler
 
                 origin_id = self.cluster.local_url
-                backend = StrongLocalBackend(node_id=origin_id)
+
+                def _strong_apply_to_gcm(entry: Any) -> None:
+                    cm = getattr(self, "_cache_manager", None)
+                    if cm is not None and hasattr(cm, "_put_to_l1"):
+                        cm._put_to_l1(entry)
+
+                def _strong_uncommit_gcm(key: Any, restored: Any) -> None:
+                    cm = getattr(self, "_cache_manager", None)
+                    if cm is None:
+                        return
+                    try:
+                        if restored is not None and hasattr(cm, "_put_to_l1"):
+                            cm._put_to_l1(restored)
+                        elif hasattr(cm, "l1_cache") and hasattr(key, "to_local_key"):
+                            cm.l1_cache.evict(key.to_local_key())
+                    except Exception:  # noqa: BLE001
+                        pass
+
+                backend = StrongLocalBackend(
+                    node_id=origin_id,
+                    on_visible_apply=_strong_apply_to_gcm,
+                    on_visible_uncommit=_strong_uncommit_gcm,
+                )
                 self._strong_local_backend = backend
                 lab = bool(
                     getattr(self.settings, "cache_strong_lab_single_node", False)
@@ -11972,8 +11994,14 @@ class MPREGServer:
         from mpreg.server_pkg.shared_audit.replicator import SharedAuditReplicator
 
         def _peers() -> list[str]:
+            """Connected peer URLs only — disconnected keys make epidemic send fail closed."""
             try:
-                return sorted(self._get_all_peer_connections().keys())
+                conns = self._get_all_peer_connections()
+                return sorted(
+                    url
+                    for url, conn in conns.items()
+                    if url and getattr(conn, "is_connected", False)
+                )
             except Exception:  # noqa: BLE001
                 return []
 
