@@ -126,6 +126,21 @@ def strong_residual_ops_hint(body: dict[str, Any]) -> str:
         return existing.strip()
     return built
 
+def strong_doctor_json_residual_fields(body: dict[str, Any]) -> dict[str, Any]:
+    """Machine-readable residual fields for doctor JSON strong check rows.
+
+    Returns JSON-native types matching ``/metrics/strong``:
+    ``residual_ops_hint`` (str), ``abort_fail_peer_count`` (int),
+    ``last_abort_fail_peers`` (list[str]). Empty/0/[] when clean.
+    Ops presentation only — not automatic heal, not residual-free proof.
+    """
+    peers = _strong_abort_fail_peers(body)
+    return {
+        "residual_ops_hint": strong_residual_ops_hint(body),
+        "abort_fail_peer_count": int(_strong_abort_fail_peer_count(body)),
+        "last_abort_fail_peers": list(peers),
+    }
+
 def evaluate_strong_doctor_payload(
     payload: dict[str, Any],
 ) -> tuple[bool, str]:
@@ -1965,7 +1980,8 @@ def doctor(
         if check_audit:
             checks.append(("metrics_shared_audit", f"{base}/metrics/shared-audit"))
         failures = 0
-        rows: list[dict[str, str]] = []
+        # Strong residual fields use JSON-native types (int/list); other cells are str.
+        rows: list[dict[str, Any]] = []
         timeout_cfg = aiohttp.ClientTimeout(total=timeout)
         async with aiohttp.ClientSession(
             timeout=timeout_cfg, headers=headers
@@ -2015,8 +2031,7 @@ def doctor(
                             if "mpreg_info" not in payload:
                                 ok = False
                                 body_preview = "missing mpreg_info metric"
-                        residual_hint = ""
-                        abort_fail_peer_count_s = ""
+                        residual_fields: dict[str, Any] | None = None
                         if (
                             ok
                             and name in ("metrics_strong", "mgmt_strong")
@@ -2026,16 +2041,16 @@ def doctor(
                             if not sok:
                                 ok = False
                             body_preview = sdetail
-                            # T71/T87: machine-readable residual fields on doctor JSON rows
+                            # T71/T87/T100/T101: machine-readable residual fields
+                            # (JSON-native int + list — same shape as /metrics/strong)
                             sbody = (
                                 payload.get("strong")
                                 if isinstance(payload.get("strong"), dict)
                                 else payload
                             )
                             if isinstance(sbody, dict):
-                                residual_hint = strong_residual_ops_hint(sbody)
-                                abort_fail_peer_count_s = str(
-                                    _strong_abort_fail_peer_count(sbody)
+                                residual_fields = strong_doctor_json_residual_fields(
+                                    sbody
                                 )
                         if (
                             ok
@@ -2063,15 +2078,24 @@ def doctor(
                                 body_preview = f"unexpected raft body: {body_preview}"
                         if not ok:
                             failures += 1
-                        row: dict[str, str] = {
+                        row: dict[str, Any] = {
                             "check": name,
                             "status": "OK" if ok else str(response.status),
                             "detail": body_preview,
                         }
-                        # T71/T87: always keys on strong checks (empty/0 when clean)
+                        # T71/T87/T100/T101: always keys on strong checks
+                        # (empty/0/[] when clean; int + list for JSON consumers)
                         if name in ("metrics_strong", "mgmt_strong"):
-                            row["residual_ops_hint"] = residual_hint
-                            row["abort_fail_peer_count"] = abort_fail_peer_count_s or "0"
+                            fields = residual_fields or strong_doctor_json_residual_fields(
+                                {}
+                            )
+                            row["residual_ops_hint"] = fields["residual_ops_hint"]
+                            row["abort_fail_peer_count"] = fields[
+                                "abort_fail_peer_count"
+                            ]
+                            row["last_abort_fail_peers"] = fields[
+                                "last_abort_fail_peers"
+                            ]
                         rows.append(row)
                 except Exception as exc:  # noqa: BLE001 - doctor must report all failures
                     failures += 1
@@ -2154,13 +2178,17 @@ def doctor(
             table.add_column("Status")
             table.add_column("Detail")
             for row in rows:
-                status = row["status"]
+                status = str(row.get("status", ""))
                 status_cell = (
                     f"[green]{status}[/green]"
                     if status == "OK"
                     else f"[red]{status}[/red]"
                 )
-                table.add_row(row["check"], status_cell, row["detail"])
+                table.add_row(
+                    str(row.get("check", "")),
+                    status_cell,
+                    str(row.get("detail", "")),
+                )
             console.print(table)
             if failures:
                 console.print(

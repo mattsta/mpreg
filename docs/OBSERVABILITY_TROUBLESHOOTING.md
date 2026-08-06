@@ -82,11 +82,19 @@ Useful transport endpoints:
 Process-local operator surfaces (not WAN SLA):
 
 - `GET /metrics/strong` / `GET /mgmt/v1/strong` — majority-commit put counters,
-  pending, latency ring. CLI: `uv run mpreg monitor strong --url …`
+  pending, latency ring, CFT residual diagnostics (`last_abort_fail_peers`,
+  `abort_fail_peer_count`, `residual_ops_hint`). CLI:
+  `uv run mpreg monitor strong --url …`
 - `GET /metrics/shared-audit` — G-Set store size + epidemic counters.
   CLI: `uv run mpreg monitor audit --url …`
-- Prometheus: `mpreg_strong_*`, `mpreg_shared_audit_*` on `/metrics/prometheus`
+- Prometheus: `mpreg_strong_*` (incl. `mpreg_strong_abort_fail_peers` residual
+  candidate gauge — not auto-heal), `mpreg_shared_audit_*` on
+  `/metrics/prometheus`
 - Doctor: `uv run mpreg doctor --url … --strong --audit`
+  - Detail/table: `abort_fail_peer_count=` / residual ops hint
+  - JSON (`--format json`): strong rows carry `abort_fail_peer_count` (**int**),
+    `last_abort_fail_peers` (**list**), `residual_ops_hint` (**str**) — same
+    types as `/metrics/strong` (not auto-heal)
 - Runbook: `docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md`
 - Proof ledger: `docs/plans/DISTLAB_PROOF_LEDGER.md`
 

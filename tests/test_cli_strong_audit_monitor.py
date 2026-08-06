@@ -130,6 +130,7 @@ def test_doctor_strong_row_residual_ops_hint_field() -> None:
     """
     from mpreg.cli.main import (
         evaluate_strong_doctor_payload,
+        strong_doctor_json_residual_fields,
         strong_residual_ops_hint,
     )
 
@@ -167,22 +168,24 @@ def test_doctor_strong_row_residual_ops_hint_field() -> None:
     assert hint
     assert "--namespace ns-t71" in hint
     assert "--key key-t71" in hint
-    # Same shape doctor JSON rows use for metrics_strong / mgmt_strong
-    from mpreg.cli.main import _strong_abort_fail_peer_count
-
-    n = _strong_abort_fail_peer_count(body)
-    assert n >= 1
+    # T100/T101: doctor JSON residual fields — JSON-native int + list
+    fields = strong_doctor_json_residual_fields(body)
+    assert fields["residual_ops_hint"] == hint
+    assert "not auto-heal" in str(fields["residual_ops_hint"])
+    assert isinstance(fields["abort_fail_peer_count"], int)
+    assert fields["abort_fail_peer_count"] >= 1
+    assert isinstance(fields["last_abort_fail_peers"], list)
+    assert fields["last_abort_fail_peers"] == ["n1"]
+    assert fields["abort_fail_peer_count"] == len(fields["last_abort_fail_peers"])
     assert "abort_fail_peer_count=" in detail
-    row = {
+    row: dict[str, object] = {
         "check": "metrics_strong",
         "status": "OK",
         "detail": detail,
-        "residual_ops_hint": hint,
-        "abort_fail_peer_count": str(n),
+        **fields,
     }
-    assert row["residual_ops_hint"]
-    assert "not auto-heal" in row["residual_ops_hint"]
-    assert row["abort_fail_peer_count"] == str(n)
+    assert isinstance(row["abort_fail_peer_count"], int)
+    assert isinstance(row["last_abort_fail_peers"], list)
     # Empty when no residual candidates
     empty_body = {
         "health": "ok",
@@ -196,7 +199,12 @@ def test_doctor_strong_row_residual_ops_hint_field() -> None:
         "last_abort_fail_peers": [],
     }
     assert strong_residual_ops_hint(empty_body) == ""
-    assert _strong_abort_fail_peer_count(empty_body) == 0
+    empty_fields = strong_doctor_json_residual_fields(empty_body)
+    assert empty_fields["residual_ops_hint"] == ""
+    assert empty_fields["abort_fail_peer_count"] == 0
+    assert isinstance(empty_fields["abort_fail_peer_count"], int)
+    assert empty_fields["last_abort_fail_peers"] == []
+    assert isinstance(empty_fields["last_abort_fail_peers"], list)
 
 def test_doctor_shared_audit_evaluate_payload_honesty() -> None:
     """T22: evaluate_shared_audit_doctor_payload fails closed on dishonest caps."""
@@ -453,4 +461,88 @@ def test_strong_abort_fail_peer_count_max_hypothesis() -> None:
             assert n == max(reported, 0)
 
     _prop()
+
+def test_strong_doctor_json_residual_fields_types() -> None:
+    """T100/T101: doctor JSON residual fields use int + list (not str count)."""
+    from mpreg.cli.main import strong_doctor_json_residual_fields
+
+    residual = {
+        "last_abort_fail_peers": ["peer-a", "peer-b"],
+        "last_abort_fail_op_id": "oid-json",
+        "recent_abort_fails": [
+            {"op_id": "oid-json", "key": "orders/cart-1", "peers": ["peer-a", "peer-b"]}
+        ],
+        "abort_fail_peer_count": 2,
+    }
+    fields = strong_doctor_json_residual_fields(residual)
+    assert set(fields) == {
+        "residual_ops_hint",
+        "abort_fail_peer_count",
+        "last_abort_fail_peers",
+    }
+    assert isinstance(fields["abort_fail_peer_count"], int)
+    assert fields["abort_fail_peer_count"] == 2
+    assert isinstance(fields["last_abort_fail_peers"], list)
+    assert fields["last_abort_fail_peers"] == ["peer-a", "peer-b"]
+    assert isinstance(fields["residual_ops_hint"], str)
+    assert fields["residual_ops_hint"]
+    assert "cache-strong-retry-abort" in fields["residual_ops_hint"]
+    # Clean path
+    clean = strong_doctor_json_residual_fields({})
+    assert clean["abort_fail_peer_count"] == 0
+    assert isinstance(clean["abort_fail_peer_count"], int)
+    assert clean["last_abort_fail_peers"] == []
+    assert isinstance(clean["last_abort_fail_peers"], list)
+    assert clean["residual_ops_hint"] == ""
+
+def test_openapi_abort_fail_peer_count_example() -> None:
+    """T102: OpenAPI StrongMetrics documents integer example for peer count."""
+    from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
+
+    doc = build_monitoring_openapi()
+    schemas = (doc.get("components") or {}).get("schemas") or {}
+    strong = schemas.get("StrongMetricsResponse") or schemas.get("StrongMetrics") or {}
+    # Schema may nest under properties.strong or be the metrics body itself
+    props = strong.get("properties") or {}
+    if "strong" in props and isinstance(props.get("strong"), dict):
+        inner = (props["strong"].get("properties") or {})
+        props = inner or props
+    # Walk nested strong body properties if envelope
+    body_props = props
+    if "abort_fail_peer_count" not in body_props:
+        for key in ("strong", "data", "body"):
+            node = props.get(key) or {}
+            if isinstance(node, dict) and "properties" in node:
+                body_props = node["properties"]
+                break
+    # Fallback: search whole doc text for example wiring
+    import json
+
+    blob = json.dumps(doc)
+    assert "abort_fail_peer_count" in blob
+    # Find the property node
+    def _find_count(obj: object) -> dict | None:
+        if isinstance(obj, dict):
+            if "abort_fail_peer_count" in obj and isinstance(
+                obj["abort_fail_peer_count"], dict
+            ):
+                return obj["abort_fail_peer_count"]  # type: ignore[return-value]
+            for v in obj.values():
+                found = _find_count(v)
+                if found is not None:
+                    return found
+        elif isinstance(obj, list):
+            for v in obj:
+                found = _find_count(v)
+                if found is not None:
+                    return found
+        return None
+
+    node = _find_count(doc)
+    assert node is not None
+    assert node.get("type") == "integer"
+    assert node.get("example") == 1
+    assert "doctor" in str(node.get("description", "")).lower() or "integer" in str(
+        node.get("description", "")
+    ).lower()
 

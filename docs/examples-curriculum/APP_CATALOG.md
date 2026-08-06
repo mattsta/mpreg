@@ -76,7 +76,7 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · Friction: [API_FRICTION.md]
 | `cache_plus_federation`     | L2    | integration | L4 cache federation                             | cache, fabric             |
 | `ml_inference_mesh`         | L2    | product     | Router + vision/NLP                             | rpc, cluster              |
 | `cache_event_bus`           | L2    | integration | Cache ops → topic events                        | cache, pubsub             |
-| `ops_cli_tour`              | L2    | product     | CLI call/dns/doctor + STRONG residual_ops_hint ops loop | ops, rpc, dns, cache |
+| `ops_cli_tour`              | L2    | product     | CLI call/dns/doctor + residual_ops_hint + doctor JSON int/list peer count | ops, rpc, dns, cache |
 | `notification_fanout`       | L2    | product     | Email/push/audit wildcards                      | pubsub                    |
 | `billing_ledger`            | L2    | product     | Charge RPC + balance cache + settle queue       | rpc, cache, queue         |
 | `inventory_reserve`         | L2    | product     | Stock reserve/release + cache                   | rpc, cache                |

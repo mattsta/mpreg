@@ -81,6 +81,8 @@ uv run mpreg doctor --url "$MPREG_MONITORING_URL" --strong --audit
 | STRONG refuse | `mpreg_strong_*_refused_total` | 1012 paths (disabled/get/delete) |
 | STRONG pending | `mpreg_strong_pending` | >64 → degraded_pending |
 | STRONG latency | `mpreg_strong_put_latency_p99_ms` | **Lab ring only — not WAN SLA** |
+| STRONG residual candidates | `mpreg_strong_abort_fail_peers` / JSON `abort_fail_peer_count` | CFT ops count; info alert only — **not** auto-heal / WAN SLO |
+| STRONG residual hint | JSON `residual_ops_hint` (+ doctor/monitor) | Ops remediation string — **not** SIEM |
 | Audit store | `mpreg_shared_audit_store_size` | Bounded G-Set |
 | Audit drops | `mpreg_shared_audit_publish_dropped_total` | degraded_drops |
 | Audit caps | `/metrics/shared-audit` `capabilities.*` | siem/bft/… always false |
@@ -88,8 +90,10 @@ uv run mpreg doctor --url "$MPREG_MONITORING_URL" --strong --audit
 
 Honesty fail-closed alerts (packaged `mpreg/ops/prometheus_alerts.yml` group
 `mpreg_strong_shared_audit`): fire if `mpreg_strong_cap_get_quorum` or
-`mpreg_shared_audit_cap_siem` (etc.) ever scrape **> 0**. Lab pending/drop
-alerts are process-local — **not** WAN SLOs.
+`mpreg_shared_audit_cap_siem` (etc.) ever scrape **> 0**. Info alert
+`MPREGStrongAbortFailPeersPresent` guides ops when residual candidates exist —
+**not** automatic heal. Lab pending/drop alerts are process-local — **not**
+WAN SLOs.
 
 Do **not** page on STRONG p99 as a multi-region contract. See
 `docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md`.

@@ -142,7 +142,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `cache.namespace_ops`   | Clear/list/scan namespace  | `namespace_operation`                                                     | shipped | `cache_atomic_ops`                                              |
 | `cache.pubsub_events`   | Cache→pubsub integration   | `CachePubSubIntegration`                                                  | shipped | `cache_event_bus`                                               |
 | `cache.rpc_surface`     | Cache via unified client   | `MPREGClient.cache_get/put`                                               | shipped | `unified_client_tour`                                           |
-| `cache.strong`          | Majority-commit STRONG put (CFT ABORT best-effort) | `StrongPutCoordinator`, `ConsistencyLevel.STRONG`, `cache_strong_enabled`; ops re-ABORT: `retry_abort` / `MPREGClient.cache_strong_retry_abort`; metrics `residual_ops_hint` / `abort_fail_peer_count`; prom `mpreg_strong_abort_fail_peers` | shipped | `cache_strong_quorum`                                           |
+| `cache.strong`          | Majority-commit STRONG put (CFT ABORT best-effort) | `StrongPutCoordinator`, `ConsistencyLevel.STRONG`, `cache_strong_enabled`; ops re-ABORT: `retry_abort` / `MPREGClient.cache_strong_retry_abort`; metrics `residual_ops_hint` / `abort_fail_peer_count` (int); doctor JSON `last_abort_fail_peers` (list); prom `mpreg_strong_abort_fail_peers` | shipped | `cache_strong_quorum`                                           |
 
 ---
 

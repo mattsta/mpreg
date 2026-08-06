@@ -171,6 +171,16 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T97 Hypothesis peer-count max | max(reported, len(peers)) | product |
 | T98 metrics peer-count unit | build_strong_metrics abort_fail_peer_count | product |
 | T99 OPERATE doctor peer count | OPERATE detail/JSON/monitor | teach |
+| T100 doctor JSON peer count int | strong_doctor_json_residual_fields int | product |
+| T101 doctor JSON peers list | last_abort_fail_peers on doctor JSON | product |
+| T102 OpenAPI peer count example | abort_fail_peer_count example: 1 | support ops |
+| T103 OBS/SLO peer count | OBSERVABILITY + SLO residual signals | teach |
+| T104 claims peer-count closeout | claims.yaml T66–T109 + non_claims | honesty |
+| T105 master residual index | DISTLAB + master residual honesty index | teach |
+| T106 curriculum doctor JSON types | ops_cli int/list asserts | teach |
+| T107 docs doctor JSON types | design/runbook/client/OPERATE/CACHING | teach |
+| T108 doctor JSON fields unit | strong_doctor_json_residual_fields unit | product |
+| T109 gate T100–T109 | residual closeouts + ledger gate | support |
 
 ## Non-claims (do not market)
 
@@ -234,6 +244,21 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 - Hypothesis max(reported, peers) is pure unit — not live mesh, not auto-heal
 - build_strong_metrics peer-count unit tests use mocks — not live mesh
 - OPERATE doctor/monitor peer-count docs are guidance — not residual-free claim
+- Doctor JSON abort_fail_peer_count int type is ops presentation — not
+  automatic heal, not residual-free proof, not SIEM
+- Doctor JSON last_abort_fail_peers list is ops presentation — not
+  residual-free proof, not automatic heal
+- OpenAPI abort_fail_peer_count example is documentation — not auto-heal
+- OBSERVABILITY/SLO residual peer-count docs are guidance — not WAN SLO
+- claims residual closeout inventory T66–T109 is proof list — not residual-free
+  product guarantee under lost ABORT
+- Master/DISTLAB residual honesty index is planning cross-link — not Jepsen
+- Curriculum doctor JSON int/list asserts are teachable — not auto-heal
+- Design/runbook/client doctor JSON type polish is documentation — not
+  residual-free claim
+- strong_doctor_json_residual_fields unit tests are pure typing — not live mesh
+- Residual honesty gate T100–T109 is same-host closeout coverage — not
+  WAN/BFT/Jepsen
 
 ## Gate commands
 
@@ -284,6 +309,11 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t95_residuals.py tests/chaos/test_t96_residuals.py \
   tests/chaos/test_t97_residuals.py tests/chaos/test_t98_residuals.py \
   tests/chaos/test_t99_residuals.py \
+  tests/chaos/test_t100_residuals.py tests/chaos/test_t101_residuals.py \
+  tests/chaos/test_t102_residuals.py tests/chaos/test_t103_residuals.py \
+  tests/chaos/test_t104_residuals.py tests/chaos/test_t105_residuals.py \
+  tests/chaos/test_t106_residuals.py tests/chaos/test_t107_residuals.py \
+  tests/chaos/test_t108_residuals.py tests/chaos/test_t109_residuals.py \
   tests/integration/test_cache_strong_live_mesh.py \
   tests/testing/test_distlab_live.py::test_distlab_live_strong_metrics_e2e \
   tests/test_config_check_cli.py tests/test_unified_client.py -q

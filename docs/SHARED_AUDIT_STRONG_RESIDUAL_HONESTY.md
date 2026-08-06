@@ -1200,3 +1200,95 @@ Still **not** claimed: docs are residual-free product claim.
 
 Plan: `docs/plans/DISTLAB_T99_OPERATE_DOCTOR_PEER_COUNT_PLAN.md`.
 
+## Phase 88 — Doctor JSON abort_fail_peer_count int (2026-08-06)
+
+T100: doctor JSON strong rows emit ``abort_fail_peer_count`` as a JSON
+**integer** (not a string), matching ``/metrics/strong`` and Prometheus
+``mpreg_strong_abort_fail_peers``. Helper ``strong_doctor_json_residual_fields``
+centralizes residual row typing.
+
+Still **not** claimed: doctor field is auto-heal; residual-free proof.
+
+Plan: `docs/plans/DISTLAB_T100_DOCTOR_JSON_PEER_COUNT_INT_PLAN.md`.
+
+## Phase 89 — Doctor JSON last_abort_fail_peers list (2026-08-06)
+
+T101: doctor JSON strong rows always include ``last_abort_fail_peers`` as a
+JSON **list** (``[]`` when clean), alongside int count and residual_ops_hint.
+
+Still **not** claimed: peer list is residual-free proof; SIEM.
+
+Plan: `docs/plans/DISTLAB_T101_DOCTOR_JSON_PEERS_LIST_PLAN.md`.
+
+## Phase 90 — OpenAPI abort_fail_peer_count example (2026-08-06)
+
+T102: OpenAPI StrongMetrics ``abort_fail_peer_count`` documents integer
+``example: 1`` and notes doctor JSON uses the same int type.
+
+Still **not** claimed: OpenAPI example is HTTP invoke or auto-heal.
+
+Plan: `docs/plans/DISTLAB_T102_OPENAPI_PEER_COUNT_EXAMPLE_PLAN.md`.
+
+## Phase 91 — OBSERVABILITY + SLO residual peer count (2026-08-06)
+
+T103: OBSERVABILITY_TROUBLESHOOTING and SLO_GOLDEN_SIGNALS document residual
+candidate gauge, doctor JSON int/list fields, and info-alert non-claims.
+
+Still **not** claimed: docs are WAN SLO or auto-heal.
+
+Plan: `docs/plans/DISTLAB_T103_OBS_SLO_PEER_COUNT_PLAN.md`.
+
+## Phase 92 — claims.yaml residual peer-count closeout (2026-08-06)
+
+T104: INV-CACHE-STRONG-01 proof tests list T66–T109 residual closeouts;
+non_claims cover doctor JSON int/list and OpenAPI example honesty.
+
+Still **not** claimed: claims text is residual-free product guarantee.
+
+Plan: `docs/plans/DISTLAB_T104_CLAIMS_PEER_COUNT_CLOSEOUT_PLAN.md`.
+
+## Phase 93 — Master/DISTLAB residual honesty index (2026-08-06)
+
+T105: DISTLAB_AND_SEVEN_TRACKS + master plan note residual honesty T66–T109
+(peer-count + doctor JSON typing) beyond seven-track complete dashboard.
+
+Still **not** claimed: index is Jepsen/WAN proof.
+
+Plan: `docs/plans/DISTLAB_T105_MASTER_INDEX_PEER_COUNT_PLAN.md`.
+
+## Phase 94 — Curriculum doctor JSON int/list (2026-08-06)
+
+T106: ops_cli_tour asserts doctor JSON ``abort_fail_peer_count`` is int and
+``last_abort_fail_peers`` is list with count==len(peers).
+
+Still **not** claimed: curriculum is live auto-heal.
+
+Plan: `docs/plans/DISTLAB_T106_CURRICULUM_DOCTOR_JSON_TYPES_PLAN.md`.
+
+## Phase 95 — Design/runbook/client doctor JSON polish (2026-08-06)
+
+T107: design, CACHING_SYSTEM, runbook, client guide, OPERATE, FEATURE_CATALOG
+document doctor JSON int count + list peers.
+
+Still **not** claimed: docs are residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T107_DOCS_DOCTOR_JSON_TYPES_PLAN.md`.
+
+## Phase 96 — Doctor JSON residual fields unit (2026-08-06)
+
+T108: unit tests for ``strong_doctor_json_residual_fields`` types + OpenAPI
+example integer wiring.
+
+Still **not** claimed: unit mocks are live mesh; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T108_DOCTOR_JSON_FIELDS_UNIT_PLAN.md`.
+
+## Phase 97 — Residual honesty gate T100–T109 (2026-08-06)
+
+T109: residual closeout tests T100–T109, ledger rows, gate command list
+extended; full related residual gate green.
+
+Still **not** claimed: gate is WAN/BFT/Jepsen proof.
+
+Plan: `docs/plans/DISTLAB_T109_GATE_T100_T109_PLAN.md`.
+

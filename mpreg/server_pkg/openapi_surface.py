@@ -137,8 +137,12 @@ def _strong_metrics_schema() -> dict[str, Any]:
                         "description": (
                             "len(last_abort_fail_peers) — same value as Prometheus "
                             "mpreg_strong_abort_fail_peers. CFT residual candidate "
-                            "count; process-local; not residual-free proof; not auto-heal."
+                            "count; process-local; not residual-free proof; not auto-heal. "
+                            "Doctor JSON (mpreg doctor --strong --format json) uses the "
+                            "same integer type on metrics_strong/mgmt_strong rows."
                         ),
+                        # T102: populated residual-candidate example (0 is clean-put)
+                        "example": 1,
                     },
                     "last_abort_fail_op_id": {
                         "type": "string",

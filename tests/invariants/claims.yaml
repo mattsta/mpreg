@@ -272,6 +272,50 @@ encapsulation:
       - tests/chaos/test_t63_residuals.py
       - tests/chaos/test_t64_residuals.py
       - tests/chaos/test_t65_residuals.py
+      - tests/chaos/test_t66_residuals.py
+      - tests/chaos/test_t67_residuals.py
+      - tests/chaos/test_t68_residuals.py
+      - tests/chaos/test_t69_residuals.py
+      - tests/chaos/test_t70_residuals.py
+      - tests/chaos/test_t71_residuals.py
+      - tests/chaos/test_t72_residuals.py
+      - tests/chaos/test_t73_residuals.py
+      - tests/chaos/test_t74_residuals.py
+      - tests/chaos/test_t75_residuals.py
+      - tests/chaos/test_t76_residuals.py
+      - tests/chaos/test_t77_residuals.py
+      - tests/chaos/test_t78_residuals.py
+      - tests/chaos/test_t79_residuals.py
+      - tests/chaos/test_t80_residuals.py
+      - tests/chaos/test_t81_residuals.py
+      - tests/chaos/test_t82_residuals.py
+      - tests/chaos/test_t83_residuals.py
+      - tests/chaos/test_t84_residuals.py
+      - tests/chaos/test_t85_residuals.py
+      - tests/chaos/test_t86_residuals.py
+      - tests/chaos/test_t87_residuals.py
+      - tests/chaos/test_t88_residuals.py
+      - tests/chaos/test_t89_residuals.py
+      - tests/chaos/test_t90_residuals.py
+      - tests/chaos/test_t91_residuals.py
+      - tests/chaos/test_t92_residuals.py
+      - tests/chaos/test_t93_residuals.py
+      - tests/chaos/test_t94_residuals.py
+      - tests/chaos/test_t95_residuals.py
+      - tests/chaos/test_t96_residuals.py
+      - tests/chaos/test_t97_residuals.py
+      - tests/chaos/test_t98_residuals.py
+      - tests/chaos/test_t99_residuals.py
+      - tests/chaos/test_t100_residuals.py
+      - tests/chaos/test_t101_residuals.py
+      - tests/chaos/test_t102_residuals.py
+      - tests/chaos/test_t103_residuals.py
+      - tests/chaos/test_t104_residuals.py
+      - tests/chaos/test_t105_residuals.py
+      - tests/chaos/test_t106_residuals.py
+      - tests/chaos/test_t107_residuals.py
+      - tests/chaos/test_t108_residuals.py
+      - tests/chaos/test_t109_residuals.py
       - tests/invariants/test_cache_strong_properties.py
       - tests/invariants/test_cache_strong_history.py
       - tests/integration/test_cache_strong_quorum.py
@@ -357,6 +401,17 @@ non_claims:
   - "Hypothesis max(reported, len(peers)) peer-count property is pure unit — not live mesh, not automatic heal"
   - "build_strong_metrics abort_fail_peer_count unit tests use mocks — not live mesh, not automatic heal"
   - "OPERATE doctor/monitor abort_fail_peer_count docs are operator guidance — not residual-free product claim"
+  - "Doctor JSON abort_fail_peer_count is a JSON integer matching /metrics/strong — not automatic heal, not residual-free proof, not SIEM"
+  - "Doctor JSON last_abort_fail_peers list field is ops presentation — not residual-free proof, not automatic heal, not SIEM"
+  - "OpenAPI abort_fail_peer_count example is documentation of wire/metrics shape — not HTTP invoke, not SIEM, not auto-heal"
+  - "OBSERVABILITY/SLO residual peer-count docs are operator guidance — not WAN SLO contracts, not automatic heal"
+  - "claims.yaml residual closeout test list T66–T109 is proof inventory — not residual-free product guarantee under lost ABORT"
+  - "Master/DISTLAB residual honesty index T66–T109 is planning cross-link — not Jepsen/Elle/WAN proof"
+  - "Curriculum doctor JSON int/list asserts are teachable guidance — not live auto-heal, not SIEM"
+  - "Design/runbook/client doctor JSON int+list polish is documentation honesty — not residual-free product claim"
+  - "strong_doctor_json_residual_fields unit tests are pure typing checks — not live mesh, not automatic heal"
+  - "Residual honesty gate T100–T109 is same-host residual closeout coverage — not WAN/BFT/Jepsen proof"
+
   - "Lying COMMIT_ACK applied bits can satisfy CFT quorum math without peer L1 apply — documented non_claim (not BFT)"
   - "mpreg.testing.distlab is Jepsen-inspired (history/checker/nemesis) — not Elle, not WAN geo generators, not a JVM Jepsen port"
   - "DistLab lab SLI budgets (p99/avg soak bounds) are same-host in-process — not production WAN latency SLAs"

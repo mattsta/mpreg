@@ -655,7 +655,9 @@ Ops: `mpreg monitor strong` (`abort_fail_peers=` / `abort_fail_peer_count=` / `a
 `residual_ops_hint` / `abort_fail_peer_count` on `/metrics/strong` and GCM `strong_status` (empty when no
 candidates; CLI template for `cache-strong-retry-abort` — not auto-heal; may
 fill ns/key from `recent_abort_fails`; helper
-`mpreg.core.cache_strong.format_residual_ops_hint`),
+`mpreg.core.cache_strong.format_residual_ops_hint`), doctor JSON
+(`mpreg doctor --strong --format json`) strong rows: `abort_fail_peer_count`
+(**int**), `last_abort_fail_peers` (**list**), `residual_ops_hint` (**str**),
 `mpreg_strong_aborts_peer_*`, `mpreg_strong_visible` / `_backups` /
 `_backups_pruned_total`, `mpreg_strong_abort_fail_peers` (count of
 `last_abort_fail_peers`; process-local CFT residual candidates). Info alert

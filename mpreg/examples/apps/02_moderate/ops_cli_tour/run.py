@@ -661,21 +661,19 @@ async def main() -> None:
                     )
                     import json as _json
 
+                    # CliRunner may prefix log lines; parse first JSON object robustly
+                    # (brace-depth scanners break on `{`/`}` inside JSON strings).
                     raw = doc_j.output
                     brace = raw.find("{")
                     ensure(brace >= 0, f"doctor json missing object: {raw[:200]}")
-                    depth = 0
-                    end = None
-                    for i, ch in enumerate(raw[brace:], start=brace):
-                        if ch == "{":
-                            depth += 1
-                        elif ch == "}":
-                            depth -= 1
-                            if depth == 0:
-                                end = i + 1
-                                break
-                    ensure(end is not None, "doctor json unbalanced")
-                    ddata = _json.loads(raw[brace:end])
+                    try:
+                        ddata, _end = _json.JSONDecoder().raw_decode(raw[brace:])
+                    except _json.JSONDecodeError as exc:
+                        ensure(False, f"doctor json parse: {exc}; raw={raw[:400]!r}")
+                    ensure(
+                        isinstance(ddata, dict),
+                        f"doctor json not object: {type(ddata).__name__}",
+                    )
                     checks = ddata.get("checks") or []
                     strong_rows = [
                         c
@@ -696,20 +694,38 @@ async def main() -> None:
                             isinstance(row.get("residual_ops_hint"), str),
                             f"residual_ops_hint not str: {row!r}",
                         )
-                        # T90: doctor JSON abort_fail_peer_count (0 when clean)
+                        # T90/T100: doctor JSON abort_fail_peer_count is int (0 clean)
                         ensure(
                             "abort_fail_peer_count" in row,
                             f"strong row missing abort_fail_peer_count: {row!r}",
                         )
                         ensure(
-                            str(row.get("abort_fail_peer_count", "")).isdigit()
-                            or str(row.get("abort_fail_peer_count")) == "0",
-                            f"abort_fail_peer_count not numeric: {row!r}",
+                            isinstance(row.get("abort_fail_peer_count"), int),
+                            f"abort_fail_peer_count not int: {row!r}",
+                        )
+                        ensure(
+                            int(row.get("abort_fail_peer_count") or 0) >= 0,
+                            f"abort_fail_peer_count negative: {row!r}",
+                        )
+                        # T101: last_abort_fail_peers list on doctor JSON rows
+                        ensure(
+                            "last_abort_fail_peers" in row,
+                            f"strong row missing last_abort_fail_peers: {row!r}",
+                        )
+                        ensure(
+                            isinstance(row.get("last_abort_fail_peers"), list),
+                            f"last_abort_fail_peers not list: {row!r}",
+                        )
+                        ensure(
+                            int(row.get("abort_fail_peer_count") or 0)
+                            == len(list(row.get("last_abort_fail_peers") or [])),
+                            f"count≠len(peers): {row!r}",
                         )
                     step(
                         "ERG: doctor --strong --format json → residual_ops_hint + "
-                        "abort_fail_peer_count on metrics_strong/mgmt_strong "
-                        "(empty/0 when clean; not auto-heal)"
+                        "abort_fail_peer_count (int) + last_abort_fail_peers (list) "
+                        "on metrics_strong/mgmt_strong (empty/0/[] when clean; "
+                        "not auto-heal)"
                     )
                     ok(
                         f"monitor strong/audit table + doctor exit={doc.exit_code}"

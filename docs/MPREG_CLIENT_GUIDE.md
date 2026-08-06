@@ -975,7 +975,7 @@ endpoints.
     process-local `recent_abort_fails[].key`). Library helper:
     `from mpreg.core.cache_strong import format_residual_ops_hint`.
     Hint is operator guidance after network recovery — **not** automatic heal.
-    DistLab: `strong.cft_residual_ops_hint_enriched` (guidance only). Prometheus gauge `mpreg_strong_abort_fail_peers` / JSON `abort_fail_peer_count` mirror `len(last_abort_fail_peers)` (process-local; not auto-heal). Doctor JSON (`mpreg doctor --strong --format json`) includes `residual_ops_hint` on strong check rows.
+    DistLab: `strong.cft_residual_ops_hint_enriched` (guidance only). Prometheus gauge `mpreg_strong_abort_fail_peers` / JSON `abort_fail_peer_count` mirror `len(last_abort_fail_peers)` (process-local; not auto-heal). Doctor JSON (`mpreg doctor --strong --format json`) includes on strong check rows: `residual_ops_hint` (str), `abort_fail_peer_count` (int), `last_abort_fail_peers` (list) — same types as `/metrics/strong`.
   Still CFT; not background heal. Pending TTL does **not** clear residual L1.
   Default **off** → `1012 UNSUPPORTED_CONSISTENCY`. STRONG **get** and
   **delete** always refuse with `1012`. Operational put failures use

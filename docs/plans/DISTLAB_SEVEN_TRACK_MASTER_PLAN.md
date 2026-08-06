@@ -450,3 +450,12 @@ Re-run full gate after T5 and after T7.
 2. Fix production module.
 3. Add DistLab regression scenario named `reg_<bug>`.
 4. Check off T6 point + scenario in registry.
+
+---
+
+## Residual honesty extension (post seven-track)
+
+After T7 complete, residual honesty continues as T17+ plans (see
+`docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md` through Phase 97 / T109).
+Peer-count + doctor JSON typing closeout: T80–T109. Not Jepsen/WAN/BFT.
+
