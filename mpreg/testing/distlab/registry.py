@@ -68,6 +68,100 @@ class ScenarioRegistry:
             out.append({"name": n, **m})
         return out
 
+    def select(
+        self,
+        *,
+        track: str = "",
+        prefix: str = "",
+        tag: str = "",
+        names: list[str] | None = None,
+        exclude_tags: tuple[str, ...] = ("not_bft",),
+        limit: int = 0,
+    ) -> list[str]:
+        """Select scenario names for suite runs.
+
+        By default excludes ``not_bft`` demos (they may leave intentional dirty state).
+        """
+        if names:
+            chosen = list(names)
+        else:
+            chosen = []
+            for n in self.list():
+                m = self.meta(n)
+                if track and m.get("track") != track:
+                    continue
+                if prefix and not n.startswith(prefix):
+                    continue
+                tags = set(m.get("tags") or [])
+                if tag and tag not in tags:
+                    continue
+                if exclude_tags and tags.intersection(exclude_tags):
+                    continue
+                chosen.append(n)
+        if limit and limit > 0:
+            chosen = chosen[:limit]
+        return chosen
+
+    async def run_suite(
+        self,
+        *,
+        track: str = "",
+        prefix: str = "",
+        tag: str = "",
+        names: list[str] | None = None,
+        exclude_tags: tuple[str, ...] = ("not_bft",),
+        limit: int = 0,
+        fail_fast: bool = False,
+    ) -> dict[str, Any]:
+        """Run multiple scenarios; return aggregate report."""
+        selected = self.select(
+            track=track,
+            prefix=prefix,
+            tag=tag,
+            names=names,
+            exclude_tags=exclude_tags,
+            limit=limit,
+        )
+        results: list[ScenarioResult] = []
+        failed: list[str] = []
+        for name in selected:
+            try:
+                res = await self.run(name)
+            except Exception as exc:  # noqa: BLE001
+                from mpreg.testing.distlab.models import CheckResult, CheckViolation
+
+                res = ScenarioResult(
+                    name=name,
+                    ok=False,
+                    duration_s=0.0,
+                    history_len=0,
+                    check=CheckResult(
+                        name="suite",
+                        ok=False,
+                        violations=[
+                            CheckViolation(
+                                checker="suite",
+                                message=f"{type(exc).__name__}: {exc}",
+                            )
+                        ],
+                    ),
+                    meta={"suite_error": True},
+                )
+            results.append(res)
+            if not res.ok:
+                failed.append(name)
+                if fail_fast:
+                    break
+        return {
+            "ok": not failed,
+            "selected": selected,
+            "ran": len(results),
+            "passed": sum(1 for r in results if r.ok),
+            "failed": failed,
+            "results": [r.to_dict() for r in results],
+            "total_duration_s": sum(r.duration_s for r in results),
+        }
+
 # Process-global default registry (builtins register on import of builtins module).
 DEFAULT_REGISTRY = ScenarioRegistry(name="mpreg-distlab")
 

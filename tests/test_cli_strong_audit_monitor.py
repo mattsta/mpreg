@@ -21,3 +21,9 @@ def test_doctor_strong_audit_flags_help() -> None:
     assert r.exit_code == 0
     assert "--strong" in r.output
     assert "--audit" in r.output
+
+def test_distlab_suite_help() -> None:
+    r = CliRunner().invoke(cli, ["distlab", "suite", "--help"])
+    assert r.exit_code == 0
+    assert "--track" in r.output
+    assert "--limit" in r.output

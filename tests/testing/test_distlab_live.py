@@ -367,3 +367,91 @@ async def test_distlab_live_audit_late_joiner(
             await wait_gossip_connected(all_servers, timeout=14.0)
             # Late node should see prior cluster events via gossip/reconcile
             await wait_audit_cluster_events(all_servers, min_events=2, timeout=22.0)
+
+@pytest.mark.asyncio
+async def test_distlab_live_strong_metrics_e2e(
+    test_context: AsyncTestContext,
+) -> None:
+    """T17: live STRONG put then scrape /metrics/strong + prometheus on origin."""
+    import aiohttp
+
+    with port_range_context(6, "servers") as ports:
+        sp, mp = ports[0:3], ports[3:6]
+        url0 = f"ws://127.0.0.1:{sp[0]}"
+
+        def _settings(port: int, mon: int, name: str, peers=None):
+            from mpreg.core.config import MPREGSettings
+
+            return MPREGSettings(
+                host="127.0.0.1",
+                port=port,
+                name=name,
+                cluster_id="distlab-metrics-e2e",
+                resources={f"r-{name}"},
+                peers=peers or [],
+                log_level="ERROR",
+                gossip_interval=0.25,
+                monitoring_enabled=True,
+                monitoring_port=mon,
+                enable_default_cache=True,
+                cache_strong_enabled=True,
+                cache_strong_replica_factor=3,
+                cache_strong_min_replicas=3,
+                cache_strong_prepare_timeout_s=1.5,
+                cache_strong_commit_timeout_s=1.5,
+            )
+
+        servers = [
+            MPREGServer(_settings(sp[0], mp[0], "E0")),
+            MPREGServer(_settings(sp[1], mp[1], "E1", peers=[url0])),
+            MPREGServer(_settings(sp[2], mp[2], "E2", peers=[url0])),
+        ]
+        test_context.servers.extend(servers)
+        tasks = [asyncio.create_task(s.server()) for s in servers]
+        test_context.tasks.extend(tasks)
+        await asyncio.sleep(1.2)
+        await wait_cache_peers(servers)
+
+        sut = LiveStrongSUT(servers=servers)
+        history = History()
+        res = await sut.put(
+            history,
+            process="c0",
+            origin_index=0,
+            logical_key="e2e-m",
+            value={"e2e": True},
+        )
+        assert res.success is True, res.error_message
+
+        mon_port = servers[0]._monitoring_system.monitoring_port
+        base = f"http://127.0.0.1:{mon_port}"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{base}/metrics/strong") as resp:
+                assert resp.status == 200
+                data = await resp.json()
+                strong = data["strong"]
+                assert strong.get("coordinator_bound") is True
+                counters = strong.get("counters") or {}
+                assert int(counters.get("puts_ok", 0)) >= 1
+                lat = strong.get("latency_ms") or {}
+                assert int(lat.get("sample_count", 0)) >= 1
+                assert strong.get("health") in {"ok", "degraded_pending"}
+
+            async with session.get(f"{base}/mgmt/v1/strong") as resp:
+                assert resp.status == 200
+                data = await resp.json()
+                assert "strong" in data
+
+            async with session.get(f"{base}/metrics/prometheus") as resp:
+                assert resp.status == 200
+                text = await resp.text()
+                assert "mpreg_strong_enabled" in text
+                assert "mpreg_strong_puts_ok_total" in text
+
+        # Local RYW on origin GCM
+        from mpreg.core.cache_models import GlobalCacheKey
+
+        key = GlobalCacheKey(namespace="distlab-live", identifier="e2e-m", version="v1")
+        got = await servers[0]._cache_manager.get(key)
+        assert got.success and got.entry is not None
+        assert got.entry.value == {"e2e": True}

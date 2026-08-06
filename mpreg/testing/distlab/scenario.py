@@ -89,6 +89,13 @@ class Scenario:
         checker = self.checker or CompositeChecker(name="empty", checkers=[])
         check = checker.check(self.history, state=state)
         duration = time.time() - t0
+        meta = dict(self.meta)
+        # T17: operator/debug taxonomy from history (not WAN SLA)
+        try:
+            meta.setdefault("error_codes", self.history.error_code_counts())
+            meta.setdefault("outcomes", self.history.outcome_counts())
+        except Exception:  # noqa: BLE001
+            pass
         result = ScenarioResult(
             name=self.name,
             ok=check.ok,
@@ -96,7 +103,7 @@ class Scenario:
             history_len=len(self.history),
             check=check,
             nemesis_actions=self.nemesis.action_count if self.nemesis else 0,
-            meta=dict(self.meta),
+            meta=meta,
         )
 
         if self.teardown is not None:

@@ -153,3 +153,23 @@ delay-beyond-timeout, crash-recover, pending-full recover, expired-commit
 regression, lie-commit single/both (not_bft).
 
 DistLab is **Jepsen-inspired, not Jepsen**. See claims.yaml non_claims.
+
+## Phase 5 — Ops e2e + residual non-committer fix + suite CLI (2026-08-06)
+
+T11–T16 shipped operator metrics/CLI/live/SLI/proof. T17 adds:
+
+* **Product fix (T16 residual):** after successful majority commit, coordinator
+  ABORTs prepared non-committers so minority drop-commit leaves zero pending
+  (`aborted_non_committers` in `quorum_info`).
+* **History taxonomy:** `History.error_code_counts()` / `outcome_counts()` attached
+  to `ScenarioResult.meta`.
+* **Suite runner:** `uv run mpreg distlab suite --track T2 --limit N` (excludes
+  `not_bft` by default).
+* **Live e2e:** STRONG put → scrape `/metrics/strong` + prometheus counters.
+* **RYW local:** multi-GCM mesh get after majority put via peer bridge (not quorum get).
+
+Plans: `docs/plans/DISTLAB_T11_OPS_OBS_PERF_CAPABILITY_PLAN.md`,
+`docs/plans/DISTLAB_T17_E2E_RESIDUAL_CAPABILITY_PLAN.md`,
+`docs/plans/DISTLAB_PROOF_LEDGER.md`.
+
+Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete.

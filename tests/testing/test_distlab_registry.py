@@ -167,3 +167,30 @@ async def test_audit_burst_generator() -> None:
         checker=default_audit_checkers(min_ids=5),
     ).run()
     assert r.ok
+
+@pytest.mark.asyncio
+async def test_registry_run_suite_prefix_limit() -> None:
+    from mpreg.testing.distlab.builtins import ensure_builtins
+    from mpreg.testing.distlab.registry import get_registry
+
+    ensure_builtins()
+    reg = get_registry()
+    report = await reg.run_suite(prefix="strong.happy_", limit=2, fail_fast=True)
+    assert report["ran"] == 2
+    assert report["ok"] is True
+    assert report["passed"] == 2
+    # taxonomy attached on scenario meta
+    for row in report["results"]:
+        assert "error_codes" in (row.get("meta") or {})
+
+def test_registry_select_excludes_not_bft() -> None:
+    from mpreg.testing.distlab.builtins import ensure_builtins
+    from mpreg.testing.distlab.registry import get_registry
+
+    ensure_builtins()
+    reg = get_registry()
+    names = reg.select(prefix="strong.")
+    assert all("not_bft" not in n for n in names)
+    assert "strong.not_bft_lie_commit_both" not in names
+    with_bft = reg.select(prefix="strong.", exclude_tags=())
+    assert "strong.not_bft_lie_commit_both" in with_bft

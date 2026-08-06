@@ -214,3 +214,65 @@ async def test_mesh_peer_gcm_readable_after_strong_put() -> None:
 
     for g in gcms.values():
         await g.shutdown()
+
+@pytest.mark.asyncio
+async def test_mesh_ryw_all_gcms_after_strong_put() -> None:
+    """T17: after majority put, every peer GCM local get sees committed value (bridge)."""
+    transport = InProcessStrongTransport()
+    gcms: dict[str, GlobalCacheManager] = {}
+    backends: dict[str, StrongLocalBackend] = {}
+    coords: dict[str, StrongPutCoordinator] = {}
+
+    for nid in ("n0", "n1", "n2"):
+        gcm = GlobalCacheManager(
+            GlobalCacheConfiguration(
+                enable_l2_persistent=False,
+                enable_l3_distributed=False,
+                enable_l4_federation=False,
+                local_cluster_id="ryw",
+            )
+        )
+        gcms[nid] = gcm
+
+        def make_apply(g):
+            return lambda e: g._put_to_l1(e)
+
+        be = StrongLocalBackend(node_id=nid, on_visible_apply=make_apply(gcm))
+        backends[nid] = be
+        transport.register(be)
+
+    for nid in ("n0", "n1", "n2"):
+        coord = StrongPutCoordinator(
+            origin_id=nid,
+            local=backends[nid],
+            transport=transport,
+            cluster_id="ryw",
+            replica_factor=3,
+            min_replicas=3,
+            prepare_timeout_s=0.5,
+            commit_timeout_s=0.5,
+        )
+        coords[nid] = coord
+        gcms[nid].attach_strong_coordinator(coord)
+
+    key = GlobalCacheKey(namespace="ryw", identifier="k", version="v1")
+    try:
+        res = await coords["n0"].strong_put(
+            key,
+            {"ryw": 7},
+            metadata=CacheMetadata(created_by="n0"),
+            eligible_peers=["n0", "n1", "n2"],
+        )
+        assert res.success, res.error_message
+        # Origin GCM put path also applies L1 on success when using gcm.put —
+        # here coordinator-only; apply origin entry like production GCM does.
+        if res.entry is not None:
+            gcms["n0"]._put_to_l1(res.entry)
+        for nid, gcm in gcms.items():
+            got = await gcm.get(key)
+            assert got.success and got.entry is not None, nid
+            assert got.entry.value == {"ryw": 7}, nid
+            assert gcm.strong_status()["enabled"] is True
+    finally:
+        for g in gcms.values():
+            await g.shutdown()

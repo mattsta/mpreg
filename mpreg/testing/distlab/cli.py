@@ -92,6 +92,57 @@ def run_scenario(name: str, *, as_json: bool = False) -> int:
                 print(f"  - [{v.checker}] {v.message}", file=sys.stderr)
     return 0 if result.ok else 1
 
+def run_suite(
+    *,
+    track: str = "",
+    prefix: str = "",
+    tag: str = "",
+    names: list[str] | None = None,
+    include_not_bft: bool = False,
+    limit: int = 0,
+    fail_fast: bool = False,
+    as_json: bool = False,
+) -> int:
+    """Run a filtered DistLab suite. Exit 0 all pass / 1 any fail / 2 empty selection."""
+    reg = _ensure_registry()
+    exclude = () if include_not_bft else ("not_bft",)
+
+    async def _run():
+        return await reg.run_suite(
+            track=track,
+            prefix=prefix,
+            tag=tag,
+            names=names,
+            exclude_tags=exclude,
+            limit=limit,
+            fail_fast=fail_fast,
+        )
+
+    report = asyncio.run(_run())
+    if not report.get("selected"):
+        print("error: no scenarios selected", file=sys.stderr)
+        return 2
+    if as_json:
+        print(json.dumps(report, indent=2, default=str))
+    else:
+        status = "PASS" if report["ok"] else "FAIL"
+        print(
+            f"{status} suite ran={report['ran']} passed={report['passed']} "
+            f"failed={len(report['failed'])} "
+            f"duration={report['total_duration_s']:.3f}s"
+        )
+        for name in report.get("failed") or []:
+            print(f"  FAIL {name}", file=sys.stderr)
+        # compact per-scenario lines
+        for row in report.get("results") or []:
+            st = "PASS" if row.get("ok") else "FAIL"
+            print(
+                f"  {st} {row.get('name')} "
+                f"duration={float(row.get('duration_s') or 0):.3f}s "
+                f"history={row.get('history_len')}"
+            )
+    return 0 if report["ok"] else 1
+
 def main(argv: list[str] | None = None) -> int:
     """Argparse entry for tests / thin wrappers. Prefer ``uv run mpreg distlab``."""
     import argparse
@@ -124,6 +175,38 @@ def main(argv: list[str] | None = None) -> int:
     pr.add_argument("name", help="Scenario name (e.g. strong.happy_3)")
     pr.add_argument("--json", action="store_true", help="Emit ScenarioResult JSON")
     pr.set_defaults(func=lambda a: run_scenario(a.name, as_json=a.json))
+
+    ps = sub.add_parser("suite", help="Run a filtered scenario suite")
+    ps.add_argument("--track", default="", help="Filter by track id")
+    ps.add_argument("--prefix", default="", help="Name prefix filter")
+    ps.add_argument("--tag", default="", help="Require tag")
+    ps.add_argument(
+        "--name",
+        action="append",
+        default=None,
+        dest="names",
+        help="Explicit scenario name (repeatable)",
+    )
+    ps.add_argument("--limit", type=int, default=0, help="Max scenarios (0=all)")
+    ps.add_argument("--fail-fast", action="store_true")
+    ps.add_argument(
+        "--include-not-bft",
+        action="store_true",
+        help="Include not_bft boundary demos",
+    )
+    ps.add_argument("--json", action="store_true")
+    ps.set_defaults(
+        func=lambda a: run_suite(
+            track=a.track or "",
+            prefix=a.prefix or "",
+            tag=a.tag or "",
+            names=a.names,
+            include_not_bft=bool(a.include_not_bft),
+            limit=int(a.limit or 0),
+            fail_fast=bool(a.fail_fast),
+            as_json=bool(a.json),
+        )
+    )
 
     args = p.parse_args(argv)
     return int(args.func(args))

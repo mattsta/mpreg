@@ -203,6 +203,24 @@ class History:
             out = [e for e in out if e.key == key]
         return out
 
+    def error_code_counts(self) -> dict[str, int]:
+        """Histogram of terminal FAIL error_code values (string keys for JSON)."""
+        counts: dict[str, int] = {}
+        for e in self.snapshot():
+            if e.status is not OpStatus.FAIL:
+                continue
+            key = str(e.error_code) if e.error_code is not None else "none"
+            counts[key] = counts.get(key, 0) + 1
+        return counts
+
+    def outcome_counts(self) -> dict[str, int]:
+        """Count events by status (invoke/ok/fail/info)."""
+        counts: dict[str, int] = {}
+        for e in self.snapshot():
+            k = str(e.status)
+            counts[k] = counts.get(k, 0) + 1
+        return counts
+
     def extend(self, events: Iterable[HistoryEvent]) -> None:
         with self._lock:
             for e in events:

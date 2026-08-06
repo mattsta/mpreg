@@ -2549,6 +2549,7 @@ def distlab_group() -> None:
       uv run mpreg distlab list
       uv run mpreg distlab catalog --json
       uv run mpreg distlab run strong.happy_3
+      uv run mpreg distlab suite --track T2 --limit 5
     """
 
 @distlab_group.command("list")
@@ -2580,6 +2581,50 @@ def distlab_run(name: str, as_json: bool) -> None:
     from mpreg.testing.distlab.cli import run_scenario
 
     code = run_scenario(name, as_json=as_json)
+    if code:
+        raise SystemExit(code)
+
+@distlab_group.command("suite")
+@click.option("--track", default="", help="Filter by track id (T2, T4, T13, …)")
+@click.option("--prefix", default="", help="Name prefix (e.g. strong.)")
+@click.option("--tag", default="", help="Require registry tag")
+@click.option(
+    "--name",
+    "names",
+    multiple=True,
+    help="Explicit scenario name (repeatable)",
+)
+@click.option("--limit", type=int, default=0, help="Max scenarios (0 = all matched)")
+@click.option("--fail-fast", is_flag=True, help="Stop on first failure")
+@click.option(
+    "--include-not-bft",
+    is_flag=True,
+    help="Include not_bft demos (may leave intentional dirty state)",
+)
+@click.option("--json", "as_json", is_flag=True, help="Emit suite report JSON")
+def distlab_suite(
+    track: str,
+    prefix: str,
+    tag: str,
+    names: tuple[str, ...],
+    limit: int,
+    fail_fast: bool,
+    include_not_bft: bool,
+    as_json: bool,
+) -> None:
+    """Run a filtered DistLab suite (excludes not_bft by default)."""
+    from mpreg.testing.distlab.cli import run_suite
+
+    code = run_suite(
+        track=track or "",
+        prefix=prefix or "",
+        tag=tag or "",
+        names=list(names) if names else None,
+        include_not_bft=include_not_bft,
+        limit=limit,
+        fail_fast=fail_fast,
+        as_json=as_json,
+    )
     if code:
         raise SystemExit(code)
 

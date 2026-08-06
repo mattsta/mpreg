@@ -282,3 +282,32 @@ async def test_pending_full_1018() -> None:
     res = await coord.strong_put(_key("b"), 2, eligible_peers=["n0"])
     assert res.success is False
     assert res.error_code == int(StrongErrorCode.STRONG_PENDING_FULL)
+
+@pytest.mark.asyncio
+async def test_success_aborts_prepared_non_committers() -> None:
+    """T17: minority drop-commit still forms Q; non-committers must not keep pending.
+
+    R=3 Q=2, origin-commit-last needs 1 peer commit. Drop n2 commit only → n1
+    commits, origin commits, success; n2 must be aborted (no pending residual).
+    """
+    coord, transport, backends = _cluster(3)
+    transport.drop_commit.add("n2")
+    key = _key("noncommitter")
+    res = await coord.strong_put(key, {"v": 1}, eligible_peers=["n0", "n1", "n2"])
+    assert res.success is True, res.error_message
+    assert res.quorum_info is not None
+    acks = set(res.quorum_info.get("commit_acks") or [])
+    assert "n0" in acks and "n1" in acks
+    # n2 prepared but did not commit — must have zero pending and no visible for op
+    assert backends["n2"].pending_count() == 0
+    ent2 = backends["n2"].get_visible(key)
+    assert ent2 is None or _entry_op_id(ent2) != res.operation_id
+    for be in backends.values():
+        assert be.pending_count() == 0
+    # Winners hold value
+    for nid in ("n0", "n1"):
+        ent = backends[nid].get_visible(key)
+        assert ent is not None and ent.value == {"v": 1}
+    # Meta lists aborted non-committers when present
+    aborted = res.quorum_info.get("aborted_non_committers") or []
+    assert "n2" in aborted

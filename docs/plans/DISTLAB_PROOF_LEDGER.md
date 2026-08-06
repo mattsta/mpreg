@@ -20,6 +20,12 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T12 CLI | `mpreg monitor strong\|audit`, `mpreg doctor --strong/--audit` | support_only ops |
 | Coexistence | `test_strong_audit_coexistence`, live both | both INV-* |
 
+| T17 suite CLI | `mpreg distlab suite`, `test_registry_run_suite_*` | support |
+| T17 residual non-committer | `test_success_aborts_prepared_non_committers` | INV-CACHE-STRONG-01 |
+| T17 live metrics e2e | `test_distlab_live_strong_metrics_e2e` | support ops |
+| T17 multi-GCM RYW | `test_mesh_ryw_all_gcms_after_strong_put` | INV-CACHE-STRONG-01 bridge |
+| T17 history taxonomy | `test_history_error_code_and_outcome_counts` | support |
+
 ## Non-claims (do not market)
 
 - Lab SLI p99 ≠ production WAN SLA

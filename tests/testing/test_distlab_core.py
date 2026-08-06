@@ -276,3 +276,19 @@ async def test_history_concurrent_append() -> None:
 
     await asyncio.gather(*[worker(i) for i in range(4)])
     assert len(h) == 160
+
+def test_history_error_code_and_outcome_counts() -> None:
+    from mpreg.testing.distlab.history import History
+    from mpreg.testing.distlab.models import OpKind
+
+    h = History()
+    h.invoke("c0", OpKind.PUT, key="k", value=1)
+    h.fail("c0", OpKind.PUT, key="k", value=1, error_code=1015, error_message="q")
+    h.invoke("c1", OpKind.PUT, key="k", value=2)
+    h.ok("c1", OpKind.PUT, key="k", value=2)
+    codes = h.error_code_counts()
+    assert codes.get("1015") == 1
+    outcomes = h.outcome_counts()
+    assert outcomes.get("invoke") == 2
+    assert outcomes.get("fail") == 1
+    assert outcomes.get("ok") == 1

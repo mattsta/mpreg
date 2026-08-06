@@ -115,3 +115,58 @@ async def test_strong_insufficient_quorum_no_residual() -> None:
         assert not got.success or got.entry is None
     finally:
         await gcm.shutdown()
+
+@pytest.mark.asyncio
+async def test_strong_status_and_metrics_after_puts() -> None:
+    """T17: GCM strong_status / metrics counters track ok/fail/refused."""
+    gcm = GlobalCacheManager(
+        GlobalCacheConfiguration(
+            enable_l2_persistent=False,
+            enable_l3_distributed=False,
+            enable_l4_federation=False,
+            local_cluster_id="st",
+        )
+    )
+    # refused while unbound
+    r0 = await gcm.put(
+        _key(),
+        0,
+        options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
+    )
+    assert r0.success is False
+    st0 = gcm.strong_status()
+    assert st0["enabled"] is False
+    assert st0["refused_disabled"] >= 1
+
+    be = StrongLocalBackend(node_id="origin")
+    tr = InProcessStrongTransport()
+    tr.register(be)
+    coord = StrongPutCoordinator(
+        origin_id="origin",
+        local=be,
+        transport=tr,
+        lab_single_node=True,
+        min_replicas=1,
+        replica_factor=1,
+    )
+    gcm.attach_strong_coordinator(coord)
+    try:
+        r1 = await gcm.put(
+            _key(),
+            {"ok": True},
+            metadata=CacheMetadata(),
+            options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
+        )
+        assert r1.success
+        snap = gcm.strong_metrics_snapshot()
+        assert snap["enabled"] is True
+        assert snap["counters"].get("puts_ok", 0) >= 1
+        assert snap["latency_ms"].get("sample_count", 0) >= 1
+        st = gcm.strong_status()
+        assert st["puts_ok"] >= 1
+        # local RYW
+        got = await gcm.get(_key())
+        assert got.success and got.entry is not None
+        assert got.entry.value == {"ok": True}
+    finally:
+        await gcm.shutdown()
