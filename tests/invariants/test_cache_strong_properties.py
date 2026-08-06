@@ -51,7 +51,9 @@ def _cluster(
     fail_prepare: frozenset[str] | None = None,
     prepare_timeout_s: float = 0.2,
     commit_timeout_s: float = 0.2,
-) -> tuple[StrongPutCoordinator, InProcessStrongTransport, dict[str, StrongLocalBackend]]:
+) -> tuple[
+    StrongPutCoordinator, InProcessStrongTransport, dict[str, StrongLocalBackend]
+]:
     transport = InProcessStrongTransport()
     backends: dict[str, StrongLocalBackend] = {}
     for i in range(n):
@@ -206,7 +208,9 @@ async def test_insufficient_eligible_1015(n: int) -> None:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-@given(ttl=st.floats(min_value=1.0, max_value=60.0, allow_nan=False, allow_infinity=False))
+@given(
+    ttl=st.floats(min_value=1.0, max_value=60.0, allow_nan=False, allow_infinity=False)
+)
 @settings(max_examples=25, deadline=None)
 async def test_pending_not_visible(ttl: float) -> None:
     be = StrongLocalBackend(node_id="n0")

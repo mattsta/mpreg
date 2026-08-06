@@ -2856,29 +2856,29 @@ RPC failures surface as `RPCError` with stable numeric codes from
 `mpreg.core.errors` (never bare integers). Language-neutral catalog:
 `mpreg/core/error_codes.json`.
 
-| Code | Name                    | Meaning                           | Retryable |
-| ---- | ----------------------- | --------------------------------- | --------- |
-| 1000 | PROTOCOL                | Unknown/invalid protocol message  | no        |
-| 1001 | COMMAND_NOT_FOUND       | No matching function endpoint     | no        |
-| 1002 | VERSION_MISMATCH        | Version constraint unsatisfied    | no        |
-| 1003 | HOP_BUDGET_EXCEEDED     | Fabric hop budget exhausted       | no        |
-| 1004 | POLICY_DENIED           | Namespace/routing policy denied   | no        |
-| 1005 | ROUTE_NOT_FOUND         | No path to target cluster/node    | yes       |
-| 1006 | TIMEOUT                 | Deadline exceeded                 | yes       |
-| 1007 | UNAVAILABLE             | Temporary unavailability          | yes       |
-| 1008 | INVALID_ARGUMENT        | Bad request parameters            | no        |
-| 1009 | AUTH_REQUIRED           | Auth missing                      | no        |
-| 1010 | AUTH_FAILED             | Auth present but invalid          | no        |
-| 1011 | UNSUPPORTED_DELIVERY    | EXACTLY_ONCE / unsupported delivery | no      |
-| 1012 | UNSUPPORTED_CONSISTENCY | STRONG disabled / get / delete not implemented | no |
-| 1013 | ROUTE_LOOP              | Fabric route loop detected        | no        |
-| 1015 | INSUFFICIENT_QUORUM     | STRONG put: not enough eligible replicas | no |
-| 1016 | QUORUM_TIMEOUT          | STRONG put: prepare/commit barrier timeout | yes    |
-| 1017 | STRONG_CONFLICT         | STRONG put: lost LWW / concurrent apply | no     |
-| 1018 | STRONG_PENDING_FULL     | STRONG put: pending map at capacity | no      |
-| 1099 | INTERNAL                | Unexpected server failure         | no        |
-| 1101 | DISCOVERY_ACCESS_DENIED | Discovery namespace/policy denial | no        |
-| 1102 | DISCOVERY_RATE_LIMITED  | Discovery rate limit              | yes       |
+| Code | Name                    | Meaning                                        | Retryable |
+| ---- | ----------------------- | ---------------------------------------------- | --------- |
+| 1000 | PROTOCOL                | Unknown/invalid protocol message               | no        |
+| 1001 | COMMAND_NOT_FOUND       | No matching function endpoint                  | no        |
+| 1002 | VERSION_MISMATCH        | Version constraint unsatisfied                 | no        |
+| 1003 | HOP_BUDGET_EXCEEDED     | Fabric hop budget exhausted                    | no        |
+| 1004 | POLICY_DENIED           | Namespace/routing policy denied                | no        |
+| 1005 | ROUTE_NOT_FOUND         | No path to target cluster/node                 | yes       |
+| 1006 | TIMEOUT                 | Deadline exceeded                              | yes       |
+| 1007 | UNAVAILABLE             | Temporary unavailability                       | yes       |
+| 1008 | INVALID_ARGUMENT        | Bad request parameters                         | no        |
+| 1009 | AUTH_REQUIRED           | Auth missing                                   | no        |
+| 1010 | AUTH_FAILED             | Auth present but invalid                       | no        |
+| 1011 | UNSUPPORTED_DELIVERY    | EXACTLY_ONCE / unsupported delivery            | no        |
+| 1012 | UNSUPPORTED_CONSISTENCY | STRONG disabled / get / delete not implemented | no        |
+| 1013 | ROUTE_LOOP              | Fabric route loop detected                     | no        |
+| 1015 | INSUFFICIENT_QUORUM     | STRONG put: not enough eligible replicas       | no        |
+| 1016 | QUORUM_TIMEOUT          | STRONG put: prepare/commit barrier timeout     | yes       |
+| 1017 | STRONG_CONFLICT         | STRONG put: lost LWW / concurrent apply        | no        |
+| 1018 | STRONG_PENDING_FULL     | STRONG put: pending map at capacity            | no        |
+| 1099 | INTERNAL                | Unexpected server failure                      | no        |
+| 1101 | DISCOVERY_ACCESS_DENIED | Discovery namespace/policy denial              | no        |
+| 1102 | DISCOVERY_RATE_LIMITED  | Discovery rate limit                           | yes       |
 
 **Cache STRONG (flag-gated):** when `cache_strong_enabled`, `GlobalCacheManager`
 majority-commit put uses codes **1015–1018** on operational failure and **1012**

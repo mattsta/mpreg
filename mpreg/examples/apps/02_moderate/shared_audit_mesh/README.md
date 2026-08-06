@@ -29,14 +29,14 @@ uv run mpreg-example run shared_audit_mesh
 
 ## API drill-down
 
-| Surface | API |
-| ------- | --- |
-| Store | `SharedAuditStore.insert_and_persist`, `get`, `snapshot` |
-| Replicator | `SharedAuditReplicator.publish`, epidemic flush |
-| Response | `build_audit_response(entries, scope=..., shared_enabled=...)` |
-| Settings | `mgmt_audit_shared_enabled`, `mgmt_audit_shared_max_entries`, … |
-| HTTP | `GET /mgmt/v1/audit?scope=cluster` (production) |
-| Claim | `INV-SHARED-AUDIT-01` |
+| Surface    | API                                                             |
+| ---------- | --------------------------------------------------------------- |
+| Store      | `SharedAuditStore.insert_and_persist`, `get`, `snapshot`        |
+| Replicator | `SharedAuditReplicator.publish`, epidemic flush                 |
+| Response   | `build_audit_response(entries, scope=..., shared_enabled=...)`  |
+| Settings   | `mgmt_audit_shared_enabled`, `mgmt_audit_shared_max_entries`, … |
+| HTTP       | `GET /mgmt/v1/audit?scope=cluster` (production)                 |
+| Claim      | `INV-SHARED-AUDIT-01`                                           |
 
 ## Non-claims
 

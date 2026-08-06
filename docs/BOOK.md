@@ -57,13 +57,13 @@ call by name/identity; the fabric routes and resolves dependency graphs.
 
 ## 3. Application systems
 
-| System                      | Guide                                                           |
-| --------------------------- | --------------------------------------------------------------- |
-| RPC + dependency resolution | GETTING_STARTED, protocol spec, intermediate results            |
-| Pub/Sub                     | topic exchange sections in architecture + examples              |
-| Queues                      | [SQS_MESSAGE_QUEUE_SYSTEM.md](SQS_MESSAGE_QUEUE_SYSTEM.md)      |
-| Cache                       | [CACHING_SYSTEM.md](CACHING_SYSTEM.md), cache federation guides |
-| Cache STRONG put            | CACHING_SYSTEM §STRONG, design doc, `cache_strong_quorum`       |
+| System                      | Guide                                                               |
+| --------------------------- | ------------------------------------------------------------------- |
+| RPC + dependency resolution | GETTING_STARTED, protocol spec, intermediate results                |
+| Pub/Sub                     | topic exchange sections in architecture + examples                  |
+| Queues                      | [SQS_MESSAGE_QUEUE_SYSTEM.md](SQS_MESSAGE_QUEUE_SYSTEM.md)          |
+| Cache                       | [CACHING_SYSTEM.md](CACHING_SYSTEM.md), cache federation guides     |
+| Cache STRONG put            | CACHING_SYSTEM §STRONG, design doc, `cache_strong_quorum`           |
 | Shared mgmt audit           | ARCHITECTURE §4c, MANAGEMENT_UI_CLI_NEXT_STEPS, `shared_audit_mesh` |
 
 ## 4. Fabric & multi-cluster

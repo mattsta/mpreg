@@ -188,9 +188,7 @@ def _names_compatible(selector_name: FunctionName, identity_name: FunctionName) 
     # Bare selector → FQN identity (or either side leaf-equal when one is bare)
     if "." not in selector_name and sel_leaf == id_leaf:
         return True
-    if "." not in identity_name and sel_leaf == id_leaf:
-        return True
-    return False
+    return bool("." not in identity_name and sel_leaf == id_leaf)
 
 @dataclass(frozen=True, slots=True)
 class FunctionSelector:

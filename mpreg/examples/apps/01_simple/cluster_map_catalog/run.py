@@ -106,8 +106,7 @@ async def main() -> None:
                     v2_nodes = getattr(v2, "nodes", ()) or ()
                     ensure(len(v2_nodes) >= 1, f"v2 nodes empty: {v2}")
                     step(
-                        f"cluster_map_v2 type={type(v2).__name__} "
-                        f"nodes={len(v2_nodes)}"
+                        f"cluster_map_v2 type={type(v2).__name__} nodes={len(v2_nodes)}"
                     )
                     ok(f"cluster_map_v2 → {len(v2_nodes)} node(s)")
 

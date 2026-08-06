@@ -30,15 +30,15 @@ uv run mpreg-example run cache_strong_quorum
 
 ## API drill-down
 
-| Surface | API |
-| ------- | --- |
-| Enum | `ConsistencyLevel.STRONG` on `CacheOptions` |
-| Coordinator | `StrongPutCoordinator.strong_put(...)` |
-| GCM | `GlobalCacheManager.attach_strong_coordinator` / `put` |
-| Codes | `1012`, `1015`–`1018` (`MpregErrorCode`) |
-| Settings | `cache_strong_enabled`, `cache_strong_min_replicas=3`, … |
-| Wire | `CacheMessageKind.STRONG_*` |
-| Claim | `INV-CACHE-STRONG-01` |
+| Surface     | API                                                      |
+| ----------- | -------------------------------------------------------- |
+| Enum        | `ConsistencyLevel.STRONG` on `CacheOptions`              |
+| Coordinator | `StrongPutCoordinator.strong_put(...)`                   |
+| GCM         | `GlobalCacheManager.attach_strong_coordinator` / `put`   |
+| Codes       | `1012`, `1015`–`1018` (`MpregErrorCode`)                 |
+| Settings    | `cache_strong_enabled`, `cache_strong_min_replicas=3`, … |
+| Wire        | `CacheMessageKind.STRONG_*`                              |
+| Claim       | `INV-CACHE-STRONG-01`                                    |
 
 ## Non-claims
 

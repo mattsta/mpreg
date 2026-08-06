@@ -187,7 +187,9 @@ async def main() -> None:
                             if "tradefeed" in blob:
                                 still = True
                                 break
-                        ensure(not still, f"tradefeed still listed after unreg: {after}")
+                        ensure(
+                            not still, f"tradefeed still listed after unreg: {after}"
+                        )
                         ok("dns_unregister removed tradefeed from list")
 
             await run_with_servers(settings, _run)

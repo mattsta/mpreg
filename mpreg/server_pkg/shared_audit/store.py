@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import RLock
-from typing import Any, Iterable
+from typing import Any
 
 from mpreg.core.native_codec import JSONDecodeError, dumps_text, loads_text
 from mpreg.server_pkg.shared_audit.models import (
@@ -118,7 +119,11 @@ class SharedAuditStore:
 
     def insert(self, record: SharedAuditRecord) -> SharedAuditRecord | None:
         """Insert or merge a record. Returns the stored winner, or None if rejected."""
-        if self.cluster_id and record.cluster_id and record.cluster_id != self.cluster_id:
+        if (
+            self.cluster_id
+            and record.cluster_id
+            and record.cluster_id != self.cluster_id
+        ):
             self.rejected_cross_cluster += 1
             return None
         if not record.entry_id or not record.cluster_id:

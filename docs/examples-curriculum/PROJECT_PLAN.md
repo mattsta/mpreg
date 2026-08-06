@@ -982,30 +982,31 @@ remote SQL/other stores backends, multi-continent SLA, STRONG quorum get/delete 
 
 ### Phase Y — Shared audit + STRONG put (**COMPLETE**)
 
-| #   | Axis    | Work                                                              | Status |
-| --- | ------- | ----------------------------------------------------------------- | ------ |
-| Y0  | PLAN    | Design rev3 `SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md`             | [x]    |
-| Y1  | CAP     | SharedAuditStore G-Set + gossip + HTTP `scope=cluster`            | [x]    |
-| Y2  | CAP     | StrongPutCoordinator majority-commit + codes 1015–1018            | [x]    |
-| Y3  | USE     | Curriculum `shared_audit_mesh` + `cache_strong_quorum`            | [x]    |
-| Y4  | CORRECT | Property + multi-node integration + claims L1/L2/L4               | [x]    |
-| Y5  | USE     | Operator/architecture/client docs honesty banners + catalogs      | [x]    |
+| #   | Axis    | Work                                                         | Status |
+| --- | ------- | ------------------------------------------------------------ | ------ |
+| Y0  | PLAN    | Design rev3 `SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md`        | [x]    |
+| Y1  | CAP     | SharedAuditStore G-Set + gossip + HTTP `scope=cluster`       | [x]    |
+| Y2  | CAP     | StrongPutCoordinator majority-commit + codes 1015–1018       | [x]    |
+| Y3  | USE     | Curriculum `shared_audit_mesh` + `cache_strong_quorum`       | [x]    |
+| Y4  | CORRECT | Property + multi-node integration + claims L1/L2/L4          | [x]    |
+| Y5  | USE     | Operator/architecture/client docs honesty banners + catalogs | [x]    |
 
 **Exit:** all Y `[x]`; 99 apps; claims INV-SHARED-AUDIT-01 / INV-CACHE-STRONG-01.
 
 ### Phase W — Full test suite green (**COMPLETE**)
+
 > **Phase W COMPLETE (2026-08-05):** Full suite green with concurrency:
 > `uv run pytest tests/ -q --tb=line -n auto` → **2579 passed**, 3 warnings, **472.92s (0:07:52)** on 18 xdist workers.
 > Fixes landed this phase: scatter remote `PlatformRpc.RPC_DESCRIBE_LOCAL` (was bare `rpc_describe_local` → `fabric_route_not_found`); leaf-aware `FunctionSelector` + dual FQN/leaf function index; stop namespace-qualifying opaque `function_id`s; client no longer forces `function_id=FQN`; FQN expectation fixes (collision regex, `queue_receive` mock); transport audit allows entire `mpreg/core/transport/` and only flags real imports outside it.
 > Always verify with `-n auto` (not serial full suite).
 
-| # | Axis | Work | Status |
-|---|------|------|--------|
-| W0 | PLAN | Append; sole active queue | [x] |
-| W1 | CORRECT | Run full `pytest tests/` inventory failures | [x] |
-| W2 | CORRECT | Fix fabric FQN selector / auto-discovery routing tests | [x] |
-| W3 | CORRECT | Fix remaining suite failures | [x] |
-| W4 | VERIFY | full suite green + commit | [x] |
+| #   | Axis    | Work                                                   | Status |
+| --- | ------- | ------------------------------------------------------ | ------ |
+| W0  | PLAN    | Append; sole active queue                              | [x]    |
+| W1  | CORRECT | Run full `pytest tests/` inventory failures            | [x]    |
+| W2  | CORRECT | Fix fabric FQN selector / auto-discovery routing tests | [x]    |
+| W3  | CORRECT | Fix remaining suite failures                           | [x]    |
+| W4  | VERIFY  | full suite green + commit                              | [x]    |
 
 **Exit:** all W `[x]`; `pytest tests/ -n auto` green — met.
 
@@ -1015,16 +1016,16 @@ remote SQL/other stores backends, multi-continent SLA, STRONG quorum get/delete 
 > Taught untaught façade surfaces + Phase W bare/opaque `function_id` semantics.
 > Deferred scale items unchanged.
 
-| #   | Axis    | Work                                                                                         | Status |
-| --- | ------- | -------------------------------------------------------------------------------------------- | ------ |
-| X0  | PLAN    | Append after W; sole active queue                                                            | [x]    |
-| X1  | USE     | `plane_dns`: teach `dns_unregister` after register/list/resolve                              | [x]    |
-| X2  | USE     | `cluster_map_catalog` + `unified_client_tour`: teach `cluster_map_v2`                        | [x]    |
-| X3  | USE     | `unified_client_tour`: teach `cache_invalidate` on MPREGClient façade                        | [x]    |
-| X4  | USE     | `pubsub_client_backlog`: teach `unsubscribe` stops delivery                                  | [x]    |
-| X5  | CORRECT | `rpc_versioned_topic`: bare leaf + opaque `function_id` (Phase W semantics)                  | [x]    |
-| X6  | USE     | APP_FEATURES / FEATURE_CATALOG teach apps truth                                              | [x]    |
-| X7  | VERIFY  | deepened apps green + feature-join + `pytest tests/ -n auto` + commit                        | [x]    |
+| #   | Axis    | Work                                                                        | Status |
+| --- | ------- | --------------------------------------------------------------------------- | ------ |
+| X0  | PLAN    | Append after W; sole active queue                                           | [x]    |
+| X1  | USE     | `plane_dns`: teach `dns_unregister` after register/list/resolve             | [x]    |
+| X2  | USE     | `cluster_map_catalog` + `unified_client_tour`: teach `cluster_map_v2`       | [x]    |
+| X3  | USE     | `unified_client_tour`: teach `cache_invalidate` on MPREGClient façade       | [x]    |
+| X4  | USE     | `pubsub_client_backlog`: teach `unsubscribe` stops delivery                 | [x]    |
+| X5  | CORRECT | `rpc_versioned_topic`: bare leaf + opaque `function_id` (Phase W semantics) | [x]    |
+| X6  | USE     | APP_FEATURES / FEATURE_CATALOG teach apps truth                             | [x]    |
+| X7  | VERIFY  | deepened apps green + feature-join + `pytest tests/ -n auto` + commit       | [x]    |
 
 **Exit:** all X `[x]`; untaught façade methods covered in live apps; suite green under `-n auto` — met.
 

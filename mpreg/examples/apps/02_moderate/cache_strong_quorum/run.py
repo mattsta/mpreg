@@ -57,7 +57,7 @@ async def main() -> None:
 
         try:
             key = GlobalCacheKey(namespace="strong", identifier="demo", version="v1")
-            opts = CacheOptions(consistency_level=ConsistencyLevel.STRONG)
+            CacheOptions(consistency_level=ConsistencyLevel.STRONG)
 
             with scenario(
                 "3-node majority-commit put",
@@ -98,9 +98,13 @@ async def main() -> None:
                 "cache.strong",
             ):
                 step("min_replicas=3 with only origin eligible")
-                key2 = GlobalCacheKey(namespace="strong", identifier="fail", version="v1")
+                key2 = GlobalCacheKey(
+                    namespace="strong", identifier="fail", version="v1"
+                )
                 res2 = await coord.strong_put(
-                    key2, 99, eligible_peers=["n0"]  # insufficient
+                    key2,
+                    99,
+                    eligible_peers=["n0"],  # insufficient
                 )
                 ensure(not res2.success, "should fail")
                 ensure(
@@ -126,9 +130,7 @@ async def main() -> None:
                     r = await gcm2.put(
                         key,
                         1,
-                        options=CacheOptions(
-                            consistency_level=ConsistencyLevel.STRONG
-                        ),
+                        options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
                     )
                     ensure(not r.success, "should refuse")
                     ensure(

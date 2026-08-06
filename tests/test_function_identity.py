@@ -89,4 +89,3 @@ def test_function_selector_bare_name_matches_fqn() -> None:
     )
     # Both FQN: exact only — different namespace must not soft-match
     assert not wrong_ns_same_leaf.matches(identity)
-

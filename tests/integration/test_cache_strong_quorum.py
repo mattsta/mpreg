@@ -69,9 +69,7 @@ async def test_five_node_quorum_math_and_partial_failure() -> None:
     # Q = 3 for N=5; drop 3 peers' prepare → fail residual-free
     transport.drop_prepare |= {"n2", "n3", "n4"}
     key = GlobalCacheKey(namespace="int", identifier="k5", version="v1")
-    res = await coord.strong_put(
-        key, 1, eligible_peers=[f"n{i}" for i in range(5)]
-    )
+    res = await coord.strong_put(key, 1, eligible_peers=[f"n{i}" for i in range(5)])
     assert res.success is False
     assert res.error_code in (
         int(StrongErrorCode.QUORUM_TIMEOUT),

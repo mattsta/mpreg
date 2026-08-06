@@ -7,10 +7,11 @@ replicator never blocks local :meth:`SharedAuditStore.insert`.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 import uuid
 from collections import deque
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -93,20 +94,16 @@ class SharedAuditReplicator:
         self._task = None
         if t is not None:
             t.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await t
-            except asyncio.CancelledError:
-                pass
 
     def publish(self, record: SharedAuditRecord) -> None:
         """Queue for epidemic DELTA; never raises into mutation path."""
         if not record.gossip_eligible:
             return
         if len(self._outbound) >= self.max_outbound_queue:
-            try:
+            with contextlib.suppress(IndexError):
                 self._outbound.popleft()
-            except IndexError:
-                pass
             self._publish_dropped += 1
         self._outbound.append(record)
 
@@ -143,7 +140,9 @@ class SharedAuditReplicator:
         mt = message_type.lower().replace("mgmt_audit_", "")
         if message_type in ("mgmt_audit_delta", "MGMT_AUDIT_DELTA") or mt == "delta":
             self._apply_delta(payload)
-        elif message_type in ("mgmt_audit_digest", "MGMT_AUDIT_DIGEST") or mt == "digest":
+        elif (
+            message_type in ("mgmt_audit_digest", "MGMT_AUDIT_DIGEST") or mt == "digest"
+        ):
             await self._on_digest(payload)
         elif message_type in ("mgmt_audit_pull", "MGMT_AUDIT_PULL") or mt == "pull":
             await self._on_pull(payload)
@@ -304,9 +303,7 @@ class SharedAuditReplicator:
                     if wm is not None:
                         req_wms[str(o)] = wm
         limit = int(payload.get("limit") or 200)
-        records = self.store.records_for_pull(
-            requester_watermarks=req_wms, limit=limit
-        )
+        records = self.store.records_for_pull(requester_watermarks=req_wms, limit=limit)
         resp = {
             "cluster_id": self.cluster_id,
             "request_id": request_id,

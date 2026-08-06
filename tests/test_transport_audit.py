@@ -1,5 +1,5 @@
-from pathlib import Path
 import re
+from pathlib import Path
 
 _IMPORT_RE = re.compile(
     r"^\s*(?:from\s+websockets(?:\.|\s)|import\s+websockets)\b",

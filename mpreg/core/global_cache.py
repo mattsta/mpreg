@@ -458,7 +458,9 @@ class GlobalCacheManager(ManagedObject):
         # COR-01: STRONG only via majority-commit coordinator when enabled.
         # Refuse before any local write / namespace index side effects.
         if options.consistency_level is ConsistencyLevel.STRONG:
-            return await self._strong_put(key, value, metadata=metadata, options=options)
+            return await self._strong_put(
+                key, value, metadata=metadata, options=options
+            )
 
         str(uuid.uuid4())
         start_time = time.time()

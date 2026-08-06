@@ -607,22 +607,22 @@ bound on `GlobalCacheManager`, `put(..., consistency_level=STRONG)` runs a
 3. Client success only after the barrier. Failures send **ABORT** and
    **uncommit** peer+origin L1 for that `op_id` (residual-free).
 
-| Setting | Default | Role |
-| ------- | ------- | ---- |
-| `cache_strong_enabled` | `False` | Master switch; off → `1012` |
-| `cache_strong_replica_factor` | `3` | Target \|R\| |
-| `cache_strong_min_replicas` | `3` | Fail `1015` if live eligible < this |
-| `cache_strong_lab_single_node` | `False` | Explicit lab-only single-node path |
-| `cache_strong_prepare_timeout_s` / `cache_strong_commit_timeout_s` | `2.0` | Barrier timeouts → `1016` |
-| `cache_strong_pending_ttl_s` | `30.0` | Pending TTL backstop |
+| Setting                                                            | Default | Role                                |
+| ------------------------------------------------------------------ | ------- | ----------------------------------- |
+| `cache_strong_enabled`                                             | `False` | Master switch; off → `1012`         |
+| `cache_strong_replica_factor`                                      | `3`     | Target \|R\|                        |
+| `cache_strong_min_replicas`                                        | `3`     | Fail `1015` if live eligible < this |
+| `cache_strong_lab_single_node`                                     | `False` | Explicit lab-only single-node path  |
+| `cache_strong_prepare_timeout_s` / `cache_strong_commit_timeout_s` | `2.0`   | Barrier timeouts → `1016`           |
+| `cache_strong_pending_ttl_s`                                       | `30.0`  | Pending TTL backstop                |
 
-| Code | Name | When |
-| ---- | ---- | ---- |
+| Code     | Name                      | When                                                      |
+| -------- | ------------------------- | --------------------------------------------------------- |
 | **1012** | `UNSUPPORTED_CONSISTENCY` | Flag off, coordinator unbound, STRONG **get**/ **delete** |
-| **1015** | `INSUFFICIENT_QUORUM` | Not enough eligible peers |
-| **1016** | `QUORUM_TIMEOUT` | Prepare/commit timeout (retryable) |
-| **1017** | `STRONG_CONFLICT` | Lost LWW / concurrent apply rejected |
-| **1018** | `STRONG_PENDING_FULL` | Pending map at capacity |
+| **1015** | `INSUFFICIENT_QUORUM`     | Not enough eligible peers                                 |
+| **1016** | `QUORUM_TIMEOUT`          | Prepare/commit timeout (retryable)                        |
+| **1017** | `STRONG_CONFLICT`         | Lost LWW / concurrent apply rejected                      |
+| **1018** | `STRONG_PENDING_FULL`     | Pending map at capacity                                   |
 
 **Wire:** `CacheMessageKind.STRONG_*` on `ServerCacheTransport` RR
 (`mpreg/fabric/cache_transport.py`). Coordinator: `mpreg/core/cache_strong.py`.
@@ -634,9 +634,13 @@ durability, not STRONG get/delete MVP.
 
 ```python
 # Flag off or unbound coordinator — fail closed, no local write
-result = await cache.put(key, value, options=CacheOptions(
-    consistency_level=ConsistencyLevel.STRONG,
-))
+result = await cache.put(
+    key,
+    value,
+    options=CacheOptions(
+        consistency_level=ConsistencyLevel.STRONG,
+    ),
+)
 assert result.success is False
 assert result.error_code == 1012  # unless cache_strong_enabled
 ```

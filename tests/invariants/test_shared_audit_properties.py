@@ -12,9 +12,7 @@ Hypotheses under test:
 
 from __future__ import annotations
 
-import asyncio
 import itertools
-from typing import Any
 
 import pytest
 from hypothesis import HealthCheck, assume, given, settings
@@ -25,7 +23,6 @@ from mpreg.server_pkg.shared_audit import (
     SharedAuditRecord,
     SharedAuditReplicator,
     SharedAuditStore,
-    Watermark,
     merge_records,
     record_from_mgmt_entry,
     stable_canonical_json,
@@ -51,7 +48,11 @@ def audit_records(draw: st.DrawFn, *, entry_id: str | None = None) -> SharedAudi
         origin_node=draw(st.sampled_from(["n0", "n1", "n2", "n3"])),
         origin_url=draw(_SAFE_TEXT.map(lambda s: f"ws://{s}")),
         event=draw(st.sampled_from(["node_drain", "node_detach", "policy_apply", "x"])),
-        timestamp=draw(st.floats(min_value=0.0, max_value=1e6, allow_nan=False, allow_infinity=False)),
+        timestamp=draw(
+            st.floats(
+                min_value=0.0, max_value=1e6, allow_nan=False, allow_infinity=False
+            )
+        ),
         actor=draw(st.one_of(st.none(), _SAFE_TEXT)),
         success=draw(st.booleans()),
         detail=draw(
@@ -150,7 +151,9 @@ def test_store_size_bounded_and_watermarks_monotonic(
         for origin, wm in store.watermarks_snapshot().items():
             key = wm.sort_key()
             if origin in prev_wm:
-                assert key >= prev_wm[origin], "watermark must be monotonic non-decreasing"
+                assert key >= prev_wm[origin], (
+                    "watermark must be monotonic non-decreasing"
+                )
             prev_wm[origin] = key
         # Every retained record for an origin is >= that origin's watermark
         for origin, wm in store.watermarks_snapshot().items():
@@ -220,7 +223,11 @@ def test_cross_cluster_rejected(r: SharedAuditRecord) -> None:
 # H4 / H6 — anti-entropy convergence (async property)
 # ---------------------------------------------------------------------------
 
-def _mesh(n: int) -> tuple[InProcessSharedAuditTransport, list[SharedAuditStore], list[SharedAuditReplicator]]:
+def _mesh(
+    n: int,
+) -> tuple[
+    InProcessSharedAuditTransport, list[SharedAuditStore], list[SharedAuditReplicator]
+]:
     transport = InProcessSharedAuditTransport()
     stores: list[SharedAuditStore] = []
     reps: list[SharedAuditReplicator] = []
@@ -250,7 +257,9 @@ def _mesh(n: int) -> tuple[InProcessSharedAuditTransport, list[SharedAuditStore]
     payloads=st.lists(
         st.tuples(
             st.sampled_from(["node_drain", "detach", "policy"]),
-            st.floats(min_value=0.0, max_value=1000.0, allow_nan=False, allow_infinity=False),
+            st.floats(
+                min_value=0.0, max_value=1000.0, allow_nan=False, allow_infinity=False
+            ),
             st.booleans(),
         ),
         min_size=1,
@@ -307,7 +316,7 @@ async def test_property_mesh_converges_eligible(
 
 @pytest.mark.asyncio
 async def test_property_legacy_never_gossips() -> None:
-    transport, stores, reps = _mesh(2)
+    _transport, stores, reps = _mesh(2)
     legacy = SharedAuditRecord(
         schema_version=1,
         entry_id="legacy:deadbeef",

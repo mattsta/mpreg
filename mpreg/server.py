@@ -1855,9 +1855,7 @@ class MPREGServer:
 
         self._mgmt_draining = False
         # When shared audit is on, SharedAuditStore owns JSONL; local ring is origin mirror only.
-        _shared_on = bool(
-            getattr(self.settings, "mgmt_audit_shared_enabled", False)
-        )
+        _shared_on = bool(getattr(self.settings, "mgmt_audit_shared_enabled", False))
         _audit_path = getattr(self.settings, "mgmt_audit_path", None) or None
         self._mgmt_audit_log = MgmtAuditLog(
             # Avoid double-loading JSONL into both stores when shared is on.
@@ -5080,9 +5078,7 @@ class MPREGServer:
                         backend,
                         cluster_id=str(self.settings.cluster_id),
                         pending_ttl_s=float(
-                            getattr(
-                                self.settings, "cache_strong_pending_ttl_s", 30.0
-                            )
+                            getattr(self.settings, "cache_strong_pending_ttl_s", 30.0)
                             or 30.0
                         ),
                     )
@@ -5102,8 +5098,7 @@ class MPREGServer:
                             or 3
                         ),
                         min_replicas=int(
-                            getattr(self.settings, "cache_strong_min_replicas", 3)
-                            or 3
+                            getattr(self.settings, "cache_strong_min_replicas", 3) or 3
                         ),
                         lab_single_node=lab,
                         prepare_timeout_s=float(
@@ -5113,15 +5108,11 @@ class MPREGServer:
                             or 2.0
                         ),
                         commit_timeout_s=float(
-                            getattr(
-                                self.settings, "cache_strong_commit_timeout_s", 2.0
-                            )
+                            getattr(self.settings, "cache_strong_commit_timeout_s", 2.0)
                             or 2.0
                         ),
                         pending_ttl_s=float(
-                            getattr(
-                                self.settings, "cache_strong_pending_ttl_s", 30.0
-                            )
+                            getattr(self.settings, "cache_strong_pending_ttl_s", 30.0)
                             or 30.0
                         ),
                     )
@@ -12016,9 +12007,7 @@ class MPREGServer:
                 getattr(self.settings, "mgmt_audit_shared_gossip_targets", 3) or 3
             ),
             reconcile_interval_s=float(
-                getattr(
-                    self.settings, "mgmt_audit_shared_reconcile_interval_s", 2.0
-                )
+                getattr(self.settings, "mgmt_audit_shared_reconcile_interval_s", 2.0)
                 or 2.0
             ),
         )

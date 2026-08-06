@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import time
 
 import pytest
@@ -23,7 +22,9 @@ def _key(name: str = "k1") -> GlobalCacheKey:
 
 def _cluster(
     n: int = 3, *, lab: bool = False, min_replicas: int | None = None
-) -> tuple[StrongPutCoordinator, InProcessStrongTransport, dict[str, StrongLocalBackend]]:
+) -> tuple[
+    StrongPutCoordinator, InProcessStrongTransport, dict[str, StrongLocalBackend]
+]:
     transport = InProcessStrongTransport()
     backends: dict[str, StrongLocalBackend] = {}
     for i in range(n):

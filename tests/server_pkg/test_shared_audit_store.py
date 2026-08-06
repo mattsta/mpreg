@@ -59,18 +59,18 @@ def test_merge_conflict_bytewise_min() -> None:
     assert winner.detail == expected.detail
 
 def test_merge_commutative_and_idempotent() -> None:
-    base = dict(
-        schema_version=1,
-        entry_id="e1",
-        cluster_id="c1",
-        origin_node="n1",
-        origin_url="ws://n1",
-        event="x",
-        timestamp=1.0,
-        actor=None,
-        success=True,
-        gossip_eligible=True,
-    )
+    base = {
+        "schema_version": 1,
+        "entry_id": "e1",
+        "cluster_id": "c1",
+        "origin_node": "n1",
+        "origin_url": "ws://n1",
+        "event": "x",
+        "timestamp": 1.0,
+        "actor": None,
+        "success": True,
+        "gossip_eligible": True,
+    }
     variants = [
         SharedAuditRecord(**base, detail={"k": v})  # type: ignore[arg-type]
         for v in ("alpha", "beta", "gamma")

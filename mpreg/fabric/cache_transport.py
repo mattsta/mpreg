@@ -526,7 +526,9 @@ class ServerCacheTransport:
         meta_dict: dict = {}
         if metadata is not None:
             meta_dict = {
-                "access_patterns": dict(getattr(metadata, "access_patterns", None) or {}),
+                "access_patterns": dict(
+                    getattr(metadata, "access_patterns", None) or {}
+                ),
                 "created_by": str(getattr(metadata, "created_by", "") or ""),
                 "ttl_seconds": getattr(metadata, "ttl_seconds", None),
             }
@@ -558,7 +560,9 @@ class ServerCacheTransport:
         if not sent:
             fut = self._pending_strong.pop(request_id, None)
             if fut and not fut.done():
-                fut.set_result({"ok": False, "reason": "send_failed", "node_id": peer_id})
+                fut.set_result(
+                    {"ok": False, "reason": "send_failed", "node_id": peer_id}
+                )
             return PrepareAck(str(peer_id), False, "send_failed")
         old_timeout = self.response_timeout
         self.response_timeout = timeout

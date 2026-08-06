@@ -34,8 +34,8 @@ def _make_node(node_id: str, transport: InProcessSharedAuditTransport):
 async def test_delta_epidemic_visibility() -> None:
     transport = InProcessSharedAuditTransport()
     sa, ra = _make_node("a", transport)
-    sb, rb = _make_node("b", transport)
-    sc, rc = _make_node("c", transport)
+    sb, _rb = _make_node("b", transport)
+    sc, _rc = _make_node("c", transport)
 
     rec = record_from_mgmt_entry(
         event="node_drain",
@@ -91,7 +91,7 @@ async def test_drop_then_digest_pull_repairs() -> None:
 async def test_reorder_delta_still_converges() -> None:
     transport = InProcessSharedAuditTransport()
     sa, ra = _make_node("a", transport)
-    sb, rb = _make_node("b", transport)
+    sb, _rb = _make_node("b", transport)
     transport.hold_reorder = True
 
     r1 = record_from_mgmt_entry(

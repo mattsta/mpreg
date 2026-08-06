@@ -68,21 +68,21 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 
 ## 2. Client surfaces (`client.*`)
 
-| ID                   | Feature                                   | Primary APIs                                                                   | Depth   | Apps                                                           |
-| -------------------- | ----------------------------------------- | ------------------------------------------------------------------------------ | ------- | -------------------------------------------------------------- |
-| `client.api`         | RPC-focused client                        | `MPREGClientAPI`                                                               | shipped | most apps                                                      |
-| `client.unified`     | Four-plane façade + discovery             | `MPREGClient` (call/publish/queue*/cache*/invalidate/list_peers/cluster_map_v2/catalog*) | shipped | `unified_client_tour`, `order_intake`                          |
-| `client.cluster`     | Multi-seed HA client                      | `MPREGClusterClient(seed_urls=…)`                                              | shipped | `ha_client_failover`                                           |
-| `client.cluster_map` | Live cluster map refresh                  | `cluster_map`, `refresh_cluster_map`                                           | shipped | `cluster_map_catalog`                                          |
-| `client.summary`     | Discovery summary routing                 | `summary_query`, `call_with_summary`                                           | shipped | `discovery_watch_summary` (summary_query + call_with_summary)  |
-| `client.policy.m1`   | Async retry policy                        | `ClientCallPolicy.for_mode(M1_ASYNC)`                                          | shipped | `ha_client_failover`, `plane_rpc`                              |
-| `client.policy.m2`   | Soft-RT shared deadline                   | `for_mode(M2_SOFT_RT, deadline_seconds=…)`                                     | shipped | `chaos_checkout`                                               |
-| `client.policy.m3`   | Streaming modality defaults               | `for_mode(M3_STREAMING)`                                                       | shipped | `rpc_concurrency_lab`                                          |
-| `client.default_ha`  | HA retry defaults                         | `default_ha_policy()`                                                          | shipped | `ha_client_failover`                                           |
-| `client.pubsub`      | Dedicated pubsub client                   | `MPREGPubSubClient`, `MPREGPubSubExtendedClient`                               | shipped | `pubsub_client_backlog`                                        |
-| `client.dns`         | DNS resolve client                        | `MPREGDnsClient.resolve`                                                       | shipped | `plane_dns`                                                    |
-| `client.trace`       | Last W3C trace context (always after RPC) | `last_trace_context()`; server `RPCResponse` echo                              | shipped | `client_trace_bind`                                            |
-| `client.auth`        | Token / API key on wire                   | `auth_token`, `api_key`, `rpc_auth_token`, `SecurityConfig`                    | shipped | `client_auth_token` (F11 enforced); mTLS = `tls_dev_handshake` |
+| ID                   | Feature                                   | Primary APIs                                                                              | Depth   | Apps                                                           |
+| -------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------- |
+| `client.api`         | RPC-focused client                        | `MPREGClientAPI`                                                                          | shipped | most apps                                                      |
+| `client.unified`     | Four-plane façade + discovery             | `MPREGClient` (call/publish/queue*/cache*/invalidate/list_peers/cluster_map_v2/catalog\*) | shipped | `unified_client_tour`, `order_intake`                          |
+| `client.cluster`     | Multi-seed HA client                      | `MPREGClusterClient(seed_urls=…)`                                                         | shipped | `ha_client_failover`                                           |
+| `client.cluster_map` | Live cluster map refresh                  | `cluster_map`, `refresh_cluster_map`                                                      | shipped | `cluster_map_catalog`                                          |
+| `client.summary`     | Discovery summary routing                 | `summary_query`, `call_with_summary`                                                      | shipped | `discovery_watch_summary` (summary_query + call_with_summary)  |
+| `client.policy.m1`   | Async retry policy                        | `ClientCallPolicy.for_mode(M1_ASYNC)`                                                     | shipped | `ha_client_failover`, `plane_rpc`                              |
+| `client.policy.m2`   | Soft-RT shared deadline                   | `for_mode(M2_SOFT_RT, deadline_seconds=…)`                                                | shipped | `chaos_checkout`                                               |
+| `client.policy.m3`   | Streaming modality defaults               | `for_mode(M3_STREAMING)`                                                                  | shipped | `rpc_concurrency_lab`                                          |
+| `client.default_ha`  | HA retry defaults                         | `default_ha_policy()`                                                                     | shipped | `ha_client_failover`                                           |
+| `client.pubsub`      | Dedicated pubsub client                   | `MPREGPubSubClient`, `MPREGPubSubExtendedClient`                                          | shipped | `pubsub_client_backlog`                                        |
+| `client.dns`         | DNS resolve client                        | `MPREGDnsClient.resolve`                                                                  | shipped | `plane_dns`                                                    |
+| `client.trace`       | Last W3C trace context (always after RPC) | `last_trace_context()`; server `RPCResponse` echo                                         | shipped | `client_trace_bind`                                            |
+| `client.auth`        | Token / API key on wire                   | `auth_token`, `api_key`, `rpc_auth_token`, `SecurityConfig`                               | shipped | `client_auth_token` (F11 enforced); mTLS = `tls_dev_handshake` |
 
 ---
 
@@ -124,25 +124,25 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 
 ## 5. Cache (`cache.*`)
 
-| ID                      | Feature                    | Primary APIs                                     | Depth   | Apps                                     |
-| ----------------------- | -------------------------- | ------------------------------------------------ | ------- | ---------------------------------------- |
-| `cache.put_get`         | Basic put/get              | `GlobalCacheManager.put/get`, `GlobalCacheKey`   | shipped | `hello_cache`, `session_cache`           |
-| `cache.ttl`             | TTL / expiry metadata      | `CacheMetadata(ttl_seconds=…)`                   | shipped | `session_cache`, `hello_cache`           |
-| `cache.l1`              | Process-local L1           | default level                                    | shipped | `hello_cache`                            |
-| `cache.l2`              | Persistent L2              | `enable_l2_persistent`, `CacheL2Store`           | shipped | `cache_replication_geo`                  |
-| `cache.l3`              | Distributed L3             | `enable_l3_distributed`, `CacheOptions(L3)`      | shipped | `plane_cache`, `cache_plus_federation`   |
-| `cache.l4`              | Federated L4               | `enable_l4_federation`, `CacheOptions(L4)`       | shipped | `plane_cache`, `feature_flag_mesh`       |
-| `cache.fabric_protocol` | Fabric cache gossip        | `FabricCacheProtocol`, `InProcessCacheTransport` | shipped | `plane_cache`, `feature_flag_mesh`       |
-| `cache.sync`            | Explicit peer sync         | `sync_cache_state(peer)`                         | shipped | `plane_cache`, `cache_plus_federation`   |
-| `cache.geo_hints`       | Geographic placement hints | `CacheMetadata.geographic_hints`                 | shipped | `cache_replication_geo`                  |
-| `cache.replication`     | Replication strategy       | `ReplicationStrategy`, `CacheReplicationPolicy`  | shipped | `cache_replication_geo`                  |
-| `cache.invalidate`      | Pattern invalidate         | `invalidate` / client `cache_invalidate`         | shipped | `cache_replication_geo`, `session_cache`, `unified_client_tour` |
-| `cache.atomic`          | CAS / incr / append        | `AdvancedCacheOperations.atomic_operation`       | shipped | `cache_atomic_ops`                       |
-| `cache.structures`      | Set/list/map/counter ops   | `data_structure_operation`                       | shipped | `cache_atomic_ops`                       |
-| `cache.namespace_ops`   | Clear/list/scan namespace  | `namespace_operation`                            | shipped | `cache_atomic_ops`                       |
-| `cache.pubsub_events`   | Cache→pubsub integration   | `CachePubSubIntegration`                         | shipped | `cache_event_bus`                        |
-| `cache.rpc_surface`     | Cache via unified client   | `MPREGClient.cache_get/put`                      | shipped | `unified_client_tour`                    |
-| `cache.strong`          | Majority-commit STRONG put | `StrongPutCoordinator`, `ConsistencyLevel.STRONG`, `cache_strong_enabled` | shipped | `cache_strong_quorum` |
+| ID                      | Feature                    | Primary APIs                                                              | Depth   | Apps                                                            |
+| ----------------------- | -------------------------- | ------------------------------------------------------------------------- | ------- | --------------------------------------------------------------- |
+| `cache.put_get`         | Basic put/get              | `GlobalCacheManager.put/get`, `GlobalCacheKey`                            | shipped | `hello_cache`, `session_cache`                                  |
+| `cache.ttl`             | TTL / expiry metadata      | `CacheMetadata(ttl_seconds=…)`                                            | shipped | `session_cache`, `hello_cache`                                  |
+| `cache.l1`              | Process-local L1           | default level                                                             | shipped | `hello_cache`                                                   |
+| `cache.l2`              | Persistent L2              | `enable_l2_persistent`, `CacheL2Store`                                    | shipped | `cache_replication_geo`                                         |
+| `cache.l3`              | Distributed L3             | `enable_l3_distributed`, `CacheOptions(L3)`                               | shipped | `plane_cache`, `cache_plus_federation`                          |
+| `cache.l4`              | Federated L4               | `enable_l4_federation`, `CacheOptions(L4)`                                | shipped | `plane_cache`, `feature_flag_mesh`                              |
+| `cache.fabric_protocol` | Fabric cache gossip        | `FabricCacheProtocol`, `InProcessCacheTransport`                          | shipped | `plane_cache`, `feature_flag_mesh`                              |
+| `cache.sync`            | Explicit peer sync         | `sync_cache_state(peer)`                                                  | shipped | `plane_cache`, `cache_plus_federation`                          |
+| `cache.geo_hints`       | Geographic placement hints | `CacheMetadata.geographic_hints`                                          | shipped | `cache_replication_geo`                                         |
+| `cache.replication`     | Replication strategy       | `ReplicationStrategy`, `CacheReplicationPolicy`                           | shipped | `cache_replication_geo`                                         |
+| `cache.invalidate`      | Pattern invalidate         | `invalidate` / client `cache_invalidate`                                  | shipped | `cache_replication_geo`, `session_cache`, `unified_client_tour` |
+| `cache.atomic`          | CAS / incr / append        | `AdvancedCacheOperations.atomic_operation`                                | shipped | `cache_atomic_ops`                                              |
+| `cache.structures`      | Set/list/map/counter ops   | `data_structure_operation`                                                | shipped | `cache_atomic_ops`                                              |
+| `cache.namespace_ops`   | Clear/list/scan namespace  | `namespace_operation`                                                     | shipped | `cache_atomic_ops`                                              |
+| `cache.pubsub_events`   | Cache→pubsub integration   | `CachePubSubIntegration`                                                  | shipped | `cache_event_bus`                                               |
+| `cache.rpc_surface`     | Cache via unified client   | `MPREGClient.cache_get/put`                                               | shipped | `unified_client_tour`                                           |
+| `cache.strong`          | Majority-commit STRONG put | `StrongPutCoordinator`, `ConsistencyLevel.STRONG`, `cache_strong_enabled` | shipped | `cache_strong_quorum`                                           |
 
 ---
 
@@ -172,21 +172,21 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 
 ## 7. Discovery / DNS (`disco.*`)
 
-| ID                      | Feature                    | Primary APIs                                | Depth   | Apps                                              |
-| ----------------------- | -------------------------- | ------------------------------------------- | ------- | ------------------------------------------------- |
-| `disco.list_peers`      | Peer snapshots             | `list_peers`                                | shipped | `discovery_join`, `hello_cluster`                 |
+| ID                      | Feature                    | Primary APIs                                | Depth   | Apps                                                                                 |
+| ----------------------- | -------------------------- | ------------------------------------------- | ------- | ------------------------------------------------------------------------------------ |
+| `disco.list_peers`      | Peer snapshots             | `list_peers`                                | shipped | `discovery_join`, `hello_cluster`                                                    |
 | `disco.cluster_map`     | Cluster map v1/v2          | `cluster_map`, `cluster_map_v2`             | shipped | `discovery_join`, `ha_client_failover`, `cluster_map_catalog`, `unified_client_tour` |
-| `disco.catalog_query`   | Scoped catalog query       | `catalog_query`                             | shipped | `cluster_map_catalog`                             |
-| `disco.catalog_watch`   | Delta watch topics         | `catalog_watch`                             | shipped | `discovery_watch_summary`                         |
-| `disco.summary_query`   | Summary records            | `summary_query`                             | shipped | `discovery_watch_summary`, `discovery_rate_limit` |
-| `disco.summary_watch`   | Summary export topics      | `summary_watch`                             | shipped | `discovery_watch_summary`                         |
-| `disco.access_audit`    | Discovery access audit     | `discovery_access_audit`                    | shipped | `discovery_resolver_audit`                        |
-| `disco.resolver_stats`  | Resolver cache stats       | `resolver_cache_stats`                      | shipped | `discovery_resolver_audit`                        |
-| `disco.resolver_resync` | Force catalog resync       | `resolver_resync`                           | shipped | `discovery_resolver_audit`                        |
-| `disco.dns_register`    | DNS service register/unreg | `dns_register` / `dns_unregister` / CLI     | shipped | `plane_dns`                                       |
-| `disco.dns_resolve`     | DNS gateway resolve        | `MPREGDnsClient`, `DnsGateway`              | shipped | `plane_dns`                                       |
-| `disco.join`            | Live node join visibility  | peers + new resources                       | shipped | `discovery_join`                                  |
-| `disco.signatures`      | Signed discovery summaries | `discovery_signatures`, `gossip_signatures` | shipped | `discovery_signatures_lab`                        |
+| `disco.catalog_query`   | Scoped catalog query       | `catalog_query`                             | shipped | `cluster_map_catalog`                                                                |
+| `disco.catalog_watch`   | Delta watch topics         | `catalog_watch`                             | shipped | `discovery_watch_summary`                                                            |
+| `disco.summary_query`   | Summary records            | `summary_query`                             | shipped | `discovery_watch_summary`, `discovery_rate_limit`                                    |
+| `disco.summary_watch`   | Summary export topics      | `summary_watch`                             | shipped | `discovery_watch_summary`                                                            |
+| `disco.access_audit`    | Discovery access audit     | `discovery_access_audit`                    | shipped | `discovery_resolver_audit`                                                           |
+| `disco.resolver_stats`  | Resolver cache stats       | `resolver_cache_stats`                      | shipped | `discovery_resolver_audit`                                                           |
+| `disco.resolver_resync` | Force catalog resync       | `resolver_resync`                           | shipped | `discovery_resolver_audit`                                                           |
+| `disco.dns_register`    | DNS service register/unreg | `dns_register` / `dns_unregister` / CLI     | shipped | `plane_dns`                                                                          |
+| `disco.dns_resolve`     | DNS gateway resolve        | `MPREGDnsClient`, `DnsGateway`              | shipped | `plane_dns`                                                                          |
+| `disco.join`            | Live node join visibility  | peers + new resources                       | shipped | `discovery_join`                                                                     |
+| `disco.signatures`      | Signed discovery summaries | `discovery_signatures`, `gossip_signatures` | shipped | `discovery_signatures_lab`                                                           |
 
 ---
 
@@ -289,19 +289,19 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 
 ## 15. CLI / ops (`ops.*`)
 
-| ID                              | Feature                 | Primary APIs                                    | Depth   | Apps           |
-| ------------------------------- | ----------------------- | ----------------------------------------------- | ------- | -------------- |
-| `ops.cli_call`                  | `mpreg call`            | CLI                                             | shipped | `ops_cli_tour` |
-| `ops.cli_planes`                | queue/cache/publish CLI | `mpreg client-*`                                | shipped | `ops_cli_tour` |
-| `ops.cli_dns`                   | DNS CLI group           | `mpreg dns` / `mpreg client dns-*`              | shipped | `ops_cli_tour` |
-| `ops.cli_ns`                    | Namespace policy CLI    | `mpreg namespace-policy`                        | shipped | `ops_cli_tour` |
-| `ops.cli_discovery`             | peers / resolver        | `list-peers`, resolver cmds                     | shipped | `ops_cli_tour` |
-| `ops.example_runner`            | Curriculum runner       | `mpreg-example`, `mpreg examples`, `mpreg demo` | shipped | all            |
-| `ops.doctor` / `ops.cli_doctor` | Doctor / admin          | `mpreg doctor`                                  | shipped | `ops_cli_tour` |
-| `ops.mgmt_drain`                | Node drain mutation     | `POST /mgmt/v1/nodes/drain`, `mpreg admin drain` | shipped | `live_partition_chaos`, `shared_audit_mesh` |
-| `ops.mgmt_detach`               | Peer detach mutation    | `POST /mgmt/v1/peers/detach`, `mpreg admin detach` | shipped | `live_partition_chaos` |
-| `ops.mgmt_audit`                | Local audit read        | `GET /mgmt/v1/audit`, `mpreg admin audit`       | shipped | `ops_cli_tour`, `live_partition_chaos` |
-| `ops.shared_audit`              | Cluster G-Set audit     | `mgmt_audit_shared_enabled`, `SharedAuditStore`, `scope=cluster` | shipped | `shared_audit_mesh` |
+| ID                              | Feature                 | Primary APIs                                                     | Depth   | Apps                                        |
+| ------------------------------- | ----------------------- | ---------------------------------------------------------------- | ------- | ------------------------------------------- |
+| `ops.cli_call`                  | `mpreg call`            | CLI                                                              | shipped | `ops_cli_tour`                              |
+| `ops.cli_planes`                | queue/cache/publish CLI | `mpreg client-*`                                                 | shipped | `ops_cli_tour`                              |
+| `ops.cli_dns`                   | DNS CLI group           | `mpreg dns` / `mpreg client dns-*`                               | shipped | `ops_cli_tour`                              |
+| `ops.cli_ns`                    | Namespace policy CLI    | `mpreg namespace-policy`                                         | shipped | `ops_cli_tour`                              |
+| `ops.cli_discovery`             | peers / resolver        | `list-peers`, resolver cmds                                      | shipped | `ops_cli_tour`                              |
+| `ops.example_runner`            | Curriculum runner       | `mpreg-example`, `mpreg examples`, `mpreg demo`                  | shipped | all                                         |
+| `ops.doctor` / `ops.cli_doctor` | Doctor / admin          | `mpreg doctor`                                                   | shipped | `ops_cli_tour`                              |
+| `ops.mgmt_drain`                | Node drain mutation     | `POST /mgmt/v1/nodes/drain`, `mpreg admin drain`                 | shipped | `live_partition_chaos`, `shared_audit_mesh` |
+| `ops.mgmt_detach`               | Peer detach mutation    | `POST /mgmt/v1/peers/detach`, `mpreg admin detach`               | shipped | `live_partition_chaos`                      |
+| `ops.mgmt_audit`                | Local audit read        | `GET /mgmt/v1/audit`, `mpreg admin audit`                        | shipped | `ops_cli_tour`, `live_partition_chaos`      |
+| `ops.shared_audit`              | Cluster G-Set audit     | `mgmt_audit_shared_enabled`, `SharedAuditStore`, `scope=cluster` | shipped | `shared_audit_mesh`                         |
 
 ---
 
@@ -410,95 +410,95 @@ Usability findings from building these apps: [API_FRICTION.md](./API_FRICTION.md
 
 ## App → feature map (canonical)
 
-| App                         | Level | Feature IDs (primary)                                                                   |
-| --------------------------- | ----- | --------------------------------------------------------------------------------------- |
-| `hello_rpc`                 | L0    | `rpc.register`, `rpc.dag`, `rpc.call`, `boot.port_range`                                |
-| `hello_cluster`             | L0    | `rpc.dag`, `rpc.locs`, `boot.peers`, `disco.list_peers`                                 |
-| `hello_trace`               | L0    | `mon.unified`, `mon.events`, `mon.timeline`                                             |
-| `hello_pubsub`              | L0    | `pubsub.exchange`, `pubsub.wildcard_star`, `pubsub.fanout`                              |
-| `hello_cache`               | L0    | `cache.put_get`, `cache.l1`, `cache.ttl`                                                |
-| `hello_ports`               | L0    | `boot.port_range`, `boot.auto_port`, `rpc.call`                                         |
-| `ha_client_failover`        | L1    | `client.cluster`, `client.policy.m1`, `client.default_ha`, `disco.cluster_map`          |
-| `job_queue_worker`          | L1    | `queue.alo`, `queue.quorum`, `queue.subscribe`                                          |
-| `url_shortener_rpc`         | L1    | `rpc.call`, `cache.put_get`                                                             |
-| `sensor_ingest_pubsub`      | L1    | `pubsub.wildcard_*`, `pubsub.fanout`                                                    |
-| `session_cache`             | L1    | `cache.ttl`, `cache.invalidate`                                                         |
-| `auto_port_bootstrap`       | L1    | `boot.auto_port`, `boot.peers`, `rpc.locs`                                              |
-| `plane_rpc`                 | L1    | `rpc.*` tour incl. list/describe/policy                                                 |
-| `plane_pubsub`              | L1    | `pubsub.*` tour                                                                         |
-| `plane_queue`               | L1    | `queue.*` tour                                                                          |
-| `plane_cache`               | L1    | `cache.l1–l4`, `cache.fabric_protocol`                                                  |
-| `plane_fabric`              | L1    | `fabric.permissive`, `fabric.cross_rpc`                                                 |
-| `plane_monitoring`          | L1    | `mon.*` tour                                                                            |
-| `order_intake`              | L2    | `prod.order`, multi-plane                                                               |
-| `media_pipeline`            | L2    | `rpc.dag`, `rpc.locs`, multi-stage                                                      |
-| `feature_flag_mesh`         | L2    | `cache.l4`, `cache.fabric_protocol`                                                     |
-| `webhook_dispatcher`        | L2    | `pubsub` + `queue.topic_route`                                                          |
-| `config_reload_live`        | L2    | `pers.restart`, `pers.sqlite_*`                                                         |
-| `rpc_plus_cache`            | L2    | `rpc` + `cache` integration                                                             |
-| `pubsub_plus_queue`         | L2    | `pubsub` + `queue` bridge                                                               |
-| `cache_plus_federation`     | L2    | `cache.l3/l4` federation                                                                |
-| `ml_inference_mesh`         | L2    | `rpc.locs` specialized workers                                                          |
-| `multi_region_shop`         | L3    | `fabric.cross_rpc`, `rpc.target_cluster`                                                |
-| `signed_route_border`       | L3    | `fabric.route_security`, `fabric.route_keys`                                            |
-| `partition_safe_counter`    | L3    | `chaos.partition`, `cons.quorum_teach`                                                  |
-| `discovery_join`            | L3    | `disco.join`, `disco.list_peers`, `disco.cluster_map`                                   |
-| `chaos_checkout`            | L3    | `chaos.*`, `client.policy.m2`, `rpc.deadline`                                           |
-| `fabric_snapshot_restart`   | L3    | `pers.fabric_snap`, `fabric.catalog`                                                    |
-| `tier3_expansion`           | L3    | multi-plane expansion                                                                   |
-| `global_edge_control_plane` | L4    | `fabric.hubs`, `mon.timeline`, multi-cluster                                            |
-| `cache_atomic_ops`          | L1    | `cache.atomic`, `cache.structures`, `cache.namespace_ops`                               |
-| `namespace_policy_gate`     | L1    | `ns.validate`, `ns.apply`, `ns.status`, `ns.export`, `ns.audit`                         |
-| `plane_dns`                 | L1    | `disco.dns_register`, `disco.dns_resolve`, `client.dns` (+ unregister)                  |
+| App                         | Level | Feature IDs (primary)                                                                               |
+| --------------------------- | ----- | --------------------------------------------------------------------------------------------------- |
+| `hello_rpc`                 | L0    | `rpc.register`, `rpc.dag`, `rpc.call`, `boot.port_range`                                            |
+| `hello_cluster`             | L0    | `rpc.dag`, `rpc.locs`, `boot.peers`, `disco.list_peers`                                             |
+| `hello_trace`               | L0    | `mon.unified`, `mon.events`, `mon.timeline`                                                         |
+| `hello_pubsub`              | L0    | `pubsub.exchange`, `pubsub.wildcard_star`, `pubsub.fanout`                                          |
+| `hello_cache`               | L0    | `cache.put_get`, `cache.l1`, `cache.ttl`                                                            |
+| `hello_ports`               | L0    | `boot.port_range`, `boot.auto_port`, `rpc.call`                                                     |
+| `ha_client_failover`        | L1    | `client.cluster`, `client.policy.m1`, `client.default_ha`, `disco.cluster_map`                      |
+| `job_queue_worker`          | L1    | `queue.alo`, `queue.quorum`, `queue.subscribe`                                                      |
+| `url_shortener_rpc`         | L1    | `rpc.call`, `cache.put_get`                                                                         |
+| `sensor_ingest_pubsub`      | L1    | `pubsub.wildcard_*`, `pubsub.fanout`                                                                |
+| `session_cache`             | L1    | `cache.ttl`, `cache.invalidate`                                                                     |
+| `auto_port_bootstrap`       | L1    | `boot.auto_port`, `boot.peers`, `rpc.locs`                                                          |
+| `plane_rpc`                 | L1    | `rpc.*` tour incl. list/describe/policy                                                             |
+| `plane_pubsub`              | L1    | `pubsub.*` tour                                                                                     |
+| `plane_queue`               | L1    | `queue.*` tour                                                                                      |
+| `plane_cache`               | L1    | `cache.l1–l4`, `cache.fabric_protocol`                                                              |
+| `plane_fabric`              | L1    | `fabric.permissive`, `fabric.cross_rpc`                                                             |
+| `plane_monitoring`          | L1    | `mon.*` tour                                                                                        |
+| `order_intake`              | L2    | `prod.order`, multi-plane                                                                           |
+| `media_pipeline`            | L2    | `rpc.dag`, `rpc.locs`, multi-stage                                                                  |
+| `feature_flag_mesh`         | L2    | `cache.l4`, `cache.fabric_protocol`                                                                 |
+| `webhook_dispatcher`        | L2    | `pubsub` + `queue.topic_route`                                                                      |
+| `config_reload_live`        | L2    | `pers.restart`, `pers.sqlite_*`                                                                     |
+| `rpc_plus_cache`            | L2    | `rpc` + `cache` integration                                                                         |
+| `pubsub_plus_queue`         | L2    | `pubsub` + `queue` bridge                                                                           |
+| `cache_plus_federation`     | L2    | `cache.l3/l4` federation                                                                            |
+| `ml_inference_mesh`         | L2    | `rpc.locs` specialized workers                                                                      |
+| `multi_region_shop`         | L3    | `fabric.cross_rpc`, `rpc.target_cluster`                                                            |
+| `signed_route_border`       | L3    | `fabric.route_security`, `fabric.route_keys`                                                        |
+| `partition_safe_counter`    | L3    | `chaos.partition`, `cons.quorum_teach`                                                              |
+| `discovery_join`            | L3    | `disco.join`, `disco.list_peers`, `disco.cluster_map`                                               |
+| `chaos_checkout`            | L3    | `chaos.*`, `client.policy.m2`, `rpc.deadline`                                                       |
+| `fabric_snapshot_restart`   | L3    | `pers.fabric_snap`, `fabric.catalog`                                                                |
+| `tier3_expansion`           | L3    | multi-plane expansion                                                                               |
+| `global_edge_control_plane` | L4    | `fabric.hubs`, `mon.timeline`, multi-cluster                                                        |
+| `cache_atomic_ops`          | L1    | `cache.atomic`, `cache.structures`, `cache.namespace_ops`                                           |
+| `namespace_policy_gate`     | L1    | `ns.validate`, `ns.apply`, `ns.status`, `ns.export`, `ns.audit`                                     |
+| `plane_dns`                 | L1    | `disco.dns_register`, `disco.dns_resolve`, `client.dns` (+ unregister)                              |
 | `unified_client_tour`       | L1    | `client.unified`, `cache.rpc_surface`, `cache.invalidate`, `queue.rpc_surface`, `disco.cluster_map` |
-| `pubsub_request_reply`      | L1    | `pubsub.publish_reply`, `pubsub.client_wire`                                            |
-| `job_queue_dlq`             | L1    | `queue.dlq`, `queue.alo`                                                                |
-| `rpc_versioned_topic`       | L1    | `rpc.function_id`, `rpc.version_constraint`, `rpc.fqn` (bare+opaque id)                  |
-| `client_auth_token`         | L1    | `client.auth`, `tx.security`, `mon.health`                                              |
-| `hello_queue`               | L0    | `queue.send`, `queue.subscribe`                                                         |
-| `hello_dns`                 | L0    | `disco.dns_register`, `disco.dns_resolve`                                               |
-| `discovery_watch_summary`   | L3    | `disco.catalog_watch`, `disco.summary_*`                                                |
-| `fabric_graph_resilience`   | L3    | `fabric.graph`, `fabric.resilience`                                                     |
-| `cache_event_bus`           | L2    | `cache.pubsub_events`                                                                   |
-| `ops_cli_tour`              | L2    | `ops.cli_*`                                                                             |
-| `chaos_transport`           | L3    | `chaos.clock_skew`, `chaos.duplicate`, `chaos.reorder`, `chaos.drop`                    |
-| `tls_dev_handshake`         | L1    | `tx.tls`, `tx.security`, `rpc.call`                                                     |
-| `discovery_resolver_audit`  | L1    | `disco.access_audit`, `disco.resolver_stats`, `disco.resolver_resync`                   |
-| `transport_health_attach`   | L1    | `mon.transport`, `mon.health`                                                           |
-| `transport_protocol_tour`   | L1    | `tx.tcp`, `tx.multi_protocol`                                                           |
-| `queue_federation_lab`      | L2    | `fabric.queue_fed`                                                                      |
-| `blockchain_message_lab`    | L2    | `fabric.blockchain_msg`                                                                 |
-| `live_partition_chaos`      | L3    | `chaos.live_drain`, `ops.mgmt_drain`, `ops.mgmt_audit`, `ops.mgmt_detach`, `mon.health` |
-| `discovery_signatures_lab`  | L1    | `disco.signatures`                                                                      |
-| `rpc_inventory_tour`        | L1    | `rpc.describe`, `rpc.report`                                                            |
-| `client_trace_bind`         | L1    | `client.trace`, `mon.trace_bind`                                                        |
-| `correlation_routing_lab`   | L1    | `tx.correlation`, `chaos.no_loop`                                                       |
-| `mtls_mesh_handshake`       | L2    | `tx.tls` CERT_REQUIRED                                                                  |
-| `packet_loss_chaos`         | L3    | `chaos.drop`, `chaos.live_drain`                                                        |
-| `blockchain_hub_settlement` | L2    | `fabric.blockchain_msg`, `fabric.hubs`                                                  |
-| `rpc_deadline_budget`       | L3    | `rpc.deadline`, `client.policy.m1/m2/m3`                                                |
-| `notification_fanout`       | L2    | `prod.notify`, `pubsub.*`                                                               |
-| `billing_ledger`            | L2    | `prod.billing`, rpc+cache+queue                                                         |
-| `inventory_reserve`         | L2    | `prod.inventory`, rpc+cache                                                             |
-| `topic_queue_bridge`        | L2    | `queue.topic_route`, pubsub→queue                                                       |
-| `multi_region_dns_policy`   | L3    | DNS namespaces + regional RPC                                                           |
-| `rpc_fqn_namespace`         | L1    | `rpc.fqn`, `rpc.namespace_deny`, `rpc.bound_namespace`                                  |
-| `topic_taxonomy_tour`       | L1    | `topic.*`                                                                               |
-| `persistence_kv`            | L1    | `pers.memory_kv`, `pers.sqlite_kv`                                                      |
-| `profile_settings_tour`     | L1    | `boot.profile`                                                                          |
-| `discovery_rate_limit`      | L1    | `disco.rate_limit`                                                                      |
-| `observability_slo_trace`   | L1    | `mon.slo`, `mon.trace_context`                                                          |
-| `topic_queue_router_lab`    | L2    | `queue.topic_route`                                                                     |
-| `topic_dependency_lab`      | L2    | `rpc.dependency`, `rpc.topic_aware`                                                     |
-| `shipping_fulfillment`      | L2    | `prod.shipping`                                                                         |
-| `rpc_intermediate_results`  | L2    | `rpc.intermediate`                                                                      |
-| `shared_audit_mesh`         | L2    | `ops.shared_audit`, `ops.mgmt_drain`, `ops.mgmt_audit`                                  |
-| `cache_strong_quorum`       | L2    | `cache.strong`                                                                          |
-| `routing_oracle_lab`        | L3    | `oracle.routing`, `oracle.raft`                                                         |
-| `deadline_hop_budget`       | L3    | `fabric.deadline_hop`                                                                   |
-| `fabric_hub_hierarchy`      | L3    | `fabric.hubs`, `fabric.graph`                                                           |
-| `leader_election_lab`       | L3    | `cons.leader_election`                                                                  |
-| `multi_pop_edge_mesh`       | L4    | second world tour                                                                       |
+| `pubsub_request_reply`      | L1    | `pubsub.publish_reply`, `pubsub.client_wire`                                                        |
+| `job_queue_dlq`             | L1    | `queue.dlq`, `queue.alo`                                                                            |
+| `rpc_versioned_topic`       | L1    | `rpc.function_id`, `rpc.version_constraint`, `rpc.fqn` (bare+opaque id)                             |
+| `client_auth_token`         | L1    | `client.auth`, `tx.security`, `mon.health`                                                          |
+| `hello_queue`               | L0    | `queue.send`, `queue.subscribe`                                                                     |
+| `hello_dns`                 | L0    | `disco.dns_register`, `disco.dns_resolve`                                                           |
+| `discovery_watch_summary`   | L3    | `disco.catalog_watch`, `disco.summary_*`                                                            |
+| `fabric_graph_resilience`   | L3    | `fabric.graph`, `fabric.resilience`                                                                 |
+| `cache_event_bus`           | L2    | `cache.pubsub_events`                                                                               |
+| `ops_cli_tour`              | L2    | `ops.cli_*`                                                                                         |
+| `chaos_transport`           | L3    | `chaos.clock_skew`, `chaos.duplicate`, `chaos.reorder`, `chaos.drop`                                |
+| `tls_dev_handshake`         | L1    | `tx.tls`, `tx.security`, `rpc.call`                                                                 |
+| `discovery_resolver_audit`  | L1    | `disco.access_audit`, `disco.resolver_stats`, `disco.resolver_resync`                               |
+| `transport_health_attach`   | L1    | `mon.transport`, `mon.health`                                                                       |
+| `transport_protocol_tour`   | L1    | `tx.tcp`, `tx.multi_protocol`                                                                       |
+| `queue_federation_lab`      | L2    | `fabric.queue_fed`                                                                                  |
+| `blockchain_message_lab`    | L2    | `fabric.blockchain_msg`                                                                             |
+| `live_partition_chaos`      | L3    | `chaos.live_drain`, `ops.mgmt_drain`, `ops.mgmt_audit`, `ops.mgmt_detach`, `mon.health`             |
+| `discovery_signatures_lab`  | L1    | `disco.signatures`                                                                                  |
+| `rpc_inventory_tour`        | L1    | `rpc.describe`, `rpc.report`                                                                        |
+| `client_trace_bind`         | L1    | `client.trace`, `mon.trace_bind`                                                                    |
+| `correlation_routing_lab`   | L1    | `tx.correlation`, `chaos.no_loop`                                                                   |
+| `mtls_mesh_handshake`       | L2    | `tx.tls` CERT_REQUIRED                                                                              |
+| `packet_loss_chaos`         | L3    | `chaos.drop`, `chaos.live_drain`                                                                    |
+| `blockchain_hub_settlement` | L2    | `fabric.blockchain_msg`, `fabric.hubs`                                                              |
+| `rpc_deadline_budget`       | L3    | `rpc.deadline`, `client.policy.m1/m2/m3`                                                            |
+| `notification_fanout`       | L2    | `prod.notify`, `pubsub.*`                                                                           |
+| `billing_ledger`            | L2    | `prod.billing`, rpc+cache+queue                                                                     |
+| `inventory_reserve`         | L2    | `prod.inventory`, rpc+cache                                                                         |
+| `topic_queue_bridge`        | L2    | `queue.topic_route`, pubsub→queue                                                                   |
+| `multi_region_dns_policy`   | L3    | DNS namespaces + regional RPC                                                                       |
+| `rpc_fqn_namespace`         | L1    | `rpc.fqn`, `rpc.namespace_deny`, `rpc.bound_namespace`                                              |
+| `topic_taxonomy_tour`       | L1    | `topic.*`                                                                                           |
+| `persistence_kv`            | L1    | `pers.memory_kv`, `pers.sqlite_kv`                                                                  |
+| `profile_settings_tour`     | L1    | `boot.profile`                                                                                      |
+| `discovery_rate_limit`      | L1    | `disco.rate_limit`                                                                                  |
+| `observability_slo_trace`   | L1    | `mon.slo`, `mon.trace_context`                                                                      |
+| `topic_queue_router_lab`    | L2    | `queue.topic_route`                                                                                 |
+| `topic_dependency_lab`      | L2    | `rpc.dependency`, `rpc.topic_aware`                                                                 |
+| `shipping_fulfillment`      | L2    | `prod.shipping`                                                                                     |
+| `rpc_intermediate_results`  | L2    | `rpc.intermediate`                                                                                  |
+| `shared_audit_mesh`         | L2    | `ops.shared_audit`, `ops.mgmt_drain`, `ops.mgmt_audit`                                              |
+| `cache_strong_quorum`       | L2    | `cache.strong`                                                                                      |
+| `routing_oracle_lab`        | L3    | `oracle.routing`, `oracle.raft`                                                                     |
+| `deadline_hop_budget`       | L3    | `fabric.deadline_hop`                                                                               |
+| `fabric_hub_hierarchy`      | L3    | `fabric.hubs`, `fabric.graph`                                                                       |
+| `leader_election_lab`       | L3    | `cons.leader_election`                                                                              |
+| `multi_pop_edge_mesh`       | L4    | second world tour                                                                                   |
 
 ---
 

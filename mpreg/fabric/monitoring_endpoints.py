@@ -2092,20 +2092,14 @@ class FederationMonitoringSystem:
                         )
                     else:
                         snap = audit_fn()
-                except (TypeError, ValueError):
+                except TypeError, ValueError:
                     snap = audit_fn()
-                if (
-                    isinstance(snap, dict)
-                    and "mutations" in snap
-                    and "scope" in snap
-                ):
+                if isinstance(snap, dict) and "mutations" in snap and "scope" in snap:
                     return web.json_response(snap)
                 if isinstance(snap, dict) and (
                     "mutations" in snap or "entries" in snap
                 ):
-                    mutations = list(
-                        snap.get("mutations") or snap.get("entries") or []
-                    )
+                    mutations = list(snap.get("mutations") or snap.get("entries") or [])
                     log = (
                         getattr(self, "route_decision_log", None)
                         or get_default_route_decision_log()

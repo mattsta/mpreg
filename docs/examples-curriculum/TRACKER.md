@@ -458,31 +458,31 @@ Only active delivery queue. Mirrors PROJECT_PLAN Phase Q table.
 
 ## Phase W — Full test suite green (COMPLETE)
 
-| Item | Status | Notes |
-| ---- | ------ | ----- |
-| pytest tests/ -n auto green | [x] | 2579 passed in 472.92s |
-| FQN/fabric scatter + selector + function_id | [x] | Phase W platform fixes |
-| commit | [x] | 0fb30ff |
+| Item                                        | Status | Notes                  |
+| ------------------------------------------- | ------ | ---------------------- |
+| pytest tests/ -n auto green                 | [x]    | 2579 passed in 472.92s |
+| FQN/fabric scatter + selector + function_id | [x]    | Phase W platform fixes |
+| commit                                      | [x]    | 0fb30ff                |
 
 ## Phase X — Façade teach + Phase W FQN (COMPLETE)
 
-| Item | Status | Notes |
-| ---- | ------ | ----- |
-| plane_dns dns_unregister | [x] | |
-| cluster_map_catalog + unified cluster_map_v2 | [x] | |
-| unified cache_invalidate | [x] | |
-| pubsub_client_backlog unsubscribe | [x] | |
-| rpc_versioned_topic bare+opaque function_id | [x] | Phase W semantics |
-| APP_FEATURES / FEATURE_CATALOG / APP_CATALOG | [x] | |
-| verify + commit | [x] | |
+| Item                                         | Status | Notes             |
+| -------------------------------------------- | ------ | ----------------- |
+| plane_dns dns_unregister                     | [x]    |                   |
+| cluster_map_catalog + unified cluster_map_v2 | [x]    |                   |
+| unified cache_invalidate                     | [x]    |                   |
+| pubsub_client_backlog unsubscribe            | [x]    |                   |
+| rpc_versioned_topic bare+opaque function_id  | [x]    | Phase W semantics |
+| APP_FEATURES / FEATURE_CATALOG / APP_CATALOG | [x]    |                   |
+| verify + commit                              | [x]    |                   |
 
 ## Phase Y — Shared audit + STRONG put (COMPLETE)
 
-| Item | Status | Notes |
-| ---- | ------ | ----- |
-| SharedAuditStore + gossip + HTTP scope=cluster | [x] | INV-SHARED-AUDIT-01 |
-| StrongPutCoordinator + 1015–1018 | [x] | INV-CACHE-STRONG-01 |
-| `shared_audit_mesh` + `cache_strong_quorum` | [x] | L2 curriculum |
-| Property + integration + claims L4 | [x] | ebf774b era |
-| Operator/architecture/client/curriculum docs | [x] | honesty banners + catalogs |
-| App count 99 | [x] | was 97 |
+| Item                                           | Status | Notes                      |
+| ---------------------------------------------- | ------ | -------------------------- |
+| SharedAuditStore + gossip + HTTP scope=cluster | [x]    | INV-SHARED-AUDIT-01        |
+| StrongPutCoordinator + 1015–1018               | [x]    | INV-CACHE-STRONG-01        |
+| `shared_audit_mesh` + `cache_strong_quorum`    | [x]    | L2 curriculum              |
+| Property + integration + claims L4             | [x]    | ebf774b era                |
+| Operator/architecture/client/curriculum docs   | [x]    | honesty banners + catalogs |
+| App count 99                                   | [x]    | was 97                     |

@@ -225,7 +225,9 @@ class StrongLocalBackend:
                 ent = self._visible.get(ks)
                 if ent is not None and _entry_op_id(ent) == op_id:
                     return CommitAck(self.node_id, True, applied=True)
-                return CommitAck(self.node_id, False, applied=False, reason="no_pending")
+                return CommitAck(
+                    self.node_id, False, applied=False, reason="no_pending"
+                )
 
             ks = self._key_str(pending.key)
             current = self._visible.get(ks)
@@ -394,8 +396,7 @@ class StrongPutCoordinator:
             return CacheOperationResult(
                 success=False,
                 error_message=(
-                    f"QUORUM_TIMEOUT/INSUFFICIENT prepare acks "
-                    f"{len(prepare_ok)}/{Q}"
+                    f"QUORUM_TIMEOUT/INSUFFICIENT prepare acks {len(prepare_ok)}/{Q}"
                 ),
                 error_code=int(StrongErrorCode.QUORUM_TIMEOUT)
                 if prepare_ok

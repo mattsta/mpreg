@@ -51,7 +51,9 @@ class StrongPeerHandler:
             self.cluster_id,
         ):
             return _prep_ack(self.backend.node_id, False, "cluster_mismatch")
-        key = key_from_payload(payload.get("key") if isinstance(payload.get("key"), dict) else None)
+        key = key_from_payload(
+            payload.get("key") if isinstance(payload.get("key"), dict) else None
+        )
         if key is None:
             return _prep_ack(self.backend.node_id, False, "bad_key")
         sv = StrongVersion.from_dict(payload.get("strong_version"))
@@ -89,7 +91,9 @@ class StrongPeerHandler:
             self.cluster_id,
         ):
             return _commit_ack(self.backend.node_id, False, False, "cluster_mismatch")
-        key = key_from_payload(payload.get("key") if isinstance(payload.get("key"), dict) else None)
+        key = key_from_payload(
+            payload.get("key") if isinstance(payload.get("key"), dict) else None
+        )
         op_id = str(payload.get("op_id") or "")
         if key is None or not op_id:
             return _commit_ack(self.backend.node_id, False, False, "bad_request")
@@ -103,7 +107,9 @@ class StrongPeerHandler:
         }
 
     async def handle_abort(self, payload: dict[str, Any]) -> dict[str, Any]:
-        key = key_from_payload(payload.get("key") if isinstance(payload.get("key"), dict) else None)
+        key = key_from_payload(
+            payload.get("key") if isinstance(payload.get("key"), dict) else None
+        )
         op_id = str(payload.get("op_id") or "")
         if key is None or not op_id:
             return {

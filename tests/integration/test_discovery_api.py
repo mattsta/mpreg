@@ -4,7 +4,6 @@ import time
 import pytest
 
 from mpreg.client.client_api import MPREGClientAPI
-from mpreg.core.rpc_naming import PlatformRpc
 from mpreg.client.cluster_client import MPREGClusterClient
 from mpreg.client.pubsub_client import MPREGPubSubClient
 from mpreg.core.cluster_map import (
@@ -18,6 +17,7 @@ from mpreg.core.discovery_tenant import DiscoveryTenantCredential
 from mpreg.core.model import MPREGException
 from mpreg.core.namespace_policy import CutoverWindow, NamespacePolicyRule
 from mpreg.core.port_allocator import port_range_context
+from mpreg.core.rpc_naming import PlatformRpc
 from mpreg.fabric.federation_config import create_permissive_bridging_config
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext

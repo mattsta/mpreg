@@ -145,7 +145,7 @@ async def test_inprocess_mesh_rejoin_anti_entropy() -> None:
         return store, rep
 
     sa, ra = make("a")
-    sb, rb = make("b")
+    sb, _rb = make("b")
 
     # A produces history while C is absent
     ids = []
