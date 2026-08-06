@@ -452,7 +452,7 @@ class TestLocationConsistencyWithLiveServers:
         # Create a cache entry first
         cache_key = GlobalCacheKey(namespace="pinning_test", identifier="hot_key")
 
-        entry = await consistency_manager.replicate_cache_entry(
+        await consistency_manager.replicate_cache_entry(
             key=cache_key,
             value="hot_data",
             target_clusters=frozenset(),  # No initial replication

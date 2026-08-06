@@ -165,7 +165,7 @@ class GraphMetricsCollector:
             try:
                 await self._collect_all_metrics()
                 await asyncio.sleep(self.collection_interval)
-            except Exception as e:
+            except Exception:
                 self.collection_errors += 1
                 # Log error but continue collecting
                 await asyncio.sleep(self.collection_interval)
@@ -605,14 +605,14 @@ class GraphOptimizer:
             try:
                 await self._run_optimization_cycle()
                 await asyncio.sleep(self.optimization_interval)
-            except Exception as e:
+            except Exception:
                 # Log error but continue optimizing
                 await asyncio.sleep(self.optimization_interval)
 
     async def _run_optimization_cycle(self) -> None:
         """Run a single optimization cycle."""
         # Analyze current graph performance
-        current_stats = self.graph.get_statistics()
+        self.graph.get_statistics()
 
         # Generate optimization suggestions
         suggestions = self._generate_optimization_suggestions()
@@ -650,7 +650,7 @@ class GraphOptimizer:
         suggestions = []
 
         # Find nodes with low connectivity
-        for node_id, node in self.graph.nodes.items():
+        for node_id in self.graph.nodes:
             neighbor_count = len(self.graph.get_neighbors(node_id))
 
             if neighbor_count < 2:  # Isolated or single-connected nodes
@@ -707,7 +707,7 @@ class GraphOptimizer:
         suggestions = []
 
         # Find single points of failure
-        for node_id, node in self.graph.nodes.items():
+        for node_id in self.graph.nodes:
             if self._is_single_point_of_failure(node_id):
                 suggestions.append(
                     OptimizationSuggestion(

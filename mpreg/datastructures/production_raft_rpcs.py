@@ -8,6 +8,7 @@ InstallSnapshot, as well as the core state transition logic.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -24,9 +25,6 @@ from .production_raft import (
     RequestVoteRequest,
     RequestVoteResponse,
 )
-
-if TYPE_CHECKING:
-    pass
 
 rpc_log = logger
 
@@ -72,8 +70,10 @@ class ProductionRaftRPCs:
         def _get_term_at_index(self, index: int) -> int: ...
         def _get_entry_at_index(self, raft_index: int) -> Any: ...
         def _truncate_log_through(self, prev_log_index: int) -> list: ...
+
         _snapshot_last_index: int
         _snapshot_last_term: int
+
         async def _start_election_timer(self) -> None: ...
         async def _apply_committed_entries(self) -> None: ...
 
@@ -90,14 +90,10 @@ class ProductionRaftRPCs:
         # OBS-T13-02: optional Prom / metrics hook (server wires ServerMetricsTracker)
         cb = getattr(self, "on_snapshot_chunk_abort", None)
         if callable(cb):
-            try:
+            with contextlib.suppress(Exception):
                 cb(1, int(getattr(self, "_snapshot_chunk_bytes", 0) or 0))
-            except Exception:
-                pass
         if reason:
-            rpc_log.warning(
-                f"Dropped snapshot chunks id={snapshot_id} reason={reason}"
-            )
+            rpc_log.warning(f"Dropped snapshot chunks id={snapshot_id} reason={reason}")
 
     def _snapshot_chunk_prune_stale(self, now: float | None = None) -> None:
         now = float(now if now is not None else time.time())
@@ -105,17 +101,11 @@ class ProductionRaftRPCs:
         started = getattr(self, "_snapshot_chunk_started_at", None)
         if not isinstance(started, dict):
             return
-        stale = [
-            sid
-            for sid, ts in list(started.items())
-            if (now - float(ts)) > ttl
-        ]
+        stale = [sid for sid, ts in list(started.items()) if (now - float(ts)) > ttl]
         for sid in stale:
             self._snapshot_chunk_drop(sid, reason="ttl_expired")
 
-    def _snapshot_chunk_can_accept(
-        self, snapshot_id: str, chunk_len: int
-    ) -> bool:
+    def _snapshot_chunk_can_accept(self, snapshot_id: str, chunk_len: int) -> bool:
         """Return False if accepting this chunk would exceed bounds."""
         self._snapshot_chunk_prune_stale()
         max_ids = int(getattr(self, "_snapshot_chunk_max_ids", 4) or 4)
@@ -134,9 +124,7 @@ class ProductionRaftRPCs:
                     victim = min(started.items(), key=lambda kv: kv[1])[0]
                 self._snapshot_chunk_drop(victim, reason="max_concurrent_installs")
         cur_bytes = int(getattr(self, "_snapshot_chunk_bytes", 0) or 0)
-        if cur_bytes + max(0, int(chunk_len)) > max_bytes:
-            return False
-        return True
+        return not cur_bytes + max(0, int(chunk_len)) > max_bytes
 
     def _snapshot_chunk_note_append(self, snapshot_id: str, data: bytes) -> None:
         if snapshot_id not in self.snapshot_chunks:
@@ -148,10 +136,8 @@ class ProductionRaftRPCs:
         ) + len(data)
         cb = getattr(self, "on_snapshot_chunk_bytes", None)
         if callable(cb):
-            try:
+            with contextlib.suppress(Exception):
                 cb(int(self._snapshot_chunk_bytes))
-            except Exception:
-                pass
 
     # RequestVote RPC Handler
     async def handle_request_vote(
@@ -199,9 +185,12 @@ class ProductionRaftRPCs:
                     last_log_term = self._last_log_term()
                     last_log_index = self._last_log_index()
 
-                    candidate_log_up_to_date = request.last_log_term > last_log_term or (
-                        request.last_log_term == last_log_term
-                        and request.last_log_index >= last_log_index
+                    candidate_log_up_to_date = (
+                        request.last_log_term > last_log_term
+                        or (
+                            request.last_log_term == last_log_term
+                            and request.last_log_index >= last_log_index
+                        )
                     )
 
                     if candidate_log_up_to_date:
@@ -517,9 +506,7 @@ class ProductionRaftRPCs:
         # COR-T10-01: never ACK success after apply/persist failure.
         try:
             # Combine all chunks
-            complete_snapshot_data = b"".join(
-                self.snapshot_chunks.get(snapshot_id, [])
-            )
+            complete_snapshot_data = b"".join(self.snapshot_chunks.get(snapshot_id, []))
 
             # Create snapshot object
             cfg = set(getattr(request, "configuration", ()) or ())
@@ -598,7 +585,7 @@ class ProductionRaftRPCs:
 
             cfg = getattr(snapshot, "configuration", None) or set()
             if cfg:
-                self.cluster_members = set(str(m) for m in cfg)
+                self.cluster_members = {str(m) for m in cfg}
 
             rpc_log.info(
                 f"Applied snapshot up to index {snapshot.last_included_index}, "

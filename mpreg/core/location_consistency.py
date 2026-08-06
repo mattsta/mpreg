@@ -735,17 +735,14 @@ class LocationConsistencyManager:
     async def _send_invalidation_message(self, operation: ReplicationOperation) -> None:
         """Send invalidation message to target clusters."""
         # Implementation for invalidation messages
-        pass
 
     async def _send_migration_message(self, operation: ReplicationOperation) -> None:
         """Send migration message to target cluster."""
         # Implementation for migration messages
-        pass
 
     async def _send_pin_message(self, operation: ReplicationOperation) -> None:
         """Send pin message to target clusters."""
         # Implementation for pin messages
-        pass
 
     async def _send_heartbeat(self) -> None:
         """Send location heartbeat to other clusters."""
@@ -816,24 +813,20 @@ class LocationConsistencyManager:
     async def _handle_invalidate_message(self, payload: dict[str, Any]) -> None:
         """Handle incoming invalidate message."""
         # Implementation for handling invalidation
-        pass
 
     async def _handle_migrate_message(self, payload: dict[str, Any]) -> None:
         """Handle incoming migrate message."""
         # Implementation for handling migration
-        pass
 
     async def _handle_pin_message(self, payload: dict[str, Any]) -> None:
         """Handle incoming pin message."""
         # Implementation for handling pinning
-        pass
 
     async def _handle_conflict_resolution_message(
         self, payload: dict[str, Any]
     ) -> None:
         """Handle incoming conflict resolution message."""
         # Implementation for handling conflict resolution
-        pass
 
     async def _resolve_conflict(
         self,
@@ -924,7 +917,6 @@ class LocationConsistencyManager:
         """Set up pub/sub subscriptions for replication messages."""
         # This would be integrated with the pub/sub system
         # For now, we set up the framework
-        pass
 
     def get_statistics(self) -> dict[str, Any]:
         """Get location consistency statistics."""

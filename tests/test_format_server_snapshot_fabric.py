@@ -20,7 +20,15 @@ def test_format_server_snapshot_prints_fabric_hops() -> None:
             "max_ms": 1.5,
             "rps": 0.1,
         },
-        "pubsub": {"total": 0, "errors": 0, "samples": 0, "avg_ms": 0, "p95_ms": 0, "rps": 0, "notifications": 0},
+        "pubsub": {
+            "total": 0,
+            "errors": 0,
+            "samples": 0,
+            "avg_ms": 0,
+            "p95_ms": 0,
+            "rps": 0,
+            "notifications": 0,
+        },
         "fabric": {
             "decisions_total": 4,
             "decisions_buffered": 1,

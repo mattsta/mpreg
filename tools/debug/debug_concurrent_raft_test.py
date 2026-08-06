@@ -74,7 +74,6 @@ async def run_single_test(test_id: str, delay: float = 0.0):
             await asyncio.sleep(0.2)
 
             # Check all nodes have applied the command
-            success = True
             applied_count = 0
             for node in nodes.values():
                 if hasattr(node.state_machine, "state"):
@@ -85,7 +84,6 @@ async def run_single_test(test_id: str, delay: float = 0.0):
                         print(
                             f"[{test_id}] ❌ Node {node.node_id}: expected 42, got {value}"
                         )
-                        success = False
 
             if applied_count == 3:
                 print(f"[{test_id}] ✅ Test passed - all nodes applied command")

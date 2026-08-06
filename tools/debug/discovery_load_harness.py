@@ -61,7 +61,7 @@ def _percentile(values: list[float], percent: float) -> float:
     ordered = sorted(values)
     if len(ordered) == 1:
         return ordered[0]
-    index = max(0, min(len(ordered) - 1, int(round(percent * (len(ordered) - 1)))))
+    index = max(0, min(len(ordered) - 1, round(percent * (len(ordered) - 1))))
     return ordered[index]
 
 def _summarize_samples(samples: list[LoadSample]) -> dict[str, LoadReport]:

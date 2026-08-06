@@ -71,7 +71,9 @@ async def main() -> None:
                     m2 = ClientCallPolicy.for_mode(
                         RpcExecutionMode.M2_SOFT_RT, deadline_seconds=5.0
                     )
-                    ensure(m2.share_deadline_across_attempts is True, "M2 shares deadline")
+                    ensure(
+                        m2.share_deadline_across_attempts is True, "M2 shares deadline"
+                    )
                     async with MPREGClientAPI(url_api, call_policy=m2) as client:
                         cart = await client.call(
                             "create_cart",
@@ -90,7 +92,8 @@ async def main() -> None:
                             timeout=5.0,
                         )
                         ensure(
-                            isinstance(charged, dict) and charged.get("charged") is True,
+                            isinstance(charged, dict)
+                            and charged.get("charged") is True,
                             f"charge {charged}",
                         )
                     ok(f"happy-path charged={charged}")
@@ -120,7 +123,9 @@ async def main() -> None:
                     )
                     ok(f"healed; fault_events={len(injector.decisions)}")
 
-                with scenario("post-heal checkout still works", "rpc.call", "chaos.heal"):
+                with scenario(
+                    "post-heal checkout still works", "rpc.call", "chaos.heal"
+                ):
                     async with MPREGClientAPI(url_api) as client:
                         cart = await client.call(
                             "create_cart",

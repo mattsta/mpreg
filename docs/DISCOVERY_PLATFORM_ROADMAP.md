@@ -629,25 +629,30 @@ Suggested locations:
 ## End-to-End Validation Scenarios
 
 1. Multi-region with namespace delegation:
+
    - Region A owns svc.prod.us-east.\*
    - Region B owns svc.prod.eu-west.\*
    - Global summaries only, no cross-region endpoints
    - Clients resolve via resolver to region owner.
 
 2. Controlled cutover:
+
    - Export policy toggled on during window
    - Summary appears globally within TTL
    - Rollback removes export within hold-down limits.
 
 3. Resolver outage:
+
    - Clients fail over to ingress seeds
    - Discovery remains available with bounded latency.
 
 4. High churn:
+
    - Endpoint joins/leaves at 10% per minute
    - Summary updates are stable and limited.
 
 5. Tenant isolation:
+
    - Tenant A cannot query Tenant B namespaces
    - Audit logs show rejected queries.
 

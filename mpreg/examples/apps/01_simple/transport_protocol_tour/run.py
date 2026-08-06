@@ -85,7 +85,9 @@ async def main() -> None:
             ok(f"adapter type={type(adapter).__name__}")
             cfg = EnhancedMultiProtocolAdapterConfig()
             ensure(cfg is not None, "config None")
-            ok(f"config fields include health={hasattr(cfg, 'enable_health_monitoring')}")
+            ok(
+                f"config fields include health={hasattr(cfg, 'enable_health_monitoring')}"
+            )
 
         with scenario(
             "TransportConfig default for WS vs TCP distinction",

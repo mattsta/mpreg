@@ -152,9 +152,7 @@ async def main() -> None:
                     async with MPREGClientAPI(hub, call_policy=m1) as client:
                         v = await probe.measure_await(
                             "rpc.call",
-                            client.call(
-                                "add", 2, 3, locs=frozenset(["cpu", "math"])
-                            ),
+                            client.call("add", 2, 3, locs=frozenset(["cpu", "math"])),
                         )
                         ensure(v == 5, f"M1 add got {v!r}")
                     async with MPREGClientAPI(hub, call_policy=m3) as client:

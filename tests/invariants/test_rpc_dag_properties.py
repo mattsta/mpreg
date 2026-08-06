@@ -48,7 +48,9 @@ def test_levels_cover_all_nodes(n: int, edge_data: list[tuple[int, int]]) -> Non
     oracle = RpcOracle()
     for i, level in enumerate(levels):
         coll.start_level(i)
-        mid = coll.complete_level(i, {str(x): x for x in level}, {str(x): x for x in level})
+        mid = coll.complete_level(
+            i, {str(x): x for x in level}, {str(x): x for x in level}
+        )
         oracle.observe(RpcStreamEvent(kind="intermediate", level=mid.level_index))
     oracle.observe(RpcStreamEvent(kind="final"))
 

@@ -15,15 +15,15 @@ from .trace_context import (
 )
 
 __all__ = [
+    "GOLDEN_SIGNALS",
     "TRACEPARENT_KEY",
     "TRACESTATE_KEY",
+    "GoldenSignal",
     "bind_current_trace",
     "ensure_traceparent",
-    "get_current_traceparent",
     "extract_traceparent",
     "generate_traceparent",
+    "get_current_traceparent",
     "inject_trace_metadata",
-    "GOLDEN_SIGNALS",
-    "GoldenSignal",
     "prometheus_alert_rules_yaml",
 ]

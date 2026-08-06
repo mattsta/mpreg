@@ -15,7 +15,9 @@ from mpreg.fabric.cache_federation import FabricCacheProtocol
 from mpreg.fabric.cache_transport import InProcessCacheTransport
 
 async def main() -> None:
-    with app_run("session_cache", "Session Cache — TTL / rotate / invalidate", level="L1"):
+    with app_run(
+        "session_cache", "Session Cache — TTL / rotate / invalidate", level="L1"
+    ):
         transport = InProcessCacheTransport()
         protocol = FabricCacheProtocol(
             "session-node", transport=transport, gossip_interval=60.0
@@ -32,7 +34,9 @@ async def main() -> None:
             key = GlobalCacheKey.from_data("session", {"sid": "abc"})
             key_b = GlobalCacheKey.from_data("session", {"sid": "xyz"})
 
-            with scenario("store session with TTL", "cache.put_get", "cache.ttl", "cache.l1"):
+            with scenario(
+                "store session with TTL", "cache.put_get", "cache.ttl", "cache.l1"
+            ):
                 step("put session abc")
                 await cache.put(
                     key,
@@ -98,7 +102,8 @@ async def main() -> None:
                     )
                     tomb = await cache.get(key_b)
                     ensure(
-                        tomb.entry is not None and tomb.entry.value.get("revoked") is True,
+                        tomb.entry is not None
+                        and tomb.entry.value.get("revoked") is True,
                         "tombstone failed",
                     )
                     ok("tombstone revoke pattern (no delete API path taken)")

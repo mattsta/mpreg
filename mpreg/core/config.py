@@ -7,6 +7,7 @@ from typing import Any
 
 from mpreg.core.discovery_tenant import DiscoveryTenantCredential
 from mpreg.core.namespace_policy import NamespacePolicyRule
+from mpreg.core.native_codec import load_path
 from mpreg.core.persistence.config import PersistenceConfig, PersistenceMode
 from mpreg.datastructures.type_aliases import (
     AreaId,
@@ -26,8 +27,6 @@ from mpreg.fabric.route_control import RoutePolicy
 from mpreg.fabric.route_keys import RouteKeyProvider, RouteKeyRegistry
 from mpreg.fabric.route_policy_directory import RoutePolicyDirectory
 from mpreg.fabric.route_security import RouteAnnouncementSigner, RouteSecurityConfig
-
-from mpreg.core.native_codec import load_path
 
 @dataclass(slots=True)
 class MPREGSettings:
@@ -268,10 +267,12 @@ class MPREGSettings:
             self.dns_max_ttl_seconds = max(
                 float(self.dns_min_ttl_seconds), float(self.dns_max_ttl_seconds)
             )
-        if self.discovery_access_audit_max_entries < 0:
-            self.discovery_access_audit_max_entries = 0
-        if self.discovery_rate_limit_requests_per_minute < 0:
-            self.discovery_rate_limit_requests_per_minute = 0
+        self.discovery_access_audit_max_entries = max(
+            self.discovery_access_audit_max_entries, 0
+        )
+        self.discovery_rate_limit_requests_per_minute = max(
+            self.discovery_rate_limit_requests_per_minute, 0
+        )
         if self.discovery_rate_limit_window_seconds < 0:
             self.discovery_rate_limit_window_seconds = 0.0
         if self.discovery_tenant_header is not None:

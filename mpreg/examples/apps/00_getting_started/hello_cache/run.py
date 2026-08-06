@@ -32,7 +32,9 @@ async def main() -> None:
             key = GlobalCacheKey.from_data("hello.cache", {"user": "alice"})
             missing_key = GlobalCacheKey.from_data("hello.cache", {"user": "nobody"})
 
-            with scenario("put + get happy path", "cache.put_get", "cache.l1", "cache.ttl"):
+            with scenario(
+                "put + get happy path", "cache.put_get", "cache.l1", "cache.ttl"
+            ):
                 step("put session payload with TTL metadata")
                 await cache.put(
                     key,

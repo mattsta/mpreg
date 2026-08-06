@@ -258,7 +258,7 @@ def benchmark_performance():
     print("\n⚡ Performance Benchmarking")
     print("-" * 30)
 
-    router = create_global_federation_topology()
+    create_global_federation_topology()
 
     # Benchmark different graph sizes
     test_sizes = [10, 50, 100]

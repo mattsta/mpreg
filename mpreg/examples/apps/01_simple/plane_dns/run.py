@@ -82,7 +82,9 @@ async def main() -> None:
 
                     await asyncio.sleep(0.25)
 
-                    with scenario("dns_list discovers registration", "disco.dns_register"):
+                    with scenario(
+                        "dns_list discovers registration", "disco.dns_register"
+                    ):
                         listed = await client.dns_list(namespace="market")
                         items = getattr(listed, "items", ()) or ()
                         ensure(len(items) >= 1, f"dns_list empty: {listed}")
@@ -94,13 +96,16 @@ async def main() -> None:
                                     or (item.get("service") or {}).get("name")
                                 )
                         ensure(
-                            "tradefeed" in names or any("tradefeed" in str(i) for i in items),
+                            "tradefeed" in names
+                            or any("tradefeed" in str(i) for i in items),
                             f"tradefeed not in list names={names} items={items[:2]}",
                         )
                         ok(f"dns_list items={len(items)}")
 
                     with scenario("dns_describe returns detail", "disco.dns_register"):
-                        desc = await client.dns_describe(name="tradefeed", namespace="market")
+                        desc = await client.dns_describe(
+                            name="tradefeed", namespace="market"
+                        )
                         ditems = getattr(desc, "items", ()) or ()
                         ensure(len(ditems) >= 1, f"dns_describe empty: {desc}")
                         ok(f"dns_describe items={len(ditems)}")
@@ -124,9 +129,7 @@ async def main() -> None:
                             f"A resolve weak: {a_res}",
                         )
                         if a_res.answers:
-                            ok(
-                                f"A answers={[a.rdata for a in a_res.answers]}"
-                            )
+                            ok(f"A answers={[a.rdata for a in a_res.answers]}")
                         else:
                             # Fall back to SRV which integration tests always assert
                             srv = await dns.resolve(
@@ -151,9 +154,7 @@ async def main() -> None:
                         "TCP resolve path",
                         "disco.dns_resolve",
                     ):
-                        dns_tcp = MPREGDnsClient(
-                            "127.0.0.1", tcp_port, use_tcp=True
-                        )
+                        dns_tcp = MPREGDnsClient("127.0.0.1", tcp_port, use_tcp=True)
                         srv_tcp = await dns_tcp.resolve(
                             "_svc._tcp.tradefeed.market.mpreg", "SRV"
                         )

@@ -61,7 +61,7 @@ class TestEnhancedMultiProtocolAdapterIntegration:
     @pytest.mark.asyncio
     async def test_enhanced_adapter_lifecycle(self, test_context, port_pair):
         """Test enhanced adapter start/stop lifecycle with live servers."""
-        port1, port2 = port_pair
+        port1, _port2 = port_pair
 
         # Create adapter with real configuration
         adapter = create_enhanced_multi_protocol_adapter(
@@ -98,7 +98,7 @@ class TestEnhancedMultiProtocolAdapterIntegration:
     @pytest.mark.asyncio
     async def test_enhanced_adapter_protocol_management(self, test_context, port_pair):
         """Test adding and removing protocols with enhancements using live servers."""
-        port1, port2 = port_pair
+        port1, _port2 = port_pair
 
         adapter = create_enhanced_multi_protocol_adapter(
             base_port=port1,
@@ -145,7 +145,7 @@ class TestEnhancedMultiProtocolAdapterIntegration:
         self, test_context, port_pair
     ):
         """Test enhanced adapter basic functionality."""
-        port1, port2 = port_pair
+        port1, _port2 = port_pair
 
         # Create enhanced adapter
         adapter = create_enhanced_multi_protocol_adapter(
@@ -184,7 +184,7 @@ class TestEnhancedMultiProtocolAdapterIntegration:
         self, test_context, port_pair
     ):
         """Test circuit breaker functionality with connection failures."""
-        port1, port2 = port_pair
+        port1, _port2 = port_pair
 
         adapter = create_enhanced_multi_protocol_adapter(
             base_port=port1,
@@ -218,7 +218,7 @@ class TestEnhancedMultiProtocolAdapterIntegration:
     @pytest.mark.asyncio
     async def test_circuit_breaker_integration(self, test_context, port_pair):
         """Test circuit breaker state management and failure tracking."""
-        port1, port2 = port_pair
+        port1, _port2 = port_pair
 
         adapter = create_enhanced_multi_protocol_adapter(
             base_port=port1,
@@ -267,7 +267,7 @@ class TestEnhancedMultiProtocolAdapterIntegration:
     @pytest.mark.asyncio
     async def test_enhanced_status_reporting(self, test_context, port_pair):
         """Test enhanced status reporting with reliability metrics using live adapter."""
-        port1, port2 = port_pair
+        port1, _port2 = port_pair
 
         adapter = create_enhanced_multi_protocol_adapter(
             base_port=port1,
@@ -303,7 +303,7 @@ class TestEnhancedMultiProtocolAdapterIntegration:
     @pytest.mark.asyncio
     async def test_background_task_management(self, test_context, port_pair):
         """Test background task lifecycle management with live adapter."""
-        port1, port2 = port_pair
+        port1, _port2 = port_pair
 
         adapter = create_enhanced_multi_protocol_adapter(
             base_port=port1, enable_correlation_tracking=True
@@ -362,7 +362,7 @@ class TestEnhancedMultiProtocolAdapterIntegration:
     @pytest.mark.asyncio
     async def test_async_context_manager(self, test_context, port_pair):
         """Test enhanced adapter as async context manager with live adapter."""
-        port1, port2 = port_pair
+        port1, _port2 = port_pair
 
         adapter = create_enhanced_multi_protocol_adapter(
             base_port=port1,

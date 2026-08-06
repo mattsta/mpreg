@@ -23,7 +23,7 @@ def _calculate_percentile(values: list[float], percentile: float) -> float:
     if not values:
         return 0.0
     sorted_values = sorted(values)
-    index = int(round((percentile / 100.0) * (len(sorted_values) - 1)))
+    index = round((percentile / 100.0) * (len(sorted_values) - 1))
     index = max(0, min(index, len(sorted_values) - 1))
     return float(sorted_values[index])
 
@@ -131,7 +131,9 @@ class ServerMetricsTracker:
         if elapsed >= 1.0:
             inst = self._rpc_window_count / max(elapsed, 1e-6)
             self._rpc_rps_ewma = (
-                inst if self._rpc_rps_ewma <= 0 else (0.3 * inst + 0.7 * self._rpc_rps_ewma)
+                inst
+                if self._rpc_rps_ewma <= 0
+                else (0.3 * inst + 0.7 * self._rpc_rps_ewma)
             )
             self._rpc_window_start = now
             self._rpc_window_count = 0
@@ -185,7 +187,10 @@ class ServerMetricsTracker:
 
     def record_mgmt_mutation(self, event: str, *, success: bool = True) -> None:
         key = f"{event}:{'ok' if success else 'err'}"
-        if key not in self.mgmt_mutations and len(self.mgmt_mutations) >= _MGMT_EVENT_LABEL_MAX:
+        if (
+            key not in self.mgmt_mutations
+            and len(self.mgmt_mutations) >= _MGMT_EVENT_LABEL_MAX
+        ):
             key = "_other"
         self.mgmt_mutations[key] = self.mgmt_mutations.get(key, 0) + 1
 
@@ -208,9 +213,7 @@ class ServerMetricsTracker:
 
     def record_cache_pubsub_drop(self, n: int = 1) -> None:
         """Increment cache-pubsub notification queue drops (OBS-04)."""
-        self.cache_pubsub_drops = max(
-            0, int(self.cache_pubsub_drops) + max(0, int(n))
-        )
+        self.cache_pubsub_drops = max(0, int(self.cache_pubsub_drops) + max(0, int(n)))
 
     def record_gossip_pending_drop(self, n: int = 1) -> None:
         """OBS-T10-01 / PERF-T10-05: gossip pending overflow drops."""
@@ -220,7 +223,9 @@ class ServerMetricsTracker:
 
     def record_accept_reject(self, n: int = 1) -> None:
         """PERF-T11-01: inbound client connection rejected at cap."""
-        self.accept_rejects = max(0, int(getattr(self, "accept_rejects", 0)) + max(0, int(n)))
+        self.accept_rejects = max(
+            0, int(getattr(self, "accept_rejects", 0)) + max(0, int(n))
+        )
 
     def record_peer_accept_reject(self, n: int = 1) -> None:
         """OBS-T13-03 / COR-T13-06: peer mesh connection refused at cap."""
@@ -348,9 +353,7 @@ class ServerMetricsTracker:
             "# HELP mpreg_drain_refusals_total Data-plane messages refused while draining."
         )
         lines.append("# TYPE mpreg_drain_refusals_total counter")
-        lines.append(
-            f"mpreg_drain_refusals_total{{{labels}}} {self.drain_refusals}"
-        )
+        lines.append(f"mpreg_drain_refusals_total{{{labels}}} {self.drain_refusals}")
         lines.append(
             "# HELP mpreg_accept_rejects_total Inbound connections rejected at cap."
         )
@@ -413,15 +416,15 @@ class ServerMetricsTracker:
         lines.append(
             f"mpreg_raft_snapshot_installs_total{{{labels}}} {self.raft_snapshot_installs}"
         )
-        lines.append(
-            "# HELP mpreg_node_ready 1 if node would pass /ready admission."
-        )
+        lines.append("# HELP mpreg_node_ready 1 if node would pass /ready admission.")
         lines.append("# TYPE mpreg_node_ready gauge")
         lines.append(f"mpreg_node_ready{{{labels}}} {int(self.node_ready)}")
         # OBS-T14-01: Raft internal gauges (bridged from ProductionRaft)
         lines.append("# HELP mpreg_raft_term Current Raft term (bridged).")
         lines.append("# TYPE mpreg_raft_term gauge")
-        lines.append(f"mpreg_raft_term{{{labels}}} {int(getattr(self, 'raft_term', 0))}")
+        lines.append(
+            f"mpreg_raft_term{{{labels}}} {int(getattr(self, 'raft_term', 0))}"
+        )
         lines.append("# HELP mpreg_raft_commit_index Raft commit_index (bridged).")
         lines.append("# TYPE mpreg_raft_commit_index gauge")
         lines.append(
@@ -445,9 +448,7 @@ class ServerMetricsTracker:
             f"mpreg_raft_elections_started_total{{{labels}}} "
             f"{int(getattr(self, 'raft_elections_started', 0))}"
         )
-        lines.append(
-            "# HELP mpreg_raft_elections_won_total Elections won (bridged)."
-        )
+        lines.append("# HELP mpreg_raft_elections_won_total Elections won (bridged).")
         lines.append("# TYPE mpreg_raft_elections_won_total counter")
         lines.append(
             f"mpreg_raft_elections_won_total{{{labels}}} "
@@ -545,9 +546,7 @@ class ServerMetricsTracker:
         for idx, bound in enumerate(_LATENCY_BUCKETS_MS):
             cumulative += buckets[idx]
             # le label uses plain number; +Inf last
-            lines.append(
-                f'{name}_bucket{{{labels},le="{bound:g}"}} {cumulative}'
-            )
+            lines.append(f'{name}_bucket{{{labels},le="{bound:g}"}} {cumulative}')
         cumulative += buckets[-1]
         lines.append(f'{name}_bucket{{{labels},le="+Inf"}} {cumulative}')
         lines.append(f"{name}_sum{{{labels}}} {sum_ms:.6f}")
@@ -626,9 +625,7 @@ class ServerMetricsTracker:
                 "total": int(self.rpc_total),
                 "errors": int(self.rpc_errors),
                 "samples": len(rpc_lat),
-                "avg_ms": round(
-                    (sum(rpc_lat) / len(rpc_lat)) if rpc_lat else 0.0, 3
-                ),
+                "avg_ms": round((sum(rpc_lat) / len(rpc_lat)) if rpc_lat else 0.0, 3),
                 "p50_ms": round(_calculate_percentile(rpc_lat, 50.0), 3),
                 "p95_ms": round(_calculate_percentile(rpc_lat, 95.0), 3),
                 "p99_ms": round(_calculate_percentile(rpc_lat, 99.0), 3),
@@ -641,9 +638,7 @@ class ServerMetricsTracker:
                 "total": int(self.pubsub_total),
                 "errors": int(self.pubsub_errors),
                 "samples": len(pub_lat),
-                "avg_ms": round(
-                    (sum(pub_lat) / len(pub_lat)) if pub_lat else 0.0, 3
-                ),
+                "avg_ms": round((sum(pub_lat) / len(pub_lat)) if pub_lat else 0.0, 3),
                 "p50_ms": round(_calculate_percentile(pub_lat, 50.0), 3),
                 "p95_ms": round(_calculate_percentile(pub_lat, 95.0), 3),
                 "p99_ms": round(_calculate_percentile(pub_lat, 99.0), 3),

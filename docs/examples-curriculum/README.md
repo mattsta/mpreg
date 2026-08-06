@@ -9,15 +9,15 @@
 This directory is the **project tracker and design home** for the example-app
 growth cycle: from getting-started through world-spanning fabric architectures.
 
-| Doc | Purpose |
-|-----|---------|
-| [VISION.md](VISION.md) | Goals, non-goals, learning principles |
-| [STAGES.md](STAGES.md) | Phases A–T with exit criteria and POC apps |
-| [APP_CATALOG.md](APP_CATALOG.md) | Full matrix of shipped apps (+ closed historical planned rows) |
-| [APP_CONVENTIONS.md](APP_CONVENTIONS.md) | Packaging, ports, asserts, honesty |
-| [OPERATE.md](OPERATE.md) | Configure / start / run / manage / operate |
-| [TRACKER.md](TRACKER.md) | Checklist status for this growth cycle |
-| [POC_NOTES.md](POC_NOTES.md) | Implementation notes per vertical slice |
+| Doc                                      | Purpose                                                        |
+| ---------------------------------------- | -------------------------------------------------------------- |
+| [VISION.md](VISION.md)                   | Goals, non-goals, learning principles                          |
+| [STAGES.md](STAGES.md)                   | Phases A–T with exit criteria and POC apps                     |
+| [APP_CATALOG.md](APP_CATALOG.md)         | Full matrix of shipped apps (+ closed historical planned rows) |
+| [APP_CONVENTIONS.md](APP_CONVENTIONS.md) | Packaging, ports, asserts, honesty                             |
+| [OPERATE.md](OPERATE.md)                 | Configure / start / run / manage / operate                     |
+| [TRACKER.md](TRACKER.md)                 | Checklist status for this growth cycle                         |
+| [POC_NOTES.md](POC_NOTES.md)             | Implementation notes per vertical slice                        |
 
 **Code lives under** `mpreg/examples/apps/`.  
 **Central runner (entrypoints only):** `uv run mpreg-example …`  
@@ -55,12 +55,12 @@ Depth drills: `plane_*`, `rpc_plus_cache`, `tier3_expansion`.
 
 ## Unified legacy
 
-| Old | Now |
-|-----|-----|
-| `tier1_*.py` / `mpreg demo tier1` | `plane_*` / `mpreg-example demo tier1` |
-| `tier2_*.py` | integration apps / `demo tier2` |
-| `tier3_*.py` | `tier3_expansion` |
-| standalone `*_demo.py` | canonical curriculum ids (see APP_CATALOG) |
+| Old                               | Now                                        |
+| --------------------------------- | ------------------------------------------ |
+| `tier1_*.py` / `mpreg demo tier1` | `plane_*` / `mpreg-example demo tier1`     |
+| `tier2_*.py`                      | integration apps / `demo tier2`            |
+| `tier3_*.py`                      | `tier3_expansion`                          |
+| standalone `*_demo.py`            | canonical curriculum ids (see APP_CATALOG) |
 
 See also: [docs/BOOK.md](../BOOK.md), [docs/EXAMPLES.md](../EXAMPLES.md),
 [mpreg/examples/README.md](../../mpreg/examples/README.md).

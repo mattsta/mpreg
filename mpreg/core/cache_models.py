@@ -29,7 +29,9 @@ class ConsistencyLevel(Enum):
     """
 
     EVENTUAL = "eventual"  # Best effort, eventual consistency
-    STRONG = "strong"  # Reserved: majority acknowledgment (fail-closed until implemented)
+    STRONG = (
+        "strong"  # Reserved: majority acknowledgment (fail-closed until implemented)
+    )
     WEAK = "weak"  # Local cache only, no synchronization
 
 class CacheLevel(Enum):

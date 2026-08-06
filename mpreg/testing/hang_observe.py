@@ -7,15 +7,17 @@ plus native samples — no shell scripts required.
 
 from __future__ import annotations
 
+import contextlib
 import faulthandler
 import os
 import signal
 import subprocess
 import sys
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, TextIO
+from typing import TextIO
 
 DEFAULT_STATE_DIR = Path(".local/test-state")
 DEFAULT_PROFILE_DIR = Path(".local/hang-profile")
@@ -106,7 +108,7 @@ class HangStateDir:
         for path in self.root.glob("*.pid"):
             try:
                 pids.append(int(path.read_text(encoding="utf-8").strip()))
-            except (OSError, ValueError):
+            except OSError, ValueError:
                 continue
         for crumb in self.breadcrumbs():
             if crumb.pid is not None:
@@ -138,7 +140,7 @@ def enable_faulthandler(stream: TextIO | None = None) -> None:
 
     state = HangStateDir()
 
-    def _dump_to_state(signum: int, frame: object) -> None:  # noqa: ARG001
+    def _dump_to_state(signum: int, frame: object) -> None:
         try:
             state.ensure()
             stack_path = state.root / f"{state.worker_id}.stack"
@@ -148,18 +150,14 @@ def enable_faulthandler(stream: TextIO | None = None) -> None:
             # Also mirror to stderr for live suite logs.
             faulthandler.dump_traceback(file=target, all_threads=True)
         except Exception:
-            try:
+            with contextlib.suppress(Exception):
                 faulthandler.dump_traceback(file=target, all_threads=True)
-            except Exception:
-                pass
 
     try:
         signal.signal(signal.SIGUSR1, _dump_to_state)
     except Exception:
-        try:
+        with contextlib.suppress(Exception):
             faulthandler.register(signal.SIGUSR1, file=target, all_threads=True)
-        except Exception:
-            pass
 
 def install_pytest_hang_hooks() -> None:
     """Side-effect import target: hooks live in tests/conftest via thin wrappers."""
@@ -257,15 +255,11 @@ class HangProfiler:
         if breadcrumbs:
             lines.append("breadcrumbs:")
             for crumb in breadcrumbs:
-                lines.append(
-                    f"  {crumb.worker} pid={crumb.pid} nodeid={crumb.nodeid}"
-                )
-                try:
+                lines.append(f"  {crumb.worker} pid={crumb.pid} nodeid={crumb.nodeid}")
+                with contextlib.suppress(OSError):
                     (out / f"{crumb.worker}.current").write_text(
                         crumb.path.read_text(encoding="utf-8"), encoding="utf-8"
                     )
-                except OSError:
-                    pass
 
         snaps = ProcessSampler.snapshot(pids)[:top_n]
         lines.append("ranked:")
@@ -331,7 +325,9 @@ class HangProfiler:
                 if f"pid={pid}" in text.splitlines()[0:3] or f"pid={pid}" in text[:80]:
                     dest = out / f"faulthandler-{pid}.txt"
                     dest.write_text(text, encoding="utf-8")
-                    lines.append(f"  faulthandler stack → {dest.name} ({len(text)} bytes)")
+                    lines.append(
+                        f"  faulthandler stack → {dest.name} ({len(text)} bytes)"
+                    )
 
         # Optional py-spy (unsupported on CPython 3.14 as of py-spy 0.4.0)
         if self.pyspy_path.is_file():
@@ -341,10 +337,8 @@ class HangProfiler:
                 cmd = ["sudo", "-n", *cmd]
             rc = self._run(cmd, dump_path, out / f"pyspy-{pid}.err")
             err = ""
-            try:
+            with contextlib.suppress(OSError):
                 err = (out / f"pyspy-{pid}.err").read_text(encoding="utf-8")[:200]
-            except OSError:
-                pass
             lines.append(f"  py-spy dump pid={pid} rc={rc} {err!r}")
             if (
                 rc == 0

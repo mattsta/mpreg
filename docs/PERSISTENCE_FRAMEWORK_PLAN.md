@@ -6,7 +6,6 @@
 > `from_toml` / `from_json` / `from_path` loaders. Monitoring exposes
 > `/metrics/persistence`. Remaining work is backend expansion (remote SQL/other stores),
 > deeper crash-recovery hardening, and doc examples — not greenfield scaffolding.
->
 
 ## Goals
 

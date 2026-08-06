@@ -7,7 +7,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mpreg.client.call_policy import ClientCallPolicy, RpcExecutionMode, call_with_policy
+from mpreg.client.call_policy import (
+    ClientCallPolicy,
+    RpcExecutionMode,
+    call_with_policy,
+)
 from mpreg.client.client import Client
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.cache_models import (
@@ -19,15 +23,15 @@ from mpreg.core.cache_models import (
 )
 from mpreg.core.errors import MpregError, MpregErrorCode, map_exception, timeout_error
 from mpreg.core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
-from mpreg.core.model import MPREGException, RPCError
+from mpreg.core.model import MPREGException
 from mpreg.fabric.message import (
     DeliveryGuarantee,
     MessageHeaders,
     MessageType,
     UnifiedMessage,
 )
-from mpreg.fabric.router import FabricRouteReason
 from mpreg.fabric.route_decision_log import RouteDecisionLog, make_record_from_route
+from mpreg.fabric.router import FabricRouteReason
 from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
 
 def test_rpc_error_carries_retryable_on_wire() -> None:
@@ -94,7 +98,9 @@ async def test_strong_cache_put_fails_closed_when_l3_requested() -> None:
         assert result.error_message is not None
         assert "STRONG" in result.error_message
         # COR-01: no dirty L1 residual after refused STRONG put
-        get_result = await mgr.get(key, CacheOptions(cache_levels=frozenset({CacheLevel.L1})))
+        get_result = await mgr.get(
+            key, CacheOptions(cache_levels=frozenset({CacheLevel.L1}))
+        )
         assert get_result.success is False
     finally:
         mgr.shutdown_sync()
@@ -113,7 +119,9 @@ async def test_strong_cache_put_l1_only_fails_closed_no_residual() -> None:
         assert result.success is False
         assert result.error_message is not None
         assert "STRONG" in result.error_message
-        get_result = await mgr.get(key, CacheOptions(cache_levels=frozenset({CacheLevel.L1})))
+        get_result = await mgr.get(
+            key, CacheOptions(cache_levels=frozenset({CacheLevel.L1}))
+        )
         assert get_result.success is False
     finally:
         mgr.shutdown_sync()
@@ -123,7 +131,7 @@ async def test_exactly_once_queue_route_unsupported() -> None:
     from mpreg.fabric.catalog import QueueEndpoint
     from mpreg.fabric.engine import RoutingEngine
     from mpreg.fabric.index import RoutingIndex
-    from mpreg.fabric.router import FabricRoutingConfig, FabricRouter
+    from mpreg.fabric.router import FabricRouter, FabricRoutingConfig
 
     index = RoutingIndex()
     index.catalog.queues.register(
@@ -160,7 +168,7 @@ async def test_exactly_once_all_message_types_unsupported() -> None:
     """COR-03: EO is fabric-wide, not queue-route-only."""
     from mpreg.fabric.engine import RoutingEngine
     from mpreg.fabric.index import RoutingIndex
-    from mpreg.fabric.router import FabricRoutingConfig, FabricRouter
+    from mpreg.fabric.router import FabricRouter, FabricRoutingConfig
 
     index = RoutingIndex()
     config = FabricRoutingConfig(
@@ -200,7 +208,7 @@ async def test_exactly_once_does_not_auto_create_queue() -> None:
 
     from mpreg.fabric.engine import RoutingEngine
     from mpreg.fabric.index import RoutingIndex
-    from mpreg.fabric.router import FabricRoutingConfig, FabricRouter
+    from mpreg.fabric.router import FabricRouter, FabricRoutingConfig
 
     index = RoutingIndex()
     config = FabricRoutingConfig(

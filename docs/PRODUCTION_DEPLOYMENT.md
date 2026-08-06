@@ -249,7 +249,10 @@ deterministic shortest-path routing. Keep `DISABLED` for high-churn clusters.
 from mpreg.fabric.route_keys import RouteKeyRegistry
 from mpreg.fabric.route_security import RouteAnnouncementSigner, RouteSecurityConfig
 from mpreg.fabric.route_control import RoutePolicy
-from mpreg.fabric.route_policy_directory import RouteNeighborPolicy, RoutePolicyDirectory
+from mpreg.fabric.route_policy_directory import (
+    RouteNeighborPolicy,
+    RoutePolicyDirectory,
+)
 
 signer = RouteAnnouncementSigner.create()
 registry = RouteKeyRegistry()
@@ -442,4 +445,3 @@ without legacy federation modules.
 8. **Route audit**: `mpreg monitor decisions` or `/routing/decisions` for multi-hop debugging.
 9. **Management reads**: `/mgmt/v1/cluster|nodes|routes|catalog|health` (mutations still planned).
 10. **Persistence**: set `persistence_config` explicitly when queues/cache must survive restart.
-

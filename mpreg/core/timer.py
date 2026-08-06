@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Self
 
 from loguru import logger
 
@@ -50,7 +50,7 @@ class Timer:
         if self.count % self.every == 0:
             self.log(self.count)
 
-    def __enter__(self) -> Timer:
+    def __enter__(self) -> Self:
         # Note: don't use time.clock() or time.process_time()
         #       because those don't record time during sleep calls,
         #       but we need to record sleeps for when we're waiting
@@ -84,7 +84,7 @@ class Timer:
             "{}Duration{}: {:,.4f}", self.name, extrafmt, self.interval
         )
 
-    def __exit__(self, *args: Any) -> None:
+    def __exit__(self, *args: object) -> None:
         # print final particle rollup ONLY IF we have sub-steps
         if self.count:
             self.log(self.count)

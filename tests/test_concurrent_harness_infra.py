@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import os
-
 from pathlib import Path
 
+import pytest
+
+from mpreg.core.errors import MpregError, MpregErrorCode
+from mpreg.fabric.hop_headers import advance_fabric_headers
+from mpreg.fabric.message import MessageHeaders
 from mpreg.testing.hang_observe import HangStateDir, enable_faulthandler
 from mpreg.testing.resource_limits import NoFileLimit, raise_open_file_limit
-from mpreg.fabric.hop_headers import advance_fabric_headers
-from mpreg.core.errors import MpregError, MpregErrorCode
-from mpreg.fabric.message import MessageHeaders
-import pytest
 
 def test_raise_open_file_limit_is_self_managing() -> None:
     before = NoFileLimit.current()
@@ -19,7 +19,9 @@ def test_raise_open_file_limit_is_self_managing() -> None:
     assert after.soft >= min(before.soft, 8192)
     assert after.soft >= before.soft or after.soft >= 8192
 
-def test_hang_state_breadcrumbs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_hang_state_breadcrumbs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("MPREG_TEST_STATE_DIR", str(tmp_path))
     monkeypatch.setenv("PYTEST_XDIST_WORKER", "gw99")
     enable_faulthandler()
@@ -63,7 +65,9 @@ def test_advance_fabric_headers_fail_closed_budget() -> None:
         )
     assert ei.value.code == int(MpregErrorCode.HOP_BUDGET_EXCEEDED)
 
-def test_hang_profiler_writes_dump(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_hang_profiler_writes_dump(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from mpreg.testing.hang_observe import HangProfiler
 
     monkeypatch.setenv("MPREG_TEST_STATE_DIR", str(tmp_path / "state"))

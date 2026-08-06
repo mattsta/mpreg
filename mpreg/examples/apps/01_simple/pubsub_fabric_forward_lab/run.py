@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
-from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
+from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario
 from mpreg.fabric.pubsub_forwarding import (
     FABRIC_PUBSUB_FORWARDING_KEY,
     PubSubForwardingMetadata,

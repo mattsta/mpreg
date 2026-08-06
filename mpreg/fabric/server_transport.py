@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from mpreg.core.model import FabricMessageEnvelope
 from mpreg.core.server_envelope_transport import ServerEnvelopeTransport
@@ -11,9 +10,6 @@ from mpreg.datastructures.type_aliases import NodeId
 
 from .message import UnifiedMessage
 from .message_codec import unified_message_to_dict
-
-if TYPE_CHECKING:  # pragma: no cover - typing only
-    pass
 
 @dataclass(slots=True)
 class ServerFabricTransport(ServerEnvelopeTransport):

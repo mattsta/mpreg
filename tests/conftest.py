@@ -12,7 +12,7 @@ import gc
 import time
 import warnings
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, Self
 
 import pytest
 import pytest_asyncio
@@ -30,10 +30,10 @@ from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 
 # Import port allocation helpers explicitly
-from mpreg.core.port_allocator import (  # noqa
-    get_port_allocator,  # noqa
-    port_context,  # noqa
-    port_range_context,  # noqa
+from mpreg.core.port_allocator import (
+    get_port_allocator,
+    port_context,
+    port_range_context,
 )
 from mpreg.fabric.gossip_transport import InProcessGossipTransport
 from mpreg.server import MPREGServer
@@ -112,7 +112,7 @@ class AsyncTestContext:
         self.clients: list[MPREGClientAPI] = []
         self.tasks: list[asyncio.Task[Any]] = []
 
-    async def __aenter__(self) -> AsyncTestContext:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
@@ -281,7 +281,7 @@ async def test_context() -> AsyncGenerator[AsyncTestContext]:
 @pytest_asyncio.fixture
 async def single_server(
     test_context: AsyncTestContext,
-    server_port: int,  # noqa
+    server_port: int,
 ) -> AsyncGenerator[MPREGServer]:
     """Creates a single MPREG server for testing.
 
@@ -320,7 +320,7 @@ async def single_server(
 @pytest_asyncio.fixture
 async def cluster_2_servers(
     test_context: AsyncTestContext,
-    port_pair: list[int],  # noqa
+    port_pair: list[int],
 ) -> AsyncGenerator[tuple[MPREGServer, MPREGServer]]:
     """Creates a 2-server cluster for testing distributed operations.
 
@@ -381,7 +381,7 @@ async def cluster_2_servers(
 @pytest_asyncio.fixture
 async def cluster_3_servers(
     test_context: AsyncTestContext,
-    server_cluster_ports: list[int],  # noqa
+    server_cluster_ports: list[int],
 ) -> AsyncGenerator[tuple[MPREGServer, MPREGServer, MPREGServer]]:
     """Creates a 3-server cluster for testing complex distributed scenarios.
 
@@ -504,7 +504,7 @@ def format_results_function(
 @pytest_asyncio.fixture
 async def enhanced_server(
     test_context: AsyncTestContext,
-    server_port: int,  # noqa
+    server_port: int,
 ) -> AsyncGenerator[MPREGServer]:
     """Creates a server with additional test functions registered.
 

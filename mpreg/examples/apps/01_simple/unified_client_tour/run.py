@@ -53,9 +53,10 @@ async def main() -> None:
 
                 # Default cache/queue attach during server boot — wait if needed
                 for _ in range(80):
-                    if getattr(server, "_queue_manager", None) is not None and getattr(
-                        server, "_cache_manager", None
-                    ) is not None:
+                    if (
+                        getattr(server, "_queue_manager", None) is not None
+                        and getattr(server, "_cache_manager", None) is not None
+                    ):
                         break
                     await asyncio.sleep(0.05)
                 ensure(
@@ -112,7 +113,8 @@ async def main() -> None:
                     ):
                         created = await client.queue_create("unified-jobs")
                         ensure(
-                            isinstance(created, dict) and created.get("success") is True,
+                            isinstance(created, dict)
+                            and created.get("success") is True,
                             f"queue_create failed: {created}",
                         )
                         sent = await client.queue_send(
@@ -172,7 +174,9 @@ async def main() -> None:
                             step(f"catalog type={type(cat).__name__}")
                         except Exception as exc:
                             # Surface must exist; empty catalog is ok
-                            step(f"catalog_query raised (ok if empty): {type(exc).__name__}")
+                            step(
+                                f"catalog_query raised (ok if empty): {type(exc).__name__}"
+                            )
                         ensure(
                             callable(client.list_peers)
                             and callable(client.cluster_map)
@@ -207,27 +211,40 @@ async def main() -> None:
                         listing = await client.rpc_list()
                         ensure(listing is not None, "rpc_list None")
                         step(f"rpc_list type={type(listing).__name__}")
-                        ok(f"unified rpc_list/describe/report surface → {type(listing).__name__}")
+                        ok(
+                            f"unified rpc_list/describe/report surface → {type(listing).__name__}"
+                        )
 
                     with scenario(
                         "plane error_code on façade results",
                         "client.unified",
                         "cache.rpc_surface",
                     ):
-                        from mpreg.client.unified_client import CacheOpResult, QueueSendResult
+                        from mpreg.client.unified_client import (
+                            CacheOpResult,
+                            QueueSendResult,
+                        )
 
                         # Successful put must expose error_code attribute (None when ok)
                         put = await client.cache_put("tour", "errk", {"ok": True})
                         ensure(isinstance(put, CacheOpResult), type(put))
-                        ensure(hasattr(put, "error_code"), "CacheOpResult missing error_code")
+                        ensure(
+                            hasattr(put, "error_code"),
+                            "CacheOpResult missing error_code",
+                        )
                         ensure(put.success is True, f"put failed {put}")
-                        ensure(put.error_code is None, f"ok put should have no code {put.error_code}")
+                        ensure(
+                            put.error_code is None,
+                            f"ok put should have no code {put.error_code}",
+                        )
                         # Synthetic raw promotion path
                         synthetic = CacheOpResult.from_raw(
                             {"success": False, "error_code": 1001, "error": "nope"}
                         )
                         ensure(synthetic.success is False, "synth success")
-                        ensure(synthetic.error_code == 1001, f"code {synthetic.error_code}")
+                        ensure(
+                            synthetic.error_code == 1001, f"code {synthetic.error_code}"
+                        )
                         qsyn = QueueSendResult.from_raw(
                             {"success": False, "error_code": 42, "error_message": "q"}
                         )

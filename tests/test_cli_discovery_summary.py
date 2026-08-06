@@ -10,7 +10,10 @@ def test_discovery_summary_does_not_shadow_include_ingress() -> None:
     tree = ast.parse(source)
     found = False
     for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "discovery_summary":
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == "discovery_summary"
+        ):
             for child in ast.walk(node):
                 if (
                     isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef))

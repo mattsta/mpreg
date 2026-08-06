@@ -335,7 +335,7 @@ class TestCachePubSubIntegrationWithLiveServer:
 
         # Check stats
         stats1 = integration1.get_statistics()
-        stats2 = integration2.get_statistics()
+        integration2.get_statistics()
 
         assert stats1["notifications_sent"] >= 1
         # Note: In a real distributed system, we'd verify that node2 received the invalidation
@@ -386,7 +386,7 @@ class TestCachePubSubIntegrationWithLiveServer:
         integration.configure_notifications("concurrent", config)
 
         # Create enhanced operations
-        enhanced_ops = EnhancedAdvancedCacheOperations(
+        EnhancedAdvancedCacheOperations(
             cache_manager=cache_manager,
             pubsub_integration=integration,
         )
@@ -641,7 +641,7 @@ class TestCachePubSubPerformance:
         integration.configure_notifications("perf", config)
 
         # Create enhanced operations
-        enhanced_ops = EnhancedAdvancedCacheOperations(
+        EnhancedAdvancedCacheOperations(
             cache_manager=cache_manager,
             pubsub_integration=integration,
         )

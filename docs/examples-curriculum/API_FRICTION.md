@@ -21,114 +21,114 @@ Append new rows when curriculum hits fresh friction.
 
 ## Fixed / documented in platform (Phases G + H + I + N)
 
-| ID | Fix | Where |
-|----|-----|-------|
-| F1 | Nested-loop-safe `run_coro` replaces bare `asyncio.run` in CLI handlers | `mpreg/cli/async_utils.py`, `mpreg/cli/main.py` |
-| F2 | Top-level `mpreg call` / `mpreg dns` aliases | `mpreg/cli/main.py` |
-| F3 | Doctor rejects WS URL with clear monitoring-HTTP guidance | `mpreg/cli/main.py` |
-| F4 | **Superseded by FQN + namespace deny** (not a short-name denylist). Wire names are dotted FQNs; bare → active ns (`app` default); users cannot inject into `mpreg.*`; full flexibility elsewhere; optional hierarchical `bound_rpc_namespace` | `mpreg/core/rpc_naming.py`; curriculum: `rpc_fqn_namespace` |
-| F5 | Multi-version same-node + loud same-version collision | registry + `rpc_versioned_topic` |
-| F6 | VERSION_MISMATCH (1002) when constraint misses other versions | `server._raise_route_miss` |
-| F7 | `add_event_listener` callbacks fire on `notify_cache_event` | `mpreg/core/cache_pubsub_integration.py` |
-| F8 | Keyword-only `invalidate` + helpful TypeError on bad kwargs | `mpreg/core/global_cache.py` |
-| F9 | `CircuitBreaker.__post_init__` syncs `current_timeout` from `timeout_seconds` when default `-1` | `mpreg/fabric/federation_optimized.py` |
-| F13 | `route_not_found` details name fabric bridge / peer-gossip limit | `mpreg/core/errors.py`; proven in `multi_region_dns_policy` |
-| F14 | DNS CLI `--targets` alias for `--target` | `mpreg/cli/main.py` |
-| F15 | **Documented:** client fail-closed ≠ server handler preemption for sync work | `rpc_deadline_budget` scenario + this log |
-| F16 | `list_port_categories()` + unknown category lists keys | `mpreg/core/port_allocator.py`; `hello_ports` |
-| F17 | `{param}` templates match as single-segment `*` wildcards in `matches_topic` | `mpreg/core/topic_taxonomy.py` |
-| F18 | `SQLitePersistenceBackend.db_path: Path \| str` + coerce in `__post_init__` | `mpreg/core/persistence/backend.py` |
-| F19 | **Documented:** RaftOracle dual-leader raises on `observe_role` (fail-fast) | `mpreg/testing/oracles.py`; `routing_oracle_lab` |
-| F20 | `DiscoveryRateLimiter` prunes to `max_keys-1` before insert → hard cap `≤ max_keys` | `mpreg/core/discovery_rate_limit.py` |
-| F21 | `route_message_to_queues` bumps `successful_routes` / `failed_routes`; `send_via_topic` avoids double-count | `mpreg/core/topic_queue_routing.py` |
-| F22 | `MPREGPubSubClient.publish` / `publish_with_reply` accept `MessageHeaders \| Mapping \| None` via `MessageHeaders.coerce` | `mpreg/core/statistics.py`, `mpreg/client/pubsub_client.py`; taught in `pubsub_client_backlog` |
-| F23 | Empty/omitted `catalog_query` `entry_type` defaults to `functions`; unsupported types list allowed values | `mpreg/server.py`, `mpreg/core/cluster_map.py`; taught in `cluster_map_catalog` |
+| ID  | Fix                                                                                                                                                                                                                                           | Where                                                                                          |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| F1  | Nested-loop-safe `run_coro` replaces bare `asyncio.run` in CLI handlers                                                                                                                                                                       | `mpreg/cli/async_utils.py`, `mpreg/cli/main.py`                                                |
+| F2  | Top-level `mpreg call` / `mpreg dns` aliases                                                                                                                                                                                                  | `mpreg/cli/main.py`                                                                            |
+| F3  | Doctor rejects WS URL with clear monitoring-HTTP guidance                                                                                                                                                                                     | `mpreg/cli/main.py`                                                                            |
+| F4  | **Superseded by FQN + namespace deny** (not a short-name denylist). Wire names are dotted FQNs; bare → active ns (`app` default); users cannot inject into `mpreg.*`; full flexibility elsewhere; optional hierarchical `bound_rpc_namespace` | `mpreg/core/rpc_naming.py`; curriculum: `rpc_fqn_namespace`                                    |
+| F5  | Multi-version same-node + loud same-version collision                                                                                                                                                                                         | registry + `rpc_versioned_topic`                                                               |
+| F6  | VERSION_MISMATCH (1002) when constraint misses other versions                                                                                                                                                                                 | `server._raise_route_miss`                                                                     |
+| F7  | `add_event_listener` callbacks fire on `notify_cache_event`                                                                                                                                                                                   | `mpreg/core/cache_pubsub_integration.py`                                                       |
+| F8  | Keyword-only `invalidate` + helpful TypeError on bad kwargs                                                                                                                                                                                   | `mpreg/core/global_cache.py`                                                                   |
+| F9  | `CircuitBreaker.__post_init__` syncs `current_timeout` from `timeout_seconds` when default `-1`                                                                                                                                               | `mpreg/fabric/federation_optimized.py`                                                         |
+| F13 | `route_not_found` details name fabric bridge / peer-gossip limit                                                                                                                                                                              | `mpreg/core/errors.py`; proven in `multi_region_dns_policy`                                    |
+| F14 | DNS CLI `--targets` alias for `--target`                                                                                                                                                                                                      | `mpreg/cli/main.py`                                                                            |
+| F15 | **Documented:** client fail-closed ≠ server handler preemption for sync work                                                                                                                                                                  | `rpc_deadline_budget` scenario + this log                                                      |
+| F16 | `list_port_categories()` + unknown category lists keys                                                                                                                                                                                        | `mpreg/core/port_allocator.py`; `hello_ports`                                                  |
+| F17 | `{param}` templates match as single-segment `*` wildcards in `matches_topic`                                                                                                                                                                  | `mpreg/core/topic_taxonomy.py`                                                                 |
+| F18 | `SQLitePersistenceBackend.db_path: Path \| str` + coerce in `__post_init__`                                                                                                                                                                   | `mpreg/core/persistence/backend.py`                                                            |
+| F19 | **Documented:** RaftOracle dual-leader raises on `observe_role` (fail-fast)                                                                                                                                                                   | `mpreg/testing/oracles.py`; `routing_oracle_lab`                                               |
+| F20 | `DiscoveryRateLimiter` prunes to `max_keys-1` before insert → hard cap `≤ max_keys`                                                                                                                                                           | `mpreg/core/discovery_rate_limit.py`                                                           |
+| F21 | `route_message_to_queues` bumps `successful_routes` / `failed_routes`; `send_via_topic` avoids double-count                                                                                                                                   | `mpreg/core/topic_queue_routing.py`                                                            |
+| F22 | `MPREGPubSubClient.publish` / `publish_with_reply` accept `MessageHeaders \| Mapping \| None` via `MessageHeaders.coerce`                                                                                                                     | `mpreg/core/statistics.py`, `mpreg/client/pubsub_client.py`; taught in `pubsub_client_backlog` |
+| F23 | Empty/omitted `catalog_query` `entry_type` defaults to `functions`; unsupported types list allowed values                                                                                                                                     | `mpreg/server.py`, `mpreg/core/cluster_map.py`; taught in `cluster_map_catalog`                |
 
 Also shipped: `ServerMetricsTracker.snapshot()`, shared `ExampleProbe`
 (`mpreg/examples/apps/_shared/obs.py`), `app_run(..., probe=True)` + `get_probe()`.
 
 ## How to add a finding
 
-1. Hit the issue while building/running an app.  
-2. Prefer fixing the **app** with an honest `step("friction: …")` / non-claim.  
-3. Append a row here + PROJECT_PLAN §9.  
+1. Hit the issue while building/running an app.
+2. Prefer fixing the **app** with an honest `step("friction: …")` / non-claim.
+3. Append a row here + PROJECT_PLAN §9.
 4. Optionally open a platform issue referencing `F#`.
 
 ---
 
 ## Closed / mitigated in curriculum (platform may still improve)
 
-| ID | Mitigation in apps |
-|----|-------------------|
-| F4 | **Platform-fixed:** bare `echo` → `app.echo` (≠ `mpreg.system.echo`); `rpc_fqn_namespace` + `ops_cli_tour` prove user names legal outside `mpreg.*` |
-| F5–F6 | `rpc_versioned_topic` multi-version + VERSION_MISMATCH |
-| F7–F8 | Platform-fixed; apps drop non-claims |
-| F2–F3 / F14 | CLI aliases + doctor URL clarity |
-| F13 | Operator-readable fabric route miss |
-| F15 / F19 | Documented fail-closed / fail-fast invariants |
-| F16 | Discoverable port categories |
+| ID          | Mitigation in apps                                                                                                                                  |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F4          | **Platform-fixed:** bare `echo` → `app.echo` (≠ `mpreg.system.echo`); `rpc_fqn_namespace` + `ops_cli_tour` prove user names legal outside `mpreg.*` |
+| F5–F6       | `rpc_versioned_topic` multi-version + VERSION_MISMATCH                                                                                              |
+| F7–F8       | Platform-fixed; apps drop non-claims                                                                                                                |
+| F2–F3 / F14 | CLI aliases + doctor URL clarity                                                                                                                    |
+| F13         | Operator-readable fabric route miss                                                                                                                 |
+| F15 / F19   | Documented fail-closed / fail-fast invariants                                                                                                       |
+| F16         | Discoverable port categories                                                                                                                        |
 
 ## Phase J closes (2026-08-05)
 
-| ID | Resolution |
-|----|------------|
+| ID  | Resolution                                                                                |
+| --- | ----------------------------------------------------------------------------------------- |
 | F10 | Live `/mgmt/v1/nodes/drain` + `/peers/detach` + `/ready` taught in `live_partition_chaos` |
-| F11 | `MPREGSettings.rpc_auth_token` enforced in `MPREGServer.opened` |
+| F11 | `MPREGSettings.rpc_auth_token` enforced in `MPREGServer.opened`                           |
 | F12 | `mpreg.core.dev_certs.generate_dev_tls_material` + `tls_*` settings + `tls_dev_handshake` |
 
 ## Phase K closes (2026-08-05)
 
-| Surface | Resolution |
-|---------|------------|
-| `disco.signatures` | `discovery_signatures_lab` (summary + gossip HMAC) |
-| CERT_REQUIRED mTLS | `mtls_mesh_handshake` |
-| Packet-loss teach | `packet_loss_chaos` (plane drops + live drain compose) |
-| Hub settlement | `blockchain_hub_settlement` (`HubMessageQueue` + route) |
-| rpc.describe/report | `rpc_inventory_tour` |
-| client.trace / mon.trace_bind | `client_trace_bind` |
-| tx.correlation / chaos.no_loop | `correlation_routing_lab` |
+| Surface                        | Resolution                                              |
+| ------------------------------ | ------------------------------------------------------- |
+| `disco.signatures`             | `discovery_signatures_lab` (summary + gossip HMAC)      |
+| CERT_REQUIRED mTLS             | `mtls_mesh_handshake`                                   |
+| Packet-loss teach              | `packet_loss_chaos` (plane drops + live drain compose)  |
+| Hub settlement                 | `blockchain_hub_settlement` (`HubMessageQueue` + route) |
+| rpc.describe/report            | `rpc_inventory_tour`                                    |
+| client.trace / mon.trace_bind  | `client_trace_bind`                                     |
+| tx.correlation / chaos.no_loop | `correlation_routing_lab`                               |
 
 ## Phase N closes (2026-08-05)
 
-| ID | Resolution |
-|----|------------|
-| F22 | `MessageHeaders.coerce` + pubsub publish accepts bare dict |
+| ID  | Resolution                                                    |
+| --- | ------------------------------------------------------------- |
+| F22 | `MessageHeaders.coerce` + pubsub publish accepts bare dict    |
 | F23 | catalog `entry_type` default `functions` + clearer ValueError |
 
 ## Phase P closes (2026-08-05)
 
-| ID | Surface | Resolution |
-|----|---------|------------|
-| P1 | `last_trace_context` empty after RPC | `RPCResponse` W3C fields + server echo + client outbound seed |
-| P2 | `MPREGClient` missing discovery | façade delegates list_peers/cluster_map/catalog_*/summary_query |
-| P3 | Four-plane WARN noise | start message → DEBUG; config-check stays operator path |
-| P4 | snapshot shallow for perf ensures | samples/min_ms/max_ms on rpc+pubsub snapshot |
+| ID  | Surface                              | Resolution                                                       |
+| --- | ------------------------------------ | ---------------------------------------------------------------- |
+| P1  | `last_trace_context` empty after RPC | `RPCResponse` W3C fields + server echo + client outbound seed    |
+| P2  | `MPREGClient` missing discovery      | façade delegates list*peers/cluster_map/catalog*\*/summary_query |
+| P3  | Four-plane WARN noise                | start message → DEBUG; config-check stays operator path          |
+| P4  | snapshot shallow for perf ensures    | samples/min_ms/max_ms on rpc+pubsub snapshot                     |
 
 ## Phase Q closes (2026-08-05)
 
-| ID | Surface | Resolution |
-|----|---------|------------|
-| Q1 | `client.summary` constant uncovered | APP_FEATURES join on `discovery_watch_summary` |
-| Q2 | settings discoverability | `mpreg config-check --explain` field guide |
-| Q3 | fabric hop visibility | `ServerMetricsTracker.snapshot()["fabric"]` hop stats |
-| Q4 | mgmt audit durability | teach `mgmt_audit_path` JSONL + `/mgmt/v1/audit` |
-| Q5 | persistence backend honesty | PersistenceMode memory/sqlite + remote stores non-claim |
-| Q6 | plane error_code | teach CacheOpResult/QueueSendResult promotion |
-| Q7 | ops probe depth | ExampleProbe on `ops_cli_tour` |
-| Q8 | unified inventory | `rpc_list`/`rpc_describe`/`rpc_report` on MPREGClient |
+| ID  | Surface                             | Resolution                                            |
+| --- | ----------------------------------- | ----------------------------------------------------- |
+| Q1  | `client.summary` constant uncovered | APP_FEATURES join on `discovery_watch_summary`        |
+| Q2  | settings discoverability            | `mpreg config-check --explain` field guide            |
+| Q3  | fabric hop visibility               | `ServerMetricsTracker.snapshot()["fabric"]` hop stats |
+| Q4  | mgmt audit durability               | teach `mgmt_audit_path` JSONL + `/mgmt/v1/audit`      |
+| Q5  | persistence backend honesty         | PersistenceMode memory/sqlite + remote stores non-claim    |
+| Q6  | plane error_code                    | teach CacheOpResult/QueueSendResult promotion         |
+| Q7  | ops probe depth                     | ExampleProbe on `ops_cli_tour`                        |
+| Q8  | unified inventory                   | `rpc_list`/`rpc_describe`/`rpc_report` on MPREGClient |
 
 ## Phase R closes (2026-08-05)
 
-| ID | Surface | Resolution |
-|----|---------|------------|
-| R1–R3 | unified missing dns/ns/resolver | full MPREGClientAPI async parity on façade |
-| R4 | fabric keys unasserted in microbench | rpc_microbench_lab fabric hop ensures |
-| R5 | admin audit CLI untaught | ops_cli_tour admin drain→audit→clear |
+| ID    | Surface                              | Resolution                                 |
+| ----- | ------------------------------------ | ------------------------------------------ |
+| R1–R3 | unified missing dns/ns/resolver      | full MPREGClientAPI async parity on façade |
+| R4    | fabric keys unasserted in microbench | rpc_microbench_lab fabric hop ensures      |
+| R5    | admin audit CLI untaught             | ops_cli_tour admin drain→audit→clear       |
 
 ## Phase S closes (2026-08-05)
 
-| ID | Surface | Resolution |
-|----|---------|------------|
-| S1 | format_server_snapshot shallow | prints fabric hop block |
-| S2 | OPERATE missing --explain | documented |
-| S3–S4 | converters drop W3C | preserve traceparent/tracestate/headers |
+| ID    | Surface                        | Resolution                              |
+| ----- | ------------------------------ | --------------------------------------- |
+| S1    | format_server_snapshot shallow | prints fabric hop block                 |
+| S2    | OPERATE missing --explain      | documented                              |
+| S3–S4 | converters drop W3C            | preserve traceparent/tracestate/headers |

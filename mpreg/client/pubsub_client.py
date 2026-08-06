@@ -7,10 +7,9 @@ publish/subscribe capabilities.
 
 from __future__ import annotations
 
-import inspect
-
 import asyncio
 import contextlib
+import inspect
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -18,6 +17,8 @@ from typing import Any
 
 import ulid
 from loguru import logger
+
+from mpreg.core.errors import MpregError, MpregErrorCode, map_exception
 
 from ..core.model import (
     PubSubAck,
@@ -36,8 +37,6 @@ from ..core.statistics import (
     SubscriptionInfo,
     TopicMetrics,
 )
-from mpreg.core.errors import MpregError, MpregErrorCode, map_exception
-
 from .client_api import MPREGClientAPI
 
 pubsub_log = logger
@@ -63,7 +62,7 @@ class MPREGPubSubClient:
     base_client: MPREGClientAPI
     subscriptions: dict[str, SubscriptionCallback] = field(default_factory=dict)
     notification_handlers: dict[str, asyncio.Task] = field(default_factory=dict)
-    _client_id: str = field(default_factory=lambda: f"pubsub_client_{str(ulid.new())}")
+    _client_id: str = field(default_factory=lambda: f"pubsub_client_{ulid.new()!s}")
     _running: bool = False
     # Notifications flow through the transport client's bounded queue
     # (Client.get_notification_queue); this field is intentionally absent.
@@ -184,7 +183,7 @@ class MPREGPubSubClient:
             PublishResponse containing success status and optional reply
         """
         # Generate a reply topic if not specified in headers
-        reply_topic = f"reply.{str(ulid.new())}"
+        reply_topic = f"reply.{ulid.new()!s}"
 
         # Set up headers with reply_to (coerce dict → MessageHeaders first)
         base = MessageHeaders.coerce(headers)
@@ -203,7 +202,6 @@ class MPREGPubSubClient:
         # Set up a temporary subscription for the reply
         reply_received = asyncio.Event()
         reply_message = None
-        reply_error = None
 
         def reply_callback(message: PubSubMessage):
             nonlocal reply_message

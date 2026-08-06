@@ -226,7 +226,7 @@ class TestDijkstraProperties:
     @settings(max_examples=100, deadline=1000)
     def test_dijkstra_path_exists_property(self, graph_data):
         """Property: If Dijkstra returns a path, it must be valid and connected."""
-        graph, coord_map = graph_data
+        graph, _coord_map = graph_data
         nodes = graph.get_all_nodes()
         assume(len(nodes) >= 2)
 
@@ -266,7 +266,7 @@ class TestDijkstraProperties:
     @settings(max_examples=50, deadline=2000)
     def test_dijkstra_optimality_property(self, graph_data):
         """Property: Dijkstra must find the shortest path (optimality guarantee)."""
-        graph, coord_map = graph_data
+        graph, _coord_map = graph_data
         nodes = graph.get_all_nodes()
         assume(len(nodes) >= 2)
 
@@ -298,7 +298,7 @@ class TestDijkstraProperties:
     @settings(max_examples=100, deadline=1000)
     def test_dijkstra_consistency_property(self, graph_data):
         """Property: Same inputs always produce same outputs (determinism)."""
-        graph, coord_map = graph_data
+        graph, _coord_map = graph_data
         nodes = graph.get_all_nodes()
         assume(len(nodes) >= 2)
 
@@ -420,7 +420,7 @@ class TestAStarProperties:
     @settings(max_examples=50, deadline=2000)
     def test_astar_with_zero_heuristic_equals_dijkstra(self, graph_data):
         """Property: A* with zero heuristic should behave like Dijkstra."""
-        graph, coord_map = graph_data
+        graph, _coord_map = graph_data
         nodes = graph.get_all_nodes()
         assume(len(nodes) >= 2)
 
@@ -445,7 +445,7 @@ class TestAStarProperties:
     @settings(max_examples=100, deadline=1000)
     def test_astar_admissible_heuristic_optimality(self, graph_data):
         """Property: A* with zero heuristic finds optimal paths (admissible by definition)."""
-        graph, coord_map = graph_data
+        graph, _coord_map = graph_data
         nodes = graph.get_all_nodes()
         assume(len(nodes) >= 2)
 
@@ -472,7 +472,7 @@ class TestAStarProperties:
     @settings(max_examples=50, deadline=1000)
     def test_astar_heuristic_consistency_check(self, graph_data):
         """Property: A* with consistent admissible heuristics should find optimal paths."""
-        graph, coord_map = graph_data
+        graph, _coord_map = graph_data
         nodes = graph.get_all_nodes()
         assume(len(nodes) >= 2)
 

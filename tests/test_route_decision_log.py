@@ -1,12 +1,15 @@
 import asyncio
+import contextlib
 
 import aiohttp
 
 from mpreg.core.config import MPREGSettings
-from mpreg.core.monitoring.unified_monitoring import MonitoringConfig, UnifiedSystemMonitor
+from mpreg.core.monitoring.unified_monitoring import (
+    MonitoringConfig,
+    UnifiedSystemMonitor,
+)
 from mpreg.fabric.connection_manager import FederationConnectionManager
 from mpreg.fabric.federation_config import FederationConfig, FederationMode
-from mpreg.fabric.message import DeliveryGuarantee, MessageHeaders, MessageType, UnifiedMessage
 from mpreg.fabric.monitoring_endpoints import create_federation_monitoring_system
 from mpreg.fabric.route_decision_log import (
     RouteDecisionLog,
@@ -81,8 +84,6 @@ async def test_decisions_http_endpoint(server_cluster_ports: list[int]) -> None:
             await mon.stop()
     finally:
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
         await um.stop()

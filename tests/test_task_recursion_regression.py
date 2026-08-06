@@ -230,7 +230,7 @@ class TestTaskRecursionRegression:
             nodes = test_instance.create_raft_cluster(
                 1, temp_dir, network, storage_type="memory"
             )  # Single node
-            node = list(nodes.values())[0]
+            node = next(iter(nodes.values()))
 
             try:
                 # Start node

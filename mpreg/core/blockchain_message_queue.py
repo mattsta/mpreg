@@ -15,6 +15,8 @@ from typing import Any
 
 from loguru import logger
 
+from mpreg.core.native_codec import dumps, loads
+
 from ..datastructures import (
     Block,
     Blockchain,
@@ -44,17 +46,12 @@ from .blockchain_message_queue_types import (
     RoutingCriteria,
 )
 
-from mpreg.core.native_codec import dumps, loads
-
 class UnsupportedDeliveryGuaranteeError(ValueError):
     """Raised when a reserved/unsupported delivery guarantee is requested (COR-08)."""
 
     def __init__(self, guarantee: str, *, detail: str | None = None) -> None:
         self.guarantee = guarantee
-        msg = (
-            detail
-            or f"unsupported_delivery_guarantee:{guarantee}"
-        )
+        msg = detail or f"unsupported_delivery_guarantee:{guarantee}"
         super().__init__(msg)
 
 class MessageQueueGovernance:
@@ -417,9 +414,7 @@ class EquitablePriorityQueue:
         # Cache priorities lazily on the instance to avoid recompute storms.
         scores = getattr(self, "_priority_scores", None)
         if scores is None or len(scores) != len(self.message_queue):
-            scores = [
-                -self._calculate_adjusted_priority(m) for m in self.message_queue
-            ]
+            scores = [-self._calculate_adjusted_priority(m) for m in self.message_queue]
             self._priority_scores = scores
         neg = -adjusted_priority
         idx = bisect.bisect_left(scores, neg)

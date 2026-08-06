@@ -266,7 +266,7 @@ class TestMLWorkflows:
         def extract_features(raw_data: dict[str, Any]) -> list[float]:
             """Extract numerical features from raw data."""
             features = []
-            for key, value in raw_data.items():
+            for value in raw_data.values():
                 if isinstance(value, int | float):
                     features.append(float(value))
                 elif isinstance(value, str):

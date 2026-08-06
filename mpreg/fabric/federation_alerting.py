@@ -27,9 +27,8 @@ from typing import Any, Protocol
 import aiohttp
 from loguru import logger
 
-from mpreg.fabric.performance_metrics import AlertSeverity, PerformanceAlert
-
 from mpreg.core.native_codec import JSONDecodeError, loads_text
+from mpreg.fabric.performance_metrics import AlertSeverity, PerformanceAlert
 
 class NotificationBackend(Enum):
     """Supported notification backends."""
@@ -757,7 +756,7 @@ class ConsoleNotificationBackend:
         template: NotificationTemplate | None = None,
     ) -> NotificationDelivery:
         """Send notification to console."""
-        start_time = time.time()
+        time.time()
 
         try:
             if template:
@@ -1071,7 +1070,7 @@ class EmailNotificationBackend:
         template: NotificationTemplate | None = None,
     ) -> NotificationDelivery:
         """Send notification via email."""
-        start_time = time.time()
+        time.time()
         smtp_server = channel.config.get("smtp_server")
         if not smtp_server:
             raise ValueError("smtp_server required for email notifications")

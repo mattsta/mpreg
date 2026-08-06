@@ -251,7 +251,7 @@ class TestDecentralizedAutonomousOrganization:
         dao_with_proposal = dao.create_proposal("alice", proposal)
 
         assert len(dao_with_proposal.proposals) == 1
-        proposal_id = list(dao_with_proposal.proposals.keys())[0]
+        proposal_id = next(iter(dao_with_proposal.proposals.keys()))
         created_proposal = dao_with_proposal.proposals[proposal_id]
         assert created_proposal.status == ProposalStatus.ACTIVE
 
@@ -302,7 +302,7 @@ class TestDecentralizedAutonomousOrganization:
         )
 
         dao = dao.create_proposal("alice", proposal)
-        proposal_id = list(dao.proposals.keys())[0]
+        proposal_id = next(iter(dao.proposals.keys()))
 
         # Vote and finalize
         dao = dao.cast_vote("alice", proposal_id, VoteType.FOR)
@@ -389,7 +389,7 @@ class TestDecentralizedAutonomousOrganization:
         )
 
         dao = dao.create_proposal("alice", proposal)
-        proposal_id = list(dao.proposals.keys())[0]
+        proposal_id = next(iter(dao.proposals.keys()))
 
         # Test quorum not reached (only alice votes = 100/1000 = 10% < 60%)
         dao_low_turnout = dao.cast_vote("alice", proposal_id, VoteType.FOR)
@@ -450,7 +450,7 @@ class TestDecentralizedAutonomousOrganization:
         )
 
         dao = dao.create_proposal("alice", emergency_proposal)
-        proposal_id = list(dao.proposals.keys())[0]
+        proposal_id = next(iter(dao.proposals.keys()))
 
         # Test emergency threshold
         # alice + bob + charlie = 300/300 = 100% participation
@@ -573,7 +573,7 @@ class TestDaoProperties:
                 description="Testing quorum threshold",
             )
             dao = dao.create_proposal("member_0", proposal)
-            proposal_id = list(dao.proposals.keys())[0]
+            proposal_id = next(iter(dao.proposals.keys()))
 
             # Calculate required voters for quorum
             required_voters = int(threshold * 100)
@@ -617,7 +617,7 @@ class TestDaoProperties:
             description="Testing approval threshold",
         )
         dao = dao.create_proposal("member_0", proposal)
-        proposal_id = list(dao.proposals.keys())[0]
+        proposal_id = next(iter(dao.proposals.keys()))
 
         # Test edge case: exactly 60% approval
         # 6 for, 4 against = 6/10 = 60% approval
@@ -818,7 +818,7 @@ class TestDaoExamples:
         )
 
         fed_dao = fed_dao.create_proposal("hub_us_east", protocol_upgrade)
-        proposal_id = list(fed_dao.proposals.keys())[0]
+        proposal_id = next(iter(fed_dao.proposals.keys()))
 
         # Hubs vote on the proposal
         fed_dao = fed_dao.cast_vote(
@@ -908,7 +908,7 @@ class TestDaoExamples:
         )
 
         funding_dao = funding_dao.create_proposal("dev_alice", funding_proposal)
-        proposal_id = list(funding_dao.proposals.keys())[0]
+        proposal_id = next(iter(funding_dao.proposals.keys()))
 
         # Community votes
         funding_dao = funding_dao.cast_vote(
@@ -988,7 +988,7 @@ class TestDaoExamples:
         )
 
         tech_dao = tech_dao.create_proposal("security_expert", security_proposal)
-        proposal_id = list(tech_dao.proposals.keys())[0]
+        proposal_id = next(iter(tech_dao.proposals.keys()))
 
         # Technical committee votes
         tech_dao = tech_dao.cast_vote(

@@ -253,9 +253,9 @@ class FederationMonitoringSystem:
     discovery_lag_provider: DiscoveryLagProvider | None = None
     dns_metrics_provider: DnsMetricsProvider | None = None
     # Optional callable returning mgmt summary dicts (cluster/nodes/routes/catalog)
-    mgmt_summary_provider: Callable[[], Awaitable[JsonResponse] | JsonResponse] | None = (
-        None
-    )
+    mgmt_summary_provider: (
+        Callable[[], Awaitable[JsonResponse] | JsonResponse] | None
+    ) = None
     policy_dry_run_provider: (
         Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse] | None
     ) = None
@@ -269,7 +269,9 @@ class FederationMonitoringSystem:
     mgmt_policy_apply_provider: (
         Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse] | None
     ) = None
-    mgmt_audit_provider: Callable[[], list[dict[str, Any]] | dict[str, Any]] | None = None
+    mgmt_audit_provider: Callable[[], list[dict[str, Any]] | dict[str, Any]] | None = (
+        None
+    )
     # Optional readiness override: when True, /ready returns 503 (drain).
     draining_provider: Callable[[], bool] | None = None
     # Per-server route decision audit log (bound from FabricRouter).
@@ -404,7 +406,7 @@ class FederationMonitoringSystem:
             raw = getattr(self.settings, "ready_min_score", None)
         try:
             return float(raw if raw is not None else 0.4)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return 0.4
 
     def _setup_middleware(self) -> None:
@@ -637,10 +639,10 @@ class FederationMonitoringSystem:
     async def _get_ready(self, request: web.Request) -> web.Response:
         """Readiness: refuse traffic when draining or federation health is bad.
 
-OBS-07/T10-07: returns ready when health score >= ready_min_score (default 0.4) and the
-node is not draining. Operators must not treat HTTP 200 here as "fully healthy";
-use /health and federation health_score for full status. Drain alone forces 503.
-"""
+        OBS-07/T10-07: returns ready when health score >= ready_min_score (default 0.4) and the
+        node is not draining. Operators must not treat HTTP 200 here as "fully healthy";
+        use /health and federation health_score for full status. Drain alone forces 503.
+        """
         try:
             draining = False
             drain_fn = getattr(self, "draining_provider", None)
@@ -1847,7 +1849,7 @@ use /health and federation health_score for full status. Drain alone forces 503.
             if len(neighbors) < 2:
                 coefficients.append(0.0)
                 continue
-            neighbor_set = set(neighbors)
+            set(neighbors)
             links = 0
             for i, neighbor in enumerate(neighbors):
                 for other in neighbors[i + 1 :]:
@@ -1990,7 +1992,9 @@ use /health and federation health_score for full status. Drain alone forces 503.
             }
         )
 
-    async def _read_json_body(self, request: web.Request) -> tuple[dict[str, Any] | None, web.Response | None]:
+    async def _read_json_body(
+        self, request: web.Request
+    ) -> tuple[dict[str, Any] | None, web.Response | None]:
         try:
             body = await request.json()
         except Exception:
@@ -2003,7 +2007,8 @@ use /health and federation health_score for full status. Drain alone forces 503.
 
     async def _invoke_mgmt_provider(
         self,
-        provider: Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse] | None,
+        provider: Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse]
+        | None,
         body: dict[str, Any],
         *,
         missing_code: str,
@@ -2023,7 +2028,7 @@ use /health and federation health_score for full status. Drain alone forces 503.
         if not isinstance(result, dict):
             result = {"result": result}
         status = 200 if result.get("applied", True) is not False else 400
-        if result.get("error") in {"namespace_policy_unavailable"}:
+        if result.get("error") == "namespace_policy_unavailable":
             status = 503
         return web.json_response(result, status=status)
 
@@ -2084,8 +2089,13 @@ use /health and federation health_score for full status. Drain alone forces 503.
         if limit >= 0 and len(mutations) > limit:
             mutations = mutations[-limit:]
 
-        log = getattr(self, "route_decision_log", None) or get_default_route_decision_log()
-        route_records = log.recent(limit=min(limit, 20)) if hasattr(log, "recent") else []
+        log = (
+            getattr(self, "route_decision_log", None)
+            or get_default_route_decision_log()
+        )
+        route_records = (
+            log.recent(limit=min(limit, 20)) if hasattr(log, "recent") else []
+        )
         return web.json_response(
             {
                 "audit_kind": "mgmt_mutations",
@@ -2118,7 +2128,9 @@ use /health and federation health_score for full status. Drain alone forces 503.
             result = provider(body)
             if inspect.isawaitable(result):
                 result = await result
-            return web.json_response(result if isinstance(result, dict) else {"result": result})
+            return web.json_response(
+                result if isinstance(result, dict) else {"result": result}
+            )
 
         # Fallback: local structural validation only
         namespace = str(body.get("namespace", ""))
@@ -2201,7 +2213,9 @@ use /health and federation health_score for full status. Drain alone forces 503.
                 chosen = n
         if not isinstance(chosen, dict):
             return
-        metrics = chosen.get("metrics") if isinstance(chosen.get("metrics"), dict) else {}
+        metrics = (
+            chosen.get("metrics") if isinstance(chosen.get("metrics"), dict) else {}
+        )
         tracker.set_raft_bridge(
             term=int(chosen.get("term") or metrics.get("current_term") or 0),
             commit_index=int(
@@ -2227,7 +2241,7 @@ use /health and federation health_score for full status. Drain alone forces 503.
         lines: list[str] = [
             "# HELP mpreg_info Static MPREG node labels.",
             "# TYPE mpreg_info gauge",
-            f'mpreg_info{{{labels}}} 1',
+            f"mpreg_info{{{labels}}} 1",
             # Prefer Prometheus `up` / absent(mpreg_info) for scrape-down alerts.
             # This gauge is always 1 when the process can answer the scrape.
             "# HELP mpreg_monitoring_up 1 if this process is serving /metrics/prometheus.",
@@ -2257,7 +2271,9 @@ use /health and federation health_score for full status. Drain alone forces 503.
             payload = (
                 unified.to_dict()
                 if hasattr(unified, "to_dict")
-                else asdict(unified) if _is_dataclass_obj(unified) else {}
+                else asdict(unified)
+                if _is_dataclass_obj(unified)
+                else {}
             )
             self._prom_flatten(lines, "mpreg_unified", payload, labels)
         except Exception as exc:  # noqa: BLE001 - metrics must not crash scrape
@@ -2265,12 +2281,14 @@ use /health and federation health_score for full status. Drain alone forces 503.
 
         try:
             health = await self._collect_health_summary()
-            lines.append("# HELP mpreg_federation_health_score Overall federation health 0-1.")
+            lines.append(
+                "# HELP mpreg_federation_health_score Overall federation health 0-1."
+            )
             lines.append("# TYPE mpreg_federation_health_score gauge")
             score = getattr(health, "overall_health_score", 0.0)
             try:
                 score_f = float(score)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 score_f = 0.0
             lines.append(f"mpreg_federation_health_score{{{labels}}} {score_f}")
             lines.append(
@@ -2332,7 +2350,11 @@ use /health and federation health_score for full status. Drain alone forces 503.
         try:
             tracker = self._resolve_server_metrics_tracker()
             drain_fn = getattr(self, "draining_provider", None)
-            if tracker is not None and drain_fn is not None and hasattr(tracker, "set_draining"):
+            if (
+                tracker is not None
+                and drain_fn is not None
+                and hasattr(tracker, "set_draining")
+            ):
                 draining = bool(drain_fn())
                 tracker.set_draining(draining)
                 # set_draining already clears ready when True; when False leave gauge
@@ -2363,11 +2385,7 @@ use /health and federation health_score for full status. Drain alone forces 503.
 
     @staticmethod
     def _prom_escape(value: str) -> str:
-        return (
-            value.replace("\\", "\\\\")
-            .replace("\n", "\\n")
-            .replace('"', '\\"')
-        )
+        return value.replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
 
     def _prom_flatten(
         self,
@@ -2435,7 +2453,9 @@ use /health and federation health_score for full status. Drain alone forces 503.
             health = await self._collect_health_summary()
             return {
                 "overall_health_status": getattr(
-                    health.overall_health_status, "value", str(health.overall_health_status)
+                    health.overall_health_status,
+                    "value",
+                    str(health.overall_health_status),
                 ),
                 "overall_health_score": float(health.overall_health_score),
                 "total_clusters": health.total_clusters,
@@ -3062,9 +3082,7 @@ use /health and federation health_score for full status. Drain alone forces 503.
             return web.json_response(body)
         except Exception as e:
             logger.error(f"Error getting raft status: {e}")
-            return web.json_response(
-                {"status": "error", "message": str(e)}, status=500
-            )
+            return web.json_response({"status": "error", "message": str(e)}, status=500)
 
     async def _get_link_state_status(self, request: web.Request) -> web.Response:
         """Get link-state routing status and area mismatch counters."""
@@ -3196,15 +3214,24 @@ def create_federation_monitoring_system(
     dns_metrics_provider: DnsMetricsProvider | None = None,
     mgmt_summary_provider: Callable[[], Awaitable[JsonResponse] | JsonResponse]
     | None = None,
-    policy_dry_run_provider: Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse]
+    policy_dry_run_provider: Callable[
+        [JsonResponse], Awaitable[JsonResponse] | JsonResponse
+    ]
     | None = None,
-    mgmt_drain_provider: Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse]
+    mgmt_drain_provider: Callable[
+        [JsonResponse], Awaitable[JsonResponse] | JsonResponse
+    ]
     | None = None,
-    mgmt_detach_provider: Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse]
+    mgmt_detach_provider: Callable[
+        [JsonResponse], Awaitable[JsonResponse] | JsonResponse
+    ]
     | None = None,
-    mgmt_policy_apply_provider: Callable[[JsonResponse], Awaitable[JsonResponse] | JsonResponse]
+    mgmt_policy_apply_provider: Callable[
+        [JsonResponse], Awaitable[JsonResponse] | JsonResponse
+    ]
     | None = None,
-    mgmt_audit_provider: Callable[[], list[dict[str, Any]] | dict[str, Any]] | None = None,
+    mgmt_audit_provider: Callable[[], list[dict[str, Any]] | dict[str, Any]]
+    | None = None,
     draining_provider: Callable[[], bool] | None = None,
     route_decision_log: object | None = None,
     raft_status_provider: RaftStatusProvider | None = None,

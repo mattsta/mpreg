@@ -51,24 +51,24 @@ long-lived process, copy patterns from:
 
 Important fields:
 
-| Field | Role |
-|-------|------|
-| `port` / auto | Client WebSocket endpoint |
-| `name` | Human node id |
-| `resources` | Routing `locs` sets |
-| `peers` | Bootstrap mesh |
-| `cluster_id` | Fabric / multi-cluster identity |
+| Field               | Role                             |
+| ------------------- | -------------------------------- |
+| `port` / auto       | Client WebSocket endpoint        |
+| `name`              | Human node id                    |
+| `resources`         | Routing `locs` sets              |
+| `peers`             | Bootstrap mesh                   |
+| `cluster_id`        | Fabric / multi-cluster identity  |
 | `federation_config` | Bridging policy between clusters |
-| `monitoring_port` | HTTP ops surface (or auto) |
-| `log_level` | Prefer INFO for demos |
+| `monitoring_port`   | HTTP ops surface (or auto)       |
+| `log_level`         | Prefer INFO for demos            |
 
 ### Environment
 
-| Variable | Use |
-|----------|-----|
-| `MPREG_MONITORING_URL` | CLI monitor commands |
-| `MPREG_MONITORING_TOKEN` | If auth enabled |
-| `MPREG_DEBUG_RAFT` | Raft diagnostics (off by default) |
+| Variable                 | Use                               |
+| ------------------------ | --------------------------------- |
+| `MPREG_MONITORING_URL`   | CLI monitor commands              |
+| `MPREG_MONITORING_TOKEN` | If auth enabled                   |
+| `MPREG_DEBUG_RAFT`       | Raft diagnostics (off by default) |
 
 ---
 
@@ -96,7 +96,7 @@ Note printed URLs and monitoring base URL.
 
 Either:
 
-1. Run a curriculum multi-node app (`hello_cluster`, `multi_region_shop`), or  
+1. Run a curriculum multi-node app (`hello_cluster`, `multi_region_shop`), or
 2. Start multiple `server start-config` processes with distinct ports and `peers`.
 
 Always prefer **allocator-driven ports** when scripting.
@@ -141,9 +141,9 @@ scripts/run_demo_suite.sh
 
 GitHub Actions workflow `.github/workflows/ci.yml` runs on every push and PR:
 
-| Job | Script | Scope |
-|-----|--------|-------|
-| `demo-smoke` | `scripts/run_demo_smoke.sh` | smoke subset (~8 apps) |
+| Job          | Script                      | Scope                      |
+| ------------ | --------------------------- | -------------------------- |
+| `demo-smoke` | `scripts/run_demo_smoke.sh` | smoke subset (~8 apps)     |
 | `demo-suite` | `scripts/run_demo_suite.sh` | full `mpreg-example suite` |
 
 Both scripts are entrypoint-only (`uv run mpreg-example …`). For a local
@@ -209,7 +209,7 @@ uv run mpreg monitor prometheus | head
 
 ### Correlation
 
-- Fabric hops may carry W3C `traceparent` in metadata.  
+- Fabric hops may carry W3C `traceparent` in metadata.
 - Curriculum `hello_trace` shows **in-process** unified monitoring timelines
   (always on, no external collector required).
 
@@ -217,12 +217,12 @@ uv run mpreg monitor prometheus | head
 
 ## 5. Operate under failure (teaching stance)
 
-| Scenario | What to run | What to expect |
-|----------|-------------|----------------|
-| Seed down | `ha_client_failover` | Other seed serves call |
-| Cross-cluster path | `multi_region_shop` | Federated RPC with bridging config |
-| Slow mesh | raise timeouts in client policy | Structured timeout errors, not hangs |
-| Full test pressure | concurrent runner + `ulimit` | See testing docs |
+| Scenario           | What to run                     | What to expect                       |
+| ------------------ | ------------------------------- | ------------------------------------ |
+| Seed down          | `ha_client_failover`            | Other seed serves call               |
+| Cross-cluster path | `multi_region_shop`             | Federated RPC with bridging config   |
+| Slow mesh          | raise timeouts in client policy | Structured timeout errors, not hangs |
+| Full test pressure | concurrent runner + `ulimit`    | See testing docs                     |
 
 For chaos injection, prefer `mpreg.testing.faults.FaultInjector` in curriculum
 apps (`chaos_checkout`, `packet_loss_chaos`, `chaos_crash_recover`,
@@ -234,34 +234,34 @@ apps (`chaos_checkout`, `packet_loss_chaos`, `chaos_crash_recover`,
 
 When promoting an example pattern:
 
-1. **Config** — real profile TOML; `config-check` clean.  
-2. **Identity** — stable `cluster_id`, resource taxonomy, function names.  
-3. **Client** — `MPREGClusterClient` + explicit deadlines.  
-4. **Observability** — monitoring URL, scrape prometheus, alert rules under `mpreg/ops/`.  
-5. **Data planes** — choose queue delivery guarantees and cache levels deliberately.  
-6. **Fabric** — route policies and security before exposing clusters.  
-7. **Consensus** — only if you need it; Raft is not free.  
-8. **Load & soak** — do not ship on demo-only timings.  
+1. **Config** — real profile TOML; `config-check` clean.
+2. **Identity** — stable `cluster_id`, resource taxonomy, function names.
+3. **Client** — `MPREGClusterClient` + explicit deadlines.
+4. **Observability** — monitoring URL, scrape prometheus, alert rules under `mpreg/ops/`.
+5. **Data planes** — choose queue delivery guarantees and cache levels deliberately.
+6. **Fabric** — route policies and security before exposing clusters.
+7. **Consensus** — only if you need it; Raft is not free.
+8. **Load & soak** — do not ship on demo-only timings.
 
 ---
 
 ## 7. Troubleshooting examples
 
-| Symptom | Check |
-|---------|--------|
-| Port in use | Another demo still running; wait for cleanup; use curriculum apps (dynamic ports) |
-| `ExampleFailed` | Read assertion message; often settle time under load — re-run smoke |
-| HA call fails | Both seeds dead; discovery interval; see cluster client docs |
-| Federated miss | `cluster_id` / bridging config / peer URL; fabric ready wait |
-| FD exhaustion | `ulimit -n`; fewer parallel suites |
+| Symptom         | Check                                                                             |
+| --------------- | --------------------------------------------------------------------------------- |
+| Port in use     | Another demo still running; wait for cleanup; use curriculum apps (dynamic ports) |
+| `ExampleFailed` | Read assertion message; often settle time under load — re-run smoke               |
+| HA call fails   | Both seeds dead; discovery interval; see cluster client docs                      |
+| Federated miss  | `cluster_id` / bridging config / peer URL; fabric ready wait                      |
+| FD exhaustion   | `ulimit -n`; fewer parallel suites                                                |
 
 ---
 
 ## 8. Related docs
 
-- [GETTING_STARTED.md](../GETTING_STARTED.md)  
-- [MPREG_CLIENT_GUIDE.md](../MPREG_CLIENT_GUIDE.md)  
-- [PRODUCTION_DEPLOYMENT.md](../PRODUCTION_DEPLOYMENT.md)  
-- [OBSERVABILITY_TROUBLESHOOTING.md](../OBSERVABILITY_TROUBLESHOOTING.md)  
-- [FABRIC_ROUTE_POLICIES.md](../FABRIC_ROUTE_POLICIES.md)  
-- [ops/SETTINGS_GROUPS.md](../ops/SETTINGS_GROUPS.md)  
+- [GETTING_STARTED.md](../GETTING_STARTED.md)
+- [MPREG_CLIENT_GUIDE.md](../MPREG_CLIENT_GUIDE.md)
+- [PRODUCTION_DEPLOYMENT.md](../PRODUCTION_DEPLOYMENT.md)
+- [OBSERVABILITY_TROUBLESHOOTING.md](../OBSERVABILITY_TROUBLESHOOTING.md)
+- [FABRIC_ROUTE_POLICIES.md](../FABRIC_ROUTE_POLICIES.md)
+- [ops/SETTINGS_GROUPS.md](../ops/SETTINGS_GROUPS.md)

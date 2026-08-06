@@ -59,7 +59,6 @@ class EnhancedRaftStorageProtocol(RaftStorageProtocol):
         self, entries: list[LogEntry], start_index: int
     ) -> None:
         """Efficiently save a batch of log entries starting at start_index."""
-        ...
 
     @abstractmethod
     async def get_log_entries_range(
@@ -80,7 +79,6 @@ class EnhancedRaftStorageProtocol(RaftStorageProtocol):
 
     async def compact_storage(self) -> None:
         """Perform storage compaction/optimization."""
-        ...
 
 # Base Storage Adapter Class
 class BaseRaftStorage(ABC):
@@ -94,12 +92,10 @@ class BaseRaftStorage(ABC):
     @abstractmethod
     async def initialize(self) -> None:
         """Initialize storage backend."""
-        pass
 
     @abstractmethod
     async def close(self) -> None:
         """Close storage backend and cleanup resources."""
-        pass
 
     async def ensure_initialized(self) -> None:
         """Ensure storage is initialized."""
@@ -126,7 +122,7 @@ class StoredLogEntry:
     def access(self) -> StoredLogEntry:
         """Create new instance with updated access tracking."""
         current_time = time.time()
-        duration = (current_time - self.stored_at) * 1000
+        (current_time - self.stored_at) * 1000
         return StoredLogEntry(
             entry=self.entry,
             stored_at=self.stored_at,
@@ -776,7 +772,7 @@ class SQLiteRaftStorage(BaseRaftStorage):
                     snapshot.last_included_index,
                     snapshot.last_included_term,
                     snapshot.state_machine_state,
-                    dumps_text(sorted(list(snapshot.configuration))),
+                    dumps_text(sorted(snapshot.configuration)),
                     snapshot.created_at,
                     snapshot.size_bytes,
                     snapshot.checksum,
@@ -810,8 +806,8 @@ class SQLiteRaftStorage(BaseRaftStorage):
                 state_machine_state,
                 configuration_json,
                 created_at,
-                size_bytes,
-                checksum,
+                _size_bytes,
+                _checksum,
             ) = row
 
             configuration = set(loads_text(configuration_json))

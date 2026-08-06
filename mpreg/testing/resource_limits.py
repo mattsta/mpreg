@@ -39,14 +39,16 @@ def raise_open_file_limit(target: int = 1_048_576) -> NoFileLimit:
     if new_soft > soft:
         try:
             resource.setrlimit(resource.RLIMIT_NOFILE, (new_soft, new_hard))
-        except (ValueError, OSError):
+        except ValueError, OSError:
             # Best-effort stepwise fallback (some kernels reject large jumps).
             for candidate in (65536, 16384, 8192):
-                if candidate <= soft or (hard != resource.RLIM_INFINITY and candidate > hard):
+                if candidate <= soft or (
+                    hard != resource.RLIM_INFINITY and candidate > hard
+                ):
                     continue
                 try:
                     resource.setrlimit(resource.RLIMIT_NOFILE, (candidate, new_hard))
                     break
-                except (ValueError, OSError):
+                except ValueError, OSError:
                     continue
     return NoFileLimit.current()

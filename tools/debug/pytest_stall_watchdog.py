@@ -126,7 +126,7 @@ def _parse_args() -> WatchdogConfig:
 
 def _parse_env_overrides(raw_entries: object) -> tuple[EnvOverride, ...]:
     if raw_entries is None:
-        return tuple()
+        return ()
     if not isinstance(raw_entries, list):
         raise ValueError("Manifest 'env_overrides' must be a list of KEY=VALUE strings")
     overrides: list[EnvOverride] = []
@@ -226,7 +226,7 @@ def _descendants(root_pid: Pid) -> tuple[Pid, ...]:
 
 def _cpu_snapshot(pids: tuple[Pid, ...]) -> tuple[WorkerCpuSnapshot, ...]:
     if not pids:
-        return tuple()
+        return ()
     pid_arg = ",".join(str(pid) for pid in pids)
     ps_raw = subprocess.run(
         ("ps", "-p", pid_arg, "-o", "pid=,ppid=,%cpu=,command="),

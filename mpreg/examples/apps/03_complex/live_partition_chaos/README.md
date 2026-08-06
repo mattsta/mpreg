@@ -11,7 +11,7 @@ clears drain, detaches a peer, and contrasts the lab partition model.
 - **Drain** flips `server._mgmt_draining` and fails `/ready` closed.
 - **Detach** closes a peer connection through the mgmt mutation path.
 - `FaultInjector` remains a teaching model for abstract partitions (F10 closed
-  for *live admission*; full wire-level packet drop is still a different layer).
+  for _live admission_; full wire-level packet drop is still a different layer).
 
 ## Run
 

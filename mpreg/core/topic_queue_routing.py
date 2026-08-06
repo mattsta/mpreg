@@ -419,7 +419,7 @@ class TopicQueueRouter:
             TopicQueueMessage with routing metadata
         """
         start_time = time.time()
-        routing_id = f"tqr-{str(ulid.new())}"
+        routing_id = f"tqr-{ulid.new()!s}"
 
         try:
             # Route to matching queues

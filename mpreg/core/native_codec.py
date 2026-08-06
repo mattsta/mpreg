@@ -278,9 +278,9 @@ def estimate_size_bytes(value: Any) -> int:
     if value is None:
         return 0
     if isinstance(value, (bytes, bytearray, memoryview)):
-        return int(len(value))
+        return len(value)
     if isinstance(value, str):
-        return int(len(value))
+        return len(value)
     if isinstance(value, (bool, int, float)):
         return int(sys.getsizeof(value))
 
@@ -322,9 +322,7 @@ def estimate_size_bytes(value: Any) -> int:
             for key, child in current.items():
                 if items + len(stack) >= _SIZE_MAX_ITEMS:
                     break
-                if isinstance(key, str):
-                    total += len(key)
-                elif isinstance(key, (bytes, bytearray)):
+                if isinstance(key, (str, bytes, bytearray)):
                     total += len(key)
                 else:
                     try:
@@ -495,9 +493,7 @@ def _feed_fingerprint(hasher: Any, payload: Any) -> None:
         try:
             for field_name in payload.__dataclass_fields__:  # type: ignore[union-attr]
                 hasher.update(field_name.encode("ascii", errors="ignore"))
-                _feed_fingerprint_bounded(
-                    hasher, getattr(payload, field_name), depth=1
-                )
+                _feed_fingerprint_bounded(hasher, getattr(payload, field_name), depth=1)
         except Exception:
             pass
         return

@@ -326,5 +326,9 @@ def _audit(
     tracker = getattr(server, "_metrics_tracker", None)
     if tracker is not None and hasattr(tracker, "record_mgmt_mutation"):
         tracker.record_mgmt_mutation(event, success=success)
-    if event == "node_drain" and tracker is not None and hasattr(tracker, "set_draining"):
+    if (
+        event == "node_drain"
+        and tracker is not None
+        and hasattr(tracker, "set_draining")
+    ):
         tracker.set_draining(bool(detail.get("draining", False)))

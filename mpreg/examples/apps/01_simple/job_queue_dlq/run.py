@@ -40,9 +40,12 @@ async def main() -> None:
                 "queue.subscribe",
                 "queue.create",
             ):
+
                 def failing_worker(message: Any) -> None:
                     attempts["n"] += 1
-                    step(f"worker attempt={attempts['n']} id={getattr(message, 'id', '?')}")
+                    step(
+                        f"worker attempt={attempts['n']} id={getattr(message, 'id', '?')}"
+                    )
                     # auto_acknowledge=False path: do not ack → timeout → retry
 
                 queue.subscribe(
@@ -78,7 +81,9 @@ async def main() -> None:
                     f"expected ≥3 delivery attempts got {attempts['n']}",
                 )
                 dlq = list(queue.dead_letter_queue)
-                ensure(len(dlq) >= 1, f"DLQ empty after poison; attempts={attempts['n']}")
+                ensure(
+                    len(dlq) >= 1, f"DLQ empty after poison; attempts={attempts['n']}"
+                )
                 payload = getattr(dlq[0], "payload", None)
                 ensure(
                     isinstance(payload, dict) and payload.get("task") == "bad-payload",
@@ -94,15 +99,14 @@ async def main() -> None:
                 "queue.dlq",
             ):
                 stats = queue.get_statistics()
-                ensure(stats.messages_requeued >= 2, f"requeued={stats.messages_requeued}")
+                ensure(
+                    stats.messages_requeued >= 2, f"requeued={stats.messages_requeued}"
+                )
                 ensure(
                     stats.messages_failed >= 1 or len(queue.dead_letter_queue) >= 1,
                     f"no failure accounting stats={stats}",
                 )
-                ok(
-                    f"requeued={stats.messages_requeued} "
-                    f"failed={stats.messages_failed}"
-                )
+                ok(f"requeued={stats.messages_requeued} failed={stats.messages_failed}")
 
             with scenario(
                 "healthy message still delivers after poison",

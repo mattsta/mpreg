@@ -6,14 +6,19 @@ import asyncio
 import sys
 import time
 import traceback
-from collections.abc import Awaitable, Callable, Iterator, Sequence
+from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from mpreg.core.config import MPREGSettings
 from mpreg.examples.apps._shared.obs import ExampleProbe
-from mpreg.examples.showcase_utils import ServerHandle, run_with_servers, start_servers, stop_servers
+from mpreg.examples.showcase_utils import (
+    ServerHandle,
+    run_with_servers,
+    start_servers,
+    stop_servers,
+)
 from mpreg.server import MPREGServer
 
 T = TypeVar("T")
@@ -107,9 +112,12 @@ def scenario(name: str, *feature_ids: str) -> Iterator[None]:
         probe = _ACTIVE_PROBE
         if probe is not None:
             # Sanitize scenario name for op key stability
-            key = "scenario." + "".join(
-                c if c.isalnum() or c in "._-" else "_" for c in name.lower()
-            )[:64]
+            key = (
+                "scenario."
+                + "".join(
+                    c if c.isalnum() or c in "._-" else "_" for c in name.lower()
+                )[:64]
+            )
             probe.record(key, (time.perf_counter() - t0) * 1000.0, ok=ok_flag)
 
 def get_probe() -> ExampleProbe | None:
@@ -163,7 +171,7 @@ class RunReport:
     duration_s: float
     error: str | None = None
 
-async def run_with_timeout(
+async def run_with_timeout[T](
     coro: Awaitable[T],
     *,
     timeout_s: float | None = None,
@@ -230,6 +238,8 @@ def exit_from_report(report: RunReport) -> None:
 __all__ = [
     "ExampleFailed",
     "ExampleProbe",
+    "MPREGServer",
+    "MPREGSettings",
     "RunReport",
     "ScenarioStats",
     "ServerHandle",
@@ -249,6 +259,4 @@ __all__ = [
     "step",
     "stop_servers",
     "wait_until",
-    "MPREGSettings",
-    "MPREGServer",
 ]

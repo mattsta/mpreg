@@ -709,9 +709,7 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         DISCO_CATALOG_QUERY,
         CLIENT_API,
     ),
-    "queue_federation_lab": (
-        FABRIC_QUEUE_FED,
-    ),
+    "queue_federation_lab": (FABRIC_QUEUE_FED,),
     "live_partition_chaos": (
         CHAOS_PARTITION,
         CHAOS_HEAL,
@@ -741,7 +739,6 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         FABRIC_GRAPH,
         FABRIC_HUBS,
     ),
-
     "discovery_signatures_lab": (
         DISCO_SIGNATURES,
         FABRIC_GOSSIP,
@@ -794,7 +791,6 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         FABRIC_GRAPH,
         CONS_QUORUM_TEACH,
     ),
-
     # Phase L — FEATURE partial → shipped depth batch
     "queue_ack_receive_lab": (
         QUEUE_ACK,
@@ -860,16 +856,12 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         TX_CIRCUIT_BREAKER,
         FABRIC_RESILIENCE,
     ),
-    "ns_engine_direct": (
-        NS_ENGINE,
-    ),
-
+    "ns_engine_direct": (NS_ENGINE,),
     # Phase M — residual CLI ops + fabric_forward
     "pubsub_fabric_forward_lab": (
         PUBSUB_FABRIC_FORWARD,
         PUBSUB_HEADERS,
     ),
-
 }
 
 def features_for(app_id: str) -> tuple[str, ...]:

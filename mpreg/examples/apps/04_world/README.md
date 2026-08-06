@@ -2,8 +2,8 @@
 
 Flagship and world-spanning topologies.
 
-| ID | Status |
-|----|--------|
+| ID                          | Status                    |
+| --------------------------- | ------------------------- |
 | `global_edge_control_plane` | shipped (teaching sketch) |
 
 ```bash

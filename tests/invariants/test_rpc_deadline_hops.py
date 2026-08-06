@@ -10,7 +10,7 @@ from mpreg.core.rpc_deadline import (
     decrement_deadline_headers,
     headers_with_deadline_seconds,
 )
-from mpreg.fabric.message import MessageHeaders, RoutingPriority
+from mpreg.fabric.message import MessageHeaders
 from mpreg.server_pkg.rpc_handlers import RpcPlane
 
 def _headers() -> MessageHeaders:

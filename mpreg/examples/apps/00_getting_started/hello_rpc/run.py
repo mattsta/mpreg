@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
 
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
@@ -70,9 +69,7 @@ async def main() -> None:
                         ensure(greeted == "greet:hello", f"greet got {greeted!r}")
                         summed = await probe.measure_await(
                             "rpc.call",
-                            client.call(
-                                "add", 10, 32, locs=frozenset(["cpu", "math"])
-                            ),
+                            client.call("add", 10, 32, locs=frozenset(["cpu", "math"])),
                         )
                         ensure(summed == 42, f"add expected 42 got {summed!r}")
                         ok(f"call greet={greeted!r} add={summed}")

@@ -17,7 +17,12 @@ async def main() -> None:
     ):
         manager = create_reliable_queue_manager()
         try:
-            with scenario("create queue + dual workers", "queue.create", "queue.subscribe", "queue.factories"):
+            with scenario(
+                "create queue + dual workers",
+                "queue.create",
+                "queue.subscribe",
+                "queue.factories",
+            ):
                 await manager.create_queue("jobs")
                 received: list[str] = []
 
@@ -28,8 +33,12 @@ async def main() -> None:
                     else:
                         received.append(str(payload))
 
-                manager.subscribe_to_queue("jobs", "worker-1", "jobs.*", callback=worker)
-                manager.subscribe_to_queue("jobs", "worker-2", "jobs.*", callback=worker)
+                manager.subscribe_to_queue(
+                    "jobs", "worker-1", "jobs.*", callback=worker
+                )
+                manager.subscribe_to_queue(
+                    "jobs", "worker-2", "jobs.*", callback=worker
+                )
                 step("two workers on jobs.*")
                 ok("queue jobs ready")
 

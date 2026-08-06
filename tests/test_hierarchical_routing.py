@@ -982,7 +982,7 @@ class TestPerformanceAndOptimization:
             source_coords = GeographicCoordinate(40.0 + i * 0.1, -74.0 + i * 0.1)
             target_coords = GeographicCoordinate(37.0 + i * 0.1, -122.0 + i * 0.1)
 
-            route = await router.find_optimal_route(
+            await router.find_optimal_route(
                 source_cluster_id=f"cluster_source_{i}",
                 source_coordinates=source_coords,
                 source_region="us",

@@ -11,6 +11,7 @@ This test validates the improved port allocation system, checking for:
 """
 
 import os
+import sys
 import tempfile
 
 # Simulate different worker environments
@@ -216,4 +217,4 @@ def main():
     return 0
 
 if __name__ == "__main__":
-    exit(main())
+    sys.exit(main())

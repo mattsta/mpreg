@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 
 import aiohttp
 
@@ -144,9 +145,7 @@ async def main() -> None:
                                     )
                         except (Exception, asyncio.CancelledError, TimeoutError) as exc:
                             rejected = True
-                            step(
-                                f"unauthenticated WS rejected: {type(exc).__name__}"
-                            )
+                            step(f"unauthenticated WS rejected: {type(exc).__name__}")
                         ensure(
                             rejected,
                             "RPC without token must fail when rpc_auth_token set",
@@ -193,10 +192,8 @@ async def main() -> None:
                 finally:
                     await mon.stop()
                     mon_task.cancel()
-                    try:
+                    with contextlib.suppress(asyncio.CancelledError):
                         await mon_task
-                    except asyncio.CancelledError:
-                        pass
                     await unified.stop()
 
             await run_with_servers(settings, _run)

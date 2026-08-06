@@ -59,9 +59,12 @@ def test_dial_pressure_parallelism_exploration() -> None:
         peer_target_count=36, connected_ratio=0.2, discovery_ratio=0.5
     )
     assert slots >= 2
-    assert dial_exploration_slots(
-        peer_target_count=8, connected_ratio=0.2, discovery_ratio=0.5
-    ) == 0
+    assert (
+        dial_exploration_slots(
+            peer_target_count=8, connected_ratio=0.2, discovery_ratio=0.5
+        )
+        == 0
+    )
 
 def test_target_connection_and_backoff() -> None:
     assert target_connection_count(peer_target_count=10) == 10

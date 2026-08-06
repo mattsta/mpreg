@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import hashlib
 import hmac
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from mpreg.core.native_codec import canonical_dumps
 

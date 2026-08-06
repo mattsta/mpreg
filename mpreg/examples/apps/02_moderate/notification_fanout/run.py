@@ -8,7 +8,7 @@ from typing import Any
 
 from mpreg.core.model import PubSubMessage, PubSubSubscription, TopicPattern
 from mpreg.core.topic_exchange import TopicExchange
-from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
+from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario
 
 async def main() -> None:
     with app_run(
@@ -73,7 +73,10 @@ async def main() -> None:
                 "notify.email.welcome",
                 {"user": "u1", "template": "welcome"},
             )
-            subs = {getattr(h, "subscription_id", None) or getattr(h, "subscriber", None) for h in hits}
+            subs = {
+                getattr(h, "subscription_id", None) or getattr(h, "subscriber", None)
+                for h in hits
+            }
             # TopicExchange may return subscription objects or ids
             hit_blob = str(hits)
             ensure("email" in hit_blob or len(hits) >= 1, f"email hits {hits}")

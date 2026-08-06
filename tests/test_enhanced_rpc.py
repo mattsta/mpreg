@@ -476,7 +476,11 @@ class TestFactoryFunctions:
     def test_create_topic_aware_command_factory(self) -> None:
         """Test the create_topic_aware_command factory function."""
         base_cmd = RPCCommand(
-            name="test", fun="mpreg.system.echo", args=("hello",), kwargs={}, locs=frozenset(["cpu"])
+            name="test",
+            fun="mpreg.system.echo",
+            args=("hello",),
+            kwargs={},
+            locs=frozenset(["cpu"]),
         )
 
         topic_cmd = create_topic_aware_command(
@@ -490,7 +494,9 @@ class TestFactoryFunctions:
 
     def test_create_topic_aware_request_factory(self) -> None:
         """Test the create_topic_aware_request factory function."""
-        cmd = RPCCommand(name="test", fun="mpreg.system.echo", args=(), kwargs={}, locs=frozenset())
+        cmd = RPCCommand(
+            name="test", fun="mpreg.system.echo", args=(), kwargs={}, locs=frozenset()
+        )
         base_req = RPCRequest(role="rpc", cmds=(cmd,), u="test_u")
 
         topic_req = create_topic_aware_request(

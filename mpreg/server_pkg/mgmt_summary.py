@@ -14,7 +14,8 @@ def build_mgmt_v1_summary(server: Any) -> dict[str, Any]:
 
     nodes: list[dict[str, Any]] = [
         {
-            "node_id": getattr(server, "url", None) or f"{settings.host}:{settings.port}",
+            "node_id": getattr(server, "url", None)
+            or f"{settings.host}:{settings.port}",
             "name": node_name,
             "cluster_id": cluster_id,
             "status": "local",
@@ -62,7 +63,9 @@ def build_mgmt_v1_summary(server: Any) -> dict[str, Any]:
                 catalog, "cache_profiles", None
             )
             try:
-                catalog_summary["functions"] = len(list(functions.entries())) if functions else 0
+                catalog_summary["functions"] = (
+                    len(list(functions.entries())) if functions else 0
+                )
             except Exception:
                 catalog_summary["functions"] = 0
             try:
@@ -124,9 +127,7 @@ def build_mgmt_v1_summary(server: Any) -> dict[str, Any]:
             "node_count": len(nodes),
             "local_node": node_name,
             "gossip_interval": getattr(settings, "gossip_interval", None),
-            "fabric_routing_enabled": getattr(
-                settings, "fabric_routing_enabled", True
-            ),
+            "fabric_routing_enabled": getattr(settings, "fabric_routing_enabled", True),
             "last_update_at": now,
         },
         "nodes": nodes,

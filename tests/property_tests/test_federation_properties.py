@@ -203,12 +203,13 @@ class TestFederationHealthProperties:
             assert health_summary.cross_cluster_latency_p95_ms >= 0.0
 
             # Property 6: Health status is appropriate for health score
-            if health_summary.overall_health_score >= 0.8:
-                expected_status = HealthStatus.HEALTHY
-            elif health_summary.overall_health_score >= 0.6:
-                expected_status = HealthStatus.DEGRADED
+            if (
+                health_summary.overall_health_score >= 0.8
+                or health_summary.overall_health_score >= 0.6
+            ):
+                pass
             else:
-                expected_status = HealthStatus.CRITICAL
+                pass
 
             # Allow some flexibility in health status determination
             assert health_summary.overall_health_status in [
@@ -414,7 +415,7 @@ class TestFederationGraphProperties:
             assert topology.graph_diameter >= 0
 
             # Property 4: Clusters are consistent with nodes
-            expected_clusters = set(node["region"] for node in nodes)
+            expected_clusters = {node["region"] for node in nodes}
             actual_clusters = set(topology.clusters.keys())
             assert expected_clusters == actual_clusters
 

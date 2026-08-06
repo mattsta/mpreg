@@ -10,13 +10,13 @@ For the full documentation index, see `docs/README.md`.
 
 Product-shaped apps with a tracked growth cycle (L0→L4):
 
-| Resource | Link |
-|----------|------|
-| Curriculum home | [examples-curriculum/README.md](examples-curriculum/README.md) |
+| Resource         | Link                                                                     |
+| ---------------- | ------------------------------------------------------------------------ |
+| Curriculum home  | [examples-curriculum/README.md](examples-curriculum/README.md)           |
 | Catalog + status | [examples-curriculum/APP_CATALOG.md](examples-curriculum/APP_CATALOG.md) |
-| Stages A–D | [examples-curriculum/STAGES.md](examples-curriculum/STAGES.md) |
-| Operate guide | [examples-curriculum/OPERATE.md](examples-curriculum/OPERATE.md) |
-| Code | `mpreg/examples/apps/` |
+| Stages A–D       | [examples-curriculum/STAGES.md](examples-curriculum/STAGES.md)           |
+| Operate guide    | [examples-curriculum/OPERATE.md](examples-curriculum/OPERATE.md)         |
+| Code             | `mpreg/examples/apps/`                                                   |
 
 ```bash
 uv run mpreg-example list                 # 70 shipped apps
@@ -151,12 +151,16 @@ uv run pytest tests/test_integration_examples.py -v
 
 ```python
 # Complex dependency chain resolved automatically
-workflow = await client.request([
-    RPCCommand(name="step1", fun="process_data", args=(raw_data,)),
-    RPCCommand(name="step2", fun="analyze", args=("step1",)),  # Uses step1 result
-    RPCCommand(name="step3", fun="store", args=("step2",)),    # Uses step2 result
-    RPCCommand(name="final", fun="report", args=("step1", "step2", "step3"))  # Uses all
-])
+workflow = await client.request(
+    [
+        RPCCommand(name="step1", fun="process_data", args=(raw_data,)),
+        RPCCommand(name="step2", fun="analyze", args=("step1",)),  # Uses step1 result
+        RPCCommand(name="step3", fun="store", args=("step2",)),  # Uses step2 result
+        RPCCommand(
+            name="final", fun="report", args=("step1", "step2", "step3")
+        ),  # Uses all
+    ]
+)
 # MPREG handles topological sorting and execution order automatically!
 ```
 
@@ -164,14 +168,17 @@ workflow = await client.request([
 
 ```python
 # Functions automatically route to servers with matching resources
-gpu_result = await client.call("train_model", model_data,
-                              locs=frozenset(["gpu", "ml-models"]))
+gpu_result = await client.call(
+    "train_model", model_data, locs=frozenset(["gpu", "ml-models"])
+)
 
-cpu_result = await client.call("heavy_compute", dataset,
-                              locs=frozenset(["cpu-intensive"]))
+cpu_result = await client.call(
+    "heavy_compute", dataset, locs=frozenset(["cpu-intensive"])
+)
 
-db_result = await client.call("store_results", combined_data,
-                             locs=frozenset(["database", "storage"]))
+db_result = await client.call(
+    "store_results", combined_data, locs=frozenset(["database", "storage"])
+)
 
 # No manual endpoint management - MPREG routes optimally!
 ```
@@ -349,8 +356,10 @@ def analytics_safe(dataset: str, metrics: list) -> dict:
     return {
         "dataset": dataset,
         "metrics": metrics,
-        "results": {f"metric_{i}": f"result_for_metric_{i}" for i, metric in enumerate(metrics)},
-        "processing_node": "Analytics-Server"
+        "results": {
+            f"metric_{i}": f"result_for_metric_{i}" for i, metric in enumerate(metrics)
+        },
+        "processing_node": "Analytics-Server",
     }
 
 # Works for both direct and dependency-resolved calls:
@@ -398,24 +407,27 @@ def aggregate_results(operation: str, data_sources: list) -> dict:
         "total_sources": len(data_sources),
         "source_types": source_types,
         "aggregated_data": aggregated_data,
-        "timestamp": "2025-01-17T12:00:00Z"
+        "timestamp": "2025-01-17T12:00:00Z",
     }
 
 # Example usage in a dependency chain:
-workflow = await client.request([
-    # Stage 1: Multiple parallel data gathering
-    RPCCommand(name="gpu_process", fun="run_inference", args=("ModelA", "input")),
-    RPCCommand(name="cpu_process", fun="heavy_compute", args=("input", 100)),
-    RPCCommand(name="db_query", fun="query_database", args=("SELECT * FROM metrics")),
-
-    # Stage 2: Safe aggregation of all results
-    RPCCommand(
-        name="final_report",
-        fun="aggregate_results",
-        args=("comprehensive_analysis", ["gpu_process", "cpu_process", "db_query"])
-        # aggregate_results safely handles the resolved objects from all three previous stages
-    )
-])
+workflow = await client.request(
+    [
+        # Stage 1: Multiple parallel data gathering
+        RPCCommand(name="gpu_process", fun="run_inference", args=("ModelA", "input")),
+        RPCCommand(name="cpu_process", fun="heavy_compute", args=("input", 100)),
+        RPCCommand(
+            name="db_query", fun="query_database", args=("SELECT * FROM metrics")
+        ),
+        # Stage 2: Safe aggregation of all results
+        RPCCommand(
+            name="final_report",
+            fun="aggregate_results",
+            args=("comprehensive_analysis", ["gpu_process", "cpu_process", "db_query"]),
+            # aggregate_results safely handles the resolved objects from all three previous stages
+        ),
+    ]
+)
 ```
 
 ### **Type-Safe Function Design Pattern**
@@ -426,7 +438,7 @@ from typing import Union, Dict, List, Any, Optional
 def process_workflow_data(
     workflow_id: str,
     inputs: List[Union[str, Dict[str, Any]]],
-    options: Optional[Dict[str, Any]] = None
+    options: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
     Type-safe function that explicitly handles both direct and resolved arguments.
@@ -449,7 +461,9 @@ def process_workflow_data(
             # Resolved dependency object - extract relevant data
             if "processed_data" in input_item:
                 processed_inputs.append(input_item["processed_data"])
-                input_metadata.append({"type": "resolved", "keys": list(input_item.keys())})
+                input_metadata.append(
+                    {"type": "resolved", "keys": list(input_item.keys())}
+                )
             else:
                 # Generic handling for complex objects
                 processed_inputs.append(f"resolved_input_{i}")
@@ -457,7 +471,9 @@ def process_workflow_data(
         else:
             # Fallback for unexpected types
             processed_inputs.append(str(input_item))
-            input_metadata.append({"type": "converted", "original_type": type(input_item).__name__})
+            input_metadata.append(
+                {"type": "converted", "original_type": type(input_item).__name__}
+            )
 
     # Handle options safely
     safe_options = options or {}
@@ -475,7 +491,7 @@ def process_workflow_data(
         "input_metadata": input_metadata,
         "options": processed_options,
         "processing_node": "WorkflowProcessor",
-        "timestamp": "2025-01-17T12:00:00Z"
+        "timestamp": "2025-01-17T12:00:00Z",
     }
 ```
 
@@ -498,7 +514,7 @@ class TestDependencySafeFunctions:
         resolved_sources = [
             {"query_result": "SELECT results", "rows": 150, "time": "45ms"},
             {"computation": "tensor_ops", "gpu_time": "12ms", "memory": "2GB"},
-            {"storage_info": "saved to S3", "size": "500MB"}
+            {"storage_info": "saved to S3", "size": "500MB"},
         ]
 
         result = aggregate_results("production_op", resolved_sources)
@@ -511,7 +527,7 @@ class TestDependencySafeFunctions:
         mixed_sources = [
             "simple_string",
             {"complex": "object", "with": {"nested": "data"}},
-            "another_string"
+            "another_string",
         ]
 
         result = aggregate_results("mixed_op", mixed_sources)
@@ -563,26 +579,31 @@ The MPREG server now includes enhanced error reporting:
 ## 🎉 What Makes MPREG Special
 
 1. **🔗 Automatic Dependency Resolution**
+
    - No manual dependency management
    - Topological sorting built-in
    - Late-binding parameter substitution
 
 2. **🎯 Intelligent Resource Routing**
+
    - Functions route to optimal servers automatically
    - No hardcoded endpoints
    - Dynamic resource-based discovery
 
 3. **⚡ High-Performance Concurrency**
+
    - Sub-millisecond local calls
    - Concurrent requests over single connections
    - Scales to hundreds of parallel operations
 
 4. **🌐 Zero-Configuration Clustering**
+
    - Automatic peer discovery
    - Self-managing membership
    - No central coordination required
 
 5. **🔧 Self-Managing Architecture**
+
    - Components handle their own lifecycle
    - Automatic connection pooling
    - Resilient error handling

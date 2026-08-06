@@ -118,7 +118,9 @@ async def main() -> None:
                 return {**payload, "anomaly": anomaly, "analyzed_at": time.time()}
 
             intake.register_command("ingest", ingest, ["ingestion", "raw"])
-            processing.register_command("normalize", normalize, ["processing", "compute"])
+            processing.register_command(
+                "normalize", normalize, ["processing", "compute"]
+            )
             analytics.register_command("detect", detect, ["analytics", "ml"])
 
             await _await_fabric_ready(
@@ -264,7 +266,9 @@ async def main() -> None:
                 print("Workflow result:", workflow["analyzed"])
                 print("Alerts queued:", alert_messages)
                 print("Federated cache hit:", l4_result.success)
-                print("Tracking events:", len(monitor.get_tracking_timeline(tracking_id)))
+                print(
+                    "Tracking events:", len(monitor.get_tracking_timeline(tracking_id))
+                )
                 _ensure(
                     workflow["analyzed"]["anomaly"] is True,
                     "Tier 3 demo: anomaly flag missing",

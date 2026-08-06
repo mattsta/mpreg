@@ -224,7 +224,9 @@ class TestTrieProperties:
 
         # Verify each pattern returns exactly its associated values
         for pattern, expected_values in expected_associations.items():
-            patterns_for_values = trie.get_patterns_for_value(list(expected_values)[0])
+            patterns_for_values = trie.get_patterns_for_value(
+                next(iter(expected_values))
+            )
             assert pattern in patterns_for_values
 
     @given(st.lists(valid_patterns(), min_size=5, max_size=15))
@@ -1776,7 +1778,7 @@ class TestTriePropertyBasedTesting:
                 # All matches should correspond to added patterns
                 for match in matches:
                     # Verify this match corresponds to a pattern we added
-                    pattern_exists = any(
+                    any(
                         (pattern, match) in added_patterns
                         for pattern, _ in added_patterns
                     )

@@ -6,7 +6,7 @@ import time
 from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass, field, replace
-from typing import Any
+from typing import Any, Self
 
 from loguru import logger
 
@@ -99,7 +99,7 @@ class MPREGClusterClient:
     summary_redirect_scope: str | None = "global"
     summary_redirect_ingress_limit: int | None = 2
     summary_redirect_ingress_scope: str | None = None
-    call_policy: "ClientCallPolicy | None" = None
+    call_policy: ClientCallPolicy | None = None
     default_timeout_seconds: float | None = 30.0
     # Cap total endpoint×attempt work so HA retries cannot storm the mesh.
     max_endpoint_attempts: int = 6
@@ -155,14 +155,14 @@ class MPREGClusterClient:
         self._last_failure.clear()
         self._connected = False
 
-    async def __aenter__(self) -> MPREGClusterClient:
+    async def __aenter__(self) -> Self:
         await self.connect()
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         await self.disconnect()
 
-    def plane_client(self, url: str | None = None) -> "MPREGClient":
+    def plane_client(self, url: str | None = None) -> MPREGClient:
         """Return an ``MPREGClient`` bound to one endpoint for four-plane ops (ERG-04/T10).
 
         Does not auto-failover queue/cache/pubsub; callers pick ``url`` or the
@@ -173,7 +173,9 @@ class MPREGClusterClient:
 
         target = url
         if not target:
-            candidates = self._candidate_urls() if hasattr(self, "_candidate_urls") else []
+            candidates = (
+                self._candidate_urls() if hasattr(self, "_candidate_urls") else []
+            )
             target = (candidates[0] if candidates else None) or (
                 self.seed_urls[0] if self.seed_urls else None
             )
@@ -260,7 +262,7 @@ class MPREGClusterClient:
             if summary_result is not None:
                 return summary_result
         from mpreg.client.call_policy import ClientCallPolicy, call_with_policy
-        from mpreg.core.errors import MpregError, MpregErrorCode, timeout_error
+        from mpreg.core.errors import MpregError, timeout_error
 
         policy = self.call_policy
         # Shared wall deadline across endpoints (HA + soft-RT fail-closed).
@@ -282,8 +284,12 @@ class MPREGClusterClient:
             if deadline_mono is not None:
                 remaining = deadline_mono - time.monotonic()
                 if remaining <= 0:
-                    raise timeout_error("cluster call deadline exhausted across endpoints")
-                ep_timeout = remaining if timeout is None else min(float(timeout), remaining)
+                    raise timeout_error(
+                        "cluster call deadline exhausted across endpoints"
+                    )
+                ep_timeout = (
+                    remaining if timeout is None else min(float(timeout), remaining)
+                )
             else:
                 ep_timeout = timeout
 
@@ -303,7 +309,9 @@ class MPREGClusterClient:
             else:
                 per_ep = ClientCallPolicy(max_attempts=1)
 
-            async def _once(url: str = url, ep_timeout: float | None = ep_timeout) -> Any:
+            async def _once(
+                url: str = url, ep_timeout: float | None = ep_timeout
+            ) -> Any:
                 return await self._call_on_url(
                     url,
                     fun,
@@ -357,9 +365,7 @@ class MPREGClusterClient:
                         map_refreshed_after_failure = True
                         with contextlib.suppress(Exception):
                             await self.refresh_cluster_map()
-                    expanded = self._candidate_urls(
-                        preferred_urls=effective_preferred
-                    )
+                    expanded = self._candidate_urls(preferred_urls=effective_preferred)
                     if not expanded:
                         expanded = []
                     for nxt in self._fallback_candidate_urls(
@@ -729,7 +735,7 @@ class MPREGClusterClient:
         latency_ms = (time.time() - start_time) * 1000.0
         self._record_endpoint_success(url, latency_ms)
         if isinstance(result, dict) and len(result) == 1:
-            return list(result.values())[0]
+            return next(iter(result.values()))
         return result
 
     def _record_endpoint_success(self, url: str, latency_ms: float) -> None:

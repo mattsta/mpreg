@@ -208,7 +208,7 @@ async def _run_scenario(
                 post_fault_peak=0.0,
                 initial_unreachable_from_global=-1,
                 post_fault_unreachable_from_global=-1,
-                surviving_component_sizes=tuple(),
+                surviving_component_sizes=(),
             )
         )
         print(

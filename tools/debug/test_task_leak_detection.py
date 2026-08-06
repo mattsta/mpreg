@@ -79,9 +79,9 @@ async def test_task_leak_detection():
     # Test 4: Test context leak detection
     print("\n4. Testing AsyncTestContext leak detection...")
 
-    async with AsyncTestContext() as ctx:
+    async with AsyncTestContext():
         # Create a leaked task intentionally
-        leaked_task = asyncio.create_task(asyncio.sleep(10), name="intentional_leak")
+        asyncio.create_task(asyncio.sleep(10), name="intentional_leak")
 
         # Context should detect and clean it up on exit
         print("   Created intentional leak, context will clean up...")

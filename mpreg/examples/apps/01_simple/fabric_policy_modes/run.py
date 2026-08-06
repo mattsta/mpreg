@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import time
 
-from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
+from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario
 from mpreg.fabric.catalog import FunctionCatalog, TopicCatalog
 from mpreg.fabric.federation_config import (
     FederationMode,
@@ -61,10 +61,7 @@ async def main() -> None:
                 "cluster-z" not in explicit.allowed_foreign_cluster_ids,
                 "z should not be allowed",
             )
-            ok(
-                f"explicit allows="
-                f"{sorted(explicit.allowed_foreign_cluster_ids)}"
-            )
+            ok(f"explicit allows={sorted(explicit.allowed_foreign_cluster_ids)}")
 
         with scenario(
             "routing catalog types",
@@ -121,9 +118,7 @@ async def main() -> None:
             # Stale sequence ignored
             stale = LinkStateUpdate(
                 origin="cluster-a",
-                neighbors=(
-                    LinkStateNeighbor(cluster_id="cluster-z", latency_ms=1.0),
-                ),
+                neighbors=(LinkStateNeighbor(cluster_id="cluster-z", latency_ms=1.0),),
                 sequence=0,
                 advertised_at=time.time(),
             )

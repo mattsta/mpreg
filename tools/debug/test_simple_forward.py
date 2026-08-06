@@ -34,8 +34,8 @@ async def test_simple_forward():
     server2 = MPREGServer(settings=server2_settings)
 
     # Start servers
-    task1 = asyncio.create_task(server1.server())
-    task2 = asyncio.create_task(server2.server())
+    asyncio.create_task(server1.server())
+    asyncio.create_task(server2.server())
     await asyncio.sleep(1.0)
 
     try:

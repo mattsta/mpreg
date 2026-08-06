@@ -59,7 +59,9 @@ async def main() -> None:
 
                 async with MPREGClientAPI(hub) as client:
                     # ── S1: cross-node dependency DAG ───────────────────────
-                    with scenario("cross-node RPC DAG", "rpc.dag", "rpc.locs", "boot.peers"):
+                    with scenario(
+                        "cross-node RPC DAG", "rpc.dag", "rpc.locs", "boot.peers"
+                    ):
                         result = await client.request(
                             [
                                 RPCCommand(
@@ -82,8 +84,12 @@ async def main() -> None:
                                 ),
                             ]
                         )
-                        scored = result.get("scored") if isinstance(result, dict) else None
-                        ensure(isinstance(scored, dict), f"missing scored in {result!r}")
+                        scored = (
+                            result.get("scored") if isinstance(result, dict) else None
+                        )
+                        ensure(
+                            isinstance(scored, dict), f"missing scored in {result!r}"
+                        )
                         ensure(
                             abs(float(scored.get("score", 0.0)) - 1.26) < 1e-6,
                             f"unexpected score {scored}",
@@ -107,6 +113,7 @@ async def main() -> None:
 
                     # ── S3: list_peers discovery surface ────────────────────
                     with scenario("list_peers discovery", "disco.list_peers"):
+
                         async def _peers_ready() -> bool:
                             try:
                                 peers = await client.list_peers()
@@ -114,7 +121,9 @@ async def main() -> None:
                             except Exception:
                                 return False
 
-                        await wait_until(_peers_ready, timeout_s=8.0, what="peers visible")
+                        await wait_until(
+                            _peers_ready, timeout_s=8.0, what="peers visible"
+                        )
                         peers = await client.list_peers()
                         ensure(len(peers) >= 1, f"expected peers, got {peers!r}")
                         ok(f"list_peers count={len(peers)}")

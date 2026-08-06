@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 import time
 from collections import deque
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from typing import Any
 
 @dataclass(frozen=True, slots=True)
@@ -55,7 +55,11 @@ class RouteDecisionLog:
             self._items.append(entry)
             self._total_count += 1
             reason = (entry.reason or "").lower()
-            if reason in UNREACHABLE_REASONS or "unreachable" in reason or "no_path" in reason:
+            if (
+                reason in UNREACHABLE_REASONS
+                or "unreachable" in reason
+                or "no_path" in reason
+            ):
                 self._blackhole_count += 1
 
     def recent(

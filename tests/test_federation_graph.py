@@ -280,9 +280,6 @@ class TestFederationGraphEdge:
             current_utilization=0.5,
         )
 
-        original_latency = edge.latency_ms
-        original_utilization = edge.current_utilization
-
         # Update with new metrics
         edge.update_metrics(
             latency_ms=60.0, utilization=0.7, packet_loss=0.02, jitter_ms=3.0

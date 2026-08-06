@@ -25,6 +25,7 @@ Design Principles:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from collections.abc import AsyncIterator
 from dataclasses import asdict, dataclass
@@ -208,7 +209,7 @@ class TopicEnhancedMessageQueueManager:
             TopicQueueSendResult with routing details and send results
         """
         start_time = time.time()
-        tracking_id = f"tqsend-{str(ulid.new())}"
+        tracking_id = f"tqsend-{ulid.new()!s}"
 
         try:
             # Route message to matching queues
@@ -239,7 +240,7 @@ class TopicEnhancedMessageQueueManager:
                     # DeliveryResult always has message_id property
                     message_ids.append(str(result.message_id))
 
-                except Exception as e:
+                except Exception:
                     self.error_counts["send_errors"] += 1
                     # Continue with other queues even if one fails
                     continue
@@ -306,7 +307,7 @@ class TopicEnhancedMessageQueueManager:
             TopicQueueSubscription with subscription details
         """
         try:
-            subscription_id = f"tqsub-{str(ulid.new())}"
+            subscription_id = f"tqsub-{ulid.new()!s}"
             actual_queue_name = (
                 queue_name
                 or f"topic-queue-{pattern.replace('*', 'star').replace('#', 'hash')}"
@@ -412,7 +413,7 @@ class TopicEnhancedMessageQueueManager:
                     delivery_guarantee=delivery_guarantee,
                 )
                 subscriptions.append(subscription)
-            except Exception as e:
+            except Exception:
                 # Continue with other patterns even if one fails
                 continue
 
@@ -457,10 +458,8 @@ class TopicEnhancedMessageQueueManager:
             delivery_queue: asyncio.Queue[QueuedMessage] = asyncio.Queue(maxsize=1024)
 
             def _on_message(message: QueuedMessage) -> None:
-                try:
+                with contextlib.suppress(asyncio.QueueFull):
                     delivery_queue.put_nowait(message)
-                except asyncio.QueueFull:
-                    pass
 
             subscription_id_local = self.base_manager.subscribe_to_queue(
                 queue_name=subscription.queue_name,
@@ -480,7 +479,7 @@ class TopicEnhancedMessageQueueManager:
                     )
                     received += 1
                     routing_metadata = TopicRoutingMetadata(
-                        routing_id=f"route-{str(ulid.new())}",
+                        routing_id=f"route-{ulid.new()!s}",
                         matched_patterns=[subscription.topic_pattern],
                         selected_queues=[subscription.queue_name],
                         routing_strategy=RoutingStrategy.FANOUT_ALL,
@@ -502,7 +501,7 @@ class TopicEnhancedMessageQueueManager:
                     subscription.queue_name, subscription_id_local
                 )
 
-        except Exception as e:
+        except Exception:
             self.error_counts["subscription_errors"] += 1
             raise
 
@@ -545,11 +544,11 @@ class TopicEnhancedMessageQueueManager:
             messages_per_second=messages_per_second,
             active_topic_subscriptions=len(self.topic_subscriptions),
             consumer_groups=len(
-                set(
+                {
                     sub.consumer_group
                     for sub in self.topic_subscriptions.values()
                     if sub.consumer_group
-                )
+                }
             ),
             topic_patterns_registered=len(self.pattern_to_subscriptions),
             routing_errors=self.error_counts["routing_errors"],
@@ -578,14 +577,12 @@ class TopicEnhancedMessageQueueManager:
         delivery_queue: asyncio.Queue[QueuedMessage] = asyncio.Queue(maxsize=1024)
 
         def _on_message(message: QueuedMessage) -> None:
-            try:
+            with contextlib.suppress(asyncio.QueueFull):
                 delivery_queue.put_nowait(message)
-            except asyncio.QueueFull:
-                pass
 
         subscription_id = self.base_manager.subscribe_to_queue(
             queue_name=queue_name,
-            subscriber_id=f"queue-receiver-{str(ulid.new())}",
+            subscriber_id=f"queue-receiver-{ulid.new()!s}",
             topic_pattern="#",
             callback=_on_message,
             auto_acknowledge=True,
@@ -610,14 +607,12 @@ class TopicEnhancedMessageQueueManager:
         delivery_queue: asyncio.Queue[QueuedMessage] = asyncio.Queue(maxsize=1024)
 
         def _on_message(message: QueuedMessage) -> None:
-            try:
+            with contextlib.suppress(asyncio.QueueFull):
                 delivery_queue.put_nowait(message)
-            except asyncio.QueueFull:
-                pass
 
         subscription_id = self.base_manager.subscribe_to_queue(
             queue_name=queue_name,
-            subscriber_id=f"queue-consumer-{str(ulid.new())}",
+            subscriber_id=f"queue-consumer-{ulid.new()!s}",
             topic_pattern="#",
             callback=_on_message,
             auto_acknowledge=True,
@@ -660,7 +655,6 @@ class TopicEnhancedMessageQueueManager:
     async def start(self) -> None:
         """Start the enhanced message queue manager."""
         # MessageQueueManager doesn't have start method - it's ready on construction
-        pass
         # Start any background tasks for topic routing optimization
 
     async def stop(self) -> None:

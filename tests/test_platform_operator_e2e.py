@@ -39,9 +39,10 @@ async def test_operator_four_plane_and_drain() -> None:
     try:
         for _ in range(80):
             await asyncio.sleep(0.05)
-            if getattr(server, "_queue_manager", None) is not None and getattr(
-                server, "_cache_manager", None
-            ) is not None:
+            if (
+                getattr(server, "_queue_manager", None) is not None
+                and getattr(server, "_cache_manager", None) is not None
+            ):
                 break
         else:
             pytest.fail("queue/cache managers never attached")
@@ -49,9 +50,7 @@ async def test_operator_four_plane_and_drain() -> None:
         url = f"ws://127.0.0.1:{port}"
         async with MPREGClient(url) as client:
             # RPC plane
-            assert (
-                await client.call("add", 2, 3, locs=frozenset(["compute"])) == 5
-            )
+            assert await client.call("add", 2, 3, locs=frozenset(["compute"])) == 5
 
             # Cache plane
             put = await client.cache_put("ns", "k1", {"v": 1})
@@ -114,12 +113,20 @@ async def test_operator_drain_admission_and_drop_metrics() -> None:
 
     # Admission roles include rpc
     assert server._mgmt_draining is True
-    resp = unavailable_response("u-drain", "node_draining: data-plane admission refused")
+    resp = unavailable_response(
+        "u-drain", "node_draining: data-plane admission refused"
+    )
     assert resp.error is not None
-    assert "draining" in (resp.error.message or resp.error.details or "").lower() or True
+    assert (
+        "draining" in (resp.error.message or resp.error.details or "").lower() or True
+    )
 
     # Drop metrics scrape-shaped
-    t = server._metrics_tracker if hasattr(server, "_metrics_tracker") else ServerMetricsTracker()
+    t = (
+        server._metrics_tracker
+        if hasattr(server, "_metrics_tracker")
+        else ServerMetricsTracker()
+    )
     if not isinstance(t, ServerMetricsTracker):
         t = ServerMetricsTracker()
     t.record_notification_drop()
@@ -184,8 +191,7 @@ async def test_operator_live_drain_refuses_client_rpc() -> None:
             err = ei.value
         assert err is not None
         text = (
-            f"{err!s} {getattr(err, 'details', '')} "
-            f"{getattr(err, 'rpc_error', '')}"
+            f"{err!s} {getattr(err, 'details', '')} {getattr(err, 'rpc_error', '')}"
         ).lower()
         assert "drain" in text or "unavailable" in text or isinstance(err, MpregError)
         if isinstance(err, MpregError):

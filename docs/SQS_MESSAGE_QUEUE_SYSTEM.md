@@ -24,7 +24,7 @@ The system supports four distinct delivery patterns:
 result = await queue.send_message(
     "notifications.user_login",
     {"user_id": 12345, "timestamp": time.time()},
-    DeliveryGuarantee.FIRE_AND_FORGET
+    DeliveryGuarantee.FIRE_AND_FORGET,
 )
 ```
 
@@ -41,7 +41,7 @@ result = await queue.send_message(
     {"order_id": "ORD-123", "amount": 99.99},
     DeliveryGuarantee.AT_LEAST_ONCE,
     max_retries=3,
-    acknowledgment_timeout_seconds=300
+    acknowledgment_timeout_seconds=300,
 )
 ```
 
@@ -56,7 +56,7 @@ result = await queue.send_message(
 result = await queue.send_message(
     "system.config_update",
     {"config_key": "feature_flags", "new_value": True},
-    DeliveryGuarantee.BROADCAST
+    DeliveryGuarantee.BROADCAST,
 )
 ```
 
@@ -72,7 +72,7 @@ result = await queue.send_message(
     "cluster.leader_election",
     {"candidate_id": "node-5", "term": 42},
     DeliveryGuarantee.QUORUM,
-    required_acknowledgments=3  # Need 3 out of 5 nodes
+    required_acknowledgments=3,  # Need 3 out of 5 nodes
 )
 ```
 
@@ -107,9 +107,7 @@ await queue.send_message("maintenance.cleanup", cleanup_data, priority=1)
 ```python
 # Deliver in 5 minutes
 await queue.send_message(
-    "reminders.meeting",
-    {"meeting_id": "MTG-456"},
-    delay_seconds=300
+    "reminders.meeting", {"meeting_id": "MTG-456"}, delay_seconds=300
 )
 ```
 
@@ -125,7 +123,7 @@ await queue.send_message(
 config = QueueConfiguration(
     name="orders-queue",
     enable_deduplication=True,
-    deduplication_window_seconds=300  # 5 minute window
+    deduplication_window_seconds=300,  # 5 minute window
 )
 ```
 
@@ -137,9 +135,7 @@ config = QueueConfiguration(
 
 ```python
 config = QueueConfiguration(
-    name="payments-queue",
-    enable_dead_letter_queue=True,
-    dead_letter_max_receives=3
+    name="payments-queue", enable_dead_letter_queue=True, dead_letter_max_receives=3
 )
 ```
 
@@ -152,7 +148,7 @@ config = QueueConfiguration(
 ```python
 config = QueueConfiguration(
     name="realtime-events",
-    message_ttl_seconds=60  # Messages expire after 1 minute
+    message_ttl_seconds=60,  # Messages expire after 1 minute
 )
 ```
 
@@ -162,7 +158,10 @@ config = QueueConfiguration(
 
 ```python
 from mpreg.core.message_queue import MessageQueue, QueueConfiguration, DeliveryGuarantee
-from mpreg.core.message_queue_manager import MessageQueueManager, QueueManagerConfiguration
+from mpreg.core.message_queue_manager import (
+    MessageQueueManager,
+    QueueManagerConfiguration,
+)
 
 # Create queue manager (local, per-cluster)
 config = QueueManagerConfiguration()
@@ -179,7 +178,7 @@ manager.subscribe_to_queue(
     "my-queue",
     "my-subscriber",
     "events.*",  # Topic pattern
-    callback=process_message
+    callback=process_message,
 )
 
 # Send messages
@@ -187,7 +186,7 @@ result = await manager.send_message(
     "my-queue",
     "events.user_signup",
     {"user_id": 12345, "email": "user@example.com"},
-    DeliveryGuarantee.AT_LEAST_ONCE
+    DeliveryGuarantee.AT_LEAST_ONCE,
 )
 
 print(f"Message sent: {result.success}")
@@ -283,7 +282,7 @@ config = QueueConfiguration(
     enable_deduplication=True,
     deduplication_window_seconds=300,
     message_ttl_seconds=3600,
-    max_retries=5
+    max_retries=5,
 )
 
 await manager.create_queue("critical-operations", config)
@@ -397,9 +396,7 @@ manager = MessageQueueManager(config, topic_exchange)
 
 # Route topic exchange messages to queues
 await manager.route_topic_to_queue(
-    "system.events.*",
-    "system-queue",
-    DeliveryGuarantee.BROADCAST
+    "system.events.*", "system-queue", DeliveryGuarantee.BROADCAST
 )
 ```
 
@@ -492,7 +489,7 @@ async def setup_ecommerce_queues():
         enable_deduplication=True,
         deduplication_window_seconds=300,
         max_retries=5,
-        default_acknowledgment_timeout_seconds=30
+        default_acknowledgment_timeout_seconds=30,
     )
     await manager.create_queue("payments", payment_config)
 
@@ -501,7 +498,7 @@ async def setup_ecommerce_queues():
         name="fulfillment",
         queue_type=QueueType.FIFO,
         enable_dead_letter_queue=True,
-        max_retries=3
+        max_retries=3,
     )
     await manager.create_queue("fulfillment", fulfillment_config)
 
@@ -509,7 +506,7 @@ async def setup_ecommerce_queues():
     notification_config = QueueConfiguration(
         name="notifications",
         queue_type=QueueType.FIFO,
-        message_ttl_seconds=300  # 5 minute TTL
+        message_ttl_seconds=300,  # 5 minute TTL
     )
     await manager.create_queue("notifications", notification_config)
 
@@ -529,7 +526,7 @@ await manager.send_message(
     "payment.process",
     {"order_id": "ORD-123", "amount": 99.99, "card_token": "tok_123"},
     DeliveryGuarantee.AT_LEAST_ONCE,
-    priority=10
+    priority=10,
 )
 
 # Send order to fulfillment
@@ -537,7 +534,7 @@ await manager.send_message(
     "fulfillment",
     "order.fulfill",
     {"order_id": "ORD-123", "items": [{"sku": "WIDGET-1", "qty": 2}]},
-    DeliveryGuarantee.AT_LEAST_ONCE
+    DeliveryGuarantee.AT_LEAST_ONCE,
 )
 
 # Send customer notification
@@ -545,7 +542,7 @@ await manager.send_message(
     "notifications",
     "notify.order_confirmed",
     {"customer_email": "customer@example.com", "order_id": "ORD-123"},
-    DeliveryGuarantee.FIRE_AND_FORGET
+    DeliveryGuarantee.FIRE_AND_FORGET,
 )
 ```
 

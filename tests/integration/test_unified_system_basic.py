@@ -69,7 +69,7 @@ class TestBasicUnifiedSystemIntegration:
 
         This validates our test infrastructure before testing fabric components.
         """
-        port1, port2, port3 = server_cluster_ports[:3]
+        port1, port2, _port3 = server_cluster_ports[:3]
 
         settings1 = MPREGSettings(
             host="127.0.0.1",

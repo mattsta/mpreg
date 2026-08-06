@@ -8,9 +8,10 @@ fabric messages can carry ``traceparent`` / ``tracestate`` in
 from __future__ import annotations
 
 import secrets
+from collections.abc import Iterator, Mapping, MutableMapping
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Any, Iterator, Mapping, MutableMapping
+from typing import Any
 
 TRACEPARENT_KEY = "traceparent"
 TRACESTATE_KEY = "tracestate"
@@ -48,10 +49,7 @@ def extract_traceparent(metadata: Mapping[str, Any] | None) -> str | None:
 def ensure_traceparent(metadata: MutableMapping[str, Any] | None = None) -> str:
     """Return existing traceparent or create one; mutate metadata when provided."""
     meta: MutableMapping[str, Any]
-    if metadata is None:
-        meta = {}
-    else:
-        meta = metadata
+    meta = {} if metadata is None else metadata
     existing = extract_traceparent(meta)
     if existing:
         return existing

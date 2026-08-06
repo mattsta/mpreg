@@ -6,7 +6,7 @@ the mega-module connection loop.
 
 from __future__ import annotations
 
-from typing import Any, Container
+from typing import Any
 
 # Roles refused when the node is draining (known data-plane).
 DATA_PLANE_ROLES: frozenset[str] = frozenset(
@@ -71,16 +71,20 @@ def is_fabric_control_plane(
     mt = (message_type or "").lower()
     top = (topic or "").lower()
     if fabric_payload:
-        mt = mt or str(
-            fabric_payload.get("message_type")
-            or fabric_payload.get("type")
-            or ""
-        ).lower()
+        mt = (
+            mt
+            or str(
+                fabric_payload.get("message_type") or fabric_payload.get("type") or ""
+            ).lower()
+        )
         headers = fabric_payload.get("headers") or {}
         if isinstance(headers, dict):
-            top = top or str(
-                headers.get("topic") or fabric_payload.get("topic") or ""
-            ).lower()
+            top = (
+                top
+                or str(
+                    headers.get("topic") or fabric_payload.get("topic") or ""
+                ).lower()
+            )
         else:
             top = top or str(fabric_payload.get("topic") or "").lower()
         # Nested payload common shapes
@@ -93,9 +97,7 @@ def is_fabric_control_plane(
         return True
     if "raft" in top or top.startswith("mpreg.raft") or ".raft." in top:
         return True
-    if role == "fabric-control":
-        return True
-    return False
+    return role == "fabric-control"
 
 def should_refuse_for_drain(
     *,

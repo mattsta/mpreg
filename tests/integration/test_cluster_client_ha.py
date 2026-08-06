@@ -123,7 +123,7 @@ async def test_cluster_map_and_client_pool_failover(
     with port_range_context(3, "servers") as ports:
         hub1_url = f"ws://127.0.0.1:{ports[0]}"
         hub2_url = f"ws://127.0.0.1:{ports[1]}"
-        provider_url = f"ws://127.0.0.1:{ports[2]}"
+        f"ws://127.0.0.1:{ports[2]}"
 
         await _start_server(
             test_context,
@@ -164,7 +164,10 @@ async def test_cluster_map_and_client_pool_failover(
         await cluster_client.connect()
         await cluster_client.refresh_cluster_map()
         # Ensure hub-2 is a known scored endpoint before fault injection.
-        assert hub2_url in cluster_client._endpoint_scores or hub2_url in cluster_client.seed_urls
+        assert (
+            hub2_url in cluster_client._endpoint_scores
+            or hub2_url in cluster_client.seed_urls
+        )
         result = await cluster_client.call(
             "quote", "EURUSD", function_id=FUNCTION_ID, version_constraint=">=1.0.0"
         )
@@ -254,7 +257,7 @@ async def test_cluster_client_prefers_region(
 ) -> None:
     with port_range_context(3, "servers") as ports:
         hub_url = f"ws://127.0.0.1:{ports[0]}"
-        provider_a_url = f"ws://127.0.0.1:{ports[1]}"
+        f"ws://127.0.0.1:{ports[1]}"
         provider_b_url = f"ws://127.0.0.1:{ports[2]}"
 
         await _start_server(
@@ -304,7 +307,7 @@ async def test_cluster_client_uses_summary_ingress_hints(
     with port_range_context(3, "servers") as ports:
         global_url = f"ws://127.0.0.1:{ports[0]}"
         region_url = f"ws://127.0.0.1:{ports[1]}"
-        provider_url = f"ws://127.0.0.1:{ports[2]}"
+        f"ws://127.0.0.1:{ports[2]}"
 
         await _start_server(
             test_context,

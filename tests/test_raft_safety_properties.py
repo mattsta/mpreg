@@ -641,7 +641,7 @@ class TestRaftSafetyProperties:
                 if current_leaders:
                     leader = current_leaders[0]
                     # Submit a test command to verify leader functionality
-                    result = await leader.submit_command(
+                    await leader.submit_command(
                         f"property_test_{random.randint(1000, 9999)}"
                     )
                     # Result can be None in some network conditions, that's acceptable
@@ -1004,7 +1004,7 @@ class TestRaftSafetyProperties:
                 if remaining_leaders:
                     new_leader = remaining_leaders[0]
                     # New leader should accept commands
-                    result = await new_leader.submit_command("post_failure_test")
+                    await new_leader.submit_command("post_failure_test")
                     # Result can be None due to ongoing consensus issues
             else:
                 # No majority - should have no leaders
@@ -1136,7 +1136,7 @@ class TestRaftSafetyProperties:
 
                     # Submit test commands
                     for cmd in commands:
-                        result = await leader.submit_command(cmd)
+                        await leader.submit_command(cmd)
                         # Allow some commands to fail due to network conditions
 
                     print("CHECKPOINT 5b: Commands submitted, waiting for replication")

@@ -162,7 +162,9 @@ async def main() -> None:
                     NamespaceOperation(namespace="metrics", operation="count")
                 )
                 ensure(counted.success, f"count failed: {counted.error_message}")
-                ensure(counted.count >= 2, f"expected ≥2 metrics keys, got {counted.count}")
+                ensure(
+                    counted.count >= 2, f"expected ≥2 metrics keys, got {counted.count}"
+                )
                 listed = await ops.namespace_operation(
                     NamespaceOperation(namespace="metrics", operation="list", limit=50)
                 )
@@ -179,7 +181,10 @@ async def main() -> None:
                 after = await ops.namespace_operation(
                     NamespaceOperation(namespace="metrics", operation="count")
                 )
-                ensure(after.success and after.count == 0, f"post-clear count {after.count}")
+                ensure(
+                    after.success and after.count == 0,
+                    f"post-clear count {after.count}",
+                )
                 ok(f"cleared {cleared.cleared_count} metrics keys")
 
             # flags namespace untouched by metrics clear

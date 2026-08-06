@@ -371,7 +371,7 @@ class TestTCPTransport:
 
         try:
             # Connect with raw TCP client
-            reader, writer = await asyncio.open_connection("127.0.0.1", tcp_port)
+            _reader, writer = await asyncio.open_connection("127.0.0.1", tcp_port)
 
             # Accept server connection
             server_task = asyncio.create_task(listener.accept())

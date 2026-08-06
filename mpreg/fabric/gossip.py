@@ -1054,10 +1054,8 @@ class GossipProtocol:
         self.pending_messages_dropped += n
         cb = self.on_pending_drop
         if cb is not None:
-            try:
+            with contextlib.suppress(Exception):
                 cb(n)
-            except Exception:
-                pass
 
     def _enqueue_pending(self, message: Any, *, front: bool = False) -> None:
         """Bound pending gossip queue (PERF-07); drop oldest on overflow."""

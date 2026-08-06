@@ -9,7 +9,7 @@ import re
 import sys
 import time
 import traceback
-from collections.abc import Callable, Coroutine, Iterable
+from collections.abc import Callable, Iterable
 from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field
 from graphlib import TopologicalSorter
@@ -35,6 +35,42 @@ PEER_SNAPSHOT_DIAG_ENABLED = (
     os.environ.get("MPREG_DEBUG_PEER_SNAPSHOT", "").strip().lower() in _DIAG_TRUE_VALUES
 )
 
+from mpreg.server_pkg.peer_dial import (
+    PeerDialConnectionPolicy,
+    PeerDialDiagnosticSnapshot,
+    PeerDialLoopSnapshot,
+    PeerDialState,
+)
+from mpreg.server_pkg.peer_dial import (
+    backoff_base_seconds as _peer_dial_backoff_base_seconds_pure,
+)
+from mpreg.server_pkg.peer_dial import (
+    backoff_cap_seconds as _peer_dial_backoff_cap_seconds_pure,
+)
+from mpreg.server_pkg.peer_dial import (
+    dial_exploration_slots as _peer_dial_exploration_slots_pure,
+)
+from mpreg.server_pkg.peer_dial import (
+    dial_parallelism as _peer_dial_parallelism_pure,
+)
+from mpreg.server_pkg.peer_dial import (
+    dial_pressure as _peer_dial_pressure_pure,
+)
+from mpreg.server_pkg.peer_dial import (
+    reconcile_interval_seconds as _peer_dial_reconcile_interval_pure,
+)
+from mpreg.server_pkg.peer_dial import (
+    select_peer_connection_policy as _select_peer_connection_policy_pure,
+)
+from mpreg.server_pkg.peer_dial import (
+    selection_spread as _peer_dial_selection_spread_pure,
+)
+from mpreg.server_pkg.peer_dial import (
+    spread_fraction_for_url as _peer_dial_spread_fraction_pure,
+)
+from mpreg.server_pkg.peer_dial import (
+    target_connection_count as _peer_target_connection_count_pure,
+)
 from mpreg.server_pkg.types import (
     CatalogDeltaObserverAdapter,
     CatalogSnapshotDispatchState,
@@ -43,23 +79,6 @@ from mpreg.server_pkg.types import (
     InternalDiscoverySubscriptionAnnouncer,
     MessageStats,
     RemoteCommandStats,
-)
-
-from mpreg.server_pkg.peer_dial import (
-    PeerDialConnectionPolicy,
-    PeerDialDiagnosticSnapshot,
-    PeerDialLoopSnapshot,
-    PeerDialState,
-    backoff_base_seconds as _peer_dial_backoff_base_seconds_pure,
-    backoff_cap_seconds as _peer_dial_backoff_cap_seconds_pure,
-    dial_exploration_slots as _peer_dial_exploration_slots_pure,
-    dial_parallelism as _peer_dial_parallelism_pure,
-    dial_pressure as _peer_dial_pressure_pure,
-    reconcile_interval_seconds as _peer_dial_reconcile_interval_pure,
-    select_peer_connection_policy as _select_peer_connection_policy_pure,
-    selection_spread as _peer_dial_selection_spread_pure,
-    spread_fraction_for_url as _peer_dial_spread_fraction_pure,
-    target_connection_count as _peer_target_connection_count_pure,
 )
 
 from .core.cluster_map import (
@@ -89,8 +108,6 @@ from .core.discovery_monitoring import (
     DiscoveryAccessAuditLog,
     DiscoveryAccessAuditRequest,
     DiscoveryAccessAuditResponse,
-    DiscoveryLagStatus,
-    DiscoveryPolicyStatus,
 )
 from .core.discovery_rate_limit import (
     DiscoveryRateLimitConfig,
@@ -122,8 +139,6 @@ from .core.discovery_summary import (
 )
 from .core.discovery_summary_resolver import (
     DiscoverySummaryCache,
-    DiscoverySummaryCacheStatsResponse,
-    SummaryCacheEntryCounts,
 )
 from .core.discovery_tenant import DiscoveryTenantCredential
 from .core.dns_registry import (
@@ -139,7 +154,6 @@ from .core.dns_registry import (
 from .core.logging import configure_logging
 from .core.model import (
     CacheStatusMetrics,
-    CommandNotFoundException,
     ConsensusProposalMessage,
     ConsensusVoteMessage,
     FabricGossipEnvelope,
@@ -155,7 +169,6 @@ from .core.model import (
     PubSubUnsubscribe,
     QueueStatusMetrics,
     RPCCommand,
-    RPCError,
     RPCExecutionSummary,
     RPCFunctionDescriptor,
     RPCIntermediateResult,
@@ -192,7 +205,6 @@ from .core.namespace_policy import (
     validate_namespace_policy_rules,
 )
 from .core.payloads import Payload, PayloadMapping, apply_overrides, parse_request
-from .core.persistence.config import PersistenceMode
 from .core.rpc_discovery import (
     RpcDescribeError,
     RpcDescribeItem,
@@ -241,6 +253,8 @@ LOCAL_ONLY_RPC_COMMANDS: frozenset[str] = frozenset(
         PlatformRpc.SUMMARY_WATCH,
     }
 )
+from mpreg.core.model import PubSubSubscription
+
 from .core.rpc_registry import RpcRegistry
 from .core.rpc_spec_sharing import RpcSpecSharePolicy
 from .core.serialization import JsonSerializer
@@ -281,7 +295,6 @@ _current_rpc_actor_context: ContextVar[dict[str, Any] | None] = ContextVar(
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from mpreg.core.model import PubSubSubscription
     from mpreg.datastructures.type_aliases import PortAssignmentCallback
     from mpreg.fabric.catalog import (
         CacheNodeProfile,
@@ -396,9 +409,8 @@ class RPC:
             for idx, task in enumerate(sorter.get_ready()):
                 level.append(task)
                 sorter.done(task)
-            else:
-                # append this concurrent execution level to the call order
-                levels.append(level)
+            # append this concurrent execution level to the call order
+            levels.append(level)
 
         logger.info("Runnable levels are: {}", levels)
         self.levels = levels
@@ -481,10 +493,10 @@ class Cluster:
         self._service_registry = ServiceRegistry()
         self.serializer = JsonSerializer()
 
-        self.waitingFor: dict[str, asyncio.Event] = dict()
-        self.answer: dict[str, Any] = dict()
+        self.waitingFor: dict[str, asyncio.Event] = {}
+        self.answer: dict[str, Any] = {}
         # Persistent connections to peer servers for RPC forwarding
-        self.peer_connections: dict[str, Connection] = dict()
+        self.peer_connections: dict[str, Connection] = {}
 
         # Initialize connection event system
         self.connection_event_bus = ConnectionEventBus()
@@ -687,7 +699,7 @@ class Cluster:
         )
         plan = self.fabric_engine.plan_function_route(
             query,
-            routing_path=tuple(),
+            routing_path=(),
             hop_budget=self.settings.fabric_routing_max_hops if self.settings else None,
         )
         if plan.selected_target:
@@ -731,8 +743,8 @@ class Cluster:
             correlation_id=correlation_id,
             source_cluster=self.settings.cluster_id if self.settings else None,
             target_cluster=rpc_command.target_cluster,
-            routing_path=tuple(),
-            federation_path=tuple(),
+            routing_path=(),
+            federation_path=(),
             hop_budget=(
                 self.settings.fabric_routing_max_hops if self.settings else None
             ),
@@ -994,7 +1006,7 @@ class Cluster:
             source_cluster=self.settings.cluster_id if self.settings else None,
             target_cluster=target_cluster,
             routing_path=routing_path or (self.local_url,),
-            federation_path=federation_path or tuple(),
+            federation_path=federation_path or (),
             hop_budget=remaining_hops,
         )
         rpc_payload = FabricRPCRequest(
@@ -1008,7 +1020,7 @@ class Cluster:
             target_cluster=target_cluster,
             target_node=target_node,
             reply_to=self.local_url,
-            federation_path=federation_path or tuple(),
+            federation_path=federation_path or (),
             federation_remaining_hops=federation_remaining_hops,
         )
         message = UnifiedMessage(
@@ -2130,7 +2142,9 @@ class MPREGServer:
             if secret:
                 from mpreg.core.discovery_signatures import verify_summary
 
-                if not verify_summary(payload if isinstance(payload, dict) else {}, secret):
+                if not verify_summary(
+                    payload if isinstance(payload, dict) else {}, secret
+                ):
                     logger.warning(
                         "[{}] Rejecting discovery summary with invalid signature",
                         self.settings.name,
@@ -2186,6 +2200,7 @@ class MPREGServer:
             transport=transport,
             gossip_interval=self.settings.gossip_interval,
         )
+
         # OBS-T10-01 / PERF-T10-05: export pending overflow drops to Prom.
         def _on_gossip_pending_drop(n: int = 1) -> None:
             tracker = getattr(self, "_metrics_tracker", None)
@@ -2247,7 +2262,9 @@ class MPREGServer:
 
             def _on_catalog_dedup_skip(n: int = 1) -> None:
                 tracker = getattr(self, "_metrics_tracker", None)
-                if tracker is not None and hasattr(tracker, "record_catalog_dedup_skip"):
+                if tracker is not None and hasattr(
+                    tracker, "record_catalog_dedup_skip"
+                ):
                     tracker.record_catalog_dedup_skip(n)
 
             applier.on_dedup_skip = _on_catalog_dedup_skip
@@ -2335,6 +2352,7 @@ class MPREGServer:
             messenger=messenger,
             allowed_clusters=self._fabric_allowed_clusters(),
         )
+
         # OBS-T12-01: federation in_flight admission refusals → Prom
         def _on_fed_in_flight_drop(n: int = 1) -> None:
             tracker = getattr(self, "_metrics_tracker", None)
@@ -3389,7 +3407,7 @@ class MPREGServer:
             try:
                 entered = float(raw_entered)
                 hop_ms = max(0.1, (time.monotonic() - entered) * 1000.0)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 hop_ms = 5.0
         meta["mpreg.hop_entered_mono"] = f"{time.monotonic():.6f}"
         next_headers = advance_fabric_headers(
@@ -3447,13 +3465,12 @@ class MPREGServer:
             or not self.settings.fabric_routing_enabled
         ):
             return
+        from mpreg.core.errors import MpregError, MpregErrorCode
         from mpreg.fabric.message import (
             DeliveryGuarantee,
             MessageType,
             UnifiedMessage,
         )
-
-        from mpreg.core.errors import MpregError, MpregErrorCode
 
         try:
             next_headers = self._next_pubsub_headers(message.message_id, headers)
@@ -3803,7 +3820,10 @@ class MPREGServer:
                 try:
                     resolved = implementation or self.registry.resolve(selector)
                     if not resolved:
-                        from mpreg.core.errors import command_not_found, version_mismatch
+                        from mpreg.core.errors import (
+                            command_not_found,
+                            version_mismatch,
+                        )
 
                         if payload.version_constraint:
                             raise version_mismatch(
@@ -5028,7 +5048,7 @@ class MPREGServer:
         """
         try:
             # Try to run in existing event loop
-            loop = asyncio.get_running_loop()
+            asyncio.get_running_loop()
             # We're in an async context, can't use asyncio.run()
             # Just set the shutdown event as a signal
             self._shutdown_event.set()
@@ -5139,7 +5159,7 @@ class MPREGServer:
 
                 try:
                     grace_period = max(0.2, min(1.0, len(tasks_to_cleanup) * 0.05))
-                    done, pending = await asyncio.wait(
+                    _done, pending = await asyncio.wait(
                         tasks_to_cleanup,
                         timeout=grace_period,
                         return_when=asyncio.ALL_COMPLETED,
@@ -5683,7 +5703,7 @@ class MPREGServer:
         now: float,
     ) -> tuple[str, ...]:
         if not cluster_id:
-            return tuple()
+            return ()
         ingress_diag = self._summary_ingress_diagnostics_enabled()
         if ingress_diag:
             logger.warning(
@@ -5738,7 +5758,7 @@ class MPREGServer:
                         self.cluster.local_url,
                         cluster_id,
                     )
-                return tuple()
+                return ()
 
         if capabilities:
             nodes = [node for node in nodes if capabilities.issubset(node.capabilities)]
@@ -5752,7 +5772,7 @@ class MPREGServer:
                     self.cluster.local_url,
                     cluster_id,
                 )
-            return tuple()
+            return ()
 
         urls: list[str] = []
         seen: set[str] = set()
@@ -5911,10 +5931,7 @@ class MPREGServer:
         for value in node.resources:
             if value.startswith(namespace_filter):
                 return True
-        for value in node.capabilities:
-            if value.startswith(namespace_filter):
-                return True
-        return False
+        return any(value.startswith(namespace_filter) for value in node.capabilities)
 
     def _delta_namespaces(self, delta: RoutingCatalogDelta) -> tuple[str, ...]:
         namespaces: set[str] = set()
@@ -5967,9 +5984,10 @@ class MPREGServer:
         # Skip full delta materialization when nothing is subscribed. Under
         # epidemic gossip every node re-applies and would otherwise rebuild
         # multi-MB nested dicts with zero consumers (live 50-node profile).
-        topics_to_check = (DISCOVERY_DELTA_TOPIC, *(
-            f"{DISCOVERY_DELTA_TOPIC}.{ns}" for ns in namespaces
-        ))
+        topics_to_check = (
+            DISCOVERY_DELTA_TOPIC,
+            *(f"{DISCOVERY_DELTA_TOPIC}.{ns}" for ns in namespaces),
+        )
         if not any(
             self.topic_exchange.has_matching_subscribers(topic)
             for topic in topics_to_check
@@ -6224,7 +6242,7 @@ class MPREGServer:
                 return ClusterMapResponse(
                     cluster_id=self.settings.cluster_id,
                     generated_at=timestamp,
-                    nodes=tuple(),
+                    nodes=(),
                 ).to_dict()
         scope_cluster_id, scope_node_id = self._scope_limits(scope)
         if (
@@ -6235,7 +6253,7 @@ class MPREGServer:
             return ClusterMapResponse(
                 cluster_id=self.settings.cluster_id,
                 generated_at=timestamp,
-                nodes=tuple(),
+                nodes=(),
             ).to_dict()
         cluster_id = request.cluster_id or scope_cluster_id
         requested_resources = frozenset(request.resources)
@@ -6456,7 +6474,7 @@ class MPREGServer:
             return CatalogQueryResponse(
                 entry_type=entry_type,
                 generated_at=timestamp,
-                items=tuple(),
+                items=(),
             ).to_dict()
         cluster_id = request.cluster_id or scope_cluster_id
         node_id = request.node_id
@@ -6465,7 +6483,7 @@ class MPREGServer:
                 return CatalogQueryResponse(
                     entry_type=entry_type,
                     generated_at=timestamp,
-                    items=tuple(),
+                    items=(),
                 ).to_dict()
             node_id = scope_node_id
 
@@ -6502,7 +6520,7 @@ class MPREGServer:
                 return CatalogQueryResponse(
                     entry_type=entry_type,
                     generated_at=timestamp,
-                    items=tuple(),
+                    items=(),
                 ).to_dict()
 
         from mpreg.fabric.catalog import endpoint_scope_rank
@@ -7039,7 +7057,7 @@ class MPREGServer:
             viewer_cluster_id=self._effective_viewer_cluster_id(None),
             viewer_tenant_id=self._effective_viewer_tenant_id(None),
             capabilities=request.capabilities,
-            resources=tuple(),
+            resources=(),
             tags=request.tags,
             cluster_id=request.cluster_id,
             node_id=request.node_id,
@@ -7074,7 +7092,7 @@ class MPREGServer:
             viewer_cluster_id=self._effective_viewer_cluster_id(None),
             viewer_tenant_id=self._effective_viewer_tenant_id(None),
             capabilities=request.capabilities,
-            resources=tuple(),
+            resources=(),
             tags=request.tags,
             cluster_id=request.cluster_id,
             node_id=request.node_id,
@@ -7262,22 +7280,22 @@ class MPREGServer:
                 )
                 response = RpcDescribeResponse(
                     generated_at=time.time(),
-                    items=tuple(),
-                    errors=tuple(),
+                    items=(),
+                    errors=(),
                 )
                 return response.to_dict()
         if request.cluster_id and request.cluster_id != self.settings.cluster_id:
             response = RpcDescribeResponse(
                 generated_at=time.time(),
-                items=tuple(),
-                errors=tuple(),
+                items=(),
+                errors=(),
             )
             return response.to_dict()
         if request.node_id and request.node_id != self.cluster.local_url:
             response = RpcDescribeResponse(
                 generated_at=time.time(),
-                items=tuple(),
-                errors=tuple(),
+                items=(),
+                errors=(),
             )
             return response.to_dict()
 
@@ -7365,7 +7383,7 @@ class MPREGServer:
         response = RpcDescribeResponse(
             generated_at=time.time(),
             items=paged_items,
-            errors=tuple(),
+            errors=(),
             next_page_token=next_token,
         )
         return response.to_dict()
@@ -7422,7 +7440,7 @@ class MPREGServer:
         return RpcDescribeResponse(
             generated_at=generated_at,
             items=tuple(items),
-            errors=tuple(),
+            errors=(),
             next_page_token=next_token,
         )
 
@@ -7461,7 +7479,7 @@ class MPREGServer:
             return RpcDescribeResponse(
                 generated_at=generated_at,
                 items=tuple(catalog_items),
-                errors=tuple(),
+                errors=(),
                 next_page_token=next_token,
             )
 
@@ -7472,7 +7490,7 @@ class MPREGServer:
             return RpcDescribeResponse(
                 generated_at=generated_at,
                 items=tuple(catalog_items),
-                errors=tuple(),
+                errors=(),
                 next_page_token=next_token,
             )
 
@@ -7531,8 +7549,8 @@ class MPREGServer:
         if not endpoints:
             return RpcDescribeResponse(
                 generated_at=generated_at,
-                items=tuple(),
-                errors=tuple(),
+                items=(),
+                errors=(),
                 next_page_token=next_page_token,
             )
         grouped: dict[tuple[str, str], list[FunctionEndpoint]] = {}
@@ -8116,7 +8134,7 @@ class MPREGServer:
                 )
                 return SummaryQueryResponse(
                     generated_at=timestamp,
-                    items=tuple(),
+                    items=(),
                     ingress=None,
                     next_page_token=None,
                 ).to_dict()
@@ -8134,7 +8152,7 @@ class MPREGServer:
                     now=timestamp,
                 )
                 if resolver is not None
-                else tuple()
+                else ()
             )
             if DISCOVERY_SUMMARY_DIAG_ENABLED:
                 logger.warning(
@@ -8535,7 +8553,7 @@ class MPREGServer:
         entries = (
             self._namespace_policy_audit_log.snapshot(limit=limit_value)
             if self._namespace_policy_audit_log is not None
-            else tuple()
+            else ()
         )
         response = NamespacePolicyAuditResponse(
             generated_at=time.time(),
@@ -8595,7 +8613,7 @@ class MPREGServer:
         request = self._parse_request(DiscoveryAccessAuditRequest, payload, kwargs)
         limit_value = request.limit
         audit_log = self._discovery_access_audit_log
-        entries = audit_log.snapshot(limit=limit_value) if audit_log else tuple()
+        entries = audit_log.snapshot(limit=limit_value) if audit_log else ()
         response = DiscoveryAccessAuditResponse(
             generated_at=time.time(),
             entries=entries,
@@ -9215,7 +9233,7 @@ class MPREGServer:
             peer_count=len(self._peer_directory.nodes()) if self._peer_directory else 0,
             funs=funs,
             locs=locs,
-            advertised_urls=tuple(),
+            advertised_urls=(),
             metrics={"disconnected": True},
         )
 
@@ -9369,7 +9387,7 @@ class MPREGServer:
                     return protocol_response(
                         req.u, f"Unknown server message type: {req.server.what}"
                     )
-        except Exception as e:
+        except Exception:
             # Catch any exceptions during server command processing and return an error response.
             logger.exception("Error processing server command")
             from mpreg.server_pkg.rpc_responses import internal_response
@@ -9395,8 +9413,6 @@ class MPREGServer:
         from mpreg.core.observability.trace_context import extract_traceparent
 
         start_time = time.time()
-        success = False
-        error_code: str | int | None = None
         # Contextualize JSON sinks with request correlation + inbound W3C trace.
         req_u = getattr(req, "u", None)
         inbound_tp: str | None = None
@@ -9492,9 +9508,7 @@ class MPREGServer:
             return req
         return req.model_copy(update={"cmds": list(cmds)})
 
-    async def _run_rpc_body(
-        self, req: RPCRequest, start_time: float
-    ) -> RPCResponse:
+    async def _run_rpc_body(self, req: RPCRequest, start_time: float) -> RPCResponse:
         """Inner RPC execution (after trace + actor context are bound)."""
         from mpreg.server_pkg.rpc_responses import w3c_trace_fields
 
@@ -9510,7 +9524,7 @@ class MPREGServer:
             inbound_headers = {}
         inbound_tp = getattr(req, "traceparent", None)
         inbound_ts = getattr(req, "tracestate", None)
-        trace_kw = lambda: w3c_trace_fields(  # noqa: E731
+        trace_kw = lambda: w3c_trace_fields(
             traceparent=str(inbound_tp) if inbound_tp else None,
             tracestate=str(inbound_ts) if inbound_ts is not None else None,
             headers=inbound_headers or None,
@@ -9555,9 +9569,7 @@ class MPREGServer:
         except MPREGException as exc:
             if exc.rpc_error is not None:
                 error_code = getattr(exc.rpc_error, "code", None)
-            return RPCResponse(
-                r=None, error=exc.rpc_error, u=req.u, **trace_kw()
-            )
+            return RPCResponse(r=None, error=exc.rpc_error, u=req.u, **trace_kw())
         except Exception:
             # Catch any exceptions during RPC execution and return an error response.
             logger.exception("Error running RPC")
@@ -9583,9 +9595,7 @@ class MPREGServer:
             if scheme == "bearer" and token == expected:
                 return True
         api_key = (headers.get("x-api-key") or "").strip()
-        if api_key and api_key == expected:
-            return True
-        return False
+        return bool(api_key and api_key == expected)
 
     async def opened(self, transport: TransportInterface) -> None:
         """Handles a new incoming transport connection.
@@ -9615,10 +9625,8 @@ class MPREGServer:
                     tracker = getattr(self, "_metrics_tracker", None)
                     if tracker is not None and hasattr(tracker, "record_accept_reject"):
                         tracker.record_accept_reject(1)
-                    try:
+                    with contextlib.suppress(Exception):
                         await transport.close()
-                    except Exception:
-                        pass
                     return
             # PERF-T11-01: hard cap concurrent inbound connections
             max_in = int(getattr(self.settings, "max_inbound_connections", 0) or 0)
@@ -9626,10 +9634,8 @@ class MPREGServer:
                 tracker = getattr(self, "_metrics_tracker", None)
                 if tracker is not None and hasattr(tracker, "record_accept_reject"):
                     tracker.record_accept_reject(1)
-                try:
+                with contextlib.suppress(Exception):
                     await transport.close()
-                except Exception:
-                    pass
                 return
             self.clients.add(connection)
             while not self._shutdown_event.is_set():
@@ -9666,9 +9672,7 @@ class MPREGServer:
 
                 role = parsed_msg.get("role")
                 _drain_payload = (
-                    parsed_msg.get("payload")
-                    if role == "fabric-message"
-                    else None
+                    parsed_msg.get("payload") if role == "fabric-message" else None
                 )
                 if should_refuse_for_drain(
                     draining=bool(getattr(self, "_mgmt_draining", False)),
@@ -9681,14 +9685,12 @@ class MPREGServer:
                     tracker = getattr(self, "_metrics_tracker", None)
                     if tracker is not None and hasattr(tracker, "record_drain_refusal"):
                         tracker.record_drain_refusal(str(role or "unknown"))
-                    try:
+                    with contextlib.suppress(Exception):
                         await transport.send(
                             self.serializer.serialize_model(response_model)
                             if hasattr(response_model, "model_dump")
                             else self.serializer.serialize(response_model)
                         )
-                    except Exception:
-                        pass
                     continue
                 match parsed_msg.get("role"):
                     case "server":
@@ -9854,7 +9856,9 @@ class MPREGServer:
                                         peer_cluster_id
                                         and peer_cluster_id != self.settings.cluster_id
                                     ):
-                                        self._register_fabric_graph_peer(peer_cluster_id)
+                                        self._register_fabric_graph_peer(
+                                            peer_cluster_id
+                                        )
                             await self._fabric_control_plane.gossip.handle_received_message(
                                 message
                             )
@@ -9986,13 +9990,20 @@ class MPREGServer:
                                         peer_cluster_id
                                         and peer_cluster_id != self.settings.cluster_id
                                     ):
-                                        self._register_fabric_graph_peer(peer_cluster_id)
+                                        self._register_fabric_graph_peer(
+                                            peer_cluster_id
+                                        )
                         try:
                             from mpreg.core.observability.trace_context import (
                                 bind_current_trace,
                             )
+
                             headers = getattr(fabric_message, "headers", None)
-                            tp = getattr(headers, "traceparent", None) if headers else None
+                            tp = (
+                                getattr(headers, "traceparent", None)
+                                if headers
+                                else None
+                            )
                             with bind_current_trace(tp):
                                 await self._handle_fabric_message(
                                     fabric_message,
@@ -10018,7 +10029,9 @@ class MPREGServer:
                             msg_headers = publish_req.message.headers or {}
                             # COR-T10-05: under discovery policy, tenant is session-bound
                             # (connection.tenant_id / viewer ContextVar) — not headers.
-                            if getattr(self.settings, "discovery_policy_enabled", False):
+                            if getattr(
+                                self.settings, "discovery_policy_enabled", False
+                            ):
                                 actor_tenant = (
                                     connection.tenant_id
                                     or self._effective_viewer_tenant_id(None)
@@ -10040,11 +10053,8 @@ class MPREGServer:
                                 cluster_id=self.settings.cluster_id,
                             ):
                                 allowed = True
-                                if (
-                                    topic_ns
-                                    and hasattr(
-                                        self.topic_exchange, "_data_plane_allowed"
-                                    )
+                                if topic_ns and hasattr(
+                                    self.topic_exchange, "_data_plane_allowed"
                                 ):
                                     allowed, _ = (
                                         self.topic_exchange._data_plane_allowed(
@@ -10054,10 +10064,8 @@ class MPREGServer:
                                 if not allowed:
                                     notifications = []
                                 else:
-                                    notifications = (
-                                        self.topic_exchange.publish_message(
-                                            publish_req.message
-                                        )
+                                    notifications = self.topic_exchange.publish_message(
+                                        publish_req.message
                                     )
 
                             if not allowed:
@@ -10117,10 +10125,9 @@ class MPREGServer:
                             if getattr(
                                 self.settings, "discovery_policy_enabled", False
                             ):
-                                actor_tenant = (
-                                    getattr(connection, "tenant_id", None)
-                                    or self._effective_viewer_tenant_id(None)
-                                )
+                                actor_tenant = getattr(
+                                    connection, "tenant_id", None
+                                ) or self._effective_viewer_tenant_id(None)
                             else:
                                 actor_tenant = self._effective_viewer_tenant_id(None)
                             with actor_context(
@@ -10161,9 +10168,7 @@ class MPREGServer:
                                     self._summary_store_forward_enabled()
                                     and subscribe_req.subscription.get_backlog
                                 ):
-                                    pending_summary_backlog = (
-                                        subscribe_req.subscription
-                                    )
+                                    pending_summary_backlog = subscribe_req.subscription
                         finally:
                             subscribe_duration_ms = (
                                 time.time() - subscribe_start
@@ -10783,8 +10788,13 @@ class MPREGServer:
                             from mpreg.core.observability.trace_context import (
                                 bind_current_trace,
                             )
+
                             headers = getattr(fabric_message, "headers", None)
-                            tp = getattr(headers, "traceparent", None) if headers else None
+                            tp = (
+                                getattr(headers, "traceparent", None)
+                                if headers
+                                else None
+                            )
                             with bind_current_trace(tp):
                                 await self._handle_fabric_message(
                                     fabric_message, source_peer_url=peer_url
@@ -11821,7 +11831,13 @@ class MPREGServer:
 
         draining = body.get("draining", True)
         if isinstance(draining, str):
-            draining = draining.strip().lower() not in {"0", "false", "no", "off", "clear"}
+            draining = draining.strip().lower() not in {
+                "0",
+                "false",
+                "no",
+                "off",
+                "clear",
+            }
         return apply_node_drain(
             self,
             draining=bool(draining),
@@ -11933,32 +11949,44 @@ class MPREGServer:
 
         return rpc_actor_ids(self, body)
 
-    async def _rpc_queue_create(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
+    async def _rpc_queue_create(
+        self, payload: object = None, **kwargs: object
+    ) -> dict[str, Any]:
         from mpreg.server_pkg.plane_rpc import queue_create
 
         return await queue_create(self, payload, **kwargs)
 
-    async def _rpc_queue_send(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
+    async def _rpc_queue_send(
+        self, payload: object = None, **kwargs: object
+    ) -> dict[str, Any]:
         from mpreg.server_pkg.plane_rpc import queue_send
 
         return await queue_send(self, payload, **kwargs)
 
-    async def _rpc_queue_ack(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
+    async def _rpc_queue_ack(
+        self, payload: object = None, **kwargs: object
+    ) -> dict[str, Any]:
         from mpreg.server_pkg.plane_rpc import queue_ack
 
         return await queue_ack(self, payload, **kwargs)
 
-    async def _rpc_queue_receive(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
+    async def _rpc_queue_receive(
+        self, payload: object = None, **kwargs: object
+    ) -> dict[str, Any]:
         from mpreg.server_pkg.plane_rpc import queue_receive
 
         return await queue_receive(self, payload, **kwargs)
 
-    async def _rpc_cache_get(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
+    async def _rpc_cache_get(
+        self, payload: object = None, **kwargs: object
+    ) -> dict[str, Any]:
         from mpreg.server_pkg.plane_rpc import cache_get
 
         return await cache_get(self, payload, **kwargs)
 
-    async def _rpc_cache_put(self, payload: object = None, **kwargs: object) -> dict[str, Any]:
+    async def _rpc_cache_put(
+        self, payload: object = None, **kwargs: object
+    ) -> dict[str, Any]:
         from mpreg.server_pkg.plane_rpc import cache_put
 
         return await cache_put(self, payload, **kwargs)
@@ -12006,12 +12034,10 @@ class MPREGServer:
         cfg = getattr(queue_manager, "config", None)
         if cfg is not None and hasattr(cfg, "local_cluster_id"):
             if not getattr(cfg, "local_cluster_id", ""):
-                try:
+                with contextlib.suppress(Exception):
                     object.__setattr__(
                         cfg, "local_cluster_id", str(self.settings.cluster_id)
                     )
-                except Exception:
-                    pass
         if hasattr(queue_manager, "attach_namespace_policy"):
             queue_manager.attach_namespace_policy(self._namespace_policy_engine)
         # OBS-T12-02: DLQ moves → Prom
@@ -12303,8 +12329,7 @@ class MPREGServer:
         # that bound (conformance binding) rather than the free default root.
         default_ns = (
             namespace
-            if namespace
-            else (bound or getattr(self.settings, "default_rpc_namespace", None))
+            or (bound or getattr(self.settings, "default_rpc_namespace", None))
             or DEFAULT_USER_NAMESPACE
         )
         fqn = qualify_rpc_name(name, default_ns)

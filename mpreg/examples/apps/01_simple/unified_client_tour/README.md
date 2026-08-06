@@ -30,11 +30,11 @@ uv run mpreg-example run unified_client_tour
 
 ## API drill-down
 
-| Call | Feature ID |
-|------|------------|
-| `MPREGClient.call` | `client.unified`, `rpc.call` |
-| `cache_put` / `cache_get` | `cache.rpc_surface` |
-| `queue_create` / `queue_send` / `queue_receive` | `queue.rpc_surface` |
+| Call                                            | Feature ID                   |
+| ----------------------------------------------- | ---------------------------- |
+| `MPREGClient.call`                              | `client.unified`, `rpc.call` |
+| `cache_put` / `cache_get`                       | `cache.rpc_surface`          |
+| `queue_create` / `queue_send` / `queue_receive` | `queue.rpc_surface`          |
 
 ## Non-claims
 

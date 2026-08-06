@@ -285,7 +285,6 @@ class TestGraphMetricsCollector:
         # Get original node
         original_node = sample_graph.get_node("node1")
         assert original_node is not None
-        original_health = original_node.health_score
 
         # Create and apply health metric
         health_metric = GraphMetric(
@@ -604,7 +603,7 @@ class TestGraphOptimizer:
 
     def test_optimization_suggestions_prioritization(self, sample_graph):
         """Test optimization suggestion prioritization."""
-        optimizer = GraphOptimizer(sample_graph)
+        GraphOptimizer(sample_graph)
 
         # Create suggestions with different priorities
         suggestions = [
@@ -854,7 +853,7 @@ class TestPerformanceAndScalability:
             router.graph = sample_graph
 
             for _ in range(10):
-                path = router.find_optimal_path("node1", "node3")
+                router.find_optimal_path("node1", "node3")
                 await asyncio.sleep(0.01)
 
         async def simulate_updates():

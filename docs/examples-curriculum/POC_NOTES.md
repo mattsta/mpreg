@@ -48,12 +48,12 @@ across regions.
 
 ## Follow-ups (closed / honest residual)
 
-| Item | Status |
-|------|--------|
-| Split DataPipeline → `media_pipeline` | **Done** — curriculum app `media_pipeline` shipped |
-| multi_region `--chaos` + FaultInjector | **Superseded** — dedicated chaos apps (`chaos_checkout`, `packet_loss_chaos`, `live_partition_chaos`, `chaos_crash_recover`) teach the surface without bloating the multi-region happy path |
-| Long-lived mode (print endpoints, Ctrl+C) | **Optional / residual** — apps are ephemeral by design; use `mpreg server start-config` + profiles for long-lived (see OPERATE.md) |
-| CI examples smoke | **Done** — `.github/workflows/ci.yml` runs `scripts/run_demo_smoke.sh` + `run_demo_suite.sh` |
+| Item                                      | Status                                                                                                                                                                                      |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Split DataPipeline → `media_pipeline`     | **Done** — curriculum app `media_pipeline` shipped                                                                                                                                          |
+| multi_region `--chaos` + FaultInjector    | **Superseded** — dedicated chaos apps (`chaos_checkout`, `packet_loss_chaos`, `live_partition_chaos`, `chaos_crash_recover`) teach the surface without bloating the multi-region happy path |
+| Long-lived mode (print endpoints, Ctrl+C) | **Optional / residual** — apps are ephemeral by design; use `mpreg server start-config` + profiles for long-lived (see OPERATE.md)                                                          |
+| CI examples smoke                         | **Done** — `.github/workflows/ci.yml` runs `scripts/run_demo_smoke.sh` + `run_demo_suite.sh`                                                                                                |
 
 Honest non-claims for this vertical slice remain: multi-region linearizability,
 kernel TCP loss, multi-hub DAO treasury ops (see FEATURE_CATALOG residuals).

@@ -30,7 +30,7 @@ FaultInjector.partition(majority, minority) → can_communicate oracle
 ## Non-claims
 
 - Does NOT run ProductionRaft log replication here.
-- Full Raft proofs: tests/test_production_raft_* and invariants/.
+- Full Raft proofs: tests/test*production_raft*\* and invariants/.
 - Not Byzantine fault tolerance.
 
 ## Production exit ramp

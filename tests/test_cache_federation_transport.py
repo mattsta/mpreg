@@ -84,7 +84,7 @@ class StubPlanner:
                 target_cluster=target_cluster or "",
                 next_cluster=None,
                 next_peer_url=None,
-                planned_path=tuple(),
+                planned_path=(),
                 federation_path=visited_clusters,
                 remaining_hops=remaining,
                 reason=FabricForwardingFailureReason.NO_PATH,

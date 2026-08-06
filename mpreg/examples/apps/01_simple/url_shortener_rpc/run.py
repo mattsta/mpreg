@@ -80,7 +80,9 @@ async def main() -> None:
                 try:
                     hub = f"ws://127.0.0.1:{ports[0]}"
                     async with MPREGClientAPI(hub) as client:
-                        with scenario("shorten + resolve happy path", "rpc.call", "rpc.register"):
+                        with scenario(
+                            "shorten + resolve happy path", "rpc.call", "rpc.register"
+                        ):
                             step("shorten URL")
                             short = await client.call(
                                 "shorten",
@@ -109,7 +111,8 @@ async def main() -> None:
                                 locs=frozenset(["urls", "api"]),
                             )
                             ensure(
-                                miss.get("found") is False and miss.get("code") == "deadbeef",
+                                miss.get("found") is False
+                                and miss.get("code") == "deadbeef",
                                 f"expected miss got {miss}",
                             )
                             ok("unknown code returns found=False")
@@ -133,17 +136,22 @@ async def main() -> None:
                             )
                             ok(f"idempotent code + list count={listed.get('count')}")
 
-                        with scenario("cache mirror of short record", "cache.put_get", "cache.l1"):
+                        with scenario(
+                            "cache mirror of short record", "cache.put_get", "cache.l1"
+                        ):
                             key = GlobalCacheKey.from_data("urls.code", {"code": code})
                             await cache.put(
                                 key,
                                 short,
-                                CacheMetadata(computation_cost_ms=1.0, ttl_seconds=120.0),
+                                CacheMetadata(
+                                    computation_cost_ms=1.0, ttl_seconds=120.0
+                                ),
                             )
                             hit = await cache.get(key)
                             ensure(hit.success and hit.entry is not None, "cache miss")
                             ensure(
-                                hit.entry.value.get("url") == "https://example.com/docs",
+                                hit.entry.value.get("url")
+                                == "https://example.com/docs",
                                 f"cache value bad {hit.entry.value}",
                             )
                             ok(f"cache mirror code={code}")

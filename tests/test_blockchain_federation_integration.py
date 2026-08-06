@@ -171,9 +171,7 @@ class TestHubMessageQueue:
         with pytest.raises(
             UnsupportedDeliveryGuaranteeError, match="exactly_once|EXACTLY_ONCE"
         ):
-            await self.hub_queue.process_federation_message(
-                eo_message, "emergency_hub"
-            )
+            await self.hub_queue.process_federation_message(eo_message, "emergency_hub")
 
     def test_hub_metrics_collection(self):
         """Test hub performance metrics collection."""

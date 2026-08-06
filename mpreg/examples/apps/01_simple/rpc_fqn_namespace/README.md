@@ -30,13 +30,13 @@ uv run mpreg-example run rpc_fqn_namespace
 
 ## API drill-down
 
-| API | Role |
-|-----|------|
+| API                                                                        | Role                                          |
+| -------------------------------------------------------------------------- | --------------------------------------------- |
 | `qualify_rpc_name` / `assert_registration_allowed` / `assert_call_allowed` | Pure policy helpers (`mpreg.core.rpc_naming`) |
-| `MPREGSettings.default_rpc_namespace` | Server bare-register qualifier |
-| `MPREGSettings.bound_rpc_namespace` | Hierarchical lock (optional) |
-| `MPREGClientAPI(default_rpc_namespace=, bound_rpc_namespace=)` | Client qualify + bound enforce |
-| `PlatformRpc.*` | Canonical platform FQNs under `mpreg.*` |
+| `MPREGSettings.default_rpc_namespace`                                      | Server bare-register qualifier                |
+| `MPREGSettings.bound_rpc_namespace`                                        | Hierarchical lock (optional)                  |
+| `MPREGClientAPI(default_rpc_namespace=, bound_rpc_namespace=)`             | Client qualify + bound enforce                |
+| `PlatformRpc.*`                                                            | Canonical platform FQNs under `mpreg.*`       |
 
 ## Non-claims
 

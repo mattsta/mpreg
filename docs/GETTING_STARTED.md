@@ -365,7 +365,7 @@ uv run python mpreg/examples/simple_working_demo.py
 commands = [
     RPCCommand(name="step1", fun="process", args=(data,)),
     RPCCommand(name="step2", fun="analyze", args=("step1",)),  # Waits for step1
-    RPCCommand(name="final", fun="summarize", args=("step2",)) # Waits for step2
+    RPCCommand(name="final", fun="summarize", args=("step2",)),  # Waits for step2
 ]
 ```
 
@@ -464,7 +464,7 @@ Perfect for ETL pipelines, data processing workflows:
 commands = [
     RPCCommand(name="extract", fun="extract_data", args=(source,)),
     RPCCommand(name="transform", fun="clean_data", args=("extract",)),
-    RPCCommand(name="load", fun="save_data", args=("transform",))
+    RPCCommand(name="load", fun="save_data", args=("transform",)),
 ]
 # MPREG automatically executes in correct order
 ```
@@ -479,9 +479,8 @@ commands = [
     RPCCommand(name="proc1", fun="process", args=(data1,)),
     RPCCommand(name="proc2", fun="process", args=(data2,)),
     RPCCommand(name="proc3", fun="process", args=(data3,)),
-
     # Fan-in: Combine results
-    RPCCommand(name="combined", fun="aggregate", args=("proc1", "proc2", "proc3"))
+    RPCCommand(name="combined", fun="aggregate", args=("proc1", "proc2", "proc3")),
 ]
 ```
 
@@ -494,8 +493,10 @@ Enterprise-grade service-to-service communication:
 workflow = [
     RPCCommand(name="routed", fun="route_request", locs={"gateway"}),
     RPCCommand(name="authed", fun="authenticate", args=("routed",), locs={"auth"}),
-    RPCCommand(name="processed", fun="business_logic", args=("authed",), locs={"service"}),
-    RPCCommand(name="stored", fun="persist", args=("processed",), locs={"database"})
+    RPCCommand(
+        name="processed", fun="business_logic", args=("authed",), locs={"service"}
+    ),
+    RPCCommand(name="stored", fun="persist", args=("processed",), locs={"database"}),
 ]
 ```
 
@@ -528,6 +529,7 @@ assigned = {}
 def _capture(name):
     def _cb(port):
         assigned[name] = port
+
     return _cb
 
 server_a = MPREGServer(
@@ -566,9 +568,15 @@ server2.register_command("critical_func", func, ["critical", "backup"])
 ```python
 # Be specific and hierarchical
 resources = {
-    "compute", "cpu", "high-memory",     # Hardware capabilities
-    "service", "auth", "user-mgmt",      # Service responsibilities
-    "region", "us-east", "datacenter-1"  # Geographic/location info
+    "compute",
+    "cpu",
+    "high-memory",  # Hardware capabilities
+    "service",
+    "auth",
+    "user-mgmt",  # Service responsibilities
+    "region",
+    "us-east",
+    "datacenter-1",  # Geographic/location info
 }
 ```
 
@@ -576,8 +584,9 @@ resources = {
 
 ```python
 # ✅ Good: Specific, descriptive resource tags
-server.register_command("process_payment", process_payment,
-                       ["payments", "business-logic", "secure"])
+server.register_command(
+    "process_payment", process_payment, ["payments", "business-logic", "secure"]
+)
 
 # ❌ Avoid: Vague or overly broad tags
 server.register_command("process_payment", process_payment, ["general"])
@@ -698,7 +707,7 @@ server.register_command("predict", predict, ["ml", "gpu"])  # Same server
 # Use in sequence for cache efficiency
 commands = [
     RPCCommand(name="model", fun="load_model", locs={"ml", "gpu"}),
-    RPCCommand(name="result", fun="predict", args=("model", data), locs={"ml", "gpu"})
+    RPCCommand(name="result", fun="predict", args=("model", data), locs={"ml", "gpu"}),
 ]
 ```
 
@@ -711,9 +720,7 @@ from mpreg.core.port_allocator import port_range_context
 
 # Separate sensitive operations
 with port_range_context(2, "servers") as ports:
-    auth_server = MPREGServer(
-        port=ports[0], resources={"auth", "secure", "isolated"}
-    )
+    auth_server = MPREGServer(port=ports[0], resources={"auth", "secure", "isolated"})
     public_server = MPREGServer(port=ports[1], resources={"public", "api"})
 
     # Auth functions only on secure server
@@ -766,8 +773,10 @@ tasks = [client.call("process", item) for item in items]
 results = await asyncio.gather(*tasks)
 
 # ✅ Even better: Single request with dependencies
-commands = [RPCCommand(name=f"task_{i}", fun="process", args=(item,))
-           for i, item in enumerate(items)]
+commands = [
+    RPCCommand(name=f"task_{i}", fun="process", args=(item,))
+    for i, item in enumerate(items)
+]
 results = await client.request(commands)
 ```
 
@@ -843,8 +852,10 @@ def analytics_process(dataset: str, metrics: list) -> dict:
     return {
         "dataset": dataset,
         "metrics": metrics,
-        "results": {f"metric_{i}": f"result_for_metric_{i}" for i, metric in enumerate(metrics)},
-        "processing_node": "Analytics-Server"
+        "results": {
+            f"metric_{i}": f"result_for_metric_{i}" for i, metric in enumerate(metrics)
+        },
+        "processing_node": "Analytics-Server",
     }
 ```
 
@@ -876,7 +887,7 @@ def process_results(data: str, dependencies: List[Union[str, Dict[str, Any]]]) -
     return {
         "data": data,
         "processed_dependencies": processed_deps,
-        "dependency_count": len(dependencies)
+        "dependency_count": len(dependencies),
     }
 ```
 
@@ -902,13 +913,15 @@ def secure_function(user_id: str, permissions: list) -> dict:
             clean_permissions.append(perm["permission"])
         else:
             # Log warning for unexpected types but continue
-            logger.warning(f"Unexpected permission type: {type(perm)}, converting to string")
+            logger.warning(
+                f"Unexpected permission type: {type(perm)}, converting to string"
+            )
             clean_permissions.append(str(perm))
 
     return {
         "user_id": user_id,
         "validated_permissions": clean_permissions,
-        "access_granted": True
+        "access_granted": True,
     }
 ```
 
@@ -929,7 +942,7 @@ def test_analytics_function_resolved_dependencies():
     resolved_metrics = [
         {"model": "ModelA", "accuracy": 0.95},  # GPU result
         {"computation_time": "2.5s", "cpu_usage": 80},  # CPU result
-        {"query_results": ["row1", "row2"], "count": 2}  # DB result
+        {"query_results": ["row1", "row2"], "count": 2},  # DB result
     ]
 
     result = analytics_process("convergence_test", resolved_metrics)
@@ -944,7 +957,7 @@ def test_analytics_function_mixed_arguments():
     mixed_metrics = [
         "simple_string",
         {"complex": "object", "with": "data"},
-        "another_string"
+        "another_string",
     ]
 
     result = analytics_process("mixed_test", mixed_metrics)
@@ -990,14 +1003,14 @@ server2.register_command("process_gpu", func2, ["gpu"])
 # ❌ This creates a cycle (deadlock)
 commands = [
     RPCCommand(name="a", fun="func_a", args=("b",)),  # Depends on b
-    RPCCommand(name="b", fun="func_b", args=("a",))   # Depends on a
+    RPCCommand(name="b", fun="func_b", args=("a",)),  # Depends on a
 ]
 
 # ✅ Break cycles with intermediate steps
 commands = [
     RPCCommand(name="input", fun="get_input", args=()),
     RPCCommand(name="a", fun="func_a", args=("input",)),
-    RPCCommand(name="b", fun="func_b", args=("a",))
+    RPCCommand(name="b", fun="func_b", args=("a",)),
 ]
 ```
 
@@ -1024,7 +1037,7 @@ result = await client.call("function")  # Now works reliably
 commands = [
     RPCCommand(name="large1", fun="create_large_data", args=(1000000,)),
     RPCCommand(name="large2", fun="create_large_data", args=(1000000,)),
-    RPCCommand(name="final", fun="combine", args=("large1", "large2"))
+    RPCCommand(name="final", fun="combine", args=("large1", "large2")),
 ]
 
 # ✅ Consider streaming or chunking for very large datasets
@@ -1075,7 +1088,7 @@ server = MPREGServer(
         port=allocate_port("servers"),
         auth_required=True,
         jwt_secret="your-secret",
-        allowed_clients=["service-a", "service-b"]
+        allowed_clients=["service-a", "service-b"],
     )
 )
 
@@ -1113,16 +1126,12 @@ spec:
 async def process_stream(client):
     async for event in event_stream:
         # Non-blocking stream processing
-        asyncio.create_task(
-            client.call("process_event", event, locs={"stream"})
-        )
+        asyncio.create_task(client.call("process_event", event, locs={"stream"}))
 
 # Windowed aggregations
 commands = [
-    RPCCommand(name="window1", fun="window_aggregate",
-               args=(stream_data, "1min")),
-    RPCCommand(name="window5", fun="window_aggregate",
-               args=(stream_data, "5min")),
+    RPCCommand(name="window1", fun="window_aggregate", args=(stream_data, "1min")),
+    RPCCommand(name="window5", fun="window_aggregate", args=(stream_data, "5min")),
 ]
 ```
 
@@ -1131,19 +1140,18 @@ commands = [
 ```python
 # A/B testing for ML models
 commands = [
-    RPCCommand(name="model_a", fun="predict_v1", args=(features,),
-               locs={"ml", "model-a"}),
-    RPCCommand(name="model_b", fun="predict_v2", args=(features,),
-               locs={"ml", "model-b"}),
-    RPCCommand(name="winner", fun="select_best",
-               args=("model_a", "model_b"))
+    RPCCommand(
+        name="model_a", fun="predict_v1", args=(features,), locs={"ml", "model-a"}
+    ),
+    RPCCommand(
+        name="model_b", fun="predict_v2", args=(features,), locs={"ml", "model-b"}
+    ),
+    RPCCommand(name="winner", fun="select_best", args=("model_a", "model_b")),
 ]
 
 # Feature stores integration
-features = await client.call("get_features", user_id,
-                           locs={"feature-store"})
-prediction = await client.call("predict", features,
-                             locs={"ml", "production"})
+features = await client.call("get_features", user_id, locs={"feature-store"})
+prediction = await client.call("predict", features, locs={"ml", "production"})
 ```
 
 #### **3. Edge Computing & IoT**
@@ -1151,15 +1159,14 @@ prediction = await client.call("predict", features,
 ```python
 # Hierarchical edge processing
 cloud_cluster = MPREGCluster(
-    nodes=["cloud-1", "cloud-2"],
-    resources={"cloud", "global"}
+    nodes=["cloud-1", "cloud-2"], resources={"cloud", "global"}
 )
 
 edge_clusters = [
     MPREGCluster(
         nodes=[f"edge-{region}-{i}" for i in range(3)],
         resources={"edge", f"region-{region}"},
-        parent_cluster=cloud_cluster
+        parent_cluster=cloud_cluster,
     )
     for region in ["us-east", "us-west", "eu", "asia"]
 ]
@@ -1171,13 +1178,15 @@ edge_clusters = [
 
 ```python
 # Airflow-style DAG execution
-dag = MPREGDAG([
-    MPREGTask("extract", "extract_data", upstream=[]),
-    MPREGTask("validate", "validate_data", upstream=["extract"]),
-    MPREGTask("transform", "transform_data", upstream=["validate"]),
-    MPREGTask("load", "load_data", upstream=["transform"]),
-    MPREGTask("notify", "send_notification", upstream=["load"])
-])
+dag = MPREGDAG(
+    [
+        MPREGTask("extract", "extract_data", upstream=[]),
+        MPREGTask("validate", "validate_data", upstream=["extract"]),
+        MPREGTask("transform", "transform_data", upstream=["validate"]),
+        MPREGTask("load", "load_data", upstream=["transform"]),
+        MPREGTask("notify", "send_notification", upstream=["load"]),
+    ]
+)
 
 # Schedule and monitor execution
 scheduler = MPREGScheduler()

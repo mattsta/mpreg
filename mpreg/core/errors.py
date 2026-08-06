@@ -330,9 +330,7 @@ def map_exception(exc: BaseException) -> MpregError:
         )
         return MpregError(
             code=int(enum) if enum is not MpregErrorCode.UNKNOWN else code,
-            message=message
-            if message
-            else _DEFAULT_MESSAGES.get(enum, "Error"),
+            message=message or _DEFAULT_MESSAGES.get(enum, "Error"),
             details=details or None,
             retryable=retryable,
         )

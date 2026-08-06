@@ -79,7 +79,9 @@ async def main() -> None:
                     )
                 await asyncio.sleep(0.35)
                 ensure(len(received) == 2, f"expected 2 queue msgs got {received}")
-                actions = {str(p.get("action")) for p in received if isinstance(p, dict)}
+                actions = {
+                    str(p.get("action")) for p in received if isinstance(p, dict)
+                }
                 ensure(actions == {"signup", "upgrade"}, f"actions {actions}")
                 ok(f"bridged payloads={received}")
 

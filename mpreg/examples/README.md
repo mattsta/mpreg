@@ -33,14 +33,14 @@ Operate: [`docs/examples-curriculum/OPERATE.md`](../../docs/examples-curriculum/
 
 ### Levels
 
-| Dir | Level | Role |
-|-----|-------|------|
-| `apps/00_getting_started/` | L0 | Hellos |
-| `apps/01_simple/` | L1 | Product + plane tours |
-| `apps/02_moderate/` | L2 | Multi-plane composition |
-| `apps/03_complex/` | L3 | Fabric / chaos / join |
-| `apps/04_world/` | L4 | World reference |
-| `apps/_shared/` | — | Registry, runner, runtime |
+| Dir                        | Level | Role                      |
+| -------------------------- | ----- | ------------------------- |
+| `apps/00_getting_started/` | L0    | Hellos                    |
+| `apps/01_simple/`          | L1    | Product + plane tours     |
+| `apps/02_moderate/`        | L2    | Multi-plane composition   |
+| `apps/03_complex/`         | L3    | Fabric / chaos / join     |
+| `apps/04_world/`           | L4    | World reference           |
+| `apps/_shared/`            | —     | Registry, runner, runtime |
 
 ### Legacy module files
 
@@ -48,14 +48,14 @@ Files like `tier1_single_system_full.py`, `tier2_integrations.py`,
 `fabric_route_security_demo.py`, etc. remain as **implementation backends**
 imported by curriculum apps (`plane_*`, integrations, wrappers). Prefer:
 
-| Instead of | Use |
-|------------|-----|
-| `uv run python mpreg/examples/tier1_….py` | `uv run mpreg-example run plane_rpc` |
-| `uv run python …/tier2_….py` | `uv run mpreg-example demo tier2` |
-| `uv run python …/tier3_….py` | `uv run mpreg-example run tier3_expansion` |
-| `uv run python …/quick_demo.py` | `uv run mpreg-example demo quick` |
-| `uv run python …/fabric_route_security_demo.py` | `uv run mpreg-example run signed_route_border` |
-| `uv run python …/persistence_restart_demo.py` | `uv run mpreg-example run config_reload_live` |
+| Instead of                                       | Use                                            |
+| ------------------------------------------------ | ---------------------------------------------- |
+| `uv run python mpreg/examples/tier1_….py`        | `uv run mpreg-example run plane_rpc`           |
+| `uv run python …/tier2_….py`                     | `uv run mpreg-example demo tier2`              |
+| `uv run python …/tier3_….py`                     | `uv run mpreg-example run tier3_expansion`     |
+| `uv run python …/quick_demo.py`                  | `uv run mpreg-example demo quick`              |
+| `uv run python …/fabric_route_security_demo.py`  | `uv run mpreg-example run signed_route_border` |
+| `uv run python …/persistence_restart_demo.py`    | `uv run mpreg-example run config_reload_live`  |
 | `uv run python …/auto_port_cluster_bootstrap.py` | `uv run mpreg-example run auto_port_bootstrap` |
 
 Scripts:

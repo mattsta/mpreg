@@ -24,7 +24,7 @@ class CatalogDeltaPublisher:
         peer_count = len(self.gossip.transport.peer_ids(exclude=self.gossip.node_id))
         if peer_count <= 0:
             return self.max_hops
-        required_depth = int(math.ceil(math.log2(peer_count + 1)))
+        required_depth = math.ceil(math.log2(peer_count + 1))
         return max(self.max_hops, min(12, required_depth + 2))
 
     async def publish(self, delta: RoutingCatalogDelta) -> GossipMessage:

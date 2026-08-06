@@ -50,7 +50,9 @@ async def main() -> None:
         )
         try:
             key = GlobalCacheKey.from_data("federated.cache", {"order": "a-100"})
-            options = CacheOptions(cache_levels=frozenset([CacheLevel.L1, CacheLevel.L4]))
+            options = CacheOptions(
+                cache_levels=frozenset([CacheLevel.L1, CacheLevel.L4])
+            )
 
             with scenario(
                 "put on A with L4 + geo replication metadata",
@@ -89,7 +91,9 @@ async def main() -> None:
                 ok(f"B L4 hit success={result.success}")
 
             with scenario("unrelated key remains cold on B", "cache.put_get"):
-                other = GlobalCacheKey.from_data("federated.cache", {"order": "missing"})
+                other = GlobalCacheKey.from_data(
+                    "federated.cache", {"order": "missing"}
+                )
                 miss = await cache_b.get(other, options=options)
                 ensure(
                     (not miss.success) or miss.entry is None,

@@ -295,9 +295,7 @@ async def test_my_topology():
 
         with port_range_context(node_count) as ports:
             servers = await builder._create_gossip_cluster(
-                ports=ports,
-                cluster_id=f"test-{node_count}",
-                topology="STAR_HUB"
+                ports=ports, cluster_id=f"test-{node_count}", topology="STAR_HUB"
             )
 
             # Your testing logic here

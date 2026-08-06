@@ -3,18 +3,18 @@ from __future__ import annotations
 from .config import PersistenceConfig, PersistenceMode
 
 __all__ = [
-    "PersistenceConfig",
-    "PersistenceMode",
-    "PersistenceBackend",
-    "MemoryPersistenceBackend",
-    "SQLitePersistenceBackend",
+    "CacheL2Store",
     "KeyValueStore",
     "MemoryKeyValueStore",
-    "SQLiteKeyValueStore",
-    "QueueStore",
-    "QueuePersistenceState",
+    "MemoryPersistenceBackend",
+    "PersistenceBackend",
+    "PersistenceConfig",
+    "PersistenceMode",
     "PersistenceRegistry",
-    "CacheL2Store",
+    "QueuePersistenceState",
+    "QueueStore",
+    "SQLiteKeyValueStore",
+    "SQLitePersistenceBackend",
 ]
 
 def __getattr__(name: str):

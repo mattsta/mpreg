@@ -31,6 +31,8 @@ import aiohttp
 from dnslib import QTYPE, DNSRecord
 from loguru import logger
 
+from mpreg.core.native_codec import loads_text
+
 from ..core.statistics import (
     AutoDiscoveryStatistics,
     ClustersByHealth,
@@ -39,8 +41,6 @@ from ..core.statistics import (
 )
 from .federation_optimized import ClusterIdentity
 from .federation_resilience import HealthStatus
-
-from mpreg.core.native_codec import loads_text
 
 # Optional imports for different discovery backends
 try:
@@ -152,22 +152,18 @@ class DiscoveryBackend(ABC):
     @abstractmethod
     async def discover_clusters(self) -> list[DiscoveredCluster]:
         """Discover available clusters."""
-        pass
 
     @abstractmethod
     async def register_cluster(self, cluster: DiscoveredCluster) -> bool:
         """Register a cluster with the discovery service."""
-        pass
 
     @abstractmethod
     async def unregister_cluster(self, cluster_id: str) -> bool:
         """Unregister a cluster from the discovery service."""
-        pass
 
     @abstractmethod
     async def health_check(self) -> bool:
         """Check if the discovery backend is healthy."""
-        pass
 
 class DNSDiscoveryBackend(DiscoveryBackend):
     """DNS SRV record-based discovery."""
@@ -890,9 +886,7 @@ class AutoDiscoveryService:
             try:
                 # Register with all backends that support registration
                 for protocol, backend in self.discovery_backends.items():
-                    config = next(
-                        c for c in self.discovery_configs if c.protocol == protocol
-                    )
+                    next(c for c in self.discovery_configs if c.protocol == protocol)
 
                     try:
                         success = await backend.register_cluster(self.local_cluster)

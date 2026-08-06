@@ -166,9 +166,7 @@ class TestLeaderElectionCacheIntegration:
         assert elected_leader in clusters
 
         # Create cache namespace leader using elected leader
-        namespace_leader = CacheNamespaceLeader(
-            cluster_id=elected_leader, leader_election=leader_election
-        )
+        CacheNamespaceLeader(cluster_id=elected_leader, leader_election=leader_election)
 
         # Create conflicting cache entries
         from mpreg.datastructures.federated_cache_coherence import (
@@ -264,7 +262,7 @@ class TestLeaderElectionCacheIntegration:
                 self.published_messages.append(message)
                 return True
 
-        topic_exchange = TestTopicExchange()
+        TestTopicExchange()
 
         # Create real RPC executor (simplified for testing)
         class TestRPCExecutor:
@@ -300,7 +298,7 @@ class TestLeaderElectionCacheIntegration:
                     execution_levels_completed=1,
                 )
 
-        rpc_executor = TestRPCExecutor()
+        TestRPCExecutor()
 
         # Create leader election for cache federation
         leader_election = QuorumBasedLeaderElection(cluster_id="fed-cluster-1")
@@ -318,7 +316,7 @@ class TestLeaderElectionCacheIntegration:
             leader_election.update_metrics(cluster_id, metrics)
 
         # Create cache namespace leader
-        namespace_leader = CacheNamespaceLeader(
+        CacheNamespaceLeader(
             cluster_id="fed-cluster-1", leader_election=leader_election
         )
 
@@ -515,7 +513,7 @@ class TestLeaderElectionCacheIntegration:
         for i, (key, (merkle_key, cache_entry)) in enumerate(
             merkle_cache_entries.items()
         ):
-            original_data = cache_entries[key]
+            cache_entries[key]
 
             # Verify merkle proof for this entry
             proof = merkle_tree.generate_proof(i)
@@ -535,7 +533,7 @@ class TestLeaderElectionCacheIntegration:
         resolver = CacheConflictResolver(strategy=strategy)
 
         # Create conflicting entries with different merkle hashes
-        user_key, user_entry = merkle_cache_entries["user:1001"]
+        _user_key, user_entry = merkle_cache_entries["user:1001"]
 
         # Create untrusted cache key
         untrusted_key = FederatedCacheKey.create(

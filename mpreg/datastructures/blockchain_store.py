@@ -7,11 +7,11 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from mpreg.core.native_codec import dumps_text, loads_text
+
 from .block import Block
 from .blockchain import Blockchain
 from .blockchain_types import ConsensusConfig, ConsensusType, CryptoConfig
-
-from mpreg.core.native_codec import dumps_text, loads_text
 
 @dataclass(slots=True)
 class BlockchainStore:

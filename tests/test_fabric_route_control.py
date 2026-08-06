@@ -120,7 +120,7 @@ def test_route_selection_trace_explains_choice() -> None:
     )
     assert trace_avoid.selected is not None
     assert trace_avoid.selected.next_hop == "cluster-c"
-    avoided = [c for c in trace_avoid.candidates if c.next_hop == "cluster-b"][0]
+    avoided = next(c for c in trace_avoid.candidates if c.next_hop == "cluster-b")
     assert avoided.filtered_reason == "avoid_clusters"
 
 def test_route_metrics_hop_extension() -> None:

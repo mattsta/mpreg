@@ -34,7 +34,9 @@ async def main() -> None:
             }
             signed = sign_summary(payload, secret)
             ensure(SIGNATURE_KEY in signed, f"missing {SIGNATURE_KEY}")
-            ensure(signed[SIGNATURE_KEY].startswith("hmac-sha256:"), signed[SIGNATURE_KEY])
+            ensure(
+                signed[SIGNATURE_KEY].startswith("hmac-sha256:"), signed[SIGNATURE_KEY]
+            )
             ensure("cluster_id" in signed, "body lost")
             ok(f"sig={signed[SIGNATURE_KEY][:32]}…")
 
@@ -48,12 +50,16 @@ async def main() -> None:
             ensure(verify_summary({"v": 1}, "") is True, "empty secret = verify off")
             ok("accept/reject/tamper/off paths")
 
-        with scenario("sign_gossip_payload envelope HMAC", "disco.signatures", "fabric.gossip"):
+        with scenario(
+            "sign_gossip_payload envelope HMAC", "disco.signatures", "fabric.gossip"
+        ):
             env = {"type": "membership", "peers": ["a", "b"]}
             signed = sign_gossip_payload(env, secret)
             ensure(GOSSIP_SIG_KEY in signed, f"missing {GOSSIP_SIG_KEY}")
             ensure(verify_gossip_payload(signed, secret) is True, "gossip valid")
-            ensure(verify_gossip_payload(signed, "nope") is False, "gossip wrong secret")
+            ensure(
+                verify_gossip_payload(signed, "nope") is False, "gossip wrong secret"
+            )
             ok(f"gossip sig present key={GOSSIP_SIG_KEY}")
 
         with scenario(
@@ -78,7 +84,9 @@ async def main() -> None:
             ensure(hopped.hop_count == 1, f"hop={hopped.hop_count}")
             ensure(hopped.ttl == 2, f"ttl={hopped.ttl}")
             ensure(hopped.sender_id == "node-b", f"sender={hopped.sender_id}")
-            ensure("node-b" in hopped.propagation_path, f"path={hopped.propagation_path}")
+            ensure(
+                "node-b" in hopped.propagation_path, f"path={hopped.propagation_path}"
+            )
             wire = msg.to_dict()
             back = GossipMessage.from_dict(wire)
             ensure(back.message_id == "lab-g1", f"roundtrip id={back.message_id}")
@@ -112,7 +120,9 @@ async def main() -> None:
 
         with scenario("unsigned payload fails when secret set", "disco.signatures"):
             ensure(verify_summary({"x": 1}, secret) is False, "unsigned must fail")
-            ensure(verify_gossip_payload({"x": 1}, secret) is False, "unsigned gossip fail")
+            ensure(
+                verify_gossip_payload({"x": 1}, secret) is False, "unsigned gossip fail"
+            )
             ok("fail-closed without signature field")
 
         await asyncio.sleep(0)

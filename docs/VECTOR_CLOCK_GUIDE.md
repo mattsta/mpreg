@@ -25,11 +25,7 @@ from mpreg.datastructures import VectorClock
 clock = VectorClock()
 
 # Clock with entries for multiple nodes
-clock = VectorClock.from_dict({
-    "node-1": 5,
-    "node-2": 3,
-    "node-3": 8
-})
+clock = VectorClock.from_dict({"node-1": 5, "node-2": 3, "node-3": 8})
 ```
 
 ### Causal Relationships
@@ -53,6 +49,7 @@ clock = VectorClock.from_dict({"alice": 1, "bob": 2})
 
 # Create from node entries
 from mpreg.datastructures.vector_clock import ClockEntry
+
 entries = {ClockEntry("alice", 1), ClockEntry("bob", 2)}
 clock = VectorClock.from_entries(entries)
 ```
@@ -86,7 +83,9 @@ if clock1.concurrent_with(clock2):
     print("clock1 and clock2 are concurrent")
 
 # String comparison
-relationship = clock1.compare(clock2)  # Returns "before", "after", "equal", or "concurrent"
+relationship = clock1.compare(
+    clock2
+)  # Returns "before", "after", "equal", or "concurrent"
 ```
 
 ### Utility Methods
@@ -144,13 +143,17 @@ class DistributedMessage:
         self.content = content
         self.vector_clock = vector_clock
 
-def send_message(sender_clock: VectorClock, sender: str, content: str) -> tuple[VectorClock, DistributedMessage]:
+def send_message(
+    sender_clock: VectorClock, sender: str, content: str
+) -> tuple[VectorClock, DistributedMessage]:
     # Increment sender's clock before sending
     new_clock = sender_clock.increment(sender)
     message = DistributedMessage(sender, content, new_clock)
     return new_clock, message
 
-def receive_message(receiver_clock: VectorClock, receiver: str, message: DistributedMessage) -> VectorClock:
+def receive_message(
+    receiver_clock: VectorClock, receiver: str, message: DistributedMessage
+) -> VectorClock:
     # Update with message clock, then increment receiver
     return receiver_clock.update(message.vector_clock).increment(receiver)
 
@@ -170,7 +173,9 @@ print(f"Bob after receive: {bob_clock}")  # VectorClock(alice=1, bob=1)
 ### Federation Consensus
 
 ```python
-def merge_federation_state(local_clock: VectorClock, remote_clocks: list[VectorClock]) -> VectorClock:
+def merge_federation_state(
+    local_clock: VectorClock, remote_clocks: list[VectorClock]
+) -> VectorClock:
     """Merge local state with multiple remote federation nodes."""
     result = local_clock
     for remote_clock in remote_clocks:
@@ -236,7 +241,7 @@ class CausalMessage:
         self.vector_clock = vector_clock
         self.timestamp = vector_clock.get_timestamp(sender)
 
-    def can_deliver_after(self, other: 'CausalMessage') -> bool:
+    def can_deliver_after(self, other: "CausalMessage") -> bool:
         """Check if this message can be delivered after another."""
         return other.vector_clock.happens_before(self.vector_clock)
 ```

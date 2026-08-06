@@ -138,7 +138,9 @@ async def main() -> None:
                     )
                     ok(f"nlp pred={txt.get('pred')}")
 
-                with scenario("direct worker locs bypass router", "rpc.call", "rpc.locs"):
+                with scenario(
+                    "direct worker locs bypass router", "rpc.call", "rpc.locs"
+                ):
                     async with MPREGClientAPI(hub) as client:
                         direct = await client.call(
                             "classify_image",
@@ -165,7 +167,10 @@ async def main() -> None:
                                 locs=frozenset(["nlp", "cpu"]),
                             ),
                         )
-                    ensure(v.get("label") == "cat" and t.get("sentiment") == "pos", f"{v} {t}")
+                    ensure(
+                        v.get("label") == "cat" and t.get("sentiment") == "pos",
+                        f"{v} {t}",
+                    )
                     ok(f"concurrent v={v} t={t}")
                     step("non-claim: not model serving platform; routing demo only")
 

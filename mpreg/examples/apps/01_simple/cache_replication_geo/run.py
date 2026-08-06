@@ -8,7 +8,6 @@ from pathlib import Path
 
 from mpreg.core.cache_models import CacheMetadata, ReplicationStrategy
 from mpreg.core.global_cache import (
-    CacheOptions,
     CacheReplicationPolicy,
     GlobalCacheConfiguration,
     GlobalCacheKey,

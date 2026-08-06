@@ -443,5 +443,5 @@ class TestBlockExamples:
             assert proof.root_hash == block.merkle_root
 
             # Verify the specific transaction data is in the proof
-            tx_bytes = tx.to_bytes()
+            tx.to_bytes()
             assert proof.verify()

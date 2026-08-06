@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import time
-from collections import OrderedDict
 
 import pytest
 
@@ -120,7 +118,9 @@ async def test_cor_t11_02_leader_single_apply() -> None:
     node = _make_node("L")
     sm: TestableStateMachine = node.state_machine  # type: ignore[assignment]
     node.current_state = RaftState.LEADER
-    node.persistent_state = PersistentState(current_term=1, voted_for="L", log_entries=[])
+    node.persistent_state = PersistentState(
+        current_term=1, voted_for="L", log_entries=[]
+    )
     entry = LogEntry(term=1, index=1, entry_type=LogEntryType.COMMAND, command="a=1")
     node.persistent_state = PersistentState(
         current_term=1, voted_for="L", log_entries=[entry]

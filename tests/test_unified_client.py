@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from types import MethodType
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -47,7 +46,6 @@ async def test_unified_client_composes_api() -> None:
     # slots=True makes method attributes read-only on the instance; bind via type
     object.__setattr__(client.api, "_connected", True)
     # Patch on the class for this test process — restore after
-    original_call = MPREGClientAPI_call = None
     from mpreg.client.client_api import MPREGClientAPI
 
     orig_call = MPREGClientAPI.call
@@ -106,8 +104,6 @@ async def test_pubsub_publish_soft_bool_default() -> None:
 
     base = MagicMock()
     base._client = MagicMock()
-    base._client.send_raw_message = AsyncMock(
-        return_value={"role": "other"}
-    )
+    base._client.send_raw_message = AsyncMock(return_value={"role": "other"})
     ps = MPREGPubSubClient(base_client=base)
     assert await ps.publish("t", 1) is False

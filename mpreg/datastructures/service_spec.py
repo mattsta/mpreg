@@ -28,13 +28,13 @@ def _normalize_tags(tags: object) -> frozenset[str]:
 
 def _normalize_targets(targets: object) -> tuple[HostAddress, ...]:
     if targets is None:
-        return tuple()
+        return ()
     if isinstance(targets, (list, tuple, set, frozenset)):
         values = [str(item) for item in targets if item]
     else:
         values = [str(targets)] if targets else []
     if not values:
-        return tuple()
+        return ()
     return tuple(sorted({value for value in values if value}))
 
 def _normalize_metadata(metadata: object) -> dict[MetadataKey, MetadataValue]:

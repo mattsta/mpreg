@@ -57,7 +57,9 @@ def test_gossip_checksum_avoids_str_payload() -> None:
     huge = {
         "update_id": "delta-1",
         "cluster_id": "c",
-        "functions": [{"name": f"fn-{i}", "meta": {"k": "v" * 20}} for i in range(2000)],
+        "functions": [
+            {"name": f"fn-{i}", "meta": {"k": "v" * 20}} for i in range(2000)
+        ],
         "nodes": [{"node_id": f"n-{i}"} for i in range(500)],
     }
     t0 = time.perf_counter()

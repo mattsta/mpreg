@@ -1155,7 +1155,7 @@ class HierarchicalRouter:
 
     def _cleanup_route_cache(self) -> None:
         """Clean up expired routes from cache."""
-        current_time = time.time()
+        time.time()
         expired_keys = [
             key for key, route in self.route_cache.items() if route.is_expired()
         ]

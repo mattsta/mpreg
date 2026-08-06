@@ -140,7 +140,9 @@ async def main() -> None:
                     async with MPREGClientAPI(hub) as client:
                         r2 = await client.request(_pipeline_cmds("vid-2", 1_000_000))
                     s2 = r2.get("stored") if isinstance(r2, dict) else None
-                    ensure(isinstance(s2, dict) and s2.get("media_id") == "vid-2", f"{s2}")
+                    ensure(
+                        isinstance(s2, dict) and s2.get("media_id") == "vid-2", f"{s2}"
+                    )
                     ensure(
                         abs(float(s2.get("quality", 0)) - 1.0) < 1e-6,
                         f"quality should cap at 1.0 got {s2}",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 import uuid
 from collections import defaultdict
@@ -517,10 +518,8 @@ class FabricQueueFederationManager(ManagedObject):
                 self.in_flight_drops += 1  # admission refusal counter
                 cb = self.on_in_flight_drop
                 if callable(cb):
-                    try:
+                    with contextlib.suppress(Exception):
                         cb(1)
-                    except Exception:
-                        pass
                 return DeliveryResult(
                     success=False,
                     message_id=None,  # type: ignore[arg-type]

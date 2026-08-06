@@ -216,7 +216,9 @@ class BlockchainMessageQueue:
 class BlockchainFederationRouter:
     """Federation routing with blockchain-verified node registry."""
 
-    def register_node(self, node_info: NodeInfo, signature: DigitalSignature) -> Transaction:
+    def register_node(
+        self, node_info: NodeInfo, signature: DigitalSignature
+    ) -> Transaction:
         """Register fabric node on blockchain."""
 
     def route_message(self, message: BaseMessage, target: NodeId) -> bool:
@@ -237,7 +239,7 @@ class BlockchainRPC:
         target: NodeId,
         procedure: str,
         args: dict,
-        require_consensus: bool = False
+        require_consensus: bool = False,
     ) -> RPCResult:
         """Execute RPC with optional blockchain consensus."""
 
@@ -331,7 +333,9 @@ def test_transaction_hash_consistency(tx):
 @given(block_strategy())
 def test_block_merkle_verification(block):
     """Block Merkle root matches transaction tree."""
-    expected_root = MerkleTree.from_leaves([tx.to_bytes() for tx in block.transactions]).root_hash()
+    expected_root = MerkleTree.from_leaves(
+        [tx.to_bytes() for tx in block.transactions]
+    ).root_hash()
     assert block.merkle_root == expected_root
 
 @given(blockchain_strategy())
@@ -339,7 +343,7 @@ def test_blockchain_causality(chain):
     """Blockchain respects vector clock causality."""
     for i in range(1, len(chain.blocks)):
         current = chain.blocks[i]
-        previous = chain.blocks[i-1]
+        previous = chain.blocks[i - 1]
         assert previous.vector_clock.happens_before(current.vector_clock)
 ```
 

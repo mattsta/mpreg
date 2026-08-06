@@ -863,7 +863,7 @@ def test_governance_policy_lifecycle():
         governance.dao = governance.dao.finalize_proposal(proposal_id)
 
     # 4. Execute governance decision
-    policy = governance.execute_governance_decision(proposal_id)
+    governance.execute_governance_decision(proposal_id)
 
     # 5. Verify policy is active
     active_policies = governance.get_active_policies("routing")

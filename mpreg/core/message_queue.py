@@ -16,7 +16,7 @@ All data structures use proper dataclasses following MPREG's clean design princi
 from __future__ import annotations
 
 import asyncio
-import bisect
+import contextlib
 import heapq
 import time
 import uuid
@@ -239,7 +239,11 @@ class MessageQueue(ManagedObject):
         self._no_sub_requeues: dict[str, int] = {}
         # PERF-05: bound DLQ growth under poison storms.
         self._dead_letter_maxsize: int = max(
-            1, int(getattr(config, "dead_letter_max_size", None) or min(config.max_size, 10000))
+            1,
+            int(
+                getattr(config, "dead_letter_max_size", None)
+                or min(config.max_size, 10000)
+            ),
         )
         # OBS-T12-02: optional Prom hook (also checked as _metrics_on_dlq)
         self.on_dlq: Any | None = None
@@ -321,7 +325,6 @@ class MessageQueue(ManagedObject):
             )
 
     async def restore_from_store(self) -> None:
-
         """Restore queue state from persistence store.
 
         AT_LEAST_ONCE crash recovery: any in-flight (delivered, unacked) messages
@@ -617,12 +620,10 @@ class MessageQueue(ManagedObject):
                         # Recheck after clear: enqueue may have set the event
                         # between the empty check and clear (lost-wake race).
                         if self._pending_empty():
-                            try:
+                            with contextlib.suppress(TimeoutError):
                                 await asyncio.wait_for(
                                     self._delivery_wake.wait(), timeout=1.0
                                 )
-                            except asyncio.TimeoutError:
-                                pass
                             continue
 
                     # Get next message ready for delivery
@@ -682,10 +683,12 @@ class MessageQueue(ManagedObject):
         try:
             while True:
                 try:
-                    await asyncio.sleep(0.25)  # Timeout scan; not the delivery latency floor
+                    await asyncio.sleep(
+                        0.25
+                    )  # Timeout scan; not the delivery latency floor
 
                     expired_messages = []
-                    current_time = time.time()
+                    time.time()
 
                     for msg_id, in_flight in self.in_flight_messages.items():
                         if in_flight.is_acknowledgment_expired():
@@ -793,30 +796,32 @@ class MessageQueue(ManagedObject):
                         message, f"no_subscriber_requeue_exceeded:{n}"
                     )
                     return
-                self._priority_requeue(message) if self._is_priority_queue() else self.pending_messages.appendleft(message)
+                self._priority_requeue(
+                    message
+                ) if self._is_priority_queue() else self.pending_messages.appendleft(
+                    message
+                )
                 self._delivery_wake.clear()
-                try:
+                with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(self._delivery_wake.wait(), timeout=0.25)
-                except asyncio.TimeoutError:
-                    pass
                 return
 
             # Create in-flight tracking
-            try:
+            with contextlib.suppress(Exception):
                 self._no_sub_requeues.pop(str(getattr(message, "id", "") or ""), None)
-            except Exception:
-                pass
             max_if = getattr(self.config, "max_in_flight", None)
             if max_if is None:
                 max_if = int(getattr(self.config, "max_size", 10000) or 10000)
             if len(self.in_flight_messages) >= max(1, int(max_if)):
                 # Backpressure: requeue briefly rather than unbounded growth.
-                self._priority_requeue(message) if self._is_priority_queue() else self.pending_messages.appendleft(message)
+                self._priority_requeue(
+                    message
+                ) if self._is_priority_queue() else self.pending_messages.appendleft(
+                    message
+                )
                 self._delivery_wake.clear()
-                try:
+                with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(self._delivery_wake.wait(), timeout=0.1)
-                except asyncio.TimeoutError:
-                    pass
                 return
             in_flight = InFlightMessage(
                 message=message,
@@ -849,7 +854,11 @@ class MessageQueue(ManagedObject):
 
             if delivered_count == 0:
                 # Transient callback failures: re-queue rather than instant DLQ.
-                self._priority_requeue(message) if self._is_priority_queue() else self.pending_messages.appendleft(message)
+                self._priority_requeue(
+                    message
+                ) if self._is_priority_queue() else self.pending_messages.appendleft(
+                    message
+                )
                 self._delivery_wake.set()
                 return
 
@@ -890,7 +899,11 @@ class MessageQueue(ManagedObject):
             )
 
             # Re-queue for delivery
-            self._priority_requeue(message) if self._is_priority_queue() else self.pending_messages.appendleft(message)
+            self._priority_requeue(
+                message
+            ) if self._is_priority_queue() else self.pending_messages.appendleft(
+                message
+            )
             self._delivery_wake.set()
             if self._queue_store is not None:
                 await self._queue_store.requeue(message)
@@ -931,10 +944,8 @@ class MessageQueue(ManagedObject):
             self.dead_letter_queue.append(message)
             cb = getattr(self, "on_dlq", None) or getattr(self, "_metrics_on_dlq", None)
             if callable(cb):
-                try:
+                with contextlib.suppress(Exception):
                     cb(1)
-                except Exception:
-                    pass
             queue_log.warning(f"Moved message {message.id} to DLQ: {reason}")
             if self._queue_store is not None:
                 await self._queue_store.move_to_dead_letter(message)
@@ -1010,7 +1021,7 @@ class MessageQueue(ManagedObject):
             # Try to run async shutdown if event loop exists
             loop = asyncio.get_running_loop()
             # Create a task to run async shutdown
-            task = loop.create_task(self.shutdown())
+            loop.create_task(self.shutdown())
         except RuntimeError:
             # No event loop running, just clear resources
             self.pending_messages.clear()

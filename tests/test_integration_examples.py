@@ -175,7 +175,9 @@ class TestWorkflowExamples:
             [
                 RPCCommand(name="batch1", fun="data_processing", args=([1, 2, 3],)),
                 RPCCommand(name="batch2", fun="data_processing", args=([4, 5, 6],)),
-                RPCCommand(name="combined", fun="mpreg.system.echos", args=("batch1", "batch2")),
+                RPCCommand(
+                    name="combined", fun="mpreg.system.echos", args=("batch1", "batch2")
+                ),
             ]
         )
 
@@ -195,7 +197,7 @@ class TestDistributedExamples:
         Demonstrates how MPREG automatically routes function calls to
         appropriate servers based on available functions and resources.
         """
-        server1, server2 = cluster_2_servers
+        server1, _server2 = cluster_2_servers
 
         # Connect to first server, but calls may be routed to either server
         client = await client_factory(server1.settings.port)
@@ -382,7 +384,7 @@ class TestConcurrencyExamples:
         Demonstrates patterns for load testing MPREG clusters
         with high concurrency and request volume.
         """
-        server1, server2 = cluster_2_servers
+        server1, _server2 = cluster_2_servers
 
         # Create multiple clients for load distribution
         clients = [await client_factory(server1.settings.port) for _ in range(10)]
@@ -391,7 +393,9 @@ class TestConcurrencyExamples:
         tasks: list[Any] = []
         for client_idx, client in enumerate(clients):
             for request_idx in range(20):  # 20 requests per client = 200 total
-                task = client.call("mpreg.system.echo", f"load_test_{client_idx}_{request_idx}")
+                task = client.call(
+                    "mpreg.system.echo", f"load_test_{client_idx}_{request_idx}"
+                )
                 tasks.append(task)
 
         # Execute all requests concurrently
@@ -436,7 +440,9 @@ class TestErrorHandlingExamples:
         from mpreg.core.errors import MpregError, MpregErrorCode
 
         with pytest.raises(MpregError) as ei:
-            await client.call("mpreg.system.echo", "test", timeout=0.0001)  # Extremely short timeout
+            await client.call(
+                "mpreg.system.echo", "test", timeout=0.0001
+            )  # Extremely short timeout
         assert ei.value.code == int(MpregErrorCode.TIMEOUT)
 
     async def test_graceful_degradation(
@@ -449,7 +455,7 @@ class TestErrorHandlingExamples:
         Shows how MPREG handles server failures and automatically
         routes requests to available servers.
         """
-        server1, server2 = cluster_2_servers
+        server1, _server2 = cluster_2_servers
         client = await client_factory(server1.settings.port)
 
         # First call should work normally
@@ -507,7 +513,7 @@ class TestPerformanceExamples:
         """
         import time
 
-        server1, server2 = cluster_2_servers
+        server1, _server2 = cluster_2_servers
 
         # Use multiple clients to maximize throughput
         clients = [await client_factory(server1.settings.port) for _ in range(5)]

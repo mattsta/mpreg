@@ -27,13 +27,13 @@ extend into production.
 
 ## Audience ladder
 
-| Level | Audience | Time |
-|-------|----------|------|
-| L0 Getting started | First-hour developer | minutes |
-| L1 Simple | Single-plane service author | ~15 min each |
-| L2 Moderate | Backend engineer composing planes | ~30 min |
-| L3 Complex | Distributed systems / platform | ~45–60 min |
-| L4 World | Architect / SRE reference | multi-hour tour |
+| Level              | Audience                          | Time            |
+| ------------------ | --------------------------------- | --------------- |
+| L0 Getting started | First-hour developer              | minutes         |
+| L1 Simple          | Single-plane service author       | ~15 min each    |
+| L2 Moderate        | Backend engineer composing planes | ~30 min         |
+| L3 Complex         | Distributed systems / platform    | ~45–60 min      |
+| L4 World           | Architect / SRE reference         | multi-hour tour |
 
 ## Design principles
 

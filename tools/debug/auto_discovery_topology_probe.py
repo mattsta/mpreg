@@ -180,7 +180,7 @@ def _node_settings(
         advertised_urls=None,
         gossip_interval=config.gossip_interval_seconds,
         log_level=config.log_level,
-        log_debug_scopes=("peer_dial",) if config.peer_dial_diagnostics else tuple(),
+        log_debug_scopes=("peer_dial",) if config.peer_dial_diagnostics else (),
         monitoring_enabled=False,
     )
 

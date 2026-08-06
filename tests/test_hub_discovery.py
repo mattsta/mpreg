@@ -565,7 +565,7 @@ class TestClusterRegistrar:
 
         # Register hub and cluster
         await registry.register_hub(sample_hub_registration_info)
-        original_hub_id = await registrar.register_cluster(sample_cluster_identity)
+        await registrar.register_cluster(sample_cluster_identity)
 
         # Force reassignment
         new_hub_id = await registrar.reassign_cluster(

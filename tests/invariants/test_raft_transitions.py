@@ -67,10 +67,10 @@ async def test_three_node_election_safety() -> None:
             transport=transport,
             state_machine=TestableStateMachine(),
             config=RaftConfiguration(
-            election_timeout_min=0.15,
-            election_timeout_max=0.30,
-            heartbeat_interval=0.025,
-        ),
+                election_timeout_min=0.15,
+                election_timeout_max=0.30,
+                heartbeat_interval=0.025,
+            ),
         )
         network.register_node(nid, node)
         nodes[nid] = node
@@ -80,9 +80,7 @@ async def test_three_node_election_safety() -> None:
     try:
         leader = None
         for _ in range(80):
-            leaders = [
-                n for n in nodes.values() if n.current_state == RaftState.LEADER
-            ]
+            leaders = [n for n in nodes.values() if n.current_state == RaftState.LEADER]
             if leaders:
                 leader = leaders[0]
                 break

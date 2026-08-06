@@ -19,7 +19,7 @@ class TestAsyncTestContextLeakDetection:
     @pytest.mark.asyncio
     async def test_no_leaks_normal_operation(self):
         """Test that normal operation produces no leak warnings."""
-        async with AsyncTestContext() as ctx:
+        async with AsyncTestContext():
             # Normal test operations
             pass
         # Test passes if no exceptions are raised
@@ -30,7 +30,7 @@ class TestAsyncTestContextLeakDetection:
         # This test verifies that the context can handle leaked tasks
         leaked_task = None
         try:
-            async with AsyncTestContext() as ctx:
+            async with AsyncTestContext():
                 # Create an intentional leak
                 leaked_task = asyncio.create_task(
                     asyncio.sleep(10), name="intentional_leak"
@@ -49,7 +49,7 @@ class TestAsyncTestContextLeakDetection:
     async def test_system_tasks_ignored(self):
         """Test that system tasks are ignored by leak detection."""
         # System tasks should not interfere with normal operation
-        async with AsyncTestContext() as ctx:
+        async with AsyncTestContext():
             # Create tasks with system-like names that should be ignored
             # This tests that the filtering logic works correctly
             pass
@@ -60,7 +60,7 @@ class TestAsyncTestContextLeakDetection:
         """Test that leaked tasks are cancelled."""
         leaked_tasks = []
 
-        async with AsyncTestContext() as ctx:
+        async with AsyncTestContext():
             # Create multiple leaked tasks
             for i in range(3):
                 task = asyncio.create_task(asyncio.sleep(10), name=f"leaked_task_{i}")
@@ -75,7 +75,7 @@ class TestAsyncTestContextLeakDetection:
     async def test_event_loop_closed_handling(self):
         """Test graceful handling when event loop is closed."""
         # This test verifies that the context handles edge cases gracefully
-        async with AsyncTestContext() as ctx:
+        async with AsyncTestContext():
             # Normal operation should not raise exceptions
             pass
 
@@ -84,7 +84,7 @@ class TestAsyncTestContextLeakDetection:
         """Test handling of multiple leaked tasks."""
         leaked_tasks = []
 
-        async with AsyncTestContext() as ctx:
+        async with AsyncTestContext():
             # Create multiple leaked tasks
             for i in range(5):
                 task = asyncio.create_task(asyncio.sleep(10), name=f"multi_leak_{i}")
@@ -189,7 +189,7 @@ class TestAsyncTestContextErrorHandling:
     async def test_server_shutdown_error_handling(self):
         """Test handling of server shutdown errors."""
         # Test that context handles server shutdown gracefully
-        async with AsyncTestContext() as ctx:
+        async with AsyncTestContext():
             # Empty context should handle shutdown without errors
             pass
 
@@ -197,7 +197,7 @@ class TestAsyncTestContextErrorHandling:
     async def test_client_close_error_handling(self):
         """Test handling of client disconnect errors."""
         # Test that context handles client disconnect gracefully
-        async with AsyncTestContext() as ctx:
+        async with AsyncTestContext():
             # Empty context should handle client cleanup without errors
             pass
 

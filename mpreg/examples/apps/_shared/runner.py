@@ -6,7 +6,7 @@ import argparse
 import asyncio
 import json
 import sys
-from typing import Sequence
+from collections.abc import Sequence
 
 from mpreg.examples.apps._shared.registry import (
     DEMO_BUNDLES,
@@ -16,7 +16,13 @@ from mpreg.examples.apps._shared.registry import (
     get_app,
     list_apps,
 )
-from mpreg.examples.apps._shared.runtime import RunReport, banner, ok, run_app_main, step
+from mpreg.examples.apps._shared.runtime import (
+    RunReport,
+    banner,
+    ok,
+    run_app_main,
+    step,
+)
 
 # Default per-command ceilings (individual apps may finish faster).
 _DEFAULT_TIMEOUT = {
@@ -58,9 +64,7 @@ def print_list(apps: Sequence[ExampleApp], *, fmt: str = "table") -> None:
     if fmt == "json":
         print(json.dumps([app_to_dict(a) for a in apps], indent=2))
         return
-    print(
-        f"{'ID':<26} {'LVL':<4} {'KIND':<12} {'SMOKE':<6} {'SUITE':<6} SYSTEMS"
-    )
+    print(f"{'ID':<26} {'LVL':<4} {'KIND':<12} {'SMOKE':<6} {'SUITE':<6} SYSTEMS")
     print("-" * 88)
     for a in apps:
         print(

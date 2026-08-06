@@ -8,7 +8,7 @@ See also ``mpreg/server_pkg/consensus.md``.
 
 from __future__ import annotations
 
-from mpreg.consensus import (  # noqa: F401
+from mpreg.consensus import (
     ConsensusManager,
     LightweightConsensusManager,
     LogEntry,

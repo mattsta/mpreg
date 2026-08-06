@@ -60,9 +60,7 @@ async def main() -> None:
         ):
             inj = FaultInjector(seed=99, data_drop_rate=0.5, control_drop_rate=0.0)
             drops = sum(
-                1
-                for _ in range(40)
-                if not inj.can_deliver("s", "t", plane="data")
+                1 for _ in range(40) if not inj.can_deliver("s", "t", plane="data")
             )
             # With rate 0.5 over 40 trials expect some drops and some delivers
             ensure(drops >= 5, f"expected some drops got {drops}")
@@ -106,7 +104,7 @@ async def main() -> None:
             ]
 
             async def _run(servers: list[MPREGServer]) -> None:
-                a, b = servers
+                a, _b = servers
 
                 def ping_a(msg: str) -> str:
                     return f"a:{msg}"
@@ -148,7 +146,7 @@ async def main() -> None:
                                 "reason": "compose",
                             },
                         ) as resp:
-                            data = await resp.json(content_type=None)
+                            await resp.json(content_type=None)
                             ensure(resp.status == 200, f"drain {resp.status}")
                         async with session.get(f"{base}/ready") as resp:
                             ensure(resp.status == 503, f"ready {resp.status}")

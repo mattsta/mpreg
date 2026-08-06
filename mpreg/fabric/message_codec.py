@@ -57,10 +57,7 @@ def message_headers_from_dict(payload: dict[str, Any]) -> MessageHeaders:
         except TypeError, ValueError:
             hop_budget = None
     metadata = payload.get("metadata", {})
-    if not isinstance(metadata, dict):
-        metadata = {}
-    else:
-        metadata = dict(metadata)
+    metadata = {} if not isinstance(metadata, dict) else dict(metadata)
     # Accept top-level traceparent for interop; store in metadata.
     if payload.get("traceparent") and "traceparent" not in metadata:
         metadata["traceparent"] = payload["traceparent"]
@@ -73,7 +70,7 @@ def message_headers_from_dict(payload: dict[str, Any]) -> MessageHeaders:
     if deadline_raw is not None:
         try:
             deadline_remaining_ms = float(deadline_raw)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             deadline_remaining_ms = None
     return MessageHeaders(
         correlation_id=correlation_id,

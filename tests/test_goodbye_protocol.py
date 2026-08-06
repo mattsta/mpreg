@@ -351,7 +351,7 @@ class TestGoodbyeProtocol:
     @pytest.mark.asyncio
     async def test_goodbye_all_reasons(self):
         """Test GOODBYE with all different reason types."""
-        async with AsyncTestContext() as ctx:
+        async with AsyncTestContext():
             port_manager = TestPortManager()
 
             reasons_to_test = [

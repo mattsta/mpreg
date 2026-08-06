@@ -85,7 +85,7 @@ async def create_dynamic_mesh(node_count=6):
 
     for i, port in enumerate(ports):
         # Connect to previous node to form initial chain
-        connect_to = f"ws://127.0.0.1:{ports[i-1]}" if i > 0 else None
+        connect_to = f"ws://127.0.0.1:{ports[i - 1]}" if i > 0 else None
 
         settings = MPREGSettings(
             host="127.0.0.1",
@@ -418,9 +418,15 @@ async def create_self_healing_network():
 
     # Test partition scenarios
     partition_scenarios = [
-        {"name": "Split Brain (5-5)", "partitions": [[0,1,2,3,4], [5,6,7,8,9]]},
-        {"name": "Minority Partition (7-3)", "partitions": [[0,1,2,3,4,5,6], [7,8,9]]},
-        {"name": "Network Island (6-2-2)", "partitions": [[0,1,2,3,4,5], [6,7], [8,9]]},
+        {"name": "Split Brain (5-5)", "partitions": [[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]]},
+        {
+            "name": "Minority Partition (7-3)",
+            "partitions": [[0, 1, 2, 3, 4, 5, 6], [7, 8, 9]],
+        },
+        {
+            "name": "Network Island (6-2-2)",
+            "partitions": [[0, 1, 2, 3, 4, 5], [6, 7], [8, 9]],
+        },
     ]
 
     return servers, partition_scenarios
@@ -454,8 +460,7 @@ async def simulate_partition_recovery(servers, partition_scenario):
 
     # Measure recovery effectiveness
     recovery_propagation = sum(
-        1 for server in servers
-        if "recovery_test" in server.cluster.funtimes
+        1 for server in servers if "recovery_test" in server.cluster.funtimes
     )
 
     return recovery_propagation / len(servers)
@@ -498,11 +503,13 @@ Based on extensive testing across all topology patterns:
 ### Production Considerations
 
 1. **Network Configuration**
+
    - Configure firewall rules for WebSocket connections
    - Set up load balancers for high availability
    - Implement TLS/SSL for secure communications
 
 2. **Monitoring and Observability**
+
    - Use the performance research framework for metrics collection
    - Set up alerts for partition detection
    - Monitor connection efficiency and propagation rates

@@ -501,7 +501,6 @@ class FederationHub(ABC):
         self, message: PubSubMessage, routing_hint: str | None
     ) -> bool:
         """Route message based on hub tier (implemented by subclasses)."""
-        pass
 
     def get_aggregated_state(self) -> AggregatedSubscriptionState:
         """Get aggregated subscription state."""

@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import random
 import time
+from collections.abc import Hashable
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Hashable
 
 class FaultKind(StrEnum):
     """Kinds of injectable faults."""
@@ -112,9 +112,7 @@ class FaultInjector:
         """Return False if the message should be dropped."""
         view = self.view()
         if not view.can_communicate(source, target):
-            self._record(
-                "drop_partition", source=source, target=target, plane=plane
-            )
+            self._record("drop_partition", source=source, target=target, plane=plane)
             return False
         rate = self.control_drop_rate if plane == "control" else self.data_drop_rate
         if rate > 0 and self._rng.random() < rate:

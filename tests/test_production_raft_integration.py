@@ -15,6 +15,7 @@ and provide comprehensive validation of production readiness.
 """
 
 import asyncio
+import contextlib
 import json
 import os
 import tempfile
@@ -159,10 +160,8 @@ class NetworkAwareTransport:
             return await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
         except TimeoutError:
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError, Exception):
                 await task
-            except (asyncio.CancelledError, Exception):
-                pass
             return None
         except asyncio.CancelledError:
             # Caller cancelled: leave handler running briefly so it can finish
@@ -368,7 +367,7 @@ class TestProductionRaftIntegration:
         """Test basic operations in a single-node cluster."""
         network = MockNetwork()
         nodes = self.create_raft_cluster(1, temp_dir, network)
-        node = list(nodes.values())[0]
+        node = next(iter(nodes.values()))
 
         try:
             await node.start()
@@ -696,10 +695,10 @@ class TestProductionRaftIntegration:
             try:
                 await self._run_split_brain_test(temp_dir, attempt)
                 return  # Success - exit immediately
-            except AssertionError as e:
+            except AssertionError:
                 if attempt == max_retries - 1:
                     # Final attempt failed - re-raise the error
-                    raise e
+                    raise
                 else:
                     print(
                         f"RETRY {attempt + 1}/{max_retries}: Split brain test failed, retrying..."
@@ -967,14 +966,14 @@ class TestProductionRaftIntegration:
             await asyncio.sleep(0.5)
 
             # All nodes should eventually converge
-            final_leader = await self._wait_for_single_leader(nodes)
+            await self._wait_for_single_leader(nodes)
 
             # Check final consistency
             for i in range(15):
                 for node in nodes.values():
                     if hasattr(node.state_machine, "state"):
                         expected_value = i * 10
-                        actual_value = node.state_machine.state.get(
+                        node.state_machine.state.get(
                             f"batch_key_{i}"
                         ) or node.state_machine.state.get(f"after_failure_key_{i}")
                         if expected_value < 100:  # batch keys

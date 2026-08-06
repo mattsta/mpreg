@@ -7,7 +7,11 @@ import time
 
 import pytest
 
-from mpreg.client.call_policy import ClientCallPolicy, RpcExecutionMode, call_with_policy
+from mpreg.client.call_policy import (
+    ClientCallPolicy,
+    RpcExecutionMode,
+    call_with_policy,
+)
 
 @pytest.mark.asyncio
 async def test_m1_throughput_smoke() -> None:

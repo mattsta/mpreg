@@ -106,7 +106,10 @@ def register_queue_rpc_commands(server: Any) -> None:
     # Prefer bound server methods (thin wrappers) so registration matches other cmds.
     # allow_platform=True: plane surface is platform-owned (namespace deny root).
     server.register_command(
-        PlatformRpc.QUEUE_CREATE, server._rpc_queue_create, ["queue"], allow_platform=True
+        PlatformRpc.QUEUE_CREATE,
+        server._rpc_queue_create,
+        ["queue"],
+        allow_platform=True,
     )
     server.register_command(
         PlatformRpc.QUEUE_SEND, server._rpc_queue_send, ["queue"], allow_platform=True
@@ -255,13 +258,15 @@ async def queue_receive(
     queue_name = str(body.get("queue_name") or body.get("name") or "")
     if not queue_name:
         return _plane_err("queue_name_required", code=PLANE_ERR_INVALID_ARGUMENT)
-    subscriber_id = str(
-        body.get("subscriber_id") or body.get("subscriber") or ""
-    ).strip() or None
+    subscriber_id = (
+        str(body.get("subscriber_id") or body.get("subscriber") or "").strip() or None
+    )
     topic_pattern = str(body.get("topic_pattern") or body.get("topic") or "#")
     try:
-        timeout_seconds = float(body.get("timeout_seconds") or body.get("timeout") or 5.0)
-    except (TypeError, ValueError):
+        timeout_seconds = float(
+            body.get("timeout_seconds") or body.get("timeout") or 5.0
+        )
+    except TypeError, ValueError:
         timeout_seconds = 5.0
     timeout_seconds = max(0.05, min(timeout_seconds, 60.0))
     auto_ack = bool(body.get("auto_acknowledge", False))
@@ -391,9 +396,14 @@ async def cache_put(
         "namespace": namespace,
         "identifier": identifier,
     }
-    if not success and err and (
-        "STRONG" in str(err) or "strong" in str(err).lower()
-        or "not implemented" in str(err).lower()
+    if (
+        not success
+        and err
+        and (
+            "STRONG" in str(err)
+            or "strong" in str(err).lower()
+            or "not implemented" in str(err).lower()
+        )
     ):
         out["error_code"] = PLANE_ERR_UNSUPPORTED_CONSISTENCY
     return out

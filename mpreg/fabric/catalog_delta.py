@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import contextlib
 import time
-from dataclasses import dataclass, field
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol
 
 from mpreg.datastructures.type_aliases import (
@@ -160,10 +161,8 @@ class RoutingCatalogApplier:
     def _note_dedup_skip(self, n: int = 1) -> None:
         cb = self.on_dedup_skip
         if callable(cb):
-            try:
+            with contextlib.suppress(Exception):
                 cb(n)
-            except Exception:
-                pass
 
     def _is_duplicate_update_id(self, update_id: str, now: float) -> bool:
         """Return True if update_id was already successfully applied within TTL."""
@@ -182,6 +181,7 @@ class RoutingCatalogApplier:
             self._seen_update_ids = {
                 k: v for k, v in self._seen_update_ids.items() if v >= cutoff
             }
+
     def apply(
         self, delta: RoutingCatalogDelta, *, now: Timestamp | None = None
     ) -> dict[str, int]:

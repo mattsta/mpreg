@@ -82,7 +82,9 @@ async def main() -> None:
             before = cb.current_timeout
             cb.record_failure()
             ensure(cb.state == "open", f"reopen got {cb.state}")
-            ensure(cb.current_timeout >= before, f"backoff {before}→{cb.current_timeout}")
+            ensure(
+                cb.current_timeout >= before, f"backoff {before}→{cb.current_timeout}"
+            )
             step(f"backoff timeout {before:.3f} → {cb.current_timeout:.3f}")
             ok("reopen + exponential backoff")
 

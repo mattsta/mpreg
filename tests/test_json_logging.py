@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import io
 import json
-from contextlib import redirect_stderr
 
 from loguru import logger
 

@@ -101,9 +101,10 @@ async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
 
 # Or using the lower-level client directly
 from mpreg.core.model import RPCCommand
-result = await client.request([
-    RPCCommand(name="first", fun="echo", args=("hi there!",), locs=frozenset())
-])
+
+result = await client.request(
+    [RPCCommand(name="first", fun="echo", args=("hi there!",), locs=frozenset())]
+)
 ```
 
 and it returns the function call value matched to your RPC request name for the function call:
@@ -120,10 +121,14 @@ We can also call multiple functions at once with unique names:
 
 ```python
 # Modern dependency resolution - these execute in proper order automatically
-result = await client.request([
-    RPCCommand(name="first", fun="echo", args=("hi there!",), locs=frozenset()),
-    RPCCommand(name="second", fun="echo", args=("first",), locs=frozenset()),  # Uses result from "first"
-])
+result = await client.request(
+    [
+        RPCCommand(name="first", fun="echo", args=("hi there!",), locs=frozenset()),
+        RPCCommand(
+            name="second", fun="echo", args=("first",), locs=frozenset()
+        ),  # Uses result from "first"
+    ]
+)
 ```
 
 and it returns the `first` RPC returned value as the parameter to the `second` name:
@@ -137,11 +142,15 @@ and it returns the `first` RPC returned value as the parameter to the `second` n
 Direct string matching on the function parameters can be confusing as above with "first" suddenly becoming a magic value, so let's name them better:
 
 ```python
-result = await client.request([
-    RPCCommand(name="|first", fun="echo", args=("hi there!",), locs=frozenset()),
-    RPCCommand(name="|second", fun="echo", args=("|first",), locs=frozenset()),
-    RPCCommand(name="|third", fun="echos", args=("|first", "AND ME TOO"), locs=frozenset()),
-])
+result = await client.request(
+    [
+        RPCCommand(name="|first", fun="echo", args=("hi there!",), locs=frozenset()),
+        RPCCommand(name="|second", fun="echo", args=("|first",), locs=frozenset()),
+        RPCCommand(
+            name="|third", fun="echos", args=("|first", "AND ME TOO"), locs=frozenset()
+        ),
+    ]
+)
 ```
 
 and this one returns:
@@ -157,11 +166,18 @@ Note how it returns all FINAL level RPCs having no further resolvable arguments 
 #### 3-returns-1 using multiple replacements
 
 ```python
-result = await client.request([
-    RPCCommand(name="|first", fun="echo", args=("hi there!",), locs=frozenset()),
-    RPCCommand(name="|second", fun="echo", args=("|first",), locs=frozenset()),
-    RPCCommand(name="|third", fun="echos", args=("|first", "|second", "AND ME TOO"), locs=frozenset()),
-])
+result = await client.request(
+    [
+        RPCCommand(name="|first", fun="echo", args=("hi there!",), locs=frozenset()),
+        RPCCommand(name="|second", fun="echo", args=("|first",), locs=frozenset()),
+        RPCCommand(
+            name="|third",
+            fun="echos",
+            args=("|first", "|second", "AND ME TOO"),
+            locs=frozenset(),
+        ),
+    ]
+)
 ```
 
 returns:
@@ -175,12 +191,19 @@ Note how here it returns only `|third` because `third` contains _both_ `|first` 
 #### 4-returns-1 using multiple replacements
 
 ```python
-result = await client.request([
-    RPCCommand(name="|first", fun="echo", args=("hi there!",), locs=frozenset()),
-    RPCCommand(name="|second", fun="echo", args=("|first",), locs=frozenset()),
-    RPCCommand(name="|third", fun="echos", args=("|first", "|second", "AND ME TOO"), locs=frozenset()),
-    RPCCommand(name="|4th", fun="echo", args=("|third",), locs=frozenset()),
-])
+result = await client.request(
+    [
+        RPCCommand(name="|first", fun="echo", args=("hi there!",), locs=frozenset()),
+        RPCCommand(name="|second", fun="echo", args=("|first",), locs=frozenset()),
+        RPCCommand(
+            name="|third",
+            fun="echos",
+            args=("|first", "|second", "AND ME TOO"),
+            locs=frozenset(),
+        ),
+        RPCCommand(name="|4th", fun="echo", args=("|third",), locs=frozenset()),
+    ]
+)
 ```
 
 returns:
@@ -195,7 +218,9 @@ You may have noticed the `locs=frozenset()` parameter in all those `RPCCommand()
 
 ```python
 # Route to specific resources/datasets
-result = await client.call("train_model", training_data, locs=frozenset(["gpu-cluster", "dataset-v2"]))
+result = await client.call(
+    "train_model", training_data, locs=frozenset(["gpu-cluster", "dataset-v2"])
+)
 
 # Route to a specific federated cluster (fabric routing)
 result = await client.call(
@@ -234,7 +259,9 @@ exchange = TopicExchange("ws://localhost:9001", "demo_cluster")
 
 # AMQP-style hierarchical topics with wildcard matching
 exchange.add_subscription("user_events", ["user.*.login", "user.*.logout"])
-exchange.add_subscription("orders", ["order.#", "payment.*.completed"])  # # = multi-level wildcard
+exchange.add_subscription(
+    "orders", ["order.#", "payment.*.completed"]
+)  # # = multi-level wildcard
 
 # Publish to specific topics - automatic routing with sub-millisecond latency
 exchange.publish_message("user.123.login", {"username": "alice", "ip": "192.168.1.100"})
@@ -253,9 +280,15 @@ from mpreg.core.message_queue import DeliveryGuarantee
 manager = create_reliable_queue_manager()
 
 # Different delivery guarantees for different use cases
-await manager.send_message("urgent_queue", data, DeliveryGuarantee.AT_LEAST_ONCE)  # Retry until ack
-await manager.send_message("broadcast_queue", data, DeliveryGuarantee.BROADCAST)   # All subscribers
-await manager.send_message("consensus_queue", data, DeliveryGuarantee.QUORUM)     # N acknowledgments
+await manager.send_message(
+    "urgent_queue", data, DeliveryGuarantee.AT_LEAST_ONCE
+)  # Retry until ack
+await manager.send_message(
+    "broadcast_queue", data, DeliveryGuarantee.BROADCAST
+)  # All subscribers
+await manager.send_message(
+    "consensus_queue", data, DeliveryGuarantee.QUORUM
+)  # N acknowledgments
 
 # Supports FIFO, Priority, and Delay queues with dead letter handling
 # Try it: uv run python mpreg/examples/tier1_single_system_full.py --system queue
@@ -270,9 +303,11 @@ from mpreg.core.caching import create_performance_cache_manager, EvictionPolicy
 cache = create_performance_cache_manager()
 
 # Multiple intelligent eviction policies
-cache.configure(eviction_policy=EvictionPolicy.DEPENDENCY_AWARE)  # Tracks function dependencies
-cache.configure(eviction_policy=EvictionPolicy.COST_BASED)        # Cost-benefit analysis
-cache.configure(eviction_policy=EvictionPolicy.S4LRU)            # Segmented LRU with promotion
+cache.configure(
+    eviction_policy=EvictionPolicy.DEPENDENCY_AWARE
+)  # Tracks function dependencies
+cache.configure(eviction_policy=EvictionPolicy.COST_BASED)  # Cost-benefit analysis
+cache.configure(eviction_policy=EvictionPolicy.S4LRU)  # Segmented LRU with promotion
 
 # Automatic dependency tracking and cascade invalidation
 key = CacheKey.create("expensive_function", args, kwargs)
@@ -339,23 +374,38 @@ await raft.start()  # Handles leader election, log replication, membership chang
 # Ingestion → Validation → Cleaning → Analytics → Insights → Storage → Dashboard
 # Each stage automatically routes to servers with required resources (CPU/GPU/Database)
 
-result = await client.request([
-    # Stage 1: Data ingestion server
-    RPCCommand(name="ingested", fun="ingest_sensor_data",
-               args=(sensor_id, readings), locs=frozenset(["ingestion", "raw-data"])),
-
-    # Stage 2: Processing server
-    RPCCommand(name="cleaned", fun="clean_data",
-               args=("ingested",), locs=frozenset(["processing", "etl"])),
-
-    # Stage 3: Analytics server
-    RPCCommand(name="analyzed", fun="detect_anomalies",
-               args=("cleaned",), locs=frozenset(["analytics", "ml"])),
-
-    # Stage 4: Storage server
-    RPCCommand(name="stored", fun="store_data",
-               args=("analyzed",), locs=frozenset(["storage", "database"])),
-])
+result = await client.request(
+    [
+        # Stage 1: Data ingestion server
+        RPCCommand(
+            name="ingested",
+            fun="ingest_sensor_data",
+            args=(sensor_id, readings),
+            locs=frozenset(["ingestion", "raw-data"]),
+        ),
+        # Stage 2: Processing server
+        RPCCommand(
+            name="cleaned",
+            fun="clean_data",
+            args=("ingested",),
+            locs=frozenset(["processing", "etl"]),
+        ),
+        # Stage 3: Analytics server
+        RPCCommand(
+            name="analyzed",
+            fun="detect_anomalies",
+            args=("cleaned",),
+            locs=frozenset(["analytics", "ml"]),
+        ),
+        # Stage 4: Storage server
+        RPCCommand(
+            name="stored",
+            fun="store_data",
+            args=("analyzed",),
+            locs=frozenset(["storage", "database"]),
+        ),
+    ]
+)
 
 # MPREG automatically figures out the execution order and routes each
 # function to the optimal server based on resource requirements
@@ -366,19 +416,31 @@ result = await client.request([
 
 ```python
 # Route ML inference to specialized model servers automatically
-result = await client.request([
-    # Route to image preprocessing server
-    RPCCommand(name="preprocessed", fun="preprocess_image",
-               args=(image_data,), locs=frozenset(["preprocessing"])),
-
-    # Route to vision model server
-    RPCCommand(name="classified", fun="classify_image",
-               args=("preprocessed",), locs=frozenset(["vision", "gpu"])),
-
-    # Route to NLP server for description
-    RPCCommand(name="described", fun="generate_description",
-               args=("classified",), locs=frozenset(["nlp", "text-generation"])),
-])
+result = await client.request(
+    [
+        # Route to image preprocessing server
+        RPCCommand(
+            name="preprocessed",
+            fun="preprocess_image",
+            args=(image_data,),
+            locs=frozenset(["preprocessing"]),
+        ),
+        # Route to vision model server
+        RPCCommand(
+            name="classified",
+            fun="classify_image",
+            args=("preprocessed",),
+            locs=frozenset(["vision", "gpu"]),
+        ),
+        # Route to NLP server for description
+        RPCCommand(
+            name="described",
+            fun="generate_description",
+            args=("classified",),
+            locs=frozenset(["nlp", "text-generation"]),
+        ),
+    ]
+)
 
 # Client just describes the ML pipeline - MPREG routes to optimal servers
 # Try it: uv run python mpreg/examples/real_world_examples.py
@@ -551,10 +613,15 @@ async def main():
 
         # Multi-step workflow
         from mpreg.core.model import RPCCommand
-        workflow = await client.request([
-            RPCCommand(name="step1", fun="echo", args=("first step",), locs=frozenset()),
-            RPCCommand(name="step2", fun="echo", args=("step1",), locs=frozenset()),
-        ])
+
+        workflow = await client.request(
+            [
+                RPCCommand(
+                    name="step1", fun="echo", args=("first step",), locs=frozenset()
+                ),
+                RPCCommand(name="step2", fun="echo", args=("step1",), locs=frozenset()),
+            ]
+        )
         print(f"Workflow result: {workflow}")
 
 asyncio.run(main())
@@ -802,11 +869,13 @@ MPREG implements a sophisticated **multi-layer distributed architecture** design
 Each MPREG server is configured with three core components:
 
 ```python
-server = MPREGServer(MPREGSettings(
-    name='Analytics Server',           # Human-readable server identity
-    resources={'gpu', 'dataset-v2'},   # Available resources this server provides
-    peers=['ws://hub.company.com:9001'] # Peer servers to connect with (optional)
-))
+server = MPREGServer(
+    MPREGSettings(
+        name="Analytics Server",  # Human-readable server identity
+        resources={"gpu", "dataset-v2"},  # Available resources this server provides
+        peers=["ws://hub.company.com:9001"],  # Peer servers to connect with (optional)
+    )
+)
 ```
 
 **Resource Types**:

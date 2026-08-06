@@ -317,7 +317,7 @@ class TestConsensusGossipLiveIntegration:
     @pytest.mark.asyncio
     async def test_live_consensus_proposal_distribution(self, live_consensus_cluster):
         """Test consensus proposals are distributed via server's integrated gossip in live cluster."""
-        servers, consensus_managers, gossip_protocols = live_consensus_cluster
+        servers, _consensus_managers, _gossip_protocols = live_consensus_cluster
 
         # Use servers' integrated consensus managers instead of standalone ones
         proposer_server = servers[0]
@@ -370,11 +370,11 @@ class TestConsensusGossipLiveIntegration:
     @pytest.mark.asyncio
     async def test_live_consensus_vote_propagation(self, live_consensus_cluster):
         """Test consensus voting works correctly with server's integrated consensus in live cluster."""
-        servers, consensus_managers, gossip_protocols = live_consensus_cluster
+        servers, _consensus_managers, _gossip_protocols = live_consensus_cluster
 
         proposer_server = servers[0]
         voter_server = servers[1]
-        observer_server = servers[2]
+        servers[2]
 
         # Create proposal using server's integrated consensus manager
         vector_clock = VectorClock.empty()
@@ -447,7 +447,7 @@ class TestConsensusGossipLiveIntegration:
     @pytest.mark.asyncio
     async def test_live_multi_node_consensus_completion(self, live_consensus_cluster):
         """Test complete consensus process across multiple servers with integrated consensus."""
-        servers, consensus_managers, gossip_protocols = live_consensus_cluster
+        servers, _consensus_managers, _gossip_protocols = live_consensus_cluster
 
         proposer_server = servers[0]
         all_servers = servers  # All servers including proposer can vote

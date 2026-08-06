@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import re
 
+from mpreg.core.monitoring.server_monitoring import ServerMetricsTracker
 from mpreg.core.observability.slo import GOLDEN_SIGNALS, prometheus_alert_rules_yaml
 from mpreg.core.observability.trace_context import (
     TRACEPARENT_KEY,
@@ -18,7 +19,6 @@ from mpreg.core.observability.trace_context import (
     get_current_traceparent,
     inject_trace_metadata,
 )
-from mpreg.core.monitoring.server_monitoring import ServerMetricsTracker
 from mpreg.examples.apps._shared.runtime import (
     app_run,
     ensure,
@@ -93,7 +93,9 @@ async def main() -> None:
                     ensure(get_current_traceparent() == parent, "bind failed")
                     injected = inject_trace_metadata({"hop": "1"})
                     ensure(injected[TRACEPARENT_KEY] == parent, "inject ignored bind")
-                    ensure(injected.get(TRACESTATE_KEY) == "vendor=1", "tracestate miss")
+                    ensure(
+                        injected.get(TRACESTATE_KEY) == "vendor=1", "tracestate miss"
+                    )
                     ensure(injected.get("hop") == "1", "payload clobbered")
             ensure(get_current_traceparent() is None, "unbind failed")
             ok("bind/unbind + inject")

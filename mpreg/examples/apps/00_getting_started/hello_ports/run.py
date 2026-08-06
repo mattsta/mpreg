@@ -74,12 +74,18 @@ async def main() -> None:
                         s.register_command("port_echo", port_echo, ["api"])
                     servers[0].register_command("which_port", which_port, ["api"])
 
-                    with scenario("RPC on dynamically allocated port", "rpc.call", "rpc.register"):
-                        async with MPREGClientAPI(f"ws://127.0.0.1:{ports[0]}") as client:
+                    with scenario(
+                        "RPC on dynamically allocated port", "rpc.call", "rpc.register"
+                    ):
+                        async with MPREGClientAPI(
+                            f"ws://127.0.0.1:{ports[0]}"
+                        ) as client:
                             result = await client.call(
                                 "port_echo", "ports", locs=frozenset(["api"])
                             )
-                            ensure(result == "port-echo:ports", f"unexpected {result!r}")
+                            ensure(
+                                result == "port-echo:ports", f"unexpected {result!r}"
+                            )
                             reported = await client.call(
                                 "which_port", locs=frozenset(["api"])
                             )
@@ -87,10 +93,16 @@ async def main() -> None:
                                 int(reported) == ports[0],
                                 f"server port {reported} != allocated {ports[0]}",
                             )
-                            ok(f"dynamic port RPC ok on {ports[0]} (which_port={reported})")
+                            ok(
+                                f"dynamic port RPC ok on {ports[0]} (which_port={reported})"
+                            )
 
-                    with scenario("second allocated port is live", "boot.port_range", "rpc.call"):
-                        async with MPREGClientAPI(f"ws://127.0.0.1:{ports[1]}") as client:
+                    with scenario(
+                        "second allocated port is live", "boot.port_range", "rpc.call"
+                    ):
+                        async with MPREGClientAPI(
+                            f"ws://127.0.0.1:{ports[1]}"
+                        ) as client:
                             result = await client.call(
                                 "port_echo", "b", locs=frozenset(["api"])
                             )

@@ -72,7 +72,9 @@ async def main() -> None:
                 server_a.register_command("ping", ping, ["api"])
                 server_b.register_command("ping", ping, ["api"])
 
-                with scenario("RPC + list_peers after join", "rpc.call", "disco.list_peers"):
+                with scenario(
+                    "RPC + list_peers after join", "rpc.call", "disco.list_peers"
+                ):
                     async with MPREGClientAPI(url_b) as client:
                         result = await client.call(
                             "ping", "auto", locs=frozenset(["api"])

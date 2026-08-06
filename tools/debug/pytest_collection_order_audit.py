@@ -64,7 +64,7 @@ def _parse_collected_nodeids(output_text: str) -> tuple[NodeId, ...]:
             continue
         if "::" not in line:
             continue
-        if line.startswith("FAILED") or line.startswith("ERROR"):
+        if line.startswith(("FAILED", "ERROR")):
             continue
         if line.startswith("tests/"):
             nodeids.append(line)

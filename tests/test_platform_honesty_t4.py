@@ -11,18 +11,19 @@ import pytest
 from mpreg.core.blockchain_message_queue import BlockchainMessageQueue
 from mpreg.core.blockchain_message_queue_types import (
     BlockchainMessage,
-    DeliveryGuarantee as BcDeliveryGuarantee,
     MessagePriority,
+)
+from mpreg.core.blockchain_message_queue_types import (
+    DeliveryGuarantee as BcDeliveryGuarantee,
 )
 from mpreg.core.cache_models import GlobalCacheKey
 from mpreg.core.config import MPREGSettings
 from mpreg.core.location_consistency import (
     ConsistencyLevel,
     LocationConsistencyManager,
-    ReplicationOperation,
     ReplicatedCacheEntry,
+    ReplicationOperation,
 )
-from mpreg.datastructures.vector_clock import VectorClock
 from mpreg.core.logging import bind_trace_context
 from mpreg.core.message_queue import DeliveryGuarantee as QueueDeliveryGuarantee
 from mpreg.core.monitoring.server_monitoring import ServerMetricsTracker
@@ -30,6 +31,7 @@ from mpreg.core.namespace_policy import (
     NamespacePolicyEngine,
     NamespacePolicyRule,
 )
+from mpreg.datastructures.vector_clock import VectorClock
 from mpreg.fabric.federation_resilience import (
     FederationAutoRecovery,
     FederationHealthMonitor,
@@ -153,7 +155,9 @@ def test_blockchain_exactly_once_submit_rejected() -> None:
         payload=b"nope",
         processing_fee=1,
     )
-    with pytest.raises(UnsupportedDeliveryGuaranteeError, match="EXACTLY_ONCE|exactly_once"):
+    with pytest.raises(
+        UnsupportedDeliveryGuaranteeError, match="EXACTLY_ONCE|exactly_once"
+    ):
         q.submit_message(msg)
 
 def test_queue_plane_has_no_exactly_once_member() -> None:
@@ -196,9 +200,7 @@ def test_metrics_tracker_emits_draining_and_mgmt() -> None:
     assert 'mpreg_node_draining{node="n1"} 1' in lines
     assert "mpreg_mgmt_mutations_total" in lines
     assert "node_drain" in lines
-    assert (
-        'mpreg_client_notification_drops_total{node="n1"} 3' in lines
-    )
+    assert 'mpreg_client_notification_drops_total{node="n1"} 3' in lines
 
 def test_bind_trace_context_adds_fields() -> None:
     log = bind_trace_context(
@@ -260,7 +262,11 @@ async def test_federation_recovery_strategies_refuse_silent_success() -> None:
 def test_membership_module_documents_library_only() -> None:
     import mpreg.fabric.membership as mem_mod
 
-    blob = (inspect.getdoc(mem_mod) or "") + "\n" + (inspect.getdoc(MembershipProtocol) or "")
+    blob = (
+        (inspect.getdoc(mem_mod) or "")
+        + "\n"
+        + (inspect.getdoc(MembershipProtocol) or "")
+    )
     assert (
         "library-only" in blob.lower()
         or "not wired" in blob.lower()
@@ -411,7 +417,6 @@ def test_gossip_hmac_sign_verify_roundtrip() -> None:
 
 @pytest.mark.asyncio
 async def test_server_gossip_transport_signs_when_required() -> None:
-    from unittest.mock import MagicMock
 
     from mpreg.fabric.gossip import GossipMessage, GossipMessageType
     from mpreg.fabric.gossip_signatures import SIGNATURE_KEY, verify_gossip_payload
@@ -443,13 +448,14 @@ async def test_server_gossip_transport_signs_when_required() -> None:
 
 @pytest.mark.asyncio
 async def test_queue_receive_rpc_and_manager() -> None:
+    from unittest.mock import MagicMock
+
     from mpreg.core.message_queue import DeliveryGuarantee
     from mpreg.core.message_queue_manager import (
         MessageQueueManager,
         QueueManagerConfiguration,
     )
     from mpreg.server_pkg import plane_rpc
-    from unittest.mock import MagicMock
 
     mgr = MessageQueueManager(QueueManagerConfiguration(local_cluster_id="c1"))
     await mgr.create_queue("jobs")
@@ -601,6 +607,7 @@ async def test_create_queue_honors_namespace_policy() -> None:
 def test_cli_admin_policy_registered() -> None:
     """ERG-02: admin policy CLI exists."""
     from click.testing import CliRunner
+
     from mpreg.cli.main import cli
 
     runner = CliRunner()
@@ -611,6 +618,7 @@ def test_cli_admin_policy_registered() -> None:
 def test_cli_client_plane_smokes_registered() -> None:
     """ERG-05: queue/cache/publish client commands registered."""
     from click.testing import CliRunner
+
     from mpreg.cli.main import cli
 
     runner = CliRunner()
@@ -637,21 +645,24 @@ def test_openapi_covers_golden_extra_routes() -> None:
 
 def test_readme_honesty_no_bft_planet_private_api() -> None:
     """ERG-03: root README front door is honest."""
-    from pathlib import Path
     import re
+    from pathlib import Path
 
-    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(
+        encoding="utf-8"
+    )
     assert "Honesty banner" in readme or "honesty banner" in readme.lower()
     assert "_client.request" not in readme
     assert "not BFT" in readme or "not Byzantine" in readme
     # Product claims must not sell planet-scale; lab tool filenames may remain.
-    body = re.sub(r"debug_planet_scale\S*", "", readme, flags=re.I)
-    body = re.sub(r"planet_scale\S*", "", body, flags=re.I)
+    body = re.sub(r"debug_planet_scale\S*", "", readme, flags=re.IGNORECASE)
+    body = re.sub(r"planet_scale\S*", "", body, flags=re.IGNORECASE)
     assert "planet-scale" not in body.lower()
 
 def test_support_only_section_in_claims() -> None:
     """B3: unclaimed invariant tests listed as support_only."""
     from pathlib import Path
+
     import yaml
 
     path = Path(__file__).resolve().parents[1] / "tests" / "invariants" / "claims.yaml"

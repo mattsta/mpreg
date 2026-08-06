@@ -45,17 +45,6 @@ async def raft_instance_cleanup(
 def cluster_id_strategy() -> st.SearchStrategy[ClusterId]:
     """Generate meaningful cluster IDs."""
     # Generate cluster IDs that are clearly distinguishable and meaningful
-    cluster_prefixes = ["cluster", "node", "server", "worker", "cache"]
-    cluster_suffixes = [
-        "primary",
-        "secondary",
-        "backup",
-        "main",
-        "aux",
-        "alpha",
-        "beta",
-        "gamma",
-    ]
 
     return st.one_of(
         # Pattern: prefix-suffix (e.g., "cluster-primary", "node-alpha")
@@ -373,7 +362,7 @@ class TestQuorumBasedLeaderElection:
         """Test quorum election with multiple nodes."""
         assume(all(m.cluster_id != cluster_id for m in metrics_list))
         assume(
-            len(set(m.cluster_id for m in metrics_list)) == len(metrics_list)
+            len({m.cluster_id for m in metrics_list}) == len(metrics_list)
         )  # Unique cluster IDs
 
         quorum = QuorumBasedLeaderElection(cluster_id=cluster_id, quorum_size=3)
@@ -451,7 +440,7 @@ class TestMetricBasedLeaderElection:
         """Test metric election with other cluster metrics."""
         assume(all(m.cluster_id != cluster_id for m in metrics_list))
         assume(
-            len(set(m.cluster_id for m in metrics_list)) == len(metrics_list)
+            len({m.cluster_id for m in metrics_list}) == len(metrics_list)
         )  # Unique cluster IDs
 
         metric = MetricBasedLeaderElection(cluster_id=cluster_id)

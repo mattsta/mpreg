@@ -296,7 +296,7 @@ class TestBlockchain:
 
         # Should pass basic validation
         current_time = time.time()
-        can_add = pow_chain.can_add_block(pow_block, current_time)
+        pow_chain.can_add_block(pow_block, current_time)
         # Note: May fail PoW verification since we haven't mined it
 
         # Test transaction limit
@@ -509,7 +509,7 @@ class TestBlockchainConsensus:
         pow_block = Block.create_next_block(blockchain.genesis_block, (tx,), "miner")
 
         # Should fail PoW validation (unless we get lucky with nonce)
-        can_add = blockchain.can_add_block(pow_block)
+        blockchain.can_add_block(pow_block)
         # Note: This might occasionally pass if the hash happens to have leading zeros
 
     def test_transaction_limits(self):

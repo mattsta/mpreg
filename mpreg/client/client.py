@@ -127,7 +127,9 @@ class Client:
         ensure_traceparent(meta)
         payload = dict(payload)
         headers = dict(payload.get("headers") or {})
-        headers.update({k: meta[k] for k in (TRACEPARENT_KEY, TRACESTATE_KEY) if k in meta})
+        headers.update(
+            {k: meta[k] for k in (TRACEPARENT_KEY, TRACESTATE_KEY) if k in meta}
+        )
         # Also top-level for interop
         payload["headers"] = headers
         payload[TRACEPARENT_KEY] = meta[TRACEPARENT_KEY]
@@ -183,7 +185,9 @@ class Client:
 
         try:
             await self._transport.send(
-                send if isinstance(send, (bytes, bytearray)) else str(send).encode("utf-8")
+                send
+                if isinstance(send, (bytes, bytearray))
+                else str(send).encode("utf-8")
             )
 
             # Wait for the response with timeout
@@ -212,10 +216,8 @@ class Client:
                 "[{}] Result:\n{}", response.u, pp.pformat(response.model_dump())
             )
 
-        try:
+        with contextlib.suppress(Exception):
             self._record_trace_from_message(response.model_dump())
-        except Exception:
-            pass
 
         assert req.u == response.u
 
@@ -246,7 +248,9 @@ class Client:
             MpregError: TIMEOUT when the wait budget expires; other structured
                 codes for server-returned RPC errors.
         """
-        send = self.serializer.serialize(self._inject_outbound_trace(request.model_dump()))
+        send = self.serializer.serialize(
+            self._inject_outbound_trace(request.model_dump())
+        )
         wait_timeout = self._effective_timeout(timeout)
         if self.full_log:
             client_log.info("================= NEW ENHANCED REQUEST =================")

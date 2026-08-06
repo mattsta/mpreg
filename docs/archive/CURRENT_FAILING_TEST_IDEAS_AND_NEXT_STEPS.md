@@ -56,21 +56,25 @@ Add temporary DEBUG-level logs to expose:
 ## Concrete fix candidates (ordered)
 
 1. **Track inbound server connections and use them for GOODBYE/re-entry broadcasts**
+
    - Add a map like `self._inbound_server_connections` keyed by `peer_url`.
    - Update in `opened` when a STATUS is accepted; remove on disconnect.
    - Use both outbound and inbound connections in `send_goodbye` and `_broadcast_peer_reentry`.
 
 2. **Robust GOODBYE removal by advertised URL matching**
+
    - If `departing_node_url` not found in `peers_info`, search for any peer whose `advertised_urls` contains that URL.
    - Remove and blocklist all matching URLs (primary + advertised).
 
 3. **Allow gossip-driven re-entry**
+
    - In `process_gossip_message`, if `peer_info.url` is in `_departed_peers` but:
      - gossip comes from a different sender, and
      - `peer_info` has active capabilities or `last_seen > 0`,
        then clear `_departed_peers` for that URL and accept the update.
 
 4. **Block connection retries for departed peers**
+
    - In `_manage_peer_connections`, skip peers that are in `_departed_peers` unless explicitly cleared by STATUS/gossip.
 
 5. **Expand unit tests for URL mismatch**

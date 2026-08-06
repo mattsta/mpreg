@@ -325,14 +325,14 @@ The process façade is still `MPREGServer` in `mpreg/server.py`. Pure policy and
 read-model builders are extracted to `mpreg/server_pkg/` so dial math and mgmt
 payloads can be unit-tested without booting a server:
 
-| Module | Responsibility |
-|--------|----------------|
-| `types.py` | Shared server dataclasses (stats, departed peers, catalog adapters) |
-| `peer_dial.py` | `PeerDialState`, connection policy, backoff, parallelism, exploration |
-| `monitoring_metrics.py` | DNS + persistence metric dicts |
-| `discovery_metrics.py` | Discovery summary/cache/policy/lag metric builders |
-| `mgmt_summary.py` | `/mgmt/v1` cluster/nodes/routes/catalog/health summaries |
-| `consensus.md` | Canonical Raft vs fabric consensus matrix |
+| Module                  | Responsibility                                                        |
+| ----------------------- | --------------------------------------------------------------------- |
+| `types.py`              | Shared server dataclasses (stats, departed peers, catalog adapters)   |
+| `peer_dial.py`          | `PeerDialState`, connection policy, backoff, parallelism, exploration |
+| `monitoring_metrics.py` | DNS + persistence metric dicts                                        |
+| `discovery_metrics.py`  | Discovery summary/cache/policy/lag metric builders                    |
+| `mgmt_summary.py`       | `/mgmt/v1` cluster/nodes/routes/catalog/health summaries              |
+| `consensus.md`          | Canonical Raft vs fabric consensus matrix                             |
 
 Further extraction (Cluster/RPC engine, discovery handlers) can continue
 incrementally without changing the public `MPREGServer` entry point.
@@ -347,4 +347,3 @@ incrementally without changing the public `MPREGServer` entry point.
 ## Structured errors
 
 See `mpreg.core.errors` and the protocol specification error code table.
-

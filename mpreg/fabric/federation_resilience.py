@@ -34,7 +34,6 @@ from ..core.statistics import (
     FederationHealth,
     HealthCheckResult,
     ResilienceMetrics,
-    ResourceMetrics,
 )
 from .federation_optimized import CircuitBreaker, ClusterIdentity
 
@@ -727,9 +726,7 @@ class FederationAutoRecovery:
             cluster_id,
         )
         health_metrics = self.health_monitor.cluster_health.get(cluster_id)
-        if health_metrics and health_metrics.status == HealthStatus.HEALTHY:
-            return True
-        return False
+        return bool(health_metrics and health_metrics.status == HealthStatus.HEALTHY)
 
     async def _circuit_breaker_recovery(self, cluster_id: str) -> bool:
         """Circuit breaker recovery requires real health transitions — no sleep theater."""
@@ -738,12 +735,10 @@ class FederationAutoRecovery:
             cluster_id,
         )
         health_metrics = self.health_monitor.cluster_health.get(cluster_id)
-        if health_metrics and health_metrics.status in [
-            HealthStatus.HEALTHY,
-            HealthStatus.DEGRADED,
-        ]:
-            return True
-        return False
+        return bool(
+            health_metrics
+            and health_metrics.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED]
+        )
 
     async def _graceful_degradation_recovery(self, cluster_id: str) -> bool:
         """Graceful degradation requires real traffic shaping — not simulated."""

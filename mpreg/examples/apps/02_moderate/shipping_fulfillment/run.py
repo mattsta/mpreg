@@ -90,7 +90,9 @@ async def main() -> None:
                     "create_shipment", create_shipment, ["shipping", "api"]
                 )
                 server.register_command("advance", advance, ["shipping", "api"])
-                server.register_command("get_shipment", get_shipment, ["shipping", "api"])
+                server.register_command(
+                    "get_shipment", get_shipment, ["shipping", "api"]
+                )
 
                 transport = InProcessCacheTransport()
                 protocol = FabricCacheProtocol(

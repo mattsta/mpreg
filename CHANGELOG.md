@@ -15,29 +15,34 @@ This release represents a complete architectural rewrite of MPREG's distributed 
 **Complete rewrite of distributed coordination** from `mpreg/federation/` to `mpreg/fabric/`:
 
 - **Routing Catalog & Engine** (`catalog.py`, `engine.py`, `router.py`)
+
   - Single unified catalog for functions, topics, queues, and cache profiles
   - Path-vector routing with multi-hop forwarding support
   - Policy-based routing with export/import filtering
   - Catalog delta propagation via gossip protocol
 
 - **Control Plane** (`control_plane.py`, `route_control.py`)
+
   - Link-state routing with topology awareness
   - Route announcement and withdrawal protocols
   - BGP-inspired path-vector routing with loop prevention
   - Route security with cryptographic verification
 
 - **Federation Capabilities**
+
   - RPC forwarding across clusters (`rpc_messages.py`, `router.py`)
   - Pub/sub message forwarding (`pubsub_forwarding.py`, `pubsub_router.py`)
   - Queue federation with delivery guarantees (`queue_federation.py`, `queue_delivery.py`)
   - Cache federation with profile-based selection (`cache_federation.py`, `cache_selection.py`)
 
 - **Transport Layer**
+
   - Unified message envelope codec (`message.py`, `message_codec.py`)
   - Server-to-server transport adapters (`server_transport.py`, `server_gossip_transport.py`)
   - Raft consensus transport (`raft_transport.py`, `raft_messages.py`)
 
 - **Gossip & Membership**
+
   - Epidemic gossip protocol (`gossip.py`, `gossip_transport.py`)
   - Peer directory and discovery (`peer_directory.py`, `membership.py`)
   - Auto-discovery service (`auto_discovery.py`)
@@ -53,11 +58,13 @@ This release represents a complete architectural rewrite of MPREG's distributed 
 **New pluggable persistence layer** for stateful components:
 
 - **Core Abstractions** (`backend.py`, `config.py`, `registry.py`)
+
   - Generic key-value store interface
   - Pluggable backend registry (in-memory, file-based, future: PostgreSQL and other stores)
   - Configuration-driven persistence activation
 
 - **Component Stores**
+
   - Cache persistence (`cache_store.py`)
   - Message queue persistence (`queue_store.py`)
   - Generic KV store (`kv_store.py`)
@@ -72,12 +79,14 @@ This release represents a complete architectural rewrite of MPREG's distributed 
 **Major refactoring of `MPREGServer`** (5,738 lines changed):
 
 - **Fabric Integration**
+
   - Direct integration with `FabricRouter` for all routing decisions
   - Catalog-driven function/topic/queue registration
   - Unified message envelope handling
   - Multi-hop RPC forwarding with hop budget tracking
 
 - **Connection Management**
+
   - Improved peer lifecycle management
   - Catalog snapshot synchronization on peer connect
   - Connection storm prevention
@@ -92,11 +101,13 @@ This release represents a complete architectural rewrite of MPREG's distributed 
 ### Transport Layer Enhancements (`mpreg/core/transport/`)
 
 - **Adapter Registry** (`adapter_registry.py`)
+
   - Dynamic transport adapter registration
   - Protocol negotiation support
   - Future-proof for QUIC/HTTP3
 
 - **Factory Improvements** (`factory.py`)
+
   - Unified transport factory for client/server
   - Connection pooling and reuse
   - Circuit breaker integration
@@ -113,6 +124,7 @@ This release represents a complete architectural rewrite of MPREG's distributed 
 ### Configuration & Settings (`mpreg/core/config.py`)
 
 - **Fabric Routing Settings**
+
   - `fabric_routing_enabled`: Enable multi-hop forwarding
   - `fabric_routing_max_hops`: Hop budget for RPC requests
   - `persistence_enabled`: Activate persistence framework
@@ -126,11 +138,13 @@ This release represents a complete architectural rewrite of MPREG's distributed 
 ### Enhanced Type System
 
 - **Function Identity** (`datastructures/function_identity.py`)
+
   - Versioned function identifiers with semantic versioning
   - Resource-based function routing
   - Function metadata and capability tracking
 
 - **Cache Models** (`core/cache_models.py`, `core/cache_interfaces.py`)
+
   - Structured cache entry models
   - Cache profile definitions for federation
   - Multi-tier cache coordination
@@ -143,11 +157,13 @@ This release represents a complete architectural rewrite of MPREG's distributed 
 ### Monitoring & Observability
 
 - **Unified Monitoring** (`core/monitoring/unified_monitoring.py`)
+
   - ULID-based distributed tracing
   - Cross-system request tracking
   - Performance metric aggregation
 
 - **System Adapters** (`core/monitoring/system_adapters.py`)
+
   - OS-level metrics collection
   - Resource utilization tracking
   - System health monitoring
@@ -171,6 +187,7 @@ This release represents a complete architectural rewrite of MPREG's distributed 
 ### Client API Improvements (`mpreg/client/`)
 
 - **Simplified Client** (`client_api.py`, `client.py`)
+
   - Removed `client_peer.py` (integrated into main client)
   - Streamlined connection management
   - Better error handling and retries
@@ -183,6 +200,7 @@ This release represents a complete architectural rewrite of MPREG's distributed 
 ### CLI Enhancements (`mpreg/cli/`)
 
 - **Unified CLI** (`main.py`)
+
   - `mpreg demo` command for running examples
   - `mpreg discover` for cluster discovery
   - `mpreg health` for federation monitoring
@@ -202,6 +220,7 @@ This release represents a complete architectural rewrite of MPREG's distributed 
 **2,000+ comprehensive tests** (up from 1,800+):
 
 - **Fabric Test Coverage** (60+ new test files)
+
   - `test_fabric_router_impl.py`: Core routing engine tests
   - `test_fabric_catalog.py`: Catalog management tests
   - `test_fabric_route_control.py`: Route control plane tests
@@ -210,6 +229,7 @@ This release represents a complete architectural rewrite of MPREG's distributed 
   - Integration tests for RPC, pub/sub, queue, and cache federation
 
 - **Persistence Tests**
+
   - `test_persistence_framework.py`: Backend abstraction tests
   - `test_persistence_restart.py`: Restart/recovery scenarios
   - `test_blockchain_persistence.py`: Blockchain state persistence
@@ -222,6 +242,7 @@ This release represents a complete architectural rewrite of MPREG's distributed 
 ### Testing Infrastructure
 
 - **Port Allocation** (`core/port_allocator.py`, removed `tests/port_allocator.py`)
+
   - Moved port allocation to core for reuse in examples
   - Improved concurrent test execution
   - Dynamic port assignment for all tests
@@ -307,11 +328,13 @@ This release represents a complete architectural rewrite of MPREG's distributed 
 **New tier-based demo system**:
 
 - **Tier 1: Single System** (`tier1_single_system_full.py`)
+
   - Full capability demonstration of each subsystem
   - Run with `--system rpc|pubsub|queue|cache|fabric|monitoring`
   - Quick validation of core functionality
 
 - **Tier 2: Integrations** (`tier2_integrations.py`)
+
   - Two-system integration scenarios
   - Cross-system coordination examples
   - Real-world integration patterns

@@ -10,7 +10,7 @@ def normalize_zone(zone: str) -> str:
 def _split_labels(value: str) -> tuple[str, ...]:
     cleaned = value.strip().strip(".")
     if not cleaned:
-        return tuple()
+        return ()
     return tuple(label for label in cleaned.split(".") if label)
 
 NODE_LABEL_PREFIX = "b32-"

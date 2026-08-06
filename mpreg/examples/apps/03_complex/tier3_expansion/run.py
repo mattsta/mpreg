@@ -202,9 +202,7 @@ async def main() -> None:
                         "cache.l4",
                         "cache.put_get",
                     ):
-                        key = GlobalCacheKey.from_data(
-                            "tier3.order", {"id": "o-1"}
-                        )
+                        key = GlobalCacheKey.from_data("tier3.order", {"id": "o-1"})
                         await cache.put(
                             key,
                             {"id": "o-1", "stage": "enrich", "score": 0.9},

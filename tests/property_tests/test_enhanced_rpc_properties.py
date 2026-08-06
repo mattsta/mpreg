@@ -151,8 +151,7 @@ class TestEnhancedRPCProperties:
             accumulated_results: dict[str, Any],
         ):
             # Ensure valid relationships between indices and levels
-            if completed_levels > total_levels:
-                completed_levels = total_levels
+            completed_levels = min(completed_levels, total_levels)
             if level_index >= total_levels:
                 level_index = total_levels - 1
             if completed_levels <= level_index:
@@ -235,7 +234,7 @@ class TestEnhancedRPCProperties:
 
             total_execution_time = sum(level_execution_times)
             bottleneck_index = level_execution_times.index(max(level_execution_times))
-            bottleneck_time = level_execution_times[bottleneck_index]
+            level_execution_times[bottleneck_index]
             average_time = total_execution_time / len(level_execution_times)
 
             summary = RPCExecutionSummary(

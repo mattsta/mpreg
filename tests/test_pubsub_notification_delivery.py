@@ -45,7 +45,7 @@ class TestPubSubNotificationDelivery:
                 f"ws://127.0.0.1:{server_port}"
             ) as client:
                 # Subscribe to test topics
-                subscription_id = await client.subscribe(
+                await client.subscribe(
                     patterns=["test.*"], callback=message_callback, get_backlog=False
                 )
 
@@ -109,13 +109,13 @@ class TestPubSubNotificationDelivery:
                 MPREGPubSubExtendedClient(f"ws://127.0.0.1:{server_port}") as client2,
             ):
                 # Both subscribe to the same topic
-                sub1 = await client1.subscribe(
+                await client1.subscribe(
                     patterns=["broadcast.*"],
                     callback=client1_callback,
                     get_backlog=False,
                 )
 
-                sub2 = await client2.subscribe(
+                await client2.subscribe(
                     patterns=["broadcast.*"],
                     callback=client2_callback,
                     get_backlog=False,
@@ -183,13 +183,13 @@ class TestPubSubNotificationDelivery:
                 f"ws://127.0.0.1:{server_port}"
             ) as client:
                 # Subscribe with different wildcard patterns
-                sub1 = await client.subscribe(
+                await client.subscribe(
                     patterns=["user.*.login"],  # Single wildcard
                     callback=single_wildcard_callback,
                     get_backlog=False,
                 )
 
-                sub2 = await client.subscribe(
+                await client.subscribe(
                     patterns=["system.#"],  # Multi wildcard
                     callback=multi_wildcard_callback,
                     get_backlog=False,

@@ -132,9 +132,7 @@ def build_discovery_lag_metrics(server: Any) -> dict[str, Any]:
         server._discovery_resolver if server._discovery_resolver_enabled() else None
     )
     last_delta_at = resolver.stats.last_delta_at if resolver else None
-    delta_lag_seconds = (
-        timestamp - last_delta_at if last_delta_at is not None else None
-    )
+    delta_lag_seconds = timestamp - last_delta_at if last_delta_at is not None else None
     last_seed_at = resolver.stats.last_seed_at if resolver else None
     last_summary_export_at = server._summary_export_state.last_export_at
     summary_export_lag_seconds = (

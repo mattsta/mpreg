@@ -10,7 +10,7 @@ from mpreg.core.message_queue import DeliveryGuarantee
 from mpreg.core.message_queue_manager import create_reliable_queue_manager
 from mpreg.core.model import PubSubMessage, PubSubSubscription, TopicPattern
 from mpreg.core.topic_exchange import TopicExchange
-from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
+from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario
 
 async def main() -> None:
     with app_run(

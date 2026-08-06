@@ -14,6 +14,7 @@ and the topic pub/sub fabric routing system, enabling:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 import uuid
 from collections.abc import Callable
@@ -142,10 +143,8 @@ class CachePubSubIntegration(ManagedObject):
         self.notification_queue_dropped += 1
         sink = getattr(self, "_metrics_cache_pubsub_drop", None)
         if callable(sink):
-            try:
+            with contextlib.suppress(Exception):
                 sink(1)
-            except Exception:
-                pass
 
     def attach_metrics_sink(self, *, on_cache_pubsub_drop=None) -> None:
         """Attach optional Prom/metrics callbacks (OBS-04)."""
@@ -314,7 +313,7 @@ class CachePubSubIntegration(ManagedObject):
                         else:
                             # Unknown operator - log warning and return False to be safe
                             logger.warning(
-                                f"Unknown condition operator: '{op}' (repr: {repr(op)})"
+                                f"Unknown condition operator: '{op}' (repr: {op!r})"
                             )
                             return False
                 else:
@@ -420,7 +419,7 @@ class CachePubSubIntegration(ManagedObject):
         """Set up subscriptions for cache coordination messages."""
         try:
             # Subscribe to cache invalidation messages
-            invalidation_subscription = PubSubSubscription(
+            PubSubSubscription(
                 subscription_id=f"cache-invalidation-{self.cluster_id}",
                 patterns=(
                     TopicPattern(pattern="cache.invalidation.#", exact_match=False),
@@ -430,7 +429,7 @@ class CachePubSubIntegration(ManagedObject):
             )
 
             # Subscribe to cache coordination messages
-            coordination_subscription = PubSubSubscription(
+            PubSubSubscription(
                 subscription_id=f"cache-coordination-{self.cluster_id}",
                 patterns=(
                     TopicPattern(pattern="cache.coordination.#", exact_match=False),
@@ -481,7 +480,7 @@ class CachePubSubIntegration(ManagedObject):
             elif "pattern" in payload:
                 # Invalidate by pattern
                 pattern = payload["pattern"]
-                result = await self.cache_manager.invalidate(pattern)
+                await self.cache_manager.invalidate(pattern)
                 logger.info(f"Invalidated cache pattern via pub/sub: {pattern}")
 
         except Exception as e:

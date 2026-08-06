@@ -109,7 +109,9 @@ async def main() -> None:
                 ensure(gone is False, "missing should be False")
                 ok("unregister ok")
 
-            with scenario("send_via_topic strategies", "queue.topic_route", "queue.send"):
+            with scenario(
+                "send_via_topic strategies", "queue.topic_route", "queue.send"
+            ):
                 router = create_topic_queue_router(message_queue_manager=mqm)
                 await mqm.create_queue("strat-q")
                 await router.register_queue_pattern(
@@ -180,8 +182,7 @@ async def main() -> None:
                 hp = create_high_performance_topic_router(mqm)
                 ensure(hp.config.max_queue_fanout == 100, hp.config.max_queue_fanout)
                 ensure(
-                    hp.config.default_routing_strategy
-                    == RoutingStrategy.LOAD_BALANCED,
+                    hp.config.default_routing_strategy == RoutingStrategy.LOAD_BALANCED,
                     str(hp.config.default_routing_strategy),
                 )
                 ensure(hp.config.enable_load_balancing is True, "lb off")

@@ -126,13 +126,8 @@ async def main() -> None:
                 server.register_command("echo_msg", echo_msg, ["cpu"])
                 server.register_command("add", add, ["cpu"])
                 # Explicit FQN outside default ns
-                server.register_command(
-                    "orders.create", order_create, ["cpu"]
-                )
-                step(
-                    "registered bare echo_msg/add → demo.*; "
-                    "explicit orders.create"
-                )
+                server.register_command("orders.create", order_create, ["cpu"])
+                step("registered bare echo_msg/add → demo.*; explicit orders.create")
 
                 # User cannot steal platform echo
                 platform_denied = False
@@ -178,9 +173,7 @@ async def main() -> None:
                             and created.get("status") == "created",
                             f"orders.create {created!r}",
                         )
-                        ok(
-                            "bare→demo.*; explicit demo.add + orders.create"
-                        )
+                        ok("bare→demo.*; explicit demo.add + orders.create")
 
                 with scenario(
                     "bound client: bare qualifies under bound; outside denied",
@@ -204,16 +197,13 @@ async def main() -> None:
                             "create", "sku-2", locs=frozenset(["cpu"])
                         )
                         ensure(
-                            isinstance(created, dict)
-                            and created.get("sku") == "sku-2",
+                            isinstance(created, dict) and created.get("sku") == "sku-2",
                             f"bound bare create {created!r}",
                         )
                         # Call outside bound raises before wire
                         denied = False
                         try:
-                            await client.call(
-                                "demo.add", 1, 2, locs=frozenset(["cpu"])
-                            )
+                            await client.call("demo.add", 1, 2, locs=frozenset(["cpu"]))
                         except ValueError as exc:
                             denied = True
                             step(f"bound call deny: {exc}")
@@ -224,9 +214,7 @@ async def main() -> None:
                             step(f"platform list_peers ok type={type(peers).__name__}")
                         except Exception as exc:
                             # list_peers may still work; if not, note honestly
-                            step(
-                                f"platform call path: {type(exc).__name__}: {exc}"
-                            )
+                            step(f"platform call path: {type(exc).__name__}: {exc}")
                         ok("bound client: bare under orders.*; outside denied")
 
                 with scenario(

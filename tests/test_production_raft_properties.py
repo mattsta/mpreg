@@ -307,7 +307,7 @@ class MockNetwork:
                 return await target_node.handle_install_snapshot(payload)
             else:
                 return None
-        except Exception as e:
+        except Exception:
             # Simulate network errors
             return None
 
@@ -400,7 +400,6 @@ class RaftClusterTestMachine(RuleBasedStateMachine):
         """Trigger an election by advancing time past election timeout."""
         self.current_time += 1.0
         # In real implementation, would advance time and check for election
-        pass
 
     @rule()
     def create_network_partition(self):
@@ -421,17 +420,15 @@ class RaftClusterTestMachine(RuleBasedStateMachine):
     def crash_node(self):
         """Simulate node crash."""
         if self.raft_nodes:
-            node_id = random.choice(list(self.raft_nodes.keys()))
+            random.choice(list(self.raft_nodes.keys()))
             # In real implementation, would stop the node
-            pass
 
     @rule()
     def recover_node(self):
         """Simulate node recovery."""
         if self.raft_nodes:
-            node_id = random.choice(list(self.raft_nodes.keys()))
+            random.choice(list(self.raft_nodes.keys()))
             # In real implementation, would restart the node
-            pass
 
     # Safety Property Invariants
     @invariant()
@@ -575,11 +572,10 @@ def test_request_vote_properties(
     )
 
     # Determine expected vote behavior
-    should_grant_vote = True
 
     # Rule 1: Don't vote if request term is stale
     if request.term < follower_term:
-        should_grant_vote = False
+        pass
 
     # Rule 2: Don't vote if already voted for different candidate in this term
     if (
@@ -587,7 +583,7 @@ def test_request_vote_properties(
         and follower_voted_for is not None
         and follower_voted_for != request.candidate_id
     ):
-        should_grant_vote = False
+        pass
 
     # Rule 3: Don't vote if candidate's log is not up-to-date
     if follower_log:
@@ -600,7 +596,7 @@ def test_request_vote_properties(
         )
 
         if not candidate_log_up_to_date:
-            should_grant_vote = False
+            pass
 
     # This test verifies the logic rather than actual RPC handling
     # In a full test, we would call the actual handle_request_vote method
@@ -700,7 +696,6 @@ class TestRaftPropertyIntegration:
 
             # Verify log matching property holds
             # (Implementation would check actual log consistency)
-            pass
 
 if __name__ == "__main__":
     # Run property-based tests

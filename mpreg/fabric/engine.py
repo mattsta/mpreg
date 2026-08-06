@@ -129,7 +129,7 @@ class RoutingEngine:
             if target_cluster == self.local_cluster:
                 return FunctionRoutePlan(
                     target_cluster=target_cluster,
-                    targets=tuple(),
+                    targets=(),
                     selected_target=None,
                     forwarding=None,
                     is_local=False,
@@ -140,7 +140,7 @@ class RoutingEngine:
             if not remote_matches:
                 return FunctionRoutePlan(
                     target_cluster=None,
-                    targets=tuple(),
+                    targets=(),
                     selected_target=None,
                     forwarding=None,
                     is_local=False,
@@ -150,7 +150,7 @@ class RoutingEngine:
             if not selected:
                 return FunctionRoutePlan(
                     target_cluster=None,
-                    targets=tuple(),
+                    targets=(),
                     selected_target=None,
                     forwarding=None,
                     is_local=False,
@@ -161,7 +161,7 @@ class RoutingEngine:
         if target_cluster == self.local_cluster:
             return FunctionRoutePlan(
                 target_cluster=target_cluster,
-                targets=tuple(),
+                targets=(),
                 selected_target=None,
                 forwarding=None,
                 is_local=False,
@@ -177,7 +177,7 @@ class RoutingEngine:
         if not selected:
             return FunctionRoutePlan(
                 target_cluster=target_cluster,
-                targets=tuple(),
+                targets=(),
                 selected_target=None,
                 forwarding=None,
                 is_local=False,

@@ -22,10 +22,19 @@ async def main() -> None:
                 else:
                     received.append(str(payload))
 
-            with scenario("create + dual subscribe", "queue.create", "queue.subscribe", "queue.factories"):
+            with scenario(
+                "create + dual subscribe",
+                "queue.create",
+                "queue.subscribe",
+                "queue.factories",
+            ):
                 await manager.create_queue("jobs")
-                manager.subscribe_to_queue("jobs", "worker-1", "jobs.*", callback=worker)
-                manager.subscribe_to_queue("jobs", "worker-2", "jobs.*", callback=worker)
+                manager.subscribe_to_queue(
+                    "jobs", "worker-1", "jobs.*", callback=worker
+                )
+                manager.subscribe_to_queue(
+                    "jobs", "worker-2", "jobs.*", callback=worker
+                )
                 ok("jobs queue + 2 workers")
 
             with scenario("at-least-once", "queue.alo", "queue.send"):

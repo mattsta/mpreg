@@ -79,10 +79,7 @@ class GoodbyeReason(Enum):
     MANUAL_REMOVAL = "manual_removal"
 
 # Update RPCServerMessage union type (HELLO removed; catalog handles discovery)
-type RPCServerMessage = (
-    RPCServerGoodbye
-    | RPCServerStatus
-)
+type RPCServerMessage = RPCServerGoodbye | RPCServerStatus
 ```
 
 #### 1.2 Server-Level GOODBYE Handling
@@ -93,9 +90,13 @@ Add GOODBYE processing to the core server:
 
 ```python
 class MPREGServer:
-    async def _handle_goodbye_message(self, goodbye: RPCServerGoodbye, sender_url: str) -> None:
+    async def _handle_goodbye_message(
+        self, goodbye: RPCServerGoodbye, sender_url: str
+    ) -> None:
         """Handle GOODBYE message from departing peer."""
-        logger.info(f"[{self.settings.name}] Received GOODBYE from {goodbye.departing_node_url} (reason: {goodbye.reason.value})")
+        logger.info(
+            f"[{self.settings.name}] Received GOODBYE from {goodbye.departing_node_url} (reason: {goodbye.reason.value})"
+        )
 
         # Remove from cluster immediately
         await self.cluster.remove_peer(goodbye.departing_node_url)
@@ -113,13 +114,10 @@ class MPREGServer:
         goodbye = RPCServerGoodbye(
             departing_node_url=f"ws://{self.settings.host}:{self.settings.port}",
             cluster_id=self.settings.cluster_id,
-            reason=reason
+            reason=reason,
         )
 
-        goodbye_request = RPCServerRequest(
-            server=goodbye,
-            u=str(ulid.new())
-        )
+        goodbye_request = RPCServerRequest(server=goodbye, u=str(ulid.new()))
 
         # Broadcast to all connected peers
         message_bytes = self.serializer.serialize(goodbye_request.model_dump())
@@ -128,7 +126,9 @@ class MPREGServer:
                 await connection.send(message_bytes)
                 logger.info(f"[{self.settings.name}] Sent GOODBYE to {peer_url}")
             except Exception as e:
-                logger.warning(f"[{self.settings.name}] Failed to send GOODBYE to {peer_url}: {e}")
+                logger.warning(
+                    f"[{self.settings.name}] Failed to send GOODBYE to {peer_url}: {e}"
+                )
 ```
 
 #### 1.3 Connection Handling with GOODBYE
@@ -172,7 +172,9 @@ class Cluster:
                 providers.discard(peer_url)
                 if not providers:  # No more providers
                     del self.function_map[function_name]
-                    logger.info(f"Function {function_name} no longer available after {peer_url} departure")
+                    logger.info(
+                        f"Function {function_name} no longer available after {peer_url} departure"
+                    )
 ```
 
 ### Phase 3: Shutdown Integration (HIGH PRIORITY)
@@ -251,13 +253,20 @@ class PlanetScaleFederationDemo:
 
     async def create_regional_clusters(self) -> None:
         """Create 6 regional clusters instead of 25 individual nodes."""
-        regions = ["us-east", "us-west", "eu-west", "eu-central", "asia-east", "asia-southeast"]
+        regions = [
+            "us-east",
+            "us-west",
+            "eu-west",
+            "eu-central",
+            "asia-east",
+            "asia-southeast",
+        ]
 
         for region in regions:
             cluster = RegionalCluster(
                 region_id=region,
                 node_count=4,  # 1 leader + 3 spokes
-                fabric_router_url=self.fabric_routing_plane.get_url()
+                fabric_router_url=self.fabric_routing_plane.get_url(),
             )
             await cluster.start()
             await self.fabric_routing_plane.register_cluster(cluster.get_info())

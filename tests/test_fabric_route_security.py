@@ -135,7 +135,9 @@ async def test_require_signatures_rejects_self_attested_key_without_registry() -
         ),
         public_key_resolver=lambda _cid: None,
     )
-    updated = await processor2.handle_announcement(signed, sender_id="node-b", now=100.0)
+    updated = await processor2.handle_announcement(
+        signed, sender_id="node-b", now=100.0
+    )
     assert updated is False
 
 @pytest.mark.asyncio

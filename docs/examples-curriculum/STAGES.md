@@ -19,13 +19,13 @@ Each phase has **scope**, **POC apps**, **runner/docs deliverables**, and
 
 ### POC apps (must ship)
 
-| ID | Lesson | Asserts |
-|----|--------|---------|
-| `hello_rpc` | Register + call + dependency-style chain | Numeric/score invariant |
-| `hello_cluster` | 2 peers, resource `locs` | Cross-resource DAG result |
-| `hello_trace` | Correlation id / monitoring timeline | Timeline length ≥ N |
-| `ha_client_failover` | Multi-seed cluster client | Call succeeds with 2 seeds |
-| `job_queue_worker` | At-least-once queue worker | Expected deliveries |
+| ID                   | Lesson                                   | Asserts                    |
+| -------------------- | ---------------------------------------- | -------------------------- |
+| `hello_rpc`          | Register + call + dependency-style chain | Numeric/score invariant    |
+| `hello_cluster`      | 2 peers, resource `locs`                 | Cross-resource DAG result  |
+| `hello_trace`        | Correlation id / monitoring timeline     | Timeline length ≥ N        |
+| `ha_client_failover` | Multi-seed cluster client                | Call succeeds with 2 seeds |
+| `job_queue_worker`   | At-least-once queue worker               | Expected deliveries        |
 
 ### Runner / docs
 
@@ -37,11 +37,11 @@ Each phase has **scope**, **POC apps**, **runner/docs deliverables**, and
 
 ### Exit criteria
 
-- [x] `uv run mpreg-example smoke` exit 0  
-- [x] Each Phase A app has README + `run.py` entry  
-- [x] Dynamic ports only  
-- [x] OPERATE.md covers local lifecycle  
-- [x] Pytest markers `example_smoke` / `example_suite`  
+- [x] `uv run mpreg-example smoke` exit 0
+- [x] Each Phase A app has README + `run.py` entry
+- [x] Dynamic ports only
+- [x] OPERATE.md covers local lifecycle
+- [x] Pytest markers `example_smoke` / `example_suite`
 
 ---
 
@@ -55,20 +55,20 @@ Each phase has **scope**, **POC apps**, **runner/docs deliverables**, and
 
 ### POC apps
 
-| ID | Story | Planes |
-|----|--------|--------|
-| `order_intake` | Create order → cache idempotency key → notify → queue fulfill | RPC + cache + pubsub + queue |
-| `media_pipeline` | Multi-stage ETL-style RPC across resources | RPC multi-node |
-| `feature_flag_mesh` | Flags in cache + fabric gossip | Cache federation |
-| `webhook_dispatcher` | Event in, durable out | Pubsub + queue + monitoring |
-| `config_reload_live` | Restart retains catalog/routes | Persistence + fabric snapshot |
+| ID                   | Story                                                         | Planes                        |
+| -------------------- | ------------------------------------------------------------- | ----------------------------- |
+| `order_intake`       | Create order → cache idempotency key → notify → queue fulfill | RPC + cache + pubsub + queue  |
+| `media_pipeline`     | Multi-stage ETL-style RPC across resources                    | RPC multi-node                |
+| `feature_flag_mesh`  | Flags in cache + fabric gossip                                | Cache federation              |
+| `webhook_dispatcher` | Event in, durable out                                         | Pubsub + queue + monitoring   |
+| `config_reload_live` | Restart retains catalog/routes                                | Persistence + fabric snapshot |
 
 ### Exit criteria
 
-- [x] `order_intake` in suite  
-- [x] Suite documents which planes each app touches  
-- [x] All Phase B POC apps shipped  
-- [x] Production exit ramps reference profiles + HA client  
+- [x] `order_intake` in suite
+- [x] Suite documents which planes each app touches
+- [x] All Phase B POC apps shipped
+- [x] Production exit ramps reference profiles + HA client
 
 ---
 
@@ -81,20 +81,20 @@ Each phase has **scope**, **POC apps**, **runner/docs deliverables**, and
 
 ### POC apps
 
-| ID | Story | Operators |
-|----|--------|-----------|
-| `multi_region_shop` | Two clusters, federated RPC | Fabric bridging, cluster_id, locs |
-| `signed_route_border` | Key rotation under traffic | Route security |
-| `partition_safe_counter` | Minority cannot commit | Raft teaching |
-| `discovery_join` | Node joins via discovery | Membership |
-| `chaos_checkout` | Fault inject + deadlines | FaultInjector + call policy |
+| ID                       | Story                       | Operators                         |
+| ------------------------ | --------------------------- | --------------------------------- |
+| `multi_region_shop`      | Two clusters, federated RPC | Fabric bridging, cluster_id, locs |
+| `signed_route_border`    | Key rotation under traffic  | Route security                    |
+| `partition_safe_counter` | Minority cannot commit      | Raft teaching                     |
+| `discovery_join`         | Node joins via discovery    | Membership                        |
+| `chaos_checkout`         | Fault inject + deadlines    | FaultInjector + call policy       |
 
 ### Exit criteria
 
-- [x] `multi_region_shop` green in suite  
-- [x] Chaos apps fail closed with clear messages  
-- [x] All Phase C POC apps shipped  
-- [x] Cross-links to FABRIC_* and DISCOVERY runbooks  
+- [x] `multi_region_shop` green in suite
+- [x] Chaos apps fail closed with clear messages
+- [x] All Phase C POC apps shipped
+- [x] Cross-links to FABRIC\_\* and DISCOVERY runbooks
 
 ---
 
@@ -108,9 +108,9 @@ Each phase has **scope**, **POC apps**, **runner/docs deliverables**, and
 
 ### Exit criteria
 
-- [x] Flagship README + runnable `global_edge_control_plane`  
-- [x] Included in full suite (35 apps)  
-- [x] Explicit non-claims section  
+- [x] Flagship README + runnable `global_edge_control_plane`
+- [x] Included in full suite (35 apps)
+- [x] Explicit non-claims section
 
 ---
 
@@ -144,31 +144,31 @@ FQN namespace deny (`mpreg.*`); F2–F8/F17; default-on probe for every app.
 
 ## Phase I — Residual polish + FQN teach + docs (**COMPLETE**)
 
-| ID | Lesson |
-|----|--------|
-| `rpc_fqn_namespace` | Bare→FQN, `mpreg.*` deny, `bound_rpc_namespace` |
-| F13 | `route_not_found` fabric-bridge messaging |
-| F15 | Deadline client fail-closed ≠ handler preemption (docs) |
-| F16 | `list_port_categories` + unknown-category errors |
-| F19 | RaftOracle dual-leader fail-fast at `observe_role` |
+| ID                  | Lesson                                                  |
+| ------------------- | ------------------------------------------------------- |
+| `rpc_fqn_namespace` | Bare→FQN, `mpreg.*` deny, `bound_rpc_namespace`         |
+| F13                 | `route_not_found` fabric-bridge messaging               |
+| F15                 | Deadline client fail-closed ≠ handler preemption (docs) |
+| F16                 | `list_port_categories` + unknown-category errors        |
+| F19                 | RaftOracle dual-leader fail-fast at `observe_role`      |
 
 **Registry total: 71 apps.** Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md).
 
 ### Exit criteria (Phase I)
 
-- [x] FQN curriculum proof app green  
-- [x] Residual Info friction closed or honest non-claim  
-- [x] FEATURE_CATALOG / TRACKER / APP_CATALOG current  
-- [x] unit + full suite green at 71  
+- [x] FQN curriculum proof app green
+- [x] Residual Info friction closed or honest non-claim
+- [x] FEATURE_CATALOG / TRACKER / APP_CATALOG current
+- [x] unit + full suite green at 71
 
 ---
 
 ## Continuous practices (all phases)
 
-1. **Demo-as-test** — smoke on PR; suite on main/nightly as capacity allows.  
-2. **No fixed ports** in apps.  
-3. **Tracker updates** when apps land.  
-4. **Prefer extending apps/** over growing `real_world_examples.py`.  
+1. **Demo-as-test** — smoke on PR; suite on main/nightly as capacity allows.
+2. **No fixed ports** in apps.
+3. **Tracker updates** when apps land.
+4. **Prefer extending apps/** over growing `real_world_examples.py`.
 5. **CLI is the user interface** — `uv run mpreg-example` / `mpreg examples` / `mpreg demo` only (never `python -m`).
 
 ## Dependency graph (implementation)
@@ -316,4 +316,3 @@ APP_CATALOG Phase P–T rows; README shipped count **97**. Exit: docs truth only
 
 PROJECT_PLAN growth matrix Total **97**; baseline lists Phase T–V complete.
 Active sequential queue empty aside from deferred topology/product scale.
-

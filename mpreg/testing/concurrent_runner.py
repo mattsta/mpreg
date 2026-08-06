@@ -97,6 +97,7 @@ class ConcurrentSuiteRunner:
             )
 
             assert proc.stdout is not None
+
             # Mirror pytest output into log + this process stdout
             def _pump() -> None:
                 for raw in iter(proc.stdout.readline, b""):

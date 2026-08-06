@@ -204,7 +204,7 @@ class AdvancedCacheOperations:
         self, request: AtomicOperationRequest, options: CacheOptions | None
     ) -> AtomicOperationResult:
         """Execute the actual atomic operation."""
-        start_time = time.time()
+        time.time()
 
         # Get current value
         current_result = await self.cache_manager.get(request.key, options)

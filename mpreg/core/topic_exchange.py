@@ -236,9 +236,7 @@ class TopicExchange:
             prefix = prefix.split("#", 1)[0]
         return prefix.rstrip(".")
 
-    def _data_plane_allowed(
-        self, namespace: str, *, write: bool
-    ) -> tuple[bool, str]:
+    def _data_plane_allowed(self, namespace: str, *, write: bool) -> tuple[bool, str]:
         engine = self.namespace_policy
         if engine is None or not getattr(engine, "enabled", False):
             return True, "policy_disabled"
@@ -261,7 +259,7 @@ class TopicExchange:
             ns = self._topic_namespace(pattern.pattern)
             if not ns:
                 continue
-            allowed, reason = self._data_plane_allowed(ns, write=False)
+            allowed, _reason = self._data_plane_allowed(ns, write=False)
             if not allowed:
                 return False
 

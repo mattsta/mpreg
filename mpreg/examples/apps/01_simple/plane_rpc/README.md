@@ -26,14 +26,14 @@ mpreg-example → tier1.demo_rpc
 
 ## Observability (Phase G)
 
-This app enables ``app_run(..., probe=True)`` so every measured operation
+This app enables `app_run(..., probe=True)` so every measured operation
 feeds an in-process :class:`ExampleProbe`.
 
 Look for these annotations in the run log:
 
-- ``◆ feature:mon.slo`` — latency/throughput scenario
-- ``◆ obs:`` lines — per-op count, avg/p50/p95/p99 ms, and ``throughput_ops_s``
-- ``server-metrics`` steps when a live ``ServerMetricsTracker.snapshot()`` is available
+- `◆ feature:mon.slo` — latency/throughput scenario
+- `◆ obs:` lines — per-op count, avg/p50/p95/p99 ms, and `throughput_ops_s`
+- `server-metrics` steps when a live `ServerMetricsTracker.snapshot()` is available
 
 ```bash
 uv run mpreg-example run plane_rpc
@@ -48,5 +48,5 @@ uv run mpreg-example run plane_rpc
 
 ## Production exit ramp
 
-- Prefer product apps for learning; use plane_* for depth drills.
+- Prefer product apps for learning; use plane\_\* for depth drills.
 - Legacy: `mpreg demo tier1` now routes here via mpreg-example.

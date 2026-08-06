@@ -46,7 +46,10 @@ filter. Use a policy directory to restrict which neighbors receive specific
 announcements:
 
 ```python
-from mpreg.fabric.route_policy_directory import RouteNeighborPolicy, RoutePolicyDirectory
+from mpreg.fabric.route_policy_directory import (
+    RouteNeighborPolicy,
+    RoutePolicyDirectory,
+)
 
 export_directory = RoutePolicyDirectory(
     default_policy=RoutePolicy(allowed_destinations=set())
@@ -71,7 +74,10 @@ apply their import policies locally.
 Override imports for specific neighbors with a policy directory:
 
 ```python
-from mpreg.fabric.route_policy_directory import RouteNeighborPolicy, RoutePolicyDirectory
+from mpreg.fabric.route_policy_directory import (
+    RouteNeighborPolicy,
+    RoutePolicyDirectory,
+)
 
 directory = RoutePolicyDirectory(default_policy=RoutePolicy(max_hops=4))
 directory.register(

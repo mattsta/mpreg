@@ -149,7 +149,7 @@ class RaftSnapshot:
         snapshot_data = {
             "last_included_index": self.last_included_index,
             "last_included_term": self.last_included_term,
-            "configuration": sorted(list(self.configuration)),
+            "configuration": sorted(self.configuration),
             "snapshot_id": self.snapshot_id,
             "created_at": self.created_at,
             "state_machine_state": self.state_machine_state.hex(),

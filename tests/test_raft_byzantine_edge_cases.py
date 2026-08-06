@@ -203,9 +203,8 @@ class ByzantineNetworkTransport:
         try:
             # Apply clock skew if configured
             if self.node_id in self.network.clock_skew:
-                skew = self.network.clock_skew[self.node_id]
+                self.network.clock_skew[self.node_id]
                 # Modify request timestamp to simulate clock skew
-                adjusted_request = request
 
             # Check if honest node should reject Byzantine candidate
             if self.network.should_reject_byzantine_candidate(self.node_id, target):
@@ -705,7 +704,7 @@ class TestRaftByzantineEdgeCases:
         """Test handling of rapid, concurrent leader failures."""
         print("\n=== CONCURRENT LEADER FAILURES TEST ===")
 
-        nodes, network = await self.create_byzantine_cluster(7, temp_dir, test_context)
+        nodes, _network = await self.create_byzantine_cluster(7, temp_dir, test_context)
 
         try:
             # Start all nodes

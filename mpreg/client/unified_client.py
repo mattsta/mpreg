@@ -9,17 +9,18 @@ that needs more than one data plane.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any, Self
 
 from loguru import logger
 
 from ..core.model import RPCCommand
 from ..core.rpc_naming import DEFAULT_USER_NAMESPACE, PlatformRpc
+from ..core.transport.interfaces import TransportConfig
 from .call_policy import ClientCallPolicy
 from .client_api import MPREGClientAPI
 from .pubsub_client import MPREGPubSubClient, PubSubMessage
-from ..core.transport.interfaces import TransportConfig
 
 unified_log = logger
 
@@ -28,14 +29,14 @@ def _result_error_code(raw: Any) -> int | None:
     if isinstance(raw, dict) and raw.get("error_code") is not None:
         try:
             return int(raw["error_code"])
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
     code = getattr(raw, "error_code", None)
     if code is None:
         return None
     try:
         return int(code)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 @dataclass(slots=True)
@@ -62,9 +63,7 @@ class QueueSendResult:
                 error_message=(
                     str(raw["error_message"])
                     if raw.get("error_message") is not None
-                    else (
-                        str(raw["error"]) if raw.get("error") is not None else None
-                    )
+                    else (str(raw["error"]) if raw.get("error") is not None else None)
                 ),
                 error_code=_result_error_code(raw),
                 raw=raw,
@@ -94,10 +93,7 @@ class CacheOpResult:
     def from_raw(cls, raw: Any, *, value_key: str = "value") -> CacheOpResult:
         if isinstance(raw, dict):
             # COR-T13-04 / ERG-T13-03: require explicit success; never infer from entry key
-            if "success" in raw:
-                success = bool(raw["success"])
-            else:
-                success = False
+            success = bool(raw["success"]) if "success" in raw else False
             return cls(
                 success=success,
                 value=raw.get(value_key, raw.get("entry", raw.get("data"))),
@@ -111,7 +107,11 @@ class CacheOpResult:
             )
         if hasattr(raw, "success"):
             entry = getattr(raw, "entry", None)
-            value = getattr(entry, "value", None) if entry is not None else getattr(raw, "value", None)
+            value = (
+                getattr(entry, "value", None)
+                if entry is not None
+                else getattr(raw, "value", None)
+            )
             return cls(
                 success=bool(raw.success),
                 value=value,
@@ -173,7 +173,7 @@ class MPREGClient:
             self._pubsub_started = False
         await self.api.disconnect()
 
-    async def __aenter__(self) -> MPREGClient:
+    async def __aenter__(self) -> Self:
         await self.connect()
         await self.pubsub.start()
         self._pubsub_started = True
@@ -506,8 +506,8 @@ class MPREGClient:
 UnifiedMPREGClient = MPREGClient
 
 __all__ = [
-    "MPREGClient",
-    "UnifiedMPREGClient",
-    "QueueSendResult",
     "CacheOpResult",
+    "MPREGClient",
+    "QueueSendResult",
+    "UnifiedMPREGClient",
 ]

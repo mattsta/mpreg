@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 
 import pytest
 
@@ -21,7 +22,9 @@ def test_rpc_response_accepts_w3c_fields() -> None:
         u="u-1",
         traceparent="00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01",
         tracestate="vendor=1",
-        headers={"traceparent": "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01"},
+        headers={
+            "traceparent": "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01"
+        },
     )
     d = r.model_dump()
     assert d["traceparent"].startswith("00-")
@@ -76,11 +79,7 @@ async def test_live_rpc_echoes_trace_to_client() -> None:
                 assert str(ctx["traceparent"]).startswith("00-")
         finally:
             task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError, Exception):
                 await task
-            except (asyncio.CancelledError, Exception):
-                pass
-            try:
+            with contextlib.suppress(Exception):
                 await server.shutdown()
-            except Exception:
-                pass

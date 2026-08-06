@@ -76,16 +76,15 @@ async def main() -> None:
                     "client.api",
                 ):
                     async with MPREGClientAPI(url) as client:
-                        out = await client.call(
-                            "echo", "hi", locs=frozenset(["t"])
-                        )
+                        out = await client.call("echo", "hi", locs=frozenset(["t"]))
                         ensure(out == "e:hi", f"got {out!r}")
                         ctx = client.last_trace_context()
                         # Phase P: server echoes W3C + client seeds outbound —
                         # last_trace_context must be populated after every call.
                         ensure(isinstance(ctx, dict), f"ctx not dict: {ctx!r}")
                         ensure(
-                            "traceparent" in ctx and str(ctx["traceparent"]).startswith("00-"),
+                            "traceparent" in ctx
+                            and str(ctx["traceparent"]).startswith("00-"),
                             f"missing/bad traceparent in {ctx!r}",
                         )
                         ensure(
@@ -93,9 +92,7 @@ async def main() -> None:
                             "last_trace_context not callable",
                         )
                         # Second call continues / refreshes trace surface
-                        out2 = await client.call(
-                            "echo", "again", locs=frozenset(["t"])
-                        )
+                        out2 = await client.call("echo", "again", locs=frozenset(["t"]))
                         ensure(out2 == "e:again", f"got {out2!r}")
                         ctx2 = client.last_trace_context()
                         ensure(

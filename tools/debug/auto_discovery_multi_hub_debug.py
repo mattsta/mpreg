@@ -177,7 +177,7 @@ def _build_settings(
         advertised_urls=None,
         gossip_interval=gossip_interval,
         log_level=log_level,
-        log_debug_scopes=("peer_dial",) if peer_dial_diagnostics else tuple(),
+        log_debug_scopes=("peer_dial",) if peer_dial_diagnostics else (),
         monitoring_enabled=False,
         fabric_routing_enabled=False,
     )
@@ -265,7 +265,7 @@ def _capture_snapshot(
         if function_catalog_discovered >= threshold.min_discovered_peers:
             nodes_meeting_function_threshold += 1
 
-        function_entries = tuple()
+        function_entries = ()
         if server._fabric_control_plane is not None:
             function_entries = (
                 server._fabric_control_plane.index.catalog.functions.entries(now=now)
@@ -531,18 +531,18 @@ def _print_distribution_summary(
             )
     if not node_counts:
         return DistributionSummary(
-            lowest_nodes=tuple(),
-            highest_nodes=tuple(),
-            most_frequent_peers=tuple(),
-            least_frequent_peers=tuple(),
+            lowest_nodes=(),
+            highest_nodes=(),
+            most_frequent_peers=(),
+            least_frequent_peers=(),
             local_function_counts=tuple(local_function_counts),
             refresh_task_states=tuple(refresh_task_states),
             node_departed_counts=tuple(node_departed_counts),
-            most_marked_departed_peers=tuple(),
-            missing_peers_for_lowest_nodes=tuple(),
-            final_node_metrics=tuple(),
-            zero_local_function_nodes=tuple(),
-            seed_dial_lines=tuple(),
+            most_marked_departed_peers=(),
+            missing_peers_for_lowest_nodes=(),
+            final_node_metrics=(),
+            zero_local_function_nodes=(),
+            seed_dial_lines=(),
         )
     summary_size = min(10, len(node_counts))
     lowest_nodes = node_counts[:summary_size]
@@ -715,7 +715,7 @@ def _print_distribution_summary(
         highest_nodes=tuple(highest_nodes),
         most_frequent_peers=tuple(peer_frequency[:summary_size])
         if peer_frequency
-        else tuple(),
+        else (),
         least_frequent_peers=tuple(low_peers),
         local_function_counts=tuple(local_function_counts),
         refresh_task_states=tuple(refresh_task_states),

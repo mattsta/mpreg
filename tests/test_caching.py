@@ -882,7 +882,7 @@ class TestS4LRUCache:
         assert was_hit
         assert cache.key_to_segment[key] == 3
 
-        was_hit, evicted = cache.access(key)  # Still segment 3 (highest)
+        was_hit, _evicted = cache.access(key)  # Still segment 3 (highest)
         assert was_hit
         assert cache.key_to_segment[key] == 3
 
@@ -983,7 +983,7 @@ class TestS4LRUIntegration:
         cache = create_s4lru_cache_manager(max_entries=8, segments=4)
 
         key1 = CacheKey.create("func", (1,), {})
-        key2 = CacheKey.create("func", (2,), {})
+        CacheKey.create("func", (2,), {})
 
         # Cache miss
         assert cache.get(key1) is None
@@ -1104,9 +1104,7 @@ class TestS4LRUVsTraditionalLRU:
         # under tiny max_entries can still demote a hot key during access
         # traffic — require at least one hot survivor and strong LRU retention.
         assert lru_retained >= 2, f"LRU retained only {lru_retained}/3 hot keys"
-        assert s4lru_retained >= 1, (
-            f"S4LRU retained only {s4lru_retained}/3 hot keys"
-        )
+        assert s4lru_retained >= 1, f"S4LRU retained only {s4lru_retained}/3 hot keys"
 
         await s4lru_cache.shutdown()
         await lru_cache.shutdown()

@@ -473,16 +473,14 @@ class PerformanceMetricsService:
         error = baseline * self.thresholds.throughput_drop_ratio_error
         critical = baseline * self.thresholds.throughput_drop_ratio_critical
 
-        if warning < error:
-            warning = error
-        if error < critical:
-            error = critical
+        warning = max(warning, error)
+        error = max(error, critical)
 
         return warning, error, critical
 
     async def _check_thresholds(self) -> None:
         """Check performance thresholds and trigger alerts."""
-        current_time = time.time()
+        time.time()
 
         with self._lock:
             for cluster_id, metrics in self.cluster_metrics.items():
@@ -696,7 +694,7 @@ class PerformanceMetricsService:
         with self._lock:
             if alert_id in self.active_alerts:
                 alert = self.active_alerts[alert_id]
-                resolved_alert = PerformanceAlert(
+                PerformanceAlert(
                     alert_id=alert.alert_id,
                     cluster_id=alert.cluster_id,
                     node_id=alert.node_id,

@@ -66,10 +66,7 @@ def serialize_request_vote_response(response: RequestVoteResponse) -> dict[str, 
 
 def deserialize_request_vote_response(data: dict[str, Any]) -> RequestVoteResponse:
     # COR-T13-01: missing vote_granted → False (fail-closed), same as InstallSnapshot.
-    if "vote_granted" in data:
-        vote_granted = bool(data["vote_granted"])
-    else:
-        vote_granted = False
+    vote_granted = bool(data["vote_granted"]) if "vote_granted" in data else False
     return RequestVoteResponse(
         term=int(data["term"]),
         vote_granted=vote_granted,
@@ -105,10 +102,7 @@ def deserialize_append_entries_response(
     data: dict[str, Any],
 ) -> AppendEntriesResponse:
     # COR-T13-01: missing success → False (fail-closed), same as InstallSnapshot.
-    if "success" in data:
-        success = bool(data["success"])
-    else:
-        success = False
+    success = bool(data["success"]) if "success" in data else False
     return AppendEntriesResponse(
         term=int(data["term"]),
         success=success,
@@ -158,10 +152,7 @@ def deserialize_install_snapshot_response(
     data: dict[str, Any],
 ) -> InstallSnapshotResponse:
     # COR-T11-10: missing success → False (fail-closed). Explicit True still works.
-    if "success" in data:
-        success = bool(data["success"])
-    else:
-        success = False
+    success = bool(data["success"]) if "success" in data else False
     return InstallSnapshotResponse(
         term=int(data["term"]),
         follower_id=str(data["follower_id"]),

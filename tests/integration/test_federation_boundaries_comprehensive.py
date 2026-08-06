@@ -206,11 +206,9 @@ class TestFederationBoundaries:
                 ]
             )
 
-            cross_federation_success = "beta_step" in result
             print(f"✗ Unexpected: Cross-federation communication succeeded: {result}")
 
         except Exception as e:
-            cross_federation_success = False
             print(f"✓ Expected: Cross-federation communication failed: {e}")
 
         # Verify that Alpha can still execute its own functions

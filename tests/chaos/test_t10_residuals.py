@@ -66,7 +66,7 @@ def test_catalog_update_id_dedup() -> None:
 def test_lru_access_order_is_ordered_dict() -> None:
     """PERF-T10-01: SmartCacheManager uses OrderedDict for O(1) LRU."""
     from mpreg.core.caching import CacheConfiguration, SmartCacheManager
-    
+
     cfg = CacheConfiguration()
     mgr = SmartCacheManager(cfg)
     assert isinstance(mgr.access_order, OrderedDict)
@@ -216,4 +216,3 @@ def test_status_fingerprint_dedup_on_server_method() -> None:
     before = tracker.announcement_count
     assert bound(status) is True
     assert tracker.announcement_count == before
-

@@ -76,7 +76,9 @@ async def main() -> None:
                 ensure(local.success and local.entry is not None, "A miss")
                 ok(f"A flag={local.entry.value}")
 
-            with scenario("B reads via L4", "cache.l4", "cache.fabric_protocol", "cache.sync"):
+            with scenario(
+                "B reads via L4", "cache.l4", "cache.fabric_protocol", "cache.sync"
+            ):
                 if hasattr(proto_a, "sync_cache_state"):
                     await proto_a.sync_cache_state("flags-b")
                 await asyncio.sleep(0.25)
@@ -109,10 +111,7 @@ async def main() -> None:
                     a_hit.entry is not None and a_hit.entry.value.get("pct") == 50,
                     f"A not updated {a_hit}",
                 )
-                ok(
-                    f"updated pct A=50 B={hit2.entry.value.get('pct')} "
-                    "(eventual L4 ok)"
-                )
+                ok(f"updated pct A=50 B={hit2.entry.value.get('pct')} (eventual L4 ok)")
 
             with scenario("second flag isolated", "cache.put_get"):
                 await cache_a.put(

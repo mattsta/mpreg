@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar, Token
 from dataclasses import dataclass, field
 from threading import RLock
-from typing import Iterator
 
 from mpreg.core.payloads import (
     PAYLOAD_FLOAT,

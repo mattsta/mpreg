@@ -95,7 +95,6 @@ def cli(ctx, verbose: bool, json_logs: bool):
 @cli.group()
 def client():
     """Client commands for interacting with MPREG servers."""
-    pass
 
 @client.command("call")
 @click.argument("fun")
@@ -406,7 +405,12 @@ def _parse_metadata_items(items: tuple[str, ...]) -> dict[str, MetadataValue]:
 @click.option("--namespace", required=True, help="Service namespace")
 @click.option("--protocol", default="tcp", help="Service protocol")
 @click.option("--port", type=int, required=True, help="Service port")
-@click.option("--target", "--targets", multiple=True, help="Service target host (repeatable; --targets alias)")
+@click.option(
+    "--target",
+    "--targets",
+    multiple=True,
+    help="Service target host (repeatable; --targets alias)",
+)
 @click.option("--tag", multiple=True, help="Service tag (repeatable)")
 @click.option("--capability", multiple=True, help="Service capability (repeatable)")
 @click.option("--metadata", multiple=True, help="Metadata key=value (repeatable)")
@@ -666,7 +670,6 @@ def dns_resolve(
 @client.group("namespace-policy")
 def namespace_policy():
     """Namespace policy management commands."""
-    pass
 
 @namespace_policy.command("validate")
 @click.option(
@@ -808,12 +811,10 @@ def namespace_policy_audit(url: str | None, limit: int | None):
 @cli.group()
 def discovery():
     """Discovery plane commands."""
-    pass
 
 @cli.group()
 def report():
     """Reporting commands."""
-    pass
 
 @discovery.command("query")
 @click.option(
@@ -1301,7 +1302,6 @@ def report_export_lag(url: str | None, output: str) -> None:
 @cli.group()
 def server():
     """Server management commands."""
-    pass
 
 @server.command("start")
 @click.option("--host", default="127.0.0.1", help="Host to bind")
@@ -1562,7 +1562,7 @@ def doctor(
         )
     # Phase H F3: fail closed with a clear hint when operators pass a WS RPC URL.
     _mu = monitoring_url.strip().lower()
-    if _mu.startswith("ws://") or _mu.startswith("wss://"):
+    if _mu.startswith(("ws://", "wss://")):
         raise click.UsageError(
             f"--url looks like a WebSocket RPC endpoint ({monitoring_url!r}). "
             "mpreg doctor probes the *monitoring HTTP* base "
@@ -1604,7 +1604,9 @@ def doctor(
         failures = 0
         rows: list[dict[str, str]] = []
         timeout_cfg = aiohttp.ClientTimeout(total=timeout)
-        async with aiohttp.ClientSession(timeout=timeout_cfg, headers=headers) as session:
+        async with aiohttp.ClientSession(
+            timeout=timeout_cfg, headers=headers
+        ) as session:
             for name, endpoint in checks:
                 try:
                     async with session.get(endpoint) as response:
@@ -1700,7 +1702,9 @@ def doctor(
                         # Lightweight connectivity: empty DAG / status-style call may
                         # 1001; success is establishing session + round-trip.
                         try:
-                            await client.call("mpreg.system.echo", "doctor", timeout=timeout)
+                            await client.call(
+                                "mpreg.system.echo", "doctor", timeout=timeout
+                            )
                             detail = "echo ok"
                             ok_dp = True
                         except Exception as exc:  # noqa: BLE001
@@ -1852,9 +1856,13 @@ def config_check(
     }
     warnings: list[str] = []
     if settings.monitoring_enabled and settings.monitoring_enable_cors:
-        warnings.append("monitoring CORS is enabled — disable in production unless needed")
+        warnings.append(
+            "monitoring CORS is enabled — disable in production unless needed"
+        )
     if settings.monitoring_enabled and not settings.monitoring_auth_token:
-        warnings.append("monitoring has no auth token — set monitoring_auth_token for production")
+        warnings.append(
+            "monitoring has no auth token — set monitoring_auth_token for production"
+        )
     mon_host = str(getattr(settings, "monitoring_host", None) or settings.host or "")
     if (
         settings.monitoring_enabled
@@ -1877,12 +1885,13 @@ def config_check(
             + " false — MPREGClient plane RPCs need managers "
             "(--enable-queue / --enable-cache or a profile such as dev.toml)"
         )
-    if settings.discovery_summary_export_enabled and not settings.discovery_summary_signing_secret:
+    if (
+        settings.discovery_summary_export_enabled
+        and not settings.discovery_summary_signing_secret
+    ):
         warnings.append("summary export enabled without signing secret")
     sec = settings.fabric_route_security_config
-    if settings.enable_cache_federation or (
-        settings.peers and len(settings.peers) > 0
-    ):
+    if settings.enable_cache_federation or (settings.peers and len(settings.peers) > 0):
         if sec is None or not sec.require_signatures:
             warnings.append(
                 "federated/multi-peer fabric without fabric_route_require_signatures=true"
@@ -1892,9 +1901,8 @@ def config_check(
                 "gossip envelopes are unsigned by default "
                 "(fabric_gossip_require_hmac=false) — route signing ≠ gossip authenticity"
             )
-    if (
-        settings.persistence_config is not None
-        and not getattr(settings, "fabric_snapshot_fail_on_restore_error", False)
+    if settings.persistence_config is not None and not getattr(
+        settings, "fabric_snapshot_fail_on_restore_error", False
     ):
         warnings.append(
             "fabric snapshot restore is best-effort "
@@ -1905,9 +1913,7 @@ def config_check(
             "mgmt audit is process-local only — set mgmt_audit_path for JSONL durability"
         )
     if sec is not None and sec.allow_unsigned:
-        warnings.append(
-            "fabric_route_allow_unsigned=true weakens route authenticity"
-        )
+        warnings.append("fabric_route_allow_unsigned=true weakens route authenticity")
     if (
         settings.discovery_summary_signing_secret
         and settings.discovery_summary_signing_secret.startswith("change-me")
@@ -1921,9 +1927,7 @@ def config_check(
         and isinstance(gossip_secret, str)
         and gossip_secret.startswith("change-me")
     ):
-        warnings.append(
-            "fabric_gossip_hmac_secret is still the profile placeholder"
-        )
+        warnings.append("fabric_gossip_hmac_secret is still the profile placeholder")
     if getattr(settings, "fabric_gossip_require_hmac", False) and not gossip_secret:
         warnings.append(
             "fabric_gossip_require_hmac=true without fabric_gossip_hmac_secret"
@@ -2003,19 +2007,18 @@ def config_check(
     emit(report, output_format=output_format, table_title="Config check")
     if explain:
         # Human field guide always on stderr-safe stdout after structured emit.
-        print("")
+        print()
         print("# config-check --explain (field guide)")
         for key, blurb in explain_guide.items():
             print(f"## {key}")
             print(blurb)
-            print("")
+            print()
     if warnings and strict:
         raise SystemExit(2)
 
 @cli.group("admin")
 def admin_group():
     """Management mutations: drain, detach, policy, audit (monitoring HTTP)."""
-    pass
 
 def _admin_base_url(url: str | None) -> str:
     if not url:
@@ -2062,23 +2065,25 @@ def admin_drain(
             "actor": actor,
             "reason": reason,
         }
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
+        async with (
+            aiohttp.ClientSession() as session,
+            session.post(
                 f"{base}/mgmt/v1/nodes/drain",
                 json=body,
                 headers=_admin_headers(token),
-            ) as resp:
-                data = await resp.json(content_type=None)
-                if as_json:
-                    console.print(data)
-                else:
-                    console.print(
-                        f"[{'green' if resp.status == 200 else 'red'}]"
-                        f"HTTP {resp.status} drain applied={data.get('applied')} "
-                        f"draining={data.get('draining', body['draining'])}[/]"
-                    )
-                if resp.status >= 400:
-                    raise SystemExit(1)
+            ) as resp,
+        ):
+            data = await resp.json(content_type=None)
+            if as_json:
+                console.print(data)
+            else:
+                console.print(
+                    f"[{'green' if resp.status == 200 else 'red'}]"
+                    f"HTTP {resp.status} drain applied={data.get('applied')} "
+                    f"draining={data.get('draining', body['draining'])}[/]"
+                )
+            if resp.status >= 400:
+                raise SystemExit(1)
 
     run_coro(_run())
 
@@ -2147,39 +2152,39 @@ def admin_detach(
 )
 @click.option("--limit", default=50, show_default=True, type=int)
 @click.option("--json", "as_json", is_flag=True, help="Emit JSON")
-def admin_audit(
-    url: str | None, token: str | None, limit: int, as_json: bool
-) -> None:
+def admin_audit(url: str | None, token: str | None, limit: int, as_json: bool) -> None:
     """Show recent management mutation audit entries."""
 
     async def _run() -> None:
         base = _admin_base_url(url)
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(
                 f"{base}/mgmt/v1/audit",
                 params={"limit": str(limit)},
                 headers=_admin_headers(token),
-            ) as resp:
-                data = await resp.json(content_type=None)
-                if as_json:
-                    console.print(data)
-                    return
-                mutations = data.get("mutations") or []
-                table = Table(title="Mgmt mutation audit")
-                table.add_column("event")
-                table.add_column("actor")
-                table.add_column("success")
-                table.add_column("detail")
-                for m in mutations:
-                    table.add_row(
-                        str(m.get("event")),
-                        str(m.get("actor")),
-                        str(m.get("success")),
-                        str(m.get("detail"))[:80],
-                    )
-                console.print(table)
-                if resp.status >= 400:
-                    raise SystemExit(1)
+            ) as resp,
+        ):
+            data = await resp.json(content_type=None)
+            if as_json:
+                console.print(data)
+                return
+            mutations = data.get("mutations") or []
+            table = Table(title="Mgmt mutation audit")
+            table.add_column("event")
+            table.add_column("actor")
+            table.add_column("success")
+            table.add_column("detail")
+            for m in mutations:
+                table.add_row(
+                    str(m.get("event")),
+                    str(m.get("actor")),
+                    str(m.get("success")),
+                    str(m.get("detail"))[:80],
+                )
+            console.print(table)
+            if resp.status >= 400:
+                raise SystemExit(1)
 
     run_coro(_run())
 
@@ -2223,7 +2228,6 @@ def admin_policy(
     as_json: bool,
 ) -> None:
     """Apply or dry-run discovery/namespace policy via monitoring HTTP (ERG-02)."""
-    from pathlib import Path
 
     async def _run() -> None:
         base = _admin_base_url(url)
@@ -2240,32 +2244,33 @@ def admin_policy(
         if reason is not None:
             body.setdefault("reason", reason)
         path = "/mgmt/v1/policy/dry-run" if dry_run else "/mgmt/v1/policy/apply"
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
+        async with (
+            aiohttp.ClientSession() as session,
+            session.post(
                 f"{base}{path}",
                 json=body,
                 headers=_admin_headers(token),
-            ) as resp:
-                data = await resp.json(content_type=None)
-                if as_json:
-                    console.print(data)
-                else:
-                    console.print(
-                        f"[{'green' if resp.status == 200 else 'red'}]"
-                        f"HTTP {resp.status} policy {'dry-run' if dry_run else 'apply'} "
-                        f"applied={data.get('applied', data.get('ok'))}[/]"
-                    )
-                    if isinstance(data, dict) and data.get("detail"):
-                        console.print(str(data.get("detail"))[:200])
-                if resp.status >= 400:
-                    raise SystemExit(1)
+            ) as resp,
+        ):
+            data = await resp.json(content_type=None)
+            if as_json:
+                console.print(data)
+            else:
+                console.print(
+                    f"[{'green' if resp.status == 200 else 'red'}]"
+                    f"HTTP {resp.status} policy {'dry-run' if dry_run else 'apply'} "
+                    f"applied={data.get('applied', data.get('ok'))}[/]"
+                )
+                if isinstance(data, dict) and data.get("detail"):
+                    console.print(str(data.get("detail"))[:200])
+            if resp.status >= 400:
+                raise SystemExit(1)
 
     run_coro(_run())
 
 @cli.group("profile")
 def profile_group():
     """List and show built-in settings profiles."""
-    pass
 
 def _profiles_dir() -> Path:
     return Path(__file__).resolve().parent.parent / "profiles"
@@ -2296,10 +2301,7 @@ def profile_list() -> None:
         tag = _PROFILE_RISK_TAGS.get(path.stem, "unspecified — read profile header")
         table.add_row(path.stem, tag, str(path))
     console.print(table)
-    console.print(
-        "Start with: [bold]mpreg server start-config "
-        f"{root}/dev.toml[/bold]"
-    )
+    console.print(f"Start with: [bold]mpreg server start-config {root}/dev.toml[/bold]")
 
 @profile_group.command("show")
 @click.argument("name")
@@ -2335,7 +2337,6 @@ def demo():
         uv run mpreg-example run plane_rpc
         uv run mpreg-example smoke
     """
-    pass
 
 def _demo_via_example(argv: list[str]) -> None:
     """Delegate demo CLI to the unified curriculum runner (entrypoints only)."""
@@ -2354,7 +2355,7 @@ def _demo_via_example(argv: list[str]) -> None:
 )
 def demo_tier1(system: str) -> None:
     """Run tier-1 plane tour(s) via mpreg-example."""
-    if system in ("all",):
+    if system == "all":
         _demo_via_example(["demo", "tier1"])
         return
     # federation is historical alias for fabric
@@ -2398,7 +2399,9 @@ def examples_group() -> None:
     """
 
 @examples_group.command("list")
-@click.option("--level", type=click.Choice(["L0", "L1", "L2", "L3", "L4"]), default=None)
+@click.option(
+    "--level", type=click.Choice(["L0", "L1", "L2", "L3", "L4"]), default=None
+)
 @click.option("--smoke", is_flag=True, help="Only smoke-bundle apps")
 @click.option("--suite", is_flag=True, help="Only suite-bundle apps")
 @click.option(
@@ -2502,7 +2505,6 @@ def discover(config: str | None, output: str):
         if output == "table":
             federation_cli.display_cluster_list(clusters)
         elif output == "json":
-
             # Convert dataclasses to dict for JSON serialization
             clusters_dict = [
                 {
@@ -2588,7 +2590,6 @@ def health(cluster: str | None, output: str):
         if output == "report":
             federation_cli.display_health_report(health_results)
         elif output == "json":
-
             # Convert dataclasses to dict for JSON serialization
             serializable_results: dict[str, JsonDict] = {}
             for cluster_id, result in health_results.items():
@@ -2693,7 +2694,6 @@ def cleanup(force: bool):
 @cli.group()
 def monitor():
     """Fabric federation monitoring commands."""
-    pass
 
 @monitor.command()
 @click.option(
@@ -2712,7 +2712,13 @@ def monitor():
     help="Monitoring base URL (or set MPREG_MONITORING_URL)",
 )
 @add_format_option
-def health_watch(interval: int, clusters: tuple[str, ...], summary: bool, url: str | None, output_format: str):
+def health_watch(
+    interval: int,
+    clusters: tuple[str, ...],
+    summary: bool,
+    url: str | None,
+    output_format: str,
+):
     """Continuously monitor cluster health."""
 
     async def _health_watch():
@@ -2734,7 +2740,11 @@ def health_watch(interval: int, clusters: tuple[str, ...], summary: bool, url: s
                                 endpoint = f"{base_url}/health/clusters/{cluster_id}"
                                 async with session.get(endpoint) as response:
                                     payload = await response.json()
-                                    emit(payload, output_format=output_format, table_title="Health")
+                                    emit(
+                                        payload,
+                                        output_format=output_format,
+                                        table_title="Health",
+                                    )
                         else:
                             endpoint = (
                                 f"{base_url}/health/summary"
@@ -2743,7 +2753,11 @@ def health_watch(interval: int, clusters: tuple[str, ...], summary: bool, url: s
                             )
                             async with session.get(endpoint) as response:
                                 payload = await response.json()
-                                emit(payload, output_format=output_format, table_title="Health")
+                                emit(
+                                    payload,
+                                    output_format=output_format,
+                                    table_title="Health",
+                                )
                     await asyncio.sleep(interval)
             except KeyboardInterrupt:
                 console.print("\n[yellow]⚠️ Health monitoring stopped[/yellow]")
@@ -2797,7 +2811,9 @@ def health_watch(interval: int, clusters: tuple[str, ...], summary: bool, url: s
     help="Monitoring base URL (or set MPREG_MONITORING_URL)",
 )
 @add_format_option
-def health_endpoint(cluster: str | None, summary: bool, url: str | None, output_format: str) -> None:
+def health_endpoint(
+    cluster: str | None, summary: bool, url: str | None, output_format: str
+) -> None:
     """Fetch health status from the monitoring endpoint."""
 
     async def _health_endpoint() -> None:
@@ -2843,7 +2859,13 @@ def health_endpoint(cluster: str | None, summary: bool, url: str | None, output_
     help="Monitoring base URL (or set MPREG_MONITORING_URL)",
 )
 @add_format_option
-def metrics_watch(interval: int, clusters: tuple[str, ...], system: str, url: str | None, output_format: str):
+def metrics_watch(
+    interval: int,
+    clusters: tuple[str, ...],
+    system: str,
+    url: str | None,
+    output_format: str,
+):
     """Continuously monitor cluster metrics."""
 
     async def _metrics_watch():
@@ -2871,7 +2893,11 @@ def metrics_watch(interval: int, clusters: tuple[str, ...], system: str, url: st
                     async with aiohttp.ClientSession() as session:
                         async with session.get(endpoint) as response:
                             payload = await response.json()
-                            emit(payload, output_format=output_format, table_title="Metrics")
+                            emit(
+                                payload,
+                                output_format=output_format,
+                                table_title="Metrics",
+                            )
                     await asyncio.sleep(interval)
             except KeyboardInterrupt:
                 console.print("\n[yellow]⚠️ Metrics monitoring stopped[/yellow]")
@@ -2923,7 +2949,9 @@ def metrics_watch(interval: int, clusters: tuple[str, ...], system: str, url: st
     envvar="MPREG_MONITORING_URL",
     help="Monitoring base URL (or set MPREG_MONITORING_URL)",
 )
-def status(cluster: str | None, output: str | None, output_format: str, url: str | None) -> None:
+def status(
+    cluster: str | None, output: str | None, output_format: str, url: str | None
+) -> None:
     """Show a compact admin status summary from monitoring endpoints."""
     if output is not None:
         output_format = "json" if output == "json" else "table"
@@ -3087,7 +3115,9 @@ def monitor_decisions(
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.get(endpoint) as response:
                 payload = await response.json(content_type=None)
-                emit(payload, output_format=output_format, table_title="Route decisions")
+                emit(
+                    payload, output_format=output_format, table_title="Route decisions"
+                )
 
     run_coro(_run())
 
@@ -3111,7 +3141,9 @@ def monitor_decisions(
     help="Monitoring base URL (or set MPREG_MONITORING_URL)",
 )
 @add_format_option
-def route_trace(destination: str, avoid: tuple[str, ...], url: str | None, output_format: str) -> None:
+def route_trace(
+    destination: str, avoid: tuple[str, ...], url: str | None, output_format: str
+) -> None:
     """Fetch a route selection trace from the monitoring endpoint."""
 
     async def _route_trace() -> None:
@@ -3129,7 +3161,9 @@ def route_trace(destination: str, avoid: tuple[str, ...], url: str | None, outpu
             async with session.get(endpoint, params=params) as response:
                 payload = await response.json()
                 if response.status != 200:
-                    emit(payload, output_format=output_format, table_title="Route trace")
+                    emit(
+                        payload, output_format=output_format, table_title="Route trace"
+                    )
                     return
                 emit(payload, output_format=output_format, table_title="Route trace")
 
@@ -3187,9 +3221,17 @@ def transport_endpoints(url: str | None, output_format: str) -> None:
             async with session.get(endpoint) as response:
                 payload = await response.json()
                 if response.status != 200:
-                    emit(payload, output_format=output_format, table_title="Transport endpoints")
+                    emit(
+                        payload,
+                        output_format=output_format,
+                        table_title="Transport endpoints",
+                    )
                     return
-                emit(payload, output_format=output_format, table_title="Transport endpoints")
+                emit(
+                    payload,
+                    output_format=output_format,
+                    table_title="Transport endpoints",
+                )
 
     run_coro(_transport_endpoints())
 
@@ -3299,7 +3341,9 @@ def persistence(url: str | None, output_format: str) -> None:
             async with session.get(endpoint) as response:
                 payload = await response.json()
                 if response.status != 200:
-                    emit(payload, output_format=output_format, table_title="Persistence")
+                    emit(
+                        payload, output_format=output_format, table_title="Persistence"
+                    )
                     return
                 emit(payload, output_format=output_format, table_title="Persistence")
 
@@ -3328,7 +3372,9 @@ def dns_metrics(url: str | None, output_format: str) -> None:
             async with session.get(endpoint) as response:
                 payload = await response.json()
                 if response.status != 200:
-                    emit(payload, output_format=output_format, table_title="DNS metrics")
+                    emit(
+                        payload, output_format=output_format, table_title="DNS metrics"
+                    )
                     return
                 emit(payload, output_format=output_format, table_title="DNS metrics")
 
@@ -3362,7 +3408,11 @@ def dns_watch(interval: float, url: str | None, output_format: str) -> None:
                 while True:
                     async with session.get(endpoint) as response:
                         payload = await response.json()
-                        emit(payload, output_format=output_format, table_title="DNS metrics")
+                        emit(
+                            payload,
+                            output_format=output_format,
+                            table_title="DNS metrics",
+                        )
                     await asyncio.sleep(interval)
             except KeyboardInterrupt:
                 console.print("\n[yellow]⚠️ DNS metrics watch stopped[/yellow]")
@@ -3400,7 +3450,11 @@ def persistence_watch(interval: int, url: str | None, output_format: str) -> Non
                 async with aiohttp.ClientSession() as session:
                     async with session.get(endpoint) as response:
                         payload = await response.json()
-                        emit(payload, output_format=output_format, table_title="Persistence")
+                        emit(
+                            payload,
+                            output_format=output_format,
+                            table_title="Persistence",
+                        )
                 await asyncio.sleep(interval)
         except KeyboardInterrupt:
             console.print("\n[yellow]⚠️ Persistence monitoring stopped[/yellow]")
@@ -3439,7 +3493,6 @@ def endpoints(url: str | None, output_format: str) -> None:
 @cli.group()
 def auto_discovery():
     """Auto-discovery management commands."""
-    pass
 
 @auto_discovery.command()
 @click.option(
@@ -3462,7 +3515,6 @@ def run(config: str | None, output: str):
         if output == "table":
             federation_cli.display_cluster_list(clusters)
         elif output == "json":
-
             clusters_dict = [
                 {
                     "cluster_id": cluster.cluster_id,
@@ -3535,7 +3587,6 @@ def generate(output_path: str):
 @cli.group()
 def config():
     """Configuration management commands."""
-    pass
 
 @config.command()
 @click.argument(

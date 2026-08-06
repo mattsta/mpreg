@@ -39,7 +39,9 @@ async def main() -> None:
                 f"deadline={m1.deadline_seconds}"
             )
 
-        with scenario("M2 factory: shared wall budget", "client.policy.m2", "rpc.deadline"):
+        with scenario(
+            "M2 factory: shared wall budget", "client.policy.m2", "rpc.deadline"
+        ):
             m2 = ClientCallPolicy.for_mode(
                 RpcExecutionMode.M2_SOFT_RT, deadline_seconds=1.5
             )
@@ -121,7 +123,10 @@ async def main() -> None:
                             step(f"expected timeout/fail: {type(exc).__name__}: {exc}")
                     elapsed = time.monotonic() - t0
                     ensure(failed, "slow work should exhaust M2 deadline")
-                    ensure(elapsed < 2.5, f"should fail closed quickly, took {elapsed:.2f}s")
+                    ensure(
+                        elapsed < 2.5,
+                        f"should fail closed quickly, took {elapsed:.2f}s",
+                    )
                     ok(f"fail-closed in {elapsed:.2f}s")
 
                 with scenario(

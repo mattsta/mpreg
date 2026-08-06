@@ -59,12 +59,12 @@ Semantic type system providing strong typing and validation:
 
 ```python
 # Semantic Types
-DaoId = str              # Unique DAO identifier
-ProposalId = str         # Unique proposal identifier
-MemberId = str           # Member identifier
-VotingPower = int        # Weighted voting power
-TokenAmount = int        # Token balances and amounts
-Timestamp = float        # Unix timestamps
+DaoId = str  # Unique DAO identifier
+ProposalId = str  # Unique proposal identifier
+MemberId = str  # Member identifier
+VotingPower = int  # Weighted voting power
+TokenAmount = int  # Token balances and amounts
+Timestamp = float  # Unix timestamps
 
 # Governance Enums
 class DaoType(Enum):
@@ -76,11 +76,11 @@ class DaoType(Enum):
     PROTOCOL_UPGRADE = "protocol_upgrade"
 
 class MembershipType(Enum):
-    TOKEN_HOLDER = "token_holder"        # Token-based membership
-    STAKE_BASED = "stake_based"          # Stake-weighted governance
-    INVITE_ONLY = "invite_only"          # Curated membership
-    REPUTATION_BASED = "reputation_based" # Merit-based governance
-    DELEGATION_BASED = "delegation_based" # Delegated governance
+    TOKEN_HOLDER = "token_holder"  # Token-based membership
+    STAKE_BASED = "stake_based"  # Stake-weighted governance
+    INVITE_ONLY = "invite_only"  # Curated membership
+    REPUTATION_BASED = "reputation_based"  # Merit-based governance
+    DELEGATION_BASED = "delegation_based"  # Delegated governance
 ```
 
 ### 2. Core Data Structures
@@ -92,13 +92,13 @@ class MembershipType(Enum):
 class DaoConfig:
     dao_type: DaoType
     membership_type: MembershipType
-    voting_period_seconds: int = 86400 * 7      # 7 days
-    execution_delay_seconds: int = 86400 * 2    # 2 days
-    quorum_threshold: float = 0.1               # 10%
-    approval_threshold: float = 0.5             # 50%
+    voting_period_seconds: int = 86400 * 7  # 7 days
+    execution_delay_seconds: int = 86400 * 2  # 2 days
+    quorum_threshold: float = 0.1  # 10%
+    approval_threshold: float = 0.5  # 50%
     proposal_deposit: TokenAmount = 100
     minimum_voting_power: VotingPower = 1
-    emergency_threshold: float = 0.67           # 67% for emergencies
+    emergency_threshold: float = 0.67  # 67% for emergencies
 ```
 
 #### DAO Members
@@ -141,17 +141,20 @@ class DaoProposal:
 ```python
 from mpreg.datastructures import (
     DecentralizedAutonomousOrganization,
-    DaoConfig, DaoType, MembershipType, DaoMember
+    DaoConfig,
+    DaoType,
+    MembershipType,
+    DaoMember,
 )
 
 # Create DAO configuration
 config = DaoConfig(
     dao_type=DaoType.COMMUNITY_GOVERNANCE,
     membership_type=MembershipType.TOKEN_HOLDER,
-    voting_period_seconds=7 * 86400,    # 7 days
-    quorum_threshold=0.25,              # 25% quorum
-    approval_threshold=0.6,             # 60% approval
-    proposal_deposit=500                # 500 token deposit
+    voting_period_seconds=7 * 86400,  # 7 days
+    quorum_threshold=0.25,  # 25% quorum
+    approval_threshold=0.6,  # 60% approval
+    proposal_deposit=500,  # 500 token deposit
 )
 
 # Initialize DAO
@@ -160,7 +163,7 @@ dao = DecentralizedAutonomousOrganization(
     description="Decentralized governance for MPREG ecosystem",
     dao_type=DaoType.COMMUNITY_GOVERNANCE,
     config=config,
-    treasury_balance=1000000  # 1M tokens in treasury
+    treasury_balance=1000000,  # 1M tokens in treasury
 )
 ```
 
@@ -173,7 +176,7 @@ founder = DaoMember(
     voting_power=10000,
     token_balance=100000,
     reputation_score=100,
-    metadata={"role": "founder", "region": "global"}
+    metadata={"role": "founder", "region": "global"},
 )
 
 developer = DaoMember(
@@ -181,7 +184,7 @@ developer = DaoMember(
     voting_power=5000,
     token_balance=50000,
     reputation_score=95,
-    metadata={"role": "developer", "specialization": "consensus"}
+    metadata={"role": "developer", "specialization": "consensus"},
 )
 
 # Add members to DAO
@@ -206,10 +209,10 @@ hub_dao = DecentralizedAutonomousOrganization(
         dao_type=DaoType.FEDERATION_GOVERNANCE,
         membership_type=MembershipType.STAKE_BASED,
         voting_period_seconds=5 * 86400,  # 5 days
-        quorum_threshold=0.4,             # 40% quorum
-        approval_threshold=0.67,          # Supermajority
-        emergency_threshold=0.8           # 80% for emergencies
-    )
+        quorum_threshold=0.4,  # 40% quorum
+        approval_threshold=0.67,  # Supermajority
+        emergency_threshold=0.8,  # 80% for emergencies
+    ),
 )
 
 # Add regional node operators
@@ -217,7 +220,7 @@ regional_nodes = [
     ("node_tokyo", 15000, "tokyo"),
     ("node_sydney", 12000, "sydney"),
     ("node_singapore", 18000, "singapore"),
-    ("node_mumbai", 10000, "mumbai")
+    ("node_mumbai", 10000, "mumbai"),
 ]
 
 for node_id, stake, city in regional_nodes:
@@ -225,7 +228,7 @@ for node_id, stake, city in regional_nodes:
         member_id=node_id,
         voting_power=stake,
         token_balance=stake * 2,
-        metadata={"city": city, "role": "node_operator"}
+        metadata={"city": city, "role": "node_operator"},
     )
     hub_dao = hub_dao.add_member(member)
 ```
@@ -242,10 +245,10 @@ funding_dao = DecentralizedAutonomousOrganization(
         dao_type=DaoType.PROJECT_FUNDING,
         membership_type=MembershipType.TOKEN_HOLDER,
         voting_period_seconds=14 * 86400,  # 2 weeks
-        quorum_threshold=0.2,              # 20% quorum
-        approval_threshold=0.5             # Simple majority
+        quorum_threshold=0.2,  # 20% quorum
+        approval_threshold=0.5,  # Simple majority
     ),
-    treasury_balance=5000000  # 5M token development fund
+    treasury_balance=5000000,  # 5M token development fund
 )
 
 # Add community stakeholders
@@ -253,7 +256,7 @@ community_members = [
     ("dev_alice", 50000, "protocol_dev"),
     ("validator_bob", 75000, "validator"),
     ("researcher_carol", 30000, "researcher"),
-    ("community_dave", 25000, "community_manager")
+    ("community_dave", 25000, "community_manager"),
 ]
 
 for member_id, tokens, role in community_members:
@@ -261,7 +264,7 @@ for member_id, tokens, role in community_members:
         member_id=member_id,
         voting_power=tokens,
         token_balance=tokens,
-        metadata={"role": role}
+        metadata={"role": role},
     )
     funding_dao = funding_dao.add_member(member)
 ```
@@ -277,11 +280,11 @@ tech_committee = DecentralizedAutonomousOrganization(
     config=DaoConfig(
         dao_type=DaoType.TECHNICAL_COMMITTEE,
         membership_type=MembershipType.REPUTATION_BASED,
-        voting_period_seconds=3 * 86400,   # 3 days for tech decisions
-        quorum_threshold=0.6,              # 60% quorum
-        approval_threshold=0.75,           # 75% approval
-        emergency_threshold=0.85           # 85% for emergency patches
-    )
+        voting_period_seconds=3 * 86400,  # 3 days for tech decisions
+        quorum_threshold=0.6,  # 60% quorum
+        approval_threshold=0.75,  # 75% approval
+        emergency_threshold=0.85,  # 85% for emergency patches
+    ),
 )
 
 # Add technical experts
@@ -290,7 +293,7 @@ tech_experts = [
     ("crypto_expert", 3, 95, "cryptography"),
     ("consensus_dev", 2, 90, "consensus"),
     ("protocol_architect", 3, 98, "architecture"),
-    ("audit_specialist", 2, 85, "auditing")
+    ("audit_specialist", 2, 85, "auditing"),
 ]
 
 for expert_id, voting_power, reputation, specialty in tech_experts:
@@ -299,7 +302,7 @@ for expert_id, voting_power, reputation, specialty in tech_experts:
         voting_power=voting_power,
         token_balance=1000,  # Minimal tokens needed
         reputation_score=reputation,
-        metadata={"specialty": specialty, "role": "technical_expert"}
+        metadata={"specialty": specialty, "role": "technical_expert"},
     )
     tech_committee = tech_committee.add_member(member)
 ```
@@ -318,13 +321,15 @@ upgrade_proposal = DaoProposal(
     proposal_type=ProposalType.PROTOCOL_UPGRADE,
     title="Upgrade to Quantum-Resistant Cryptography",
     description="Implement post-quantum cryptographic algorithms for future security",
-    execution_data=json.dumps({
-        "upgrade_type": "cryptography",
-        "algorithms": ["CRYSTALS-Kyber", "CRYSTALS-Dilithium"],
-        "migration_timeline": "6_months",
-        "backwards_compatibility": True,
-        "testing_period": "3_months"
-    }).encode()
+    execution_data=json.dumps(
+        {
+            "upgrade_type": "cryptography",
+            "algorithms": ["CRYSTALS-Kyber", "CRYSTALS-Dilithium"],
+            "migration_timeline": "6_months",
+            "backwards_compatibility": True,
+            "testing_period": "3_months",
+        }
+    ).encode(),
 )
 
 # Submit proposal
@@ -337,11 +342,13 @@ votes = [
     ("crypto_expert", VoteType.FOR, "Algorithms are well-tested"),
     ("consensus_dev", VoteType.FOR, "Good implementation plan"),
     ("protocol_architect", VoteType.FOR, "Architecture supports this"),
-    ("audit_specialist", VoteType.ABSTAIN, "Need more audit time")
+    ("audit_specialist", VoteType.ABSTAIN, "Need more audit time"),
 ]
 
 for member_id, vote_choice, reason in votes:
-    tech_committee = tech_committee.cast_vote(member_id, proposal_id, vote_choice, reason)
+    tech_committee = tech_committee.cast_vote(
+        member_id, proposal_id, vote_choice, reason
+    )
 
 # Check results
 result = tech_committee.calculate_voting_result(proposal_id)
@@ -358,19 +365,29 @@ infrastructure_proposal = DaoProposal(
     proposal_type=ProposalType.BUDGET_ALLOCATION,
     title="Expand Tokyo Data Center Capacity",
     description="Fund 50% capacity expansion for increased regional throughput",
-    execution_data=json.dumps({
-        "funding_amount": 500000,
-        "recipient": "node_tokyo",
-        "project_timeline": "4_months",
-        "capacity_increase": "50%",
-        "expected_throughput": "10x_improvement",
-        "milestones": [
-            {"month": 1, "deliverable": "Hardware procurement", "payment": 200000},
-            {"month": 2, "deliverable": "Installation and setup", "payment": 150000},
-            {"month": 3, "deliverable": "Testing and optimization", "payment": 100000},
-            {"month": 4, "deliverable": "Full deployment", "payment": 50000}
-        ]
-    }).encode()
+    execution_data=json.dumps(
+        {
+            "funding_amount": 500000,
+            "recipient": "node_tokyo",
+            "project_timeline": "4_months",
+            "capacity_increase": "50%",
+            "expected_throughput": "10x_improvement",
+            "milestones": [
+                {"month": 1, "deliverable": "Hardware procurement", "payment": 200000},
+                {
+                    "month": 2,
+                    "deliverable": "Installation and setup",
+                    "payment": 150000,
+                },
+                {
+                    "month": 3,
+                    "deliverable": "Testing and optimization",
+                    "payment": 100000,
+                },
+                {"month": 4, "deliverable": "Full deployment", "payment": 50000},
+            ],
+        }
+    ).encode(),
 )
 
 # Submit to regional hub DAO
@@ -382,7 +399,7 @@ regional_votes = [
     ("node_tokyo", VoteType.FOR, "Essential for regional growth"),
     ("node_sydney", VoteType.FOR, "Will improve cross-regional latency"),
     ("node_singapore", VoteType.FOR, "Supports increased trade volume"),
-    ("node_mumbai", VoteType.AGAINST, "Should prioritize Mumbai expansion first")
+    ("node_mumbai", VoteType.AGAINST, "Should prioritize Mumbai expansion first"),
 ]
 
 for node_id, vote_choice, reason in regional_votes:
@@ -390,6 +407,7 @@ for node_id, vote_choice, reason in regional_votes:
 
 # Finalize and potentially execute
 import time
+
 time.sleep(1)  # Simulate passage of time
 hub_dao = hub_dao.finalize_proposal(proposal_id)
 
@@ -408,16 +426,18 @@ emergency_proposal = DaoProposal(
     proposal_type=ProposalType.EMERGENCY_ACTION,
     title="Critical Security Patch - CVE-2024-MPREG-001",
     description="Immediate patch for discovered consensus vulnerability",
-    execution_data=json.dumps({
-        "patch_type": "consensus_fix",
-        "vulnerability": "CVE-2024-MPREG-001",
-        "severity": "critical",
-        "affected_versions": ["1.0.0", "1.1.0"],
-        "patch_version": "1.1.1",
-        "deployment_timeline": "immediate",
-        "downtime_required": "5_minutes",
-        "rollback_plan": "available"
-    }).encode()
+    execution_data=json.dumps(
+        {
+            "patch_type": "consensus_fix",
+            "vulnerability": "CVE-2024-MPREG-001",
+            "severity": "critical",
+            "affected_versions": ["1.0.0", "1.1.0"],
+            "patch_version": "1.1.1",
+            "deployment_timeline": "immediate",
+            "downtime_required": "5_minutes",
+            "rollback_plan": "available",
+        }
+    ).encode(),
 )
 
 # Emergency proposal with shorter voting period
@@ -430,11 +450,13 @@ emergency_votes = [
     ("crypto_expert", VoteType.FOR, "Cryptographic impact minimal"),
     ("consensus_dev", VoteType.FOR, "Patch resolves issue cleanly"),
     ("protocol_architect", VoteType.FOR, "No architectural concerns"),
-    ("audit_specialist", VoteType.FOR, "Emergency justifies rapid deployment")
+    ("audit_specialist", VoteType.FOR, "Emergency justifies rapid deployment"),
 ]
 
 for member_id, vote_choice, reason in emergency_votes:
-    tech_committee = tech_committee.cast_vote(member_id, proposal_id, vote_choice, reason)
+    tech_committee = tech_committee.cast_vote(
+        member_id, proposal_id, vote_choice, reason
+    )
 
 # Emergency proposals use higher threshold (85%)
 result = tech_committee.calculate_voting_result(proposal_id)
@@ -458,7 +480,9 @@ class MemberAccount:
         self.proposal_history: List[DaoProposal] = []
         self.delegation_target: Optional[str] = None
 
-    def create_dao_member(self, voting_power: int, metadata: Dict[str, Any] = None) -> DaoMember:
+    def create_dao_member(
+        self, voting_power: int, metadata: Dict[str, Any] = None
+    ) -> DaoMember:
         """Create DAO member from account."""
         return DaoMember(
             member_id=self.member_id,
@@ -466,7 +490,7 @@ class MemberAccount:
             token_balance=self.token_balance,
             reputation_score=self.reputation_score,
             delegated_to=self.delegation_target,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
 
     def delegate_voting_power(self, delegate_id: str) -> None:
@@ -485,8 +509,7 @@ alice_account.reputation_score = 85
 
 # Create DAO member from account
 alice_member = alice_account.create_dao_member(
-    voting_power=5000,
-    metadata={"role": "developer", "specialization": "frontend"}
+    voting_power=5000, metadata={"role": "developer", "specialization": "frontend"}
 )
 
 # Delegation example
@@ -517,8 +540,9 @@ class OrganizationAccount:
         if member_id in self.signatories:
             del self.signatories[member_id]
 
-    def propose_action(self, action_id: str, action_type: str,
-                      proposer_id: str, **kwargs) -> None:
+    def propose_action(
+        self, action_id: str, action_type: str, proposer_id: str, **kwargs
+    ) -> None:
         """Propose organization action requiring signatures."""
         if proposer_id not in self.signatories:
             raise ValueError("Proposer not authorized")
@@ -528,7 +552,7 @@ class OrganizationAccount:
             "proposer": proposer_id,
             "signatures": {proposer_id},
             "data": kwargs,
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
     def sign_action(self, action_id: str, signer_id: str) -> bool:
@@ -571,7 +595,7 @@ class OrganizationAccount:
             proposal_type=data["proposal_type"],
             title=data["title"],
             description=data["description"],
-            execution_data=data.get("execution_data", b"")
+            execution_data=data.get("execution_data", b""),
         )
 
 # Example organization setup
@@ -589,7 +613,7 @@ enterprise_org.propose_action(
     proposer_id="cto",
     proposal_type=ProposalType.BUDGET_ALLOCATION,
     title="Enterprise Infrastructure Investment",
-    description="Allocate $2M for enterprise-grade infrastructure development"
+    description="Allocate $2M for enterprise-grade infrastructure development",
 )
 
 # Collect signatures
@@ -611,24 +635,25 @@ class DaoFactory:
     """Factory for creating and configuring DAOs with best practices."""
 
     @staticmethod
-    def create_community_dao(name: str, description: str,
-                           founders: List[DaoMember]) -> DecentralizedAutonomousOrganization:
+    def create_community_dao(
+        name: str, description: str, founders: List[DaoMember]
+    ) -> DecentralizedAutonomousOrganization:
         """Create community governance DAO with sensible defaults."""
         config = DaoConfig(
             dao_type=DaoType.COMMUNITY_GOVERNANCE,
             membership_type=MembershipType.TOKEN_HOLDER,
-            voting_period_seconds=7 * 86400,    # 1 week
-            quorum_threshold=0.15,              # 15% quorum
-            approval_threshold=0.6,             # 60% approval
+            voting_period_seconds=7 * 86400,  # 1 week
+            quorum_threshold=0.15,  # 15% quorum
+            approval_threshold=0.6,  # 60% approval
             proposal_deposit=100,
-            emergency_threshold=0.75
+            emergency_threshold=0.75,
         )
 
         dao = DecentralizedAutonomousOrganization(
             name=name,
             description=description,
             dao_type=DaoType.COMMUNITY_GOVERNANCE,
-            config=config
+            config=config,
         )
 
         # Add founders
@@ -638,23 +663,25 @@ class DaoFactory:
         return dao
 
     @staticmethod
-    def create_federation_hub(region: str, hub_operators: List[Tuple[str, int]]) -> DecentralizedAutonomousOrganization:
+    def create_federation_hub(
+        region: str, hub_operators: List[Tuple[str, int]]
+    ) -> DecentralizedAutonomousOrganization:
         """Create federation hub governance DAO."""
         config = DaoConfig(
             dao_type=DaoType.FEDERATION_GOVERNANCE,
             membership_type=MembershipType.STAKE_BASED,
-            voting_period_seconds=5 * 86400,    # 5 days
-            quorum_threshold=0.4,               # 40% quorum
-            approval_threshold=0.67,            # Supermajority
+            voting_period_seconds=5 * 86400,  # 5 days
+            quorum_threshold=0.4,  # 40% quorum
+            approval_threshold=0.67,  # Supermajority
             proposal_deposit=1000,
-            emergency_threshold=0.8
+            emergency_threshold=0.8,
         )
 
         dao = DecentralizedAutonomousOrganization(
             name=f"{region} Federation Hub",
             description=f"Regional governance for {region} federation infrastructure",
             dao_type=DaoType.FEDERATION_GOVERNANCE,
-            config=config
+            config=config,
         )
 
         # Add hub operators
@@ -663,30 +690,32 @@ class DaoFactory:
                 member_id=operator_id,
                 voting_power=stake,
                 token_balance=stake * 2,
-                metadata={"role": "hub_operator", "region": region}
+                metadata={"role": "hub_operator", "region": region},
             )
             dao = dao.add_member(member)
 
         return dao
 
     @staticmethod
-    def create_technical_committee(experts: List[Tuple[str, int, int]]) -> DecentralizedAutonomousOrganization:
+    def create_technical_committee(
+        experts: List[Tuple[str, int, int]],
+    ) -> DecentralizedAutonomousOrganization:
         """Create technical committee DAO."""
         config = DaoConfig(
             dao_type=DaoType.TECHNICAL_COMMITTEE,
             membership_type=MembershipType.REPUTATION_BASED,
-            voting_period_seconds=3 * 86400,    # 3 days
-            quorum_threshold=0.6,               # 60% quorum
-            approval_threshold=0.75,            # 75% approval
-            proposal_deposit=50,                # Lower deposit for experts
-            emergency_threshold=0.85
+            voting_period_seconds=3 * 86400,  # 3 days
+            quorum_threshold=0.6,  # 60% quorum
+            approval_threshold=0.75,  # 75% approval
+            proposal_deposit=50,  # Lower deposit for experts
+            emergency_threshold=0.85,
         )
 
         dao = DecentralizedAutonomousOrganization(
             name="Technical Committee",
             description="Expert technical governance and protocol decisions",
             dao_type=DaoType.TECHNICAL_COMMITTEE,
-            config=config
+            config=config,
         )
 
         # Add technical experts
@@ -696,7 +725,7 @@ class DaoFactory:
                 voting_power=voting_power,
                 token_balance=1000,  # Minimal tokens
                 reputation_score=reputation,
-                metadata={"role": "technical_expert"}
+                metadata={"role": "technical_expert"},
             )
             dao = dao.add_member(member)
 
@@ -706,13 +735,13 @@ class DaoFactory:
 community_founders = [
     DaoMember("founder_alice", voting_power=10000, token_balance=50000),
     DaoMember("founder_bob", voting_power=8000, token_balance=40000),
-    DaoMember("founder_carol", voting_power=6000, token_balance=30000)
+    DaoMember("founder_carol", voting_power=6000, token_balance=30000),
 ]
 
 community_dao = DaoFactory.create_community_dao(
     name="MPREG Community DAO",
     description="Community governance for MPREG ecosystem development",
-    founders=community_founders
+    founders=community_founders,
 )
 
 # Federation hub creation
@@ -720,7 +749,7 @@ asia_operators = [
     ("tokyo_node", 15000),
     ("singapore_node", 18000),
     ("mumbai_node", 12000),
-    ("sydney_node", 10000)
+    ("sydney_node", 10000),
 ]
 
 asia_hub = DaoFactory.create_federation_hub("Asia-Pacific", asia_operators)
@@ -730,7 +759,7 @@ tech_experts = [
     ("security_expert", 3, 98),
     ("consensus_dev", 3, 95),
     ("crypto_specialist", 2, 92),
-    ("protocol_architect", 3, 96)
+    ("protocol_architect", 3, 96),
 ]
 
 tech_committee = DaoFactory.create_technical_committee(tech_experts)
@@ -746,9 +775,13 @@ class OwnershipTransition:
         self.dao = dao
         self.transition_schedule: List[Dict] = []
 
-    def plan_transition(self, from_member: str, to_community: bool = True,
-                       transition_periods: int = 12,
-                       reduction_per_period: int = 500) -> None:
+    def plan_transition(
+        self,
+        from_member: str,
+        to_community: bool = True,
+        transition_periods: int = 12,
+        reduction_per_period: int = 500,
+    ) -> None:
         """Plan gradual voting power transition."""
         current_member = self.dao.members[from_member]
         current_power = current_member.voting_power
@@ -757,37 +790,43 @@ class OwnershipTransition:
             reduction = min(reduction_per_period, current_power)
             new_power = current_power - reduction
 
-            self.transition_schedule.append({
-                "period": period,
-                "member_id": from_member,
-                "old_voting_power": current_power,
-                "new_voting_power": new_power,
-                "power_reduction": reduction,
-                "distribute_to_community": to_community
-            })
+            self.transition_schedule.append(
+                {
+                    "period": period,
+                    "member_id": from_member,
+                    "old_voting_power": current_power,
+                    "new_voting_power": new_power,
+                    "power_reduction": reduction,
+                    "distribute_to_community": to_community,
+                }
+            )
 
             current_power = new_power
             if current_power <= 0:
                 break
 
-    def execute_transition_step(self, period: int) -> DecentralizedAutonomousOrganization:
+    def execute_transition_step(
+        self, period: int
+    ) -> DecentralizedAutonomousOrganization:
         """Execute single transition step."""
-        step = next((s for s in self.transition_schedule if s["period"] == period), None)
+        step = next(
+            (s for s in self.transition_schedule if s["period"] == period), None
+        )
         if not step:
             raise ValueError(f"No transition planned for period {period}")
 
         # Reduce founder voting power
         self.dao = self.dao.update_member_voting_power(
-            step["member_id"],
-            step["new_voting_power"]
+            step["member_id"], step["new_voting_power"]
         )
 
         if step["distribute_to_community"]:
             # Distribute reduced power to community members
             community_members = [
-                m for m in self.dao.members.values()
-                if m.member_id != step["member_id"] and
-                   m.metadata.get("role") != "founder"
+                m
+                for m in self.dao.members.values()
+                if m.member_id != step["member_id"]
+                and m.metadata.get("role") != "founder"
             ]
 
             if community_members:
@@ -797,7 +836,9 @@ class OwnershipTransition:
                 for i, member in enumerate(community_members):
                     additional_power = power_per_member + (1 if i < remainder else 0)
                     new_power = member.voting_power + additional_power
-                    self.dao = self.dao.update_member_voting_power(member.member_id, new_power)
+                    self.dao = self.dao.update_member_voting_power(
+                        member.member_id, new_power
+                    )
 
         return self.dao
 
@@ -809,8 +850,12 @@ class OwnershipTransition:
         return {
             "total_steps": total_steps,
             "completed_steps": completed_steps,
-            "progress_percentage": (completed_steps / total_steps * 100) if total_steps > 0 else 0,
-            "next_step": self.transition_schedule[completed_steps] if completed_steps < total_steps else None
+            "progress_percentage": (completed_steps / total_steps * 100)
+            if total_steps > 0
+            else 0,
+            "next_step": self.transition_schedule[completed_steps]
+            if completed_steps < total_steps
+            else None,
         }
 
 # Example usage
@@ -821,7 +866,7 @@ transition.plan_transition(
     from_member="founder_alice",
     to_community=True,
     transition_periods=12,
-    reduction_per_period=500
+    reduction_per_period=500,
 )
 
 # Execute first transition step
@@ -842,16 +887,18 @@ class FederationDAOHierarchy:
         self.regional_daos: Dict[str, DecentralizedAutonomousOrganization] = {}
         self.local_daos: Dict[str, Dict[str, DecentralizedAutonomousOrganization]] = {}
 
-    def create_global_governance(self, regional_representatives: List[Tuple[str, int]]) -> DecentralizedAutonomousOrganization:
+    def create_global_governance(
+        self, regional_representatives: List[Tuple[str, int]]
+    ) -> DecentralizedAutonomousOrganization:
         """Create top-level global governance DAO."""
         config = DaoConfig(
             dao_type=DaoType.FEDERATION_GOVERNANCE,
             membership_type=MembershipType.DELEGATION_BASED,
-            voting_period_seconds=14 * 86400,   # 2 weeks for global decisions
-            quorum_threshold=0.5,               # 50% quorum
-            approval_threshold=0.67,            # Supermajority
-            proposal_deposit=5000,              # Higher deposit for global proposals
-            emergency_threshold=0.8
+            voting_period_seconds=14 * 86400,  # 2 weeks for global decisions
+            quorum_threshold=0.5,  # 50% quorum
+            approval_threshold=0.67,  # Supermajority
+            proposal_deposit=5000,  # Higher deposit for global proposals
+            emergency_threshold=0.8,
         )
 
         self.global_dao = DecentralizedAutonomousOrganization(
@@ -859,7 +906,7 @@ class FederationDAOHierarchy:
             description="Top-level governance for global MPREG federation",
             dao_type=DaoType.FEDERATION_GOVERNANCE,
             config=config,
-            treasury_balance=50000000  # 50M global treasury
+            treasury_balance=50000000,  # 50M global treasury
         )
 
         # Add regional representatives
@@ -868,13 +915,15 @@ class FederationDAOHierarchy:
                 member_id=f"regional_rep_{region_id}",
                 voting_power=voting_power,
                 token_balance=voting_power * 2,
-                metadata={"role": "regional_representative", "region": region_id}
+                metadata={"role": "regional_representative", "region": region_id},
             )
             self.global_dao = self.global_dao.add_member(member)
 
         return self.global_dao
 
-    def create_regional_dao(self, region: str, hub_operators: List[Tuple[str, int]]) -> DecentralizedAutonomousOrganization:
+    def create_regional_dao(
+        self, region: str, hub_operators: List[Tuple[str, int]]
+    ) -> DecentralizedAutonomousOrganization:
         """Create regional governance DAO."""
         regional_dao = DaoFactory.create_federation_hub(region, hub_operators)
         self.regional_daos[region] = regional_dao
@@ -889,28 +938,29 @@ class FederationDAOHierarchy:
                 # Update representative voting power based on regional consensus
                 self.global_dao = self.global_dao.update_member_voting_power(
                     representative_id,
-                    total_regional_power // 100  # Scale down for global level
+                    total_regional_power // 100,  # Scale down for global level
                 )
 
         return regional_dao
 
-    def create_local_dao(self, region: str, locality: str,
-                        local_operators: List[Tuple[str, int]]) -> DecentralizedAutonomousOrganization:
+    def create_local_dao(
+        self, region: str, locality: str, local_operators: List[Tuple[str, int]]
+    ) -> DecentralizedAutonomousOrganization:
         """Create local governance DAO."""
         config = DaoConfig(
             dao_type=DaoType.COMMUNITY_GOVERNANCE,
             membership_type=MembershipType.STAKE_BASED,
-            voting_period_seconds=3 * 86400,    # 3 days for local decisions
-            quorum_threshold=0.3,               # 30% quorum
-            approval_threshold=0.6,             # 60% approval
-            proposal_deposit=100
+            voting_period_seconds=3 * 86400,  # 3 days for local decisions
+            quorum_threshold=0.3,  # 30% quorum
+            approval_threshold=0.6,  # 60% approval
+            proposal_deposit=100,
         )
 
         local_dao = DecentralizedAutonomousOrganization(
             name=f"{locality} Local Governance",
             description=f"Local governance for {locality} in {region}",
             dao_type=DaoType.COMMUNITY_GOVERNANCE,
-            config=config
+            config=config,
         )
 
         # Add local operators
@@ -919,7 +969,7 @@ class FederationDAOHierarchy:
                 member_id=operator_id,
                 voting_power=stake,
                 token_balance=stake,
-                metadata={"role": "local_operator", "locality": locality}
+                metadata={"role": "local_operator", "locality": locality},
             )
             local_dao = local_dao.add_member(member)
 
@@ -930,8 +980,9 @@ class FederationDAOHierarchy:
 
         return local_dao
 
-    def propagate_proposal_hierarchy(self, proposal: DaoProposal,
-                                   source_level: str, source_dao: str) -> List[str]:
+    def propagate_proposal_hierarchy(
+        self, proposal: DaoProposal, source_level: str, source_dao: str
+    ) -> List[str]:
         """Propagate proposal through DAO hierarchy based on scope."""
         propagated_to = []
 
@@ -952,14 +1003,16 @@ class FederationDAOHierarchy:
             target_region = proposal.metadata.get("target_region")
             if target_region and target_region in self.regional_daos:
                 regional_proposal = self._adapt_proposal_for_level(proposal, "regional")
-                self.regional_daos[target_region] = self.regional_daos[target_region].create_proposal(
-                    f"escalated_from_{source_dao}", regional_proposal
-                )
+                self.regional_daos[target_region] = self.regional_daos[
+                    target_region
+                ].create_proposal(f"escalated_from_{source_dao}", regional_proposal)
                 propagated_to.append(f"regional_{target_region}")
 
         return propagated_to
 
-    def _adapt_proposal_for_level(self, proposal: DaoProposal, target_level: str) -> DaoProposal:
+    def _adapt_proposal_for_level(
+        self, proposal: DaoProposal, target_level: str
+    ) -> DaoProposal:
         """Adapt proposal for different governance level."""
         return DaoProposal(
             proposer_id=f"escalated_proposal",
@@ -967,7 +1020,11 @@ class FederationDAOHierarchy:
             title=f"[{target_level.upper()}] {proposal.title}",
             description=f"Escalated from lower level: {proposal.description}",
             execution_data=proposal.execution_data,
-            metadata={**proposal.metadata, "escalated": True, "target_level": target_level}
+            metadata={
+                **proposal.metadata,
+                "escalated": True,
+                "target_level": target_level,
+            },
         )
 
 # Create federation hierarchy
@@ -979,17 +1036,13 @@ global_representatives = [
     ("europe", 20000),
     ("asia_pacific", 30000),
     ("latin_america", 15000),
-    ("africa", 10000)
+    ("africa", 10000),
 ]
 
 global_dao = federation.create_global_governance(global_representatives)
 
 # Regional level
-asia_hubs = [
-    ("tokyo_hub", 15000),
-    ("singapore_hub", 18000),
-    ("mumbai_hub", 12000)
-]
+asia_hubs = [("tokyo_hub", 15000), ("singapore_hub", 18000), ("mumbai_hub", 12000)]
 
 asia_dao = federation.create_regional_dao("asia_pacific", asia_hubs)
 
@@ -997,7 +1050,7 @@ asia_dao = federation.create_regional_dao("asia_pacific", asia_hubs)
 tokyo_operators = [
     ("tokyo_node_1", 5000),
     ("tokyo_node_2", 4000),
-    ("tokyo_node_3", 6000)
+    ("tokyo_node_3", 6000),
 ]
 
 tokyo_dao = federation.create_local_dao("asia_pacific", "tokyo", tokyo_operators)
@@ -1018,8 +1071,12 @@ class CrossChainDAOBridge:
         """Register bridge connection to target chain."""
         self.bridge_connections[target_chain] = bridge_address
 
-    def create_cross_chain_proposal(self, target_chain: str, proposal: DaoProposal,
-                                  execution_conditions: Dict[str, Any]) -> str:
+    def create_cross_chain_proposal(
+        self,
+        target_chain: str,
+        proposal: DaoProposal,
+        execution_conditions: Dict[str, Any],
+    ) -> str:
         """Create proposal that executes across multiple chains."""
         if target_chain not in self.bridge_connections:
             raise ValueError(f"No bridge registered for {target_chain}")
@@ -1032,22 +1089,24 @@ class CrossChainDAOBridge:
             proposal_type=ProposalType.CONTRACT_EXECUTION,
             title=f"Cross-Chain: {proposal.title}",
             description=f"Multi-chain execution: {proposal.description}",
-            execution_data=json.dumps({
-                "type": "cross_chain_execution",
-                "target_chain": target_chain,
-                "bridge_address": self.bridge_connections[target_chain],
-                "original_proposal": {
-                    "title": proposal.title,
-                    "description": proposal.description,
-                    "execution_data": proposal.execution_data.hex()
-                },
-                "execution_conditions": execution_conditions
-            }).encode(),
+            execution_data=json.dumps(
+                {
+                    "type": "cross_chain_execution",
+                    "target_chain": target_chain,
+                    "bridge_address": self.bridge_connections[target_chain],
+                    "original_proposal": {
+                        "title": proposal.title,
+                        "description": proposal.description,
+                        "execution_data": proposal.execution_data.hex(),
+                    },
+                    "execution_conditions": execution_conditions,
+                }
+            ).encode(),
             metadata={
                 "cross_chain": True,
                 "target_chain": target_chain,
-                "cross_chain_id": cross_chain_id
-            }
+                "cross_chain_id": cross_chain_id,
+            },
         )
 
         # Submit to local DAO
@@ -1060,7 +1119,7 @@ class CrossChainDAOBridge:
             "local_proposal_id": cross_chain_proposal.proposal_id,
             "target_chain": target_chain,
             "status": "pending_local_vote",
-            "execution_conditions": execution_conditions
+            "execution_conditions": execution_conditions,
         }
 
         return cross_chain_id
@@ -1088,7 +1147,7 @@ class CrossChainDAOBridge:
             "target_chain": target_chain,
             "bridge_address": bridge_address,
             "execution_status": "submitted",
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
 
         # In real implementation, this would submit to actual bridge
@@ -1109,7 +1168,7 @@ class CrossChainDAOBridge:
             "total_voting_power": self.local_dao.get_total_voting_power(),
             "active_proposals": len(self.local_dao.get_active_proposals()),
             "treasury_balance": self.local_dao.treasury_balance,
-            "last_sync": time.time()
+            "last_sync": time.time(),
         }
 
         # In real implementation, this would sync via bridge
@@ -1126,11 +1185,13 @@ infrastructure_proposal = DaoProposal(
     proposal_type=ProposalType.CONTRACT_EXECUTION,
     title="Deploy Cross-Chain Liquidity Pool",
     description="Deploy shared liquidity pool across Ethereum and Polygon",
-    execution_data=json.dumps({
-        "pool_tokens": ["MPREG", "ETH", "MATIC"],
-        "initial_liquidity": 1000000,
-        "fee_structure": "0.3%"
-    }).encode()
+    execution_data=json.dumps(
+        {
+            "pool_tokens": ["MPREG", "ETH", "MATIC"],
+            "initial_liquidity": 1000000,
+            "fee_structure": "0.3%",
+        }
+    ).encode(),
 )
 
 # Submit cross-chain proposal
@@ -1140,8 +1201,8 @@ cross_chain_id = bridge.create_cross_chain_proposal(
     execution_conditions={
         "min_liquidity": 500000,
         "max_slippage": "1%",
-        "execution_timeout": 86400  # 24 hours
-    }
+        "execution_timeout": 86400,  # 24 hours
+    },
 )
 
 print(f"Cross-chain proposal created: {cross_chain_id}")
@@ -1159,13 +1220,14 @@ class VotingDelegation:
         self.dao = dao
         self.delegation_rules: Dict[str, Dict] = {}
 
-    def create_conditional_delegation(self, delegator: str, delegate: str,
-                                    conditions: Dict[str, Any]) -> None:
+    def create_conditional_delegation(
+        self, delegator: str, delegate: str, conditions: Dict[str, Any]
+    ) -> None:
         """Create conditional delegation based on proposal types or topics."""
         self.delegation_rules[delegator] = {
             "delegate": delegate,
             "conditions": conditions,
-            "active": True
+            "active": True,
         }
 
     def check_delegation_applies(self, delegator: str, proposal: DaoProposal) -> bool:
@@ -1187,7 +1249,9 @@ class VotingDelegation:
         # Check topic keywords
         if "topics" in conditions:
             proposal_text = f"{proposal.title} {proposal.description}".lower()
-            if not any(topic.lower() in proposal_text for topic in conditions["topics"]):
+            if not any(
+                topic.lower() in proposal_text for topic in conditions["topics"]
+            ):
                 return False
 
         # Check voting power threshold
@@ -1198,8 +1262,9 @@ class VotingDelegation:
 
         return True
 
-    def execute_delegated_vote(self, proposal_id: str, delegator: str,
-                             vote_choice: VoteType) -> DecentralizedAutonomousOrganization:
+    def execute_delegated_vote(
+        self, proposal_id: str, delegator: str, vote_choice: VoteType
+    ) -> DecentralizedAutonomousOrganization:
         """Execute vote through delegation if conditions met."""
         proposal = self.dao.proposals[proposal_id]
 
@@ -1213,7 +1278,7 @@ class VotingDelegation:
                 vote_choice=vote_choice,
                 voting_power_used=self.dao.members[delegator].voting_power,
                 delegated_from=delegator,
-                reason=f"Delegated vote from {delegator}"
+                reason=f"Delegated vote from {delegator}",
             )
 
             # Update DAO with delegated vote
@@ -1233,7 +1298,7 @@ class VotingDelegation:
                 votes=new_votes,
                 executions=self.dao.executions,
                 created_at=self.dao.created_at,
-                treasury_balance=self.dao.treasury_balance
+                treasury_balance=self.dao.treasury_balance,
             )
 
         # Fall back to direct voting
@@ -1247,10 +1312,13 @@ delegation_system.create_conditional_delegation(
     delegator="community_member_alice",
     delegate="technical_expert_bob",
     conditions={
-        "proposal_types": [ProposalType.PROTOCOL_UPGRADE, ProposalType.PARAMETER_CHANGE],
+        "proposal_types": [
+            ProposalType.PROTOCOL_UPGRADE,
+            ProposalType.PARAMETER_CHANGE,
+        ],
         "topics": ["consensus", "cryptography", "security"],
-        "min_voting_power": 1000
-    }
+        "min_voting_power": 1000,
+    },
 )
 
 # Create delegation for funding proposals
@@ -1258,9 +1326,12 @@ delegation_system.create_conditional_delegation(
     delegator="passive_investor_carol",
     delegate="active_community_dave",
     conditions={
-        "proposal_types": [ProposalType.BUDGET_ALLOCATION, ProposalType.PROJECT_FUNDING],
-        "topics": ["development", "marketing", "ecosystem"]
-    }
+        "proposal_types": [
+            ProposalType.BUDGET_ALLOCATION,
+            ProposalType.PROJECT_FUNDING,
+        ],
+        "topics": ["development", "marketing", "ecosystem"],
+    },
 )
 ```
 
@@ -1277,7 +1348,7 @@ class ReputationSystem:
             "voting_accuracy": 0.25,
             "participation_rate": 0.2,
             "tenure": 0.15,
-            "peer_endorsements": 0.1
+            "peer_endorsements": 0.1,
         }
 
     def calculate_member_reputation(self, member_id: str) -> int:
@@ -1291,17 +1362,19 @@ class ReputationSystem:
         # Calculate metrics
         proposal_success_rate = self._calculate_proposal_success_rate(member_id)
         voting_accuracy = self._calculate_voting_accuracy(member_id, voting_history)
-        participation_rate = self._calculate_participation_rate(member_id, voting_history)
+        participation_rate = self._calculate_participation_rate(
+            member_id, voting_history
+        )
         tenure_bonus = self._calculate_tenure_bonus(member)
         peer_endorsements = self._get_peer_endorsements(member_id)
 
         # Weighted reputation calculation
         dynamic_reputation = (
-            proposal_success_rate * self.reputation_weights["proposal_success_rate"] +
-            voting_accuracy * self.reputation_weights["voting_accuracy"] +
-            participation_rate * self.reputation_weights["participation_rate"] +
-            tenure_bonus * self.reputation_weights["tenure"] +
-            peer_endorsements * self.reputation_weights["peer_endorsements"]
+            proposal_success_rate * self.reputation_weights["proposal_success_rate"]
+            + voting_accuracy * self.reputation_weights["voting_accuracy"]
+            + participation_rate * self.reputation_weights["participation_rate"]
+            + tenure_bonus * self.reputation_weights["tenure"]
+            + peer_endorsements * self.reputation_weights["peer_endorsements"]
         ) * 100
 
         return int(base_reputation + dynamic_reputation)
@@ -1309,21 +1382,23 @@ class ReputationSystem:
     def _calculate_proposal_success_rate(self, member_id: str) -> float:
         """Calculate success rate of member's proposals."""
         member_proposals = [
-            p for p in self.dao.proposals.values()
-            if p.proposer_id == member_id
+            p for p in self.dao.proposals.values() if p.proposer_id == member_id
         ]
 
         if not member_proposals:
             return 0.5  # Neutral score for no proposals
 
         passed_proposals = [
-            p for p in member_proposals
+            p
+            for p in member_proposals
             if p.status in [ProposalStatus.PASSED, ProposalStatus.EXECUTED]
         ]
 
         return len(passed_proposals) / len(member_proposals)
 
-    def _calculate_voting_accuracy(self, member_id: str, voting_history: List[DaoVote]) -> float:
+    def _calculate_voting_accuracy(
+        self, member_id: str, voting_history: List[DaoVote]
+    ) -> float:
         """Calculate how often member votes with majority."""
         if not voting_history:
             return 0.5
@@ -1337,12 +1412,17 @@ class ReputationSystem:
             # Check if member voted with the majority
             if proposal_result.proposal_passed and vote.vote_choice == VoteType.FOR:
                 accurate_votes += 1
-            elif not proposal_result.proposal_passed and vote.vote_choice == VoteType.AGAINST:
+            elif (
+                not proposal_result.proposal_passed
+                and vote.vote_choice == VoteType.AGAINST
+            ):
                 accurate_votes += 1
 
         return accurate_votes / total_votes
 
-    def _calculate_participation_rate(self, member_id: str, voting_history: List[DaoVote]) -> float:
+    def _calculate_participation_rate(
+        self, member_id: str, voting_history: List[DaoVote]
+    ) -> float:
         """Calculate member's participation in voting."""
         total_proposals = len(self.dao.proposals)
         if total_proposals == 0:
@@ -1368,7 +1448,9 @@ class ReputationSystem:
 
         return endorsements / max_possible if max_possible > 0 else 0
 
-    def update_voting_power_by_reputation(self, member_id: str) -> DecentralizedAutonomousOrganization:
+    def update_voting_power_by_reputation(
+        self, member_id: str
+    ) -> DecentralizedAutonomousOrganization:
         """Update member voting power based on reputation."""
         current_reputation = self.calculate_member_reputation(member_id)
 
@@ -1400,8 +1482,12 @@ class QuadraticVoting:
         self.dao = dao
         self.quadratic_proposals: Dict[str, Dict] = {}
 
-    def create_quadratic_proposal(self, proposer_id: str, proposal: DaoProposal,
-                                vote_credits_per_member: int = 100) -> str:
+    def create_quadratic_proposal(
+        self,
+        proposer_id: str,
+        proposal: DaoProposal,
+        vote_credits_per_member: int = 100,
+    ) -> str:
         """Create proposal using quadratic voting mechanism."""
 
         # Create modified proposal
@@ -1411,7 +1497,11 @@ class QuadraticVoting:
             title=f"[QUADRATIC] {proposal.title}",
             description=f"Quadratic voting: {proposal.description}",
             execution_data=proposal.execution_data,
-            metadata={**proposal.metadata, "voting_type": "quadratic", "vote_credits": vote_credits_per_member}
+            metadata={
+                **proposal.metadata,
+                "voting_type": "quadratic",
+                "vote_credits": vote_credits_per_member,
+            },
         )
 
         # Submit to DAO
@@ -1424,14 +1514,19 @@ class QuadraticVoting:
             "member_votes": {},  # member_id -> {credits_used, vote_strength}
             "total_for_votes": 0,
             "total_against_votes": 0,
-            "total_abstain_votes": 0
+            "total_abstain_votes": 0,
         }
 
         return proposal_id
 
-    def cast_quadratic_vote(self, voter_id: str, proposal_id: str,
-                          vote_choice: VoteType, credits_to_spend: int,
-                          reason: str = "") -> DecentralizedAutonomousOrganization:
+    def cast_quadratic_vote(
+        self,
+        voter_id: str,
+        proposal_id: str,
+        vote_choice: VoteType,
+        credits_to_spend: int,
+        reason: str = "",
+    ) -> DecentralizedAutonomousOrganization:
         """Cast quadratic vote by spending vote credits."""
 
         if proposal_id not in self.quadratic_proposals:
@@ -1448,14 +1543,14 @@ class QuadraticVoting:
             raise ValueError("Member has already voted")
 
         # Calculate vote strength (square root of credits spent)
-        vote_strength = int(credits_to_spend ** 0.5)
+        vote_strength = int(credits_to_spend**0.5)
 
         # Record quadratic vote
         quad_data["member_votes"][voter_id] = {
             "credits_used": credits_to_spend,
             "vote_strength": vote_strength,
             "vote_choice": vote_choice,
-            "reason": reason
+            "reason": reason,
         }
 
         # Update totals
@@ -1472,7 +1567,7 @@ class QuadraticVoting:
             proposal_id=proposal_id,
             vote_choice=vote_choice,
             voting_power_used=vote_strength,  # Use quadratic strength
-            reason=f"Quadratic ({credits_to_spend} credits): {reason}"
+            reason=f"Quadratic ({credits_to_spend} credits): {reason}",
         )
 
         # Update DAO votes
@@ -1492,7 +1587,7 @@ class QuadraticVoting:
             votes=new_votes,
             executions=self.dao.executions,
             created_at=self.dao.created_at,
-            treasury_balance=self.dao.treasury_balance
+            treasury_balance=self.dao.treasury_balance,
         )
 
     def calculate_quadratic_result(self, proposal_id: str) -> Dict[str, Any]:
@@ -1503,19 +1598,24 @@ class QuadraticVoting:
 
         quad_data = self.quadratic_proposals[proposal_id]
 
-        total_votes = (quad_data["total_for_votes"] +
-                      quad_data["total_against_votes"] +
-                      quad_data["total_abstain_votes"])
+        total_votes = (
+            quad_data["total_for_votes"]
+            + quad_data["total_against_votes"]
+            + quad_data["total_abstain_votes"]
+        )
 
         # Calculate participation metrics
         eligible_members = len(self.dao.members)
         participating_members = len(quad_data["member_votes"])
-        participation_rate = participating_members / eligible_members if eligible_members > 0 else 0
+        participation_rate = (
+            participating_members / eligible_members if eligible_members > 0 else 0
+        )
 
         # Calculate approval rate (excluding abstains)
         decisive_votes = quad_data["total_for_votes"] + quad_data["total_against_votes"]
-        approval_rate = (quad_data["total_for_votes"] / decisive_votes
-                        if decisive_votes > 0 else 0)
+        approval_rate = (
+            quad_data["total_for_votes"] / decisive_votes if decisive_votes > 0 else 0
+        )
 
         # Determine if proposal passes
         quorum_met = participation_rate >= self.dao.config.quorum_threshold
@@ -1536,7 +1636,7 @@ class QuadraticVoting:
             "quorum_met": quorum_met,
             "approval_met": approval_met,
             "proposal_passed": proposal_passed,
-            "member_votes": quad_data["member_votes"]
+            "member_votes": quad_data["member_votes"],
         }
 
 # Example quadratic voting usage
@@ -1548,22 +1648,40 @@ funding_proposal = DaoProposal(
     proposal_type=ProposalType.BUDGET_ALLOCATION,
     title="Community Education Program Funding",
     description="Allocate 100K tokens for blockchain education initiatives",
-    execution_data=json.dumps({"amount": 100000, "purpose": "education"}).encode()
+    execution_data=json.dumps({"amount": 100000, "purpose": "education"}).encode(),
 )
 
 quad_proposal_id = quad_voting.create_quadratic_proposal(
-    proposer_id="founder_alice",
-    proposal=funding_proposal,
-    vote_credits_per_member=100
+    proposer_id="founder_alice", proposal=funding_proposal, vote_credits_per_member=100
 )
 
 # Members cast quadratic votes with different intensities
 members_votes = [
-    ("founder_alice", VoteType.FOR, 81, "Strong supporter - will help implementation"),  # 9 vote strength
-    ("founder_bob", VoteType.FOR, 25, "Good idea but moderate support"),  # 5 vote strength
-    ("founder_carol", VoteType.AGAINST, 49, "Prefer infrastructure over education"),  # 7 vote strength
-    ("community_member_1", VoteType.FOR, 16, "Education is important"),  # 4 vote strength
-    ("community_member_2", VoteType.ABSTAIN, 4, "Need more details")  # 2 vote strength
+    (
+        "founder_alice",
+        VoteType.FOR,
+        81,
+        "Strong supporter - will help implementation",
+    ),  # 9 vote strength
+    (
+        "founder_bob",
+        VoteType.FOR,
+        25,
+        "Good idea but moderate support",
+    ),  # 5 vote strength
+    (
+        "founder_carol",
+        VoteType.AGAINST,
+        49,
+        "Prefer infrastructure over education",
+    ),  # 7 vote strength
+    (
+        "community_member_1",
+        VoteType.FOR,
+        16,
+        "Education is important",
+    ),  # 4 vote strength
+    ("community_member_2", VoteType.ABSTAIN, 4, "Need more details"),  # 2 vote strength
 ]
 
 for member_id, vote_choice, credits, reason in members_votes:
@@ -1582,16 +1700,19 @@ print(f"Quadratic voting results: {quad_results}")
 ### Current Limitations
 
 1. **Scalability Constraints**
+
    - Single blockchain per DAO limits transaction throughput
    - Memory usage grows linearly with members and proposals
    - No built-in sharding or layer-2 scaling
 
 2. **Governance Attacks**
+
    - Whale attacks possible with token-based voting
    - No protection against vote buying
    - Limited Sybil resistance mechanisms
 
 3. **User Experience**
+
    - Complex setup for non-technical users
    - No built-in wallet integration
    - Limited mobile accessibility
@@ -1611,50 +1732,57 @@ class DAOv2Enhancements:
 
     def __init__(self):
         self.privacy_features = [
-            "zk_proof_voting",      # Zero-knowledge proof voting
-            "homomorphic_tallying", # Encrypted vote aggregation
-            "anonymous_proposals"   # Anonymous proposal submission
+            "zk_proof_voting",  # Zero-knowledge proof voting
+            "homomorphic_tallying",  # Encrypted vote aggregation
+            "anonymous_proposals",  # Anonymous proposal submission
         ]
 
         self.scalability_features = [
-            "layer2_integration",   # Layer 2 scaling solutions
-            "state_channels",       # Off-chain state channels
-            "sharded_governance"    # Sharded DAO architecture
+            "layer2_integration",  # Layer 2 scaling solutions
+            "state_channels",  # Off-chain state channels
+            "sharded_governance",  # Sharded DAO architecture
         ]
 
         self.governance_improvements = [
-            "conviction_voting",    # Time-weighted voting
-            "futarchy_predictions", # Prediction market governance
-            "liquid_democracy",     # Delegative democracy
-            "rage_quit_mechanisms" # Exit mechanisms for minority
+            "conviction_voting",  # Time-weighted voting
+            "futarchy_predictions",  # Prediction market governance
+            "liquid_democracy",  # Delegative democracy
+            "rage_quit_mechanisms",  # Exit mechanisms for minority
         ]
 
         self.ux_improvements = [
             "mobile_wallet_integration",
             "gasless_voting",
             "social_recovery",
-            "progressive_web_app"
+            "progressive_web_app",
         ]
 
 # Example future implementation preview
 class ConvictionVoting:
     """Time-weighted voting where conviction builds over time."""
 
-    def __init__(self, dao: DecentralizedAutonomousOrganization, decay_rate: float = 0.9):
+    def __init__(
+        self, dao: DecentralizedAutonomousOrganization, decay_rate: float = 0.9
+    ):
         self.dao = dao
         self.decay_rate = decay_rate  # How fast conviction decays per time unit
         self.member_convictions: Dict[str, Dict[str, float]] = {}
 
-    def add_conviction(self, member_id: str, proposal_id: str,
-                      support_amount: float) -> None:
+    def add_conviction(
+        self, member_id: str, proposal_id: str, support_amount: float
+    ) -> None:
         """Add conviction support for proposal."""
         if member_id not in self.member_convictions:
             self.member_convictions[member_id] = {}
 
         current_conviction = self.member_convictions[member_id].get(proposal_id, 0)
-        self.member_convictions[member_id][proposal_id] = current_conviction + support_amount
+        self.member_convictions[member_id][proposal_id] = (
+            current_conviction + support_amount
+        )
 
-    def calculate_proposal_conviction(self, proposal_id: str, current_time: float) -> float:
+    def calculate_proposal_conviction(
+        self, proposal_id: str, current_time: float
+    ) -> float:
         """Calculate total conviction for proposal with time decay."""
         total_conviction = 0
 
@@ -1672,14 +1800,18 @@ class ConvictionVoting:
 
     def check_conviction_threshold(self, proposal_id: str, threshold: float) -> bool:
         """Check if proposal has enough conviction to pass."""
-        current_conviction = self.calculate_proposal_conviction(proposal_id, time.time())
+        current_conviction = self.calculate_proposal_conviction(
+            proposal_id, time.time()
+        )
         return current_conviction >= threshold
 
 # Example rage quit mechanism
 class RageQuitMechanism:
     """Allows minority to exit with proportional assets."""
 
-    def __init__(self, dao: DecentralizedAutonomousOrganization, exit_period: int = 86400 * 7):
+    def __init__(
+        self, dao: DecentralizedAutonomousOrganization, exit_period: int = 86400 * 7
+    ):
         self.dao = dao
         self.exit_period = exit_period  # 7 days to exit after proposal passes
         self.exit_requests: Dict[str, Dict] = {}
@@ -1703,7 +1835,7 @@ class RageQuitMechanism:
             "proportional_share": proportional_share,
             "treasury_claim": proportional_treasury,
             "exit_deadline": time.time() + self.exit_period,
-            "status": "pending"
+            "status": "pending",
         }
 
     def execute_exit(self, member_id: str) -> Dict[str, Any]:
@@ -1726,7 +1858,7 @@ class RageQuitMechanism:
             "member_id": member_id,
             "treasury_claim": exit_data["treasury_claim"],
             "voting_power_removed": self.dao.members[member_id].voting_power,
-            "execution_time": exit_data["execution_time"]
+            "execution_time": exit_data["execution_time"],
         }
 ```
 
@@ -1735,11 +1867,13 @@ class RageQuitMechanism:
 ### Phase 1: Foundation Solidification (Months 1-3)
 
 1. **Performance Optimization**
+
    - Optimize blockchain storage and retrieval
    - Implement proposal archiving for old proposals
    - Add database indexing for fast queries
 
 2. **Security Hardening**
+
    - Comprehensive security audit
    - Formal verification of critical functions
    - Penetration testing of governance mechanisms
@@ -1752,11 +1886,13 @@ class RageQuitMechanism:
 ### Phase 2: Advanced Features (Months 4-6)
 
 1. **Privacy Enhancements**
+
    - Zero-knowledge proof voting
    - Anonymous proposal submission
    - Encrypted vote aggregation
 
 2. **Scalability Solutions**
+
    - Layer 2 integration (Polygon, Optimism)
    - State channel implementation
    - Cross-chain bridge development
@@ -1769,11 +1905,13 @@ class RageQuitMechanism:
 ### Phase 3: Federation Integration (Months 7-12)
 
 1. **Cross-Chain Governance**
+
    - Multi-chain DAO deployment
    - Cross-chain proposal propagation
    - Unified governance across networks
 
 2. **Federation-Specific Features**
+
    - Hub governance integration
    - Regional autonomy mechanisms
    - Global consensus protocols
@@ -1786,11 +1924,13 @@ class RageQuitMechanism:
 ### Phase 4: Ecosystem Expansion (Months 13-18)
 
 1. **Third-Party Integrations**
+
    - Wallet provider partnerships
    - DeFi protocol integrations
    - Cross-platform compatibility
 
 2. **Advanced Analytics**
+
    - Governance analytics dashboard
    - Member behavior analysis
    - Proposal success prediction
@@ -1808,30 +1948,31 @@ class RageQuitMechanism:
 # 1. Import required modules
 from mpreg.datastructures import (
     DecentralizedAutonomousOrganization,
-    DaoConfig, DaoType, MembershipType,
-    DaoMember, DaoProposal, ProposalType, VoteType
+    DaoConfig,
+    DaoType,
+    MembershipType,
+    DaoMember,
+    DaoProposal,
+    ProposalType,
+    VoteType,
 )
 
 # 2. Create your first DAO
 my_dao = DecentralizedAutonomousOrganization(
     name="My First DAO",
     description="Learning DAO governance",
-    dao_type=DaoType.COMMUNITY_GOVERNANCE
+    dao_type=DaoType.COMMUNITY_GOVERNANCE,
 )
 
 # 3. Add yourself as a member
-founder = DaoMember(
-    member_id="founder",
-    voting_power=1000,
-    token_balance=10000
-)
+founder = DaoMember(member_id="founder", voting_power=1000, token_balance=10000)
 my_dao = my_dao.add_member(founder)
 
 # 4. Create your first proposal
 proposal = DaoProposal(
     proposer_id="founder",
     title="Welcome Proposal",
-    description="First proposal to test the system"
+    description="First proposal to test the system",
 )
 my_dao = my_dao.create_proposal("founder", proposal)
 
@@ -1870,10 +2011,12 @@ class ProductionDAODeployment:
             "proposal_deposit": int(os.getenv("PROPOSAL_DEPOSIT", "1000")),
             "voting_period_days": int(os.getenv("VOTING_PERIOD_DAYS", "7")),
             "quorum_threshold": float(os.getenv("QUORUM_THRESHOLD", "0.25")),
-            "approval_threshold": float(os.getenv("APPROVAL_THRESHOLD", "0.6"))
+            "approval_threshold": float(os.getenv("APPROVAL_THRESHOLD", "0.6")),
         }
 
-    def deploy_dao(self, dao_spec: Dict[str, Any]) -> DecentralizedAutonomousOrganization:
+    def deploy_dao(
+        self, dao_spec: Dict[str, Any]
+    ) -> DecentralizedAutonomousOrganization:
         """Deploy DAO with production configuration."""
 
         # Create production config
@@ -1884,7 +2027,7 @@ class ProductionDAODeployment:
             quorum_threshold=self.config["quorum_threshold"],
             approval_threshold=self.config["approval_threshold"],
             proposal_deposit=self.config["proposal_deposit"],
-            emergency_threshold=0.8
+            emergency_threshold=0.8,
         )
 
         # Deploy DAO
@@ -1893,7 +2036,7 @@ class ProductionDAODeployment:
             description=dao_spec["description"],
             dao_type=DaoType(dao_spec["dao_type"]),
             config=config,
-            treasury_balance=self.config["treasury_initial_balance"]
+            treasury_balance=self.config["treasury_initial_balance"],
         )
 
         # Add initial members
@@ -1902,7 +2045,7 @@ class ProductionDAODeployment:
                 member_id=member_spec["id"],
                 voting_power=member_spec["voting_power"],
                 token_balance=member_spec["token_balance"],
-                metadata=member_spec.get("metadata", {})
+                metadata=member_spec.get("metadata", {}),
             )
             dao = dao.add_member(member)
 
@@ -1915,11 +2058,11 @@ class ProductionDAODeployment:
             "blockchain_state": dao.blockchain.to_dict(),
             "backup_timestamp": time.time(),
             "environment": self.environment,
-            "config": self.config
+            "config": self.config,
         }
 
         backup_filename = f"dao_backup_{dao.dao_id}_{int(time.time())}.json"
-        with open(backup_filename, 'w') as f:
+        with open(backup_filename, "w") as f:
             json.dump(backup_data, f, indent=2, default=str)
 
         return backup_filename
@@ -1938,21 +2081,21 @@ dao_specification = {
             "id": "genesis_validator_1",
             "voting_power": 50000,
             "token_balance": 100000,
-            "metadata": {"role": "genesis_validator", "region": "north_america"}
+            "metadata": {"role": "genesis_validator", "region": "north_america"},
         },
         {
             "id": "genesis_validator_2",
             "voting_power": 45000,
             "token_balance": 90000,
-            "metadata": {"role": "genesis_validator", "region": "europe"}
+            "metadata": {"role": "genesis_validator", "region": "europe"},
         },
         {
             "id": "genesis_validator_3",
             "voting_power": 55000,
             "token_balance": 110000,
-            "metadata": {"role": "genesis_validator", "region": "asia_pacific"}
-        }
-    ]
+            "metadata": {"role": "genesis_validator", "region": "asia_pacific"},
+        },
+    ],
 }
 
 # Deploy production DAO

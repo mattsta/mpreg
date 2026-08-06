@@ -445,7 +445,7 @@ class FabricCacheProtocol:
     async def _process_cache_operation(self, message: CacheOperationMessage) -> bool:
         """Process a specific cache operation."""
         try:
-            key_str = str(message.key)
+            str(message.key)
 
             if message.operation_type == CacheOperationType.PUT:
                 return await self._process_cache_put(message)

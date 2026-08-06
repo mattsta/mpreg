@@ -485,7 +485,6 @@ class TestTimeSeriesBufferProperties:
     def test_time_series_buffer_storage_properties(self, config, samples, mock_time):
         """Test that TimeSeriesBuffer stores samples correctly."""
         buffer = TimeSeriesBuffer(**config)
-        current_time = FIXED_TIME_BASE  # Fixed current time
 
         # Add samples with valid timestamps
         valid_samples = []

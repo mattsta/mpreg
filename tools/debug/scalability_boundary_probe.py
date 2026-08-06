@@ -158,7 +158,7 @@ async def _run_size_probe(config: ProbeConfig, size: int) -> SizeProbeResult:
                 ConvergenceSample(
                     elapsed_seconds=elapsed,
                     success_rate=success_rate,
-                    discovered_nodes=int(round(success_rate * size)),
+                    discovered_nodes=round(success_rate * size),
                     total_connections=total_connections,
                     efficiency=efficiency,
                 )

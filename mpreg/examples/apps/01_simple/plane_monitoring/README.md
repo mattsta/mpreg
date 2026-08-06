@@ -30,5 +30,5 @@ mpreg-example → tier1.demo_monitoring
 
 ## Production exit ramp
 
-- Prefer product apps for learning; use plane_* for depth drills.
+- Prefer product apps for learning; use plane\_\* for depth drills.
 - Legacy: `mpreg demo tier1` now routes here via mpreg-example.

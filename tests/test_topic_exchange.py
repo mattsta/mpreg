@@ -388,7 +388,8 @@ class TestPayloadSizeEstimate:
                     "node_id": f"node-{i}",
                     "cluster_id": "c1",
                     "functions": [
-                        {"name": f"fn-{j}", "resources": ["r1", "r2"]} for j in range(20)
+                        {"name": f"fn-{j}", "resources": ["r1", "r2"]}
+                        for j in range(20)
                     ],
                     "meta": {"k": "v" * 50},
                 }

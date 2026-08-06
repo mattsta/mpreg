@@ -5,10 +5,10 @@ index when learning the system.
 
 ## 1. Getting started
 
-1. [GETTING_STARTED.md](GETTING_STARTED.md) — install, first server, first RPC  
-2. [examples-curriculum/](examples-curriculum/) — **product-shaped example apps** (preferred)  
-3. [EXAMPLES.md](EXAMPLES.md) / `mpreg/examples/` — capability demos + catalog  
-4. [ops/SETTINGS_GROUPS.md](ops/SETTINGS_GROUPS.md) — profiles and config groups  
+1. [GETTING_STARTED.md](GETTING_STARTED.md) — install, first server, first RPC
+2. [examples-curriculum/](examples-curriculum/) — **product-shaped example apps** (preferred)
+3. [EXAMPLES.md](EXAMPLES.md) / `mpreg/examples/` — capability demos + catalog
+4. [ops/SETTINGS_GROUPS.md](ops/SETTINGS_GROUPS.md) — profiles and config groups
 
 ```bash
 uv sync
@@ -36,9 +36,9 @@ CI: `.github/workflows/ci.yml` runs smoke + full suite via
 
 ## 2. Core concepts
 
-1. [ARCHITECTURE.md](ARCHITECTURE.md) — fabric layers (catalog, gossip, routes, envelope)  
-2. [MPREG_PROTOCOL_SPECIFICATION.md](MPREG_PROTOCOL_SPECIFICATION.md) — messages, errors, trace  
-3. [MPREG_CLIENT_GUIDE.md](MPREG_CLIENT_GUIDE.md) — clients, retries, HA  
+1. [ARCHITECTURE.md](ARCHITECTURE.md) — fabric layers (catalog, gossip, routes, envelope)
+2. [MPREG_PROTOCOL_SPECIFICATION.md](MPREG_PROTOCOL_SPECIFICATION.md) — messages, errors, trace
+3. [MPREG_CLIENT_GUIDE.md](MPREG_CLIENT_GUIDE.md) — clients, retries, HA
 
 **Big idea:** register functions (and optionally datasets/resources); clients
 call by name/identity; the fabric routes and resolves dependency graphs.
@@ -54,34 +54,34 @@ call by name/identity; the fabric routes and resolves dependency graphs.
 
 ## 3. Application systems
 
-| System | Guide |
-|--------|--------|
-| RPC + dependency resolution | GETTING_STARTED, protocol spec, intermediate results |
-| Pub/Sub | topic exchange sections in architecture + examples |
-| Queues | [SQS_MESSAGE_QUEUE_SYSTEM.md](SQS_MESSAGE_QUEUE_SYSTEM.md) |
-| Cache | [CACHING_SYSTEM.md](CACHING_SYSTEM.md), cache federation guides |
+| System                      | Guide                                                           |
+| --------------------------- | --------------------------------------------------------------- |
+| RPC + dependency resolution | GETTING_STARTED, protocol spec, intermediate results            |
+| Pub/Sub                     | topic exchange sections in architecture + examples              |
+| Queues                      | [SQS_MESSAGE_QUEUE_SYSTEM.md](SQS_MESSAGE_QUEUE_SYSTEM.md)      |
+| Cache                       | [CACHING_SYSTEM.md](CACHING_SYSTEM.md), cache federation guides |
 
 ## 4. Fabric & multi-cluster
 
-1. Path-vector routes: [FABRIC_ROUTE_POLICIES.md](FABRIC_ROUTE_POLICIES.md)  
-2. Link-state (optional): [FABRIC_LINK_STATE_ROUTING.md](FABRIC_LINK_STATE_ROUTING.md)  
-3. Route security: [FABRIC_ROUTE_SECURITY.md](FABRIC_ROUTE_SECURITY.md)  
+1. Path-vector routes: [FABRIC_ROUTE_POLICIES.md](FABRIC_ROUTE_POLICIES.md)
+2. Link-state (optional): [FABRIC_LINK_STATE_ROUTING.md](FABRIC_LINK_STATE_ROUTING.md)
+3. Route security: [FABRIC_ROUTE_SECURITY.md](FABRIC_ROUTE_SECURITY.md)
 4. Federation topology docs remain under `FEDERATION_*` names for history;
    **runtime plane is the fabric** (`mpreg/fabric/`).
 
 ## 5. Discovery & DNS
 
-1. [DISCOVERY_PLATFORM_ROADMAP.md](DISCOVERY_PLATFORM_ROADMAP.md) — status + phases  
-2. [DISCOVERY_RUNBOOKS.md](DISCOVERY_RUNBOOKS.md)  
-3. [DNS_INTEROP_GUIDE.md](DNS_INTEROP_GUIDE.md) / [DNS_RUNBOOKS.md](DNS_RUNBOOKS.md)  
+1. [DISCOVERY_PLATFORM_ROADMAP.md](DISCOVERY_PLATFORM_ROADMAP.md) — status + phases
+2. [DISCOVERY_RUNBOOKS.md](DISCOVERY_RUNBOOKS.md)
+3. [DNS_INTEROP_GUIDE.md](DNS_INTEROP_GUIDE.md) / [DNS_RUNBOOKS.md](DNS_RUNBOOKS.md)
 
 ## 6. Operations
 
-1. [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)  
-2. [OBSERVABILITY_TROUBLESHOOTING.md](OBSERVABILITY_TROUBLESHOOTING.md)  
-3. [ops/SLO_GOLDEN_SIGNALS.md](ops/SLO_GOLDEN_SIGNALS.md)  
-4. [ops/SETTINGS_GROUPS.md](ops/SETTINGS_GROUPS.md)  
-5. CLI: `mpreg doctor`, `monitor *`, `config-check`, `profile`, `monitor decisions`, `monitor prometheus`  
+1. [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)
+2. [OBSERVABILITY_TROUBLESHOOTING.md](OBSERVABILITY_TROUBLESHOOTING.md)
+3. [ops/SLO_GOLDEN_SIGNALS.md](ops/SLO_GOLDEN_SIGNALS.md)
+4. [ops/SETTINGS_GROUPS.md](ops/SETTINGS_GROUPS.md)
+5. CLI: `mpreg doctor`, `monitor *`, `config-check`, `profile`, `monitor decisions`, `monitor prometheus`
 
 ### Day-2 operator loop
 
@@ -105,14 +105,14 @@ Prefer **ProductionRaft** over fabric transport.
 
 Not required for RPC/fabric core:
 
-- Blockchain / immutable ledger guides  
-- DAO governance guides  
-- Merkle / vector clock deep dives  
+- Blockchain / immutable ledger guides
+- DAO governance guides
+- Merkle / vector clock deep dives
 
 ## 9. Reference
 
-- [TEST_PARITY_MATRIX.md](TEST_PARITY_MATRIX.md) — fabric unification coverage  
-- [archive/](archive/) — historical design notes  
+- [TEST_PARITY_MATRIX.md](TEST_PARITY_MATRIX.md) — fabric unification coverage
+- [archive/](archive/) — historical design notes
 
 ## 10. Management plane
 

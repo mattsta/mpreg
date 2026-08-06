@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import time
 
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 from mpreg.fabric.federation_graph import (
@@ -119,7 +118,9 @@ async def main() -> None:
                 max_timeout_seconds=2.0,
                 # Phase G F9 fix: current_timeout syncs from timeout_seconds in __post_init__
             )
-            ensure(cb.current_timeout == 0.3, f"F9 current_timeout={cb.current_timeout}")
+            ensure(
+                cb.current_timeout == 0.3, f"F9 current_timeout={cb.current_timeout}"
+            )
             ensure(cb.can_execute() is True, "closed breaker should allow")
             ensure(cb.state == "closed", f"state={cb.state}")
             for _ in range(3):
@@ -141,7 +142,9 @@ async def main() -> None:
             )
             cb.record_success()
             cb.record_success()
-            ensure(cb.state == "closed", f"expected closed after successes got {cb.state}")
+            ensure(
+                cb.state == "closed", f"expected closed after successes got {cb.state}"
+            )
             ensure(cb.can_execute() is True, "closed should allow")
             ok(f"breaker recovered state={cb.state}")
 

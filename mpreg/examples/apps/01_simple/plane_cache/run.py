@@ -53,7 +53,13 @@ async def main() -> None:
                 geographic_hints=["eu-west"],
             )
 
-            with scenario("L1 put on node-a", "cache.put_get", "cache.l1", "cache.ttl", "cache.geo_hints"):
+            with scenario(
+                "L1 put on node-a",
+                "cache.put_get",
+                "cache.l1",
+                "cache.ttl",
+                "cache.geo_hints",
+            ):
                 await cache_a.put(key, {"payload": "cached-value"}, metadata)
                 local = await cache_a.get(key)
                 ensure(local.success and local.entry is not None, "L1 miss on writer")
@@ -63,7 +69,12 @@ async def main() -> None:
                 )
                 ok("L1 writer hit")
 
-            with scenario("fabric sync + L3 fetch", "cache.sync", "cache.l3", "cache.fabric_protocol"):
+            with scenario(
+                "fabric sync + L3 fetch",
+                "cache.sync",
+                "cache.l3",
+                "cache.fabric_protocol",
+            ):
                 await protocol_a.sync_cache_state("node-b")
                 await asyncio.sleep(0.15)
                 l3 = await cache_b.get(

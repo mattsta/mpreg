@@ -23,7 +23,7 @@ import time
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Protocol
+from typing import Any, Protocol, Self
 
 import ulid
 from loguru import logger
@@ -319,7 +319,7 @@ class UnifiedSystemMonitor:
             return existing_id.strip()
         else:
             # Generate new namespaced ULID for metrics tracking
-            return f"{namespace_prefix}-{str(ulid.new())}"
+            return f"{namespace_prefix}-{ulid.new()!s}"
 
     def generate_system_tracking_id(self, system_type: SystemType) -> TrackingId:
         """
@@ -349,7 +349,7 @@ class UnifiedSystemMonitor:
         }
 
         prefix = prefix_map.get(system_type, "sys")
-        return f"{prefix}-{str(ulid.new())}"
+        return f"{prefix}-{ulid.new()!s}"
 
     async def record_cross_system_event(
         self,
@@ -959,7 +959,7 @@ class UnifiedSystemMonitor:
         except Exception as e:
             logger.error(f"Health monitoring task error: {e}")
 
-    async def __aenter__(self) -> UnifiedSystemMonitor:
+    async def __aenter__(self) -> Self:
         """Async context manager entry."""
         await self.start()
         return self

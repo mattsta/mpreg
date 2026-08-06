@@ -78,118 +78,115 @@ async def _wait_for_function(
     return False
 
 async def main() -> None:
-    with app_run(
-        "fabric_snapshot_restart",
-        "Fabric Snapshot Restart — catalog + route keys",
-        level="L3",
+    with (
+        app_run(
+            "fabric_snapshot_restart",
+            "Fabric Snapshot Restart — catalog + route keys",
+            level="L3",
+        ),
+        tempfile.TemporaryDirectory() as tmp_dir,
     ):
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            data_dir = Path(tmp_dir)
-            with port_range_context(2, "servers") as ports:
-                local_port, remote_port = ports
-                remote_url = f"ws://127.0.0.1:{remote_port}"
+        data_dir = Path(tmp_dir)
+        with port_range_context(2, "servers") as ports:
+            local_port, remote_port = ports
+            remote_url = f"ws://127.0.0.1:{remote_port}"
 
+            with scenario(
+                "start remote + local with SQLite persistence",
+                "pers.fabric_snap",
+                "boot.settings",
+            ):
+                step("start remote + local with persistence")
+                remote_server, remote_task = await _start_server(
+                    remote_port, "Fabric-Remote", "cluster-remote"
+                )
+                route_keys = RouteKeyRegistry()
+                local_server, local_task = await _start_server(
+                    local_port,
+                    "Fabric-Local",
+                    "cluster-local",
+                    connect=remote_url,
+                    persistence_dir=data_dir,
+                    route_keys=route_keys,
+                )
+                ensure(
+                    local_server._fabric_control_plane is not None,
+                    "local fabric control plane missing",
+                )
+                ensure(
+                    remote_server._fabric_control_plane is not None,
+                    "remote fabric control plane missing",
+                )
+                ok(f"persistence dir={data_dir}")
+
+            try:
                 with scenario(
-                    "start remote + local with SQLite persistence",
-                    "pers.fabric_snap",
-                    "boot.settings",
+                    "remote function appears in local fabric catalog",
+                    "fabric.catalog",
                 ):
-                    step("start remote + local with persistence")
-                    remote_server, remote_task = await _start_server(
-                        remote_port, "Fabric-Remote", "cluster-remote"
-                    )
-                    route_keys = RouteKeyRegistry()
-                    local_server, local_task = await _start_server(
-                        local_port,
-                        "Fabric-Local",
-                        "cluster-local",
-                        connect=remote_url,
-                        persistence_dir=data_dir,
-                        route_keys=route_keys,
-                    )
+
+                    def remote_echo() -> str:
+                        return "ok"
+
+                    remote_server.register_command("demo.remote", remote_echo, [])
+                    seen = await _wait_for_function(local_server, "demo.remote")
                     ensure(
-                        local_server._fabric_control_plane is not None,
-                        "local fabric control plane missing",
+                        seen,
+                        "remote function never visible before restart",
                     )
-                    ensure(
-                        remote_server._fabric_control_plane is not None,
-                        "remote fabric control plane missing",
-                    )
-                    ok(f"persistence dir={data_dir}")
-
-                try:
-                    with scenario(
-                        "remote function appears in local fabric catalog",
-                        "fabric.catalog",
-                    ):
-                        def remote_echo() -> str:
-                            return "ok"
-
-                        remote_server.register_command(
-                            "demo.remote", remote_echo, []
-                        )
-                        seen = await _wait_for_function(
-                            local_server, "demo.remote"
-                        )
-                        ensure(
-                            seen,
-                            "remote function never visible before restart",
-                        )
-                        ok("demo.remote visible in local catalog")
-
-                    with scenario(
-                        "register route key before shutdown",
-                        "fabric.route_keys",
-                        "fabric.snapshot",
-                    ):
-                        route_keys.register_key(
-                            cluster_id="cluster-remote",
-                            public_key=b"demo-route-key",
-                        )
-                        pre = route_keys.resolve_public_keys("cluster-remote")
-                        ensure(bool(pre), "route key not registered pre-restart")
-                        ok("pre-restart route key registered")
-                finally:
-                    await _stop_server(local_server, local_task)
-                    await _stop_server(remote_server, remote_task)
+                    ok("demo.remote visible in local catalog")
 
                 with scenario(
-                    "restart local restores route keys from snapshot",
-                    "pers.fabric_snap",
-                    "pers.restart",
+                    "register route key before shutdown",
+                    "fabric.route_keys",
                     "fabric.snapshot",
                 ):
-                    step("restart local on same data_dir")
-                    restored_keys = RouteKeyRegistry()
-                    restored_server, restored_task = await _start_server(
-                        local_port,
-                        "Fabric-Restart",
-                        "cluster-local",
-                        persistence_dir=data_dir,
-                        route_keys=restored_keys,
+                    route_keys.register_key(
+                        cluster_id="cluster-remote",
+                        public_key=b"demo-route-key",
                     )
-                    try:
-                        keys_ok = bool(
-                            restored_keys.resolve_public_keys("cluster-remote")
-                        )
-                        ensure(keys_ok, "route keys not restored after restart")
-                        # Catalog function restore without live peer is best-effort
-                        restored_fn = await _wait_for_function(
-                            restored_server, "demo.remote", timeout=2.0
-                        )
-                        ok(
-                            f"keys restored; fn_without_peer={restored_fn} "
-                            "(non-claim: peerless catalog full restore)"
-                        )
-                        ensure(
-                            restored_server._fabric_control_plane is not None,
-                            "restored control plane missing",
-                        )
-                        ok("restored node fabric control plane live")
-                    finally:
-                        await _stop_server(restored_server, restored_task)
+                    pre = route_keys.resolve_public_keys("cluster-remote")
+                    ensure(bool(pre), "route key not registered pre-restart")
+                    ok("pre-restart route key registered")
+            finally:
+                await _stop_server(local_server, local_task)
+                await _stop_server(remote_server, remote_task)
 
-                step("non-claim: not multi-region snapshot quorum")
+            with scenario(
+                "restart local restores route keys from snapshot",
+                "pers.fabric_snap",
+                "pers.restart",
+                "fabric.snapshot",
+            ):
+                step("restart local on same data_dir")
+                restored_keys = RouteKeyRegistry()
+                restored_server, restored_task = await _start_server(
+                    local_port,
+                    "Fabric-Restart",
+                    "cluster-local",
+                    persistence_dir=data_dir,
+                    route_keys=restored_keys,
+                )
+                try:
+                    keys_ok = bool(restored_keys.resolve_public_keys("cluster-remote"))
+                    ensure(keys_ok, "route keys not restored after restart")
+                    # Catalog function restore without live peer is best-effort
+                    restored_fn = await _wait_for_function(
+                        restored_server, "demo.remote", timeout=2.0
+                    )
+                    ok(
+                        f"keys restored; fn_without_peer={restored_fn} "
+                        "(non-claim: peerless catalog full restore)"
+                    )
+                    ensure(
+                        restored_server._fabric_control_plane is not None,
+                        "restored control plane missing",
+                    )
+                    ok("restored node fabric control plane live")
+                finally:
+                    await _stop_server(restored_server, restored_task)
+
+            step("non-claim: not multi-region snapshot quorum")
 
 if __name__ == "__main__":
     asyncio.run(main())

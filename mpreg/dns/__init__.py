@@ -8,6 +8,6 @@ __all__ = [
     "DnsGateway",
     "DnsResolver",
     "DnsResolverConfig",
-    "encode_node_id",
     "decode_node_id",
+    "encode_node_id",
 ]

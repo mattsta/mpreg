@@ -39,10 +39,14 @@ def _graph_abc() -> GraphBasedFederationRouter:
     for i, c in enumerate("abc"):
         r.add_node(_node(c, float(i)))
     r.add_edge(
-        FederationGraphEdge("a", "b", latency_ms=5.0, bandwidth_mbps=1000, reliability_score=0.99)
+        FederationGraphEdge(
+            "a", "b", latency_ms=5.0, bandwidth_mbps=1000, reliability_score=0.99
+        )
     )
     r.add_edge(
-        FederationGraphEdge("b", "c", latency_ms=5.0, bandwidth_mbps=1000, reliability_score=0.99)
+        FederationGraphEdge(
+            "b", "c", latency_ms=5.0, bandwidth_mbps=1000, reliability_score=0.99
+        )
     )
     return r
 
@@ -77,7 +81,9 @@ def test_prefer_uses_link_state_when_available() -> None:
     ls = _graph_abc()
     # LS has direct a-c edge preferred
     ls.add_edge(
-        FederationGraphEdge("a", "c", latency_ms=1.0, bandwidth_mbps=1000, reliability_score=0.99)
+        FederationGraphEdge(
+            "a", "c", latency_ms=1.0, bandwidth_mbps=1000, reliability_score=0.99
+        )
     )
     planner = FabricFederationPlanner(
         local_cluster="a",
@@ -163,6 +169,7 @@ def test_prefer_falls_back_to_pv() -> None:
         ttl_seconds=3600.0,
     )
     assert table.apply_announcement(ann, received_from="b", now=now)
+
     # peer_locator must resolve next_hop cluster "b"
     def peers(c: str) -> list[str]:
         return [f"ws://{c}:1"]

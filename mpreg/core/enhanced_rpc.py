@@ -629,7 +629,7 @@ class TopicAwareRPCExecutor:
             await self._publish_request_event(
                 request_id,
                 RPCExecutionStage.REQUEST_FAILED,
-                f"Request failed: {str(e)}",
+                f"Request failed: {e!s}",
             )
             raise
         finally:
@@ -734,7 +734,7 @@ class TopicAwareRPCExecutor:
                 request_id,
                 RPCExecutionStage.COMMAND_FAILED,
                 state.progress_percentage,
-                f"Command {command.name} failed: {str(e)}",
+                f"Command {command.name} failed: {e!s}",
             )
             raise
 
@@ -776,7 +776,7 @@ class TopicAwareRPCExecutor:
             return
 
         # Create progress event
-        progress_event = RPCProgressEvent(
+        RPCProgressEvent(
             request_id=request_id,
             command_id=state.command.command_id,
             execution_level=None,  # Would be populated from execution context
@@ -792,7 +792,7 @@ class TopicAwareRPCExecutor:
         )
 
         # Generate topic for progress event
-        topic = state.command.progress_topic_pattern.format(
+        state.command.progress_topic_pattern.format(
             request_id=request_id, command_id=state.command.command_id
         )
 
@@ -811,7 +811,7 @@ class TopicAwareRPCExecutor:
             return
 
         # Create request-level progress event
-        progress_event = RPCProgressEvent(
+        RPCProgressEvent(
             request_id=request_id,
             command_id=None,
             stage=stage,
@@ -821,7 +821,6 @@ class TopicAwareRPCExecutor:
         )
 
         # Generate topic for request progress
-        topic = f"{self.config.topic_prefix}.request.{request_id}.progress"
 
         # Publish to topic exchange (in real implementation)
         # await self.topic_exchange.publish(topic, progress_event)

@@ -11,48 +11,55 @@ mpreg server start-config $(mpreg profile path dev)
 mpreg config-check mpreg/profiles/cluster.toml
 ```
 
-| Profile | Intent |
-|---------|--------|
-| `dev` | Local single node, minimal systems |
-| `single-node` | One process with cache + queue |
-| `cluster` | Multi-node same `cluster_id` (set `connect`/`peers`) |
-| `federated` | Cross-cluster path-vector emphasis |
-| `discovery-resolver` | Dedicated discovery cache/export node |
+| Profile              | Intent                                               |
+| -------------------- | ---------------------------------------------------- |
+| `dev`                | Local single node, minimal systems                   |
+| `single-node`        | One process with cache + queue                       |
+| `cluster`            | Multi-node same `cluster_id` (set `connect`/`peers`) |
+| `federated`          | Cross-cluster path-vector emphasis                   |
+| `discovery-resolver` | Dedicated discovery cache/export node                |
 
 ## Groups
 
 ### Identity
+
 `name`, `cluster_id`, `host`, `port`, `advertised_urls`, `resources`
 
 ### Monitoring
+
 `monitoring_enabled`, `monitoring_port`, `monitoring_host`,
 `monitoring_enable_cors` (default **false**), `monitoring_auth_token`
 
 ### Fabric routing
+
 `fabric_routing_enabled`, TTLs, announce intervals, link-state mode,
 route policies, route security / key registry
 
 ### Discovery
+
 resolver modes, summary export, **`discovery_summary_signing_secret`**,
 namespace policy, tenant mode, rate limits
 
 ### Data systems
+
 `enable_default_cache`, `enable_default_queue`, `enable_cache_federation`,
 cache geo/capacity
 
 ### Persistence
+
 `persistence_config` (`off` via absence, or `memory` / `sqlite`)
 
 ### DNS interop
+
 `dns_gateway_enabled`, ports, zones, viewer identity
 
 ## Production checklist
 
-1. `monitoring_auth_token` set; CORS off  
-2. Summary export signed if enabled  
-3. Persistence mode explicit if queues/cache must survive restart  
-4. `mpreg config-check` exits 0  
-5. `mpreg doctor` against live monitoring URL  
+1. `monitoring_auth_token` set; CORS off
+2. Summary export signed if enabled
+3. Persistence mode explicit if queues/cache must survive restart
+4. `mpreg config-check` exits 0
+5. `mpreg doctor` against live monitoring URL
 
 ## Doctor checks
 

@@ -8,14 +8,16 @@ and integrates with MPREG's existing topic exchange system.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 import uuid
-from dataclasses import dataclass, field
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from typing import Any
 
 from loguru import logger
 
+from ..datastructures import MessageId
 from .message_queue import (
     DeliveryGuarantee,
     DeliveryResult,
@@ -24,7 +26,6 @@ from .message_queue import (
     QueueStatistics,
     QueueType,
 )
-from ..datastructures import MessageId
 from .namespace_policy import (
     NamespacePolicyEngine,
     get_actor_cluster_id,
@@ -133,17 +134,14 @@ class MessageQueueManager(ManagedObject):
         for queue in self.queues.values():
             queue.on_dlq = callback
 
-    def _data_plane_allowed(
-        self, namespace: str, *, write: bool
-    ) -> tuple[bool, str]:
+    def _data_plane_allowed(self, namespace: str, *, write: bool) -> tuple[bool, str]:
         engine = self.namespace_policy
         if engine is None or not engine.enabled:
             return True, "policy_disabled"
         decision = engine.allows_data_access(
             namespace,
             actor_cluster=(
-                get_actor_cluster_id()
-                or (self.config.local_cluster_id or None)
+                get_actor_cluster_id() or (self.config.local_cluster_id or None)
             ),
             actor_tenant_id=get_actor_tenant_id(),
             write=write,
@@ -323,9 +321,7 @@ class MessageQueueManager(ManagedObject):
         """Subscribe to messages from a specific queue."""
         allowed, reason = self._data_plane_allowed(queue_name, write=False)
         if not allowed:
-            queue_mgr_log.warning(
-                f"Subscribe denied for queue {queue_name}: {reason}"
-            )
+            queue_mgr_log.warning(f"Subscribe denied for queue {queue_name}: {reason}")
             return None
         if queue_name not in self.queues:
             queue_mgr_log.error(f"Cannot subscribe to non-existent queue: {queue_name}")
@@ -400,9 +396,7 @@ class MessageQueueManager(ManagedObject):
         """
         allowed, reason = self._data_plane_allowed(queue_name, write=False)
         if not allowed:
-            queue_mgr_log.warning(
-                f"Receive denied for queue {queue_name}: {reason}"
-            )
+            queue_mgr_log.warning(f"Receive denied for queue {queue_name}: {reason}")
             return None
         if queue_name not in self.queues:
             if self.config.enable_auto_queue_creation:
@@ -414,10 +408,8 @@ class MessageQueueManager(ManagedObject):
         sub_id_label = subscriber_id or f"rpc-receive-{uuid.uuid4().hex[:12]}"
 
         def _on_message(message: Any) -> None:
-            try:
+            with contextlib.suppress(asyncio.QueueFull):
                 delivery_queue.put_nowait(message)
-            except asyncio.QueueFull:
-                pass
 
         subscription_id = self.subscribe_to_queue(
             queue_name=queue_name,
@@ -519,7 +511,6 @@ class MessageQueueManager(ManagedObject):
             return
 
         # Subscribe to queue management topics
-        management_topic = f"{self.config.integration_topic_prefix}.management.*"
         # Note: In a real implementation, we'd set up proper topic exchange subscriptions
         queue_mgr_log.info(
             f"Set up topic exchange integration with prefix: {self.config.integration_topic_prefix}"
@@ -597,7 +588,7 @@ class MessageQueueManager(ManagedObject):
 
         # Shutdown all queues
         shutdown_tasks = []
-        for queue_name, queue in self.queues.items():
+        for queue in self.queues.values():
             shutdown_tasks.append(queue.shutdown())
 
         if shutdown_tasks:

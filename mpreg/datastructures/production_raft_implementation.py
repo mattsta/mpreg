@@ -646,9 +646,7 @@ class ProductionRaft(ProductionRaftRPCs):
             raft_log.error(f"[{self.node_id}] Error stopping Raft node: {e}")
             import traceback
 
-            raft_log.error(
-                f"[{self.node_id}] Stop traceback: {traceback.format_exc()}"
-            )
+            raft_log.error(f"[{self.node_id}] Stop traceback: {traceback.format_exc()}")
             raise
 
     async def step_down(self) -> None:
@@ -657,7 +655,6 @@ class ProductionRaft(ProductionRaftRPCs):
             await self._convert_to_follower(restart_timer=True, reset_backoff=True)
         await self._run_pending_task_ops()
 
-    
     async def submit_configuration_change(
         self, new_members: set[str] | frozenset[str], client_id: str = ""
     ) -> None:
@@ -733,7 +730,9 @@ class ProductionRaft(ProductionRaftRPCs):
             try:
                 await asyncio.wait_for(fut, timeout=5.0)
             except TimeoutError:
-                raft_log.warning(f"Command commit/apply timeout for entry {entry.index}")
+                raft_log.warning(
+                    f"Command commit/apply timeout for entry {entry.index}"
+                )
                 self._apply_waiters.pop(entry.index, None)
                 return None
             finally:
@@ -1216,7 +1215,9 @@ class ProductionRaft(ProductionRaftRPCs):
 
             # Prepare AppendEntries request
             prev_log_index = max(0, next_index - 1)
-            prev_log_term = self._get_term_at_index(prev_log_index) if prev_log_index > 0 else 0
+            prev_log_term = (
+                self._get_term_at_index(prev_log_index) if prev_log_index > 0 else 0
+            )
 
             entries = self._entries_from_index(
                 next_index, self.config.max_log_entries_per_request
@@ -1916,9 +1917,7 @@ class ProductionRaft(ProductionRaftRPCs):
                             f"[{self.node_id}] Skipping self-cancel of heartbeat; "
                             "loop will exit on state check"
                         )
-                    await self.task_manager.stop_task_group(
-                        "replication", timeout=0.5
-                    )
+                    await self.task_manager.stop_task_group("replication", timeout=0.5)
                     if RAFT_DIAG_ENABLED:
                         raft_log.warning(
                             "[DIAG_RAFT] node={} action=leader_tasks_stopped term={}",
@@ -1962,9 +1961,7 @@ class ProductionRaft(ProductionRaftRPCs):
                             self.persistent_state.current_term,
                         )
             except Exception as e:
-                raft_log.warning(
-                    f"[{self.node_id}] pending task op {op!r} failed: {e}"
-                )
+                raft_log.warning(f"[{self.node_id}] pending task op {op!r} failed: {e}")
 
     def _update_exponential_average(
         self, current_value: float, new_value: float, alpha: float = 0.1
@@ -2017,7 +2014,7 @@ class ProductionRaft(ProductionRaftRPCs):
             # COR-T11-05: install membership from snapshot when present
             cfg = getattr(snapshot, "configuration", None) or set()
             if cfg:
-                self.cluster_members = set(str(m) for m in cfg)
+                self.cluster_members = {str(m) for m in cfg}
 
             raft_log.info(
                 f"Applied snapshot up to index {snapshot.last_included_index}, "

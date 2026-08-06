@@ -752,7 +752,7 @@ def get_federation_health():
     result = subprocess.run(
         ["uv", "run", "mpreg", "health", "--output", "json"],
         capture_output=True,
-        text=True
+        text=True,
     )
 
     if result.returncode == 0:
@@ -764,8 +764,7 @@ def deploy_federation(config_path):
     """Deploy federation from configuration file."""
     # Validate first
     result = subprocess.run(
-        ["uv", "run", "mpreg", "validate-config", config_path],
-        capture_output=True
+        ["uv", "run", "mpreg", "validate-config", config_path], capture_output=True
     )
 
     if result.returncode != 0:
@@ -773,8 +772,7 @@ def deploy_federation(config_path):
 
     # Deploy
     result = subprocess.run(
-        ["uv", "run", "mpreg", "deploy", config_path],
-        capture_output=True
+        ["uv", "run", "mpreg", "deploy", config_path], capture_output=True
     )
 
     return result.returncode == 0
@@ -945,21 +943,25 @@ uv run mpreg monitor health-watch --interval 60   # 1 minute
 ## Best Practices
 
 1. **Configuration Management**
+
    - Use version control for configuration files
    - Validate configurations before deployment
    - Use environment-specific configuration files
 
 2. **Monitoring**
+
    - Set up continuous health monitoring
    - Configure alerting for unhealthy clusters
    - Monitor performance metrics regularly
 
 3. **Deployment**
+
    - Always test with `--dry-run` first
    - Deploy during maintenance windows
    - Have rollback procedures ready
 
 4. **Security**
+
    - Use secure WebSocket connections (wss://)
    - Implement proper authentication
    - Regularly update cluster credentials

@@ -89,20 +89,24 @@ async def main() -> None:
                     ensure(ra == "pong-from-a", f"a {ra}")
                     ensure(rb == "pong-from-b", f"b {rb}")
                     ensure(rc == "pong-from-c", f"c {rc}")
-                    ok(f"rpc a/b/c ok")
+                    ok("rpc a/b/c ok")
 
-                with scenario("list_peers + cluster_map", "disco.list_peers", "disco.cluster_map"):
+                with scenario(
+                    "list_peers + cluster_map", "disco.list_peers", "disco.cluster_map"
+                ):
                     async with MPREGClientAPI(url_a) as client:
                         peers = await client.list_peers()
                         ensure(len(peers) >= 1, f"expected peers got {peers!r}")
                         cmap = await client.cluster_map()
                         ensure(cmap is not None, "cluster_map None")
-                        ok(
-                            f"peers={len(peers)} cluster_map={type(cmap).__name__}"
-                        )
+                        ok(f"peers={len(peers)} cluster_map={type(cmap).__name__}")
                         step(f"peer sample: {peers[0] if peers else None}")
 
-                with scenario("rpc_list / catalog_query surfaces", "rpc.list", "disco.catalog_query"):
+                with scenario(
+                    "rpc_list / catalog_query surfaces",
+                    "rpc.list",
+                    "disco.catalog_query",
+                ):
                     async with MPREGClientAPI(url_a) as client:
                         listed = await client.rpc_list()
                         ensure(listed is not None, "rpc_list None")

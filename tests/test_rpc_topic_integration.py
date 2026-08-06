@@ -45,7 +45,7 @@ class TestRPCTopicIntegrationBasics:
         self, enhanced_server: MPREGServer, client_factory: Callable[[int], Any]
     ) -> None:
         """Test basic topic-aware RPC execution with live server."""
-        client = await client_factory(enhanced_server.settings.port)
+        await client_factory(enhanced_server.settings.port)
 
         # Create sample commands that use real functions from enhanced_server
         commands = [
@@ -108,7 +108,7 @@ class TestRPCTopicIntegrationBasics:
         self, enhanced_server: MPREGServer, client_factory: Callable[[int], Any]
     ) -> None:
         """Test dependency graph creation and analysis with live server."""
-        client = await client_factory(enhanced_server.settings.port)
+        await client_factory(enhanced_server.settings.port)
 
         # Create dependency resolver with live server context
         dependency_resolver = create_topic_dependency_resolver(
@@ -197,7 +197,7 @@ class TestRPCTopicIntegrationBasics:
         self, enhanced_server: MPREGServer, client_factory: Callable[[int], Any]
     ) -> None:
         """Test detection of different cross-system dependency types with live server."""
-        client = await client_factory(enhanced_server.settings.port)
+        await client_factory(enhanced_server.settings.port)
 
         # Create dependency resolver
         dependency_resolver = create_topic_dependency_resolver(
@@ -348,7 +348,7 @@ class TestRPCTopicErrorHandling:
         self, enhanced_server: MPREGServer, client_factory: Callable[[int], Any]
     ) -> None:
         """Test handling of command execution failures with live server."""
-        client = await client_factory(enhanced_server.settings.port)
+        await client_factory(enhanced_server.settings.port)
 
         # Create error handling executor
         config = TopicAwareRPCConfig(
@@ -390,7 +390,7 @@ class TestRPCTopicErrorHandling:
         self, enhanced_server: MPREGServer, client_factory: Callable[[int], Any]
     ) -> None:
         """Test handling of dependency resolution timeouts with live server."""
-        client = await client_factory(enhanced_server.settings.port)
+        await client_factory(enhanced_server.settings.port)
 
         resolver = create_topic_dependency_resolver(
             default_timeout_ms=2000.0,  # Realistic timeout for stable testing
@@ -477,7 +477,7 @@ class TestComplexRPCTopicWorkflows:
         # Wait for cluster synchronization
         await asyncio.sleep(1.0)
 
-        client = await client_factory(primary.settings.port)
+        await client_factory(primary.settings.port)
 
         # Create executor and resolver
         topic_exchange = getattr(primary, "topic_exchange", None)
@@ -571,7 +571,7 @@ class TestComplexRPCTopicWorkflows:
         self, enhanced_server: MPREGServer, client_factory: Callable[[int], Any]
     ) -> None:
         """Test base RPC interop with topic-aware requests using live server."""
-        client = await client_factory(enhanced_server.settings.port)
+        await client_factory(enhanced_server.settings.port)
 
         # Create base RPC commands using real functions
         base_commands = [
@@ -665,7 +665,7 @@ def test_rpc_topic_integration_properties(
         assert cmd.estimated_duration_ms is None or cmd.estimated_duration_ms > 0
 
     # Test conversion properties
-    config = TopicAwareRPCConfig(
+    TopicAwareRPCConfig(
         enable_progress_publishing=enable_progress,
         enable_result_streaming=enable_streaming,
     )
@@ -829,7 +829,7 @@ async def test_end_to_end_rpc_topic_workflow(
     # Wait for cluster synchronization
     await asyncio.sleep(1.0)
 
-    client = await client_factory(server1.settings.port)
+    await client_factory(server1.settings.port)
 
     # Create integrated system components
     topic_exchange = getattr(server1, "topic_exchange", None)

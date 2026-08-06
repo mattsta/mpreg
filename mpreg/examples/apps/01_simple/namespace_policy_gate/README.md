@@ -31,13 +31,13 @@ uv run mpreg-example run namespace_policy_gate
 
 ## API drill-down
 
-| Call | Feature ID |
-|------|------------|
+| Call                        | Feature ID    |
+| --------------------------- | ------------- |
 | `namespace_policy_validate` | `ns.validate` |
-| `namespace_policy_apply` | `ns.apply` |
-| `namespace_status` | `ns.status` |
-| `namespace_policy_export` | `ns.export` |
-| `namespace_policy_audit` | `ns.audit` |
+| `namespace_policy_apply`    | `ns.apply`    |
+| `namespace_status`          | `ns.status`   |
+| `namespace_policy_export`   | `ns.export`   |
+| `namespace_policy_audit`    | `ns.audit`    |
 
 ## Non-claims
 

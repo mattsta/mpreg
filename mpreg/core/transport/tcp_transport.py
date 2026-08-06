@@ -774,10 +774,8 @@ class TCPListener(TransportListener):
                 self._accept_queue_dropped = (
                     int(getattr(self, "_accept_queue_dropped", 0)) + 1
                 )
-                try:
+                with contextlib.suppress(Exception):
                     writer.close()
-                except Exception:
-                    pass
 
 class _TCPServerTransport(TransportInterface):
     """TCP transport wrapper for server-side connections."""
@@ -817,7 +815,6 @@ class _TCPServerTransport(TransportInterface):
 
     async def connect(self) -> None:
         """No-op for server-side connection (already connected)."""
-        pass
 
     async def disconnect(self) -> None:
         """Close server-side TCP connection."""

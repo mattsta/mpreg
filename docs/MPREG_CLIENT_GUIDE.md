@@ -78,17 +78,22 @@ async def main():
 
         # Dependency chain execution (public request / call_dag — not private _client)
         from mpreg.core.model import RPCCommand
-        result = await client.request([
-            RPCCommand(
-                name="step1",
-                fun="process_data",
-                args=(data,),
-                function_id="pipeline.process_data",
-                version_constraint=">=2.0.0,<3.0.0",
-            ),
-            RPCCommand(name="step2", fun="analyze", args=("step1",)),  # Uses step1 result
-            RPCCommand(name="final", fun="summarize", args=("step2",))
-        ])
+
+        result = await client.request(
+            [
+                RPCCommand(
+                    name="step1",
+                    fun="process_data",
+                    args=(data,),
+                    function_id="pipeline.process_data",
+                    version_constraint=">=2.0.0,<3.0.0",
+                ),
+                RPCCommand(
+                    name="step2", fun="analyze", args=("step1",)
+                ),  # Uses step1 result
+                RPCCommand(name="final", fun="summarize", args=("step2",)),
+            ]
+        )
 ```
 
 ### External Clients
@@ -506,7 +511,9 @@ async def main():
 
     key = GlobalCacheKey.from_data("user_sessions", {"session_id": "session_123"})
     options = CacheOptions(cache_levels=frozenset([CacheLevel.L1, CacheLevel.L4]))
-    await cache.put(key, {"user_id": "user_456"}, CacheMetadata(ttl_seconds=300.0), options=options)
+    await cache.put(
+        key, {"user_id": "user_456"}, CacheMetadata(ttl_seconds=300.0), options=options
+    )
 
     result = await cache.get(key, options=options)
     print("Cache hit:", result.success)
@@ -719,7 +726,7 @@ from mpreg.core.transport.factory import create_transport_pool
 pool = create_transport_pool(
     urls=["ws://cache-1:<port>", "ws://cache-2:<port>"],
     pool_size=10,
-    max_lifetime_seconds=3600
+    max_lifetime_seconds=3600,
 )
 
 # Use pooled connections
@@ -810,6 +817,7 @@ from mpreg.client.dns_client import MPREGDnsClient
 async def main():
     dns = MPREGDnsClient(host="127.0.0.1", port=5353)
     result = await dns.resolve("_svc._tcp.tradefeed.market.mpreg", qtype="SRV")
+
 print(result.to_dict())
 ```
 
@@ -852,18 +860,18 @@ async with MPREGClientAPI("ws://127.0.0.1:<port>", call_policy=policy) as client
     print(client.last_trace_context())
 ```
 
-| Code | Name | Typical retry? |
-|------|------|----------------|
-| 1001 | COMMAND_NOT_FOUND | No (cluster client may try summary redirect) |
-| 1002 | VERSION_MISMATCH | No |
-| 1003 | HOP_BUDGET_EXCEEDED | No |
-| 1004 | POLICY_DENIED | No |
-| 1005 | ROUTE_NOT_FOUND | Yes (default) |
-| 1006 | TIMEOUT | Yes |
-| 1007 | UNAVAILABLE | Yes |
-| 1008 | INVALID_ARGUMENT | No |
-| 1009–1010 | AUTH_* | No |
-| 1099 | INTERNAL | Operator-dependent |
+| Code      | Name                | Typical retry?                               |
+| --------- | ------------------- | -------------------------------------------- |
+| 1001      | COMMAND_NOT_FOUND   | No (cluster client may try summary redirect) |
+| 1002      | VERSION_MISMATCH    | No                                           |
+| 1003      | HOP_BUDGET_EXCEEDED | No                                           |
+| 1004      | POLICY_DENIED       | No                                           |
+| 1005      | ROUTE_NOT_FOUND     | Yes (default)                                |
+| 1006      | TIMEOUT             | Yes                                          |
+| 1007      | UNAVAILABLE         | Yes                                          |
+| 1008      | INVALID_ARGUMENT    | No                                           |
+| 1009–1010 | AUTH\_\*            | No                                           |
+| 1099      | INTERNAL            | Operator-dependent                           |
 
 ### High-availability cluster client
 
@@ -892,17 +900,21 @@ mpreg monitor decisions --correlation-id <id> --url $MPREG_MONITORING_URL
 
 ## RPC execution modalities (async / soft real-time / streaming)
 
-MPREG clients select evaluation semantics through ``ClientCallPolicy`` and
-``RpcExecutionMode``:
+MPREG clients select evaluation semantics through `ClientCallPolicy` and
+`RpcExecutionMode`:
 
-| Mode | Enum | Semantics |
-|------|------|-----------|
-| M1 Async | ``RpcExecutionMode.M1_ASYNC`` | Throughput-oriented retries; optional wall deadline per attempt |
-| M2 Soft real-time | ``RpcExecutionMode.M2_SOFT_RT`` | Shared end-to-end deadline budget; fail closed with ``TIMEOUT`` (1006); no retry past remaining budget |
-| M3 Streaming | ``RpcExecutionMode.M3_STREAMING`` | Progressive / intermediate results; cancel stops further partials; default single attempt |
+| Mode              | Enum                            | Semantics                                                                                            |
+| ----------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| M1 Async          | `RpcExecutionMode.M1_ASYNC`     | Throughput-oriented retries; optional wall deadline per attempt                                      |
+| M2 Soft real-time | `RpcExecutionMode.M2_SOFT_RT`   | Shared end-to-end deadline budget; fail closed with `TIMEOUT` (1006); no retry past remaining budget |
+| M3 Streaming      | `RpcExecutionMode.M3_STREAMING` | Progressive / intermediate results; cancel stops further partials; default single attempt            |
 
 ```python
-from mpreg.client.call_policy import ClientCallPolicy, RpcExecutionMode, call_with_policy
+from mpreg.client.call_policy import (
+    ClientCallPolicy,
+    RpcExecutionMode,
+    call_with_policy,
+)
 
 # Soft real-time: 200ms budget shared across retries
 policy = ClientCallPolicy.for_mode(
@@ -917,16 +929,16 @@ stream_policy = ClientCallPolicy.for_mode(RpcExecutionMode.M3_STREAMING)
 async_policy = ClientCallPolicy.for_mode(RpcExecutionMode.M1_ASYNC)
 ```
 
-Fabric hops carry ``MessageHeaders.deadline_remaining_ms`` (also mirrored in
-metadata key ``mpreg.deadline_remaining_ms``). Forwarders should decrement the
-budget by measured hop latency via ``mpreg.core.rpc_deadline.decrement_deadline_headers``.
-When remaining ≤ 0, servers return structured ``TIMEOUT`` rather than stalling.
+Fabric hops carry `MessageHeaders.deadline_remaining_ms` (also mirrored in
+metadata key `mpreg.deadline_remaining_ms`). Forwarders should decrement the
+budget by measured hop latency via `mpreg.core.rpc_deadline.decrement_deadline_headers`.
+When remaining ≤ 0, servers return structured `TIMEOUT` rather than stalling.
 
-Intermediate results (``return_intermediate_results``) emit monotonic level
+Intermediate results (`return_intermediate_results`) emit monotonic level
 indices; a final event implies no further partials. Under hop loss, clients may
 observe a prefix of levels without a final — never a silent wrong success.
 
-See architecture claims INV-P1–P5 in ``tests/invariants/claims.yaml``.
+See architecture claims INV-P1–P5 in `tests/invariants/claims.yaml`.
 
 ## Four-plane HA limits (USE-T10-03 / ERG-T10-08)
 

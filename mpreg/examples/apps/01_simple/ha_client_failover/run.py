@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import asyncio
 
-from mpreg.client.call_policy import ClientCallPolicy, RpcExecutionMode, default_ha_policy
+from mpreg.client.call_policy import (
+    ClientCallPolicy,
+    RpcExecutionMode,
+    default_ha_policy,
+)
 from mpreg.client.cluster_client import MPREGClusterClient
 from mpreg.core.config import MPREGSettings
 from mpreg.core.port_allocator import port_range_context
@@ -114,7 +118,10 @@ async def main() -> None:
                             a = await client.call(
                                 "whoami", locs=frozenset(["api"]), timeout=10.0
                             )
-                            ensure(isinstance(a, str) and a.startswith("HA-"), f"whoami {a!r}")
+                            ensure(
+                                isinstance(a, str) and a.startswith("HA-"),
+                                f"whoami {a!r}",
+                            )
                             ok(f"whoami via multi-seed={a!r}")
 
                 step(

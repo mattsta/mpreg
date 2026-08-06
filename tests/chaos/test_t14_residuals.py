@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from click.testing import CliRunner
@@ -23,11 +21,10 @@ from mpreg.datastructures.production_raft_implementation import (
 )
 from mpreg.datastructures.raft_codec import (
     deserialize_install_snapshot,
-    serialize_install_snapshot,
 )
 from mpreg.datastructures.raft_storage_adapters import RaftStorageFactory
-from mpreg.fabric.gossip import GossipFilter, GossipMessage, GossipMessageType
 from mpreg.datastructures.vector_clock import VectorClock
+from mpreg.fabric.gossip import GossipFilter, GossipMessage, GossipMessageType
 from mpreg.server_pkg.openapi_surface import (
     openapi_path_set,
     route_table_path_set,
@@ -202,7 +199,6 @@ def test_obs_t14_01_status_dict_includes_metrics() -> None:
 
 def test_obs_t14_01_refresh_bridge_from_provider() -> None:
     from mpreg.fabric.monitoring_endpoints import FederationMonitoringSystem
-    from mpreg.core.config import MPREGSettings
 
     # Minimal instance without full __post_init__ web app if possible
     tracker = ServerMetricsTracker()
@@ -266,7 +262,11 @@ def test_erg_t14_02_profile_list_shows_risk() -> None:
     assert result.exit_code == 0, result.output
     assert "lab" in result.output
     assert "federated" in result.output.lower() or "Federated" in result.output
-    assert "Risk" in result.output or "risk" in result.output.lower() or "prod-baseline" in result.output
+    assert (
+        "Risk" in result.output
+        or "risk" in result.output.lower()
+        or "prod-baseline" in result.output
+    )
 
 # --- ERG-T14-03: cluster / soft-rt mon posture ---
 

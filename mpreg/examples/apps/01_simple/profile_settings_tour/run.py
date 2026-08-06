@@ -49,7 +49,9 @@ async def main() -> None:
             ensure(bool(s.name), "empty name")
             ok(f"single-node name={s.name} cluster={s.cluster_id}")
 
-        with scenario("federated.toml stricter defaults", "boot.profile", "fabric.cluster_id"):
+        with scenario(
+            "federated.toml stricter defaults", "boot.profile", "fabric.cluster_id"
+        ):
             path = PROFILES / "federated.toml"
             ensure(path.is_file(), f"missing {path}")
             s = MPREGSettings.from_path(str(path))
@@ -59,7 +61,9 @@ async def main() -> None:
                 f"fabric_routing={getattr(s, 'fabric_routing_enabled', None)}"
             )
 
-        with scenario("soft-rt.toml present for deadline demos", "boot.profile", "rpc.deadline"):
+        with scenario(
+            "soft-rt.toml present for deadline demos", "boot.profile", "rpc.deadline"
+        ):
             path = PROFILES / "soft-rt.toml"
             ensure(path.is_file(), f"missing {path}")
             s = MPREGSettings.from_path(str(path))

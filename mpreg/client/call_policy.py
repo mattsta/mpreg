@@ -64,7 +64,9 @@ class ClientCallPolicy:
             return cls(
                 mode=mode,
                 max_attempts=max_attempts if max_attempts is not None else 2,
-                deadline_seconds=deadline_seconds if deadline_seconds is not None else 1.0,
+                deadline_seconds=deadline_seconds
+                if deadline_seconds is not None
+                else 1.0,
                 retry_on_timeout=True,
                 retry_on_unavailable=True,
                 share_deadline_across_attempts=True,
@@ -95,9 +97,7 @@ class ClientCallPolicy:
             return True
         if mapped.code == int(MpregErrorCode.UNAVAILABLE) and self.retry_on_unavailable:
             return True
-        if mapped.retryable:
-            return True
-        return False
+        return bool(mapped.retryable)
 
     def backoff_for_attempt(self, attempt: int) -> float:
         # attempt is 1-based after a failure
@@ -107,7 +107,7 @@ class ClientCallPolicy:
             delay += random.uniform(0, self.jitter_seconds)
         return delay
 
-async def call_with_policy(
+async def call_with_policy[T](
     operation: Callable[[], Awaitable[T]],
     policy: ClientCallPolicy,
 ) -> T:

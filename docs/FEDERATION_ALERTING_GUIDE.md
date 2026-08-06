@@ -15,7 +15,7 @@ from mpreg.fabric.federation_alerting import (
     create_console_channel,
     create_slack_channel,
     create_severity_routing_rule,
-    AlertSeverity
+    AlertSeverity,
 )
 
 # Create the alerting service
@@ -23,14 +23,20 @@ alerting = FederationAlertingService()
 
 # Add notification channels
 console_channel = create_console_channel("dev-console", AlertSeverity.INFO)
-slack_channel = create_slack_channel("prod-slack", "https://hooks.slack.com/your-webhook", AlertSeverity.WARNING)
+slack_channel = create_slack_channel(
+    "prod-slack", "https://hooks.slack.com/your-webhook", AlertSeverity.WARNING
+)
 
 alerting.add_channel(console_channel)
 alerting.add_channel(slack_channel)
 
 # Add routing rules
-dev_rule = create_severity_routing_rule("dev-alerts", ["info", "warning"], ["dev-console"])
-prod_rule = create_severity_routing_rule("prod-alerts", ["error", "critical"], ["prod-slack"])
+dev_rule = create_severity_routing_rule(
+    "dev-alerts", ["info", "warning"], ["dev-console"]
+)
+prod_rule = create_severity_routing_rule(
+    "prod-alerts", ["error", "critical"], ["prod-slack"]
+)
 
 alerting.add_routing_rule(dev_rule)
 alerting.add_routing_rule(prod_rule)
@@ -39,7 +45,10 @@ alerting.add_routing_rule(prod_rule)
 ### 2. Integration with Performance Metrics
 
 ```python
-from mpreg.fabric.performance_metrics import PerformanceMetricsService, create_performance_metrics_service
+from mpreg.fabric.performance_metrics import (
+    PerformanceMetricsService,
+    create_performance_metrics_service,
+)
 
 # Create performance metrics service
 metrics = create_performance_metrics_service(collection_interval=30.0)
@@ -65,7 +74,7 @@ from mpreg.fabric.federation_alerting import create_console_channel, AlertSeveri
 
 channel = create_console_channel(
     channel_id="dev-console",
-    min_severity=AlertSeverity.INFO  # Show all alerts
+    min_severity=AlertSeverity.INFO,  # Show all alerts
 )
 ```
 
@@ -79,7 +88,7 @@ from mpreg.fabric.federation_alerting import create_slack_channel
 channel = create_slack_channel(
     channel_id="ops-slack",
     webhook_url="https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK",
-    min_severity=AlertSeverity.WARNING
+    min_severity=AlertSeverity.WARNING,
 )
 ```
 
@@ -94,7 +103,7 @@ channel = create_webhook_channel(
     channel_id="monitoring-api",
     webhook_url="https://your-monitoring.com/alerts",
     headers={"Authorization": "Bearer your-token"},
-    min_severity=AlertSeverity.ERROR
+    min_severity=AlertSeverity.ERROR,
 )
 ```
 
@@ -110,7 +119,7 @@ critical_rule = create_severity_routing_rule(
     rule_id="critical-alerts",
     target_severities=["critical"],
     target_channels=["slack-oncall", "webhook-pager", "email-managers"],
-    priority=10  # Higher priority (lower number)
+    priority=10,  # Higher priority (lower number)
 )
 ```
 
@@ -124,7 +133,7 @@ prod_rule = create_cluster_routing_rule(
     rule_id="production-clusters",
     cluster_pattern="prod-.*",  # Regex pattern
     target_channels=["slack-prod", "webhook-ops"],
-    priority=20
+    priority=20,
 )
 ```
 
@@ -141,10 +150,10 @@ custom_rule = AlertRoutingRule(
         "severity": ["critical", "error"],
         "cluster_pattern": "db-.*",
         "metric_name": ["health_score", "error_rate"],
-        "labels": {"service": "database"}
+        "labels": {"service": "database"},
     },
     target_channels=["dba-oncall", "slack-database"],
-    priority=5  # Highest priority
+    priority=5,  # Highest priority
 )
 ```
 
@@ -156,14 +165,14 @@ custom_rule = AlertRoutingRule(
 from mpreg.fabric.federation_alerting import (
     EscalationPolicy,
     EscalationLevel,
-    create_basic_escalation_policy
+    create_basic_escalation_policy,
 )
 
 # Simple escalation: dev team → oncall → management
 policy = create_basic_escalation_policy(
     policy_id="standard-escalation",
     immediate_channels=["slack-dev"],
-    escalated_channels=["slack-oncall", "email-managers"]
+    escalated_channels=["slack-oncall", "email-managers"],
 )
 
 alerting.add_escalation_policy(policy)
@@ -177,13 +186,13 @@ advanced_policy = EscalationPolicy(
     policy_id="critical-escalation",
     name="Critical System Escalation",
     escalation_levels={
-        EscalationLevel.IMMEDIATE: ["slack-dev"],           # 0 minutes
-        EscalationLevel.FIRST: ["slack-oncall"],            # 5 minutes
-        EscalationLevel.SECOND: ["pager-oncall"],           # 15 minutes
-        EscalationLevel.THIRD: ["email-managers"],          # 30 minutes
-        EscalationLevel.FINAL: ["ceo-phone"]                # 60 minutes
+        EscalationLevel.IMMEDIATE: ["slack-dev"],  # 0 minutes
+        EscalationLevel.FIRST: ["slack-oncall"],  # 5 minutes
+        EscalationLevel.SECOND: ["pager-oncall"],  # 15 minutes
+        EscalationLevel.THIRD: ["email-managers"],  # 30 minutes
+        EscalationLevel.FINAL: ["ceo-phone"],  # 60 minutes
     },
-    default_channels=["slack-dev"]
+    default_channels=["slack-dev"],
 )
 
 # Link escalation to routing rule
@@ -193,7 +202,7 @@ critical_rule = AlertRoutingRule(
     conditions={"severity": ["critical"]},
     target_channels=["slack-dev"],
     escalation_policy_id="critical-escalation",  # Link to policy
-    priority=1
+    priority=1,
 )
 ```
 
@@ -216,7 +225,7 @@ slack_template = NotificationTemplate(
 🎯 *Threshold:* {threshold_value}
 💬 *Details:* {message}
 🕐 *Time:* {timestamp}
-    """.strip()
+    """.strip(),
 )
 
 alerting.add_template(slack_template)
@@ -238,7 +247,7 @@ webhook_template = NotificationTemplate(
         "threshold": {threshold_value},
         "message": "{message}",
         "timestamp": {timestamp}
-    }"""
+    }""",
 )
 ```
 
@@ -256,10 +265,18 @@ async def setup_production_alerting():
     # 2. Set up notification channels
     channels = [
         create_console_channel("dev-console", AlertSeverity.INFO),
-        create_slack_channel("dev-slack", "https://hooks.slack.com/dev", AlertSeverity.WARNING),
-        create_slack_channel("ops-slack", "https://hooks.slack.com/ops", AlertSeverity.ERROR),
-        create_webhook_channel("pagerduty", "https://events.pagerduty.com/v2/enqueue",
-                             {"Authorization": "Token token=your-pd-token"}, AlertSeverity.CRITICAL)
+        create_slack_channel(
+            "dev-slack", "https://hooks.slack.com/dev", AlertSeverity.WARNING
+        ),
+        create_slack_channel(
+            "ops-slack", "https://hooks.slack.com/ops", AlertSeverity.ERROR
+        ),
+        create_webhook_channel(
+            "pagerduty",
+            "https://events.pagerduty.com/v2/enqueue",
+            {"Authorization": "Token token=your-pd-token"},
+            AlertSeverity.CRITICAL,
+        ),
     ]
 
     for channel in channels:
@@ -276,8 +293,8 @@ async def setup_production_alerting():
         escalation_levels={
             EscalationLevel.IMMEDIATE: ["ops-slack"],
             EscalationLevel.FIRST: ["pagerduty"],
-            EscalationLevel.FINAL: ["pagerduty", "ops-slack"]
-        }
+            EscalationLevel.FINAL: ["pagerduty", "ops-slack"],
+        },
     )
 
     alerting.add_escalation_policy(dev_escalation)
@@ -292,45 +309,36 @@ async def setup_production_alerting():
             conditions={"cluster_pattern": "dev-.*"},
             target_channels=["dev-console", "dev-slack"],
             escalation_policy_id="dev-escalation",
-            priority=100
+            priority=100,
         ),
-
         # Production warnings - ops team
         AlertRoutingRule(
             rule_id="prod-warnings",
             name="Production Warnings",
-            conditions={
-                "cluster_pattern": "prod-.*",
-                "severity": ["warning", "error"]
-            },
+            conditions={"cluster_pattern": "prod-.*", "severity": ["warning", "error"]},
             target_channels=["ops-slack"],
-            priority=20
+            priority=20,
         ),
-
         # Production critical - immediate escalation
         AlertRoutingRule(
             rule_id="prod-critical",
             name="Production Critical",
-            conditions={
-                "cluster_pattern": "prod-.*",
-                "severity": ["critical"]
-            },
+            conditions={"cluster_pattern": "prod-.*", "severity": ["critical"]},
             target_channels=["ops-slack"],
             escalation_policy_id="critical-escalation",
-            priority=10
+            priority=10,
         ),
-
         # Database-specific alerts
         AlertRoutingRule(
             rule_id="database-alerts",
             name="Database Alerts",
             conditions={
                 "cluster_pattern": ".*-db-.*",
-                "metric_name": ["health_score", "error_rate", "latency"]
+                "metric_name": ["health_score", "error_rate", "latency"],
             },
             target_channels=["ops-slack", "pagerduty"],
-            priority=5
-        )
+            priority=5,
+        ),
     ]
 
     for rule in routing_rules:
@@ -338,8 +346,7 @@ async def setup_production_alerting():
 
     # 5. Set up performance metrics with alerting
     metrics = create_performance_metrics_service(
-        collection_interval=30.0,
-        custom_thresholds=create_production_thresholds()
+        collection_interval=30.0, custom_thresholds=create_production_thresholds()
     )
 
     # Connect metrics to alerting
@@ -393,7 +400,7 @@ manual_alert = PerformanceAlert(
     metric_name="cpu_usage",
     current_value=85.0,
     threshold_value=80.0,
-    message="High CPU usage detected"
+    message="High CPU usage detected",
 )
 
 await alerting.process_alert(manual_alert)
@@ -425,7 +432,9 @@ Begin with console notifications and basic routing, then add complexity:
 # Development setup
 alerting = FederationAlertingService()
 alerting.add_channel(create_console_channel("dev"))
-alerting.add_routing_rule(create_severity_routing_rule("all", ["warning", "error", "critical"], ["dev"]))
+alerting.add_routing_rule(
+    create_severity_routing_rule("all", ["warning", "error", "critical"], ["dev"])
+)
 ```
 
 ### 2. Use Appropriate Severities
@@ -445,7 +454,7 @@ high_volume_channel = NotificationChannel(
     backend=NotificationBackend.WEBHOOK,
     config={"webhook_url": "https://metrics.company.com/alerts"},
     rate_limit_per_minute=30,  # Allow up to 30 alerts per minute
-    min_severity=AlertSeverity.WARNING
+    min_severity=AlertSeverity.WARNING,
 )
 ```
 
@@ -462,7 +471,7 @@ test_alert = PerformanceAlert(
     metric_name="test_metric",
     current_value=100.0,
     threshold_value=80.0,
-    message="Test alert for routing verification"
+    message="Test alert for routing verification",
 )
 
 await alerting.process_alert(test_alert)
@@ -478,13 +487,13 @@ Keep track of alerting system health:
 async def check_alerting_health():
     stats = alerting.get_alerting_statistics()
 
-    if stats['delivery_stats']['success_rate_percent'] < 95:
+    if stats["delivery_stats"]["success_rate_percent"] < 95:
         print("⚠️ Alert delivery success rate is low!")
 
-    if stats['delivery_stats']['rate_limited'] > 100:
+    if stats["delivery_stats"]["rate_limited"] > 100:
         print("⚠️ Many alerts are being rate limited!")
 
-    if stats['active_alerts'] > 50:
+    if stats["active_alerts"] > 50:
         print("⚠️ High number of active alerts!")
 
 # Run periodically
@@ -509,9 +518,13 @@ from mpreg.core.logging import configure_logging
 configure_logging("INFO", debug_scopes=("fabric.alerting",))
 
 # Check delivery history
-recent_deliveries = [d for d in alerting.delivery_history if time.time() - d.timestamp < 3600]
+recent_deliveries = [
+    d for d in alerting.delivery_history if time.time() - d.timestamp < 3600
+]
 for delivery in recent_deliveries:
-    print(f"{delivery.channel_id}: {'✅' if delivery.success else '❌'} {delivery.response_message}")
+    print(
+        f"{delivery.channel_id}: {'✅' if delivery.success else '❌'} {delivery.response_message}"
+    )
 ```
 
 This alerting system provides enterprise-grade reliability and flexibility while maintaining simplicity for basic use cases. Start with the Quick Start section and gradually add complexity as needed.

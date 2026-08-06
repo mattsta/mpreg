@@ -124,10 +124,7 @@ async def main() -> None:
                     sent >= 1 or integration.stats.notifications_sent >= 1,
                     f"no notifications sent stats={stats}",
                 )
-                ok(
-                    f"notifications_sent="
-                    f"{integration.stats.notifications_sent}"
-                )
+                ok(f"notifications_sent={integration.stats.notifications_sent}")
 
             with scenario(
                 "second put increments notifications; topic exchange path",
@@ -155,9 +152,12 @@ async def main() -> None:
                 )
                 await asyncio.sleep(0.2)
                 after = integration.stats.notifications_sent
-                ensure(after > before, f"notifications did not increase {before}→{after}")
                 ensure(
-                    len(seen_hooks) >= 1 and seen_hooks[-1] == CacheEventType.CACHE_PUT.value,
+                    after > before, f"notifications did not increase {before}→{after}"
+                )
+                ensure(
+                    len(seen_hooks) >= 1
+                    and seen_hooks[-1] == CacheEventType.CACHE_PUT.value,
                     f"F7 listener not fired: {seen_hooks}",
                 )
                 step(f"F7 fixed: add_event_listener fired hooks={seen_hooks}")
@@ -187,16 +187,18 @@ async def main() -> None:
                     await cache.invalidate("demo.*", namespace="demo")  # type: ignore[call-arg]
                 except TypeError as exc:
                     raised = True
-                    ensure("unexpected keyword" in str(exc).lower() or "namespace" in str(exc), str(exc))
+                    ensure(
+                        "unexpected keyword" in str(exc).lower()
+                        or "namespace" in str(exc),
+                        str(exc),
+                    )
                     step(f"F8 fixed: bad kwargs → TypeError: {exc}")
                 ensure(raised is True, "expected TypeError on bad invalidate kwargs")
                 # Valid pattern-only invalidate
                 inv = await cache.invalidate("demo")
                 ensure(inv is not None, "invalidate returned None")
                 if hasattr(integration, "broadcast_cache_invalidation"):
-                    await integration.broadcast_cache_invalidation(
-                        cache_key=key
-                    )
+                    await integration.broadcast_cache_invalidation(cache_key=key)
                     await integration.broadcast_cache_invalidation(pattern="demo.*")
                     ok("broadcast_cache_invalidation(key + pattern) invoked")
                 else:
@@ -205,10 +207,7 @@ async def main() -> None:
                     integration.stats.notifications_sent >= 1,
                     "expected cumulative notifications",
                 )
-                ok(
-                    f"final notifications_sent="
-                    f"{integration.stats.notifications_sent}"
-                )
+                ok(f"final notifications_sent={integration.stats.notifications_sent}")
         finally:
             await integration.shutdown()
             await cache.shutdown()

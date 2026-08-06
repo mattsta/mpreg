@@ -100,7 +100,7 @@ class PortAllocator:
                         parts = content.split(":")
                         if len(parts) >= 3:
                             _, pid_str, timestamp_str = parts[:3]
-                            lock_time = float(timestamp_str)
+                            float(timestamp_str)
                             pid = int(pid_str)
 
                             try:
@@ -147,7 +147,7 @@ class PortAllocator:
                     parts = content.split(":")
                     if len(parts) >= 3:
                         _, pid_str, timestamp_str = parts[:3]
-                        lock_time = float(timestamp_str)
+                        float(timestamp_str)
                         pid = int(pid_str)
 
                         try:

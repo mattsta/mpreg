@@ -1,4 +1,4 @@
-> **Honesty banner:** Cache ``ConsistencyLevel.STRONG`` is refuse-by-default (no majority-ack barrier). Use EVENTUAL/WEAK on the live path.
+> **Honesty banner:** Cache `ConsistencyLevel.STRONG` is refuse-by-default (no majority-ack barrier). Use EVENTUAL/WEAK on the live path.
 
 # MPREG Smart Caching System Documentation
 
@@ -98,8 +98,8 @@ cache.invalidate_dependencies(upstream_key)
 
 ```python
 # 1. Entry Creation with Full Size Tracking
-key_size = asizeof(cache_key)      # Include key overhead!
-value_size = asizeof(result)       # Accurate value size
+key_size = asizeof(cache_key)  # Include key overhead!
+value_size = asizeof(result)  # Accurate value size
 total_size = key_size + value_size
 
 # 2. Intelligent Storage Decision
@@ -158,13 +158,13 @@ settings = MPREGSettings(
 class CacheEntry:
     key: CacheKey
     value: Any
-    size_bytes: int          # Total memory footprint
-    key_size_bytes: int      # Key overhead (often significant!)
-    value_size_bytes: int    # Actual result size
+    size_bytes: int  # Total memory footprint
+    key_size_bytes: int  # Key overhead (often significant!)
+    value_size_bytes: int  # Actual result size
     computation_cost_ms: float  # How expensive to recompute
-    access_count: int        # Usage frequency
+    access_count: int  # Usage frequency
     dependencies: set[CacheKey]  # Pipeline dependencies
-    ttl_seconds: float | None    # Lifecycle management
+    ttl_seconds: float | None  # Lifecycle management
 ```
 
 **Why This Design?**
@@ -210,9 +210,9 @@ class S4LRUCache:
 ```python
 @dataclass
 class CacheLimits:
-    max_memory_bytes: int | None     # Absolute memory limit
-    max_entries: int | None          # Count limit
-    enforce_both_limits: bool        # AND vs OR logic
+    max_memory_bytes: int | None  # Absolute memory limit
+    max_entries: int | None  # Count limit
+    enforce_both_limits: bool  # AND vs OR logic
 ```
 
 **Configuration Strategies:**
@@ -220,7 +220,7 @@ class CacheLimits:
 1. **Memory-Only** (Cloud instances with memory constraints):
 
 ```python
-CacheLimits(max_memory_bytes=2*GB, max_entries=None)
+CacheLimits(max_memory_bytes=2 * GB, max_entries=None)
 ```
 
 2. **Count-Only** (Fixed-size result scenarios):
@@ -233,9 +233,9 @@ CacheLimits(max_memory_bytes=None, max_entries=100000)
 
 ```python
 CacheLimits(
-    max_memory_bytes=4*GB,
+    max_memory_bytes=4 * GB,
     max_entries=50000,
-    enforce_both_limits=False  # Either limit triggers eviction
+    enforce_both_limits=False,  # Either limit triggers eviction
 )
 ```
 
@@ -270,13 +270,15 @@ All atomic operations provide ACID guarantees using distributed locking mechanis
 
 ```python
 # Atomic test-and-set with conditional updates
-result = await cache.atomic_operation(AtomicOperationRequest(
-    operation_type="test_and_set",
-    key=CacheKey(namespace="locks", identifier="resource_123"),
-    expected_value=None,  # Only set if not exists
-    new_value={"owner": "worker_001", "acquired_at": time.time()},
-    ttl_seconds=300
-))
+result = await cache.atomic_operation(
+    AtomicOperationRequest(
+        operation_type="test_and_set",
+        key=CacheKey(namespace="locks", identifier="resource_123"),
+        expected_value=None,  # Only set if not exists
+        new_value={"owner": "worker_001", "acquired_at": time.time()},
+        ttl_seconds=300,
+    )
+)
 
 if result.success:
     print("Lock acquired successfully")
@@ -288,25 +290,29 @@ else:
 
 ```python
 # Atomic counter increment without race conditions
-result = await cache.atomic_operation(AtomicOperationRequest(
-    operation_type="compare_and_swap",
-    key=CacheKey(namespace="counters", identifier="page_views"),
-    expected_value={"count": 1000},
-    new_value={"count": 1001, "last_updated": time.time()}
-))
+result = await cache.atomic_operation(
+    AtomicOperationRequest(
+        operation_type="compare_and_swap",
+        key=CacheKey(namespace="counters", identifier="page_views"),
+        expected_value={"count": 1000},
+        new_value={"count": 1001, "last_updated": time.time()},
+    )
+)
 ```
 
 #### Atomic Increment/Decrement
 
 ```python
 # Server-side numeric operations
-result = await cache.atomic_operation(AtomicOperationRequest(
-    operation_type="increment",
-    key=CacheKey(namespace="stats", identifier="user_score"),
-    increment_by=10,
-    create_if_missing=True,
-    initial_value=0
-))
+result = await cache.atomic_operation(
+    AtomicOperationRequest(
+        operation_type="increment",
+        key=CacheKey(namespace="stats", identifier="user_score"),
+        increment_by=10,
+        create_if_missing=True,
+        initial_value=0,
+    )
+)
 ```
 
 ### 2. Server-Side Data Structures
@@ -317,102 +323,122 @@ Instead of managing complex data structures in client code, operations are perfo
 
 ```python
 # Add members to a distributed set
-await cache.data_structure_operation(DataStructureOperation(
-    structure_type="set",
-    operation="add",
-    key=CacheKey(namespace="user_permissions", identifier="user_123"),
-    values=["read_posts", "write_comments", "moderate_content"]
-))
+await cache.data_structure_operation(
+    DataStructureOperation(
+        structure_type="set",
+        operation="add",
+        key=CacheKey(namespace="user_permissions", identifier="user_123"),
+        values=["read_posts", "write_comments", "moderate_content"],
+    )
+)
 
 # Test membership without retrieving entire set
-result = await cache.data_structure_operation(DataStructureOperation(
-    structure_type="set",
-    operation="contains",
-    key=CacheKey(namespace="user_permissions", identifier="user_123"),
-    values=["admin_access"]
-))
+result = await cache.data_structure_operation(
+    DataStructureOperation(
+        structure_type="set",
+        operation="contains",
+        key=CacheKey(namespace="user_permissions", identifier="user_123"),
+        values=["admin_access"],
+    )
+)
 print(f"Has admin access: {result.operation_result}")
 
 # Remove permissions atomically
-await cache.data_structure_operation(DataStructureOperation(
-    structure_type="set",
-    operation="remove",
-    key=CacheKey(namespace="user_permissions", identifier="user_123"),
-    values=["moderate_content"]
-))
+await cache.data_structure_operation(
+    DataStructureOperation(
+        structure_type="set",
+        operation="remove",
+        key=CacheKey(namespace="user_permissions", identifier="user_123"),
+        values=["moderate_content"],
+    )
+)
 ```
 
 #### List Operations
 
 ```python
 # Append to distributed list (like message queues)
-await cache.data_structure_operation(DataStructureOperation(
-    structure_type="list",
-    operation="append",
-    key=CacheKey(namespace="task_queue", identifier="worker_tasks"),
-    values=[{"task_id": "task_456", "priority": "high"}]
-))
+await cache.data_structure_operation(
+    DataStructureOperation(
+        structure_type="list",
+        operation="append",
+        key=CacheKey(namespace="task_queue", identifier="worker_tasks"),
+        values=[{"task_id": "task_456", "priority": "high"}],
+    )
+)
 
 # Pop from front (FIFO queue behavior)
-result = await cache.data_structure_operation(DataStructureOperation(
-    structure_type="list",
-    operation="pop_front",
-    key=CacheKey(namespace="task_queue", identifier="worker_tasks")
-))
+result = await cache.data_structure_operation(
+    DataStructureOperation(
+        structure_type="list",
+        operation="pop_front",
+        key=CacheKey(namespace="task_queue", identifier="worker_tasks"),
+    )
+)
 
 # Get length without retrieving all items
-length_result = await cache.data_structure_operation(DataStructureOperation(
-    structure_type="list",
-    operation="length",
-    key=CacheKey(namespace="task_queue", identifier="worker_tasks")
-))
+length_result = await cache.data_structure_operation(
+    DataStructureOperation(
+        structure_type="list",
+        operation="length",
+        key=CacheKey(namespace="task_queue", identifier="worker_tasks"),
+    )
+)
 ```
 
 #### Map Operations
 
 ```python
 # Update specific fields in a distributed map
-await cache.data_structure_operation(DataStructureOperation(
-    structure_type="map",
-    operation="set_field",
-    key=CacheKey(namespace="user_profiles", identifier="user_789"),
-    field_updates={
-        "last_login": time.time(),
-        "login_count": {"operation": "increment", "value": 1},
-        "preferences.theme": "dark_mode"
-    }
-))
+await cache.data_structure_operation(
+    DataStructureOperation(
+        structure_type="map",
+        operation="set_field",
+        key=CacheKey(namespace="user_profiles", identifier="user_789"),
+        field_updates={
+            "last_login": time.time(),
+            "login_count": {"operation": "increment", "value": 1},
+            "preferences.theme": "dark_mode",
+        },
+    )
+)
 
 # Get specific fields without retrieving entire profile
-result = await cache.data_structure_operation(DataStructureOperation(
-    structure_type="map",
-    operation="get_fields",
-    key=CacheKey(namespace="user_profiles", identifier="user_789"),
-    fields=["last_login", "email", "preferences.theme"]
-))
+result = await cache.data_structure_operation(
+    DataStructureOperation(
+        structure_type="map",
+        operation="get_fields",
+        key=CacheKey(namespace="user_profiles", identifier="user_789"),
+        fields=["last_login", "email", "preferences.theme"],
+    )
+)
 ```
 
 #### Sorted Set Operations
 
 ```python
 # Add scored items for leaderboards
-await cache.data_structure_operation(DataStructureOperation(
-    structure_type="sorted_set",
-    operation="add_scored",
-    key=CacheKey(namespace="game_scores", identifier="level_1"),
-    scored_values=[
-        {"value": "player_123", "score": 95000},
-        {"value": "player_456", "score": 87500}
-    ]
-))
+await cache.data_structure_operation(
+    DataStructureOperation(
+        structure_type="sorted_set",
+        operation="add_scored",
+        key=CacheKey(namespace="game_scores", identifier="level_1"),
+        scored_values=[
+            {"value": "player_123", "score": 95000},
+            {"value": "player_456", "score": 87500},
+        ],
+    )
+)
 
 # Get top N without retrieving entire leaderboard
-top_players = await cache.data_structure_operation(DataStructureOperation(
-    structure_type="sorted_set",
-    operation="get_top",
-    key=CacheKey(namespace="game_scores", identifier="level_1"),
-    limit=10
-))
+top_players = await cache.data_structure_operation(
+    DataStructureOperation(
+        structure_type="sorted_set",
+        operation="get_top",
+        key=CacheKey(namespace="game_scores", identifier="level_1"),
+        limit=10,
+    )
+)
 ```
 
 ### 3. Namespace Operations
@@ -423,33 +449,39 @@ Efficient bulk operations on related cache entries:
 
 ```python
 # Clear all cache entries in a namespace
-result = await cache.namespace_operation(NamespaceOperation(
-    operation_type="clear",
-    namespace="temp_computations",
-    pattern="*",  # Clear all entries
-    max_entries=1000  # Safety limit
-))
+result = await cache.namespace_operation(
+    NamespaceOperation(
+        operation_type="clear",
+        namespace="temp_computations",
+        pattern="*",  # Clear all entries
+        max_entries=1000,  # Safety limit
+    )
+)
 
 print(f"Cleared {result.entries_affected} temporary cache entries")
 
 # Clear with pattern matching
-result = await cache.namespace_operation(NamespaceOperation(
-    operation_type="clear",
-    namespace="user_sessions",
-    pattern="expired_*",  # Only clear expired sessions
-    conditions={"ttl_remaining": {"$lt": 60}}  # Less than 1 minute TTL
-))
+result = await cache.namespace_operation(
+    NamespaceOperation(
+        operation_type="clear",
+        namespace="user_sessions",
+        pattern="expired_*",  # Only clear expired sessions
+        conditions={"ttl_remaining": {"$lt": 60}},  # Less than 1 minute TTL
+    )
+)
 ```
 
 #### Namespace Statistics
 
 ```python
 # Get namespace usage statistics
-stats = await cache.namespace_operation(NamespaceOperation(
-    operation_type="statistics",
-    namespace="ml_models",
-    include_detailed_breakdown=True
-))
+stats = await cache.namespace_operation(
+    NamespaceOperation(
+        operation_type="statistics",
+        namespace="ml_models",
+        include_detailed_breakdown=True,
+    )
+)
 
 print(f"ML Models cache: {stats.entry_count} entries, {stats.total_memory_bytes} bytes")
 print(f"Average computation cost: {stats.avg_computation_cost_ms}ms")
@@ -464,17 +496,17 @@ Server-side validation prevents invalid data from entering the cache:
 constraints = [
     ValueConstraint(
         constraint_type="max_size",
-        max_size_bytes=1024*1024  # 1MB limit
+        max_size_bytes=1024 * 1024,  # 1MB limit
     ),
     ValueConstraint(
         constraint_type="required_fields",
-        required_fields=["user_id", "timestamp", "action"]
+        required_fields=["user_id", "timestamp", "action"],
     ),
     ValueConstraint(
         constraint_type="value_pattern",
         field_path="email",
-        pattern=r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-    )
+        pattern=r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$",
+    ),
 ]
 
 # Cache operation with validation
@@ -482,7 +514,7 @@ try:
     await cache.put(
         key=CacheKey(namespace="user_events", identifier="event_123"),
         value={"user_id": "user_456", "email": "invalid-email", "action": "login"},
-        constraints=constraints
+        constraints=constraints,
     )
 except CacheValidationError as e:
     print(f"Validation failed: {e.violations}")
@@ -500,17 +532,19 @@ await cache.put(
     ttl_config=TTLConfig(
         ttl_seconds=300,  # 5 minutes
         refresh_on_access=True,  # Sliding expiration
-        ttl_jitter_percent=10  # Avoid thundering herd
-    )
+        ttl_jitter_percent=10,  # Avoid thundering herd
+    ),
 )
 
 # Conditional TTL extension
-await cache.atomic_operation(AtomicOperationRequest(
-    operation_type="extend_ttl",
-    key=CacheKey(namespace="user_sessions", identifier="session_789"),
-    ttl_extension_seconds=1800,  # Extend by 30 minutes
-    conditions={"access_count": {"$gte": 5}}  # Only if actively used
-))
+await cache.atomic_operation(
+    AtomicOperationRequest(
+        operation_type="extend_ttl",
+        key=CacheKey(namespace="user_sessions", identifier="session_789"),
+        ttl_extension_seconds=1800,  # Extend by 30 minutes
+        conditions={"access_count": {"$gte": 5}},  # Only if actively used
+    )
+)
 ```
 
 ### 6. Cache-Aware Pub/Sub Integration
@@ -525,11 +559,8 @@ await cache.put(
     options=CacheOptions(
         notify_on_change=True,
         notification_topic="inventory.stock_updates",
-        notification_payload={
-            "product_id": "product_123",
-            "alert_type": "low_stock"
-        }
-    )
+        notification_payload={"product_id": "product_123", "alert_type": "low_stock"},
+    ),
 )
 
 # Subscribers receive real-time inventory updates
@@ -548,8 +579,8 @@ await cache.put(
         consistency_level="strong",
         replication_strategy="geographic",
         preferred_regions=["us-west", "eu-west", "ap-southeast"],
-        conflict_resolution="vector_clock"
-    )
+        conflict_resolution="vector_clock",
+    ),
 )
 
 # Eventually consistent cache for high-throughput data
@@ -559,8 +590,8 @@ await cache.put(
     options=CacheOptions(
         consistency_level="eventual",
         replication_strategy="nearest_neighbor",
-        conflict_resolution="last_writer_wins"
-    )
+        conflict_resolution="last_writer_wins",
+    ),
 )
 ```
 
@@ -610,9 +641,9 @@ def _estimate_size(self, value: Any) -> int:
 @dataclass(frozen=True, slots=True)
 class CacheKey:
     function_name: str
-    args_hash: str      # SHA256 of arguments
-    kwargs_hash: str    # SHA256 of keyword arguments
-    schema_version: str # Evolution support
+    args_hash: str  # SHA256 of arguments
+    kwargs_hash: str  # SHA256 of keyword arguments
+    schema_version: str  # Evolution support
 ```
 
 **Design Trade-offs:**
@@ -652,14 +683,12 @@ from mpreg.core.enhanced_caching_factories import create_enhanced_s4lru_cache_ma
 model_cache = create_enhanced_s4lru_cache_manager(
     max_entries=10000,
     segments=4,
-    max_memory_mb=8192  # 8GB distributed across segments
+    max_memory_mb=8192,  # 8GB distributed across segments
 )
 
 # Cache expensive model inference
 async def predict(model_name: str, input_data: dict, version: str) -> dict:
-    cache_key = CacheKey.create("model_predict",
-                               (model_name, version),
-                               input_data)
+    cache_key = CacheKey.create("model_predict", (model_name, version), input_data)
 
     # Check cache first
     cached_result = model_cache.get(cache_key)
@@ -684,13 +713,15 @@ async def predict(model_name: str, input_data: dict, version: str) -> dict:
 ### 2. Data Processing Pipeline
 
 ```python
-from mpreg.core.enhanced_caching_factories import create_memory_and_count_limited_cache_manager
+from mpreg.core.enhanced_caching_factories import (
+    create_memory_and_count_limited_cache_manager,
+)
 
 # ETL pipeline cache with dependency tracking
 pipeline_cache = create_memory_and_count_limited_cache_manager(
-    max_memory_mb=2048,    # 2GB memory limit
-    max_entries=50000,     # 50K operations max
-    enforce_both=False     # Either limit triggers eviction
+    max_memory_mb=2048,  # 2GB memory limit
+    max_entries=50000,  # 50K operations max
+    enforce_both=False,  # Either limit triggers eviction
 )
 
 async def data_pipeline(dataset_id: str, transforms: list[str]) -> pd.DataFrame:
@@ -704,22 +735,30 @@ async def data_pipeline(dataset_id: str, transforms: list[str]) -> pd.DataFrame:
         pipeline_cache.put(raw_key, raw_data, computation_cost_ms=5000)
 
     # Stage 2: Apply transformations (depends on raw data)
-    transform_key = CacheKey.create("transform", (dataset_id,), {"transforms": transforms})
+    transform_key = CacheKey.create(
+        "transform", (dataset_id,), {"transforms": transforms}
+    )
     transformed = pipeline_cache.get(transform_key)
     if not transformed:
         transformed = apply_transformations(raw_data, transforms)
-        pipeline_cache.put(transform_key, transformed,
-                          dependencies={raw_key},  # Invalidate if raw data changes
-                          computation_cost_ms=2000)
+        pipeline_cache.put(
+            transform_key,
+            transformed,
+            dependencies={raw_key},  # Invalidate if raw data changes
+            computation_cost_ms=2000,
+        )
 
     # Stage 3: Aggregation (depends on transformed data)
     agg_key = CacheKey.create("aggregate", (dataset_id,), {"transforms": transforms})
     result = pipeline_cache.get(agg_key)
     if not result:
         result = compute_aggregations(transformed)
-        pipeline_cache.put(agg_key, result,
-                          dependencies={transform_key},  # Cascade invalidation
-                          computation_cost_ms=800)
+        pipeline_cache.put(
+            agg_key,
+            result,
+            dependencies={transform_key},  # Cascade invalidation
+            computation_cost_ms=800,
+        )
 
     return result
 
@@ -780,16 +819,14 @@ class DistributedComputeNode:
 # Academic research with limited compute budget
 experiment_cache = create_enhanced_s4lru_cache_manager(
     max_entries=5000,
-    segments=6,        # More segments for research iteration patterns
-    max_memory_mb=1024 # Modest 1GB limit
+    segments=6,  # More segments for research iteration patterns
+    max_memory_mb=1024,  # Modest 1GB limit
 )
 
 async def run_experiment(algorithm: str, dataset: str, hyperparams: dict) -> dict:
     """Cache expensive research experiments."""
 
-    cache_key = CacheKey.create("experiment",
-                               (algorithm, dataset),
-                               hyperparams)
+    cache_key = CacheKey.create("experiment", (algorithm, dataset), hyperparams)
 
     cached_result = experiment_cache.get(cache_key)
     if cached_result:
@@ -803,9 +840,12 @@ async def run_experiment(algorithm: str, dataset: str, hyperparams: dict) -> dic
     results = await train_and_evaluate_model(algorithm, dataset, hyperparams)
 
     computation_time = (time.time() - start_time) * 1000
-    experiment_cache.put(cache_key, results,
-                        computation_cost_ms=computation_time,
-                        ttl_seconds=7*24*3600)  # Results valid for 1 week
+    experiment_cache.put(
+        cache_key,
+        results,
+        computation_cost_ms=computation_time,
+        ttl_seconds=7 * 24 * 3600,
+    )  # Results valid for 1 week
 
     return results
 
@@ -833,7 +873,7 @@ async def run_experiment(algorithm: str, dataset: str, hyperparams: dict) -> dic
 create_enhanced_s4lru_cache_manager(
     max_entries=50000,
     segments=4,
-    max_memory_mb=16384  # Large memory budget for valuable results
+    max_memory_mb=16384,  # Large memory budget for valuable results
 )
 ```
 
@@ -857,9 +897,7 @@ create_enhanced_s4lru_cache_manager(
 ```python
 # Dependency-aware caching with cascade invalidation
 create_memory_and_count_limited_cache_manager(
-    max_memory_mb=8192,
-    max_entries=25000,
-    enforce_both=False
+    max_memory_mb=8192, max_entries=25000, enforce_both=False
 )
 ```
 
@@ -927,9 +965,9 @@ create_memory_only_cache_manager(max_memory_mb=service_memory_limit)
 ```python
 # TTL-focused caching with memory pressure management
 config = CacheConfiguration(
-    limits=CacheLimits(max_memory_bytes=4*GB),
+    limits=CacheLimits(max_memory_bytes=4 * GB),
     default_ttl_seconds=300,  # 5-minute freshness
-    eviction_policy=EvictionPolicy.TTL
+    eviction_policy=EvictionPolicy.TTL,
 )
 ```
 
@@ -1010,14 +1048,14 @@ cache = create_count_only_cache_manager(max_entries=100000)
 cache = create_memory_and_count_limited_cache_manager(
     max_memory_mb=8192,
     max_entries=50000,
-    enforce_both=False  # Either limit triggers eviction
+    enforce_both=False,  # Either limit triggers eviction
 )
 
 # 4. Advanced Workloads (Sophisticated Access Patterns)
 cache = create_enhanced_s4lru_cache_manager(
     max_entries=25000,
-    segments=6,         # More segments for complex patterns
-    max_memory_mb=4096
+    segments=6,  # More segments for complex patterns
+    max_memory_mb=4096,
 )
 ```
 
@@ -1028,18 +1066,18 @@ cache = create_enhanced_s4lru_cache_manager(
 limits = CacheLimits(
     max_memory_bytes=16 * 1024 * 1024 * 1024,  # 16GB
     max_entries=100000,
-    enforce_both_limits=True  # Both limits must be exceeded
+    enforce_both_limits=True,  # Both limits must be exceeded
 )
 
 config = CacheConfiguration(
     limits=limits,
     eviction_policy=EvictionPolicy.COST_BASED,
     memory_pressure_threshold=0.85,  # Start eviction at 85%
-    eviction_batch_size=500,         # Evict in larger batches
-    enable_accurate_sizing=True,     # Use pympler
-    enable_dependency_tracking=True, # Support pipelines
-    default_ttl_seconds=3600,        # 1-hour default TTL
-    s4lru_segments=8                 # Custom segment count
+    eviction_batch_size=500,  # Evict in larger batches
+    enable_accurate_sizing=True,  # Use pympler
+    enable_dependency_tracking=True,  # Support pipelines
+    default_ttl_seconds=3600,  # 1-hour default TTL
+    s4lru_segments=8,  # Custom segment count
 )
 
 cache = SmartCacheManager(config)
@@ -1061,9 +1099,7 @@ staging_cache = create_memory_and_count_limited_cache_manager(
 
 # Production Environment
 prod_cache = create_enhanced_s4lru_cache_manager(
-    max_entries=100000,
-    segments=6,
-    max_memory_mb=32768
+    max_entries=100000, segments=6, max_memory_mb=32768
 )
 ```
 
@@ -1078,7 +1114,7 @@ if stats.key_to_value_ratio() > 0.5:  # Keys > 50% of memory
     logger.warning("High key overhead detected - consider key optimization")
 
 # ✅ DO: Use appropriate sizing modes
-config.enable_accurate_sizing = True   # Production accuracy
+config.enable_accurate_sizing = True  # Production accuracy
 config.enable_accurate_sizing = False  # Development speed
 
 # ❌ DON'T: Ignore memory limits
@@ -1092,8 +1128,8 @@ config.enable_accurate_sizing = False  # Development speed
 def create_efficient_key(model_name: str, input_hash: str) -> CacheKey:
     return CacheKey.create(
         f"inference_{model_name}",  # Descriptive but concise
-        (input_hash,),              # Pre-hashed large inputs
-        {}                          # Minimal kwargs
+        (input_hash,),  # Pre-hashed large inputs
+        {},  # Minimal kwargs
     )
 
 # ❌ DON'T: Put large objects directly in keys
@@ -1101,7 +1137,7 @@ def inefficient_key(model_name: str, large_input: dict) -> CacheKey:
     return CacheKey.create(
         "inference",
         (model_name, large_input),  # Large dict hashed every time
-        {}
+        {},
     )
 ```
 
@@ -1151,9 +1187,11 @@ def log_cache_stats(cache: SmartCacheManager):
     # S4LRU specific stats
     if s4lru_stats := cache.get_s4lru_stats():
         for stat in s4lru_stats:
-            logger.info(f"Segment {stat.segment_id}: "
-                       f"{stat.utilization:.1%} full, "
-                       f"{stat.memory_utilization:.1%} memory")
+            logger.info(
+                f"Segment {stat.segment_id}: "
+                f"{stat.utilization:.1%} full, "
+                f"{stat.memory_utilization:.1%} memory"
+            )
 
 # ✅ DO: Set up alerting for cache health
 if stats.hit_rate() < 0.5:  # Less than 50% hit rate
@@ -1170,7 +1208,7 @@ if stats.memory_efficiency() < 0.7:  # High key overhead
 cache = create_enhanced_s4lru_cache_manager(
     max_entries=int(os.environ.get("CACHE_MAX_ENTRIES", "50000")),
     segments=int(os.environ.get("CACHE_SEGMENTS", "4")),
-    max_memory_mb=int(os.environ.get("CACHE_MEMORY_MB", "8192"))
+    max_memory_mb=int(os.environ.get("CACHE_MEMORY_MB", "8192")),
 )
 
 # ✅ DO: Implement graceful degradation

@@ -5,6 +5,7 @@ Test script to verify PubSub notification delivery works properly.
 
 import asyncio
 import contextlib
+import sys
 import time
 
 from mpreg.client.pubsub_client import MPREGPubSubExtendedClient
@@ -121,7 +122,7 @@ if __name__ == "__main__":
     result = asyncio.run(test_basic_pubsub_notifications())
     if result:
         print("\n✅ Test PASSED")
-        exit(0)
+        sys.exit(0)
     else:
         print("\n❌ Test FAILED")
-        exit(1)
+        sys.exit(1)

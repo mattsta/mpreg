@@ -183,7 +183,7 @@ class DnsResolver:
                     if endpoint.rpc_summary
                     else namespace,
                     tags=endpoint.tags,
-                    capabilities=tuple(),
+                    capabilities=(),
                     spec_digest=endpoint.spec_digest
                     or (
                         endpoint.rpc_summary.spec_digest
@@ -222,7 +222,7 @@ class DnsResolver:
                     dns_proto=dns_proto,
                     namespace=namespace or full_name,
                     tags=endpoint.tags,
-                    capabilities=tuple(),
+                    capabilities=(),
                     spec_digest=None,
                 )
             )

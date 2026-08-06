@@ -89,7 +89,7 @@ def _function_presence(
 def _connected_component_sizes(servers: list[MPREGServer]) -> tuple[int, ...]:
     by_url = {server.cluster.local_url: server for server in servers}
     if not by_url:
-        return tuple()
+        return ()
     remaining = set(by_url.keys())
     component_sizes: list[int] = []
     while remaining:

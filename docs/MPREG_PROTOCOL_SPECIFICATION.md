@@ -2367,10 +2367,10 @@ result = await fabric_queue_federation.send_message_globally(
 
 #### Acknowledgments
 
-Local queue delivery supports explicit client ack via the ``queue_ack`` RPC
-(and ``MPREGClient.queue_ack``). Cross-cluster fabric queue federation uses
+Local queue delivery supports explicit client ack via the `queue_ack` RPC
+(and `MPREGClient.queue_ack`). Cross-cluster fabric queue federation uses
 delivery-path acknowledgments; the experimental name-vote “global quorum”
-path is **not** BFT and is refuse-by-default (see ``claims.yaml``).
+path is **not** BFT and is refuse-by-default (see `claims.yaml`).
 
 ### Performance Characteristics
 
@@ -2856,22 +2856,22 @@ RPC failures surface as `RPCError` with stable numeric codes from
 `mpreg.core.errors` (never bare integers). Language-neutral catalog:
 `mpreg/core/error_codes.json`.
 
-| Code | Name | Meaning | Retryable |
-|------|------|---------|-----------|
-| 1000 | PROTOCOL | Unknown/invalid protocol message | no |
-| 1001 | COMMAND_NOT_FOUND | No matching function endpoint | no |
-| 1002 | VERSION_MISMATCH | Version constraint unsatisfied | no |
-| 1003 | HOP_BUDGET_EXCEEDED | Fabric hop budget exhausted | no |
-| 1004 | POLICY_DENIED | Namespace/routing policy denied | no |
-| 1005 | ROUTE_NOT_FOUND | No path to target cluster/node | yes |
-| 1006 | TIMEOUT | Deadline exceeded | yes |
-| 1007 | UNAVAILABLE | Temporary unavailability | yes |
-| 1008 | INVALID_ARGUMENT | Bad request parameters | no |
-| 1009 | AUTH_REQUIRED | Auth missing | no |
-| 1010 | AUTH_FAILED | Auth present but invalid | no |
-| 1099 | INTERNAL | Unexpected server failure | no |
-| 1101 | DISCOVERY_ACCESS_DENIED | Discovery namespace/policy denial | no |
-| 1102 | DISCOVERY_RATE_LIMITED | Discovery rate limit | yes |
+| Code | Name                    | Meaning                           | Retryable |
+| ---- | ----------------------- | --------------------------------- | --------- |
+| 1000 | PROTOCOL                | Unknown/invalid protocol message  | no        |
+| 1001 | COMMAND_NOT_FOUND       | No matching function endpoint     | no        |
+| 1002 | VERSION_MISMATCH        | Version constraint unsatisfied    | no        |
+| 1003 | HOP_BUDGET_EXCEEDED     | Fabric hop budget exhausted       | no        |
+| 1004 | POLICY_DENIED           | Namespace/routing policy denied   | no        |
+| 1005 | ROUTE_NOT_FOUND         | No path to target cluster/node    | yes       |
+| 1006 | TIMEOUT                 | Deadline exceeded                 | yes       |
+| 1007 | UNAVAILABLE             | Temporary unavailability          | yes       |
+| 1008 | INVALID_ARGUMENT        | Bad request parameters            | no        |
+| 1009 | AUTH_REQUIRED           | Auth missing                      | no        |
+| 1010 | AUTH_FAILED             | Auth present but invalid          | no        |
+| 1099 | INTERNAL                | Unexpected server failure         | no        |
+| 1101 | DISCOVERY_ACCESS_DENIED | Discovery namespace/policy denial | no        |
+| 1102 | DISCOVERY_RATE_LIMITED  | Discovery rate limit              | yes       |
 
 Python: `MpregError`, `map_exception` (always returns structured error),
 `rpc_error()`, `timeout_error()`, `discovery_rate_limited()`, etc.
@@ -2889,4 +2889,3 @@ failures and HTTP-ish 403/429 for discovery. Clients should treat those via
 
 New fabric hops inject a `traceparent` when missing. Top-level `traceparent` on
 decoded header dicts is accepted and stored into metadata for interop.
-

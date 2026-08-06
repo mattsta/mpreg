@@ -1,4 +1,4 @@
-> **Honesty banner:** “Production-ready” here means examples run under tests, not BFT/EO/STRONG product guarantees. See ``claims.yaml`` non_claims.
+> **Honesty banner:** “Production-ready” here means examples run under tests, not BFT/EO/STRONG product guarantees. See `claims.yaml` non_claims.
 
 # ✅ VERIFIED WORKING EXAMPLES
 
@@ -94,10 +94,12 @@ Use the Tier 1 RPC demo as a baseline and measure with your own workload:
 
 ```python
 # This works perfectly - step2 automatically gets result from step1
-result = await client.request([
-    RPCCommand(name="step1", fun="add", args=(10, 20)),
-    RPCCommand(name="step2", fun="double", args=("step1",))  # Uses step1 result!
-])
+result = await client.request(
+    [
+        RPCCommand(name="step1", fun="add", args=(10, 20)),
+        RPCCommand(name="step2", fun="double", args=("step1",)),  # Uses step1 result!
+    ]
+)
 # Returns: {"step2": 60}
 ```
 

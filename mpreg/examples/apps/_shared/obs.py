@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import statistics
 import time
-from collections import defaultdict
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -207,7 +206,9 @@ class ExampleProbe:
                 while len(st.latencies_ms) < min(st.count, 8):
                     st.latencies_ms.append(float(rpc["avg_ms"]))
 
-def format_server_snapshot(snap: dict[str, Any], *, prefix: str = "  ◆ server-metrics") -> None:
+def format_server_snapshot(
+    snap: dict[str, Any], *, prefix: str = "  ◆ server-metrics"
+) -> None:
     """Pretty-print a ServerMetricsTracker.snapshot() dict."""
     rpc = snap.get("rpc") or {}
     pub = snap.get("pubsub") or {}
@@ -233,4 +234,3 @@ def format_server_snapshot(snap: dict[str, Any], *, prefix: str = "  ◆ server-
             f"reachable_ratio={fab.get('reachable_ratio', 1.0)} "
             f"avg_hops={fab.get('avg_hops', 0)} max_hops={fab.get('max_hops', 0)}"
         )
-

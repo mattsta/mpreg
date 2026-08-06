@@ -244,7 +244,7 @@ class TestPropertyBasedRPCTopologies:
                 nodes[: min(3, len(nodes))]
             ):  # Limit to 3 steps for test speed
                 cmd_name = f"step_{i}"
-                resource = list(node["resources"])[0]  # Use first resource
+                resource = next(iter(node["resources"]))  # Use first resource
                 func_name = f"process_step_{i}_0"
 
                 args = (prev_cmd_name,) if prev_cmd_name else ("initial_data",)

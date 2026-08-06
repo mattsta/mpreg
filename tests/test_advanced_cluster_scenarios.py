@@ -222,7 +222,6 @@ class TestAdvancedClusterScenarios:
 
     async def test_heterogeneous_cluster_formation(self, five_node_cluster):
         """Test that a heterogeneous cluster forms correctly."""
-        servers = five_node_cluster
 
         # Connect to coordinator and verify cluster membership
         async with MPREGClientAPI(
@@ -247,7 +246,6 @@ class TestAdvancedClusterScenarios:
 
     async def test_complex_cross_cluster_workflow(self, five_node_cluster):
         """Test a complex workflow that spans multiple specialized nodes."""
-        servers = five_node_cluster
 
         async with MPREGClientAPI(
             f"ws://127.0.0.1:{five_node_cluster[0].settings.port}"
@@ -296,7 +294,6 @@ class TestAdvancedClusterScenarios:
 
     async def test_intelligent_load_balancing(self, five_node_cluster):
         """Test that requests are intelligently routed based on resources."""
-        servers = five_node_cluster
 
         async with MPREGClientAPI(
             f"ws://127.0.0.1:{five_node_cluster[0].settings.port}"
@@ -353,7 +350,6 @@ class TestAdvancedClusterScenarios:
 
     async def test_fault_tolerant_routing(self, five_node_cluster):
         """Test that the cluster handles node-specific failures gracefully."""
-        servers = five_node_cluster
 
         async with MPREGClientAPI(
             f"ws://127.0.0.1:{five_node_cluster[0].settings.port}"
@@ -420,7 +416,6 @@ class TestTopologicalRequestRouting:
 
     async def test_multi_stage_dependency_resolution(self, five_node_cluster):
         """Test complex dependency resolution across multiple nodes."""
-        servers = five_node_cluster
 
         async with MPREGClientAPI(
             f"ws://127.0.0.1:{five_node_cluster[0].settings.port}"
@@ -483,7 +478,6 @@ class TestTopologicalRequestRouting:
 
     async def test_parallel_branch_convergence(self, five_node_cluster):
         """Test parallel processing branches that converge."""
-        servers = five_node_cluster
 
         async with MPREGClientAPI(
             f"ws://127.0.0.1:{five_node_cluster[0].settings.port}"

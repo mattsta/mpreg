@@ -31,7 +31,7 @@ def _json_sink(message: Any) -> None:
     cleaned = {
         k: v
         for k, v in extra.items()
-        if not str(k).startswith("_") and k not in {"serialized"}
+        if not str(k).startswith("_") and k != "serialized"
     }
     if cleaned:
         payload["extra"] = cleaned
@@ -177,4 +177,3 @@ def trace_context(
         return
     with logger.contextualize(**extra):
         yield
-

@@ -31,11 +31,11 @@ uv run mpreg-example run plane_dns
 
 ## API drill-down
 
-| Call | Feature ID |
-|------|------------|
-| `MPREGClientAPI.dns_register` | `disco.dns_register` |
-| `dns_list` / `dns_describe` | `disco.dns_register` (list/describe path) |
-| `MPREGDnsClient.resolve` | `disco.dns_resolve`, `client.dns` |
+| Call                          | Feature ID                                |
+| ----------------------------- | ----------------------------------------- |
+| `MPREGClientAPI.dns_register` | `disco.dns_register`                      |
+| `dns_list` / `dns_describe`   | `disco.dns_register` (list/describe path) |
+| `MPREGDnsClient.resolve`      | `disco.dns_resolve`, `client.dns`         |
 
 ## Non-claims
 

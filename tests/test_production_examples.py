@@ -323,7 +323,6 @@ class TestECommerceWorkflows:
 
     async def test_complete_purchase_flow(self, production_cluster):
         """Test a complete purchase workflow spanning multiple services."""
-        servers = production_cluster
 
         async with MPREGClientAPI(
             f"ws://127.0.0.1:{production_cluster[0].settings.port}"
@@ -415,7 +414,6 @@ class TestECommerceWorkflows:
 
     async def test_concurrent_user_sessions(self, production_cluster):
         """Test handling multiple concurrent user sessions."""
-        servers = production_cluster
 
         async with MPREGClientAPI(
             f"ws://127.0.0.1:{production_cluster[0].settings.port}"
@@ -449,7 +447,6 @@ class TestECommerceWorkflows:
 
     async def test_inventory_stress_testing(self, production_cluster):
         """Test inventory system under concurrent load."""
-        servers = production_cluster
 
         async with MPREGClientAPI(
             f"ws://127.0.0.1:{production_cluster[0].settings.port}"
@@ -499,7 +496,6 @@ class TestMicroserviceOrchestration:
 
     async def test_saga_pattern_implementation(self, production_cluster):
         """Test a saga pattern for distributed transactions."""
-        servers = production_cluster
 
         async with MPREGClientAPI(
             f"ws://127.0.0.1:{production_cluster[0].settings.port}"
@@ -564,7 +560,6 @@ class TestMicroserviceOrchestration:
 
     async def test_circuit_breaker_pattern(self, production_cluster):
         """Test circuit breaker-like behavior with timeouts."""
-        servers = production_cluster
 
         async with MPREGClientAPI(
             f"ws://127.0.0.1:{production_cluster[0].settings.port}"
@@ -599,7 +594,6 @@ class TestMicroserviceOrchestration:
 
     async def test_event_driven_architecture(self, production_cluster):
         """Test event-driven patterns with analytics tracking."""
-        servers = production_cluster
 
         async with MPREGClientAPI(
             f"ws://127.0.0.1:{production_cluster[0].settings.port}"
@@ -661,7 +655,6 @@ class TestHighThroughputScenarios:
 
     async def test_bulk_operations_processing(self, production_cluster):
         """Test processing of bulk operations efficiently."""
-        servers = production_cluster
 
         async with MPREGClientAPI(
             f"ws://127.0.0.1:{production_cluster[0].settings.port}"
@@ -699,7 +692,6 @@ class TestHighThroughputScenarios:
 
     async def test_mixed_workload_performance(self, production_cluster):
         """Test performance with mixed workload types."""
-        servers = production_cluster
 
         async with MPREGClientAPI(
             f"ws://127.0.0.1:{production_cluster[0].settings.port}"

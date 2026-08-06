@@ -1,4 +1,4 @@
-> **Honesty banner:** Blockchain MQ ``EXACTLY_ONCE`` is **unsupported** (fail-closed). Fee tables must not price it. Raft elsewhere is CFT, not BFT.
+> **Honesty banner:** Blockchain MQ `EXACTLY_ONCE` is **unsupported** (fail-closed). Fee tables must not price it. Raft elsewhere is CFT, not BFT.
 
 # Blockchain-Backed Message Queue Architecture
 
@@ -80,21 +80,26 @@ DeliveryGuarantee = str
 
 class MessagePriority(Enum):
     """Message priority levels with democratic governance."""
-    EMERGENCY = "emergency"           # DAO emergency actions
-    HIGH = "high"                    # Critical federation operations
-    NORMAL = "normal"                # Standard operations
-    LOW = "low"                      # Background tasks
-    BULK = "bulk"                    # Batch operations
+
+    EMERGENCY = "emergency"  # DAO emergency actions
+    HIGH = "high"  # Critical federation operations
+    NORMAL = "normal"  # Standard operations
+    LOW = "low"  # Background tasks
+    BULK = "bulk"  # Batch operations
 
 class DeliveryGuarantee(Enum):
     """Delivery guarantee levels."""
-    AT_MOST_ONCE = "at_most_once"    # Fire and forget
+
+    AT_MOST_ONCE = "at_most_once"  # Fire and forget
     AT_LEAST_ONCE = "at_least_once"  # Retry until success
-    EXACTLY_ONCE = "exactly_once"    # Reserved — unsupported / fail-closed (not a product guarantee)
-    ORDERED = "ordered"              # Maintain message order
+    EXACTLY_ONCE = (
+        "exactly_once"  # Reserved — unsupported / fail-closed (not a product guarantee)
+    )
+    ORDERED = "ordered"  # Maintain message order
 
 class RouteStatus(Enum):
     """Route health status."""
+
     ACTIVE = "active"
     DEGRADED = "degraded"
     MAINTENANCE = "maintenance"
@@ -226,7 +231,11 @@ class QueueMetrics:
 ### 2. Queue Governance Integration
 
 ```python
-from mpreg.datastructures import DecentralizedAutonomousOrganization, DaoProposal, ProposalType
+from mpreg.datastructures import (
+    DecentralizedAutonomousOrganization,
+    DaoProposal,
+    ProposalType,
+)
 
 class MessageQueueGovernance:
     """DAO governance for message queue operations."""
@@ -237,7 +246,9 @@ class MessageQueueGovernance:
         self.route_registry: Dict[RouteId, MessageRoute] = {}
         self.performance_history: List[QueueMetrics] = []
 
-    def propose_routing_policy(self, proposer_id: str, policy_spec: Dict[str, Any]) -> str:
+    def propose_routing_policy(
+        self, proposer_id: str, policy_spec: Dict[str, Any]
+    ) -> str:
         """Propose new routing policy through DAO governance."""
 
         proposal = DaoProposal(
@@ -246,13 +257,18 @@ class MessageQueueGovernance:
             title=f"Routing Policy: {policy_spec['name']}",
             description=f"Update message routing policy: {policy_spec['description']}",
             execution_data=json.dumps(policy_spec).encode(),
-            metadata={"policy_type": "routing", "affects_routes": policy_spec.get("routes", [])}
+            metadata={
+                "policy_type": "routing",
+                "affects_routes": policy_spec.get("routes", []),
+            },
         )
 
         self.dao = self.dao.create_proposal(proposer_id, proposal)
         return list(self.dao.proposals.keys())[-1]
 
-    def propose_fee_structure(self, proposer_id: str, fee_structure: Dict[str, Any]) -> str:
+    def propose_fee_structure(
+        self, proposer_id: str, fee_structure: Dict[str, Any]
+    ) -> str:
         """Propose fee structure changes through DAO."""
 
         proposal = DaoProposal(
@@ -261,13 +277,18 @@ class MessageQueueGovernance:
             title=f"Fee Structure Update: {fee_structure['name']}",
             description=f"Update message processing fees: {fee_structure['description']}",
             execution_data=json.dumps(fee_structure).encode(),
-            metadata={"policy_type": "fees", "progressive": fee_structure.get("progressive", True)}
+            metadata={
+                "policy_type": "fees",
+                "progressive": fee_structure.get("progressive", True),
+            },
         )
 
         self.dao = self.dao.create_proposal(proposer_id, proposal)
         return list(self.dao.proposals.keys())[-1]
 
-    def propose_priority_algorithm(self, proposer_id: str, algorithm_spec: Dict[str, Any]) -> str:
+    def propose_priority_algorithm(
+        self, proposer_id: str, algorithm_spec: Dict[str, Any]
+    ) -> str:
         """Propose message prioritization algorithm."""
 
         proposal = DaoProposal(
@@ -276,7 +297,10 @@ class MessageQueueGovernance:
             title=f"Priority Algorithm: {algorithm_spec['name']}",
             description=f"Update message prioritization: {algorithm_spec['description']}",
             execution_data=json.dumps(algorithm_spec).encode(),
-            metadata={"policy_type": "prioritization", "fairness_score": algorithm_spec.get("fairness", 0.8)}
+            metadata={
+                "policy_type": "prioritization",
+                "fairness_score": algorithm_spec.get("fairness", 0.8),
+            },
         )
 
         self.dao = self.dao.create_proposal(proposer_id, proposal)
@@ -304,7 +328,7 @@ class MessageQueueGovernance:
             created_by=proposal.proposer_id,
             approved_by_dao=True,
             effective_from=time.time(),
-            metadata=proposal.metadata
+            metadata=proposal.metadata,
         )
 
         # Activate policy
@@ -315,12 +339,15 @@ class MessageQueueGovernance:
 
         return policy
 
-    def get_active_policies(self, policy_type: Optional[str] = None) -> List[QueueGovernancePolicy]:
+    def get_active_policies(
+        self, policy_type: Optional[str] = None
+    ) -> List[QueueGovernancePolicy]:
         """Get currently active governance policies."""
         current_time = time.time()
 
         active = [
-            policy for policy in self.active_policies.values()
+            policy
+            for policy in self.active_policies.values()
             if policy.is_active(current_time)
         ]
 
@@ -345,7 +372,7 @@ class MessageQueueGovernance:
                 MessagePriority.HIGH: fee_params.get("high_multiplier", 3.0),
                 MessagePriority.NORMAL: fee_params.get("normal_multiplier", 1.0),
                 MessagePriority.LOW: fee_params.get("low_multiplier", 0.5),
-                MessagePriority.BULK: fee_params.get("bulk_multiplier", 0.1)
+                MessagePriority.BULK: fee_params.get("bulk_multiplier", 0.1),
             }.get(message.priority, 1.0)
 
             # Guarantee multiplier — EXACTLY_ONCE is refused (non_claim); never priced.
@@ -358,11 +385,11 @@ class MessageQueueGovernance:
             }.get(message.delivery_guarantee, 1.0)
 
             calculated_fee = int(
-                base_fee *
-                size_factor *
-                priority_multiplier *
-                guarantee_multiplier *
-                fee_params.get("base_multiplier", 1.0)
+                base_fee
+                * size_factor
+                * priority_multiplier
+                * guarantee_multiplier
+                * fee_params.get("base_multiplier", 1.0)
             )
 
             # Ensure minimum fee for sustainability
@@ -396,7 +423,9 @@ class EquitablePriorityQueue:
         # Calculate fee based on DAO governance
         calculated_fee = self.governance.calculate_message_fee(message)
         if message.processing_fee < calculated_fee:
-            raise ValueError(f"Insufficient fee: {message.processing_fee} < {calculated_fee}")
+            raise ValueError(
+                f"Insufficient fee: {message.processing_fee} < {calculated_fee}"
+            )
 
         # Update message with calculated fee
         updated_message = BlockchainMessage(
@@ -414,7 +443,7 @@ class EquitablePriorityQueue:
             retry_count=message.retry_count,
             max_retries=message.max_retries,
             blockchain_record=message.blockchain_record,
-            metadata=message.metadata
+            metadata=message.metadata,
         )
 
         # Insert with priority order but fairness consideration
@@ -476,7 +505,7 @@ class EquitablePriorityQueue:
             MessagePriority.HIGH: 100,
             MessagePriority.NORMAL: 10,
             MessagePriority.LOW: 1,
-            MessagePriority.BULK: 0.1
+            MessagePriority.BULK: 0.1,
         }.get(message.priority, 10)
 
         # Fairness adjustments based on DAO policies
@@ -490,16 +519,18 @@ class EquitablePriorityQueue:
             monopoly_penalty = min(sender_quota / 50, 0.5)  # Max 50% reduction
 
             # Age bonus: older messages get slight priority boost
-            age_bonus = min((time.time() - message.created_at) / 3600, 0.3)  # Max 30% bonus
+            age_bonus = min(
+                (time.time() - message.created_at) / 3600, 0.3
+            )  # Max 30% bonus
 
             # Fee incentive: higher fees get priority (but capped for fairness)
             fee_bonus = min(message.processing_fee / 1000, 0.2)  # Max 20% bonus
 
             # Apply fairness adjustments
             fairness_multiplier = (
-                (1.0 - monopoly_penalty) *  # Reduce for high volume
-                (1.0 + age_bonus) *         # Boost for waiting
-                (1.0 + fee_bonus)           # Small fee incentive
+                (1.0 - monopoly_penalty)  # Reduce for high volume
+                * (1.0 + age_bonus)  # Boost for waiting
+                * (1.0 + fee_bonus)  # Small fee incentive
             )
 
             base_priority *= fairness_multiplier * params.get("fairness_factor", 1.0)
@@ -563,27 +594,29 @@ class BlockchainMessageRouter:
             sender=registrar_id,
             receiver="message_queue_system",
             operation_type=OperationType.FEDERATION_JOIN,
-            payload=json.dumps({
-                "action": "register_route",
-                "route_data": {
-                    "route_id": route.route_id,
-                    "source_hub": route.source_hub,
-                    "destination_hub": route.destination_hub,
-                    "path_hops": route.path_hops,
-                    "latency_ms": route.latency_ms,
-                    "bandwidth_mbps": route.bandwidth_mbps,
-                    "reliability_score": route.reliability_score,
-                    "cost_per_mb": route.cost_per_mb
+            payload=json.dumps(
+                {
+                    "action": "register_route",
+                    "route_data": {
+                        "route_id": route.route_id,
+                        "source_hub": route.source_hub,
+                        "destination_hub": route.destination_hub,
+                        "path_hops": route.path_hops,
+                        "latency_ms": route.latency_ms,
+                        "bandwidth_mbps": route.bandwidth_mbps,
+                        "reliability_score": route.reliability_score,
+                        "cost_per_mb": route.cost_per_mb,
+                    },
                 }
-            }).encode(),
-            fee=10
+            ).encode(),
+            fee=10,
         )
 
         # Add to blockchain
         new_block = Block.create_next_block(
             previous_block=self.blockchain.get_latest_block(),
             transactions=(registration_tx,),
-            miner="message_queue_manager"
+            miner="message_queue_manager",
         )
 
         self.blockchain = self.blockchain.add_block(new_block)
@@ -605,24 +638,26 @@ class BlockchainMessageRouter:
             sender="message_queue_router",
             receiver=message.recipient_id,
             operation_type=OperationType.SMART_CONTRACT,
-            payload=json.dumps({
-                "action": "route_message",
-                "message_id": message.message_id,
-                "route_id": optimal_route.route_id,
-                "sender_id": message.sender_id,
-                "recipient_id": message.recipient_id,
-                "priority": message.priority.value,
-                "fee_paid": message.processing_fee,
-                "routing_timestamp": time.time()
-            }).encode(),
-            fee=message.processing_fee
+            payload=json.dumps(
+                {
+                    "action": "route_message",
+                    "message_id": message.message_id,
+                    "route_id": optimal_route.route_id,
+                    "sender_id": message.sender_id,
+                    "recipient_id": message.recipient_id,
+                    "priority": message.priority.value,
+                    "fee_paid": message.processing_fee,
+                    "routing_timestamp": time.time(),
+                }
+            ).encode(),
+            fee=message.processing_fee,
         )
 
         # Add to blockchain
         new_block = Block.create_next_block(
             previous_block=self.blockchain.get_latest_block(),
             transactions=(routing_tx,),
-            miner="message_queue_manager"
+            miner="message_queue_manager",
         )
 
         self.blockchain = self.blockchain.add_block(new_block)
@@ -644,7 +679,7 @@ class BlockchainMessageRouter:
             "latency_weight": 0.4,
             "cost_weight": 0.3,
             "reliability_weight": 0.3,
-            "prefer_direct": True
+            "prefer_direct": True,
         }
 
         # Override with DAO policies
@@ -674,8 +709,9 @@ class BlockchainMessageRouter:
 
         return best_route
 
-    def _route_meets_requirements(self, route: MessageRoute, message: BlockchainMessage,
-                                criteria: Dict[str, Any]) -> bool:
+    def _route_meets_requirements(
+        self, route: MessageRoute, message: BlockchainMessage, criteria: Dict[str, Any]
+    ) -> bool:
         """Check if route meets message requirements."""
 
         # Basic checks
@@ -685,10 +721,10 @@ class BlockchainMessageRouter:
         # Priority-based latency requirements
         max_latency = {
             MessagePriority.EMERGENCY: 100,  # 100ms max
-            MessagePriority.HIGH: 500,       # 500ms max
-            MessagePriority.NORMAL: 2000,    # 2s max
-            MessagePriority.LOW: 10000,      # 10s max
-            MessagePriority.BULK: 60000      # 1 minute max
+            MessagePriority.HIGH: 500,  # 500ms max
+            MessagePriority.NORMAL: 2000,  # 2s max
+            MessagePriority.LOW: 10000,  # 10s max
+            MessagePriority.BULK: 60000,  # 1 minute max
         }.get(message.priority, 2000)
 
         if route.latency_ms > max_latency:
@@ -704,26 +740,27 @@ class BlockchainMessageRouter:
 
         return True
 
-    def _calculate_route_score(self, route: MessageRoute, message: BlockchainMessage,
-                             criteria: Dict[str, Any]) -> float:
+    def _calculate_route_score(
+        self, route: MessageRoute, message: BlockchainMessage, criteria: Dict[str, Any]
+    ) -> float:
         """Calculate route fitness score."""
 
         # Normalize metrics (0-1 scale)
         latency_score = max(0, 1 - route.latency_ms / 10000)  # 10s max
-        cost_score = max(0, 1 - route.cost_per_mb / 100)      # 100 cost max
+        cost_score = max(0, 1 - route.cost_per_mb / 100)  # 100 cost max
         reliability_score = route.reliability_score
 
         # Priority adjustments
         if message.priority == MessagePriority.EMERGENCY:
             latency_score *= 2  # Emergency prioritizes latency
         elif message.priority == MessagePriority.BULK:
-            cost_score *= 2     # Bulk prioritizes cost
+            cost_score *= 2  # Bulk prioritizes cost
 
         # Weighted score
         total_score = (
-            latency_score * criteria["latency_weight"] +
-            cost_score * criteria["cost_weight"] +
-            reliability_score * criteria["reliability_weight"]
+            latency_score * criteria["latency_weight"]
+            + cost_score * criteria["cost_weight"]
+            + reliability_score * criteria["reliability_weight"]
         )
 
         return total_score
@@ -735,29 +772,31 @@ class BlockchainMessageRouter:
             sender="message_queue_monitor",
             receiver="message_queue_system",
             operation_type=OperationType.NODE_UPDATE,
-            payload=json.dumps({
-                "action": "record_metrics",
-                "metrics": {
-                    "queue_id": metrics.queue_id,
-                    "route_id": metrics.route_id,
-                    "timestamp": metrics.timestamp,
-                    "messages_processed": metrics.messages_processed,
-                    "average_latency_ms": metrics.average_latency_ms,
-                    "throughput_msgs_per_sec": metrics.throughput_msgs_per_sec,
-                    "error_rate": metrics.error_rate,
-                    "total_fees_collected": metrics.total_fees_collected,
-                    "delivery_success_rate": metrics.delivery_success_rate,
-                    "sla_compliance_rate": metrics.sla_compliance_rate
+            payload=json.dumps(
+                {
+                    "action": "record_metrics",
+                    "metrics": {
+                        "queue_id": metrics.queue_id,
+                        "route_id": metrics.route_id,
+                        "timestamp": metrics.timestamp,
+                        "messages_processed": metrics.messages_processed,
+                        "average_latency_ms": metrics.average_latency_ms,
+                        "throughput_msgs_per_sec": metrics.throughput_msgs_per_sec,
+                        "error_rate": metrics.error_rate,
+                        "total_fees_collected": metrics.total_fees_collected,
+                        "delivery_success_rate": metrics.delivery_success_rate,
+                        "sla_compliance_rate": metrics.sla_compliance_rate,
+                    },
                 }
-            }).encode(),
-            fee=1
+            ).encode(),
+            fee=1,
         )
 
         # Add to blockchain
         new_block = Block.create_next_block(
             previous_block=self.blockchain.get_latest_block(),
             transactions=(metrics_tx,),
-            miner="message_queue_manager"
+            miner="message_queue_manager",
         )
 
         self.blockchain = self.blockchain.add_block(new_block)

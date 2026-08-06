@@ -708,7 +708,7 @@ class MembershipProtocol:
 
     async def _process_suspicions(self) -> None:
         """Process pending suspicions and timeouts."""
-        current_time = time.time()
+        time.time()
 
         with self._lock:
             for node_id, member_info in list(self.membership.items()):
@@ -723,7 +723,7 @@ class MembershipProtocol:
 
     async def _cleanup_expired_probes(self) -> None:
         """Clean up expired probe requests."""
-        current_time = time.time()
+        time.time()
 
         expired_probes = [
             probe_id

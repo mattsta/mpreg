@@ -230,7 +230,7 @@ class GraphBasedFederationRouter:
         closed_set = set()
 
         while open_set:
-            current_f, current = heapq.heappop(open_set)
+            _current_f, current = heapq.heappop(open_set)
 
             if current == target:
                 return self._reconstruct_path(came_from, source, target)

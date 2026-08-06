@@ -7,9 +7,8 @@ router that uses the fabric message envelope, routing index, and planners.
 
 from __future__ import annotations
 
-from collections import OrderedDict
-
 import time
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Protocol
@@ -334,7 +333,9 @@ class FabricRouter:
 
         self.handler_registry = RouteHandlerRegistry()
         self.metrics = RoutingMetrics()
-        self.route_cache: OrderedDict[str, tuple[FabricRouteResult, float]] = OrderedDict()
+        self.route_cache: OrderedDict[str, tuple[FabricRouteResult, float]] = (
+            OrderedDict()
+        )
         from mpreg.fabric.route_decision_log import RouteDecisionLog
 
         # Per-router log (not process-global) so multi-server processes stay isolated.
@@ -475,7 +476,9 @@ class FabricRouter:
         except Exception:  # never break routing for observability
             router_log.opt(lazy=True).debug("route decision log record failed")
 
-    def _unsupported_delivery_result(self, message: UnifiedMessage, route_id: str) -> FabricRouteResult:
+    def _unsupported_delivery_result(
+        self, message: UnifiedMessage, route_id: str
+    ) -> FabricRouteResult:
         """COR-03: EXACTLY_ONCE is fabric-wide unsupported (not queue-only)."""
         router_log.warning(
             "EXACTLY_ONCE delivery rejected (unsupported): type={} topic={} message_id={}",
@@ -1067,9 +1070,7 @@ def _cache_role_from_topic(topic: str) -> CacheRole:
         return CacheRole.SYNC
     if topic.startswith("mpreg.cache.federation."):
         return CacheRole.COORDINATOR
-    if topic.startswith("mpreg.cache.events.") or topic.startswith(
-        "mpreg.cache.analytics."
-    ):
+    if topic.startswith(("mpreg.cache.events.", "mpreg.cache.analytics.")):
         return CacheRole.MONITOR
     return CacheRole.COORDINATOR
 

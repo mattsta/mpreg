@@ -1,5 +1,3 @@
-import pytest
-
 from mpreg.core.errors import MpregError, MpregErrorCode
 
 def test_subscription_failure_is_mpreg_error() -> None:

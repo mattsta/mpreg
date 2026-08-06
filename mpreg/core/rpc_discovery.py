@@ -29,7 +29,7 @@ from mpreg.datastructures.type_aliases import (
 
 def _normalize_tuple(value: object) -> tuple[str, ...]:
     if value is None:
-        return tuple()
+        return ()
     if isinstance(value, str):
         return (value,)
     if isinstance(value, (list, tuple, set, frozenset)):

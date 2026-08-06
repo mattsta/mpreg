@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-from mpreg.consensus import MembershipChangeNotSupported, ProductionRaft, RaftConfiguration
+from mpreg.consensus import (
+    MembershipChangeNotSupported,
+    ProductionRaft,
+    RaftConfiguration,
+)
 from mpreg.datastructures.raft_storage_adapters import RaftStorageFactory
 from tests.test_production_raft_integration import TestableStateMachine
 

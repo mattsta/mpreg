@@ -7,6 +7,7 @@
 All `TypeError: object is not subscriptable` and `argument of type 'X' is not iterable` errors have been resolved by:
 
 - **Created proper dataclasses** for statistics:
+
   - `GossipProtocolStatistics` - replaced `dict[str, int]` for protocol stats
   - `MonitoringStatsData` - replaced `dict[str, int]` for monitoring stats
   - `RegistryPerformanceStats` - replaced `dict[str, int]` for registry stats
@@ -110,16 +111,19 @@ uv run pytest tests/test_dependency_resolution.py::TestDependencyResolution::tes
 For each test file with hardcoded ports:
 
 - [ ] **test_dependency_resolution.py**
+
   - [ ] Replace `port=<fixed>` with `port=port_manager.get_server_port()`
   - [ ] Replace `"ws://127.0.0.1:<fixed>"` with `f"ws://127.0.0.1:{port1}"`
   - [ ] Add `TestPortManager` context or use fixtures
 
 - [ ] **test_production_examples.py**
+
   - [ ] Replace hardcoded ports with dynamic allocation
   - [ ] Update client URLs to use dynamic ports
   - [ ] Add proper port cleanup
 
 - [ ] **test_advanced_cluster_scenarios.py**
+
   - [ ] Similar updates to production examples
 
 - [ ] **test_real_world_workflows.py**

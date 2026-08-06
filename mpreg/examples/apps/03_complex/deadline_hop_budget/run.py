@@ -34,7 +34,9 @@ async def main() -> None:
             )
             ok(f"header deadline_remaining_ms={h2.deadline_remaining_ms:.1f}")
 
-        with scenario("decrement per hop latency", "fabric.deadline_hop", "rpc.deadline"):
+        with scenario(
+            "decrement per hop latency", "fabric.deadline_hop", "rpc.deadline"
+        ):
             b = DeadlineBudget.from_seconds(1.0)
             h = b.apply_to_headers(MessageHeaders(correlation_id="corr-2"))
             before = float(h.deadline_remaining_ms or 0)
@@ -55,9 +57,7 @@ async def main() -> None:
             ok(f"hops={hops} remaining={h.deadline_remaining_ms}")
 
         with scenario("raise_if_exhausted fail-closed", "rpc.deadline"):
-            b = DeadlineBudget(
-                remaining_ms=1.0, started_mono=time.monotonic() - 1.0
-            )
+            b = DeadlineBudget(remaining_ms=1.0, started_mono=time.monotonic() - 1.0)
             ensure(b.exhausted() is True, "should be exhausted")
             failed = False
             try:

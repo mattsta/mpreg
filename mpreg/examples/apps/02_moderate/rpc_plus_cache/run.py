@@ -67,7 +67,9 @@ async def main() -> None:
                     )
                     hub = f"ws://127.0.0.1:{port}"
 
-                    with scenario("cold miss then RPC fill", "rpc.call", "cache.put_get"):
+                    with scenario(
+                        "cold miss then RPC fill", "rpc.call", "cache.put_get"
+                    ):
                         async with MPREGClientAPI(hub) as client:
                             cached = await cache.get(key)
                             ensure(
@@ -81,19 +83,30 @@ async def main() -> None:
                             await cache.put(
                                 key,
                                 result,
-                                CacheMetadata(computation_cost_ms=20.0, ttl_seconds=300.0),
+                                CacheMetadata(
+                                    computation_cost_ms=20.0, ttl_seconds=300.0
+                                ),
                             )
                         ok(f"filled cache calls={calls['n']}")
 
-                    with scenario("cache hit avoids second RPC", "cache.put_get", "cache.ttl"):
+                    with scenario(
+                        "cache hit avoids second RPC", "cache.put_get", "cache.ttl"
+                    ):
                         before = calls["n"]
                         hit = await cache.get(key)
                         ensure(hit.success and hit.entry is not None, "cache miss")
-                        ensure(hit.entry.value.get("value") == 144, f"bad hit {hit.entry.value}")
-                        ensure(calls["n"] == before, "RPC should not re-run on cache hit")
+                        ensure(
+                            hit.entry.value.get("value") == 144,
+                            f"bad hit {hit.entry.value}",
+                        )
+                        ensure(
+                            calls["n"] == before, "RPC should not re-run on cache hit"
+                        )
                         ok(f"cache hit value={hit.entry.value} rpc_calls={calls['n']}")
 
-                    with scenario("different args distinct key", "rpc.call", "cache.put_get"):
+                    with scenario(
+                        "different args distinct key", "rpc.call", "cache.put_get"
+                    ):
                         key2 = GlobalCacheKey.from_function_call(
                             "rpc.cache", "expensive", args=(5,), kwargs={}
                         )
@@ -104,7 +117,9 @@ async def main() -> None:
                             await cache.put(
                                 key2,
                                 r2,
-                                CacheMetadata(computation_cost_ms=20.0, ttl_seconds=60.0),
+                                CacheMetadata(
+                                    computation_cost_ms=20.0, ttl_seconds=60.0
+                                ),
                             )
                         h1 = await cache.get(key)
                         h2 = await cache.get(key2)

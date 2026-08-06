@@ -1,5 +1,4 @@
 from mpreg.core.errors import (
-    MpregError,
     MpregErrorCode,
     command_not_found,
     hop_budget_exceeded,

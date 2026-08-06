@@ -29,9 +29,9 @@ uv run mpreg-example run pubsub_request_reply
 
 ## API drill-down
 
-| Call | Feature ID |
-|------|------------|
-| `subscribe(patterns, handler)` | `pubsub.client_wire`, `pubsub.exchange` |
+| Call                                 | Feature ID                               |
+| ------------------------------------ | ---------------------------------------- |
+| `subscribe(patterns, handler)`       | `pubsub.client_wire`, `pubsub.exchange`  |
 | `publish_with_reply(topic, payload)` | `pubsub.publish_reply`, `pubsub.headers` |
 
 ## Non-claims

@@ -240,7 +240,7 @@ async def test_cluster_map_v2_paginates_and_scopes(
     with port_range_context(3, "servers") as ports:
         hub_url = f"ws://127.0.0.1:{ports[0]}"
 
-        hub = await _start_server(
+        await _start_server(
             test_context,
             port=ports[0],
             name="hub",
@@ -433,7 +433,7 @@ async def test_catalog_query_functions_and_nodes(
     with port_range_context(3, "servers") as ports:
         hub_url = f"ws://127.0.0.1:{ports[0]}"
 
-        hub = await _start_server(
+        await _start_server(
             test_context,
             port=ports[0],
             name="hub",
@@ -1077,7 +1077,10 @@ async def test_discovery_rate_limit_blocks_excess_queries(
             await client.catalog_query(entry_type="functions")
             with pytest.raises(MPREGException) as exc:
                 await client.catalog_query(entry_type="functions")
-            assert exc.value.rpc_error.code in (429, 1102)  # 1102 = DISCOVERY_RATE_LIMITED
+            assert exc.value.rpc_error.code in (
+                429,
+                1102,
+            )  # 1102 = DISCOVERY_RATE_LIMITED
 
 @pytest.mark.asyncio
 async def test_summary_query_returns_service_summaries(
@@ -1175,7 +1178,7 @@ async def test_summary_query_global_uses_summary_cache(
 ) -> None:
     with port_range_context(1, "servers") as ports:
         server_url = f"ws://127.0.0.1:{ports[0]}"
-        server = await _start_server(
+        await _start_server(
             test_context,
             port=ports[0],
             name="summary-cache",
@@ -1307,8 +1310,8 @@ async def test_summary_query_multi_region_delegation(
 ) -> None:
     with port_range_context(3, "servers") as ports:
         global_url = f"ws://127.0.0.1:{ports[0]}"
-        us_url = f"ws://127.0.0.1:{ports[1]}"
-        eu_url = f"ws://127.0.0.1:{ports[2]}"
+        f"ws://127.0.0.1:{ports[1]}"
+        f"ws://127.0.0.1:{ports[2]}"
 
         policy_rules = (
             NamespacePolicyRule(
@@ -1435,7 +1438,7 @@ async def test_summary_cutover_window_propagation(
 ) -> None:
     with port_range_context(2, "servers") as ports:
         global_url = f"ws://127.0.0.1:{ports[0]}"
-        region_url = f"ws://127.0.0.1:{ports[1]}"
+        f"ws://127.0.0.1:{ports[1]}"
 
         window_start = time.time() - 0.5
         window_end = time.time() + 3.0

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import Any, TypeVar
+from typing import Any, Self, TypeVar
 
 from loguru import logger
 
@@ -42,13 +42,6 @@ from ..core.dns_registry import (
 )
 from ..core.errors import MpregError, map_exception
 from ..core.model import CommandNotFoundException, MPREGException, RPCCommand
-from ..core.rpc_naming import (
-    DEFAULT_USER_NAMESPACE,
-    PlatformRpc,
-    assert_call_allowed,
-    qualify_rpc_name,
-)
-from .call_policy import ClientCallPolicy, call_with_policy
 from ..core.namespace_policy import (
     NamespacePolicyApplyRequest,
     NamespacePolicyApplyResponse,
@@ -68,7 +61,14 @@ from ..core.rpc_discovery import (
     RpcReportRequest,
     RpcReportResponse,
 )
+from ..core.rpc_naming import (
+    DEFAULT_USER_NAMESPACE,
+    PlatformRpc,
+    assert_call_allowed,
+    qualify_rpc_name,
+)
 from ..core.transport.interfaces import SecurityConfig, TransportConfig
+from .call_policy import ClientCallPolicy, call_with_policy
 from .client import Client
 
 client_api_log = logger
@@ -261,10 +261,10 @@ class MPREGClientAPI:
                 result = await _once()
             # For single command calls, extract the result directly
             if isinstance(result, dict) and len(result) == 1:
-                return list(result.values())[0]
+                return next(iter(result.values()))
             return result
-        except CommandNotFoundException as e:
-            raise e
+        except CommandNotFoundException:
+            raise
         except MpregError:
             raise
         except MPREGException as e:
@@ -628,7 +628,9 @@ class MPREGClientAPI:
     ) -> NamespacePolicyValidationResponse:
         """Validate namespace policy rules."""
         payload = self._request_payload(NamespacePolicyApplyRequest, request, kwargs)
-        result = await self._call_payload(PlatformRpc.NAMESPACE_POLICY_VALIDATE, payload)
+        result = await self._call_payload(
+            PlatformRpc.NAMESPACE_POLICY_VALIDATE, payload
+        )
         if not isinstance(result, dict):
             raise TypeError(
                 f"Expected namespace policy validate response, got {type(result).__name__}"
@@ -663,7 +665,7 @@ class MPREGClientAPI:
             )
         return NamespacePolicyAuditResponse.from_dict(result)
 
-    async def __aenter__(self) -> MPREGClientAPI:
+    async def __aenter__(self) -> Self:
         await self.connect()
         return self
 

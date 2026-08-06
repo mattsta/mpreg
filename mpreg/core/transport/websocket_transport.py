@@ -420,7 +420,6 @@ class _WebSocketServerTransport(TransportInterface):
 
     async def connect(self) -> None:
         """No-op for server-side connection (already connected)."""
-        pass
 
     async def disconnect(self) -> None:
         """Close server-side WebSocket connection."""

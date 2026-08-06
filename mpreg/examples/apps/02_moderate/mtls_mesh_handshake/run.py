@@ -81,7 +81,9 @@ async def main() -> None:
                     ):
                         transport = TransportConfig(
                             security=SecurityConfig(
-                                ssl_context=_client_ctx(material, with_client_cert=True),
+                                ssl_context=_client_ctx(
+                                    material, with_client_cert=True
+                                ),
                                 cert_file=str(material.client_cert),
                                 key_file=str(material.client_key),
                                 ca_file=str(material.ca_cert),
@@ -165,7 +167,7 @@ async def main() -> None:
                                         locs=frozenset(["secure"]),
                                         timeout=2.0,
                                     )
-                        except (Exception, asyncio.CancelledError, TimeoutError):
+                        except Exception, asyncio.CancelledError, TimeoutError:
                             rejected = True
                         ensure(rejected, "ws must fail")
                         ok("ws:// fail-closed")

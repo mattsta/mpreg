@@ -44,9 +44,7 @@ def test_catalog_query_request_default_entry_type() -> None:
     assert CatalogQueryRequest.from_dict({}).entry_type == "functions"
     assert CatalogQueryRequest.from_dict({"entry_type": ""}).entry_type == "functions"
     assert CatalogQueryRequest.from_dict({"entry_type": None}).entry_type == "functions"
-    assert (
-        CatalogQueryRequest.from_dict({"entry_type": "Nodes"}).entry_type == "nodes"
-    )
+    assert CatalogQueryRequest.from_dict({"entry_type": "Nodes"}).entry_type == "nodes"
 
 def test_pubsub_forwarding_max_hops_bad_type() -> None:
     """except (TypeError, ValueError) path for non-int max_hops."""

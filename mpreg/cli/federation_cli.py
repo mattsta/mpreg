@@ -24,6 +24,8 @@ from rich.syntax import Syntax
 from rich.table import Table
 from rich.tree import Tree
 
+from mpreg.core.native_codec import JSONDecodeError, dumps_pretty_text, loads_text
+
 from ..core.statistics import CLIDiscoveredCluster
 from ..fabric.auto_discovery import (
     AutoDiscoveryService,
@@ -39,8 +41,6 @@ from ..fabric.federation_resilience import (
     HealthCheckConfiguration,
     RetryConfiguration,
 )
-
-from mpreg.core.native_codec import JSONDecodeError, dumps_pretty_text, loads_text
 
 console = Console()
 

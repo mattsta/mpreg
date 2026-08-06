@@ -14,7 +14,7 @@ from collections.abc import AsyncIterable
 from dataclasses import dataclass, field
 from enum import Enum
 from types import TracebackType
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, Self, runtime_checkable
 from urllib.parse import ParseResult
 
 @runtime_checkable
@@ -52,17 +52,11 @@ class TransportProtocol(Enum):
 class TransportError(Exception):
     """Base exception for transport-related errors."""
 
-    pass
-
 class TransportConnectionError(TransportError):
     """Raised when transport connection fails."""
 
-    pass
-
 class TransportTimeoutError(TransportError):
     """Raised when transport operation times out."""
-
-    pass
 
 @dataclass(frozen=True, slots=True)
 class SecurityConfig:
@@ -232,12 +226,10 @@ class TransportInterface(ABC):
             TransportConnectionError: If connection fails
             TransportTimeoutError: If connection times out
         """
-        pass
 
     @abstractmethod
     async def disconnect(self) -> None:
         """Close transport connection gracefully."""
-        pass
 
     @abstractmethod
     async def send(self, data: bytes) -> None:
@@ -251,7 +243,6 @@ class TransportInterface(ABC):
             TransportTimeoutError: If send times out
             TransportError: If send fails
         """
-        pass
 
     @abstractmethod
     async def receive(self) -> bytes:
@@ -265,7 +256,6 @@ class TransportInterface(ABC):
             TransportTimeoutError: If receive times out
             TransportError: If receive fails
         """
-        pass
 
     @abstractmethod
     async def ping(self) -> float:
@@ -278,7 +268,6 @@ class TransportInterface(ABC):
             TransportConnectionError: If not connected
             TransportTimeoutError: If ping times out
         """
-        pass
 
     async def send_stream(
         self, data_stream: StreamData, chunk_size: int = 64 * 1024
@@ -333,7 +322,7 @@ class TransportInterface(ABC):
         # Default implementation: receive normally
         return await self.receive()
 
-    async def __aenter__(self) -> TransportInterface:
+    async def __aenter__(self) -> Self:
         """Async context manager entry."""
         await self.connect()
         return self
@@ -381,7 +370,6 @@ class TransportListener(ABC):
     @abstractmethod
     def _get_protocol_scheme(self) -> str:
         """Get protocol scheme for this listener type."""
-        pass
 
     @abstractmethod
     async def start(self) -> None:
@@ -390,12 +378,10 @@ class TransportListener(ABC):
         Raises:
             TransportError: If listener fails to start
         """
-        pass
 
     @abstractmethod
     async def stop(self) -> None:
         """Stop listening and close all connections."""
-        pass
 
     @abstractmethod
     async def accept(self) -> TransportInterface:
@@ -407,9 +393,8 @@ class TransportListener(ABC):
         Raises:
             TransportError: If accept fails
         """
-        pass
 
-    async def __aenter__(self) -> TransportListener:
+    async def __aenter__(self) -> Self:
         """Async context manager entry."""
         await self.start()
         return self

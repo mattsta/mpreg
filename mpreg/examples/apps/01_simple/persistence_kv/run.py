@@ -7,11 +7,11 @@ import tempfile
 import time
 from pathlib import Path
 
-from mpreg.core.persistence.config import PersistenceConfig, PersistenceMode
 from mpreg.core.persistence.backend import (
     MemoryPersistenceBackend,
     SQLitePersistenceBackend,
 )
+from mpreg.core.persistence.config import PersistenceConfig, PersistenceMode
 from mpreg.core.persistence.kv_store import MemoryKeyValueStore
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
@@ -48,39 +48,41 @@ async def main() -> None:
             await mem.close()
             ok("delete + close")
 
-        with scenario(
-            "SQLite backend Path and str coerce",
-            "pers.sqlite_kv",
-            "pers.restart",
+        with (
+            scenario(
+                "SQLite backend Path and str coerce",
+                "pers.sqlite_kv",
+                "pers.restart",
+            ),
+            tempfile.TemporaryDirectory() as td,
         ):
-            with tempfile.TemporaryDirectory() as td:
-                path = Path(td) / "kv.db"
-                backend = SQLitePersistenceBackend(db_path=path)
-                await backend.open()
-                try:
-                    store = backend.key_value_store("demo")
-                    await store.put("user/1", b'{"n":1}')
-                    got = await store.get("user/1")
-                    ensure(got == b'{"n":1}', f"sqlite get {got!r}")
-                    listed = await store.list_prefix("user/")
-                    ensure(len(listed) >= 1, f"list {listed}")
-                    ok(f"sqlite path={path.name} bytes={got!r}")
-                finally:
-                    await backend.close()
+            path = Path(td) / "kv.db"
+            backend = SQLitePersistenceBackend(db_path=path)
+            await backend.open()
+            try:
+                store = backend.key_value_store("demo")
+                await store.put("user/1", b'{"n":1}')
+                got = await store.get("user/1")
+                ensure(got == b'{"n":1}', f"sqlite get {got!r}")
+                listed = await store.list_prefix("user/")
+                ensure(len(listed) >= 1, f"list {listed}")
+                ok(f"sqlite path={path.name} bytes={got!r}")
+            finally:
+                await backend.close()
 
-                # Phase G F18 fix: str paths coerce to Path
-                path2 = Path(td) / "kv2.db"
-                backend2 = SQLitePersistenceBackend(db_path=str(path2))
-                ensure(isinstance(backend2.db_path, Path), type(backend2.db_path))
-                await backend2.open()
-                try:
-                    store2 = backend2.key_value_store("demo")
-                    await store2.put("k", b"v")
-                    ensure(await store2.get("k") == b"v", "str path get")
-                    step("F18 fixed: db_path accepts str → Path coerce")
-                    ok(f"sqlite str coerce path={path2.name}")
-                finally:
-                    await backend2.close()
+            # Phase G F18 fix: str paths coerce to Path
+            path2 = Path(td) / "kv2.db"
+            backend2 = SQLitePersistenceBackend(db_path=str(path2))
+            ensure(isinstance(backend2.db_path, Path), type(backend2.db_path))
+            await backend2.open()
+            try:
+                store2 = backend2.key_value_store("demo")
+                await store2.put("k", b"v")
+                ensure(await store2.get("k") == b"v", "str path get")
+                step("F18 fixed: db_path accepts str → Path coerce")
+                ok(f"sqlite str coerce path={path2.name}")
+            finally:
+                await backend2.close()
 
         with scenario("memory persistence backend façade", "pers.memory_kv"):
             be = MemoryPersistenceBackend()
@@ -109,7 +111,10 @@ async def main() -> None:
                 data_dir=Path(tempfile.mkdtemp(prefix="mpreg-pers-cfg-")),
             )
             ensure(sql_cfg.mode == PersistenceMode.SQLITE, "sql mode")
-            ensure(sql_cfg.sqlite_path().name.endswith(".sqlite"), str(sql_cfg.sqlite_path()))
+            ensure(
+                sql_cfg.sqlite_path().name.endswith(".sqlite"),
+                str(sql_cfg.sqlite_path()),
+            )
             # Shipped modes only — remote SQL/other stores are plan-only (non-claim).
             shipped = {m.value for m in PersistenceMode}
             ensure(shipped == {"memory", "sqlite"}, f"unexpected modes {shipped}")

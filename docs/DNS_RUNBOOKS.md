@@ -47,16 +47,19 @@ Example response:
 ## Troubleshooting
 
 - **NXDOMAIN for known service**
+
   - Verify the service is registered (`dns_list`).
   - Check namespace policy for the namespace.
   - Ensure `dns_zones` includes the served suffix.
   - If querying without a zone suffix, enable `dns_allow_external_names`.
 
 - **No SRV records**
+
   - Use the `_svc._tcp.<name>.<namespace>` form.
   - Confirm service targets are non-empty.
 
 - **A/AAAA missing**
+
   - Targets must be IPs for direct A/AAAA responses.
   - For hostnames, query SRV and resolve the target separately.
 

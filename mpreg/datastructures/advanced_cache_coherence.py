@@ -50,6 +50,8 @@ from typing import Any
 
 import ulid
 
+from mpreg.core.native_codec import canonical_dumps
+
 from .cache_structures import CacheKey
 from .federated_cache_coherence import (
     CacheCoherenceMetadata,
@@ -60,8 +62,6 @@ from .federated_cache_coherence import (
 )
 from .merkle_tree import MerkleHash, MerkleProofPath, MerkleTree
 from .type_aliases import JsonDict, RequestId, Timestamp
-
-from mpreg.core.native_codec import canonical_dumps
 
 @dataclass(frozen=True, slots=True)
 class MerkleAwareFederatedCacheKey:

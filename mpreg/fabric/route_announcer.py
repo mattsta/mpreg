@@ -213,13 +213,9 @@ class RouteAnnouncementProcessor:
         # COR-04: when signatures are required, only pinned/registry keys verify —
         # never the announcement's self-attested public_key.
         fallback = (
-            None
-            if self.security_config.require_signatures
-            else announcement.public_key
+            None if self.security_config.require_signatures else announcement.public_key
         )
-        keys = self._resolve_public_keys(
-            announcement.advertiser, fallback_key=fallback
-        )
+        keys = self._resolve_public_keys(announcement.advertiser, fallback_key=fallback)
         if not keys:
             return False
         return any(
@@ -260,13 +256,9 @@ class RouteAnnouncementProcessor:
             return False
 
         fallback = (
-            None
-            if self.security_config.require_signatures
-            else withdrawal.public_key
+            None if self.security_config.require_signatures else withdrawal.public_key
         )
-        keys = self._resolve_public_keys(
-            withdrawal.advertiser, fallback_key=fallback
-        )
+        keys = self._resolve_public_keys(withdrawal.advertiser, fallback_key=fallback)
         if not keys:
             return False
         return any(

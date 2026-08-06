@@ -65,7 +65,9 @@ async def main() -> None:
             )
             ok("watching sensor.temp.*, sensor.pressure.*, sensor.#")
 
-        with scenario("typed sensor fan-out counts", "pubsub.fanout", "pubsub.wildcard_star"):
+        with scenario(
+            "typed sensor fan-out counts", "pubsub.fanout", "pubsub.wildcard_star"
+        ):
             events = [
                 ("sensor.temp.rack-a", {"c": 22.5}),
                 ("sensor.temp.rack-b", {"c": 23.1}),

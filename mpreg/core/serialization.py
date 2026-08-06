@@ -12,12 +12,10 @@ class Serializer(ABC):
     @abstractmethod
     def serialize(self, data: Any) -> bytes:
         """Serializes data into bytes."""
-        pass
 
     @abstractmethod
     def deserialize(self, data: bytes) -> Any:
         """Deserializes bytes into data."""
-        pass
 
 @dataclass(slots=True)
 class JsonSerializer(Serializer):

@@ -392,7 +392,7 @@ class FabricFederationPlanner:
             target_cluster=target_cluster,
             next_cluster=None,
             next_peer_url=None,
-            planned_path=planned_path or tuple(),
+            planned_path=planned_path or (),
             federation_path=tuple(visited),
             remaining_hops=remaining,
             reason=reason,
@@ -412,4 +412,4 @@ class FabricFederationPlanner:
         ]
         if not candidates:
             return None
-        return sorted(candidates)[0]
+        return min(candidates)

@@ -96,9 +96,7 @@ async def test_gossip_catalog_update_converges_two_nodes() -> None:
     applier_a = RoutingCatalogApplier(catalog_a)
     applier_b = RoutingCatalogApplier(catalog_b)
     transport = InProcessGossipTransport()
-    protocol_a = GossipProtocol(
-        node_id="node-a", transport=transport, catalog_applier=applier_a
-    )
+    GossipProtocol(node_id="node-a", transport=transport, catalog_applier=applier_a)
     protocol_b = GossipProtocol(
         node_id="node-b", transport=transport, catalog_applier=applier_b
     )

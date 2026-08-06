@@ -92,7 +92,7 @@ class TaskManager:
                 # Use wait instead of gather to handle already-done tasks better
                 pending_tasks = [task for task in self.tasks if not task.done()]
                 if pending_tasks:
-                    done, pending = await asyncio.wait(
+                    _done, pending = await asyncio.wait(
                         pending_tasks,
                         timeout=timeout,
                         return_when=asyncio.ALL_COMPLETED,

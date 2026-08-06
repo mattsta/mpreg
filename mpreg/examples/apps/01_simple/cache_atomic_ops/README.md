@@ -31,11 +31,11 @@ uv run mpreg-example run cache_atomic_ops
 
 ## API drill-down
 
-| Call | Feature ID |
-|------|------------|
-| `atomic_operation(INCREMENT\|CAS\|TEST_AND_SET)` | `cache.atomic` |
-| `data_structure_operation(SET/LIST)` | `cache.structures` |
-| `namespace_operation(count/list/clear)` | `cache.namespace_ops` |
+| Call                                             | Feature ID            |
+| ------------------------------------------------ | --------------------- |
+| `atomic_operation(INCREMENT\|CAS\|TEST_AND_SET)` | `cache.atomic`        |
+| `data_structure_operation(SET/LIST)`             | `cache.structures`    |
+| `namespace_operation(count/list/clear)`          | `cache.namespace_ops` |
 
 ## Non-claims
 

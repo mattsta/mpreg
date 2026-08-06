@@ -416,7 +416,7 @@ class TestTransportEnhancementIntegration:
                 try:
                     if i < 3:  # First 3 succeed
                         await mock_transport.send(b"data")
-                        response = await mock_transport.receive()
+                        await mock_transport.receive()
                         breaker.record_success()
                     else:  # Last 2 fail
                         mock_transport.send.side_effect = Exception("Connection failed")

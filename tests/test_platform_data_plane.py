@@ -445,14 +445,21 @@ def test_config_check_warns_discovery_policy_off_on_federated_profile() -> None:
     assert "discovery_policy" in result.output or result.exit_code in (0, 2)
     # Use a multi-peer path with policy off for the COR-09 warning + strict exit
     # (federated profile itself has policy on after T11).
-    if "discovery_policy_enabled=false" in result.output or "discovery_policy_enabled" in result.output:
+    if (
+        "discovery_policy_enabled=false" in result.output
+        or "discovery_policy_enabled" in result.output
+    ):
         pass
     strict = runner.invoke(
         cli, ["config-check", str(profile), "--strict", "--format", "json"]
     )
     # federated profile always has some warnings (change-me secrets) → strict 2
     assert strict.exit_code == 2
-    assert "change-me" in strict.output or "warning" in strict.output.lower() or "discovery" in strict.output
+    assert (
+        "change-me" in strict.output
+        or "warning" in strict.output.lower()
+        or "discovery" in strict.output
+    )
 
 # ---------------------------------------------------------------------------
 # P1: Pub/sub delivery under simple drop oracle (local exchange)

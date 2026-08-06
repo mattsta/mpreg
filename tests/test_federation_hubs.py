@@ -596,7 +596,7 @@ class TestHubTopology:
             coordinates=GeographicCoordinate(40.7589, -73.9851),
             region="us-east",
         )  # Manhattan
-        hub3 = LocalHub(
+        LocalHub(
             hub_id="local_003",
             hub_tier=HubTier.LOCAL,
             capabilities=create_local_hub_capabilities(),

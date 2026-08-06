@@ -124,7 +124,11 @@ async def main() -> None:
                                     and payload.get("status") == "ok",
                                     f"bad reply {payload}",
                                 )
-                                echo = payload.get("echo") if isinstance(payload, dict) else None
+                                echo = (
+                                    payload.get("echo")
+                                    if isinstance(payload, dict)
+                                    else None
+                                )
                                 ensure(
                                     isinstance(echo, dict) and echo.get("q") == "ping",
                                     f"echo missing in {payload}",

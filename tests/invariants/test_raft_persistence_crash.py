@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 
 import pytest
 
@@ -29,9 +30,7 @@ def _cfg() -> RaftConfiguration:
 async def test_restart_recovers_committed_entries() -> None:
     network = MockNetwork()
     members = {"n0", "n1", "n2"}
-    storages = {
-        nid: RaftStorageFactory.create_memory_storage(nid) for nid in members
-    }
+    storages = {nid: RaftStorageFactory.create_memory_storage(nid) for nid in members}
     sms = {nid: TestableStateMachine() for nid in members}
 
     def build(nid: str) -> ProductionRaft:
@@ -97,13 +96,10 @@ async def test_restart_recovers_committed_entries() -> None:
             await asyncio.sleep(0.05)
         assert leader2 is not None
         # Persistent log should still contain committed index
-        assert any(
-            len(n.persistent_state.log_entries) >= 1 for n in nodes2.values()
-        )
+        assert any(len(n.persistent_state.log_entries) >= 1 for n in nodes2.values())
         assert leader2.volatile_state.commit_index >= 1 or any(
-            e.command == "persist=42" or (
-                isinstance(e.command, str) and "persist" in e.command
-            )
+            e.command == "persist=42"
+            or (isinstance(e.command, str) and "persist" in e.command)
             for n in nodes2.values()
             for e in n.persistent_state.log_entries
         )
@@ -127,9 +123,7 @@ async def test_restart_recovers_committed_entries() -> None:
                 break
             # also accept last_applied catching up with commit on majority
             applied_idx = sum(
-                1
-                for n in nodes2.values()
-                if n.volatile_state.last_applied >= 1
+                1 for n in nodes2.values() if n.volatile_state.last_applied >= 1
             )
             if applied_idx >= 2:
                 applied = applied_idx
@@ -140,13 +134,9 @@ async def test_restart_recovers_committed_entries() -> None:
         )
     finally:
         for n in list(nodes.values()):
-            try:
+            with contextlib.suppress(Exception):
                 await n.stop()
-            except Exception:
-                pass
         if "nodes2" in dir():
             for n in nodes2.values():
-                try:
+                with contextlib.suppress(Exception):
                     await n.stop()
-                except Exception:
-                    pass

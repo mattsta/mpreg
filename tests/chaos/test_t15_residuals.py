@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
-import pytest
 from click.testing import CliRunner
 
 from mpreg.cli.main import cli
@@ -141,11 +139,11 @@ enable_default_cache = true
 enable_default_queue = true
 """
         )
-        result = runner.invoke(
-            cli, ["config-check", str(p), "--format", "json"]
-        )
+        result = runner.invoke(cli, ["config-check", str(p), "--format", "json"])
         assert result.exit_code == 0  # lab_ok
-        assert "non-loopback" in result.output or "monitoring_auth_token" in result.output
+        assert (
+            "non-loopback" in result.output or "monitoring_auth_token" in result.output
+        )
 
 def test_erg_t15_01_profile_list_includes_discovery_resolver() -> None:
     runner = CliRunner()

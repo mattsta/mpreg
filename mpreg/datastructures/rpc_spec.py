@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import inspect
 import time
 import types
@@ -500,7 +499,7 @@ def _compute_spec_digest(spec: RpcSpec) -> RpcSpecDigest:
 
 def _parse_docstring(doc: str) -> RpcDocSpec:
     if not doc:
-        return RpcDocSpec(summary="", description="", param_docs=tuple(), return_doc="")
+        return RpcDocSpec(summary="", description="", param_docs=(), return_doc="")
     lines = [line.rstrip() for line in doc.strip().splitlines()]
     summary = ""
     description_lines: list[str] = []

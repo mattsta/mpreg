@@ -71,13 +71,17 @@ async def main() -> None:
                 "req-dep-1", [cmd_a, cmd_b, cmd_c]
             )
             ensure(g.request_id == "req-dep-1", g.request_id)
-            ensure(len(g.command_dependencies) == 3, f"cmds {len(g.command_dependencies)}")
+            ensure(
+                len(g.command_dependencies) == 3, f"cmds {len(g.command_dependencies)}"
+            )
             ensure(g.total_dependencies >= 1, f"deps {g.total_dependencies}")
             ensure("req-dep-1" in resolver.active_dependency_graphs, "not tracked")
             # cmd_a has no deps → ready immediately
             ready = g.get_ready_commands()
             ensure("cmd-a" in ready, f"ready {ready}")
-            ensure("cmd-b" not in ready or g.total_dependencies == 0, f"b ready? {ready}")
+            ensure(
+                "cmd-b" not in ready or g.total_dependencies == 0, f"b ready? {ready}"
+            )
             ok(
                 f"deps={g.total_dependencies} cross={g.cross_system_dependencies} "
                 f"ready={sorted(ready)} progress={g.resolution_progress:.0f}%"

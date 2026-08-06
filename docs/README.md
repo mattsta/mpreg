@@ -5,6 +5,7 @@
 ## By role
 
 ### New users
+
 - [BOOK.md](BOOK.md)
 - [GETTING_STARTED.md](GETTING_STARTED.md)
 - [EXAMPLES.md](EXAMPLES.md)
@@ -12,6 +13,7 @@
 - [ops/SETTINGS_GROUPS.md](ops/SETTINGS_GROUPS.md)
 
 ### Application developers
+
 - [MPREG_CLIENT_GUIDE.md](MPREG_CLIENT_GUIDE.md)
 - [MPREG_PROTOCOL_SPECIFICATION.md](MPREG_PROTOCOL_SPECIFICATION.md)
 - [INTERMEDIATE_RESULTS_DESIGN.md](INTERMEDIATE_RESULTS_DESIGN.md)
@@ -19,6 +21,7 @@
 - [SQS_MESSAGE_QUEUE_SYSTEM.md](SQS_MESSAGE_QUEUE_SYSTEM.md)
 
 ### Platform / fabric
+
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [FABRIC_ROUTE_POLICIES.md](FABRIC_ROUTE_POLICIES.md)
 - [FABRIC_LINK_STATE_ROUTING.md](FABRIC_LINK_STATE_ROUTING.md)
@@ -27,6 +30,7 @@
 - [DNS_INTEROP_GUIDE.md](DNS_INTEROP_GUIDE.md)
 
 ### Operators
+
 - [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)
 - [OBSERVABILITY_TROUBLESHOOTING.md](OBSERVABILITY_TROUBLESHOOTING.md)
 - [ops/SLO_GOLDEN_SIGNALS.md](ops/SLO_GOLDEN_SIGNALS.md)
@@ -35,6 +39,7 @@
 - [FEDERATION_CLI.md](FEDERATION_CLI.md) (CLI reference; fabric runtime)
 
 ### Extensions (optional)
+
 - Blockchain: [BLOCKCHAIN_COMPLETE_GUIDE.md](BLOCKCHAIN_COMPLETE_GUIDE.md),
   [BLOCKCHAIN_ARCHITECTURE.md](BLOCKCHAIN_ARCHITECTURE.md),
   [BLOCKCHAIN_MESSAGE_QUEUE_ARCHITECTURE.md](BLOCKCHAIN_MESSAGE_QUEUE_ARCHITECTURE.md)
@@ -44,11 +49,13 @@
   [VECTOR_CLOCK_GUIDE.md](VECTOR_CLOCK_GUIDE.md)
 
 ### Reference matrices and historical notes
+
 - [TEST_PARITY_MATRIX.md](TEST_PARITY_MATRIX.md)
 - [PERSISTENCE_FRAMEWORK_PLAN.md](PERSISTENCE_FRAMEWORK_PLAN.md) — persistence design notes
 - [MANAGEMENT_UI_CLI_NEXT_STEPS.md](MANAGEMENT_UI_CLI_NEXT_STEPS.md) — management API surface notes
 - [archive/README.md](archive/README.md)
 
 ### Historical federation docs
+
 Guides named `FEDERATION_*` describe topology and ops patterns; the **code path
 is `mpreg/fabric/`**. Prefer ARCHITECTURE + fabric guides for new work.

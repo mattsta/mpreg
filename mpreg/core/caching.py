@@ -9,7 +9,6 @@ All data structures use dataclasses following MPREG's clean design principles.
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import hashlib
 import time
 from collections import OrderedDict, defaultdict, deque
@@ -549,7 +548,9 @@ class SmartCacheManager[T](ManagedObject):
         super().__init__(name=f"SmartCacheManager-{id(self)}")
         self.config = config
         self.l1_cache: dict[CacheKey, CacheEntry] = {}
-        self.access_order: OrderedDict[CacheKey, None] = OrderedDict()  # PERF-T10-01 O(1) LRU
+        self.access_order: OrderedDict[CacheKey, None] = (
+            OrderedDict()
+        )  # PERF-T10-01 O(1) LRU
         self.dependency_graph: dict[CacheKey, set[CacheKey]] = defaultdict(set)
         self.reverse_deps: dict[CacheKey, set[CacheKey]] = defaultdict(set)
         self.statistics = CacheStatistics()
@@ -675,7 +676,7 @@ class SmartCacheManager[T](ManagedObject):
         # Update access tracking based on eviction policy
         if self.config.eviction_policy == EvictionPolicy.S4LRU and self.s4lru_cache:
             # S4LRU handles its own access tracking
-            was_hit, evicted_keys = self.s4lru_cache.access(key)
+            _was_hit, evicted_keys = self.s4lru_cache.access(key)
             # Handle any evictions from S4LRU
             for evicted_key in evicted_keys:
                 if evicted_key in self.l1_cache:
@@ -717,7 +718,7 @@ class SmartCacheManager[T](ManagedObject):
         # Update access tracking based on eviction policy
         if self.config.eviction_policy == EvictionPolicy.S4LRU and self.s4lru_cache:
             # S4LRU handles its own access tracking and promotion
-            was_hit, evicted_keys = self.s4lru_cache.access(key)
+            _was_hit, evicted_keys = self.s4lru_cache.access(key)
             # Handle any evictions from S4LRU
             for evicted_key in evicted_keys:
                 if evicted_key in self.l1_cache:
@@ -827,9 +828,7 @@ class SmartCacheManager[T](ManagedObject):
     def _current_memory_bytes(self) -> int:
         return sum(entry.size_bytes for entry in self.l1_cache.values())
 
-    def _should_evict(
-        self, *, incoming_size: int = 0, incoming_count: int = 0
-    ) -> bool:
+    def _should_evict(self, *, incoming_size: int = 0, incoming_count: int = 0) -> bool:
         """True if limits block accepting an optional incoming put.
 
         * Memory uses projected usage (current + incoming size).
@@ -858,9 +857,11 @@ class SmartCacheManager[T](ManagedObject):
         # if somehow over limit).
         if incoming_count > 0:
             return max(0, len(self.l1_cache) + incoming_count - max_entries)
-        return max(0, len(self.l1_cache) - max_entries + 1) if len(
-            self.l1_cache
-        ) >= max_entries else 0
+        return (
+            max(0, len(self.l1_cache) - max_entries + 1)
+            if len(self.l1_cache) >= max_entries
+            else 0
+        )
 
     def _perform_eviction(
         self, *, incoming_size: int = 0, incoming_count: int = 0

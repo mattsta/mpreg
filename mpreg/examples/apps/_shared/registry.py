@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from importlib import import_module
-from typing import Any, Awaitable
+from typing import Any
 
 from mpreg.examples.apps._shared.features import features_for
 
-class AppLevel(str, Enum):
+class AppLevel(StrEnum):
     L0 = "L0"
     L1 = "L1"
     L2 = "L2"
@@ -337,7 +337,6 @@ APPS: tuple[ExampleApp, ...] = (
         ("transport",),
         kind="plane",
     ),
-
     _app(
         "discovery_signatures_lab",
         "Discovery Signatures Lab",
@@ -378,7 +377,6 @@ APPS: tuple[ExampleApp, ...] = (
         ("transport", "chaos"),
         kind="plane",
     ),
-
     # Phase L — FEATURE partial → shipped depth batch
     _app(
         "queue_ack_receive_lab",
@@ -468,7 +466,6 @@ APPS: tuple[ExampleApp, ...] = (
         ("pubsub", "fabric"),
         kind="plane",
     ),
-
     _app(
         "topic_taxonomy_tour",
         "Topic Taxonomy Tour",
@@ -651,7 +648,6 @@ APPS: tuple[ExampleApp, ...] = (
         "Label RPC + tracking cache + carrier dispatch queue.",
         ("rpc", "cache", "queue"),
     ),
-
     _app(
         "queue_federation_lab",
         "Queue Federation Lab",
@@ -668,7 +664,6 @@ APPS: tuple[ExampleApp, ...] = (
         ("fabric",),
         kind="plane",
     ),
-
     _app(
         "mtls_mesh_handshake",
         "mTLS Mesh Handshake",
@@ -684,7 +679,6 @@ APPS: tuple[ExampleApp, ...] = (
         ("fabric",),
         kind="plane",
     ),
-
     # L3 — complex mesh
     _app(
         "multi_region_shop",
@@ -769,7 +763,6 @@ APPS: tuple[ExampleApp, ...] = (
         ("chaos", "monitoring", "ops"),
         kind="plane",
     ),
-
     _app(
         "packet_loss_chaos",
         "Packet Loss Chaos",
@@ -778,7 +771,6 @@ APPS: tuple[ExampleApp, ...] = (
         ("chaos", "monitoring"),
         kind="plane",
     ),
-
     _app(
         "rpc_deadline_budget",
         "RPC Deadline Budget",

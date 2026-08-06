@@ -56,7 +56,9 @@ async def main() -> None:
                 )
                 ok(f"tracking_id={tid}")
 
-            with scenario("tracking + correlation timelines", "mon.timeline", "mon.correlation"):
+            with scenario(
+                "tracking + correlation timelines", "mon.timeline", "mon.correlation"
+            ):
                 timeline = monitor.get_tracking_timeline(tid)
                 ensure(len(timeline) >= 5, f"timeline short {len(timeline)}")
                 corr_tl = monitor.get_correlation_timeline(corr)

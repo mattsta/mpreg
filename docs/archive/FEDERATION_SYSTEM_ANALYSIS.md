@@ -31,6 +31,7 @@ route announcements for discovery and forwarding.
 ### ✅ What Works
 
 1. **Same-Fabric Discovery**: Excellent
+
    - Nodes within the same `cluster_id` discover each other
    - Fabric gossip works reliably for intra-cluster communication
    - Multi-hop dependency resolution works across fabric nodes
@@ -53,6 +54,7 @@ route announcements for discovery and forwarding.
    - This behavior has since been replaced by policy enforcement
 
 2. **Inconsistent Cross-Cluster Behavior**
+
    - **Gossip Auto-Discovery Test**: Cross-cluster functions not discovered
    - **Direct Connection Test**: Cross-cluster functions discovered via direct links
    - This inconsistency suggests incomplete or buggy implementation

@@ -48,7 +48,9 @@ async def main() -> None:
             ensure(route.route_id == "r-us-eu", route.route_id)
             ensure(route.status == RouteStatus.ACTIVE, f"status {route.status}")
             ensure(len(route.path_hops) == 3, f"hops {route.path_hops}")
-            ok(f"route {route.source_hub}→{route.destination_hub} lat={route.latency_ms}ms")
+            ok(
+                f"route {route.source_hub}→{route.destination_hub} lat={route.latency_ms}ms"
+            )
 
         with scenario(
             "BlockchainMessage construction",
@@ -70,7 +72,10 @@ async def main() -> None:
             ensure(msg.recipient_id == "hub-eu", msg.recipient_id)
             ensure(msg.payload == b'{"op":"sync"}', msg.payload)
             ensure(msg.blockchain_record is True, "record flag")
-            ensure(msg.message_id.startswith("msg_") or len(msg.message_id) > 0, msg.message_id)
+            ensure(
+                msg.message_id.startswith("msg_") or len(msg.message_id) > 0,
+                msg.message_id,
+            )
             ok(f"msg_id={msg.message_id} fee={msg.processing_fee}")
 
         with scenario(

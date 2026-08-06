@@ -10,9 +10,8 @@ from __future__ import annotations
 import pytest
 
 from mpreg.examples.apps._shared.registry import (
-    ALIASES,
-    DEMO_BUNDLES,
     APPS,
+    DEMO_BUNDLES,
     ExampleApp,
     get_app,
     list_apps,
@@ -71,10 +70,7 @@ _TIMEOUT_S: dict[str, float] = {
     "tx_circuit_breaker_lab": 30.0,
     "ns_engine_direct": 30.0,
     "pubsub_fabric_forward_lab": 30.0,
-
     "discovery_resolver_audit": 90.0,
-
-    "client_auth_token": 90.0,
     "hello_queue": 30.0,
     "hello_dns": 90.0,
     "ops_cli_tour": 120.0,

@@ -33,9 +33,7 @@ from mpreg.examples.apps._shared.runtime import (
 )
 from mpreg.server import MPREGServer
 
-def _invoke_sync(
-    args: list[str], *, env: dict[str, str] | None = None
-):
+def _invoke_sync(args: list[str], *, env: dict[str, str] | None = None):
     """Run click CLI in a fresh thread (CLI uses asyncio.run internally)."""
     runner = CliRunner()
     merged = os.environ.copy()
@@ -127,7 +125,12 @@ async def main() -> None:
             ok("documented client subcommand layout")
 
         with port_range_context(4, "servers") as ports:
-            ws_port, udp_port, tcp_port, mon_port = ports[0], ports[1], ports[2], ports[3]
+            ws_port, udp_port, tcp_port, mon_port = (
+                ports[0],
+                ports[1],
+                ports[2],
+                ports[3],
+            )
             settings = [
                 MPREGSettings(
                     host="127.0.0.1",
@@ -146,7 +149,9 @@ async def main() -> None:
                     monitoring_enabled=True,
                     monitoring_port=mon_port,
                     monitoring_enable_cors=False,
-                    mgmt_audit_path=str(Path(tempfile.mkdtemp(prefix="ops-audit-")) / "a.jsonl"),
+                    mgmt_audit_path=str(
+                        Path(tempfile.mkdtemp(prefix="ops-audit-")) / "a.jsonl"
+                    ),
                 )
             ]
 
@@ -161,11 +166,17 @@ async def main() -> None:
 
                 # FQN: bare names qualify under default namespace (app.*).
                 # Platform builtins live under mpreg.* — users own everything else.
-                server.register_command("ops_echo", ops_echo, ["compute"])  # → app.ops_echo
-                server.register_command("ops_add", ops_add, ["compute"])  # → app.ops_add
+                server.register_command(
+                    "ops_echo", ops_echo, ["compute"]
+                )  # → app.ops_echo
+                server.register_command(
+                    "ops_add", ops_add, ["compute"]
+                )  # → app.ops_add
                 # Also prove bare "echo" is legal now (app.echo ≠ mpreg.system.echo).
                 server.register_command("echo", ops_echo, ["compute"])
-                step("registered app.ops_echo / app.ops_add / app.echo (mpreg.* denied to users)")
+                step(
+                    "registered app.ops_echo / app.ops_add / app.echo (mpreg.* denied to users)"
+                )
 
                 for _ in range(80):
                     if getattr(server, "_dns_gateway", None) is not None:
@@ -282,9 +293,7 @@ async def main() -> None:
                     "ops.cli_call",
                     "disco.list_peers",
                 ):
-                    peers = await _invoke(
-                        ["client", "list-peers", "--url", url]
-                    )
+                    peers = await _invoke(["client", "list-peers", "--url", url])
                     ensure(
                         peers.exit_code == 0,
                         f"list-peers failed: {peers.output[:300]}",
@@ -455,9 +464,7 @@ async def main() -> None:
                     "ops.cli_discovery",
                     "disco.list_peers",
                 ):
-                    peers = await _invoke(
-                        ["client", "list-peers", "--url", url]
-                    )
+                    peers = await _invoke(["client", "list-peers", "--url", url])
                     ensure(
                         peers.exit_code == 0,
                         f"list-peers failed: {peers.output[:300]}",

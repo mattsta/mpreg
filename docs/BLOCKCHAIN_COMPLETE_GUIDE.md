@@ -1,6 +1,6 @@
 # MPREG Blockchain Datastructures: Complete Implementation Guide
 
-> **Honesty banner:** Blockchain MQ ``EXACTLY_ONCE`` is **unsupported**
+> **Honesty banner:** Blockchain MQ `EXACTLY_ONCE` is **unsupported**
 > (fail-closed). This guide’s historical wording may overclaim; trust
 > `tests/invariants/claims.yaml` and the live `BlockchainMessageQueue` guards.
 
@@ -106,7 +106,7 @@ join_tx = Transaction(
     receiver="hub_registry",
     operation_type=OperationType.FEDERATION_JOIN,
     payload=b'{"capabilities": ["routing", "storage"]}',
-    fee=10
+    fee=10,
 )
 
 # Sign with node's private key
@@ -141,7 +141,7 @@ next_block = Block.create_next_block(
     previous_block=genesis,
     transactions=(msg_tx, vote_tx),
     miner="validator_node",
-    difficulty=2
+    difficulty=2,
 )
 
 # Generate Merkle proof for transaction
@@ -163,21 +163,26 @@ is_valid_proof = next_block.verify_transaction_proof(proof)
 
 ```python
 # Example Usage
-from mpreg.datastructures import Blockchain, ConsensusConfig, ConsensusType, CryptoConfig
+from mpreg.datastructures import (
+    Blockchain,
+    ConsensusConfig,
+    ConsensusType,
+    CryptoConfig,
+)
 
 # Create fabric blockchain
 consensus_config = ConsensusConfig(
     consensus_type=ConsensusType.PROOF_OF_AUTHORITY,
     block_time_target=10,  # seconds
     difficulty_adjustment_interval=100,
-    max_transactions_per_block=1000
+    max_transactions_per_block=1000,
 )
 
 blockchain = Blockchain.create_new_chain(
     chain_id="fabric_main",
     genesis_miner="hub_registry",
     consensus_config=consensus_config,
-    crypto_config=CryptoConfig(require_signatures=True)
+    crypto_config=CryptoConfig(require_signatures=True),
 )
 
 # Add block to chain
@@ -198,11 +203,13 @@ latest_clock = blockchain.get_vector_clock_state()
 1. **Immutability First**: All datastructures use `@dataclass(frozen=True, slots=True)` for memory efficiency and thread safety.
 
 2. **Cryptographic Integrity**: Every component includes cryptographic verification mechanisms:
+
    - SHA-256 hashing for content addressing
    - Digital signatures for authentication
    - Merkle trees for data integrity proofs
 
 3. **Federation-Aware**: Built specifically for distributed federated systems:
+
    - Vector clocks for causal ordering
    - Federation-specific transaction types
    - Consensus mechanisms suitable for federated networks
@@ -253,14 +260,16 @@ join_request = Transaction(
     sender="new_node_uuid",
     receiver="hub_registry",
     operation_type=OperationType.FEDERATION_JOIN,
-    payload=json.dumps({
-        "node_type": "full_node",
-        "capabilities": ["message_routing", "data_storage", "consensus"],
-        "network_address": "<host>:<port>",
-        "public_key": "...",
-        "stake_amount": 1000
-    }).encode(),
-    fee=100
+    payload=json.dumps(
+        {
+            "node_type": "full_node",
+            "capabilities": ["message_routing", "data_storage", "consensus"],
+            "network_address": "<host>:<port>",
+            "public_key": "...",
+            "stake_amount": 1000,
+        }
+    ).encode(),
+    fee=100,
 )
 ```
 
@@ -273,14 +282,14 @@ message_tx = Transaction(
     receiver="destination_node_id",
     operation_type=OperationType.MESSAGE,
     payload=encrypted_message_data,
-    fee=1
+    fee=1,
 )
 
 # Add to routing blockchain for proof of delivery
 routing_block = Block.create_next_block(
     previous_block=routing_chain.get_latest_block(),
     transactions=(message_tx,),
-    miner="routing_validator"
+    miner="routing_validator",
 )
 ```
 
@@ -292,12 +301,14 @@ governance_vote = Transaction(
     sender="council_member_id",
     receiver="governance_contract",
     operation_type=OperationType.CONSENSUS_VOTE,
-    payload=json.dumps({
-        "proposal_id": "upgrade_protocol_v2",
-        "vote": "approve",
-        "reasoning": "Improved performance and security"
-    }).encode(),
-    fee=1
+    payload=json.dumps(
+        {
+            "proposal_id": "upgrade_protocol_v2",
+            "vote": "approve",
+            "reasoning": "Improved performance and security",
+        }
+    ).encode(),
+    fee=1,
 )
 ```
 
@@ -380,21 +391,25 @@ def sync_missing_transactions(node_a, node_b, block_hash):
 ### 🔴 **Current Limitations**
 
 1. **Key Management & Trust Bootstrap**
+
    - **Issue**: Key distribution, rotation, and trust anchoring are external
    - **Impact**: Deployments must provide identity lifecycle management
    - **Mitigation**: Integrate PKI/HSM and enforce `CryptoConfig.require_signatures`
 
 2. **Persistence Scope (SQLite)**
+
    - **Issue**: `BlockchainStore` is local-only and single-node
    - **Impact**: No replication, pruning, or multi-writer coordination
    - **Mitigation**: Add Postgres/RocksDB backends with pruning/archival
 
 3. **In-Memory Default for Live Chains**
+
    - **Issue**: Chains default to in-memory tuples unless a store is attached
    - **Impact**: Memory growth for very long chains (>10k blocks)
    - **Mitigation**: Use `BlockchainStore` or future database backends
 
 4. **Single-Threaded Design**
+
    - **Issue**: No built-in concurrency for mining/validation
    - **Impact**: Performance bottleneck for high-throughput scenarios
    - **Mitigation**: Add async support and parallel validation
@@ -407,11 +422,13 @@ def sync_missing_transactions(node_a, node_b, block_hash):
 ### 🟡 **Design Tradeoffs**
 
 1. **Immutability vs Performance**
+
    - **Benefit**: Thread safety, functional programming benefits
    - **Cost**: Memory overhead for creating new objects
    - **Verdict**: Acceptable for fabric use case
 
 2. **Type Safety vs Flexibility**
+
    - **Benefit**: Strong typing prevents many runtime errors
    - **Cost**: More verbose code, harder to extend dynamically
    - **Verdict**: Good for production stability
@@ -437,6 +454,7 @@ def sync_missing_transactions(node_a, node_b, block_hash):
 """
 Real-world example: Bootstrapping a new fabric federation
 """
+
 from mpreg.datastructures import *
 
 def bootstrap_fabric_federation():
@@ -447,15 +465,15 @@ def bootstrap_fabric_federation():
         consensus_config=ConsensusConfig(
             consensus_type=ConsensusType.PROOF_OF_AUTHORITY,
             block_time_target=30,  # 30-second blocks for governance
-            max_transactions_per_block=100
-        )
+            max_transactions_per_block=100,
+        ),
     )
 
     # 2. Register initial fabric members
     initial_members = [
         {"id": "hub_us_east", "stake": 10000, "role": "hub"},
         {"id": "hub_eu_west", "stake": 10000, "role": "hub"},
-        {"id": "hub_asia_pacific", "stake": 10000, "role": "hub"}
+        {"id": "hub_asia_pacific", "stake": 10000, "role": "hub"},
     ]
 
     registration_txs = []
@@ -464,12 +482,14 @@ def bootstrap_fabric_federation():
             sender=member["id"],
             receiver="hub_registry",
             operation_type=OperationType.FEDERATION_JOIN,
-            payload=json.dumps({
-                "stake": member["stake"],
-                "role": member["role"],
-                "capabilities": ["routing", "storage", "consensus"]
-            }).encode(),
-            fee=0  # Bootstrap members pay no fee
+            payload=json.dumps(
+                {
+                    "stake": member["stake"],
+                    "role": member["role"],
+                    "capabilities": ["routing", "storage", "consensus"],
+                }
+            ).encode(),
+            fee=0,  # Bootstrap members pay no fee
         )
         registration_txs.append(tx)
 
@@ -477,7 +497,7 @@ def bootstrap_fabric_federation():
     genesis_block = Block.create_next_block(
         previous_block=governance_chain.genesis_block,
         transactions=tuple(registration_txs),
-        miner="hub_registry_bootstrap"
+        miner="hub_registry_bootstrap",
     )
 
     return governance_chain.add_block(genesis_block)
@@ -502,12 +522,17 @@ class FederationMessageRouter:
             consensus_config=ConsensusConfig(
                 consensus_type=ConsensusType.PROOF_OF_STAKE,
                 block_time_target=5,  # Fast 5-second blocks for messaging
-                max_transactions_per_block=10000  # High throughput
-            )
+                max_transactions_per_block=10000,  # High throughput
+            ),
         )
 
-    def route_message(self, sender_id: str, recipient_id: str,
-                     message_data: bytes, routing_path: list[str]) -> str:
+    def route_message(
+        self,
+        sender_id: str,
+        recipient_id: str,
+        message_data: bytes,
+        routing_path: list[str],
+    ) -> str:
         """Route message and record on blockchain for proof of delivery."""
 
         # 1. Create message transaction
@@ -516,7 +541,7 @@ class FederationMessageRouter:
             receiver=recipient_id,
             operation_type=OperationType.MESSAGE,
             payload=message_data,
-            fee=calculate_routing_fee(len(routing_path))
+            fee=calculate_routing_fee(len(routing_path)),
         )
 
         # 2. Create routing proof transactions for each hop
@@ -526,13 +551,15 @@ class FederationMessageRouter:
                 sender=hop_node,
                 receiver="routing_registry",
                 operation_type=OperationType.NODE_UPDATE,
-                payload=json.dumps({
-                    "action": "message_forward",
-                    "original_message_id": message_tx.transaction_id,
-                    "hop_number": i,
-                    "timestamp": time.time()
-                }).encode(),
-                fee=1
+                payload=json.dumps(
+                    {
+                        "action": "message_forward",
+                        "original_message_id": message_tx.transaction_id,
+                        "hop_number": i,
+                        "timestamp": time.time(),
+                    }
+                ).encode(),
+                fee=1,
             )
             routing_txs.append(routing_proof_tx)
 
@@ -540,7 +567,7 @@ class FederationMessageRouter:
         routing_block = Block.create_next_block(
             previous_block=self.routing_chain.get_latest_block(),
             transactions=tuple(routing_txs),
-            miner=routing_path[0]  # First hop mines the block
+            miner=routing_path[0],  # First hop mines the block
         )
 
         # 4. Update chain and return proof
@@ -558,7 +585,7 @@ delivery_proof = router.route_message(
     sender_id="user_alice",
     recipient_id="user_bob",
     message_data=b"Hello, fabric!",
-    routing_path=["hub_us", "hub_eu", "node_bob"]
+    routing_path=["hub_us", "hub_eu", "node_bob"],
 )
 ```
 
@@ -574,8 +601,9 @@ class FederationGovernance:
         self.governance_chain = governance_chain
         self.active_proposals = {}
 
-    def propose_configuration_change(self, proposer_id: str,
-                                   config_change: dict) -> str:
+    def propose_configuration_change(
+        self, proposer_id: str, config_change: dict
+    ) -> str:
         """Propose a fabric-wide configuration change."""
 
         proposal_id = f"config_{int(time.time())}"
@@ -583,25 +611,28 @@ class FederationGovernance:
             sender=proposer_id,
             receiver="governance_contract",
             operation_type=OperationType.CONSENSUS_VOTE,
-            payload=json.dumps({
-                "proposal_id": proposal_id,
-                "type": "configuration_change",
-                "changes": config_change,
-                "voting_deadline": time.time() + 86400  # 24 hours
-            }).encode(),
-            fee=100  # High fee for governance proposals
+            payload=json.dumps(
+                {
+                    "proposal_id": proposal_id,
+                    "type": "configuration_change",
+                    "changes": config_change,
+                    "voting_deadline": time.time() + 86400,  # 24 hours
+                }
+            ).encode(),
+            fee=100,  # High fee for governance proposals
         )
 
         self.active_proposals[proposal_id] = {
             "proposal": config_change,
             "votes": {},
-            "deadline": time.time() + 86400
+            "deadline": time.time() + 86400,
         }
 
         return proposal_id
 
-    def vote_on_proposal(self, voter_id: str, proposal_id: str,
-                        vote: str, stake: int) -> bool:
+    def vote_on_proposal(
+        self, voter_id: str, proposal_id: str, vote: str, stake: int
+    ) -> bool:
         """Cast vote on fabric governance proposal."""
 
         if proposal_id not in self.active_proposals:
@@ -611,20 +642,22 @@ class FederationGovernance:
             sender=voter_id,
             receiver="governance_contract",
             operation_type=OperationType.CONSENSUS_VOTE,
-            payload=json.dumps({
-                "proposal_id": proposal_id,
-                "vote": vote,  # "approve" or "reject"
-                "stake": stake,
-                "timestamp": time.time()
-            }).encode(),
-            fee=10
+            payload=json.dumps(
+                {
+                    "proposal_id": proposal_id,
+                    "vote": vote,  # "approve" or "reject"
+                    "stake": stake,
+                    "timestamp": time.time(),
+                }
+            ).encode(),
+            fee=10,
         )
 
         # Record vote
         self.active_proposals[proposal_id]["votes"][voter_id] = {
             "vote": vote,
             "stake": stake,
-            "tx_id": vote_tx.transaction_id
+            "tx_id": vote_tx.transaction_id,
         }
 
         return True
@@ -639,12 +672,14 @@ class FederationGovernance:
 
         # Calculate vote results weighted by stake
         total_approve_stake = sum(
-            vote_data["stake"] for vote_data in proposal["votes"].values()
+            vote_data["stake"]
+            for vote_data in proposal["votes"].values()
             if vote_data["vote"] == "approve"
         )
 
         total_reject_stake = sum(
-            vote_data["stake"] for vote_data in proposal["votes"].values()
+            vote_data["stake"]
+            for vote_data in proposal["votes"].values()
             if vote_data["vote"] == "reject"
         )
 
@@ -657,27 +692,29 @@ class FederationGovernance:
                 sender="governance_contract",
                 receiver="hub_registry",
                 operation_type=OperationType.NODE_UPDATE,
-                payload=json.dumps({
-                    "action": "configuration_update",
-                    "proposal_id": proposal_id,
-                    "approved": True,
-                    "new_config": proposal["proposal"],
-                    "total_approve_stake": total_approve_stake,
-                    "total_reject_stake": total_reject_stake
-                }).encode(),
-                fee=0
+                payload=json.dumps(
+                    {
+                        "action": "configuration_update",
+                        "proposal_id": proposal_id,
+                        "approved": True,
+                        "new_config": proposal["proposal"],
+                        "total_approve_stake": total_approve_stake,
+                        "total_reject_stake": total_reject_stake,
+                    }
+                ).encode(),
+                fee=0,
             )
 
             return {
                 "status": "approved",
                 "config_changes": proposal["proposal"],
-                "finalization_tx": finalization_tx.transaction_id
+                "finalization_tx": finalization_tx.transaction_id,
             }
         else:
             return {
                 "status": "rejected",
                 "approve_stake": total_approve_stake,
-                "reject_stake": total_reject_stake
+                "reject_stake": total_reject_stake,
             }
 
 # Usage
@@ -688,8 +725,8 @@ proposal_id = governance.propose_configuration_change(
     proposer_id="hub_us_east",
     config_change={
         "consensus.block_time_target": 15,  # Increase from 10 to 15 seconds
-        "consensus.max_transactions_per_block": 2000  # Increase capacity
-    }
+        "consensus.max_transactions_per_block": 2000,  # Increase capacity
+    },
 )
 
 # Members vote
@@ -725,7 +762,7 @@ class BlockchainMessageQueue:
             receiver=message.topic,
             operation_type=OperationType.MESSAGE,
             payload=message.serialize(),
-            fee=message.priority.value
+            fee=message.priority.value,
         )
         return self._add_to_chain(queue_tx)
 
@@ -734,8 +771,7 @@ class BlockchainMessageQueue:
         messages = []
         for block in self.queue_chain:
             for tx in block.transactions:
-                if (tx.receiver == topic and
-                    tx.operation_type == OperationType.MESSAGE):
+                if tx.receiver == topic and tx.operation_type == OperationType.MESSAGE:
                     msg = QueuedMessage.deserialize(tx.payload)
                     messages.append(msg)
         return messages
@@ -752,7 +788,7 @@ class BlockchainHubRegistry:
             receiver="hub_registry",
             operation_type=OperationType.FEDERATION_JOIN,
             payload=json.dumps(node_info).encode(),
-            fee=node_info.get("stake", 0)
+            fee=node_info.get("stake", 0),
         )
         return self._add_to_chain(registration_tx)
 
@@ -780,12 +816,13 @@ class BlockchainGossip:
             receiver="gossip_network",
             operation_type=OperationType.NODE_UPDATE,
             payload=json.dumps(state_update).encode(),
-            fee=1
+            fee=1,
         )
         return self._add_to_chain(gossip_tx)
 
-    def sync_missing_state(self, peer_node_id: str,
-                          last_known_block: str) -> list[dict]:
+    def sync_missing_state(
+        self, peer_node_id: str, last_known_block: str
+    ) -> list[dict]:
         """Sync missing state updates from blockchain."""
         updates = []
         found_start = False
@@ -811,10 +848,10 @@ class BlockchainGossip:
    ```python
    # Multiple specialized chains for different purposes
    chains = {
-       "governance": governance_blockchain,      # Federation decisions
+       "governance": governance_blockchain,  # Federation decisions
        "messaging": message_routing_blockchain,  # Message delivery proof
-       "registry": node_registry_blockchain,    # Node management
-       "monitoring": performance_blockchain     # Performance metrics
+       "registry": node_registry_blockchain,  # Node management
+       "monitoring": performance_blockchain,  # Performance metrics
    }
    ```
 
@@ -822,8 +859,9 @@ class BlockchainGossip:
 
    ```python
    class CrossChainBridge:
-       def transfer_data_between_chains(self, source_chain: str,
-                                      target_chain: str, data: dict):
+       def transfer_data_between_chains(
+           self, source_chain: str, target_chain: str, data: dict
+       ):
            # Atomic cross-chain operations with Merkle proofs
            pass
    ```
@@ -839,16 +877,19 @@ class BlockchainGossip:
 ### Phase 3: Production Hardening (6-12 months)
 
 1. **Database Backend**
+
    - Expand beyond SQLite to PostgreSQL/RocksDB
    - Implement chain pruning and archival
    - Add indexing for fast transaction lookup
 
 2. **Production Cryptography**
+
    - Add key management and rotation policies
    - Implement hardware security module (HSM) support
    - Support multi-signature and key attestation flows
 
 3. **Performance Optimization**
+
    - Parallel transaction validation
    - Optimistic block verification
    - Memory-mapped file storage
@@ -887,7 +928,7 @@ import sys
 def estimate_blockchain_memory(num_blocks: int, txs_per_block: int) -> dict:
     # Base object sizes (64-bit Python)
     transaction_size = 500  # bytes (estimated with all fields)
-    block_size = 200       # bytes (headers only)
+    block_size = 200  # bytes (headers only)
 
     # Calculate total memory
     total_tx_memory = num_blocks * txs_per_block * transaction_size
@@ -902,17 +943,23 @@ def estimate_blockchain_memory(num_blocks: int, txs_per_block: int) -> dict:
         "total_transactions": num_blocks * txs_per_block,
         "memory_mb": total_memory / (1024 * 1024),
         "memory_per_tx_bytes": transaction_size,
-        "scalability_limit": "~10k blocks for 1GB RAM"
+        "scalability_limit": "~10k blocks for 1GB RAM",
     }
 
 # Fabric size estimates
-small_fabric = estimate_blockchain_memory(1000, 100)    # 1K blocks, 100K txs
-medium_fabric = estimate_blockchain_memory(5000, 200)   # 5K blocks, 1M txs
-large_fabric = estimate_blockchain_memory(10000, 500)   # 10K blocks, 5M txs
+small_fabric = estimate_blockchain_memory(1000, 100)  # 1K blocks, 100K txs
+medium_fabric = estimate_blockchain_memory(5000, 200)  # 5K blocks, 1M txs
+large_fabric = estimate_blockchain_memory(10000, 500)  # 10K blocks, 5M txs
 
 print("Memory usage estimates:")
-for name, stats in [("Small", small_fabric), ("Medium", medium_fabric), ("Large", large_fabric)]:
-    print(f"{name}: {stats['memory_mb']:.1f} MB for {stats['total_transactions']:,} transactions")
+for name, stats in [
+    ("Small", small_fabric),
+    ("Medium", medium_fabric),
+    ("Large", large_fabric),
+]:
+    print(
+        f"{name}: {stats['memory_mb']:.1f} MB for {stats['total_transactions']:,} transactions"
+    )
 ```
 
 ### Benchmark Results
@@ -1019,16 +1066,19 @@ Indicative results from local testing; re-measure per environment:
 ### Short-term Development (1-3 months)
 
 1. **Database Backend Implementation**
+
    - Expand beyond SQLite to PostgreSQL/RocksDB
    - Implement efficient indexing for transaction lookup
    - Add chain pruning and archival mechanisms
 
 2. **Production Cryptography**
+
    - Implement key management and rotation policies
    - Add certificate-based node authentication
    - Support multi-signature and key attestation
 
 3. **Performance Optimization**
+
    - Implement parallel transaction validation
    - Add transaction pool optimization
    - Optimize Merkle tree operations
@@ -1041,16 +1091,19 @@ Indicative results from local testing; re-measure per environment:
 ### Medium-term Development (3-6 months)
 
 1. **Advanced Consensus Mechanisms**
+
    - Implement Practical Byzantine Fault Tolerance (pBFT)
    - Add delegated proof-of-stake for large fabric federations
    - Implement hybrid consensus for different chain types
 
 2. **Sharding and Scalability**
+
    - Design sharded blockchain architecture
    - Implement cross-shard communication
    - Add load balancing across fabric hubs
 
 3. **Smart Contract Platform**
+
    - Design fabric-specific smart contract language
    - Implement contract execution environment
    - Add governance automation through smart contracts
@@ -1063,11 +1116,13 @@ Indicative results from local testing; re-measure per environment:
 ### Long-term Vision (6-12 months)
 
 1. **Interoperability**
+
    - Implement cross-fabric communication protocols
    - Add support for external blockchain integration
    - Create fabric bridge protocols
 
 2. **Advanced Security**
+
    - Implement zero-knowledge proofs for privacy
    - Add homomorphic encryption for confidential computation
    - Implement quantum-resistant cryptography preparation
@@ -1087,6 +1142,7 @@ Indicative results from local testing; re-measure per environment:
 """
 Complete integration example: Blockchain-backed message queue
 """
+
 from mpreg.core.message_queue import MessageQueueManager
 from mpreg.datastructures import Blockchain, Transaction, OperationType
 
@@ -1094,12 +1150,12 @@ class BlockchainMessageQueue(MessageQueueManager):
     def __init__(self):
         super().__init__()
         self.blockchain = Blockchain.create_new_chain(
-            chain_id="fabric_message_queue",
-            genesis_miner="queue_manager"
+            chain_id="fabric_message_queue", genesis_miner="queue_manager"
         )
 
-    def enqueue_message(self, topic: str, message: bytes,
-                       sender_id: str, priority: int = 1) -> str:
+    def enqueue_message(
+        self, topic: str, message: bytes, sender_id: str, priority: int = 1
+    ) -> str:
         """Enqueue message with blockchain proof."""
 
         # Create blockchain transaction for message
@@ -1108,14 +1164,14 @@ class BlockchainMessageQueue(MessageQueueManager):
             receiver=topic,
             operation_type=OperationType.MESSAGE,
             payload=message,
-            fee=priority
+            fee=priority,
         )
 
         # Add to blockchain for immutable record
         block = Block.create_next_block(
             previous_block=self.blockchain.get_latest_block(),
             transactions=(message_tx,),
-            miner="queue_manager"
+            miner="queue_manager",
         )
 
         self.blockchain = self.blockchain.add_block(block)
@@ -1142,7 +1198,7 @@ class BlockchainMessageQueue(MessageQueueManager):
             "block_hash": block.get_block_hash(),
             "merkle_proof": proof.to_dict(),
             "timestamp": transaction.timestamp,
-            "verified": True
+            "verified": True,
         }
 ```
 
@@ -1152,6 +1208,7 @@ class BlockchainMessageQueue(MessageQueueManager):
 """
 Complete integration example: Blockchain-based hub registry
 """
+
 from mpreg.fabric.hub_registry import HubRegistry
 from mpreg.datastructures import Blockchain, Transaction, OperationType
 
@@ -1159,8 +1216,7 @@ class BlockchainHubRegistry(HubRegistry):
     def __init__(self):
         super().__init__()
         self.blockchain = Blockchain.create_new_chain(
-            chain_id="hub_registry",
-            genesis_miner="registry_manager"
+            chain_id="hub_registry", genesis_miner="registry_manager"
         )
 
     def register_node(self, node_id: str, node_info: dict) -> bool:
@@ -1172,7 +1228,7 @@ class BlockchainHubRegistry(HubRegistry):
             receiver="hub_registry",
             operation_type=OperationType.FEDERATION_JOIN,
             payload=json.dumps(node_info).encode(),
-            fee=node_info.get("stake", 100)
+            fee=node_info.get("stake", 100),
         )
 
         # Validate node info
@@ -1183,7 +1239,7 @@ class BlockchainHubRegistry(HubRegistry):
         block = Block.create_next_block(
             previous_block=self.blockchain.get_latest_block(),
             transactions=(registration_tx,),
-            miner="registry_manager"
+            miner="registry_manager",
         )
 
         self.blockchain = self.blockchain.add_block(block)
@@ -1198,16 +1254,17 @@ class BlockchainHubRegistry(HubRegistry):
         # Find registration transaction in blockchain
         for block in self.blockchain:
             for i, tx in enumerate(block.transactions):
-                if (tx.sender == node_id and
-                    tx.operation_type == OperationType.FEDERATION_JOIN):
-
+                if (
+                    tx.sender == node_id
+                    and tx.operation_type == OperationType.FEDERATION_JOIN
+                ):
                     proof = block.generate_transaction_proof(i)
                     return {
                         "node_id": node_id,
                         "registration_block": block.get_block_hash(),
                         "merkle_proof": proof.to_dict(),
                         "registration_time": tx.timestamp,
-                        "node_info": json.loads(tx.payload.decode())
+                        "node_info": json.loads(tx.payload.decode()),
                     }
 
         return {"error": f"Node {node_id} not found in registry"}

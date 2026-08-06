@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Iterable
 
 from mpreg.fabric.link_state import LinkStateMode
 from mpreg.fabric.route_control import RouteDestination, RouteTable
@@ -97,7 +97,11 @@ class RoutingOracle:
         has_link_state_path: bool = False,
         has_direct_peer: bool = False,
     ) -> ExpectedNextHop:
-        ls_hops = self.bfs_next_hops(origin, destination) if has_link_state_path else frozenset()
+        ls_hops = (
+            self.bfs_next_hops(origin, destination)
+            if has_link_state_path
+            else frozenset()
+        )
         graph_hops = self.bfs_next_hops(origin, destination)
         must_not_pv = self.mode is LinkStateMode.ONLY and not has_direct_peer
 
@@ -177,7 +181,10 @@ class RoutingOracle:
             return
         if next_cluster is not None and next_cluster not in exp.allowed_next_hops:
             # Still allow any direct neighbor when multipath / fallback.
-            if next_cluster not in self.neighbors(origin) and next_cluster != destination:
+            if (
+                next_cluster not in self.neighbors(origin)
+                and next_cluster != destination
+            ):
                 raise AssertionError(
                     f"next_hop {next_cluster} not in allowed {sorted(exp.allowed_next_hops)} "
                     f"for {origin}->{destination}"
@@ -241,8 +248,7 @@ class RaftOracle:
         prev = self.commit_index.get(node_id, 0)
         if commit_index < prev:
             msg = (
-                f"INV-C2: commit_index decreased node={node_id} "
-                f"{prev}->{commit_index}"
+                f"INV-C2: commit_index decreased node={node_id} {prev}->{commit_index}"
             )
             self.violations.append(msg)
             raise AssertionError(msg)
@@ -251,9 +257,7 @@ class RaftOracle:
     def assert_safe(self) -> None:
         for term, leaders in self.leaders_by_term.items():
             if len(leaders) > 1:
-                raise AssertionError(
-                    f"INV-C1 term={term} leaders={sorted(leaders)}"
-                )
+                raise AssertionError(f"INV-C1 term={term} leaders={sorted(leaders)}")
         if self.violations:
             raise AssertionError("; ".join(self.violations))
 

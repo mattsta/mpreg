@@ -10,7 +10,7 @@ import pytest
 from mpreg.core.message_queue import (
     DeliveryGuarantee as QueueDeliveryGuarantee,
 )
-from mpreg.core.message_queue import MessageQueue, QueuedMessage, QueueConfiguration
+from mpreg.core.message_queue import QueuedMessage
 from mpreg.core.message_queue_manager import (
     MessageQueueManager,
     QueueManagerConfiguration,
@@ -38,8 +38,11 @@ from mpreg.fabric.queue_federation import (
     FabricQueueFederationManager,
     FabricQueueInFlight,
 )
-from mpreg.fabric.queue_messages import QueueFederationAck, QueueFederationRequest
-from mpreg.fabric.queue_messages import QueueMessageOptions
+from mpreg.fabric.queue_messages import (
+    QueueFederationAck,
+    QueueFederationRequest,
+    QueueMessageOptions,
+)
 from tests.test_production_raft_integration import TestableStateMachine
 
 class _NullTransport:
@@ -68,7 +71,9 @@ def _make_node(node_id: str = "n1", members: set[str] | None = None) -> Producti
         ),
     )
 
-def _leader_with_snapshot_base(node_id: str = "L", follower: str = "f1") -> ProductionRaft:
+def _leader_with_snapshot_base(
+    node_id: str = "L", follower: str = "f1"
+) -> ProductionRaft:
     node = _make_node(node_id, {node_id, follower})
     node.current_state = RaftState.LEADER
     node.persistent_state = PersistentState(
@@ -106,7 +111,9 @@ async def test_cor_t12_01_install_snapshot_leader_fail_closed_missing_success() 
     assert node.leader_volatile_state.next_index["f1"] == 1
 
 @pytest.mark.asyncio
-async def test_cor_t12_01b_install_snapshot_leader_advances_on_explicit_success() -> None:
+async def test_cor_t12_01b_install_snapshot_leader_advances_on_explicit_success() -> (
+    None
+):
     """COR-T12-01: explicit success=True advances match/next after full install."""
     node = _leader_with_snapshot_base()
     ok_resp = SimpleNamespace(term=3, success=True)

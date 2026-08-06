@@ -103,9 +103,9 @@ async def main() -> None:
                     )
 
                     async def _ready() -> bool:
-                        return bool(
-                            hub.cluster.peer_urls_for_cluster("edge-us")
-                        ) or True
+                        return (
+                            bool(hub.cluster.peer_urls_for_cluster("edge-us")) or True
+                        )
 
                     await wait_until(_ready, timeout_s=3.0, what="edges")
                     await asyncio.sleep(0.5)

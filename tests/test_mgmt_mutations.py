@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from typing import Any
 
 import aiohttp
 import pytest
 
 from mpreg.core.config import MPREGSettings
-from mpreg.core.monitoring.unified_monitoring import MonitoringConfig, UnifiedSystemMonitor
+from mpreg.core.monitoring.unified_monitoring import (
+    MonitoringConfig,
+    UnifiedSystemMonitor,
+)
 from mpreg.core.namespace_policy import NamespacePolicyRule
 from mpreg.fabric.connection_manager import FederationConnectionManager
 from mpreg.fabric.federation_config import FederationConfig, FederationMode
@@ -53,7 +57,9 @@ class _FakeServer:
     def _namespace_policy_apply(self, payload: dict[str, Any]) -> dict[str, Any]:
         rules = payload.get("rules") or ()
         self.settings.discovery_policy_rules = tuple(
-            r if isinstance(r, NamespacePolicyRule) else NamespacePolicyRule.from_dict(r)
+            r
+            if isinstance(r, NamespacePolicyRule)
+            else NamespacePolicyRule.from_dict(r)
             for r in rules
         )
         self.settings.discovery_policy_enabled = bool(
@@ -158,8 +164,9 @@ async def test_mgmt_http_drain_detach_audit_ready(
     def drain_provider(body: dict) -> dict:
         draining = bool(body.get("draining", True))
         state["draining"] = draining
-        from mpreg.server_pkg.mgmt_mutations import MgmtAuditEntry
         import time
+
+        from mpreg.server_pkg.mgmt_mutations import MgmtAuditEntry
 
         audit.record(
             MgmtAuditEntry(
@@ -180,7 +187,11 @@ async def test_mgmt_http_drain_detach_audit_ready(
         return {"applied": True, "detail": {"peer_url": peer}}
 
     def policy_provider(body: dict) -> dict:
-        return {"applied": True, "valid": True, "rule_count": len(body.get("rules") or [])}
+        return {
+            "applied": True,
+            "valid": True,
+            "rule_count": len(body.get("rules") or []),
+        }
 
     def audit_provider() -> list:
         return audit.snapshot()
@@ -261,10 +272,8 @@ async def test_mgmt_http_drain_detach_audit_ready(
             await mon.stop()
     finally:
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
         await um.stop()
 
 def test_openapi_mutations_not_501() -> None:

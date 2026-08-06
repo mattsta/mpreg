@@ -53,7 +53,9 @@ class RpcRegistry:
         key = RpcRegistryKey(name=identity.name, function_id=identity.function_id)
         version_map = self._registrations.setdefault(key, {})
         if identity.version in version_map:
-            other_versions = sorted(str(v) for v in version_map if v != identity.version)
+            other_versions = sorted(
+                str(v) for v in version_map if v != identity.version
+            )
             hint = (
                 f" Other versions present: {', '.join(other_versions)}."
                 if other_versions

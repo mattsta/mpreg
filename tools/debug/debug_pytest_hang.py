@@ -132,7 +132,7 @@ if __name__ == "__main__":
         )
 
         server = MPREGServer(settings=settings)
-        task = asyncio.create_task(server.server())
+        asyncio.create_task(server.server())
 
         await asyncio.sleep(1.0)
 

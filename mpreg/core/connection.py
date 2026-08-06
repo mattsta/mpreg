@@ -109,7 +109,7 @@ class Connection:
 
         # Check if we're approaching file descriptor limits
         try:
-            soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
+            soft_limit, _hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
             # Get approximate current usage (not exact, but good enough for warning)
             import psutil
 

@@ -551,7 +551,7 @@ class MLInferenceExample:
 
         def extract_entities(request: dict) -> dict:
             """Named entity recognition."""
-            text = request.get("input_data", "")
+            request.get("input_data", "")
 
             # Mock entity extraction
             entities = [

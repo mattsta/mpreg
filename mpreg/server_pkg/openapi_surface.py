@@ -14,9 +14,15 @@ def build_monitoring_openapi() -> dict[str, Any]:
     # When monitoring_auth_token is configured, mutations and metrics require bearer.
     _bearer = [{"bearerAuth": []}]
     paths: dict[str, Any] = {
-        "/health/clusters/{cluster_id}": {"get": {"summary": "Per-cluster health", "tags": ["health"]}},
-        "/performance/bottlenecks": {"get": {"summary": "Performance bottlenecks", "tags": ["performance"]}},
-        "/performance/clusters/{cluster_id}": {"get": {"summary": "Per-cluster performance", "tags": ["performance"]}},
+        "/health/clusters/{cluster_id}": {
+            "get": {"summary": "Per-cluster health", "tags": ["health"]}
+        },
+        "/performance/bottlenecks": {
+            "get": {"summary": "Performance bottlenecks", "tags": ["performance"]}
+        },
+        "/performance/clusters/{cluster_id}": {
+            "get": {"summary": "Per-cluster performance", "tags": ["performance"]}
+        },
         "/live": {
             "get": {
                 "summary": "Process liveness (always 200 if HTTP is up)",
@@ -61,24 +67,33 @@ def build_monitoring_openapi() -> dict[str, Any]:
             }
         },
         "/health/summary": {"get": {"summary": "Health summary", "tags": ["health"]}},
-        "/health/clusters": {"get": {"summary": "Per-cluster health", "tags": ["health"]}},
+        "/health/clusters": {
+            "get": {"summary": "Per-cluster health", "tags": ["health"]}
+        },
         "/metrics": {"get": {"summary": "JSON metrics root", "tags": ["metrics"]}},
         "/metrics/rpc": {"get": {"summary": "RPC metrics", "tags": ["metrics"]}},
         "/metrics/pubsub": {"get": {"summary": "Pubsub metrics", "tags": ["metrics"]}},
         "/metrics/queue": {"get": {"summary": "Queue metrics", "tags": ["metrics"]}},
         "/metrics/cache": {"get": {"summary": "Cache metrics", "tags": ["metrics"]}},
-        "/metrics/transport": {"get": {"summary": "Transport metrics", "tags": ["metrics"]}},
-        "/metrics/persistence": {"get": {"summary": "Persistence metrics", "tags": ["metrics"]}},
-        "/discovery/summary": {"get": {"summary": "Discovery summary export", "tags": ["discovery"]}},
+        "/metrics/transport": {
+            "get": {"summary": "Transport metrics", "tags": ["metrics"]}
+        },
+        "/metrics/persistence": {
+            "get": {"summary": "Persistence metrics", "tags": ["metrics"]}
+        },
+        "/discovery/summary": {
+            "get": {"summary": "Discovery summary export", "tags": ["discovery"]}
+        },
         "/discovery/lag": {"get": {"summary": "Discovery lag", "tags": ["discovery"]}},
         "/dns/metrics": {"get": {"summary": "DNS gateway metrics", "tags": ["dns"]}},
         "/topology": {"get": {"summary": "Federation topology", "tags": ["topology"]}},
         "/topology/graph": {"get": {"summary": "Topology graph", "tags": ["topology"]}},
         "/topology/paths": {"get": {"summary": "Topology paths", "tags": ["topology"]}},
-        "/routing/link-state": {"get": {"summary": "Link-state snapshot", "tags": ["routing"]}},
+        "/routing/link-state": {
+            "get": {"summary": "Link-state snapshot", "tags": ["routing"]}
+        },
         "/alerts": {"get": {"summary": "Active alerts", "tags": ["alerts"]}},
         "/config": {"get": {"summary": "Runtime config snapshot", "tags": ["config"]}},
-
         "/metrics/prometheus": {
             "get": {
                 "summary": "Prometheus text exposition",
@@ -86,7 +101,9 @@ def build_monitoring_openapi() -> dict[str, Any]:
                 "security": _bearer,
             }
         },
-        "/metrics/unified": {"get": {"summary": "Unified JSON metrics", "tags": ["metrics"]}},
+        "/metrics/unified": {
+            "get": {"summary": "Unified JSON metrics", "tags": ["metrics"]}
+        },
         "/routing/decisions": {
             "get": {
                 "summary": "Recent fabric route decisions",
@@ -108,13 +125,17 @@ def build_monitoring_openapi() -> dict[str, Any]:
                 ],
             }
         },
-        "/routing/trace": {"get": {"summary": "Route selection trace", "tags": ["routing"]}},
+        "/routing/trace": {
+            "get": {"summary": "Route selection trace", "tags": ["routing"]}
+        },
         "/mgmt/v1/cluster": {"get": {"summary": "Cluster summary", "tags": ["mgmt"]}},
         "/mgmt/v1/nodes": {"get": {"summary": "Nodes", "tags": ["mgmt"]}},
         "/mgmt/v1/routes": {"get": {"summary": "Routes", "tags": ["mgmt"]}},
         "/mgmt/v1/catalog": {"get": {"summary": "Catalog counts", "tags": ["mgmt"]}},
         "/mgmt/v1/health": {"get": {"summary": "Mgmt health", "tags": ["mgmt"]}},
-        "/mgmt/v1/raft": {"get": {"summary": "Raft consensus status", "tags": ["mgmt"]}},
+        "/mgmt/v1/raft": {
+            "get": {"summary": "Raft consensus status", "tags": ["mgmt"]}
+        },
         "/mgmt/v1/policy/dry-run": {
             "post": {
                 "summary": "Policy dry-run",
@@ -215,8 +236,10 @@ def build_monitoring_openapi() -> dict[str, Any]:
                 ],
             }
         },
-        "/mgmt/v1/schema": {"get": {"summary": "This OpenAPI document", "tags": ["mgmt"]}},
-                "/": {"get": {"summary": "Monitoring landing", "tags": ["meta"]}},
+        "/mgmt/v1/schema": {
+            "get": {"summary": "This OpenAPI document", "tags": ["mgmt"]}
+        },
+        "/": {"get": {"summary": "Monitoring landing", "tags": ["meta"]}},
         "/alerts/history": {"get": {"summary": "Alert history", "tags": ["alerts"]}},
         "/alerts/acknowledge": {
             "post": {
@@ -248,10 +271,16 @@ def build_monitoring_openapi() -> dict[str, Any]:
         "/transport/endpoints": {
             "get": {"summary": "Transport endpoints", "tags": ["transport"]}
         },
-        "/openapi.json": {"get": {"summary": "This OpenAPI document", "tags": ["meta"]}},
+        "/openapi.json": {
+            "get": {"summary": "This OpenAPI document", "tags": ["meta"]}
+        },
         "/endpoints": {"get": {"summary": "Endpoint directory", "tags": ["meta"]}},
-        "/discovery/cache": {"get": {"summary": "Discovery cache stats", "tags": ["discovery"]}},
-        "/discovery/policy": {"get": {"summary": "Discovery policy", "tags": ["discovery"]}},
+        "/discovery/cache": {
+            "get": {"summary": "Discovery cache stats", "tags": ["discovery"]}
+        },
+        "/discovery/policy": {
+            "get": {"summary": "Discovery policy", "tags": ["discovery"]}
+        },
     }
     return {
         "openapi": "3.0.3",

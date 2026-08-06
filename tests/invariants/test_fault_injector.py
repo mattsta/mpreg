@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from mpreg.testing.faults import FaultInjector, assert_at_most_one_leader, assert_no_routing_loop
+from mpreg.testing.faults import (
+    FaultInjector,
+    assert_at_most_one_leader,
+    assert_no_routing_loop,
+)
 from mpreg.testing.oracles import RaftOracle, RoutingOracle, RpcOracle, RpcStreamEvent
 
 def test_partition_blocks_cross_group() -> None:

@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 
 import pytest
 
-from mpreg.client.call_policy import ClientCallPolicy, RpcExecutionMode, call_with_policy
+from mpreg.client.call_policy import (
+    ClientCallPolicy,
+    RpcExecutionMode,
+    call_with_policy,
+)
 from mpreg.core.errors import MpregError, MpregErrorCode
 from mpreg.datastructures.production_raft import RaftState
 from mpreg.datastructures.production_raft_implementation import (
@@ -33,7 +38,7 @@ from mpreg.fabric.route_control import (
     RouteWithdrawal,
 )
 from mpreg.testing.faults import FaultInjector
-from mpreg.testing.oracles import RaftOracle, RoutingOracle
+from mpreg.testing.oracles import RaftOracle
 from tests.test_production_raft_integration import (
     MockNetwork,
     NetworkAwareTransport,
@@ -79,10 +84,10 @@ async def test_x1_leader_election_during_route_withdraw() -> None:
             transport=NetworkAwareTransport(nid, network),
             state_machine=TestableStateMachine(),
             config=RaftConfiguration(
-            election_timeout_min=0.15,
-            election_timeout_max=0.30,
-            heartbeat_interval=0.025,
-        ),
+                election_timeout_min=0.15,
+                election_timeout_max=0.30,
+                heartbeat_interval=0.025,
+            ),
         )
         network.register_node(nid, n)
         nodes.append(n)
@@ -125,7 +130,9 @@ async def test_x1_leader_election_during_route_withdraw() -> None:
                 break
             await asyncio.sleep(0.05)
         assert leader is not None
-        oracle.observe_role(leader.node_id, leader.persistent_state.current_term, "leader")
+        oracle.observe_role(
+            leader.node_id, leader.persistent_state.current_term, "leader"
+        )
         # RPC-style call must complete or structured fail (no hang)
         policy = ClientCallPolicy.for_mode(
             RpcExecutionMode.M2_SOFT_RT, deadline_seconds=1.0
@@ -234,10 +241,8 @@ async def test_x2_minority_partition_no_commit() -> None:
     finally:
         # Sequential stop: avoid gather-cancel of deep raft trees.
         for n in nodes.values():
-            try:
+            with contextlib.suppress(Exception):
                 await asyncio.wait_for(n.stop(), timeout=3.0)
-            except Exception:
-                pass
 
 @pytest.mark.asyncio
 async def test_x3_restart_mid_stream_client_timeout() -> None:

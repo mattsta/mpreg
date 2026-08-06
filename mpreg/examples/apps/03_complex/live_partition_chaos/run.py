@@ -33,7 +33,6 @@ async def main() -> None:
             url_a = f"ws://127.0.0.1:{ws_a}"
             url_b = f"ws://127.0.0.1:{ws_b}"
             base_a = f"http://127.0.0.1:{mon_a}"
-            base_b = f"http://127.0.0.1:{mon_b}"
 
             audit_dir = tempfile.mkdtemp(prefix="mpreg-mgmt-audit-")
             audit_path = str(Path(audit_dir) / "mgmt-audit.jsonl")
@@ -252,24 +251,32 @@ async def main() -> None:
                         ) as resp:
                             body = await resp.json(content_type=None)
                             ensure(resp.status == 200, f"audit HTTP {resp.status}")
-                            mutations = body.get("mutations") or body.get("entries") or []
+                            mutations = (
+                                body.get("mutations") or body.get("entries") or []
+                            )
                             ensure(
                                 isinstance(mutations, list) and len(mutations) >= 1,
                                 f"expected audit mutations, got {body}",
                             )
-                            events = {str(m.get("event")) for m in mutations if isinstance(m, dict)}
+                            events = {
+                                str(m.get("event"))
+                                for m in mutations
+                                if isinstance(m, dict)
+                            }
                             step(f"audit events={sorted(events)} n={len(mutations)}")
                             ensure(
                                 any("drain" in e.lower() for e in events)
-                                or any(
-                                    "drain" in str(m).lower() for m in mutations
-                                ),
+                                or any("drain" in str(m).lower() for m in mutations),
                                 f"no drain event in {events}",
                             )
                     # JSONL file must have been appended
                     p = Path(audit_path)
                     ensure(p.is_file(), f"missing audit JSONL {p}")
-                    lines = [ln for ln in p.read_text(encoding="utf-8").splitlines() if ln.strip()]
+                    lines = [
+                        ln
+                        for ln in p.read_text(encoding="utf-8").splitlines()
+                        if ln.strip()
+                    ]
                     ensure(len(lines) >= 1, f"empty JSONL {p}")
                     ok(f"audit JSONL lines={len(lines)} ring={len(mutations)}")
 

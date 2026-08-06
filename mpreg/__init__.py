@@ -43,6 +43,10 @@ await server.server()
 
 from __future__ import annotations
 
+# Version info — single source is pyproject.toml [project].version
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
+
 # Core exports
 # Client exports
 from .client import Client, MPREGClientAPI, MPREGDnsClient, MPREGPubSubClient
@@ -81,9 +85,6 @@ from .fabric.membership import (
     MembershipState,
 )
 
-# Version info — single source is pyproject.toml [project].version
-from importlib.metadata import PackageNotFoundError, version as _pkg_version
-
 try:
     __version__ = _pkg_version("mpreg")
 except PackageNotFoundError:  # pragma: no cover - editable/source tree fallback
@@ -97,45 +98,45 @@ from .core.port_allocator import allocate_port
 from .server import MPREGServer
 
 __all__ = [
-    # Core
-    "RpcRegistry",
-    "JsonSerializer",
-    "MPREGSettings",
-    "TopicExchange",
-    "allocate_port",
-    "MPREGServer",
-    # Fabric - Graph
-    "FederationGraph",
-    "GraphBasedFederationRouter",
-    "GeographicCoordinate",
-    # Fabric - Hubs
-    "LocalHub",
-    "RegionalHub",
-    "GlobalHub",
-    "HubTier",
-    "HubRegistry",
-    # Fabric - Gossip
-    "GossipProtocol",
-    "GossipMessage",
-    "GossipMessageType",
-    "GossipStrategy",
-    "VectorClock",
-    # Fabric - Consensus
-    "ConsensusManager",
-    "StateValue",
-    "StateType",
-    # Fabric - Membership
-    "MembershipProtocol",
-    "MembershipInfo",
-    "MembershipState",
     # Client
     "Client",
-    "MPREGClientAPI",
+    # Fabric - Consensus
+    "ConsensusManager",
+    # Fabric - Graph
+    "FederationGraph",
+    "GeographicCoordinate",
+    "GlobalHub",
+    "GossipMessage",
+    "GossipMessageType",
+    # Fabric - Gossip
+    "GossipProtocol",
+    "GossipStrategy",
+    "GraphBasedFederationRouter",
+    "HubRegistry",
+    "HubTier",
+    "JsonSerializer",
+    # Fabric - Hubs
+    "LocalHub",
     "MPREGClient",
-    "UnifiedMPREGClient",
+    "MPREGClientAPI",
     "MPREGClusterClient",
     "MPREGDnsClient",
     "MPREGPubSubClient",
+    "MPREGServer",
+    "MPREGSettings",
+    "MembershipInfo",
+    # Fabric - Membership
+    "MembershipProtocol",
+    "MembershipState",
+    "RegionalHub",
+    # Core
+    "RpcRegistry",
+    "StateType",
+    "StateValue",
+    "TopicExchange",
+    "UnifiedMPREGClient",
+    "VectorClock",
     # Meta
     "__version__",
+    "allocate_port",
 ]

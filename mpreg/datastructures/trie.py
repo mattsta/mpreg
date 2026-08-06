@@ -391,7 +391,6 @@ class Trie[T]:
         # This is a complex optimization that requires careful handling
         # to avoid breaking other patterns. For now, we skip implementation
         # to maintain correctness. Could be implemented in future if needed.
-        pass
 
     def _manage_cache_size(self) -> None:
         """Manage cache size to prevent unlimited growth."""

@@ -15,11 +15,11 @@ scrape_configs:
 
 ## Golden signals
 
-| Signal | Metric / source | Warning | Critical |
-|--------|-----------------|---------|----------|
-| Traffic | `mpreg_rpc_requests_total` (+ pubsub series) | −50% vs baseline | near zero with peers |
-| Errors | `mpreg_federation_health_score`, `mpreg_rpc_errors_total` | score < 0.85 | score < 0.6 |
-| Latency | `mpreg_rpc_latency_ms` histogram p95 | p95 > 250ms | p95 > 1s |
+| Signal     | Metric / source                                                           | Warning           | Critical                 |
+| ---------- | ------------------------------------------------------------------------- | ----------------- | ------------------------ |
+| Traffic    | `mpreg_rpc_requests_total` (+ pubsub series)                              | −50% vs baseline  | near zero with peers     |
+| Errors     | `mpreg_federation_health_score`, `mpreg_rpc_errors_total`                 | score < 0.85      | score < 0.6              |
+| Latency    | `mpreg_rpc_latency_ms` histogram p95                                      | p95 > 250ms       | p95 > 1s                 |
 | Saturation | `mpreg_federation_active_connections`, `mpreg_gossip_pending_drops_total` | unexpected growth | connection/gossip storms |
 
 ## Example alert rules
@@ -28,6 +28,7 @@ Generate from code:
 
 ```python
 from mpreg.core.observability import prometheus_alert_rules_yaml
+
 print(prometheus_alert_rules_yaml())
 ```
 
@@ -51,13 +52,13 @@ Fabric hops carry W3C `traceparent` in `MessageHeaders.metadata`. Correlate with
 
 ## Troubleshooting map
 
-| Symptom | First checks |
-|---------|----------------|
-| RPC p95 high | `/metrics/unified`, `/routing/decisions`, peer dial pressure |
-| Cross-cluster failures | hop budget errors (code 1003), `/routing/trace`, federation path |
-| Discovery stale | summary HMAC verify failures, resolver cache stats, catalog gossip lag |
-| Scrape 401 | `monitoring_auth_token` / `MPREG_MONITORING_TOKEN` |
-| HA client sticky fail | non-retryable `MpregError` (do not spin endpoints); check code |
+| Symptom                | First checks                                                           |
+| ---------------------- | ---------------------------------------------------------------------- |
+| RPC p95 high           | `/metrics/unified`, `/routing/decisions`, peer dial pressure           |
+| Cross-cluster failures | hop budget errors (code 1003), `/routing/trace`, federation path       |
+| Discovery stale        | summary HMAC verify failures, resolver cache stats, catalog gossip lag |
+| Scrape 401             | `monitoring_auth_token` / `MPREG_MONITORING_TOKEN`                     |
+| HA client sticky fail  | non-retryable `MpregError` (do not spin endpoints); check code         |
 
 ## CLI probes
 

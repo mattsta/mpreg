@@ -110,7 +110,6 @@ class GossipAnalyzer:
         gossip_rate = len(recent_gossip) / 60 if recent_gossip else 0
 
         # Find timestamp precision issues
-        timestamp_deltas: list[float] = []
         peer_updates_by_peer = defaultdict(list)
         for event in self.peer_events:
             peer_updates_by_peer[event.peer_url].append(event)

@@ -244,8 +244,12 @@ When reviewing consensus or Byzantine detection code:
 
 ```python
 # Monitor these metrics closely
-byzantine_detection_rate = stats.byzantine_faults_detected / stats.global_consensus_rounds
-consensus_success_rate = stats.successful_global_consensus / stats.global_consensus_rounds
+byzantine_detection_rate = (
+    stats.byzantine_faults_detected / stats.global_consensus_rounds
+)
+consensus_success_rate = (
+    stats.successful_global_consensus / stats.global_consensus_rounds
+)
 
 # Alert if:
 if byzantine_detection_rate > 0.1:  # More than 10% Byzantine detection
@@ -260,16 +264,19 @@ if consensus_success_rate < 0.95:  # Less than 95% success
 ### If False Byzantine Detection Occurs in Production
 
 1. **Immediate Actions**:
+
    - Check Byzantine detection metrics
    - Review recent consensus failures
    - Validate cluster health independently
 
 2. **Code Inspection**:
+
    - Verify `conflicting_responses` tracking logic
    - Check Byzantine detection algorithm
    - Validate cluster weight configurations
 
 3. **Emergency Mitigation**:
+
    - Temporarily disable Byzantine detection if necessary
    - Increase consensus timeouts to allow manual intervention
    - Route critical messages through single-cluster paths

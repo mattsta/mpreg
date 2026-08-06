@@ -33,13 +33,17 @@ def test_topic_aware_to_rpc_response_preserves_w3c() -> None:
     assert out.tracestate == "x=1"
 
 def test_topic_aware_from_rpc_response_copies_w3c() -> None:
-    base = RPCResponse(r=2, u="u-2", traceparent=TP, tracestate="y=2", headers={"traceparent": TP})
+    base = RPCResponse(
+        r=2, u="u-2", traceparent=TP, tracestate="y=2", headers={"traceparent": TP}
+    )
     obj = TopicAwareRPCResponse.from_rpc_response(base)
     assert obj.traceparent == TP
     assert obj.to_rpc_response().traceparent == TP
 
 def test_enhanced_roundtrip_preserves_w3c() -> None:
-    base = RPCResponse(r=3, u="u-3", traceparent=TP, tracestate="z=3", headers={"traceparent": TP})
+    base = RPCResponse(
+        r=3, u="u-3", traceparent=TP, tracestate="z=3", headers={"traceparent": TP}
+    )
     enh = EnhancedRPCResponse.from_rpc_response(base)
     assert enh.traceparent == TP
     back = enh.to_rpc_response()

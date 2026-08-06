@@ -10,4 +10,4 @@ from __future__ import annotations
 from .federation_cli import FederationCLI
 from .main import cli, main
 
-__all__ = ["FederationCLI", "main", "cli"]
+__all__ = ["FederationCLI", "cli", "main"]

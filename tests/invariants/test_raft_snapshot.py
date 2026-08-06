@@ -6,7 +6,6 @@ import pytest
 
 from mpreg.datastructures.production_raft import (
     InstallSnapshotRequest,
-    RaftSnapshot,
     RaftState,
 )
 from mpreg.datastructures.production_raft_implementation import (

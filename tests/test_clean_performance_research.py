@@ -50,10 +50,12 @@ class CleanPerformanceResearch:
         await asyncio.sleep(0.05)
 
     async def test_gossip_federation_gossip_topology(
-        self, cluster_sizes: list[int] = [12, 15, 9]
+        self, cluster_sizes: list[int] | None = None
     ) -> dict[str, Any]:
         """Test ACTUAL Gossip↔Federation↔Gossip topology with proper federation bridges."""
 
+        if cluster_sizes is None:
+            cluster_sizes = [12, 15, 9]
         print("\n🏗️  Testing REAL Gossip↔Federation↔Gossip topology")
         print(f"   Cluster sizes: {cluster_sizes}")
 
@@ -115,7 +117,7 @@ class CleanPerformanceResearch:
 
             # Connect each hub to the next hub (ring topology for federation)
             next_i = (i + 1) % len(cluster_hubs)
-            next_hub_port, next_hub_server = cluster_hubs[next_i]
+            next_hub_port, _next_hub_server = cluster_hubs[next_i]
 
             if i != next_i:  # Don't connect to self
                 print(f"   Connecting hub {hub_port} to hub {next_hub_port}")
@@ -190,10 +192,12 @@ class CleanPerformanceResearch:
         }
 
     async def test_scalability_analysis(
-        self, test_sizes: list[int] = [15, 20, 25, 30]
+        self, test_sizes: list[int] | None = None
     ) -> list[dict[str, Any]]:
         """Clean scalability analysis across cluster sizes."""
 
+        if test_sizes is None:
+            test_sizes = [15, 20, 25, 30]
         print("\n📊 Scalability Analysis")
         print(f"   Testing cluster sizes: {test_sizes}")
 

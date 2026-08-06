@@ -34,4 +34,6 @@ def test_partial_levels_survived_under_loss() -> None:
     assert delivered >= 2  # first levels always observed
     assert len(coll.intermediate_results) == delivered
     # No silent wrong final
-    assert not any(r.is_final_level for r in coll.intermediate_results) or delivered == 4
+    assert (
+        not any(r.is_final_level for r in coll.intermediate_results) or delivered == 4
+    )

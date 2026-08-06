@@ -378,7 +378,7 @@ class TopicDependencyResolver:
             return f"mpreg.cache.{reference}.updated"
         else:
             # Assume RPC command dependency
-            command_name = reference.split(".")[0]
+            reference.split(".")[0]
             return "mpreg.rpc.*.command.*.completed"
 
     async def setup_dependency_subscriptions(

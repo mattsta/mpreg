@@ -67,9 +67,13 @@ async def main() -> None:
             )
             ok("subscriptions: auth, orders, audit")
 
-        with scenario("star wildcard + fan-out", "pubsub.wildcard_star", "pubsub.fanout"):
+        with scenario(
+            "star wildcard + fan-out", "pubsub.wildcard_star", "pubsub.fanout"
+        ):
             hits = _pub(exchange, "user.123.login", {"user": "alice"})
-            ensure(len(hits) >= 2, f"login fan-out expected >=2 got {len(hits)}: {hits}")
+            ensure(
+                len(hits) >= 2, f"login fan-out expected >=2 got {len(hits)}: {hits}"
+            )
             step(f"user.123.login -> {len(hits)} match(es)")
             ok(f"fan-out matches={len(hits)}")
 

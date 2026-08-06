@@ -54,9 +54,7 @@ def test_user_namespaces_fully_flexible() -> None:
 
 def test_bound_namespace_registration() -> None:
     assert_registration_allowed("app.orders.create", bound_namespace="app")
-    assert_registration_allowed(
-        "app.orders.create", bound_namespace="app.orders"
-    )
+    assert_registration_allowed("app.orders.create", bound_namespace="app.orders")
     with pytest.raises(ValueError, match="outside bound namespace"):
         assert_registration_allowed("app.billing.charge", bound_namespace="app.orders")
     with pytest.raises(ValueError, match="outside bound namespace"):

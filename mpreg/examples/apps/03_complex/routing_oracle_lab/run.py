@@ -21,7 +21,10 @@ async def main() -> None:
             ro.set_edge("d", "c")
             hops = ro.bfs_next_hops("a", "c")
             ensure(hops == frozenset({"b", "d"}), f"next hops {hops}")
-            ensure(ro.neighbors("a") == frozenset({"b", "d"}), f"neighbors {ro.neighbors('a')}")
+            ensure(
+                ro.neighbors("a") == frozenset({"b", "d"}),
+                f"neighbors {ro.neighbors('a')}",
+            )
             ok(f"a→c next={sorted(hops)}")
 
         with scenario("edge removal updates paths", "oracle.routing"):
@@ -43,7 +46,9 @@ async def main() -> None:
             ensure(exp is not None, "expect returned None")
             ok(f"expect recorded type={type(exp).__name__}")
 
-        with scenario("Raft single leader per term", "oracle.raft", "cons.quorum_teach"):
+        with scenario(
+            "Raft single leader per term", "oracle.raft", "cons.quorum_teach"
+        ):
             raft = RaftOracle()
             raft.observe_role("n1", term=1, role="leader")
             raft.observe_role("n2", term=1, role="follower")

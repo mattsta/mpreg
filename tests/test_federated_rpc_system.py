@@ -174,7 +174,7 @@ class TestFederatedRPCBroadcasting:
         client_factory: Callable[[int], Any],
     ):
         """Test that hop limit is properly enforced using real 3-server cluster."""
-        server1, server2, server3 = cluster_3_servers
+        server1, _server2, server3 = cluster_3_servers
 
         # CRITICAL: Register function AFTER cluster formation (servers already connected)
         def limited_function(data: str) -> str:

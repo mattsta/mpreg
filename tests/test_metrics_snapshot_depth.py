@@ -46,4 +46,3 @@ def test_snapshot_includes_fabric_hop_stats() -> None:
     assert "decisions_total" in fab
     assert int(fab["decisions_total"]) >= 1
     assert int(fab["max_hops"]) >= 2
-

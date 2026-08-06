@@ -107,7 +107,7 @@ def payload_from_dataclass(instance: object) -> Payload:
 
 def _normalize_list_value(value: object) -> tuple[object, ...]:
     if value is None:
-        return tuple()
+        return ()
     if isinstance(value, str):
         return (value,)
     if isinstance(value, (list, tuple, set, frozenset)):

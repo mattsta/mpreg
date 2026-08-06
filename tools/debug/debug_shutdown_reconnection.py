@@ -73,7 +73,6 @@ class DebugNode:
         """Track connection events without patching (just log)."""
         # Note: We can't patch MPREGServer methods due to __slots__
         # Instead, we'll rely on the built-in logging and manual tracking
-        pass
 
     async def start(self) -> None:
         """Start the debug node."""

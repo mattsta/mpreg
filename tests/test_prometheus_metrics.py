@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 
 import aiohttp
 
 from mpreg.core.config import MPREGSettings
-from mpreg.core.monitoring.unified_monitoring import MonitoringConfig, UnifiedSystemMonitor
+from mpreg.core.monitoring.unified_monitoring import (
+    MonitoringConfig,
+    UnifiedSystemMonitor,
+)
 from mpreg.fabric.connection_manager import FederationConnectionManager
 from mpreg.fabric.federation_config import FederationConfig, FederationMode
 from mpreg.fabric.monitoring_endpoints import create_federation_monitoring_system
@@ -28,7 +32,9 @@ async def test_prometheus_endpoint_text_format(
         federation_mode=FederationMode.STRICT_ISOLATION,
         local_cluster_id=settings.cluster_id,
     )
-    federation_manager = FederationConnectionManager(federation_config=federation_config)
+    federation_manager = FederationConnectionManager(
+        federation_config=federation_config
+    )
     unified_monitor = UnifiedSystemMonitor(config=MonitoringConfig())
     task = asyncio.create_task(unified_monitor.start())
     try:
@@ -54,10 +60,8 @@ async def test_prometheus_endpoint_text_format(
             await mon.stop()
     finally:
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
         await unified_monitor.stop()
 
 async def test_prometheus_exports_rpc_histograms_and_error_codes(
@@ -115,8 +119,6 @@ async def test_prometheus_exports_rpc_histograms_and_error_codes(
             await mon.stop()
     finally:
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await task
-        except asyncio.CancelledError:
-            pass
         await unified_monitor.stop()

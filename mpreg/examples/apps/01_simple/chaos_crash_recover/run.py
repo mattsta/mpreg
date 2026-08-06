@@ -66,7 +66,9 @@ async def main() -> None:
             if events is None:
                 # Some injectors keep _log / _events
                 events = getattr(inj, "_events", None) or getattr(inj, "_log", [])
-            step(f"history type={type(events).__name__} n={len(events) if events else 0}")
+            step(
+                f"history type={type(events).__name__} n={len(events) if events else 0}"
+            )
             # Presence of crash API is the proof; history is best-effort
             ok("crash/recover API proven; history optional")
 

@@ -156,7 +156,9 @@ async def main() -> None:
                                 ),
                             )
                         ensure(isinstance(first, dict), "first order not dict")
-                        ensure(first.get("replay") is False, "first should not be replay")
+                        ensure(
+                            first.get("replay") is False, "first should not be replay"
+                        )
                         ensure(second.get("replay") is True, "second should be replay")
                         ensure(
                             first.get("order_id") == second.get("order_id"),
@@ -183,11 +185,16 @@ async def main() -> None:
                                     locs=frozenset(["orders", "api"]),
                                 ),
                             )
-                        ensure(got.get("found") is True and got.get("sku") == "SKU-1", f"get {got}")
+                        ensure(
+                            got.get("found") is True and got.get("sku") == "SKU-1",
+                            f"get {got}",
+                        )
                         ensure(miss.get("found") is False, f"miss {miss}")
                         ok("get_order hit + miss")
 
-                    with scenario("cache idempotency mirror", "cache.put_get", "cache.l1"):
+                    with scenario(
+                        "cache idempotency mirror", "cache.put_get", "cache.l1"
+                    ):
                         key = GlobalCacheKey.from_data("orders.idem", {"key": idem})
                         with probe.measure("cache.put"):
                             await cache.put(
@@ -199,7 +206,9 @@ async def main() -> None:
                             )
                         with probe.measure("cache.get"):
                             cached = await cache.get(key)
-                        ensure(cached.success and cached.entry is not None, "cache miss")
+                        ensure(
+                            cached.success and cached.entry is not None, "cache miss"
+                        )
                         ensure(
                             cached.entry.value.get("order_id") == order_id,
                             "cached order mismatch",
@@ -248,7 +257,10 @@ async def main() -> None:
                         ok(f"pubsub matched={len(matched)}")
 
                     with scenario(
-                        "fulfill queue ALO", "queue.alo", "queue.subscribe", "queue.send"
+                        "fulfill queue ALO",
+                        "queue.alo",
+                        "queue.subscribe",
+                        "queue.send",
                     ):
                         with probe.measure("queue.send"):
                             await manager.send_message(

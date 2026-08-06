@@ -295,7 +295,9 @@ class CatalogQueryRequest:
         tags = (raw_tags,) if isinstance(raw_tags, str) else tuple(raw_tags)
         # Empty / missing entry_type defaults to functions (server also defaults).
         raw_entry = data.get("entry_type", "functions")
-        entry_type = str(raw_entry if raw_entry not in (None, "") else "functions").lower()
+        entry_type = str(
+            raw_entry if raw_entry not in (None, "") else "functions"
+        ).lower()
         return cls(
             entry_type=entry_type,
             namespace=(
@@ -557,8 +559,7 @@ class PageWindow:
             limit = max(1, int(raw_limit))
         except ValueError, TypeError:
             return cls(offset=0, limit=default_limit)
-        if limit > max_limit:
-            limit = max_limit
+        limit = min(limit, max_limit)
         return cls(offset=offset, limit=limit)
 
     def next_token(self, total: int) -> str | None:

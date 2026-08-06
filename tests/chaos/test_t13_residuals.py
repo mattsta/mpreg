@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import time
-from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import pytest
 from click.testing import CliRunner
@@ -15,10 +13,11 @@ from mpreg.core.message_queue import (
     DeliveryGuarantee,
     MessageQueue,
     QueueConfiguration,
-    QueueType,
     QueuedMessage,
+    QueueType,
 )
 from mpreg.core.monitoring.server_monitoring import ServerMetricsTracker
+from mpreg.datastructures.federated_types import FederatedAnnouncementTracker
 from mpreg.datastructures.message_structures import MessageId
 from mpreg.datastructures.production_raft import (
     InstallSnapshotRequest,
@@ -34,7 +33,6 @@ from mpreg.datastructures.raft_codec import (
     deserialize_request_vote_response,
 )
 from mpreg.datastructures.raft_storage_adapters import RaftStorageFactory
-from mpreg.datastructures.federated_types import FederatedAnnouncementTracker
 from mpreg.server_pkg.drain_admission import (
     CONTROL_PLANE_ROLES,
     is_control_plane_role,
@@ -98,7 +96,9 @@ def test_cor_t13_01_explicit_true_still_works() -> None:
 async def test_cor_t13_02_snapshot_chunk_max_ids_evicts() -> None:
     node = _make_node("f1")
     node.current_state = RaftState.FOLLOWER
-    node.persistent_state = PersistentState(current_term=1, voted_for=None, log_entries=[])
+    node.persistent_state = PersistentState(
+        current_term=1, voted_for=None, log_entries=[]
+    )
     node._snapshot_chunk_max_ids = 2
     node._snapshot_chunk_max_bytes = 10_000_000
 
@@ -126,7 +126,9 @@ async def test_cor_t13_02_snapshot_chunk_max_ids_evicts() -> None:
 async def test_cor_t13_02_snapshot_chunk_max_bytes_refuses() -> None:
     node = _make_node("f1")
     node.current_state = RaftState.FOLLOWER
-    node.persistent_state = PersistentState(current_term=1, voted_for=None, log_entries=[])
+    node.persistent_state = PersistentState(
+        current_term=1, voted_for=None, log_entries=[]
+    )
     node._snapshot_chunk_max_bytes = 16
     req = InstallSnapshotRequest(
         term=1,
@@ -145,7 +147,9 @@ async def test_cor_t13_02_snapshot_chunk_max_bytes_refuses() -> None:
 async def test_cor_t13_02_snapshot_chunk_ttl_prune() -> None:
     node = _make_node("f1")
     node.current_state = RaftState.FOLLOWER
-    node.persistent_state = PersistentState(current_term=1, voted_for=None, log_entries=[])
+    node.persistent_state = PersistentState(
+        current_term=1, voted_for=None, log_entries=[]
+    )
     node._snapshot_chunk_ttl_seconds = 0.01
     req = InstallSnapshotRequest(
         term=1,
@@ -178,9 +182,7 @@ def test_erg_t13_03_cache_op_promotes_error_code() -> None:
     assert r.error_code == 1012
 
 def test_erg_t13_03_queue_send_promotes_error_code() -> None:
-    r = QueueSendResult.from_raw(
-        {"success": False, "error": "eo", "error_code": 1011}
-    )
+    r = QueueSendResult.from_raw({"success": False, "error": "eo", "error_code": 1011})
     assert r.success is False
     assert r.error_code == 1011
 
@@ -309,7 +311,7 @@ async def test_perf_t13_05_priority_uses_id_map() -> None:
     assert q._pending_count() == 2
     assert str(m1.id) in q._pending_by_id
     # Dequeue high priority first via heap
-    pri, seq, msg = q._priority_heap[0]
+    pri, seq, _msg = q._priority_heap[0]
     # pop ready path
     deferred = []
     message = None

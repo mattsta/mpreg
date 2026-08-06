@@ -46,7 +46,7 @@ class LoopbackRaftNetwork:
         ]
         if not candidates:
             return False
-        target = self.nodes.get(sorted(candidates)[0])
+        target = self.nodes.get(min(candidates))
         if not target:
             return False
         await target.handle_message(message, source_peer_url=source_peer_url)

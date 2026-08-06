@@ -23,7 +23,10 @@ class DeadlineBudget:
 
     @classmethod
     def from_seconds(cls, seconds: float) -> DeadlineBudget:
-        return cls(remaining_ms=max(0.0, float(seconds) * 1000.0), started_mono=time.monotonic())
+        return cls(
+            remaining_ms=max(0.0, float(seconds) * 1000.0),
+            started_mono=time.monotonic(),
+        )
 
     @classmethod
     def from_headers(cls, headers: MessageHeaders) -> DeadlineBudget | None:
@@ -37,7 +40,7 @@ class DeadlineBudget:
             return None
         try:
             return cls(remaining_ms=float(raw), started_mono=time.monotonic())
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return None
 
     def elapsed_ms(self) -> float:
@@ -79,7 +82,7 @@ def decrement_deadline_headers(
             return headers
         try:
             current = float(raw)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return headers
     else:
         current = float(headers.deadline_remaining_ms)

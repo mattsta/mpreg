@@ -148,9 +148,9 @@ async def create_enterprise_mesh():
 
     # 3-tier architecture: Local services → Regional aggregators → Global coordinator
     tiers = [
-        {"name": "local", "count": 8},      # Microservices
-        {"name": "regional", "count": 3},   # Regional aggregators
-        {"name": "global", "count": 1},     # Global coordinator
+        {"name": "local", "count": 8},  # Microservices
+        {"name": "regional", "count": 3},  # Regional aggregators
+        {"name": "global", "count": 1},  # Global coordinator
     ]
 
     all_nodes = []
@@ -160,9 +160,7 @@ async def create_enterprise_mesh():
     for tier in tiers:
         tier_nodes = []
         leader_connect = (
-            f"ws://127.0.0.1:{tier_leaders[-1].settings.port}"
-            if tier_leaders
-            else None
+            f"ws://127.0.0.1:{tier_leaders[-1].settings.port}" if tier_leaders else None
         )
         with reserve_ports(tier["count"]) as tier_ports:
             for i in range(tier["count"]):
@@ -189,6 +187,7 @@ async def create_enterprise_mesh():
 
                 # Register tier-specific functions
                 if tier["name"] == "local":
+
                     def process_request(request_id: str, data: dict) -> dict:
                         return {
                             "request_id": request_id,
@@ -196,6 +195,7 @@ async def create_enterprise_mesh():
                             "tier": "local",
                             "result": f"Processed: {data}",
                         }
+
                     node.register_command(
                         "process_request",
                         process_request,
@@ -203,6 +203,7 @@ async def create_enterprise_mesh():
                     )
 
                 elif tier["name"] == "regional":
+
                     def aggregate_results(results: list) -> dict:
                         return {
                             "aggregated_by": settings.name,
@@ -210,6 +211,7 @@ async def create_enterprise_mesh():
                             "total_results": len(results),
                             "summary": f"Aggregated {len(results)} results",
                         }
+
                     node.register_command(
                         "aggregate_results",
                         aggregate_results,
@@ -217,6 +219,7 @@ async def create_enterprise_mesh():
                     )
 
                 elif tier["name"] == "global":
+
                     def coordinate_global(operation: str) -> dict:
                         return {
                             "coordinated_by": settings.name,
@@ -224,6 +227,7 @@ async def create_enterprise_mesh():
                             "operation": operation,
                             "status": "coordinated",
                         }
+
                     node.register_command(
                         "coordinate_global",
                         coordinate_global,
@@ -241,7 +245,9 @@ async def create_enterprise_mesh():
 
 # Usage
 enterprise_nodes, leaders = await create_enterprise_mesh()
-print(f"✅ Created enterprise service mesh with {len(enterprise_nodes)} nodes across 3 tiers")
+print(
+    f"✅ Created enterprise service mesh with {len(enterprise_nodes)} nodes across 3 tiers"
+)
 ```
 
 ### 4. DNS Gateway + Ingress Node (Interop Demo)
@@ -401,7 +407,9 @@ async def create_mission_critical_system():
                 name=f"critical-node-{i}",
                 cluster_id="mission-critical",
                 resources={f"critical-service-{i}", "backup-service"},
-                connect=f"ws://127.0.0.1:{ports[0]}" if i > 0 else None,  # Star topology for resilience
+                connect=f"ws://127.0.0.1:{ports[0]}"
+                if i > 0
+                else None,  # Star topology for resilience
                 gossip_interval=0.2,  # Very fast failure detection
             )
 
@@ -416,8 +424,8 @@ async def create_mission_critical_system():
                     "node_id": i,
                     "params": params,
                     "backup_nodes": [
-                        f"critical-node-{(i+1)%node_count}",
-                        f"critical-node-{(i+2)%node_count}",
+                        f"critical-node-{(i + 1) % node_count}",
+                        f"critical-node-{(i + 2) % node_count}",
                     ],
                     "execution_time": time.time(),
                     "status": "completed",
@@ -442,9 +450,12 @@ async def create_mission_critical_system():
 
     # Test partition recovery scenarios
     partition_scenarios = [
-        {"name": "Split Brain", "partitions": [[0,1,2,3,4], [5,6,7,8,9]]},
-        {"name": "Minority Failure", "partitions": [[0,1,2,3,4,5,6], [7,8,9]]},
-        {"name": "Multiple Islands", "partitions": [[0,1,2,3,4,5], [6,7], [8,9]]},
+        {"name": "Split Brain", "partitions": [[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]]},
+        {"name": "Minority Failure", "partitions": [[0, 1, 2, 3, 4, 5, 6], [7, 8, 9]]},
+        {
+            "name": "Multiple Islands",
+            "partitions": [[0, 1, 2, 3, 4, 5], [6, 7], [8, 9]],
+        },
     ]
 
     await asyncio.sleep(0.5)
@@ -452,7 +463,9 @@ async def create_mission_critical_system():
 
 # Usage
 critical_nodes, scenarios = await create_mission_critical_system()
-print(f"✅ Created mission-critical system with {len(critical_nodes)} self-healing nodes")
+print(
+    f"✅ Created mission-critical system with {len(critical_nodes)} self-healing nodes"
+)
 ```
 
 ## 📊 Performance Benchmarking

@@ -126,7 +126,9 @@ def test_rpc_registry_register_callable_accepts_metadata() -> None:
     assert spec.examples and spec.examples[0].name == "basic"
 
 def test_rpc_spec_digest_stable_for_set_defaults() -> None:
-    def with_set(items: set[int] = {2, 1}) -> int:
+    def with_set(items: set[int] | None = None) -> int:
+        if items is None:
+            items = {2, 1}
         return len(items)
 
     spec_a = RpcSpec.from_callable(

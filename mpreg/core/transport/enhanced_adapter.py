@@ -17,7 +17,7 @@ import asyncio
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Self
 
 from loguru import logger
 
@@ -488,7 +488,7 @@ class EnhancedMultiProtocolAdapter:
         except Exception as e:
             logger.error(f"Correlation cleanup task error: {e}")
 
-    async def __aenter__(self) -> EnhancedMultiProtocolAdapter:
+    async def __aenter__(self) -> Self:
         """Async context manager entry."""
         await self.start()
         return self

@@ -72,15 +72,14 @@ def advance_fabric_headers(
             correlation_id=headers.correlation_id or correlation_id,
         )
 
-    if metadata is not None:
-        meta = dict(metadata)
-    else:
-        meta = dict(headers.metadata)
+    meta = dict(metadata) if metadata is not None else dict(headers.metadata)
 
     return MessageHeaders(
         correlation_id=headers.correlation_id or correlation_id,
         source_cluster=headers.source_cluster or cluster_id,
-        target_cluster=target_cluster if target_cluster is not None else headers.target_cluster,
+        target_cluster=target_cluster
+        if target_cluster is not None
+        else headers.target_cluster,
         routing_path=routing_path,
         federation_path=federation_path,
         hop_budget=hop_budget,

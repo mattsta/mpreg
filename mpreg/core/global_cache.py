@@ -14,6 +14,7 @@ fabric-based cache synchronization and geographic replication.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 import uuid
 from collections import defaultdict
@@ -145,7 +146,9 @@ class GlobalCacheManager(ManagedObject):
 
         # Initialize replication tracking (bounded; drop-oldest under backpressure)
         self.replication_state: dict[GlobalCacheKey, set[str]] = defaultdict(set)
-        max_pending = max(1, int(getattr(config, "pending_replications_maxsize", 4096) or 4096))
+        max_pending = max(
+            1, int(getattr(config, "pending_replications_maxsize", 4096) or 4096)
+        )
         self.pending_replications: asyncio.Queue[tuple[str, GlobalCacheKey, Any]] = (
             asyncio.Queue(maxsize=max_pending)
         )
@@ -201,25 +204,23 @@ class GlobalCacheManager(ManagedObject):
         )
         sink = getattr(self, "_metrics_replication_drop", None)
         if callable(sink):
-            try:
+            with contextlib.suppress(Exception):
                 sink(1)
-            except Exception:
-                pass
 
     def attach_metrics_sink(self, *, on_replication_drop: Any = None) -> None:
         """Attach optional Prom/metrics callbacks (OBS-04)."""
         if on_replication_drop is not None:
             self._metrics_replication_drop = on_replication_drop
 
-    def _data_plane_allowed(
-        self, namespace: str, *, write: bool
-    ) -> tuple[bool, str]:
+    def _data_plane_allowed(self, namespace: str, *, write: bool) -> tuple[bool, str]:
         engine = self.namespace_policy
         if engine is None or not engine.enabled:
             return True, "policy_disabled"
         decision = engine.allows_data_access(
             namespace,
-            actor_cluster=get_actor_cluster_id() or self.config.local_cluster_id or None,
+            actor_cluster=get_actor_cluster_id()
+            or self.config.local_cluster_id
+            or None,
             actor_tenant_id=get_actor_tenant_id(),
             write=write,
         )
@@ -284,7 +285,7 @@ class GlobalCacheManager(ManagedObject):
                 error_message=f"namespace_policy_denied:{reason}",
             )
 
-        operation_id = str(uuid.uuid4())
+        str(uuid.uuid4())
         start_time = time.time()
 
         async with self.operation_semaphore:
@@ -403,7 +404,7 @@ class GlobalCacheManager(ManagedObject):
                 ),
             )
 
-        operation_id = str(uuid.uuid4())
+        str(uuid.uuid4())
         start_time = time.time()
 
         async with self.operation_semaphore:

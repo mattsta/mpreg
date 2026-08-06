@@ -35,6 +35,7 @@ def test_unified_client_has_discovery_methods() -> None:
 def test_unified_client_api_async_parity() -> None:
     """Every public async API method is on the unified façade (Phase R)."""
     import inspect
+
     from mpreg.client.client_api import MPREGClientAPI
 
     skip = {
@@ -49,7 +50,9 @@ def test_unified_client_api_async_parity() -> None:
         if not name.startswith("_") and inspect.iscoroutinefunction(fn)
     }
     # also async def on class
-    for name, fn in inspect.getmembers(MPREGClientAPI, predicate=inspect.iscoroutinefunction):
+    for name, fn in inspect.getmembers(
+        MPREGClientAPI, predicate=inspect.iscoroutinefunction
+    ):
         if not name.startswith("_"):
             api_methods.add(name)
 
@@ -61,7 +64,9 @@ def test_unified_client_api_async_parity() -> None:
     for node in tree.body:
         if isinstance(node, ast.ClassDef) and node.name == "MPREGClientAPI":
             for item in node.body:
-                if isinstance(item, ast.AsyncFunctionDef) and not item.name.startswith("_"):
+                if isinstance(item, ast.AsyncFunctionDef) and not item.name.startswith(
+                    "_"
+                ):
                     if item.name not in skip:
                         api_methods.add(item.name)
 

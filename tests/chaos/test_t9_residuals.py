@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import bisect
-import time
 from unittest.mock import MagicMock
 
 import pytest
@@ -18,9 +17,11 @@ from mpreg.core.global_cache import (
 )
 from mpreg.core.message_queue import (
     DeliveryGuarantee as QueueDG,
+)
+from mpreg.core.message_queue import (
     MessageQueue,
-    QueuedMessage,
     QueueConfiguration,
+    QueuedMessage,
     QueueType,
 )
 from mpreg.core.model import RPCCommand, RPCRequest
@@ -50,8 +51,7 @@ async def test_chaos_strong_cache_leaves_no_dirty_l1() -> None:
         assert "STRONG" in (result.error_message or "")
         got = await mgr.get(key)
         present = bool(
-            getattr(got, "success", False)
-            and getattr(got, "value", None) is not None
+            getattr(got, "success", False) and getattr(got, "value", None) is not None
         )
         # residual-free: no successful hit after refused STRONG
         assert present is False
@@ -212,7 +212,11 @@ def test_chaos_rpc_request_accepts_traceparent_fields() -> None:
     """OBS-02: RPCRequest model carries W3C fields."""
     tp = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
     req = RPCRequest(
-        cmds=(RPCCommand(name="n", fun="mpreg.system.echo", args=("x",), locs=frozenset()),),
+        cmds=(
+            RPCCommand(
+                name="n", fun="mpreg.system.echo", args=("x",), locs=frozenset()
+            ),
+        ),
         u="u1",
         traceparent=tp,
         headers={"traceparent": tp},

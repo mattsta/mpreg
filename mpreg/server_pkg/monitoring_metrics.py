@@ -48,7 +48,9 @@ def build_persistence_snapshot_metrics(server: Any) -> dict[str, Any]:
     payload["fabric"] = {
         "catalog_entries": catalog_counts,
         "route_keys": route_key_info,
-        "snapshot_last_saved_at": getattr(server, "_fabric_snapshot_last_saved_at", None),
+        "snapshot_last_saved_at": getattr(
+            server, "_fabric_snapshot_last_saved_at", None
+        ),
         "snapshot_last_restored_at": getattr(
             server, "_fabric_snapshot_last_restored_at", None
         ),

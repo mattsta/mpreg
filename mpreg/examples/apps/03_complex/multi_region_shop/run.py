@@ -163,7 +163,9 @@ async def main() -> None:
                             "SKU-7",
                             locs=frozenset(["west", "inventory"]),
                         )
-                    ensure(only.get("qty") == 3 and only.get("found") is True, f"{only}")
+                    ensure(
+                        only.get("qty") == 3 and only.get("found") is True, f"{only}"
+                    )
                     ok(f"west-only SKU-7={only}")
                     step(
                         "non-claim: routing availability ≠ global linearizability "

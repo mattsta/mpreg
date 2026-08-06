@@ -12,7 +12,7 @@ import contextlib
 import inspect
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Self
 from urllib.parse import urlparse
 
 from loguru import logger
@@ -688,7 +688,7 @@ class MultiProtocolAdapter:
                 self._active_connections[protocol].remove(transport)
             await transport.disconnect()
 
-    async def __aenter__(self) -> MultiProtocolAdapter:
+    async def __aenter__(self) -> Self:
         """Async context manager entry."""
         await self.start()
         return self

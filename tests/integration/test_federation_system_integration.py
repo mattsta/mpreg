@@ -242,16 +242,13 @@ class TestFederationSystemIntegration:
                     "✅ Explicit bridging allows configured cross-federation connections"
                 )
                 print(f"   Alpha → Beta bridge result: {result['beta_step']}")
-                cross_federation_success = True
             else:
                 print("⚠️ Cross-federation bridging not yet fully implemented")
-                cross_federation_success = False
 
         except Exception as e:
             print(
                 f"⚠️ Cross-federation execution failed (expected during development): {e}"
             )
-            cross_federation_success = False
 
         # Test that Alpha cannot reach Gamma (not bridged)
         try:

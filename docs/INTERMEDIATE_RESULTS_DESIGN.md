@@ -89,11 +89,10 @@ class RPCRequest(BaseModel):
     # New debugging features
     return_intermediate_results: bool = Field(
         default=False,
-        description="Stream intermediate results after each execution level"
+        description="Stream intermediate results after each execution level",
     )
     intermediate_result_callback_topic: str | None = Field(
-        default=None,
-        description="Optional topic to publish intermediate results to"
+        default=None, description="Optional topic to publish intermediate results to"
     )
 ```
 
@@ -108,11 +107,10 @@ class RPCResponse(BaseModel):
     # New debugging fields
     intermediate_results: list[RPCIntermediateResult] = Field(
         default_factory=list,
-        description="Intermediate results from each execution level"
+        description="Intermediate results from each execution level",
     )
     execution_summary: RPCExecutionSummary | None = Field(
-        default=None,
-        description="Summary of execution performance and steps"
+        default=None, description="Summary of execution performance and steps"
     )
 ```
 
@@ -149,7 +147,7 @@ async def execute_with_timeout():
                 total_levels=len(list(rpc.tasks())),
                 completed_levels=level_idx + 1,
                 timestamp=time.time(),
-                execution_time_ms=level_execution_time
+                execution_time_ms=level_execution_time,
             )
 
             intermediate_results.append(intermediate_result)
@@ -158,7 +156,7 @@ async def execute_with_timeout():
             if request.intermediate_result_callback_topic:
                 await publish_to_topic(
                     topic=request.intermediate_result_callback_topic,
-                    data=intermediate_result
+                    data=intermediate_result,
                 )
 
     return got, intermediate_results
@@ -193,11 +191,20 @@ async def execute_with_timeout():
 
 ```python
 # Client request with intermediate results
-result = await client.request([
-    RPCCommand(name="step1", fun="process_data", args=("input",), locs=frozenset(["node1"])),
-    RPCCommand(name="step2", fun="analyze", args=("step1",), locs=frozenset(["node2"])),
-    RPCCommand(name="step3", fun="format", args=("step2",), locs=frozenset(["node3"])),
-], return_intermediate_results=True)
+result = await client.request(
+    [
+        RPCCommand(
+            name="step1", fun="process_data", args=("input",), locs=frozenset(["node1"])
+        ),
+        RPCCommand(
+            name="step2", fun="analyze", args=("step1",), locs=frozenset(["node2"])
+        ),
+        RPCCommand(
+            name="step3", fun="format", args=("step2",), locs=frozenset(["node3"])
+        ),
+    ],
+    return_intermediate_results=True,
+)
 
 # Access intermediate results
 for intermediate in result.intermediate_results:
@@ -212,12 +219,15 @@ final_result = result.r
 
 ```python
 # Subscribe to intermediate results topic
-await client.subscribe("debug.rpc.{request_id}.intermediate", callback=handle_intermediate)
+await client.subscribe(
+    "debug.rpc.{request_id}.intermediate", callback=handle_intermediate
+)
 
 # Make request with streaming
-result = await client.request(commands,
+result = await client.request(
+    commands,
     return_intermediate_results=True,
-    intermediate_result_callback_topic="debug.rpc.{request_id}.intermediate"
+    intermediate_result_callback_topic="debug.rpc.{request_id}.intermediate",
 )
 ```
 
@@ -225,19 +235,49 @@ result = await client.request(commands,
 
 ```python
 def debug_pipeline():
-    result = await client.request([
-        # 6-step complex pipeline
-        RPCCommand(name="load", fun="load_data", args=("dataset",), locs=frozenset(["storage"])),
-        RPCCommand(name="clean", fun="clean_data", args=("load",), locs=frozenset(["cpu"])),
-        RPCCommand(name="transform", fun="transform", args=("clean",), locs=frozenset(["gpu"])),
-        RPCCommand(name="analyze", fun="analyze", args=("transform",), locs=frozenset(["ml"])),
-        RPCCommand(name="validate", fun="validate", args=("analyze",), locs=frozenset(["cpu"])),
-        RPCCommand(name="store", fun="store_results", args=("validate",), locs=frozenset(["storage"])),
-    ], return_intermediate_results=True)
+    result = await client.request(
+        [
+            # 6-step complex pipeline
+            RPCCommand(
+                name="load",
+                fun="load_data",
+                args=("dataset",),
+                locs=frozenset(["storage"]),
+            ),
+            RPCCommand(
+                name="clean", fun="clean_data", args=("load",), locs=frozenset(["cpu"])
+            ),
+            RPCCommand(
+                name="transform",
+                fun="transform",
+                args=("clean",),
+                locs=frozenset(["gpu"]),
+            ),
+            RPCCommand(
+                name="analyze",
+                fun="analyze",
+                args=("transform",),
+                locs=frozenset(["ml"]),
+            ),
+            RPCCommand(
+                name="validate",
+                fun="validate",
+                args=("analyze",),
+                locs=frozenset(["cpu"]),
+            ),
+            RPCCommand(
+                name="store",
+                fun="store_results",
+                args=("validate",),
+                locs=frozenset(["storage"]),
+            ),
+        ],
+        return_intermediate_results=True,
+    )
 
     # Debug each step
     for i, intermediate in enumerate(result.intermediate_results):
-        print(f"Step {i+1} completed in {intermediate.execution_time_ms}ms")
+        print(f"Step {i + 1} completed in {intermediate.execution_time_ms}ms")
         print(f"Results: {intermediate.level_results}")
 
         # Verify dependency resolution

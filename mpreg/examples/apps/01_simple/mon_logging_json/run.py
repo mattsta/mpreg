@@ -6,12 +6,12 @@ import asyncio
 import io
 
 from mpreg.core.logging import configure_logging
-from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 from mpreg.core.monitoring.unified_monitoring import (
     EventType,
     SystemType,
     create_unified_system_monitor,
 )
+from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
 async def main() -> None:
     with app_run(

@@ -263,7 +263,9 @@ def detailed_tree_construction_example():
         # Our implementation: SHA256("leaf:" + data)
         hash_val = hashlib.sha256(b"leaf:" + item).hexdigest()
         level_0.append(hash_val)
-        print(f"Leaf {i}: SHA256(\"leaf:{item.decode()}\") = {hash_val[:16]}...{hash_val[-4:]}")
+        print(
+            f'Leaf {i}: SHA256("leaf:{item.decode()}") = {hash_val[:16]}...{hash_val[-4:]}'
+        )
 
     print(f"\nLevel 0 complete: {len(level_0)} leaf hashes")
 
@@ -277,12 +279,16 @@ def detailed_tree_construction_example():
             combined = f"internal:{left}:{right}".encode()  # Our format with colons
             hash_val = hashlib.sha256(combined).hexdigest()
             level_1.append(hash_val)
-            print(f"Internal {i//2}: SHA256(\"internal:{left[:8]}...:{right[:8]}...\") = {hash_val[:16]}...{hash_val[-4:]}")
+            print(
+                f'Internal {i // 2}: SHA256("internal:{left[:8]}...:{right[:8]}...") = {hash_val[:16]}...{hash_val[-4:]}'
+            )
             print(f"             Combined length: {len(combined)} bytes")
         else:
             # Odd case: promote unpaired node
             level_1.append(level_0[i])
-            print(f"Internal {i//2}: {level_0[i][:16]}...{level_0[i][-4:]} (promoted unchanged)")
+            print(
+                f"Internal {i // 2}: {level_0[i][:16]}...{level_0[i][-4:]} (promoted unchanged)"
+            )
 
     print(f"\nLevel 1 complete: {len(level_1)} internal hashes")
 
@@ -295,7 +301,9 @@ def detailed_tree_construction_example():
         left, right = level_1[0], level_1[1]
         combined = f"internal:{left}:{right}".encode()  # Our internal format
         root_hash = hashlib.sha256(combined).hexdigest()
-        print(f"Root: SHA256(\"internal:{left[:8]}...:{right[:8]}...\") = {root_hash[:16]}...{root_hash[-4:]}")
+        print(
+            f'Root: SHA256("internal:{left[:8]}...:{right[:8]}...") = {root_hash[:16]}...{root_hash[-4:]}'
+        )
         print(f"      Combined length: {len(combined)} bytes")
 
     # Verify against library implementation
@@ -417,7 +425,9 @@ def detailed_proof_explanation():
     tree = MerkleTree.from_leaves(data)
     target_index = 1  # Prove "bob" exists
 
-    print(f"🔍 Generating proof for index {target_index} ('{data[target_index].decode()}')\n")
+    print(
+        f"🔍 Generating proof for index {target_index} ('{data[target_index].decode()}')\n"
+    )
 
     # Generate proof using library
     proof = tree.generate_proof(target_index)
@@ -443,20 +453,24 @@ def detailed_proof_explanation():
 
     # Step through each level of the proof
     for i, (sibling_hash, is_left) in enumerate(proof.proof_path):
-        print(f"\nStep {i+1} (Level {i} → Level {i+1}):")
+        print(f"\nStep {i + 1} (Level {i} → Level {i + 1}):")
 
         if is_left:
             # Sibling is on the left, current node is on the right
             combined = sibling_hash + current_hash
             print(f"  Position: current node is RIGHT child")
             print(f"  Compute: SHA256(sibling || current)")
-            print(f"         = SHA256({sibling_hash[:16]}... || {current_hash[:16]}...)")
+            print(
+                f"         = SHA256({sibling_hash[:16]}... || {current_hash[:16]}...)"
+            )
         else:
             # Sibling is on the right, current node is on the left
             combined = current_hash + sibling_hash
             print(f"  Position: current node is LEFT child")
             print(f"  Compute: SHA256(current || sibling)")
-            print(f"         = SHA256({current_hash[:16]}... || {sibling_hash[:16]}...)")
+            print(
+                f"         = SHA256({current_hash[:16]}... || {sibling_hash[:16]}...)"
+            )
 
         # Compute next level hash
         current_hash = hashlib.sha256(combined.encode()).hexdigest()
@@ -595,7 +609,9 @@ def demonstrate_structural_properties():
     print(f"Tree 1 root: {tree1.root_hash()[:16]}...")
     print(f"Tree 2 root: {tree2.root_hash()[:16]}...")
     print(f"Tree 3 root: {tree3.root_hash()[:16]}...")
-    print(f"All identical: {tree1.root_hash() == tree2.root_hash() == tree3.root_hash()}")
+    print(
+        f"All identical: {tree1.root_hash() == tree2.root_hash() == tree3.root_hash()}"
+    )
 
     # Show structure properties
     print(f"\n=== STRUCTURAL PROPERTIES ===")
@@ -653,7 +669,10 @@ def demonstrate_cryptographic_properties():
         ([b"HACKED_doc_1.txt", b"public_info.txt", b"config.json"], "Content change"),
         ([b"secret_doc_1.txt", b"config.json", b"public_info.txt"], "Order change"),
         ([b"secret_doc_1.txt", b"public_info.txt"], "Data removal"),
-        ([b"secret_doc_1.txt", b"public_info.txt", b"config.json", b"malware.exe"], "Data insertion")
+        (
+            [b"secret_doc_1.txt", b"public_info.txt", b"config.json", b"malware.exe"],
+            "Data insertion",
+        ),
     ]
 
     for modified_data, attack_type in modifications:
@@ -730,11 +749,13 @@ def analyze_computational_complexity():
         verify_time = (time.perf_counter() - start) * 1_000_000  # microseconds
 
         # Estimate memory usage
-        tree_memory = n * 64 + (n-1) * 64  # approx bytes for nodes
-        proof_memory = tree.depth() * 64   # bytes for proof
+        tree_memory = n * 64 + (n - 1) * 64  # approx bytes for nodes
+        proof_memory = tree.depth() * 64  # bytes for proof
         total_memory = (tree_memory + proof_memory) / 1024  # KB
 
-        print(f"{n:>8,} | {build_time:>10.2f} | {proof_time:>10.2f} | {verify_time:>11.2f} | {total_memory:>11.1f}")
+        print(
+            f"{n:>8,} | {build_time:>10.2f} | {proof_time:>10.2f} | {verify_time:>11.2f} | {total_memory:>11.1f}"
+        )
 
         # Verify logarithmic scaling
         expected_depth = math.ceil(math.log2(n))
@@ -767,11 +788,15 @@ def scalability_analysis():
         if n < 10**9:
             size_str = f"{n:>11,}"
         else:
-            size_str = f"{n/10**9:>10.1f}B"
+            size_str = f"{n / 10**9:>10.1f}B"
 
-        print(f"{size_str} | {depth:>10} | {proof_bytes:>9} B | {construction_sec:>11.3f} s | {verification_sec:>11.6f} s")
+        print(
+            f"{size_str} | {depth:>10} | {proof_bytes:>9} B | {construction_sec:>11.3f} s | {verification_sec:>11.6f} s"
+        )
 
-    print("\nKey insight: Verification time stays logarithmic even for trillion-item datasets!")
+    print(
+        "\nKey insight: Verification time stays logarithmic even for trillion-item datasets!"
+    )
 
 scalability_analysis()
 ```
@@ -805,7 +830,7 @@ Our implementation ensures **balanced trees** for optimal performance, but there
 #   /  \    /  \
 #  N3   N4 N5   L6  <- L6 promoted from previous level
 # / |  | |
-#L1 L2 L3 L4 L5
+# L1 L2 L3 L4 L5
 
 def analyze_tree_balance():
     """Analyze tree balance for different input sizes."""
@@ -932,7 +957,7 @@ def hierarchical_construction_demo():
     files = {
         "database_dump.sql": [f"row_{i}".encode() for i in range(1000)],
         "user_data.json": [f"user_{i}".encode() for i in range(500)],
-        "audit_log.txt": [f"entry_{i}".encode() for i in range(2000)]
+        "audit_log.txt": [f"entry_{i}".encode() for i in range(2000)],
     }
 
     file_trees = {}
@@ -966,13 +991,17 @@ def hierarchical_construction_demo():
     # Demonstrate hierarchical verification
     print("\n🔍 Hierarchical Verification Example:")
     print("  To verify row_500 in database_dump.sql:")
-    print(f"    1. Generate proof in file tree: {file_trees['database_dump.sql'].depth()} hashes")
+    print(
+        f"    1. Generate proof in file tree: {file_trees['database_dump.sql'].depth()} hashes"
+    )
     print(f"    2. Generate proof in directory tree: {directory_tree.depth()} hashes")
     print(f"    3. Generate proof in system tree: {system_tree.depth()} hashes")
 
-    total_proof_size = (file_trees['database_dump.sql'].depth() +
-                       directory_tree.depth() +
-                       system_tree.depth())
+    total_proof_size = (
+        file_trees["database_dump.sql"].depth()
+        + directory_tree.depth()
+        + system_tree.depth()
+    )
     total_items = sum(len(data) for data in files.values())
 
     print(f"    Total proof size: {total_proof_size} hashes")
@@ -1008,8 +1037,10 @@ def incremental_construction_demo():
     rebuilt_tree = MerkleTree.from_leaves(all_data)
     rebuild_time = time.perf_counter() - start_time
 
-    print(f"Method 1 (Rebuild): {rebuild_time*1000:.2f}ms")
-    print(f"  New tree: {rebuilt_tree.leaf_count()} items, depth {rebuilt_tree.depth()}")
+    print(f"Method 1 (Rebuild): {rebuild_time * 1000:.2f}ms")
+    print(
+        f"  New tree: {rebuilt_tree.leaf_count()} items, depth {rebuilt_tree.depth()}"
+    )
 
     # Method 2: Incremental append (our library method)
     start_time = time.perf_counter()
@@ -1018,12 +1049,16 @@ def incremental_construction_demo():
         incremental_tree = incremental_tree.append_leaf(item)
     append_time = time.perf_counter() - start_time
 
-    print(f"Method 2 (Incremental): {append_time*1000:.2f}ms")
-    print(f"  New tree: {incremental_tree.leaf_count()} items, depth {incremental_tree.depth()}")
+    print(f"Method 2 (Incremental): {append_time * 1000:.2f}ms")
+    print(
+        f"  New tree: {incremental_tree.leaf_count()} items, depth {incremental_tree.depth()}"
+    )
 
     # Verify results are identical
-    print(f"\nResults identical: {rebuilt_tree.root_hash() == incremental_tree.root_hash()}")
-    print(f"Performance improvement: {rebuild_time/append_time:.1f}x faster")
+    print(
+        f"\nResults identical: {rebuilt_tree.root_hash() == incremental_tree.root_hash()}"
+    )
+    print(f"Performance improvement: {rebuild_time / append_time:.1f}x faster")
 
 incremental_construction_demo()
 ```
@@ -1099,8 +1134,8 @@ reconstructed = MerkleTree.from_dict(tree_data)
 
 ```python
 # 🔍 Data access patterns
-data = tree.get_leaf(0)           # Get specific item
-all_data = tree.get_leaves()      # Get everything (expensive!)
+data = tree.get_leaf(0)  # Get specific item
+all_data = tree.get_leaves()  # Get everything (expensive!)
 
 # 🔎 Membership testing
 if b"important_file.txt" in tree:
@@ -1174,9 +1209,9 @@ trusted_root = file_tree.root_hash()
 proof = file_tree.generate_proof(1)  # main.py is at index 1
 
 # Verification without full directory
-is_authentic = (proof.leaf_data == b"main.py" and
-               proof.root_hash == trusted_root and
-               proof.verify())
+is_authentic = (
+    proof.leaf_data == b"main.py" and proof.root_hash == trusted_root and proof.verify()
+)
 
 print(f"File verified: {is_authentic}")
 print(f"Proof size: {len(proof.proof_path)} hashes vs {len(files)} total files")
@@ -1197,9 +1232,11 @@ tx_proof = block_tree.generate_proof(0)  # alice->bob transaction
 
 # Anyone can verify without downloading the full block
 def verify_transaction_in_block(transaction: bytes, proof, block_header: dict) -> bool:
-    return (proof.leaf_data == transaction and
-            proof.root_hash == block_header["merkle_root"] and
-            proof.verify())
+    return (
+        proof.leaf_data == transaction
+        and proof.root_hash == block_header["merkle_root"]
+        and proof.verify()
+    )
 
 result = verify_transaction_in_block(b"alice->bob:$10", tx_proof, block_header)
 print(f"Transaction verified in block: {result}")
@@ -1243,7 +1280,7 @@ class DistributedFileSystem:
                         "path": str(relative_path),
                         "size": stat.st_size,
                         "modified": stat.st_mtime,
-                        "checksum": self._file_checksum(file_path)
+                        "checksum": self._file_checksum(file_path),
                     }
 
                     # Serialize to bytes for Merkle tree
@@ -1251,7 +1288,7 @@ class DistributedFileSystem:
                     files.append(file_data)
                     self.file_index[str(relative_path)] = len(files) - 1
 
-                except (OSError, PermissionError):
+                except OSError, PermissionError:
                     continue  # Skip inaccessible files
 
         # Build tree from all file entries
@@ -1266,9 +1303,9 @@ class DistributedFileSystem:
         import hashlib
 
         try:
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 return hashlib.sha256(f.read()).hexdigest()
-        except (OSError, PermissionError):
+        except OSError, PermissionError:
             return "inaccessible"
 
     def generate_directory_proof(self, directory: str) -> list[tuple[str, bytes]]:
@@ -1282,8 +1319,9 @@ class DistributedFileSystem:
 
         return proofs
 
-    def verify_remote_file(self, file_path: str, file_metadata: dict,
-                          proof_data: bytes, trusted_root: str) -> bool:
+    def verify_remote_file(
+        self, file_path: str, file_metadata: dict, proof_data: bytes, trusted_root: str
+    ) -> bool:
         """Verify a remote file exists and matches expected metadata."""
         from mpreg.datastructures import MerkleProof
 
@@ -1295,17 +1333,19 @@ class DistributedFileSystem:
         proof = MerkleProof.from_dict(proof_dict)
 
         # Verify proof matches expected data and trusted root
-        return (proof.leaf_data == expected_data and
-                proof.root_hash == trusted_root and
-                proof.verify())
+        return (
+            proof.leaf_data == expected_data
+            and proof.root_hash == trusted_root
+            and proof.verify()
+        )
 
-    def sync_with_remote(self, remote_fs: 'DistributedFileSystem') -> dict:
+    def sync_with_remote(self, remote_fs: "DistributedFileSystem") -> dict:
         """Sync with remote file system using efficient Merkle comparison."""
         sync_stats = {
             "files_checked": 0,
             "files_different": 0,
             "files_added": 0,
-            "bytes_saved": 0  # Bytes saved by not transferring identical files
+            "bytes_saved": 0,  # Bytes saved by not transferring identical files
         }
 
         if self.file_tree.root_hash() == remote_fs.file_tree.root_hash():
@@ -1335,15 +1375,21 @@ class DistributedFileSystem:
                 proof = remote_fs.file_tree.generate_proof(diff_index)
 
                 if local_file is None:
-                    print(f"New file: {remote_file['path']} ({remote_file['size']} bytes)")
+                    print(
+                        f"New file: {remote_file['path']} ({remote_file['size']} bytes)"
+                    )
                     sync_stats["files_added"] += 1
                 elif local_file["checksum"] != remote_file["checksum"]:
-                    print(f"Modified: {remote_file['path']} "
-                          f"({local_file['size']} -> {remote_file['size']} bytes)")
+                    print(
+                        f"Modified: {remote_file['path']} "
+                        f"({local_file['size']} -> {remote_file['size']} bytes)"
+                    )
                     sync_stats["files_different"] += 1
 
                 # Calculate bandwidth saved by Merkle verification
-                sync_stats["bytes_saved"] += max(0, remote_file['size'] - 1024)  # Proof ~1KB
+                sync_stats["bytes_saved"] += max(
+                    0, remote_file["size"] - 1024
+                )  # Proof ~1KB
 
         return sync_stats
 
@@ -1379,9 +1425,10 @@ def demonstrate_distributed_sync():
         file_metadata = {"path": file_path, "size": 1024, "checksum": "abc123"}
 
         is_valid = local_fs.verify_remote_file(
-            file_path, file_metadata,
+            file_path,
+            file_metadata,
             json.dumps(proof_data).encode(),
-            remote_fs.file_tree.root_hash()
+            remote_fs.file_tree.root_hash(),
         )
         print(f"Remote file verification: {'✅ Valid' if is_valid else '❌ Invalid'}")
 
@@ -1410,8 +1457,9 @@ class DatabaseAuditSystem:
         self.audit_entries = {}  # entry_id -> audit_data
         self.suspicious_activities = []
 
-    def log_database_operation(self, operation_type: str, table: str,
-                             user: str, query: str, affected_rows: int) -> str:
+    def log_database_operation(
+        self, operation_type: str, table: str, user: str, query: str, affected_rows: int
+    ) -> str:
         """Log a database operation with cryptographic proof."""
 
         # Create comprehensive audit entry
@@ -1423,9 +1471,9 @@ class DatabaseAuditSystem:
             "user_id": user,
             "query_hash": self._hash_query(query),
             "affected_rows": affected_rows,
-            "session_id": f"session_{int(time.time())%10000}",
+            "session_id": f"session_{int(time.time()) % 10000}",
             "ip_address": "192.168.1.100",  # Would come from connection info
-            "database": self.database_name
+            "database": self.database_name,
         }
 
         # Generate unique entry ID
@@ -1450,6 +1498,7 @@ class DatabaseAuditSystem:
     def _hash_query(self, query: str) -> str:
         """Create privacy-preserving hash of SQL query."""
         import hashlib
+
         return hashlib.sha256(query.encode()).hexdigest()[:16]
 
     def _rebuild_master_tree(self) -> None:
@@ -1463,7 +1512,7 @@ class DatabaseAuditSystem:
                     "date": date,
                     "root_hash": daily_tree.root_hash(),
                     "entry_count": daily_tree.leaf_count(),
-                    "database": self.database_name
+                    "database": self.database_name,
                 }
                 daily_data = json.dumps(daily_summary, sort_keys=True).encode()
                 daily_roots.append(daily_data)
@@ -1499,7 +1548,9 @@ class DatabaseAuditSystem:
                 "merkle_proof_valid": is_valid,
                 "entry_in_daily_tree": audit_data in daily_tree,
                 "daily_tree_in_master": self._verify_daily_in_master(entry_date),
-                "timestamp_reasonable": self._verify_timestamp(audit_entry["timestamp"]),
+                "timestamp_reasonable": self._verify_timestamp(
+                    audit_entry["timestamp"]
+                ),
                 "user_permissions_valid": self._verify_user_permissions(audit_entry),
             }
 
@@ -1510,7 +1561,7 @@ class DatabaseAuditSystem:
                 "proof_size": len(proof.proof_path),
                 "integrity_checks": integrity_checks,
                 "daily_root": daily_tree.root_hash(),
-                "master_root": self.master_tree.root_hash()
+                "master_root": self.master_tree.root_hash(),
             }
 
         except ValueError:
@@ -1526,7 +1577,7 @@ class DatabaseAuditSystem:
             "date": date,
             "root_hash": daily_tree.root_hash(),
             "entry_count": daily_tree.leaf_count(),
-            "database": self.database_name
+            "database": self.database_name,
         }
         daily_data = json.dumps(daily_summary, sort_keys=True).encode()
 
@@ -1549,13 +1600,15 @@ class DatabaseAuditSystem:
 
         if table in sensitive_tables and user not in admin_users:
             if operation in ["DELETE", "UPDATE"]:
-                self.suspicious_activities.append({
-                    "type": "unauthorized_operation",
-                    "user": user,
-                    "operation": operation,
-                    "table": table,
-                    "timestamp": audit_entry["timestamp"]
-                })
+                self.suspicious_activities.append(
+                    {
+                        "type": "unauthorized_operation",
+                        "user": user,
+                        "operation": operation,
+                        "table": table,
+                        "timestamp": audit_entry["timestamp"],
+                    }
+                )
                 return False
 
         return True
@@ -1573,7 +1626,7 @@ class DatabaseAuditSystem:
             "operations_by_user": {},
             "integrity_violations": 0,
             "suspicious_activities": len(self.suspicious_activities),
-            "daily_summaries": []
+            "daily_summaries": [],
         }
 
         # Analyze each day in range
@@ -1589,7 +1642,7 @@ class DatabaseAuditSystem:
                     "date": date_str,
                     "operations": daily_tree.leaf_count(),
                     "root_hash": daily_tree.root_hash(),
-                    "integrity_verified": self._verify_daily_in_master(date_str)
+                    "integrity_verified": self._verify_daily_in_master(date_str),
                 }
 
                 # Count operations by type for this day
@@ -1625,14 +1678,16 @@ class DatabaseAuditSystem:
             "database": self.database_name,
             "export_timestamp": time.time(),
             "master_root_hash": self.master_tree.root_hash(),
-            "proofs": []
+            "proofs": [],
         }
 
         for entry_id in entry_ids:
             verification_result = self.verify_audit_entry(entry_id)
             if verification_result["valid"]:
                 audit_entry = self.audit_entries[entry_id]
-                entry_date = datetime.fromtimestamp(audit_entry["timestamp"]).date().isoformat()
+                entry_date = (
+                    datetime.fromtimestamp(audit_entry["timestamp"]).date().isoformat()
+                )
                 daily_tree = self.daily_trees[entry_date]
 
                 # Generate proof
@@ -1640,13 +1695,15 @@ class DatabaseAuditSystem:
                 entry_index = daily_tree.find_leaf_index(audit_data)
                 proof = daily_tree.generate_proof(entry_index)
 
-                export_data["proofs"].append({
-                    "entry_id": entry_id,
-                    "audit_data": audit_entry,
-                    "merkle_proof": proof.to_dict(),
-                    "daily_root": daily_tree.root_hash(),
-                    "date": entry_date
-                })
+                export_data["proofs"].append(
+                    {
+                        "entry_id": entry_id,
+                        "audit_data": audit_entry,
+                        "merkle_proof": proof.to_dict(),
+                        "daily_root": daily_tree.root_hash(),
+                        "date": entry_date,
+                    }
+                )
 
         return json.dumps(export_data, indent=2).encode()
 
@@ -1661,18 +1718,44 @@ def demonstrate_database_audit():
     # Simulate database operations over several days
     operations = [
         ("INSERT", "users", "admin", "INSERT INTO users (name, email) VALUES (...)", 1),
-        ("SELECT", "orders", "analyst", "SELECT * FROM orders WHERE date > '2023-01-01'", 150),
-        ("UPDATE", "payments", "admin", "UPDATE payments SET status='completed' WHERE id=123", 1),
+        (
+            "SELECT",
+            "orders",
+            "analyst",
+            "SELECT * FROM orders WHERE date > '2023-01-01'",
+            150,
+        ),
+        (
+            "UPDATE",
+            "payments",
+            "admin",
+            "UPDATE payments SET status='completed' WHERE id=123",
+            1,
+        ),
         ("DELETE", "users", "hacker", "DELETE FROM users WHERE id=1", 1),  # Suspicious!
-        ("INSERT", "orders", "sales_user", "INSERT INTO orders (user_id, total) VALUES (...)", 1),
+        (
+            "INSERT",
+            "orders",
+            "sales_user",
+            "INSERT INTO orders (user_id, total) VALUES (...)",
+            1,
+        ),
         ("SELECT", "users", "support", "SELECT name FROM users WHERE id=456", 1),
-        ("UPDATE", "orders", "admin", "UPDATE orders SET status='shipped' WHERE id=789", 1),
+        (
+            "UPDATE",
+            "orders",
+            "admin",
+            "UPDATE orders SET status='shipped' WHERE id=789",
+            1,
+        ),
     ]
 
     entry_ids = []
     print("\n📝 Logging Database Operations:")
     for op_type, table, user, query, rows in operations:
-        entry_id = audit_system.log_database_operation(op_type, table, user, query, rows)
+        entry_id = audit_system.log_database_operation(
+            op_type, table, user, query, rows
+        )
         entry_ids.append(entry_id)
         time.sleep(0.1)  # Small delay to ensure unique timestamps
 
@@ -1681,7 +1764,9 @@ def demonstrate_database_audit():
     for i, entry_id in enumerate(entry_ids[:3]):  # Verify first 3
         result = audit_system.verify_audit_entry(entry_id)
         status = "✅ Valid" if result["valid"] else "❌ Invalid"
-        print(f"  Entry {i+1}: {status} (proof size: {result.get('proof_size', 0)} hashes)")
+        print(
+            f"  Entry {i + 1}: {status} (proof size: {result.get('proof_size', 0)} hashes)"
+        )
 
     # Generate compliance report
     print("\n📊 Generating Compliance Report:")
@@ -1732,9 +1817,14 @@ class SoftwarePackageRegistry:
         self.dependency_graph = {}  # package -> dependencies
         self.security_advisories = {}  # package -> vulnerabilities
 
-    def publish_package(self, name: str, version: str, content: bytes,
-                       dependencies: List[str] = None,
-                       metadata: Dict = None) -> str:
+    def publish_package(
+        self,
+        name: str,
+        version: str,
+        content: bytes,
+        dependencies: List[str] = None,
+        metadata: Dict = None,
+    ) -> str:
         """Publish a new package version with cryptographic verification."""
 
         dependencies = dependencies or []
@@ -1754,7 +1844,7 @@ class SoftwarePackageRegistry:
             "metadata": metadata,
             "published_at": time.time(),
             "registry": self.registry_name,
-            "signature": self._sign_package(package_id, content_hash)
+            "signature": self._sign_package(package_id, content_hash),
         }
 
         # Store package data
@@ -1809,7 +1899,7 @@ class SoftwarePackageRegistry:
                 dep_entry = {
                     "dependent": package_id,
                     "dependency": dep,
-                    "relationship": "requires"
+                    "relationship": "requires",
                 }
                 dep_bytes = json.dumps(dep_entry, sort_keys=True).encode()
                 dependencies.append(dep_bytes)
@@ -1852,15 +1942,17 @@ class SoftwarePackageRegistry:
         if content is not None:
             expected_hash = package_data["content_hash"]
             actual_hash = hashlib.sha256(content).hexdigest()
-            content_valid = (expected_hash == actual_hash)
+            content_valid = expected_hash == actual_hash
 
         # Check security advisories
         security_issues = self.security_advisories.get(package_name, [])
 
         # Verify signature
         expected_signature = package_data["signature"]
-        computed_signature = self._sign_package(package_id, package_data["content_hash"])
-        signature_valid = (expected_signature == computed_signature)
+        computed_signature = self._sign_package(
+            package_id, package_data["content_hash"]
+        )
+        signature_valid = expected_signature == computed_signature
 
         return {
             "valid": all([main_valid, version_valid, content_valid, signature_valid]),
@@ -1870,14 +1962,14 @@ class SoftwarePackageRegistry:
                 "version_tree_proof": version_valid,
                 "content_hash": content_valid,
                 "signature": signature_valid,
-                "security_issues": len(security_issues)
+                "security_issues": len(security_issues),
             },
             "proofs": {
                 "main_proof_size": len(main_proof.proof_path),
-                "version_proof_size": len(version_proof.proof_path)
+                "version_proof_size": len(version_proof.proof_path),
             },
             "registry_root": self.package_tree.root_hash(),
-            "version_root": version_tree.root_hash()
+            "version_root": version_tree.root_hash(),
         }
 
     def resolve_dependencies(self, package_id: str, visited: Set[str] = None) -> dict:
@@ -1894,7 +1986,7 @@ class SoftwarePackageRegistry:
             "package": package_id,
             "dependencies": [],
             "dependency_tree_verified": False,
-            "security_vulnerabilities": []
+            "security_vulnerabilities": [],
         }
 
         # Get direct dependencies
@@ -1905,7 +1997,7 @@ class SoftwarePackageRegistry:
             dep_entry = {
                 "dependent": package_id,
                 "dependency": dep,
-                "relationship": "requires"
+                "relationship": "requires",
             }
             dep_bytes = json.dumps(dep_entry, sort_keys=True).encode()
 
@@ -1926,11 +2018,13 @@ class SoftwarePackageRegistry:
                 "package_id": dep,
                 "verified": dep_verified,
                 "sub_dependencies": sub_resolution.get("dependencies", []),
-                "security_issues": self.security_advisories.get(dep.split("@")[0], [])
+                "security_issues": self.security_advisories.get(dep.split("@")[0], []),
             }
 
             resolution["dependencies"].append(dependency_info)
-            resolution["security_vulnerabilities"].extend(dependency_info["security_issues"])
+            resolution["security_vulnerabilities"].extend(
+                dependency_info["security_issues"]
+            )
 
         # Verify overall dependency tree integrity
         resolution["dependency_tree_verified"] = not self.dependency_tree.is_empty()
@@ -1947,7 +2041,7 @@ class SoftwarePackageRegistry:
             "generation_time": time.time(),
             "packages": [],
             "total_size": 0,
-            "security_scan": {"vulnerabilities": [], "risk_level": "low"}
+            "security_scan": {"vulnerabilities": [], "risk_level": "low"},
         }
 
         all_packages = set(package_ids)
@@ -1980,7 +2074,7 @@ class SoftwarePackageRegistry:
                 "content_hash": package_data["content_hash"],
                 "verified": verification["valid"],
                 "main_tree_proof": verification["proofs"]["main_proof_size"],
-                "version_tree_proof": verification["proofs"]["version_proof_size"]
+                "version_tree_proof": verification["proofs"]["version_proof_size"],
             }
 
             manifest["packages"].append(package_entry)
@@ -2002,16 +2096,22 @@ class SoftwarePackageRegistry:
         if package_name not in self.security_advisories:
             self.security_advisories[package_name] = []
 
-        self.security_advisories[package_name].append({
-            "id": vulnerability.get("id", f"VULN-{int(time.time())}"),
-            "severity": vulnerability.get("severity", "medium"),
-            "description": vulnerability.get("description", "Unknown vulnerability"),
-            "affected_versions": vulnerability.get("affected_versions", []),
-            "fixed_version": vulnerability.get("fixed_version"),
-            "published": time.time()
-        })
+        self.security_advisories[package_name].append(
+            {
+                "id": vulnerability.get("id", f"VULN-{int(time.time())}"),
+                "severity": vulnerability.get("severity", "medium"),
+                "description": vulnerability.get(
+                    "description", "Unknown vulnerability"
+                ),
+                "affected_versions": vulnerability.get("affected_versions", []),
+                "fixed_version": vulnerability.get("fixed_version"),
+                "published": time.time(),
+            }
+        )
 
-        print(f"🚨 Security advisory added for {package_name}: {vulnerability.get('severity', 'medium')} severity")
+        print(
+            f"🚨 Security advisory added for {package_name}: {vulnerability.get('severity', 'medium')} severity"
+        )
 
 # Real-world demonstration
 def demonstrate_package_registry():
@@ -2023,11 +2123,41 @@ def demonstrate_package_registry():
 
     # Publish several packages with dependencies
     packages = [
-        ("express", "4.18.2", b"express-framework-code", [], {"description": "Web framework"}),
-        ("lodash", "4.17.21", b"lodash-utility-library", [], {"description": "Utility library"}),
-        ("body-parser", "1.20.1", b"body-parser-middleware", ["express@4.18.2"], {"description": "Body parsing middleware"}),
-        ("helmet", "6.0.0", b"helmet-security", ["express@4.18.2"], {"description": "Security middleware"}),
-        ("my-app", "1.0.0", b"my-application-code", ["express@4.18.2", "lodash@4.17.21", "body-parser@1.20.1", "helmet@6.0.0"], {"description": "My web application"})
+        (
+            "express",
+            "4.18.2",
+            b"express-framework-code",
+            [],
+            {"description": "Web framework"},
+        ),
+        (
+            "lodash",
+            "4.17.21",
+            b"lodash-utility-library",
+            [],
+            {"description": "Utility library"},
+        ),
+        (
+            "body-parser",
+            "1.20.1",
+            b"body-parser-middleware",
+            ["express@4.18.2"],
+            {"description": "Body parsing middleware"},
+        ),
+        (
+            "helmet",
+            "6.0.0",
+            b"helmet-security",
+            ["express@4.18.2"],
+            {"description": "Security middleware"},
+        ),
+        (
+            "my-app",
+            "1.0.0",
+            b"my-application-code",
+            ["express@4.18.2", "lodash@4.17.21", "body-parser@1.20.1", "helmet@6.0.0"],
+            {"description": "My web application"},
+        ),
     ]
 
     print("\n📝 Publishing Packages:")
@@ -2039,13 +2169,16 @@ def demonstrate_package_registry():
 
     # Add security advisory
     print("\n🚨 Adding Security Advisory:")
-    registry.add_security_advisory("lodash", {
-        "id": "CVE-2023-1234",
-        "severity": "high",
-        "description": "Prototype pollution vulnerability",
-        "affected_versions": ["4.17.21"],
-        "fixed_version": "4.17.22"
-    })
+    registry.add_security_advisory(
+        "lodash",
+        {
+            "id": "CVE-2023-1234",
+            "severity": "high",
+            "description": "Prototype pollution vulnerability",
+            "affected_versions": ["4.17.21"],
+            "fixed_version": "4.17.22",
+        },
+    )
 
     # Verify package integrity
     print(f"\n🔐 Verifying Package Integrity:")
@@ -2054,7 +2187,9 @@ def demonstrate_package_registry():
         status = "✅ Valid" if verification["valid"] else "❌ Invalid"
         print(f"  {package_id}: {status}")
         print(f"    Main proof: {verification['proofs']['main_proof_size']} hashes")
-        print(f"    Version proof: {verification['proofs']['version_proof_size']} hashes")
+        print(
+            f"    Version proof: {verification['proofs']['version_proof_size']} hashes"
+        )
 
     # Resolve dependencies for application
     print(f"\n🔗 Resolving Dependencies for my-app@1.0.0:")
@@ -2082,7 +2217,9 @@ def demonstrate_package_registry():
     print(f"\n🔍 Content Verification Example:")
     express_content = b"express-framework-code"
     verification = registry.verify_package_integrity("express@4.18.2", express_content)
-    content_status = "✅ Valid" if verification["checks"]["content_hash"] else "❌ Invalid"
+    content_status = (
+        "✅ Valid" if verification["checks"]["content_hash"] else "❌ Invalid"
+    )
     print(f"  Express content hash: {content_status}")
 
 # Run the demonstration
@@ -2108,11 +2245,15 @@ class DataStore:
         index = self.tree.find_leaf_index(data)
         return self.tree.generate_proof(index)
 
-    def verify_inclusion(self, data: bytes, proof: MerkleProof, trusted_root: str) -> bool:
+    def verify_inclusion(
+        self, data: bytes, proof: MerkleProof, trusted_root: str
+    ) -> bool:
         """Verify data is included without access to full store."""
-        return (proof.leaf_data == data and
-                proof.root_hash == trusted_root and
-                proof.verify())
+        return (
+            proof.leaf_data == data
+            and proof.root_hash == trusted_root
+            and proof.verify()
+        )
 
 # Example usage
 store = DataStore([b"genesis_data"])
@@ -2154,9 +2295,11 @@ class SimpleBlock:
 
     def verify_transaction(self, transaction: bytes, proof: MerkleProof) -> bool:
         """Verify transaction is in block using only the proof."""
-        return (proof.root_hash == self.merkle_root and
-                proof.leaf_data == transaction and
-                proof.verify())
+        return (
+            proof.root_hash == self.merkle_root
+            and proof.leaf_data == transaction
+            and proof.verify()
+        )
 
 # Example blockchain usage
 import hashlib
@@ -2176,7 +2319,9 @@ tx_proof = block.prove_transaction_inclusion(b"alice_pays_bob")
 # Anyone can verify the transaction was in the block
 is_valid = block.verify_transaction(b"alice_pays_bob", tx_proof)
 print(f"Transaction verified in block: {is_valid}")
-print(f"Proof size: {len(tx_proof.proof_path)} hashes vs {len(transactions)} total transactions")
+print(
+    f"Proof size: {len(tx_proof.proof_path)} hashes vs {len(transactions)} total transactions"
+)
 ```
 
 ## 🔗 Integration with MPREG
@@ -2217,9 +2362,9 @@ class FederationState:
 
     def verify_peer_data(self, data: bytes, proof: MerkleProof, peer_root: str) -> bool:
         """Verify data from peer without full synchronization."""
-        return (proof.root_hash == peer_root and
-                proof.leaf_data == data and
-                proof.verify())
+        return (
+            proof.root_hash == peer_root and proof.leaf_data == data and proof.verify()
+        )
 ```
 
 ### Cache Integrity Verification
@@ -2256,11 +2401,15 @@ class VerifiableCache:
 
         return value, proof
 
-    def verify_cached_value(self, value: bytes, proof: MerkleProof, trusted_root: str) -> bool:
+    def verify_cached_value(
+        self, value: bytes, proof: MerkleProof, trusted_root: str
+    ) -> bool:
         """Verify cached value integrity without full cache access."""
-        return (proof.leaf_data == value and
-                proof.root_hash == trusted_root and
-                proof.verify())
+        return (
+            proof.leaf_data == value
+            and proof.root_hash == trusted_root
+            and proof.verify()
+        )
 ```
 
 ## 📊 Performance Characteristics
@@ -2383,17 +2532,21 @@ def information_theory_analysis():
         proof_bits = math.ceil(math.log2(n)) * 256  # proof size
 
         compression_ratio = raw_data_bits / proof_bits
-        info_density = root_hash_bits / raw_data_bits  # bits of verification per bit of data
+        info_density = (
+            root_hash_bits / raw_data_bits
+        )  # bits of verification per bit of data
 
         if n < 1024:
             size_str = f"{n:>7}"
         elif n < 1024**2:
-            size_str = f"{n//1024:>6}K"
+            size_str = f"{n // 1024:>6}K"
         else:
-            size_str = f"{n//1024**2:>6}M"
+            size_str = f"{n // 1024**2:>6}M"
 
-        print(f"{size_str} | {raw_data_bits//8//1024:>7} KB | {root_hash_bits//8:>8} B | "
-              f"{proof_bits//8:>9} B | {compression_ratio:>10.0f}x | {info_density*1e6:>10.2f} μ")
+        print(
+            f"{size_str} | {raw_data_bits // 8 // 1024:>7} KB | {root_hash_bits // 8:>8} B | "
+            f"{proof_bits // 8:>9} B | {compression_ratio:>10.0f}x | {info_density * 1e6:>10.2f} μ"
+        )
 
 information_theory_analysis()
 ```
@@ -2428,6 +2581,7 @@ Space:        S(n) = Θ(n)      - Store all nodes
 **Cryptographic Assumptions**:
 
 1. **Hash Function Security** (SHA-256):
+
    - **Collision resistance**: Pr[H(x) = H(y) ∧ x ≠ y] ≈ 2⁻²⁵⁶
    - **Pre-image resistance**: Given h, finding x where H(x) = h is infeasible
    - **Second pre-image resistance**: Given x, finding y ≠ x where H(x) = H(y) is infeasible
@@ -2482,15 +2636,15 @@ def security_analysis_demo():
 
     # Create fake proof (will fail verification)
     fake_proof_data = {
-        'leaf_data': malicious_data,
-        'leaf_index': 5,
-        'root_hash': trusted_root,  # Try to use legitimate root
-        'proof_path': legitimate_proof.proof_path  # Steal legitimate path
+        "leaf_data": malicious_data,
+        "leaf_index": 5,
+        "root_hash": trusted_root,  # Try to use legitimate root
+        "proof_path": legitimate_proof.proof_path,  # Steal legitimate path
     }
 
     # Manual verification of fake proof
     current_hash = hashlib.sha256(malicious_data).hexdigest()
-    for sibling_hash, is_left in fake_proof_data['proof_path']:
+    for sibling_hash, is_left in fake_proof_data["proof_path"]:
         if is_left:
             combined = sibling_hash + current_hash
         else:
@@ -2508,7 +2662,7 @@ def security_analysis_demo():
     print(f"SHA-256 collision probability: ~2^-128 = {2**-128:.2e}")
     print(f"To find collision: ~2^128 = {2**128:.2e} operations")
     print(f"Current Bitcoin hash rate: ~500 EH/s = {500e18:.2e} ops/s")
-    print(f"Time to break SHA-256: {(2**128)/(500e18)/(365*24*3600):.2e} years")
+    print(f"Time to break SHA-256: {(2**128) / (500e18) / (365 * 24 * 3600):.2e} years")
     print(f"Age of universe: ~1.4e10 years")
     print(f"Conclusion: Cryptographically infeasible")
 
@@ -2579,7 +2733,7 @@ def existential_forgery_test():
     if modified_proof:
         old_hash, is_left = modified_proof[0]
         # Flip one bit in the hash
-        modified_hash = old_hash[:-1] + ('0' if old_hash[-1] != '0' else '1')
+        modified_hash = old_hash[:-1] + ("0" if old_hash[-1] != "0" else "1")
         modified_proof[0] = (modified_hash, is_left)
 
     # Verify modified proof
@@ -2589,7 +2743,9 @@ def existential_forgery_test():
         current = hashlib.sha256(combined.encode()).hexdigest()
 
     modified_success = current == trusted_root
-    print(f"  Modified proof success: {'❌ BREACH' if modified_success else '✅ BLOCKED'}")
+    print(
+        f"  Modified proof success: {'❌ BREACH' if modified_success else '✅ BLOCKED'}"
+    )
 
     print(f"\n✅ Existential forgery resistance: CONFIRMED")
 
@@ -2642,7 +2798,9 @@ def adaptive_attack_resistance():
 
     collision_found = tree2.root_hash() == alternative_tree.root_hash()
     print(f"\nCollision attempt:")
-    print(f"  Same root hash: {'❌ SECURITY BREACH' if collision_found else '✅ PREVENTED'}")
+    print(
+        f"  Same root hash: {'❌ SECURITY BREACH' if collision_found else '✅ PREVENTED'}"
+    )
     print(f"  Probability: ~2^-256 = {2**-256:.2e}")
 
     print(f"\n✅ Adaptive attack resistance: CONFIRMED")
@@ -2686,10 +2844,12 @@ def comprehensive_performance_analysis():
         (1000, "Small dataset (1K items)"),
         (10000, "Medium dataset (10K items)"),
         (100000, "Large dataset (100K items)"),
-        (1000000, "Very large dataset (1M items)")
+        (1000000, "Very large dataset (1M items)"),
     ]
 
-    print("\nDataset | Build (ms) | Proof (μs) | Verify (μs) | Memory (MB) | Efficiency")
+    print(
+        "\nDataset | Build (ms) | Proof (μs) | Verify (μs) | Memory (MB) | Efficiency"
+    )
     print("-" * 80)
 
     for n, description in test_configurations:
@@ -2708,7 +2868,7 @@ def comprehensive_performance_analysis():
 
         # Measure proof generation (average of multiple proofs)
         proof_times = []
-        test_indices = [0, n//4, n//2, 3*n//4, n-1]  # Test various positions
+        test_indices = [0, n // 4, n // 2, 3 * n // 4, n - 1]  # Test various positions
 
         for idx in test_indices:
             start_time = time.perf_counter()
@@ -2733,19 +2893,21 @@ def comprehensive_performance_analysis():
 
         # Format output
         if n < 1000000:
-            size_str = f"{n//1000:>6}K"
+            size_str = f"{n // 1000:>6}K"
         else:
-            size_str = f"{n//1000000:>6}M"
+            size_str = f"{n // 1000000:>6}M"
 
-        print(f"{size_str} | {build_time_ms:>10.1f} | {avg_proof_time:>10.1f} | "
-              f"{verify_time_us:>11.1f} | {tree_memory_mb:>11.2f} | {compression_ratio:>9.0f}:1")
+        print(
+            f"{size_str} | {build_time_ms:>10.1f} | {avg_proof_time:>10.1f} | "
+            f"{verify_time_us:>11.1f} | {tree_memory_mb:>11.2f} | {compression_ratio:>9.0f}:1"
+        )
 
         # Additional analysis for largest dataset
         if n == 1000000:
             print(f"\n📊 Detailed Analysis for {description}:")
             print(f"  Tree depth: {tree.depth()} levels")
             print(f"  Proof size: {tree.depth()} hashes = {tree.depth() * 32} bytes")
-            print(f"  Build throughput: {n / (build_time_ms/1000):,.0f} items/second")
+            print(f"  Build throughput: {n / (build_time_ms / 1000):,.0f} items/second")
             print(f"  Proof efficiency: {n / tree.depth():,.0f}:1 compression")
             print(f"  Memory per item: {tree_memory_mb * 1024 / n:.2f} KB")
 
@@ -2799,8 +2961,10 @@ def hash_function_benchmarks():
         else:  # SHA-1
             security, notes = "Low", "Deprecated, collisions found"
 
-        print(f"{func_name:>9} | {speeds[0]:>10.1f} | {speeds[1]:>10.1f} | "
-              f"{speeds[2]:>11.1f} | {security:>8} | {notes}")
+        print(
+            f"{func_name:>9} | {speeds[0]:>10.1f} | {speeds[1]:>10.1f} | "
+            f"{speeds[2]:>11.1f} | {security:>8} | {notes}"
+        )
 
     print("\n📝 Recommendation: SHA-256 provides optimal security/performance balance")
 
@@ -2821,29 +2985,29 @@ def deployment_analysis():
             "item_count": 50000,
             "avg_item_size": 2048,  # 2KB average file
             "update_frequency": "High",
-            "network_constraint": "Medium"
+            "network_constraint": "Medium",
         },
         {
             "name": "Blockchain Transactions",
             "item_count": 2000,
             "avg_item_size": 250,  # 250B average transaction
             "update_frequency": "Constant",
-            "network_constraint": "High"
+            "network_constraint": "High",
         },
         {
             "name": "Document Archive",
             "item_count": 1000000,
             "avg_item_size": 51200,  # 50KB average document
             "update_frequency": "Low",
-            "network_constraint": "Low"
+            "network_constraint": "Low",
         },
         {
             "name": "IoT Sensor Data",
             "item_count": 100000,
             "avg_item_size": 128,  # 128B sensor reading
             "update_frequency": "Very High",
-            "network_constraint": "Very High"
-        }
+            "network_constraint": "Very High",
+        },
     ]
 
     print("\nScenario           | Items  | Proof | Full Data | Savings | Build Time")
@@ -2864,18 +3028,24 @@ def deployment_analysis():
         # Estimate build time (based on benchmarks)
         estimated_build_ms = n * 0.001  # ~1μs per item
 
-        print(f"{scenario['name']:>18} | {n//1000:>5}K | {proof_size_bytes:>4}B | "
-              f"{full_data_bytes//1024//1024:>7}MB | {bandwidth_savings:>6.0f}x | {estimated_build_ms:>8.1f}ms")
+        print(
+            f"{scenario['name']:>18} | {n // 1000:>5}K | {proof_size_bytes:>4}B | "
+            f"{full_data_bytes // 1024 // 1024:>7}MB | {bandwidth_savings:>6.0f}x | {estimated_build_ms:>8.1f}ms"
+        )
 
         # Analysis for each scenario
         if scenario["name"] == "Blockchain Transactions":
             print(f"                   | Ideal for: Block headers, SPV clients")
         elif scenario["name"] == "Document Archive":
-            print(f"                   | Ideal for: Integrity verification, deduplication")
+            print(
+                f"                   | Ideal for: Integrity verification, deduplication"
+            )
         elif scenario["name"] == "IoT Sensor Data":
             print(f"                   | Ideal for: Data authenticity, efficient sync")
         elif scenario["name"] == "Git Repository":
-            print(f"                   | Ideal for: Commit verification, partial clones")
+            print(
+                f"                   | Ideal for: Commit verification, partial clones"
+            )
 
     print("\n📋 Deployment Guidelines:")
     print("  • High update frequency: Use incremental construction")

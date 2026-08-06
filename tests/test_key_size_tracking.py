@@ -156,7 +156,7 @@ class TestKeySizeTracking:
         cache = create_memory_only_cache_manager(max_memory_mb=0.005)  # 5KB limit
 
         # Track initial state
-        initial_count = len(cache.l1_cache)
+        len(cache.l1_cache)
 
         # Add entries until memory pressure triggers eviction
         entries_added = 0

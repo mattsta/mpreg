@@ -27,23 +27,23 @@ Docs: [`docs/examples-curriculum/`](../../../docs/examples-curriculum/).
 
 ## Levels
 
-| Dir | Level | Role |
-|-----|-------|------|
-| `00_getting_started/` | L0 | Hellos (rpc, cluster, trace, pubsub, cache, ports) |
-| `01_simple/` | L1 | Product apps + `plane_*` capability tours |
-| `02_moderate/` | L2 | Multi-plane composition + tier2 integrations |
-| `03_complex/` | L3 | Fabric, chaos, join, snapshots |
-| `04_world/` | L4 | `global_edge_control_plane` |
-| `_shared/` | — | Registry, runner, runtime |
+| Dir                   | Level | Role                                               |
+| --------------------- | ----- | -------------------------------------------------- |
+| `00_getting_started/` | L0    | Hellos (rpc, cluster, trace, pubsub, cache, ports) |
+| `01_simple/`          | L1    | Product apps + `plane_*` capability tours          |
+| `02_moderate/`        | L2    | Multi-plane composition + tier2 integrations       |
+| `03_complex/`         | L3    | Fabric, chaos, join, snapshots                     |
+| `04_world/`           | L4    | `global_edge_control_plane`                        |
+| `_shared/`            | —     | Registry, runner, runtime                          |
 
 ## Kinds
 
-| kind | Meaning |
-|------|---------|
-| `product` | Narrative teaching app |
-| `plane` | Single-plane depth tour (was tier1) |
-| `integration` | Two-plane drill (was tier2) |
-| `legacy` | Former standalone demo, now first-class id |
+| kind          | Meaning                                    |
+| ------------- | ------------------------------------------ |
+| `product`     | Narrative teaching app                     |
+| `plane`       | Single-plane depth tour (was tier1)        |
+| `integration` | Two-plane drill (was tier2)                |
+| `legacy`      | Former standalone demo, now first-class id |
 
 ## Operate
 

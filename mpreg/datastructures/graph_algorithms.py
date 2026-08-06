@@ -532,7 +532,7 @@ class AStarAlgorithm:
         closed_set = set[NodeId]()
 
         while open_set:
-            current_f, current_node = heapq.heappop(open_set)
+            _current_f, current_node = heapq.heappop(open_set)
 
             # Check hop limit
             current_path_length = self._count_hops_astar(

@@ -416,7 +416,7 @@ class AdvancedTopologyBuilder:
             for i, server in enumerate(bridge_servers):
                 if i > 0:
                     # Add peer connection to previous bridge
-                    prev_bridge_url = f"ws://127.0.0.1:{bridge_ports[i - 1]}"
+                    f"ws://127.0.0.1:{bridge_ports[i - 1]}"
                     # This would need to be implemented in the server startup
 
         self.test_context.servers.extend(bridge_servers)
@@ -450,9 +450,8 @@ class AdvancedTopologyBuilder:
         """Simulate network partition scenarios."""
         if scenario == "split_brain":
             # Disconnect half the servers from the other half
-            mid_point = len(servers) // 2
+            len(servers) // 2
             # This would require implementing connection dropping in servers
-            pass
         elif scenario == "island_isolation":
             # Isolate a single node
             pass
@@ -470,7 +469,6 @@ class AdvancedTopologyBuilder:
     async def _restore_connectivity(self, servers: list[MPREGServer]):
         """Restore full connectivity after partition test."""
         # Restore connections
-        pass
 
     async def _collect_performance_metrics(
         self,
@@ -501,7 +499,7 @@ class AdvancedTopologyBuilder:
 
         # Test cross-cluster function propagation
         propagation_start = time.time()
-        success = await self._test_cross_cluster_function_propagation(gossip_clusters)
+        await self._test_cross_cluster_function_propagation(gossip_clusters)
         propagation_time = (time.time() - propagation_start) * 1000
 
         # Measure cross-cluster latency
@@ -533,7 +531,7 @@ class AdvancedTopologyBuilder:
     ) -> PerformanceMetrics:
         """Collect metrics for hierarchical topologies."""
 
-        total_nodes = sum(nodes_per_level)
+        sum(nodes_per_level)
         total_connections = 0
 
         for cluster in level_clusters:
@@ -589,7 +587,6 @@ class AdvancedTopologyBuilder:
     ):
         """Measure latency for cross-cluster communication."""
         # Implementation would measure actual RPC call latency
-        pass
 
 class TestAdvancedTopologicalResearch:
     """Advanced topological research and performance analysis test suite."""
@@ -717,8 +714,8 @@ class TestAdvancedTopologicalResearch:
         cluster_sizes = [4, 6, 5]
 
         (
-            gossip_clusters,
-            bridge_servers,
+            _gossip_clusters,
+            _bridge_servers,
             metrics,
         ) = await builder.build_gossip_federation_gossip(cluster_sizes, "full_mesh")
 
@@ -809,8 +806,8 @@ class TestAdvancedTopologicalResearch:
             start_time = time.time()
 
             (
-                gossip_clusters,
-                bridge_servers,
+                _gossip_clusters,
+                _bridge_servers,
                 metrics,
             ) = await builder.build_gossip_federation_gossip(
                 cluster_sizes=[size], bridge_type="hub_to_hub"
@@ -1583,7 +1580,7 @@ class TestAdvancedTopologicalResearch:
                 except Exception as e:
                     print(f"     ⚠️  Disconnect error: {e}")
 
-        failure_time = (time.time() - failure_start) * 1000
+        (time.time() - failure_start) * 1000
 
         # Wait for topology to adapt
         print("   ⏱️  Waiting for fault tolerance adaptation...")
@@ -2482,7 +2479,7 @@ class TestAdvancedTopologicalResearch:
                 partition_test_functions.append(func_name)
 
         await asyncio.sleep(2.0)
-        partition_time = (time.time() - partition_start) * 1000
+        (time.time() - partition_start) * 1000
 
         # Count partition resilience
         available_nodes = [s for s in all_servers if s != asia_leader]
@@ -3371,7 +3368,7 @@ class TestAdvancedTopologicalResearch:
                         }
                     )
 
-        cascade_time = (time.time() - cascade_start) * 1000
+        (time.time() - cascade_start) * 1000
 
         # Calculate final resilience metrics
         avg_resilience = (
@@ -3544,7 +3541,6 @@ class TestAdvancedTopologicalResearch:
             continent_name = continent_config.name
             regions = continent_config.regions
             nodes_per_region = continent_config.nodes_per_region
-            base_port = continent_config.base_port
 
             continent_nodes = len(regions) * nodes_per_region
             total_nodes += continent_nodes

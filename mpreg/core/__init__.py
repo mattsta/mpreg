@@ -8,8 +8,8 @@ models, registry, serialization, and connection management.
 from __future__ import annotations
 
 from .config import MPREGSettings
-from .errors import MpregError, MpregErrorCode, error_code_catalog, map_exception
 from .connection import Connection
+from .errors import MpregError, MpregErrorCode, error_code_catalog, map_exception
 from .model import (
     CommandNotFoundException,
     MPREGException,
@@ -37,43 +37,43 @@ from .timer import Timer
 from .topic_exchange import TopicExchange
 
 __all__ = [
-    # Config
-    "MPREGSettings",
+    "CommandNotFoundException",
     # Connection
     "Connection",
-    # Model - Core RPC
-    "RPCCommand",
-    "RPCRequest",
-    "RPCResponse",
-    "RPCError",
-    "RPCServerGoodbye",
-    "RPCServerStatus",
-    "RPCServerMessage",
-    "RPCServerRequest",
-    # Model - PubSub
-    "PubSubMessage",
-    "PubSubSubscription",
-    "PubSubPublish",
-    "PubSubSubscribe",
-    "PubSubUnsubscribe",
-    "PubSubNotification",
-    "PubSubAck",
-    # Model - Other
-    "TopicPattern",
-    "TopicAdvertisement",
-    # Model - Exceptions
-    "MPREGException",
-    "CommandNotFoundException",
-    "MpregError",
-    "MpregErrorCode",
-    "error_code_catalog",
-    "map_exception",
-    # Registry
-    "RpcRegistry",
     # Serialization
     "JsonSerializer",
+    # Model - Exceptions
+    "MPREGException",
+    # Config
+    "MPREGSettings",
+    "MpregError",
+    "MpregErrorCode",
+    "PubSubAck",
+    # Model - PubSub
+    "PubSubMessage",
+    "PubSubNotification",
+    "PubSubPublish",
+    "PubSubSubscribe",
+    "PubSubSubscription",
+    "PubSubUnsubscribe",
+    # Model - Core RPC
+    "RPCCommand",
+    "RPCError",
+    "RPCRequest",
+    "RPCResponse",
+    "RPCServerGoodbye",
+    "RPCServerMessage",
+    "RPCServerRequest",
+    "RPCServerStatus",
+    # Registry
+    "RpcRegistry",
     # Timer
     "Timer",
+    "TopicAdvertisement",
     # Topic Exchange
     "TopicExchange",
+    # Model - Other
+    "TopicPattern",
+    "error_code_catalog",
+    "map_exception",
 ]

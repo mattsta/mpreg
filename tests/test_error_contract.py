@@ -8,9 +8,9 @@ from pathlib import Path
 import pytest
 
 from mpreg.core.errors import (
+    PUBLIC_ERROR_CODES,
     MpregError,
     MpregErrorCode,
-    PUBLIC_ERROR_CODES,
     discovery_rate_limited,
     error_code_catalog,
     internal_error,
@@ -58,24 +58,18 @@ def test_legacy_internal_was_1002() -> None:
     assert map_exception(legacy).code == int(MpregErrorCode.INTERNAL)
 
 def test_legacy_discovery_http_codes() -> None:
-    assert (
-        map_exception(
-            MPREGException(
-                rpc_error=RPCError(code=429, message="discovery_rate_limited", details="x")
+    assert map_exception(
+        MPREGException(
+            rpc_error=RPCError(code=429, message="discovery_rate_limited", details="x")
+        )
+    ).code == int(MpregErrorCode.DISCOVERY_RATE_LIMITED)
+    assert map_exception(
+        MPREGException(
+            rpc_error=RPCError(
+                code=403, message="discovery_access_denied", details="denied"
             )
-        ).code
-        == int(MpregErrorCode.DISCOVERY_RATE_LIMITED)
-    )
-    assert (
-        map_exception(
-            MPREGException(
-                rpc_error=RPCError(
-                    code=403, message="discovery_access_denied", details="denied"
-                )
-            )
-        ).code
-        == int(MpregErrorCode.DISCOVERY_ACCESS_DENIED)
-    )
+        )
+    ).code == int(MpregErrorCode.DISCOVERY_ACCESS_DENIED)
 
 def test_helpers() -> None:
     assert timeout_error("t").code == 1006
@@ -123,7 +117,7 @@ def test_no_bare_integer_rpcerror_in_server_paths(rel: str) -> None:
         pytest.skip(f"missing {rel}")
     bare = _bare_rpcerror_codes(path)
     # enhanced_rpc may reconstruct from dict with .get default -1 — allow only via non-constant
-    offenders = [(ln, c) for ln, c in bare if c not in (-1,)]
+    offenders = [(ln, c) for ln, c in bare if c != -1]
     assert offenders == [], f"Bare RPCError codes in {rel}: {offenders}"
 
 def test_mpreg_error_to_rpc_error() -> None:

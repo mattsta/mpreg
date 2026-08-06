@@ -80,9 +80,7 @@ async def main() -> None:
 
                     with scenario("UDP SRV resolve", "disco.dns_resolve", "client.dns"):
                         dns = MPREGDnsClient("127.0.0.1", udp_port, use_tcp=False)
-                        srv = await dns.resolve(
-                            "_svc._tcp.hello.demo.mpreg", "SRV"
-                        )
+                        srv = await dns.resolve("_svc._tcp.hello.demo.mpreg", "SRV")
                         ensure(
                             len(srv.answers) >= 1,
                             f"SRV resolve empty: {srv}",

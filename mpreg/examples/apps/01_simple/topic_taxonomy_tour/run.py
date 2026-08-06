@@ -21,7 +21,9 @@ async def main() -> None:
         v = TopicValidator()
         engine = TopicTemplateEngine()
 
-        with scenario("validate good and bad patterns", "topic.taxonomy", "topic.validate"):
+        with scenario(
+            "validate good and bad patterns", "topic.taxonomy", "topic.validate"
+        ):
             ok_pat, ok_msg = v.validate_topic_pattern("mpreg.rpc.command.x.started")
             ensure(ok_pat is True, f"good pattern rejected: {ok_msg}")
             bad_pat, bad_msg = v.validate_topic_pattern("bad topic spaces")
@@ -38,7 +40,10 @@ async def main() -> None:
         with scenario("control-plane access levels", "topic.taxonomy", "topic.access"):
             level = v.get_topic_access_level("mpreg.rpc.command.cmd1.started")
             ensure(level == TopicAccessLevel.CONTROL_PLANE, f"level {level}")
-            ensure(v.is_internal_topic("mpreg.rpc.command.cmd1.started") is True, "internal")
+            ensure(
+                v.is_internal_topic("mpreg.rpc.command.cmd1.started") is True,
+                "internal",
+            )
             ok(f"access={level}")
 
         with scenario("template engine generators", "topic.generate"):
@@ -68,8 +73,12 @@ async def main() -> None:
                 pat.as_wildcard_pattern() == "mpreg.rpc.command.*.started",
                 pat.as_wildcard_pattern(),
             )
-            ensure(pat.matches_topic("mpreg.rpc.command.other.started") is True, "other id")
-            ensure(pat.matches_topic("mpreg.rpc.command.x.failed") is False, "wrong suffix")
+            ensure(
+                pat.matches_topic("mpreg.rpc.command.other.started") is True, "other id"
+            )
+            ensure(
+                pat.matches_topic("mpreg.rpc.command.x.failed") is False, "wrong suffix"
+            )
             step(
                 f"F17 fixed: matches_topic on '{{param}}' → wildcard "
                 f"{pat.as_wildcard_pattern()!r} matched={matched}"

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import mpreg.consensus as consensus
+from mpreg import consensus
 from mpreg.core import consensus_api
 
 def test_facade_exports() -> None:

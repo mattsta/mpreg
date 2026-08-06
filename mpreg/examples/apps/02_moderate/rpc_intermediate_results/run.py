@@ -37,10 +37,12 @@ async def main() -> None:
             c = IntermediateResultCollector(request_id="req-1", total_levels=3)
             c.start_level(0)
             r0 = c.complete_level(0, {"parse": True}, {"parse": True})
-            ensure(r0.progress_percentage == (1 / 3) * 100, f"p0 {r0.progress_percentage}")
+            ensure(
+                r0.progress_percentage == (1 / 3) * 100, f"p0 {r0.progress_percentage}"
+            )
             ensure(r0.is_final_level is False, "level0 final?")
             c.start_level(1)
-            r1 = c.complete_level(1, {"enrich": 2}, {"parse": True, "enrich": 2})
+            c.complete_level(1, {"enrich": 2}, {"parse": True, "enrich": 2})
             c.start_level(2)
             r2 = c.complete_level(
                 2, {"score": 0.9}, {"parse": True, "enrich": 2, "score": 0.9}
@@ -49,7 +51,7 @@ async def main() -> None:
             ensure(r2.progress_percentage == 100.0, f"p2 {r2.progress_percentage}")
             ensure(len(c.intermediate_results) == 3, f"n={len(c.intermediate_results)}")
             ok(
-                f"progress={[round(x.progress_percentage,1) for x in c.intermediate_results]}"
+                f"progress={[round(x.progress_percentage, 1) for x in c.intermediate_results]}"
             )
 
         with scenario("execution summary shape", "rpc.intermediate"):
@@ -64,7 +66,9 @@ async def main() -> None:
                 parallel_execution_efficiency=1.0,
             )
             ensure(summary.average_level_time_ms > 0, "avg")
-            ensure(summary.slowest_level_index == 1, f"slow {summary.slowest_level_index}")
+            ensure(
+                summary.slowest_level_index == 1, f"slow {summary.slowest_level_index}"
+            )
             ok(
                 f"avg={summary.average_level_time_ms:.2f}ms "
                 f"slowest_level={summary.slowest_level_index}"
@@ -136,7 +140,9 @@ async def main() -> None:
                         "RPCRequest flag (see IntermediateResultCollector lab above)"
                     )
 
-                with scenario("intermediate result dataclass fields", "rpc.intermediate"):
+                with scenario(
+                    "intermediate result dataclass fields", "rpc.intermediate"
+                ):
                     sample = RPCIntermediateResult(
                         request_id="r",
                         level_index=0,

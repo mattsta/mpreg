@@ -146,10 +146,10 @@ async def deep_debug_vote_network():
 
     tracker = VoteFlowTracker()
 
-    test_instance = TestProductionRaftIntegration()
+    TestProductionRaftIntegration()
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        temp_dir = Path(tmpdir)
+        Path(tmpdir)
         network = MockNetwork()
 
         # Create cluster with debug transport

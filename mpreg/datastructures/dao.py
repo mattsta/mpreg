@@ -14,6 +14,8 @@ from typing import Any
 
 from hypothesis import strategies as st
 
+from mpreg.core.native_codec import dumps
+
 from .block import Block
 from .blockchain import Blockchain
 from .blockchain_crypto import TransactionSigner
@@ -45,8 +47,6 @@ from .dao_types import (
     generate_dao_id,
 )
 from .transaction import Transaction
-
-from mpreg.core.native_codec import dumps
 
 @dataclass(frozen=True, slots=True)
 class DecentralizedAutonomousOrganization:

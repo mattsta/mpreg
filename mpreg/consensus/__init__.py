@@ -14,8 +14,8 @@ from typing import Any
 from mpreg.datastructures.production_raft import (
     LogEntry,
     LogEntryType,
-    RaftState,
     RaftSnapshot,
+    RaftState,
 )
 from mpreg.datastructures.production_raft_implementation import (
     ProductionRaft,
@@ -87,7 +87,9 @@ def status_dict(node: ProductionRaft) -> dict[str, Any]:
         # Absolute log size includes snapshot base when available
         if not metrics.get("log_size"):
             try:
-                metrics["log_size"] = int(getattr(node, "_last_log_index", lambda: last_log_index)())
+                metrics["log_size"] = int(
+                    getattr(node, "_last_log_index", lambda: last_log_index)()
+                )
             except Exception:
                 metrics.setdefault("log_size", last_log_index)
     except Exception:  # noqa: BLE001
