@@ -182,6 +182,14 @@ merged window; `scope=local` remains the default single-node view.
 - **Design:** `docs/SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md`, residual
   `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`.
 
+### 4d) DistLab — first-party distributed testing lab
+
+`mpreg.testing.distlab` is a packaged history/checker/nemesis/scenario lab
+(Jepsen-inspired, not Elle/WAN/BFT). STRONG and shared-audit adapters let the
+platform validate itself under fault injection. Import via
+`tests.harness` or `mpreg.testing.distlab`. Plans:
+`docs/DISTLAB_AND_SEVEN_TRACKS.md`.
+
 ### 4b) Persistence Layer
 
 Persistence is unified via `mpreg/core/persistence` with pluggable backends.

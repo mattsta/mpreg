@@ -30,10 +30,12 @@ __all__ = [
     "RpcOracle",
     "RpcStreamEvent",
     "raise_open_file_limit",
+    # DistLab (first-party distributed testing lab)
+    "distlab",
 ]
 
 def __getattr__(name: str) -> object:
-    """Lazy exports for concurrent/hang infrastructure."""
+    """Lazy exports for concurrent/hang infrastructure and DistLab."""
     if name in {"ConcurrentSuiteResult", "ConcurrentSuiteRunner"}:
         from mpreg.testing import concurrent_runner as _cr
 
@@ -46,4 +48,8 @@ def __getattr__(name: str) -> object:
         from mpreg.testing import resource_limits as _rl
 
         return getattr(_rl, name)
+    if name == "distlab":
+        from mpreg.testing import distlab as _dl
+
+        return _dl
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

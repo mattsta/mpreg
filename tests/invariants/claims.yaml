@@ -197,6 +197,7 @@ encapsulation:
       - tests/integration/test_shared_audit_live_churn.py
       - tests/chaos/test_shared_audit_chaos.py
       - tests/integration/test_strong_audit_coexistence.py
+      - tests/testing/test_distlab_audit_scenarios.py
   - id: INV-CACHE-STRONG-01
     claim: >
       When cache_strong_enabled, GlobalCacheManager ConsistencyLevel.STRONG put
@@ -226,6 +227,8 @@ encapsulation:
       - tests/integration/test_cache_strong_quorum.py
       - tests/integration/test_cache_strong_live_mesh.py
       - tests/integration/test_strong_audit_coexistence.py
+      - tests/testing/test_distlab_strong_scenarios.py
+      - tests/testing/test_distlab_core.py
 
 non_claims:
   - "Atomic multi-store fabric snapshot save (catalog+keys single blob); restore has COR-10 rollback on key failure"
@@ -243,6 +246,8 @@ non_claims:
   - "Adversarial STRONG peer tests prove fail-closed ACKs only — not Byzantine fault tolerance under a quorum of liars"
   - "STRONG pending TTL purge is best-effort wall-clock GC — not Byzantine time sync or crash-restart durability"
   - "Lying COMMIT_ACK applied bits can satisfy CFT quorum math without peer L1 apply — documented non_claim (not BFT)"
+  - "mpreg.testing.distlab is Jepsen-inspired (history/checker/nemesis) — not Elle, not WAN geo generators, not a JVM Jepsen port"
+  - "DistLab residual/LWW/G-Set checkers are bounded local proofs — not full multi-object linearizability"
   - "Shared audit is not a SIEM / infinite retention store; bounded per-origin watermark window"
   - "Shared audit is not BFT and not multi-tenant isolation beyond cluster_id reject"
   - "Shared audit live churn is same-host multi-process mesh — not WAN epidemic under sustained partition"

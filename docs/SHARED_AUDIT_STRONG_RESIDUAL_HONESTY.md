@@ -106,3 +106,21 @@ Full ~120-point plan: `docs/SHARED_AUDIT_STRONG_HARDENING_PLAN.md`.
 | Architecture bugs fixed by tests | LWW same-ms multi-origin soak failure → ts bump |
 
 Still **not** claimed: WAN, kill-9 cold restart, fsync, BFT, Jepsen/Elle, kernel partitions.
+
+## Phase 3 — DistLab first-party product (2026-08-06)
+
+Elevated distributed testing into **`mpreg.testing.distlab`**: history +
+pluggable checkers + nemesis + scenario runner + STRONG/audit SUTs. The
+platform now tests itself through a reusable lab rather than only ad-hoc
+test helpers.
+
+| Surface | Path |
+| --- | --- |
+| Product | `mpreg/testing/distlab/` |
+| Plans (7×25) | `docs/DISTLAB_AND_SEVEN_TRACKS.md` |
+| Core self-tests | `tests/testing/test_distlab_core.py` |
+| STRONG scenarios | `tests/testing/test_distlab_strong_scenarios.py` |
+| Audit scenarios | `tests/testing/test_distlab_audit_scenarios.py` |
+| Re-export | `tests/harness` |
+
+DistLab is **Jepsen-inspired, not Jepsen**. See claims.yaml non_claims.
