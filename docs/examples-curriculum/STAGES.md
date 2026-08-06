@@ -191,3 +191,18 @@ Linear continuation after Phase I. Productized residual Info friction:
 
 Exit: **78** suite apps; FEATURE_CATALOG residual gaps closed or honest depth non-claims.
 
+## Phase K — Residual depth + catalog partials (COMPLETE)
+
+Linear continuation after Phase J. Closed the depth non-claims and high-value
+FEATURE_CATALOG partials:
+
+1. `disco.signatures` + gossip HMAC
+2. rpc.describe / rpc.report inventory
+3. client.trace + mon.trace_bind
+4. tx.correlation + chaos.no_loop
+5. CERT_REQUIRED mTLS mesh
+6. Packet-loss plane model composed with live drain
+7. Blockchain hub settlement path
+
+Exit: **85** suite apps; program idle pending new charter.
+

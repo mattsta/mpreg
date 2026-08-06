@@ -209,3 +209,31 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 
 **Program:** Phases A–J at **100%** per PROJECT_PLAN dashboard.
 
+## Phase K — Residual depth + catalog partials (**COMPLETE**)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| K0 charter serialized into living plans | [x] | G17/G18 + waves K0–K10 |
+| K1 API_FRICTION F10–F12 open table cleared | [x] | |
+| `discovery_signatures_lab` | [x] | disco.signatures gap closed |
+| `rpc_inventory_tour` | [x] | describe + report |
+| `client_trace_bind` | [x] | trace + bind |
+| `correlation_routing_lab` | [x] | correlation + no-loop |
+| `mtls_mesh_handshake` | [x] | CERT_REQUIRED depth |
+| `packet_loss_chaos` | [x] | drop rates + drain |
+| `blockchain_hub_settlement` | [x] | hub queue settlement |
+| FEATURE/APP/STAGES sync | [x] | **85** apps |
+| unit + suite | [x] | see verification log |
+
+## Verification log (Phase K)
+
+| Date | Command | Result |
+|------|---------|--------|
+| 2026-08-05 | all 7 Phase K apps `mpreg-example run` | pass |
+| 2026-08-05 | `pytest tests/examples_apps -m unit` | **100 passed** |
+| 2026-08-05 | `mpreg-example suite` | **85/85 passed** (~94s) |
+
+**App count:** 78 → **85** (+7 Phase K).
+
+**Program:** Phases A–K at **100%** per PROJECT_PLAN dashboard.
+

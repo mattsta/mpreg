@@ -188,6 +188,10 @@ TX_MULTI_PROTOCOL: Final = "tx.multi_protocol"
 CHAOS_LIVE_DRAIN: Final = "chaos.live_drain"
 OPS_MGMT_DRAIN: Final = "ops.mgmt_drain"
 OPS_MGMT_DETACH: Final = "ops.mgmt_detach"
+CHAOS_NO_LOOP: Final = "chaos.no_loop"
+TX_CORRELATION: Final = "tx.correlation"
+MON_TRACE_BIND: Final = "mon.trace_bind"
+FABRIC_GOSSIP: Final = "fabric.gossip"
 
 # App id → feature IDs (must stay aligned with FEATURE_CATALOG.md)
 APP_FEATURES: dict[str, tuple[str, ...]] = {
@@ -690,6 +694,52 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         FABRIC_BLOCKCHAIN_MSG,
         FABRIC_GRAPH,
         FABRIC_HUBS,
+    ),
+
+    "discovery_signatures_lab": (
+        DISCO_SIGNATURES,
+        BOOT_SETTINGS,
+    ),
+    "rpc_inventory_tour": (
+        RPC_DESCRIBE,
+        RPC_REPORT,
+        RPC_LIST,
+        RPC_CALL,
+        CLIENT_API,
+    ),
+    "client_trace_bind": (
+        CLIENT_TRACE,
+        MON_TRACE_BIND,
+        MON_TRACE_CONTEXT,
+        RPC_CALL,
+        CLIENT_API,
+    ),
+    "correlation_routing_lab": (
+        TX_CORRELATION,
+        CHAOS_NO_LOOP,
+        CHAOS_TRANSPORT,
+        ORACLE_ROUTING,
+        MON_CORRELATION,
+    ),
+    "mtls_mesh_handshake": (
+        TX_TLS,
+        TX_SECURITY,
+        RPC_CALL,
+        CLIENT_API,
+    ),
+    "packet_loss_chaos": (
+        CHAOS_DROP,
+        CHAOS_TRANSPORT,
+        CHAOS_LIVE_DRAIN,
+        OPS_MGMT_DRAIN,
+        MON_HEALTH,
+        RPC_CALL,
+    ),
+    "blockchain_hub_settlement": (
+        FABRIC_BLOCKCHAIN_MSG,
+        FABRIC_HUBS,
+        FABRIC_GRAPH,
+        CONS_QUORUM_TEACH,
     ),
 
 }

@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase J COMPLETE — F10/F11/F12 productized + catalog residual teach)  
+**Last updated:** 2026-08-05 (Phase K COMPLETE — residual depth + catalog partials + signatures/mTLS/loss/settlement)  
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -29,6 +29,8 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G14 | **Close remaining Med friction** | F2–F8, F17 fixed in platform (or honest non-claim) | [x] Phase H (F4→FQN ns-deny) |
 | G15 | **Productize F10–F12 + catalog residuals** | Live drain/detach, WS rpc_auth, dev TLS helper + teach apps | [x] Phase J |
 | G16 | **Close FEATURE_CATALOG residual gaps** | disco resolver/audit, queue_fed, mon.transport, tx.tcp/multi, blockchain | [x] Phase J |
+| G17 | **Close Phase J depth non-claims** | CERT_REQUIRED mTLS, packet-loss teach, hub settlement, disco.signatures | [x] Phase K |
+| G18 | **Promote high-value FEATURE partials** | rpc.describe/report, client.trace, tx.correlation, chaos.no_loop, mon.trace_bind | [x] Phase K |
 
 ---
 
@@ -36,20 +38,21 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 
 | Metric | Value |
 |--------|------:|
-| Shipped apps | **78** |
+| Shipped apps | **85** |
 | Smoke apps | 8 |
-| Suite apps | 78 (all registry `suite=True`) |
+| Suite apps | 85 (all registry `suite=True`) |
 | Feature IDs in `features.py` constants | ~140+ |
 | FEATURE_CATALOG prioritized gaps 1–8 | **closed** (honest non-claims where needed) |
 | Thin apps (scen<2 or L1+ ens<5) | **0** |
 | Branch vs origin | main ahead local only (no push unless asked) |
-| Last new-app validation | Phase J F10–F12 + 7 residual teach apps green |
-| Last unit | `pytest tests/examples_apps -m unit` → **93 passed** |
-| Last full suite | **78/78 passed** (~87s) |
+| Last new-app validation | Phase K 7 depth/partial apps green |
+| Last unit | `pytest tests/examples_apps -m unit` → **100 passed** |
+| Last full suite | **85/85 passed** (~94s) |
 | Phase G | **COMPLETE** — DX fixes + ExampleProbe + 8 apps obs-proven |
 | Phase H | **COMPLETE** — FQN ns-deny + Med friction + universal probe |
 | Phase I | **COMPLETE** — residual Info polish + FQN curriculum + catalog sync |
 | Phase J | **COMPLETE** — F10/F11/F12 productized + catalog residual teach |
+| Phase K | **COMPLETE** — residual depth non-claims + catalog partials productized |
 
 ### Thin backlog
 
@@ -314,6 +317,53 @@ curriculum apps that prove them — then closes residual catalog teach paths.
 
 ---
 
+### Phase K — Residual depth + catalog partials (**COMPLETE**)
+
+Phase J left honest **depth** non-claims (CERT_REQUIRED mTLS mesh, raw packet-loss
+teach, on-chain hub settlement, `disco.signatures`) and many FEATURE_CATALOG
+`partial`/`gap` rows. Phase K **serializes those into one linear charter** and
+productizes the teachable platform surfaces — no idle gap.
+
+#### K goals
+
+| ID | Goal | Success measure | Status |
+|----|------|-----------------|--------|
+| PK1 | Charter Phase K into all living plans | PROJECT_PLAN + TRACKER + STAGES | [x] |
+| PK2 | `disco.signatures` + gossip HMAC | `discovery_signatures_lab` | [x] |
+| PK3 | `rpc.describe` / `rpc.report` inventory | `rpc_inventory_tour` | [x] |
+| PK4 | `client.trace` + `mon.trace_bind` | `client_trace_bind` | [x] |
+| PK5 | `tx.correlation` + `chaos.no_loop` | `correlation_routing_lab` | [x] |
+| PK6 | CERT_REQUIRED mTLS mesh | `mtls_mesh_handshake` | [x] |
+| PK7 | Packet-loss plane model + live drain compose | `packet_loss_chaos` | [x] |
+| PK8 | Hub settlement beyond bare types | `blockchain_hub_settlement` | [x] |
+| PK9 | FEATURE/APP/friction sync + suite | **85** apps green | [x] |
+
+#### K waves (linear)
+
+| Wave | Deliverables | Status |
+|------|--------------|--------|
+| **K0** | Serialize residuals into this charter | [x] |
+| **K1** | Stale API_FRICTION F10–F12 → FIXED | [x] |
+| **K2** | `discovery_signatures_lab` | [x] |
+| **K3** | `rpc_inventory_tour` | [x] |
+| **K4** | `client_trace_bind` | [x] |
+| **K5** | `correlation_routing_lab` | [x] |
+| **K6** | `mtls_mesh_handshake` (CERT_REQUIRED) | [x] |
+| **K7** | `packet_loss_chaos` | [x] |
+| **K8** | `blockchain_hub_settlement` | [x] |
+| **K9** | Catalog partial→shipped + docs | [x] |
+| **K10** | unit + suite + commit | [x] |
+
+#### Phase K exit criteria
+
+- [x] All Phase J depth non-claims have dedicated curriculum proof apps  
+- [x] `disco.signatures` gap → shipped  
+- [x] rpc.describe/report, client.trace, mon.trace_bind, tx.correlation, chaos.no_loop taught  
+- [x] FEATURE_CATALOG / APP_CATALOG / TRACKER / API_FRICTION current at **85**  
+- [x] unit + suite green  
+
+---
+
 ## 4. Target app matrix growth
 
 | Band | Now | Target | Notes |
@@ -323,7 +373,7 @@ curriculum apps that prove them — then closes residual catalog teach paths.
 | L2 product/integ | ~21 | 14+ | + shipping, router, dependency |
 | L3 complex | ~16 | 12+ | + hubs, leader election |
 | L4 world | 2 | 2–3 | global_edge + multi_pop |
-| **Total** | **78** | **50–70+** | band complete; Phase J +7 residual teach |
+| **Total** | **85** | **50–70+** | band complete; Phase K +7 depth/partial |
 
 ---
 
@@ -379,6 +429,7 @@ uv run pytest tests/examples_apps -q
 | 2026-08-05 | Phase H complete | FQN ns-deny; F2–F8/F17; universal probe; 70/70 suite |
 | 2026-08-05 | Phase I complete | `rpc_fqn_namespace`; F13/F15/F16/F19; catalog/doc sync → **71** |
 | 2026-08-05 | Phase J complete | F10 drain/detach; F11 rpc_auth; F12 dev_certs/wss; +7 apps (tls/disco/queue_fed/live_chaos/transport×2/blockchain) → **78** |
+| 2026-08-05 | Phase K complete | signatures, rpc inventory, trace bind, correlation/no-loop, CERT_REQUIRED mTLS, packet loss, hub settlement → **85** |
 
 ---
 
@@ -449,6 +500,16 @@ uv run pytest tests/examples_apps -q
 | J5 docs+suite | 20% | 20 | [x] |
 | **Phase J overall** | **100%** | **100%** | complete |
 
+### Phase K (residual depth + catalog partials) — complete
+
+| Slice | Weight | Done | Status |
+|-------|-------:|-----:|--------|
+| K0–K1 charter + friction | 10% | 10 | [x] |
+| K2–K5 catalog partial apps | 35% | 35 | [x] |
+| K6–K8 depth non-claim apps | 35% | 35 | [x] |
+| K9–K10 docs + suite | 20% | 20 | [x] |
+| **Phase K overall** | **100%** | **100%** | complete |
+
 ---
 
 ## 8. Working rules (non-negotiable)
@@ -512,15 +573,18 @@ Close F2–F8/F17 in platform; default-on probe; CLI aliases; doctor URL clarity
 `rpc_fqn_namespace`; F13/F15/F16/F19 closed or documented; FEATURE_CATALOG truth.
 
 **Phase J (productize F10–F12 + catalog residual teach): COMPLETE 100%.**  
-F11 `rpc_auth_token`; F12 `dev_certs` + server TLS PEMs + `wss://`; F10 live
-drain/detach/`/ready`; residual teach apps for disco resolver/audit, queue_fed,
-mon.transport, tx.tcp/multi_protocol, blockchain message types. **78** apps.
+F11/F12/F10 + residual teach apps. **78** apps at J exit.
 
-Honest remaining depth (not blocking): full CERT_REQUIRED mTLS mesh drills,
-raw socket packet-loss injection, on-chain settlement hub mesh — documented as
-non-claims inside the Phase J apps where relevant.
+**Phase K (residual depth + catalog partials): COMPLETE 100%.**  
+`discovery_signatures_lab`; `rpc_inventory_tour`; `client_trace_bind`;
+`correlation_routing_lab`; `mtls_mesh_handshake` (CERT_REQUIRED);
+`packet_loss_chaos`; `blockchain_hub_settlement`. **85** apps.
 
-**Program idle** at Phase J exit unless a new charter opens deeper product work.
+Honest remaining (operator topology / kernel-level): multi-continent SLA meshes,
+kernel TCP byte-splice loss, multi-hub DAO treasury production ops — not
+curriculum blockers; taught at library/admission depth.
+
+**Program idle** at Phase K exit unless a new charter opens further product work.
 
 ---
 

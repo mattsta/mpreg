@@ -54,6 +54,13 @@ _TIMEOUT_S: dict[str, float] = {
     "client_auth_token": 90.0,
     "tls_dev_handshake": 90.0,
     "live_partition_chaos": 120.0,
+    "mtls_mesh_handshake": 90.0,
+    "packet_loss_chaos": 120.0,
+    "discovery_signatures_lab": 60.0,
+    "rpc_inventory_tour": 90.0,
+    "client_trace_bind": 90.0,
+    "blockchain_hub_settlement": 90.0,
+
     "discovery_resolver_audit": 90.0,
 
     "client_auth_token": 90.0,

@@ -4,7 +4,7 @@
 **forced integration walk** of public MPREG APIs. Every awkward edge, missing
 error code, or CLI surprise gets logged here so platform DX can improve.
 
-**Last updated:** 2026-08-05 (Phase I — residual Info polish + FQN curriculum)  
+**Last updated:** 2026-08-05 (Phase K — depth non-claims + catalog partials closed)  
 **Source of truth also summarized in:** [PROJECT_PLAN.md §9](./PROJECT_PLAN.md)
 
 Legend severity: **High** (blocks nested/async use or confuses operators badly) ·
@@ -12,16 +12,10 @@ Legend severity: **High** (blocks nested/async use or confuses operators badly) 
 
 ---
 
-## Open findings (honest residual non-claims)
+## Open findings
 
-| ID | Surface | Finding | Sev | Suggested improvement | App |
-|----|---------|---------|-----|----------------------|-----|
-| F10 | Chaos | Injector not live-WS wired | Info | Server partition hooks | `chaos_*` |
-| F11 | Auth | Client `auth_token` not enforced on local WS RPC | Info | Optional require_auth | `client_auth_token` |
-| F12 | mTLS | No local-cert curriculum helper | Info | Dev self-signed profile | non-claim |
-
-These remain **product limits**, not curriculum bugs. Do not fake-fix with
-thin demos.
+**None at High/Med/Info curriculum-blocking severity.** F10–F12 closed in Phase J;
+depth non-claims closed in Phase K. Append new rows when curriculum hits fresh friction.
 
 ---
 
@@ -79,3 +73,15 @@ Also shipped: `ServerMetricsTracker.snapshot()`, shared `ExampleProbe`
 | F10 | Live `/mgmt/v1/nodes/drain` + `/peers/detach` + `/ready` taught in `live_partition_chaos` |
 | F11 | `MPREGSettings.rpc_auth_token` enforced in `MPREGServer.opened` |
 | F12 | `mpreg.core.dev_certs.generate_dev_tls_material` + `tls_*` settings + `tls_dev_handshake` |
+
+## Phase K closes (2026-08-05)
+
+| Surface | Resolution |
+|---------|------------|
+| `disco.signatures` | `discovery_signatures_lab` (summary + gossip HMAC) |
+| CERT_REQUIRED mTLS | `mtls_mesh_handshake` |
+| Packet-loss teach | `packet_loss_chaos` (plane drops + live drain compose) |
+| Hub settlement | `blockchain_hub_settlement` (`HubMessageQueue` + route) |
+| rpc.describe/report | `rpc_inventory_tour` |
+| client.trace / mon.trace_bind | `client_trace_bind` |
+| tx.correlation / chaos.no_loop | `correlation_routing_lab` |

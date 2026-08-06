@@ -339,6 +339,39 @@ APPS: tuple[ExampleApp, ...] = (
     ),
 
     _app(
+        "discovery_signatures_lab",
+        "Discovery Signatures Lab",
+        AppLevel.L1,
+        "HMAC sign/verify for discovery summaries + gossip envelopes.",
+        ("discovery", "security"),
+        kind="plane",
+    ),
+    _app(
+        "rpc_inventory_tour",
+        "RPC Inventory Tour",
+        AppLevel.L1,
+        "rpc_describe + rpc_report inventory surfaces.",
+        ("rpc",),
+        kind="plane",
+    ),
+    _app(
+        "client_trace_bind",
+        "Client Trace Bind",
+        AppLevel.L1,
+        "last_trace_context + bind_trace_context / trace_context.",
+        ("client", "monitoring"),
+        kind="plane",
+    ),
+    _app(
+        "correlation_routing_lab",
+        "Correlation Routing Lab",
+        AppLevel.L1,
+        "CorrelationTracker + assert_no_routing_loop.",
+        ("transport", "chaos"),
+        kind="plane",
+    ),
+
+    _app(
         "topic_taxonomy_tour",
         "Topic Taxonomy Tour",
         AppLevel.L1,
@@ -538,6 +571,22 @@ APPS: tuple[ExampleApp, ...] = (
         kind="plane",
     ),
 
+    _app(
+        "mtls_mesh_handshake",
+        "mTLS Mesh Handshake",
+        AppLevel.L2,
+        "CERT_REQUIRED mTLS wss with client cert PEMs.",
+        ("security", "transport", "rpc"),
+    ),
+    _app(
+        "blockchain_hub_settlement",
+        "Blockchain Hub Settlement",
+        AppLevel.L2,
+        "HubMessageQueue federation message + settlement routes.",
+        ("fabric",),
+        kind="plane",
+    ),
+
     # L3 — complex mesh
     _app(
         "multi_region_shop",
@@ -620,6 +669,15 @@ APPS: tuple[ExampleApp, ...] = (
         AppLevel.L3,
         "Live /mgmt drain+detach + /ready admission (F10).",
         ("chaos", "monitoring", "ops"),
+        kind="plane",
+    ),
+
+    _app(
+        "packet_loss_chaos",
+        "Packet Loss Chaos",
+        AppLevel.L3,
+        "Plane drop rates + live drain admission compose.",
+        ("chaos", "monitoring"),
         kind="plane",
     ),
 

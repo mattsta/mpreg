@@ -56,8 +56,8 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `rpc.routing_topic` | Policy routing topic | `call(..., routing_topic=)` | partial | `signed_route_border` |
 | `rpc.function_id` / version | Versioned function identity | `function_id`, `version_constraint` | shipped | `rpc_versioned_topic` |
 | `rpc.list` | Capability inventory | `MPREGClientAPI.rpc_list` | shipped | `plane_rpc`, `discovery_join` |
-| `rpc.describe` | Spec detail (local/catalog/scatter) | `rpc_describe` | partial | `plane_rpc` |
-| `rpc.report` | Aggregated inventory metrics | `rpc_report` | partial | `plane_rpc` |
+| `rpc.describe` | Spec detail (local/catalog/scatter) | `rpc_describe` | shipped | `rpc_inventory_tour` |
+| `rpc.report` | Aggregated inventory metrics | `rpc_report` | shipped | `rpc_inventory_tour` |
 | `rpc.topic_aware` | Topic-aware RPC progress | `core.enhanced_rpc` | shipped | `rpc_versioned_topic`, `topic_dependency_lab` |
 | `rpc.deadline` | Per-call timeout | `call(..., timeout=)` | shipped | `chaos_checkout`, `ha_client_failover`, `rpc_deadline_budget` |
 | `rpc.fqn` | Fully-qualified wire names | `qualify_rpc_name`, bare→active ns | shipped | `rpc_fqn_namespace` |
@@ -81,7 +81,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `client.default_ha` | HA retry defaults | `default_ha_policy()` | shipped | `ha_client_failover` |
 | `client.pubsub` | Dedicated pubsub client | `MPREGPubSubClient`, `MPREGPubSubExtendedClient` | partial | `sensor_ingest_pubsub` |
 | `client.dns` | DNS resolve client | `MPREGDnsClient.resolve` | shipped | `plane_dns` |
-| `client.trace` | Last W3C trace context | `last_trace_context()` | partial | `hello_trace`, `global_edge_control_plane` |
+| `client.trace` | Last W3C trace context | `last_trace_context()` | shipped | `client_trace_bind` |
 | `client.auth` | Token / API key on wire | `auth_token`, `api_key`, `rpc_auth_token`, `SecurityConfig` | shipped | `client_auth_token` (F11 enforced); mTLS = `tls_dev_handshake` |
 
 ---
@@ -155,7 +155,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `fabric.cluster_id` | Cluster identity on settings | `MPREGSettings.cluster_id` | shipped | fabric apps |
 | `fabric.cross_rpc` | Cross-cluster RPC DAG | multi `cluster_id` + `locs` | shipped | `plane_fabric`, `multi_region_shop` |
 | `fabric.catalog` | Routing catalog types | `fabric.catalog` Function/Topic/Queue/Cache catalogs | partial | `fabric_snapshot_restart` |
-| `fabric.gossip` | Membership / gossip | `fabric.gossip*`, peer directory | partial | `discovery_join`, `tier3_expansion` |
+| `fabric.gossip` | Membership / gossip | `fabric.gossip*`, peer directory, HMAC envelopes | shipped | `discovery_signatures_lab`, `discovery_join` |
 | `fabric.link_state` | Link-state routing | `fabric.link_state` | partial | `global_edge_control_plane` |
 | `fabric.route_security` | Signed route announcements | `RouteAnnouncementSigner`, `RouteSecurityConfig` | shipped | `signed_route_border` |
 | `fabric.route_policy` | Neighbor / policy tags | route policy directory | shipped | `signed_route_border` |
@@ -185,7 +185,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `disco.dns_register` | DNS service register | `dns_register` / CLI | shipped | `plane_dns` |
 | `disco.dns_resolve` | DNS gateway resolve | `MPREGDnsClient`, `DnsGateway` | shipped | `plane_dns` |
 | `disco.join` | Live node join visibility | peers + new resources | shipped | `discovery_join` |
-| `disco.signatures` | Signed discovery summaries | `discovery_signatures` | gap | platform surface; honest non-claim |
+| `disco.signatures` | Signed discovery summaries | `discovery_signatures`, `gossip_signatures` | shipped | `discovery_signatures_lab` |
 
 ---
 
@@ -215,7 +215,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `mon.transport` | Transport health attach | `attach_transport_adapter` | shipped | `transport_health_attach` |
 | `mon.slo` | SLO helpers | `core.observability.slo` | shipped | `observability_slo_trace`, probe apps |
 | `mon.logging` | Structured / JSON logs | `configure_logging`, CLI `--json-logs` | partial | ops docs |
-| `mon.trace_bind` | Trace context bind | `bind_trace_context` | partial | `hello_trace` |
+| `mon.trace_bind` | Trace context bind | `bind_trace_context`, `trace_context` | shipped | `client_trace_bind` |
 
 ---
 
@@ -240,7 +240,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `chaos.clock_skew` | Clock skew injection | `set_clock_skew` | shipped | `chaos_transport` |
 | `chaos.duplicate` | Dup / reorder hooks | `should_duplicate`, `should_reorder` | shipped | `chaos_transport` |
 | `chaos.routing_oracle` | Expected next-hop oracle | `RoutingOracle` | shipped | `routing_oracle_lab` (`oracle.routing`) |
-| `chaos.no_loop` | Loop assertion helper | `assert_no_routing_loop` | partial | covered via routing oracle lab path checks |
+| `chaos.no_loop` | Loop assertion helper | `assert_no_routing_loop` | shipped | `correlation_routing_lab` |
 
 ---
 
@@ -265,7 +265,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `tx.websocket` | Default WS transport | server/client default | shipped | all live server apps |
 | `tx.tcp` | TCP transport | `tcp_transport` | shipped | `transport_protocol_tour` |
 | `tx.circuit_breaker` | Transport CB | `circuit_breaker` | partial | fabric resilience CB taught in `fabric_graph_resilience` |
-| `tx.correlation` | Correlation tracker | `CorrelationTracker` | partial | monitoring |
+| `tx.correlation` | Correlation tracker | `CorrelationTracker` | shipped | `correlation_routing_lab` |
 | `tx.security` | TLS / certs config | `SecurityConfig`, `TransportConfig`, `tls_*` settings | shipped | `client_auth_token` + `tls_dev_handshake` |
 | `tx.multi_protocol` | Enhanced multi-protocol adapter | `EnhancedMultiProtocolAdapter` | shipped | `transport_protocol_tour` |
 
@@ -357,12 +357,16 @@ F11 `rpc_auth_token` (`client_auth_token`); F12 `generate_dev_tls_material` +
 `tls_dev_handshake`; residual teach apps for disco resolver/audit, queue_fed,
 mon.transport, tx.tcp/multi_protocol, blockchain message types.
 
-**Still open / residual (honest depth non-claims inside Phase J apps):**
+**Closed in Phase K (2026-08-05):** depth non-claims productized —
+`mtls_mesh_handshake` (CERT_REQUIRED), `packet_loss_chaos`,
+`blockchain_hub_settlement`, `discovery_signatures_lab`; catalog partials
+rpc.describe/report, client.trace, mon.trace_bind, tx.correlation, chaos.no_loop.
 
-- Full CERT_REQUIRED mTLS multi-node mesh (client cert PEMs proven; mesh drill optional)
-- Raw socket packet-loss injection (lab FaultInjector + live admission cover the teachable layers)
-- On-chain settlement hub mesh (`blockchain_message_lab` teaches types only)
-- `disco.signatures` HMAC path (honest non-claim in `discovery_resolver_audit`)
+**Still open / residual (operator topology — not curriculum blockers):**
+
+- Multi-continent SLA / production multi-hub DAO treasury ops
+- Kernel-level TCP byte-splice packet loss (platform teaches delivery model + admission)
+- Additional FEATURE `partial` rows that already have thin plane coverage (deepen opportunistically)
 
 **Closed in Phase I (2026-08-05):** false `gap` rows flipped to `shipped` for
 apps that already teach them; FQN features `rpc.fqn` /
@@ -434,6 +438,13 @@ Usability findings from building these apps: [API_FRICTION.md](./API_FRICTION.md
 | `queue_federation_lab` | L2 | `fabric.queue_fed` |
 | `blockchain_message_lab` | L2 | `fabric.blockchain_msg` |
 | `live_partition_chaos` | L3 | `chaos.live_drain`, `ops.mgmt_drain`, `ops.mgmt_detach`, `mon.health` |
+| `discovery_signatures_lab` | L1 | `disco.signatures` |
+| `rpc_inventory_tour` | L1 | `rpc.describe`, `rpc.report` |
+| `client_trace_bind` | L1 | `client.trace`, `mon.trace_bind` |
+| `correlation_routing_lab` | L1 | `tx.correlation`, `chaos.no_loop` |
+| `mtls_mesh_handshake` | L2 | `tx.tls` CERT_REQUIRED |
+| `packet_loss_chaos` | L3 | `chaos.drop`, `chaos.live_drain` |
+| `blockchain_hub_settlement` | L2 | `fabric.blockchain_msg`, `fabric.hubs` |
 | `rpc_deadline_budget` | L3 | `rpc.deadline`, `client.policy.m1/m2/m3` |
 | `notification_fanout` | L2 | `prod.notify`, `pubsub.*` |
 | `billing_ledger` | L2 | `prod.billing`, rpc+cache+queue |
