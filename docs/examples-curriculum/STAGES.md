@@ -308,3 +308,7 @@ Linear continuation after S:
 
 Exit: **97** suite apps; docs integrity green.
 
+## Phase U — Sequential catalog/README truth (COMPLETE)
+
+APP_CATALOG Phase P–T rows; README shipped count **97**. Exit: docs truth only.
+

@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase T COMPLETE — docs integrity + coverage)  
+**Last updated:** 2026-08-05 (Phase U COMPLETE — catalog/README truth)  
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -40,6 +40,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G25 | **Sequential façade parity (Phase R)** | Remaining MPREGClientAPI methods on MPREGClient + teach | [x] Phase R |
 | G26 | **Sequential polish residuals (Phase S)** | OBS print/docs + response converters keep W3C | [x] Phase S |
 | G27 | **Sequential docs integrity + coverage (Phase T)** | STAGES/TRACKER/catalog truth + snapshot unit | [x] Phase T |
+| G28 | **Sequential catalog/README truth (Phase U)** | APP_CATALOG + README 97-app truth | [x] Phase U |
 
 ---
 
@@ -936,6 +937,22 @@ Deferred (topology/product scale only — not active queue): multi-node shared
 audit store, full mgmt UI, remote SQL/other stores backends, multi-continent SLA.
 
 ---
+
+### Phase U — Sequential catalog/README truth (**COMPLETE**)
+
+Continues the single linear queue after T. No parallel charters.
+
+| # | Axis | Work | Status |
+|---|------|------|--------|
+| U0 | PLAN | Append after T; sole active queue | [x] |
+| U1 | USE | APP_CATALOG Phase P–T + 97 app count | [x] |
+| U2 | USE | README shipped-app count 35→97; stages A–T | [x] |
+| U3 | VERIFY | suite smoke path optional; commit; extend only if residuals | [x] |
+
+**Exit:** all U `[x]`.
+
+**Phase U (catalog/README truth): COMPLETE 100%.**
+APP_CATALOG P–T; README 97 apps. Deferred topology/product only.
 
 ## Related
 

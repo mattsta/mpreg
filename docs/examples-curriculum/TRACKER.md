@@ -440,3 +440,11 @@ Only active delivery queue. Mirrors PROJECT_PLAN Phase Q table.
 | OPERATE fabric hop fields | [x] | |
 | verify + commit | [x] | unit 114; suite 97/97 |
 
+## Phase U — Sequential catalog/README truth (COMPLETE)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| APP_CATALOG P–T + 97 | [x] | |
+| README 97 shipped apps | [x] | was stale 35 |
+| commit | [x] | |
+

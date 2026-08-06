@@ -197,3 +197,23 @@ taught in `discovery_watch_summary`. **96** apps.
 | APP_CATALOG / OPERATE / README | scrub stale “planned” language |
 
 **App count:** **96** (no new apps; integrity polish).
+
+### Phase P (2026-08-05) — multi-axis charter +1 app
+
+| ID | Level | Kind | Summary |
+|----|-------|------|---------|
+| `rpc_microbench_lab` | L1 | plane | RPC microbench + metrics snapshot depth |
+| `client_trace_bind` / `unified_client_tour` | deepen | — | W3C last_trace_context + discovery façade |
+
+**App count:** 96 → **97** (+1 Phase P).
+
+### Phase Q–T (2026-08-05) — sequential multi-axis, no new apps
+
+Q: client.summary join; config-check `--explain`; fabric hop snapshot; mgmt audit;
+persistence honesty; plane error_code; ops probe; rpc_list façade.
+R: full MPREGClient API parity; admin audit CLI.
+S: format_server_snapshot fabric; W3C converters; OPERATE `--explain`.
+T: docs integrity + snapshot unit coverage.
+
+**App count:** **97** (no new apps Q–T).
+

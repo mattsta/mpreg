@@ -12,7 +12,7 @@ growth cycle: from getting-started through world-spanning fabric architectures.
 | Doc | Purpose |
 |-----|---------|
 | [VISION.md](VISION.md) | Goals, non-goals, learning principles |
-| [STAGES.md](STAGES.md) | Phases A–D with exit criteria and POC apps |
+| [STAGES.md](STAGES.md) | Phases A–T with exit criteria and POC apps |
 | [APP_CATALOG.md](APP_CATALOG.md) | Full matrix of shipped apps (+ closed historical planned rows) |
 | [APP_CONVENTIONS.md](APP_CONVENTIONS.md) | Packaging, ports, asserts, honesty |
 | [OPERATE.md](OPERATE.md) | Configure / start / run / manage / operate |
@@ -22,7 +22,7 @@ growth cycle: from getting-started through world-spanning fabric architectures.
 **Code lives under** `mpreg/examples/apps/`.  
 **Central runner (entrypoints only):** `uv run mpreg-example …`  
 (also `uv run mpreg examples …` / `uv run mpreg demo …` — same runner).  
-**Never** `python -m` / `uv run python`. **35 shipped apps** in one registry.
+**Never** `python -m` / `uv run python`. **97 shipped apps** in one registry.
 
 ## Quick start (users)
 
