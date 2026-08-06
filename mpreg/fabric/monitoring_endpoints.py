@@ -68,6 +68,8 @@ type DiscoveryCacheProvider = Callable[[], Awaitable[JsonResponse] | JsonRespons
 type DiscoveryPolicyProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
 type DiscoveryLagProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
 type DnsMetricsProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
+type StrongMetricsProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
+type SharedAuditMetricsProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
 
 def _is_dataclass_obj(value: Any) -> bool:
     return is_dataclass(value) and not isinstance(value, type)
@@ -252,6 +254,8 @@ class FederationMonitoringSystem:
     discovery_policy_provider: DiscoveryPolicyProvider | None = None
     discovery_lag_provider: DiscoveryLagProvider | None = None
     dns_metrics_provider: DnsMetricsProvider | None = None
+    strong_metrics_provider: StrongMetricsProvider | None = None
+    shared_audit_metrics_provider: SharedAuditMetricsProvider | None = None
     # Optional callable returning mgmt summary dicts (cluster/nodes/routes/catalog)
     mgmt_summary_provider: (
         Callable[[], Awaitable[JsonResponse] | JsonResponse] | None
@@ -335,6 +339,8 @@ class FederationMonitoringSystem:
         self.app.router.add_get("/metrics/cache", self._get_cache_metrics)
         self.app.router.add_get("/metrics/transport", self._get_transport_metrics)
         self.app.router.add_get("/metrics/persistence", self._get_persistence_metrics)
+        self.app.router.add_get("/metrics/strong", self._get_strong_metrics)
+        self.app.router.add_get("/metrics/shared-audit", self._get_shared_audit_metrics)
         self.app.router.add_get("/metrics/prometheus", self._get_prometheus_metrics)
         self.app.router.add_get("/transport/endpoints", self._get_transport_endpoints)
 
@@ -345,6 +351,7 @@ class FederationMonitoringSystem:
         self.app.router.add_get("/mgmt/v1/catalog", self._get_mgmt_catalog)
         self.app.router.add_get("/mgmt/v1/health", self._get_mgmt_health)
         self.app.router.add_get("/mgmt/v1/raft", self._get_mgmt_raft)
+        self.app.router.add_get("/mgmt/v1/strong", self._get_mgmt_strong)
 
         # Discovery endpoints
         self.app.router.add_get("/discovery/summary", self._get_discovery_summary)
@@ -1050,6 +1057,75 @@ class FederationMonitoringSystem:
         except Exception as e:
             logger.error(f"Error getting persistence metrics: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
+
+    async def _get_strong_metrics(self, request: web.Request) -> web.Response:
+        """STRONG majority-commit put metrics (process-local; not WAN SLA)."""
+        provider = self.strong_metrics_provider
+        if provider is None:
+            return web.json_response(
+                {
+                    "status": "ok",
+                    "strong": {
+                        "enabled_flag": False,
+                        "coordinator_bound": False,
+                        "health": "unwired",
+                        "counters": {},
+                        "latency_ms": {},
+                    },
+                    "timestamp": time.time(),
+                }
+            )
+        try:
+            payload = provider()
+            if inspect.isawaitable(payload):
+                payload = await payload
+            return web.json_response(
+                {
+                    "status": "ok",
+                    "strong": payload if isinstance(payload, dict) else {"raw": payload},
+                    "timestamp": time.time(),
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error getting strong metrics: {e}")
+            return web.json_response({"status": "error", "message": str(e)}, status=500)
+
+    async def _get_shared_audit_metrics(self, request: web.Request) -> web.Response:
+        """Shared audit G-Set epidemic metrics for operators."""
+        provider = self.shared_audit_metrics_provider
+        if provider is None:
+            return web.json_response(
+                {
+                    "status": "ok",
+                    "shared_audit": {
+                        "enabled_flag": False,
+                        "store_present": False,
+                        "status": "unwired",
+                        "counters": {},
+                    },
+                    "timestamp": time.time(),
+                }
+            )
+        try:
+            payload = provider()
+            if inspect.isawaitable(payload):
+                payload = await payload
+            return web.json_response(
+                {
+                    "status": "ok",
+                    "shared_audit": (
+                        payload if isinstance(payload, dict) else {"raw": payload}
+                    ),
+                    "timestamp": time.time(),
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error getting shared audit metrics: {e}")
+            return web.json_response({"status": "error", "message": str(e)}, status=500)
+
+    async def _get_mgmt_strong(self, request: web.Request) -> web.Response:
+        """Management snapshot for STRONG readiness (same payload as /metrics/strong)."""
+        return await self._get_strong_metrics(request)
 
     async def _get_discovery_summary(self, request: web.Request) -> web.Response:
         """Get discovery summary export status."""
@@ -2436,6 +2512,121 @@ class FederationMonitoringSystem:
             except Exception as exc:  # noqa: BLE001
                 logger.debug("Prometheus persistence metrics unavailable: {}", exc)
 
+        # STRONG put counters + latency (lab SLI; not production WAN SLA)
+        if self.strong_metrics_provider is not None:
+            try:
+                strong = self.strong_metrics_provider()
+                if inspect.isawaitable(strong):
+                    strong = await strong
+                if isinstance(strong, dict):
+                    counters = strong.get("counters") or {}
+                    lat = strong.get("latency_ms") or {}
+                    lines.append(
+                        "# HELP mpreg_strong_enabled 1 if STRONG coordinator is bound."
+                    )
+                    lines.append("# TYPE mpreg_strong_enabled gauge")
+                    lines.append(
+                        f"mpreg_strong_enabled{{{labels}}} "
+                        f"{1 if strong.get('coordinator_bound') else 0}"
+                    )
+                    lines.append(
+                        "# HELP mpreg_strong_puts_ok_total Successful STRONG puts."
+                    )
+                    lines.append("# TYPE mpreg_strong_puts_ok_total counter")
+                    lines.append(
+                        f"mpreg_strong_puts_ok_total{{{labels}}} "
+                        f"{int(counters.get('puts_ok', 0) or 0)}"
+                    )
+                    lines.append(
+                        "# HELP mpreg_strong_puts_fail_total Failed STRONG puts."
+                    )
+                    lines.append("# TYPE mpreg_strong_puts_fail_total counter")
+                    lines.append(
+                        f"mpreg_strong_puts_fail_total{{{labels}}} "
+                        f"{int(counters.get('puts_fail', 0) or 0)}"
+                    )
+                    lines.append(
+                        "# HELP mpreg_strong_refused_disabled_total STRONG puts refused (1012)."
+                    )
+                    lines.append("# TYPE mpreg_strong_refused_disabled_total counter")
+                    lines.append(
+                        f"mpreg_strong_refused_disabled_total{{{labels}}} "
+                        f"{int(counters.get('refused_disabled', 0) or 0)}"
+                    )
+                    lines.append(
+                        "# HELP mpreg_strong_pending Pending prepare entries on local backend."
+                    )
+                    lines.append("# TYPE mpreg_strong_pending gauge")
+                    lines.append(
+                        f"mpreg_strong_pending{{{labels}}} "
+                        f"{int(strong.get('pending_count', 0) or 0)}"
+                    )
+                    if lat.get("sample_count"):
+                        lines.append(
+                            "# HELP mpreg_strong_put_latency_p99_ms Process-local p99 put latency (not WAN SLA)."
+                        )
+                        lines.append("# TYPE mpreg_strong_put_latency_p99_ms gauge")
+                        lines.append(
+                            f"mpreg_strong_put_latency_p99_ms{{{labels}}} "
+                            f"{float(lat.get('p99_ms', 0.0) or 0.0):.3f}"
+                        )
+                        lines.append(
+                            "# HELP mpreg_strong_put_latency_p50_ms Process-local p50 put latency."
+                        )
+                        lines.append("# TYPE mpreg_strong_put_latency_p50_ms gauge")
+                        lines.append(
+                            f"mpreg_strong_put_latency_p50_ms{{{labels}}} "
+                            f"{float(lat.get('p50_ms', 0.0) or 0.0):.3f}"
+                        )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("Prometheus strong metrics unavailable: {}", exc)
+
+        if self.shared_audit_metrics_provider is not None:
+            try:
+                audit = self.shared_audit_metrics_provider()
+                if inspect.isawaitable(audit):
+                    audit = await audit
+                if isinstance(audit, dict):
+                    counters = audit.get("counters") or {}
+                    lines.append(
+                        "# HELP mpreg_shared_audit_enabled 1 if shared audit store is present."
+                    )
+                    lines.append("# TYPE mpreg_shared_audit_enabled gauge")
+                    lines.append(
+                        f"mpreg_shared_audit_enabled{{{labels}}} "
+                        f"{1 if audit.get('store_present') else 0}"
+                    )
+                    lines.append(
+                        "# HELP mpreg_shared_audit_store_size Local G-Set record count."
+                    )
+                    lines.append("# TYPE mpreg_shared_audit_store_size gauge")
+                    lines.append(
+                        f"mpreg_shared_audit_store_size{{{labels}}} "
+                        f"{int(audit.get('store_size', 0) or 0)}"
+                    )
+                    for cname in (
+                        "publish_dropped",
+                        "deltas_sent",
+                        "deltas_recv",
+                        "pulls_sent",
+                        "pulls_recv",
+                        "digests_sent",
+                        "merge_conflicts",
+                    ):
+                        if cname in counters:
+                            lines.append(
+                                f"# HELP mpreg_shared_audit_{cname}_total Shared audit counter."
+                            )
+                            lines.append(
+                                f"# TYPE mpreg_shared_audit_{cname}_total counter"
+                            )
+                            lines.append(
+                                f"mpreg_shared_audit_{cname}_total{{{labels}}} "
+                                f"{int(counters.get(cname, 0) or 0)}"
+                            )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("Prometheus shared audit metrics unavailable: {}", exc)
+
         # Deduplicate HELP/TYPE lines while preserving order of metric samples
         return lines
 
@@ -2615,6 +2806,16 @@ class FederationMonitoringSystem:
                 "description": "Persistence snapshot metrics",
             },
             {
+                "path": "/metrics/strong",
+                "method": "GET",
+                "description": "STRONG majority-commit put metrics (process-local)",
+            },
+            {
+                "path": "/metrics/shared-audit",
+                "method": "GET",
+                "description": "Shared audit G-Set epidemic metrics",
+            },
+            {
                 "path": "/metrics/prometheus",
                 "method": "GET",
                 "description": "Prometheus text exposition of golden-signal metrics",
@@ -2648,6 +2849,11 @@ class FederationMonitoringSystem:
                 "path": "/mgmt/v1/raft",
                 "method": "GET",
                 "description": "Management API: Raft consensus status",
+            },
+            {
+                "path": "/mgmt/v1/strong",
+                "method": "GET",
+                "description": "Management API: STRONG cache put readiness",
             },
             {
                 "path": "/transport/endpoints",
@@ -3268,6 +3474,8 @@ def create_federation_monitoring_system(
     discovery_policy_provider: DiscoveryPolicyProvider | None = None,
     discovery_lag_provider: DiscoveryLagProvider | None = None,
     dns_metrics_provider: DnsMetricsProvider | None = None,
+    strong_metrics_provider: StrongMetricsProvider | None = None,
+    shared_audit_metrics_provider: SharedAuditMetricsProvider | None = None,
     mgmt_summary_provider: Callable[[], Awaitable[JsonResponse] | JsonResponse]
     | None = None,
     policy_dry_run_provider: Callable[
@@ -3318,6 +3526,8 @@ def create_federation_monitoring_system(
         discovery_policy_provider=discovery_policy_provider,
         discovery_lag_provider=discovery_lag_provider,
         dns_metrics_provider=dns_metrics_provider,
+        strong_metrics_provider=strong_metrics_provider,
+        shared_audit_metrics_provider=shared_audit_metrics_provider,
         mgmt_summary_provider=mgmt_summary_provider,
         policy_dry_run_provider=policy_dry_run_provider,
         mgmt_drain_provider=mgmt_drain_provider,

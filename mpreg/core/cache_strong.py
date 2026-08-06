@@ -532,6 +532,23 @@ class StrongPutCoordinator:
                 operation_id=oid,
             )
 
+        # Residual-free on non-committers: peers that prepared but did not apply
+        # COMMIT must drop pending (e.g. commit dropped on a minority peer while
+        # Q still formed). Best-effort ABORT; does not revoke successful commits.
+        committed = set(commit_applied)
+        stale = [p for p in prepare_ok if p not in committed]
+        if stale:
+            await asyncio.gather(
+                *[
+                    self._abort_peer(p, oid, key, strong_version)
+                    for p in stale
+                    if p != self.origin_id
+                ],
+                return_exceptions=True,
+            )
+            if self.origin_id in stale:
+                await self.local.abort(op_id=oid, key=key)
+
         entry = self.local.get_visible(key)
         return CacheOperationResult(
             success=True,
@@ -543,6 +560,7 @@ class StrongPutCoordinator:
                 "quorum": Q,
                 "commit_acks": list(commit_applied),
                 "strong_version": strong_version.to_dict(),
+                "aborted_non_committers": list(stale),
             },
         )
 

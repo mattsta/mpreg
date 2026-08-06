@@ -81,6 +81,25 @@ def build_monitoring_openapi() -> dict[str, Any]:
         "/metrics/persistence": {
             "get": {"summary": "Persistence metrics", "tags": ["metrics"]}
         },
+        "/metrics/strong": {
+            "get": {
+                "summary": "STRONG majority-commit put metrics (process-local)",
+                "description": "Not a WAN SLA. Lab/process latency ring + put counters.",
+                "tags": ["metrics"],
+            }
+        },
+        "/metrics/shared-audit": {
+            "get": {
+                "summary": "Shared audit G-Set epidemic metrics",
+                "tags": ["metrics"],
+            }
+        },
+        "/mgmt/v1/strong": {
+            "get": {
+                "summary": "STRONG cache put readiness snapshot",
+                "tags": ["mgmt"],
+            }
+        },
         "/discovery/summary": {
             "get": {"summary": "Discovery summary export", "tags": ["discovery"]}
         },
@@ -330,6 +349,8 @@ def monitoring_route_table() -> list[tuple[str, str]]:
         "/metrics/cache",
         "/metrics/transport",
         "/metrics/persistence",
+        "/metrics/strong",
+        "/metrics/shared-audit",
         "/metrics/prometheus",
         "/transport/endpoints",
         "/mgmt/v1/cluster",
@@ -338,6 +359,7 @@ def monitoring_route_table() -> list[tuple[str, str]]:
         "/mgmt/v1/catalog",
         "/mgmt/v1/health",
         "/mgmt/v1/raft",
+        "/mgmt/v1/strong",
         "/mgmt/v1/audit",
         "/mgmt/v1/schema",
         "/discovery/summary",

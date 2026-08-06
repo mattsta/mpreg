@@ -69,6 +69,114 @@ def build_persistence_snapshot_metrics(server: Any) -> dict[str, Any]:
     }
     return payload
 
+def build_strong_metrics(server: Any) -> dict[str, Any]:
+    """Process-local STRONG put metrics for operators (not WAN SLA)."""
+    enabled_flag = bool(getattr(server.settings, "cache_strong_enabled", False))
+    cm = getattr(server, "_cache_manager", None)
+    be = getattr(server, "_strong_local_backend", None)
+    base: dict[str, Any] = {
+        "enabled_flag": enabled_flag,
+        "coordinator_bound": False,
+        "backend_present": be is not None,
+        "pending_count": 0,
+        "purge_task": getattr(server, "_strong_pending_purge_task", None) is not None,
+        "settings": {
+            "replica_factor": getattr(
+                server.settings, "cache_strong_replica_factor", None
+            ),
+            "min_replicas": getattr(server.settings, "cache_strong_min_replicas", None),
+            "prepare_timeout_s": getattr(
+                server.settings, "cache_strong_prepare_timeout_s", None
+            ),
+            "commit_timeout_s": getattr(
+                server.settings, "cache_strong_commit_timeout_s", None
+            ),
+            "pending_ttl_s": getattr(
+                server.settings, "cache_strong_pending_ttl_s", None
+            ),
+        },
+    }
+    if cm is not None and hasattr(cm, "strong_metrics_snapshot"):
+        snap = cm.strong_metrics_snapshot()
+        base["coordinator_bound"] = bool(snap.get("enabled"))
+        base["pending_count"] = int(snap.get("pending_count") or 0)
+        base["counters"] = dict(snap.get("counters") or {})
+        base["latency_ms"] = dict(snap.get("latency_ms") or {})
+        base["coordinator"] = dict(snap.get("coordinator") or {})
+    elif be is not None and hasattr(be, "pending_count"):
+        try:
+            base["pending_count"] = int(be.pending_count())
+        except Exception:  # noqa: BLE001
+            pass
+        base["counters"] = {}
+        base["latency_ms"] = {}
+    else:
+        base["counters"] = {}
+        base["latency_ms"] = {}
+    # Simple health hint for doctor
+    if not enabled_flag:
+        base["health"] = "disabled"
+    elif not base["coordinator_bound"]:
+        base["health"] = "misconfigured"
+    elif int(base["pending_count"]) > 64:
+        base["health"] = "degraded_pending"
+    else:
+        base["health"] = "ok"
+    return base
+
+def build_shared_audit_metrics(server: Any) -> dict[str, Any]:
+    """Shared-audit epidemic metrics + health for operators."""
+    from mpreg.server_pkg.shared_audit.metrics import get_shared_audit_metrics
+
+    enabled = bool(getattr(server.settings, "mgmt_audit_shared_enabled", False))
+    store = getattr(server, "_shared_audit_store", None)
+    rep = getattr(server, "_shared_audit_replicator", None)
+    counters = get_shared_audit_metrics().snapshot()
+    health_dict: dict[str, Any] | None = None
+    store_size = 0
+    if store is not None and hasattr(store, "size"):
+        try:
+            store_size = int(store.size())
+        except Exception:  # noqa: BLE001
+            store_size = 0
+    if rep is not None and hasattr(rep, "health"):
+        try:
+            h = rep.health()
+            health_dict = h.to_dict() if hasattr(h, "to_dict") else dict(h)
+        except Exception:  # noqa: BLE001
+            health_dict = None
+    peers = 0
+    if health_dict and "peers_known" in health_dict:
+        peers = int(health_dict["peers_known"] or 0)
+    status = "disabled"
+    if enabled and store is not None:
+        drops = int(counters.get("publish_dropped", 0) or 0)
+        if drops > 0:
+            status = "degraded_drops"
+        elif peers < 1 and enabled:
+            status = "ok_no_peers"  # single-node or not yet meshed
+        else:
+            status = "ok"
+    elif enabled and store is None:
+        status = "misconfigured"
+    return {
+        "enabled_flag": enabled,
+        "store_present": store is not None,
+        "replicator_present": rep is not None,
+        "store_size": store_size,
+        "counters": counters,
+        "health": health_dict,
+        "status": status,
+        "settings": {
+            "reconcile_interval_s": getattr(
+                server.settings, "mgmt_audit_shared_reconcile_interval_s", None
+            ),
+            "gossip_targets": getattr(
+                server.settings, "mgmt_audit_shared_gossip_targets", None
+            ),
+        },
+    }
+
 def build_dns_metrics(server: Any) -> dict[str, Any]:
     if not server.settings.dns_gateway_enabled:
         return {"enabled": False}

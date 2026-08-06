@@ -422,3 +422,32 @@ async def test_reprepare_idempotent(op: str) -> None:
     )
     assert a1.ok and a2.ok
     assert be.pending_count() == 1
+
+# ---------------------------------------------------------------------------
+# T15 — random commit-drop subsets residual-free (DistLab Hypothesis expand)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+@given(
+    n=st.integers(min_value=3, max_value=5),
+    drop_k=st.integers(min_value=1, max_value=4),
+)
+@settings(
+    max_examples=25,
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
+)
+async def test_random_commit_drop_subset_residual_free(n: int, drop_k: int) -> None:
+    """Drop commit to k non-origin peers; outcome residual-free either way."""
+    peers = [f"n{i}" for i in range(n)]
+    non_origin = peers[1:]
+    k = min(drop_k, len(non_origin))
+    drop_c = frozenset(non_origin[:k])
+    coord, _t, backends = _cluster(n, drop_commit=drop_c, min_replicas=n)
+    key = _key(f"rcd-{n}-{k}")
+    res = await coord.strong_put(key, {"drop": list(drop_c)}, eligible_peers=peers)
+    if res.success:
+        for be in backends.values():
+            assert be.pending_count() == 0
+    else:
+        _no_residual(backends, key, res.operation_id or "")

@@ -11840,6 +11840,8 @@ class MPREGServer:
             discovery_policy_provider=self._discovery_policy_metrics,
             discovery_lag_provider=self._discovery_lag_metrics,
             dns_metrics_provider=self._dns_metrics,
+            strong_metrics_provider=self._strong_metrics,
+            shared_audit_metrics_provider=self._shared_audit_metrics,
             mgmt_summary_provider=self._mgmt_v1_summary,
             policy_dry_run_provider=self._mgmt_policy_dry_run,
             mgmt_drain_provider=self._mgmt_apply_drain,
@@ -12164,6 +12166,16 @@ class MPREGServer:
         from mpreg.server_pkg.monitoring_metrics import build_dns_metrics
 
         return build_dns_metrics(self)  # type: ignore[return-value]
+
+    def _strong_metrics(self) -> dict[str, Any]:
+        from mpreg.server_pkg.monitoring_metrics import build_strong_metrics
+
+        return build_strong_metrics(self)
+
+    def _shared_audit_metrics(self) -> dict[str, Any]:
+        from mpreg.server_pkg.monitoring_metrics import build_shared_audit_metrics
+
+        return build_shared_audit_metrics(self)
 
     def _discovery_summary_metrics(self) -> dict[str, Any]:
         from mpreg.server_pkg.discovery_metrics import build_discovery_summary_metrics

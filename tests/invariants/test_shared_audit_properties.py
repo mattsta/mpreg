@@ -404,3 +404,57 @@ def test_local_scope_respects_limit(n: int, limit: int) -> None:
     if limit >= 0:
         assert len(out["mutations"]) <= limit
         assert out["mutation_count"] == len(out["mutations"])
+
+# ---------------------------------------------------------------------------
+# T15 — partition isolate + heal converges (DistLab Hypothesis expand)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+@given(n_events=st.integers(min_value=1, max_value=8))
+@settings(
+    max_examples=15,
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
+)
+async def test_partition_pair_heal_converges(n_events: int) -> None:
+    """Isolate n1 from n0 and n2 while n0 publishes; heal + digest → equal G-Sets."""
+    transport, stores, reps = _mesh(3)
+    # Fully isolate n1
+    transport.partition("n0", "n1")
+    transport.partition("n1", "n2")
+
+    expected: set[str] = set()
+    for i in range(n_events):
+        rec = record_from_mgmt_entry(
+            event=f"e{i}",
+            timestamp=float(i + 1),
+            actor="prop",
+            success=True,
+            detail={"i": i},
+            cluster_id="c1",
+            origin_node="n0",
+            origin_url="ws://n0",
+            entry_id=f"part-{i}",
+        )
+        stores[0].insert(rec)
+        reps[0].publish(rec)
+        expected.add(rec.entry_id)
+
+    await reps[0]._flush_outbound()
+    n1_ids = {r.entry_id for r in stores[1].snapshot(gossip_eligible_only=True)}
+    assert expected.isdisjoint(n1_ids), n1_ids
+
+    transport.heal()
+    # Multi-round digest anti-entropy after heal
+    for _ in range(3):
+        for r in reps:
+            d = r.build_digest()
+            for other in reps:
+                if other is r:
+                    continue
+                await other._on_digest(d)
+
+    for store in stores:
+        have = {r.entry_id for r in store.snapshot(gossip_eligible_only=True)}
+        missing = expected - have
+        assert not missing, f"node {store.local_node} missing {missing}"

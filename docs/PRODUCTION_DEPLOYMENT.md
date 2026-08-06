@@ -371,6 +371,7 @@ Persistence snapshots can be inspected at `/metrics/persistence` on the
 monitoring endpoint.
 
 See `docs/OBSERVABILITY_TROUBLESHOOTING.md` for detailed workflows.
+STRONG + shared audit operator runbook: `docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md`.
 
 Route tracing is available at the monitoring endpoint:
 `/routing/trace?destination=<cluster_id>`.

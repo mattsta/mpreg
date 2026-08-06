@@ -170,6 +170,46 @@ def _strong_drop_commit() -> Scenario:
         meta={"track": "T2"},
     )
 
+def _strong_drop_abort() -> Scenario:
+    """Drop ABORT after prepare+failed commit — purge TTL clears pending residual.
+
+    Peers prepare successfully; commit is dropped so the put fails; ABORT is also
+    dropped so pending would linger. Short pending_ttl + purge makes the
+    residual-free contract hold without claiming BFT or infinite pending retention.
+    """
+    import asyncio
+
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+
+    sut = StrongSUT.create(
+        3,
+        prepare_timeout_s=0.5,
+        commit_timeout_s=0.25,
+        pending_ttl_s=0.15,
+    )
+    # Prepare reaches peers; commit fails; abort never delivered.
+    sut.transport.drop_commit |= {"n1", "n2"}
+    sut.transport.drop_abort |= {"n1", "n2"}
+
+    async def body(history: History, s: object) -> None:
+        res = await sut.put(
+            history, process="c0", origin="n0", logical_key="da", value=1
+        )
+        assert res.success is False
+        # Wait past pending_ttl then purge so ResidualFreeChecker sees zero pending.
+        await asyncio.sleep(0.25)
+        for be in sut.backends.values():
+            if hasattr(be, "purge_expired_pending"):
+                be.purge_expired_pending()
+
+    return Scenario(
+        name="strong.drop_abort",
+        setup=lambda: sut,
+        body=body,
+        checker=default_strong_checkers(key="da"),
+        meta={"track": "T13", "fault": "drop_abort"},
+    )
+
 def _strong_lie_prepare() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
 
@@ -359,22 +399,44 @@ def _strong_not_bft_lie_commit() -> Scenario:
     )
 
 def _strong_soak_n(n_puts: int) -> Scenario:
+    import time
+
     from mpreg.testing.distlab.adapters.strong import StrongSUT
+    from mpreg.testing.distlab.models import OpKind, OpStatus
+    from mpreg.testing.distlab.sli import DEFAULT_STRONG_SOAK_BUDGET
 
     sut = StrongSUT.create(3)
     gen = SequentialPuts(sut=sut, n=n_puts, logical_key="soak")
 
     async def body(history: History, s: object) -> None:
+        t0 = time.perf_counter()
         await gen.as_body()(history, sut)
+        duration_s = time.perf_counter() - t0
         fails = history.failed_puts("soak")
         assert not fails, f"soak failures: {fails}"
+        latencies: list[float] = []
+        for inv, term in history.pairs():
+            if inv.kind is not OpKind.PUT or inv.key != "soak":
+                continue
+            if term is None or term.status is not OpStatus.OK:
+                continue
+            latencies.append((term.wall_time - inv.wall_time) * 1000.0)
+        if not latencies and n_puts > 0:
+            latencies.append((duration_s * 1000.0) / n_puts)
+        budget = DEFAULT_STRONG_SOAK_BUDGET.check(
+            latency_ms=latencies,
+            duration_s=duration_s,
+            success=n_puts - len(fails),
+            total=n_puts,
+        )
+        assert budget["ok"], budget["violations"]
 
     return Scenario(
         name=f"strong.soak_{n_puts}",
         setup=lambda: sut,
         body=body,
         checker=default_strong_checkers(key="soak"),
-        meta={"track": "T2"},
+        meta={"track": "T2", "sli": True, "n_puts": n_puts},
     )
 
 def _audit_multi() -> Scenario:
@@ -823,6 +885,7 @@ def register_builtins(registry=None) -> int:
         ("strong.concurrent_multi_key", _strong_multi_key, "T2", "multi-key", ("strong", "conc")),
         ("strong.drop_prepare", _strong_drop_prepare, "T2", "drop prepare", ("strong", "fault")),
         ("strong.drop_commit", _strong_drop_commit, "T2", "drop commit", ("strong", "fault")),
+        ("strong.drop_abort", _strong_drop_abort, "T13", "drop abort residual-free", ("strong", "fault")),
         ("strong.fail_prepare", _strong_fail_prepare, "T3", "fail prepare residual", ("strong", "adv")),
         ("strong.wrong_cluster", _strong_wrong_cluster, "T3", "wrong cluster residual", ("strong", "adv")),
         ("strong.delay_within_timeout", _strong_delay_ok, "T2", "delay within timeout", ("strong", "fault")),

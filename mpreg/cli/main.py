@@ -1539,6 +1539,20 @@ def start_config(settings_path: str) -> None:
     help="Also smoke RPC echo via MPREG_URL / --rpc-url (USE-T10-02)",
 )
 @click.option(
+    "--strong",
+    "check_strong",
+    is_flag=True,
+    default=False,
+    help="Also probe /metrics/strong and fail on critical health",
+)
+@click.option(
+    "--audit",
+    "check_audit",
+    is_flag=True,
+    default=False,
+    help="Also probe /metrics/shared-audit and fail on critical status",
+)
+@click.option(
     "--rpc-url",
     default=None,
     envvar="MPREG_URL",
@@ -1552,6 +1566,8 @@ def doctor(
     output_format: str,
     deep: bool,
     data_plane: bool,
+    check_strong: bool,
+    check_audit: bool,
     rpc_url: str | None,
 ) -> None:
     """Probe monitoring health, discovery, and persistence endpoints."""
@@ -1603,6 +1619,15 @@ def doctor(
                     ("link_state", f"{base}/routing/link-state"),
                 ]
             )
+        if check_strong:
+            checks.extend(
+                [
+                    ("metrics_strong", f"{base}/metrics/strong"),
+                    ("mgmt_strong", f"{base}/mgmt/v1/strong"),
+                ]
+            )
+        if check_audit:
+            checks.append(("metrics_shared_audit", f"{base}/metrics/shared-audit"))
         failures = 0
         rows: list[dict[str, str]] = []
         timeout_cfg = aiohttp.ClientTimeout(total=timeout)
@@ -1654,6 +1679,34 @@ def doctor(
                             if "mpreg_info" not in payload:
                                 ok = False
                                 body_preview = "missing mpreg_info metric"
+                        if (
+                            ok
+                            and name in ("metrics_strong", "mgmt_strong")
+                            and isinstance(payload, dict)
+                        ):
+                            body = payload.get("strong") if isinstance(
+                                payload.get("strong"), dict
+                            ) else payload
+                            health = str((body or {}).get("health", "")).lower()
+                            if health in {"misconfigured", "critical"}:
+                                ok = False
+                                body_preview = f"strong health={health}: {body_preview}"
+                            elif health == "disabled":
+                                body_preview = f"strong disabled (ok): {body_preview}"
+                        if (
+                            ok
+                            and name == "metrics_shared_audit"
+                            and isinstance(payload, dict)
+                        ):
+                            body = payload.get("shared_audit") if isinstance(
+                                payload.get("shared_audit"), dict
+                            ) else payload
+                            status = str((body or {}).get("status", "")).lower()
+                            if status in {"misconfigured", "critical"}:
+                                ok = False
+                                body_preview = (
+                                    f"shared_audit status={status}: {body_preview}"
+                                )
                         if (
                             deep
                             and ok
@@ -3447,6 +3500,65 @@ def persistence(url: str | None, output_format: str) -> None:
                 emit(payload, output_format=output_format, table_title="Persistence")
 
     run_coro(_persistence())
+
+@monitor.command("strong")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_MONITORING_URL",
+    help="Monitoring base URL (or set MPREG_MONITORING_URL)",
+)
+@click.option(
+    "--mgmt/--metrics",
+    "use_mgmt",
+    default=False,
+    help="Use /mgmt/v1/strong instead of /metrics/strong",
+)
+@add_format_option
+def monitor_strong(url: str | None, use_mgmt: bool, output_format: str) -> None:
+    """Fetch STRONG majority-commit put metrics (process-local; not WAN SLA)."""
+
+    async def _strong() -> None:
+        monitoring_url = url or os.environ.get("MPREG_MONITORING_URL")
+        if not monitoring_url:
+            console.print(
+                "[red]Monitoring URL required. Use --url or set MPREG_MONITORING_URL.[/red]"
+            )
+            return
+        path = "/mgmt/v1/strong" if use_mgmt else "/metrics/strong"
+        endpoint = f"{monitoring_url.rstrip('/')}{path}"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(endpoint) as response:
+                payload = await response.json()
+                emit(payload, output_format=output_format, table_title="STRONG")
+
+    run_coro(_strong())
+
+@monitor.command("audit")
+@click.option(
+    "--url",
+    default=None,
+    envvar="MPREG_MONITORING_URL",
+    help="Monitoring base URL (or set MPREG_MONITORING_URL)",
+)
+@add_format_option
+def monitor_audit(url: str | None, output_format: str) -> None:
+    """Fetch shared-audit G-Set epidemic metrics from monitoring."""
+
+    async def _audit() -> None:
+        monitoring_url = url or os.environ.get("MPREG_MONITORING_URL")
+        if not monitoring_url:
+            console.print(
+                "[red]Monitoring URL required. Use --url or set MPREG_MONITORING_URL.[/red]"
+            )
+            return
+        endpoint = f"{monitoring_url.rstrip('/')}/metrics/shared-audit"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(endpoint) as response:
+                payload = await response.json()
+                emit(payload, output_format=output_format, table_title="Shared audit")
+
+    run_coro(_audit())
 
 @monitor.command("dns")
 @click.option(

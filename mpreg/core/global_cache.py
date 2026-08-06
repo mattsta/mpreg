@@ -160,6 +160,9 @@ class GlobalCacheManager(ManagedObject):
         self._strong_coordinator: Any = None
         self._strong_backend: Any = None
         self._strong_metrics: dict[str, int] = defaultdict(int)
+        # Bounded ring of recent STRONG put durations (ms) for operator SLIs — not WAN SLA.
+        self._strong_latency_ms: list[float] = []
+        self._strong_latency_max: int = 256
 
         # Initialize namespace index for efficient namespace operations
         self.namespace_index: dict[str, set[GlobalCacheKey]] = defaultdict(set)
@@ -228,9 +231,12 @@ class GlobalCacheManager(ManagedObject):
             except Exception:  # noqa: BLE001
                 pass
 
+        t0 = time.perf_counter()
         result = await coord.strong_put(
             key, value, metadata=metadata, eligible_peers=eligible
         )
+        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        self._record_strong_latency(elapsed_ms)
         if result.success and result.entry is not None:
             # Apply visible entry into real L1 only after quorum success
             self._put_to_l1(result.entry)
@@ -238,7 +244,69 @@ class GlobalCacheManager(ManagedObject):
             self._strong_metrics["puts_ok"] += 1
         else:
             self._strong_metrics["puts_fail"] += 1
+            code = getattr(result, "error_code", None)
+            if code is not None:
+                self._strong_metrics[f"fail_code_{int(code)}"] += 1
         return result
+
+    def _record_strong_latency(self, elapsed_ms: float) -> None:
+        ring = self._strong_latency_ms
+        ring.append(float(elapsed_ms))
+        max_n = self._strong_latency_max
+        if len(ring) > max_n:
+            del ring[: len(ring) - max_n]
+
+    def strong_metrics_snapshot(self) -> dict[str, Any]:
+        """Operator-facing STRONG put metrics (process-local; not WAN SLA)."""
+        coord = self._strong_coordinator
+        be = self._strong_backend
+        pending = 0
+        if be is not None and hasattr(be, "pending_count"):
+            try:
+                pending = int(be.pending_count())
+            except Exception:  # noqa: BLE001
+                pending = 0
+        samples = list(self._strong_latency_ms)
+        lat: dict[str, float | int] = {
+            "sample_count": len(samples),
+            "last_ms": float(samples[-1]) if samples else 0.0,
+        }
+        if samples:
+            ordered = sorted(samples)
+            lat["p50_ms"] = float(ordered[len(ordered) // 2])
+            lat["p99_ms"] = float(ordered[max(0, int(len(ordered) * 0.99) - 1)])
+            lat["max_ms"] = float(ordered[-1])
+            lat["avg_ms"] = float(sum(ordered) / len(ordered))
+        cfg: dict[str, Any] = {}
+        if coord is not None:
+            cfg = {
+                "origin_id": getattr(coord, "origin_id", None),
+                "replica_factor": getattr(coord, "replica_factor", None),
+                "min_replicas": getattr(coord, "min_replicas", None),
+                "prepare_timeout_s": getattr(coord, "prepare_timeout_s", None),
+                "commit_timeout_s": getattr(coord, "commit_timeout_s", None),
+                "pending_ttl_s": getattr(coord, "pending_ttl_s", None),
+                "lab_single_node": bool(getattr(coord, "lab_single_node", False)),
+            }
+        return {
+            "enabled": coord is not None,
+            "pending_count": pending,
+            "counters": dict(self._strong_metrics),
+            "latency_ms": lat,
+            "coordinator": cfg,
+        }
+
+    def strong_status(self) -> dict[str, Any]:
+        """Compact STRONG readiness for clients/operators."""
+        snap = self.strong_metrics_snapshot()
+        return {
+            "enabled": snap["enabled"],
+            "pending_count": snap["pending_count"],
+            "puts_ok": int(snap["counters"].get("puts_ok", 0)),
+            "puts_fail": int(snap["counters"].get("puts_fail", 0)),
+            "refused_disabled": int(snap["counters"].get("refused_disabled", 0)),
+            "coordinator": snap.get("coordinator") or {},
+        }
 
     def _enqueue_replication(
         self, op: str, key: GlobalCacheKey, entry: Any = None
@@ -986,6 +1054,7 @@ class GlobalCacheManager(ManagedObject):
                 }
                 for level, times in self.performance_metrics.items()
             },
+            "strong": self.strong_metrics_snapshot(),
         }
 
     async def shutdown(self) -> None:

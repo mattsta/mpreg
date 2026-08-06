@@ -3,7 +3,7 @@
 # See .local/DISTRIBUTED_SYSTEMS_VALIDATION_PLAN.md §1 and §6.
 
 version: 1
-updated: "2026-08-04"
+updated: "2026-08-06"
 
 routing:
   - id: INV-R1
@@ -233,6 +233,9 @@ encapsulation:
       - tests/testing/test_distlab_core.py
       - tests/testing/test_distlab_registry.py
       - tests/testing/test_distlab_live.py
+      - tests/testing/test_distlab_sli.py
+      - tests/server_pkg/test_strong_audit_metrics.py
+      - tests/test_strong_audit_monitoring_endpoints.py
 
 non_claims:
   - "Atomic multi-store fabric snapshot save (catalog+keys single blob); restore has COR-10 rollback on key failure"
@@ -251,6 +254,8 @@ non_claims:
   - "STRONG pending TTL purge is best-effort wall-clock GC — not Byzantine time sync or crash-restart durability"
   - "Lying COMMIT_ACK applied bits can satisfy CFT quorum math without peer L1 apply — documented non_claim (not BFT)"
   - "mpreg.testing.distlab is Jepsen-inspired (history/checker/nemesis) — not Elle, not WAN geo generators, not a JVM Jepsen port"
+  - "DistLab lab SLI budgets (p99/avg soak bounds) are same-host in-process — not production WAN latency SLAs"
+  - "Operator /metrics/strong latency ring is process-local samples — not multi-region SLO contracts"
   - "DistLab residual/LWW/G-Set checkers are bounded local proofs — not full multi-object linearizability"
   - "Shared audit is not a SIEM / infinite retention store; bounded per-origin watermark window"
   - "Shared audit is not BFT and not multi-tenant isolation beyond cluster_id reject"
@@ -267,6 +272,9 @@ non_claims:
 # Tests present under tests/invariants/ that back tooling/support rather than a
 # named INV-* product claim (B3). Do not delete without reviewing usage.
 support_only:
+  - tests/server_pkg/test_strong_audit_metrics.py
+  - tests/test_strong_audit_monitoring_endpoints.py
+  - tests/testing/test_distlab_sli.py
   - tests/invariants/test_consensus_import_guard.py
   - tests/invariants/test_fault_injector.py
   - tests/invariants/test_rpc_dag_properties.py

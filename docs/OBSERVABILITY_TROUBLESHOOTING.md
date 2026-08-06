@@ -77,6 +77,19 @@ Useful transport endpoints:
 - `uv run mpreg monitor status --url http://127.0.0.1:<port>` for a compact
   admin summary (health + persistence + transport + unified metrics).
 
+### STRONG cache put + shared audit
+
+Process-local operator surfaces (not WAN SLA):
+
+- `GET /metrics/strong` / `GET /mgmt/v1/strong` — majority-commit put counters,
+  pending, latency ring. CLI: `uv run mpreg monitor strong --url …`
+- `GET /metrics/shared-audit` — G-Set store size + epidemic counters.
+  CLI: `uv run mpreg monitor audit --url …`
+- Prometheus: `mpreg_strong_*`, `mpreg_shared_audit_*` on `/metrics/prometheus`
+- Doctor: `uv run mpreg doctor --url … --strong --audit`
+- Runbook: `docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md`
+- Proof ledger: `docs/plans/DISTLAB_PROOF_LEDGER.md`
+
 ### Prometheus scrape
 
 - `GET /metrics/prometheus` — OpenMetrics-style text exposition of golden signals

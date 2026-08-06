@@ -245,3 +245,125 @@ async def test_distlab_live_coexistence_strong_audit(
             )
             assert res2.success, res2.error_message
             assert sut.state.pending_count() == 0
+
+@pytest.mark.asyncio
+async def test_distlab_live_strong_happy_4(test_context: AsyncTestContext) -> None:
+    """T13: 4-node live STRONG majority put (Q=3)."""
+    with port_range_context(4, "servers") as ports:
+        url0 = f"ws://127.0.0.1:{ports[0]}"
+        servers = [
+            MPREGServer(
+                strong_settings(
+                    ports[0], "F0", replica_factor=4, min_replicas=3
+                )
+            ),
+            MPREGServer(
+                strong_settings(
+                    ports[1], "F1", peers=[url0], replica_factor=4, min_replicas=3
+                )
+            ),
+            MPREGServer(
+                strong_settings(
+                    ports[2], "F2", peers=[url0], replica_factor=4, min_replicas=3
+                )
+            ),
+            MPREGServer(
+                strong_settings(
+                    ports[3], "F3", peers=[url0], replica_factor=4, min_replicas=3
+                )
+            ),
+        ]
+        test_context.servers.extend(servers)
+        tasks = [asyncio.create_task(s.server()) for s in servers]
+        test_context.tasks.extend(tasks)
+        await asyncio.sleep(1.2)
+        await wait_cache_peers(servers, timeout=14.0)
+
+        sut = LiveStrongSUT(servers=servers)
+        history = History()
+        res = await sut.put(
+            history,
+            process="c0",
+            origin_index=0,
+            logical_key="live4",
+            value={"n": 4},
+        )
+        assert res.success is True, res.error_message
+        check = default_strong_checkers(key="live4").check(
+            history, state=sut.snapshot_state()
+        )
+        assert check.ok, check.violations
+        assert sut.state.pending_count() == 0
+
+@pytest.mark.asyncio
+async def test_distlab_live_strong_mid_put_peer_kill(
+    test_context: AsyncTestContext,
+) -> None:
+    """T13: kill peers after mesh ready; put must fail residual-free on survivors."""
+    with port_range_context(3, "servers") as ports:
+        url0 = f"ws://127.0.0.1:{ports[0]}"
+        servers = [
+            MPREGServer(strong_settings(ports[0], "K0")),
+            MPREGServer(strong_settings(ports[1], "K1", peers=[url0])),
+            MPREGServer(strong_settings(ports[2], "K2", peers=[url0])),
+        ]
+        test_context.servers.extend(servers)
+        tasks = [asyncio.create_task(s.server()) for s in servers]
+        test_context.tasks.extend(tasks)
+        await asyncio.sleep(1.0)
+        await wait_cache_peers(servers)
+
+        # Mid-session kill of minority so origin cannot form Q=3
+        await servers[2].shutdown_async()
+        await servers[1].shutdown_async()
+        await asyncio.sleep(0.2)
+
+        sut = LiveStrongSUT(servers=servers[:1])
+        history = History()
+        res = await sut.put(
+            history,
+            process="c0",
+            origin_index=0,
+            logical_key="midkill",
+            value="x",
+        )
+        assert res.success is False
+        check = default_strong_checkers(key="midkill").check(
+            history, state=sut.snapshot_state()
+        )
+        assert check.ok, check.violations
+        assert sut.state.pending_count() == 0
+
+@pytest.mark.asyncio
+async def test_distlab_live_audit_late_joiner(
+    test_context: AsyncTestContext,
+) -> None:
+    """T13: late joiner converges to cluster G-Set after anti-entropy."""
+    with tempfile.TemporaryDirectory() as td:
+        with port_range_context(8, "servers") as ports:
+            sp, mp = ports[0:4], ports[4:8]
+            url0 = f"ws://127.0.0.1:{sp[0]}"
+            early = [
+                MPREGServer(audit_settings(sp[0], mp[0], "LJ0", td)),
+                MPREGServer(audit_settings(sp[1], mp[1], "LJ1", td, peers=[url0])),
+            ]
+            test_context.servers.extend(early)
+            tasks = [asyncio.create_task(s.server()) for s in early]
+            test_context.tasks.extend(tasks)
+            await asyncio.sleep(1.0)
+            await wait_gossip_connected(early)
+
+            for s in early:
+                apply_node_drain(s, draining=True, reason="late-pre")
+            await wait_audit_cluster_events(early, min_events=2, timeout=18.0)
+
+            late = MPREGServer(
+                audit_settings(sp[2], mp[2], "LJ2", td, peers=[url0])
+            )
+            test_context.servers.append(late)
+            test_context.tasks.append(asyncio.create_task(late.server()))
+            await asyncio.sleep(1.0)
+            all_servers = early + [late]
+            await wait_gossip_connected(all_servers, timeout=14.0)
+            # Late node should see prior cluster events via gossip/reconcile
+            await wait_audit_cluster_events(all_servers, min_events=2, timeout=22.0)

@@ -64,6 +64,13 @@ from mpreg.testing.distlab.registry import (
     get_registry,
 )
 from mpreg.testing.distlab.scenario import Scenario, ScenarioSuite
+from mpreg.testing.distlab.sli import (
+    DEFAULT_STRONG_SOAK_BUDGET,
+    SliBudget,
+    WallTimer,
+    percentile,
+    summarize_latencies_ms,
+)
 
 __all__ = [
     "AuditBurst",
@@ -75,6 +82,7 @@ __all__ = [
     "CompositeChecker",
     "ConcurrentPuts",
     "DEFAULT_REGISTRY",
+    "DEFAULT_STRONG_SOAK_BUDGET",
     "FaultInjectorNemesisTarget",
     "GSetConvergenceChecker",
     "History",
@@ -95,12 +103,16 @@ __all__ = [
     "ScenarioResult",
     "ScenarioSuite",
     "SequentialPuts",
+    "SliBudget",
     "StrongSUT",
+    "WallTimer",
     "default_audit_checkers",
     "default_strong_checkers",
     "ensure_builtins",
     "get_registry",
+    "percentile",
     "register_builtins",
+    "summarize_latencies_ms",
 ]
 
 def __getattr__(name: str) -> object:
