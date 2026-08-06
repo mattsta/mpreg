@@ -1945,6 +1945,41 @@ def config_check(
             "queue": settings.enable_default_queue,
             "cache_federation": settings.enable_cache_federation,
         },
+        "strong_cache": {
+            "enabled": bool(getattr(settings, "cache_strong_enabled", False)),
+            "replica_factor": getattr(settings, "cache_strong_replica_factor", None),
+            "min_replicas": getattr(settings, "cache_strong_min_replicas", None),
+            "lab_single_node": bool(
+                getattr(settings, "cache_strong_lab_single_node", False)
+            ),
+            "prepare_timeout_s": getattr(
+                settings, "cache_strong_prepare_timeout_s", None
+            ),
+            "commit_timeout_s": getattr(
+                settings, "cache_strong_commit_timeout_s", None
+            ),
+            "pending_ttl_s": getattr(settings, "cache_strong_pending_ttl_s", None),
+            # Honesty: v1 put-only MVP (not advertised as product get/delete quorum)
+            "capabilities": {
+                "put_majority_commit": bool(
+                    getattr(settings, "cache_strong_enabled", False)
+                ),
+                "get_quorum": False,
+                "delete_quorum": False,
+                "local_ryw_after_put": True,
+            },
+        },
+        "shared_audit": {
+            "enabled": bool(getattr(settings, "mgmt_audit_shared_enabled", False)),
+            "audit_path": getattr(settings, "mgmt_audit_path", None),
+            "max_entries": getattr(settings, "mgmt_audit_shared_max_entries", None),
+            "gossip_targets": getattr(
+                settings, "mgmt_audit_shared_gossip_targets", None
+            ),
+            "reconcile_interval_s": getattr(
+                settings, "mgmt_audit_shared_reconcile_interval_s", None
+            ),
+        },
         "persistence": (
             {
                 "mode": settings.persistence_config.mode.value,
@@ -2062,6 +2097,51 @@ def config_check(
             "federated profile still uses change-me placeholder secrets — "
             "rotate before any shared deployment (ERG-T10-12)"
         )
+    # T20: STRONG + shared audit config honesty
+    strong_on = bool(getattr(settings, "cache_strong_enabled", False))
+    if strong_on and not getattr(settings, "enable_default_cache", False):
+        warnings.append(
+            "cache_strong_enabled=true but enable_default_cache=false — "
+            "STRONG coordinator will not bind without a cache manager"
+        )
+    if strong_on:
+        rf = int(getattr(settings, "cache_strong_replica_factor", 3) or 3)
+        mr = int(getattr(settings, "cache_strong_min_replicas", 3) or 3)
+        if mr > rf:
+            warnings.append(
+                f"cache_strong_min_replicas ({mr}) > cache_strong_replica_factor ({rf})"
+            )
+        if bool(getattr(settings, "cache_strong_lab_single_node", False)) and mr > 1:
+            warnings.append(
+                "cache_strong_lab_single_node=true with min_replicas>1 — "
+                "lab mode is single-origin only (not multi-replica SLA)"
+            )
+        if not settings.monitoring_enabled:
+            warnings.append(
+                "cache_strong_enabled without monitoring_enabled — "
+                "operators cannot scrape /metrics/strong (lab ok; enable for ops)"
+            )
+        warnings.append(
+            "STRONG is put-only MVP: get/delete quorum are not implemented "
+            "(always 1012); local RYW uses EVENTUAL/WEAK get after put "
+            "(not WAN SLA, not BFT, not fsync)"
+        )
+    audit_shared = bool(getattr(settings, "mgmt_audit_shared_enabled", False))
+    if audit_shared and not getattr(settings, "mgmt_audit_path", None):
+        warnings.append(
+            "mgmt_audit_shared_enabled=true without mgmt_audit_path — "
+            "shared epidemic has no local JSONL durability anchor"
+        )
+    if audit_shared and not settings.monitoring_enabled:
+        warnings.append(
+            "mgmt_audit_shared_enabled without monitoring_enabled — "
+            "operators cannot scrape /metrics/shared-audit"
+        )
+    if audit_shared:
+        warnings.append(
+            "shared audit is a bounded G-Set epidemic (not SIEM, not BFT, "
+            "not infinite retention)"
+        )
     # ERG-T13-01: severity tiers — stock profiles are lab_ok by default.
     status = "ok" if not warnings else "lab_ok"
     explain_guide = {
@@ -2085,13 +2165,25 @@ def config_check(
             "Default cache/queue managers for four-plane MPREGClient RPCs. "
             "Profiles (dev.toml) turn both on; bare defaults leave them off."
         ),
+        "strong_cache": (
+            "Flag-gated ConsistencyLevel.STRONG put majority-commit "
+            "(cache_strong_enabled). Default off → 1012. Put-only MVP: get/delete "
+            "always refuse 1012; local RYW via EVENTUAL/WEAK get. Not WAN SLA, "
+            "not BFT, not fsync. See docs/CACHING_SYSTEM.md and residual honesty."
+        ),
+        "shared_audit": (
+            "Shared mgmt audit G-Set epidemic (mgmt_audit_shared_enabled). "
+            "Requires mgmt_audit_path for durable local JSONL. Bounded watermark "
+            "window — not SIEM, not BFT. Scrape /metrics/shared-audit when mon on."
+        ),
         "persistence": (
             "Unified persistence (memory|sqlite today). remote SQL/other stores backends "
             "are not shipped — see PERSISTENCE_FRAMEWORK_PLAN. data_dir holds sqlite files."
         ),
         "warnings": (
             "lab_ok means safe for curriculum/local; use --strict (exit 2) as a "
-            "CI production gate. Set mgmt_audit_path for durable JSONL audit."
+            "CI production gate. Set mgmt_audit_path for durable JSONL audit. "
+            "STRONG/shared-audit honesty warnings are expected when those flags are on."
         ),
     }
     report = {

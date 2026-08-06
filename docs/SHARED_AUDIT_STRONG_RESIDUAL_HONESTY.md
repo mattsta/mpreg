@@ -217,3 +217,17 @@ T19 operator/ops honesty on top of T18:
 Plan: `docs/plans/DISTLAB_T19_OPS_HONESTY_REFUSE_SCENARIO_PLAN.md`.
 
 Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete.
+
+## Phase 8 — Config-check honesty + live doctor e2e (2026-08-06)
+
+T20 operator config + live doctor:
+
+* **config-check:** `strong_cache` and `shared_audit` groups with honest
+  capability flags; warnings when STRONG/audit enabled without mon/path/cache;
+  always-on put-only / non-SIEM honesty strings when flags are on.
+* **Live:** doctor `--strong --audit` against real monitoring HTTP after put +
+  refuse + drain; `evaluate_strong_doctor_payload` on live counters.
+
+Plan: `docs/plans/DISTLAB_T20_CONFIG_DOCTOR_E2E_PLAN.md`.
+
+Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete.

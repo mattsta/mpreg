@@ -538,3 +538,113 @@ async def test_distlab_live_audit_metrics_e2e(
                     text = await resp.text()
                     assert "mpreg_shared_audit_enabled" in text
                     assert "mpreg_shared_audit_store_size" in text
+
+@pytest.mark.asyncio
+async def test_distlab_live_doctor_strong_audit_e2e(
+    test_context: AsyncTestContext,
+) -> None:
+    """T20: live mesh → doctor semantics on real /metrics/strong + shared-audit.
+
+    Uses evaluate_strong_doctor_payload + targeted HTTP probes (not full
+    ``mpreg doctor`` subprocess — that walks many optional planes and is slow
+    under mesh teardown). Full CLI doctor coverage remains unit-level.
+    """
+    import aiohttp
+
+    with tempfile.TemporaryDirectory() as td:
+        with port_range_context(4, "servers") as ports:
+            sp, mp = ports[0:2], ports[2:4]
+            url0 = f"ws://127.0.0.1:{sp[0]}"
+            from mpreg.core.config import MPREGSettings
+
+            def _both(port: int, mon: int, name: str, peers=None):
+                return MPREGSettings(
+                    host="127.0.0.1",
+                    port=port,
+                    name=name,
+                    cluster_id="distlab-doctor-e2e",
+                    resources={f"r-{name}"},
+                    peers=peers or [],
+                    log_level="ERROR",
+                    gossip_interval=0.25,
+                    monitoring_enabled=True,
+                    monitoring_port=mon,
+                    enable_default_cache=True,
+                    cache_strong_enabled=True,
+                    cache_strong_replica_factor=2,
+                    cache_strong_min_replicas=2,
+                    cache_strong_prepare_timeout_s=1.5,
+                    cache_strong_commit_timeout_s=1.5,
+                    mgmt_audit_path=str(Path(td) / f"{name}.jsonl"),
+                    mgmt_audit_shared_enabled=True,
+                    mgmt_audit_shared_reconcile_interval_s=0.35,
+                )
+
+            servers = [
+                MPREGServer(_both(sp[0], mp[0], "D0")),
+                MPREGServer(_both(sp[1], mp[1], "D1", peers=[url0])),
+            ]
+            test_context.servers.extend(servers)
+            tasks = [asyncio.create_task(s.server()) for s in servers]
+            test_context.tasks.extend(tasks)
+            await asyncio.sleep(1.2)
+            await wait_cache_peers(servers)
+            await wait_gossip_connected(servers)
+
+            sut = LiveStrongSUT(servers=servers)
+            history = History()
+            res = await sut.put(
+                history,
+                process="c0",
+                origin_index=0,
+                logical_key="doc-k",
+                value=1,
+            )
+            assert res.success, res.error_message
+            from mpreg.core.cache_models import (
+                CacheOptions,
+                ConsistencyLevel,
+                GlobalCacheKey,
+            )
+
+            key = GlobalCacheKey(
+                namespace="distlab-live", identifier="doc-k", version="v1"
+            )
+            await servers[0]._cache_manager.get(
+                key, options=CacheOptions(consistency_level=ConsistencyLevel.STRONG)
+            )
+            apply_node_drain(servers[0], draining=True, reason="doctor-e2e")
+            await wait_audit_cluster_events(servers, min_events=1, timeout=12.0)
+
+            mon_port = servers[0]._monitoring_system.monitoring_port
+            base = f"http://127.0.0.1:{mon_port}"
+
+            from mpreg.cli.main import evaluate_strong_doctor_payload
+
+            timeout = aiohttp.ClientTimeout(total=5.0)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(f"{base}/metrics/strong") as resp:
+                    assert resp.status == 200
+                    data = await resp.json()
+                    ok, detail = evaluate_strong_doctor_payload(data)
+                    assert ok is True, detail
+                    assert "get_q=False" in detail
+                    strong = data.get("strong") or {}
+                    assert int((strong.get("counters") or {}).get("gets_refused", 0)) >= 1
+                    assert int((strong.get("counters") or {}).get("puts_ok", 0)) >= 1
+                    caps = strong.get("capabilities") or {}
+                    assert caps.get("get_quorum") is False
+                    assert caps.get("delete_quorum") is False
+
+                async with session.get(f"{base}/mgmt/v1/strong") as resp:
+                    assert resp.status == 200
+                    data = await resp.json()
+                    ok, _ = evaluate_strong_doctor_payload(data)
+                    assert ok is True
+
+                async with session.get(f"{base}/metrics/shared-audit") as resp:
+                    assert resp.status == 200
+                    data = await resp.json()
+                    audit = data.get("shared_audit") or {}
+                    assert audit.get("enabled_flag") is True
+                    assert audit.get("status") not in {"misconfigured", "critical"}

@@ -33,6 +33,8 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T19 doctor honesty | `evaluate_strong_doctor_payload`, `test_doctor_strong_evaluate_payload_honesty` | support ops |
 | T19 refuse scenario | `strong.refuse_get_delete`, smoke preset | INV-CACHE-STRONG-01 refuse |
 | T19 monitor summary | `mpreg monitor strong --format table` capabilities line | support ops |
+| T20 config-check groups | `test_config_check_*_honesty_warnings`, strong_cache/shared_audit groups | support ops |
+| T20 live doctor e2e | `test_distlab_live_doctor_strong_audit_e2e` | support ops |
 
 ## Non-claims (do not market)
 
