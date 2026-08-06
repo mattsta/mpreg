@@ -157,16 +157,44 @@ async def main() -> None:
                         ok("k1/k2 isolated")
 
                     with scenario(
+                        "cache_invalidate via unified façade",
+                        "client.unified",
+                        "cache.invalidate",
+                        "cache.rpc_surface",
+                    ):
+                        await client.cache_put("tour", "k-inv", {"drop": True})
+                        inv = await client.cache_invalidate("tour")
+                        ensure(
+                            inv.success,
+                            f"cache_invalidate failed: {inv.error_message}",
+                        )
+                        after = await client.cache_get("tour", "k-inv")
+                        # Miss or empty after namespace pattern invalidate
+                        missed = (not after.success) or after.value is None
+                        ensure(
+                            missed,
+                            f"expected miss after invalidate, got {after}",
+                        )
+                        ok("cache_invalidate pattern via MPREGClient")
+
+                    with scenario(
                         "discovery via unified façade",
                         "client.unified",
                         "client.cluster_map",
                         "disco.list_peers",
                         "disco.catalog_query",
+                        "disco.cluster_map",
                     ):
                         peers = await client.list_peers()
                         ensure(isinstance(peers, tuple), f"peers type {type(peers)}")
                         cmap = await client.cluster_map()
                         ensure(cmap is not None, "cluster_map None")
+                        v2 = await client.cluster_map_v2()
+                        ensure(v2 is not None, "cluster_map_v2 None")
+                        step(
+                            f"cluster_map_v2 type={type(v2).__name__} "
+                            f"nodes={len(getattr(v2, 'nodes', ()) or ())}"
+                        )
                         # catalog_query may return empty functions list on bare node
                         try:
                             cat = await client.catalog_query()
@@ -180,13 +208,15 @@ async def main() -> None:
                         ensure(
                             callable(client.list_peers)
                             and callable(client.cluster_map)
+                            and callable(client.cluster_map_v2)
                             and callable(client.catalog_query)
-                            and callable(client.summary_query),
+                            and callable(client.summary_query)
+                            and callable(client.dns_unregister),
                             "discovery methods missing on MPREGClient",
                         )
                         ok(
                             f"unified discovery: peers={len(peers)} "
-                            f"map={type(cmap).__name__}"
+                            f"map={type(cmap).__name__} v2={type(v2).__name__}"
                         )
 
                     with scenario(
@@ -201,6 +231,10 @@ async def main() -> None:
                         for name in (
                             "dns_list",
                             "dns_register",
+                            "dns_unregister",
+                            "cluster_map_v2",
+                            "cache_invalidate",
+                            "unsubscribe",
                             "summary_watch",
                             "resolver_cache_stats",
                             "namespace_status",

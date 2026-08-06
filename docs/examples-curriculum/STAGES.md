@@ -316,3 +316,21 @@ APP_CATALOG Phase P–T rows; README shipped count **97**. Exit: docs truth only
 
 PROJECT_PLAN growth matrix Total **97**; baseline lists Phase T–V complete.
 Active sequential queue empty aside from deferred topology/product scale.
+
+## Phase W — Full test suite green (COMPLETE)
+
+Post multi-axis FQN/fabric work: full `pytest tests/ -n auto` green (2579).
+Scatter `PlatformRpc.RPC_DESCRIBE_LOCAL`, leaf-aware FunctionSelector, opaque
+function_id preservation, dual FQN/leaf function index.
+
+## Phase X — Façade teach + Phase W FQN (COMPLETE)
+
+Deepen existing 97 apps (no new shells):
+
+1. `plane_dns` — `dns_unregister`
+2. `cluster_map_catalog` + `unified_client_tour` — `cluster_map_v2`
+3. `unified_client_tour` — `cache_invalidate`
+4. `pubsub_client_backlog` — `unsubscribe` stops delivery
+5. `rpc_versioned_topic` — bare leaf + opaque `function_id` (Phase W)
+
+Exit: **97** suite apps; façade untaught methods closed.

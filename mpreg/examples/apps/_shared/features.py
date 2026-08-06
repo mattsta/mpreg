@@ -452,11 +452,13 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         RPC_DESCRIBE,
         CACHE_RPC_SURFACE,
         CACHE_PUT_GET,
+        CACHE_INVALIDATE,
         QUEUE_RPC_SURFACE,
         QUEUE_SEND,
         CLIENT_CLUSTER_MAP,
         DISCO_LIST_PEERS,
         DISCO_CATALOG_QUERY,
+        DISCO_CLUSTER_MAP,
     ),
     "pubsub_request_reply": (
         PUBSUB_PUBLISH_REPLY,
@@ -499,6 +501,7 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         RPC_CALL,
         RPC_REGISTER,
         RPC_TOPIC_AWARE,
+        RPC_FQN,
     ),
     "rpc_fqn_namespace": (
         RPC_FQN,

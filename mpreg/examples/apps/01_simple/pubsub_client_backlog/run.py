@@ -131,6 +131,57 @@ async def main() -> None:
                             await ps.stop()
 
                 with scenario(
+                    "unsubscribe stops further delivery",
+                    "client.pubsub",
+                    "pubsub.client_wire",
+                ):
+                    got2: list[object] = []
+
+                    def _on2(msg: object) -> None:
+                        got2.append(msg)
+
+                    async with MPREGClientAPI(url) as base:
+                        ps = MPREGPubSubClient(base_client=base)
+                        await ps.start()
+                        try:
+                            sub_id = await ps.subscribe(
+                                ["demo.unsub.*"],
+                                _on2,
+                                get_backlog=False,
+                                backlog_seconds=5,
+                            )
+                            ensure(bool(sub_id), "empty sub id")
+                            await ps.publish(
+                                "demo.unsub.before",
+                                {"n": 1},
+                                headers={"x-trace": "pre-unsub"},
+                            )
+                            for _ in range(60):
+                                if got2:
+                                    break
+                                await asyncio.sleep(0.05)
+                            ensure(got2, "no pre-unsub notification")
+                            unsub_ok = await ps.unsubscribe(sub_id)
+                            ensure(
+                                unsub_ok is True,
+                                f"unsubscribe returned {unsub_ok}",
+                            )
+                            got2.clear()
+                            await ps.publish(
+                                "demo.unsub.after",
+                                {"n": 2},
+                                headers={"x-trace": "post-unsub"},
+                            )
+                            await asyncio.sleep(0.25)
+                            ensure(
+                                not got2,
+                                f"messages after unsubscribe: {got2!r}",
+                            )
+                            ok("unsubscribe halted delivery")
+                        finally:
+                            await ps.stop()
+
+                with scenario(
                     "subscribe get_backlog flag surface",
                     "pubsub.backlog",
                     "client.pubsub",
@@ -147,7 +198,9 @@ async def main() -> None:
                                 backlog_seconds=5,
                             )
                             ensure(bool(sid), "sub without backlog failed")
-                            ok("get_backlog=False accepted")
+                            unsub = await ps.unsubscribe(sid)
+                            ensure(unsub is True, f"unsubscribe empty-sub {unsub}")
+                            ok("get_backlog=False + unsubscribe accepted")
                         finally:
                             await ps.stop()
 

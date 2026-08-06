@@ -164,6 +164,32 @@ async def main() -> None:
                         )
                         ok(f"TCP SRV answers={len(srv_tcp.answers)}")
 
+                    with scenario(
+                        "dns_unregister removes endpoint",
+                        "disco.dns_register",
+                        "client.api",
+                    ):
+                        unreg = await client.dns_unregister(
+                            {
+                                "name": "tradefeed",
+                                "namespace": "market",
+                                "protocol": "tcp",
+                                "port": 9000,
+                            }
+                        )
+                        removed = bool(getattr(unreg, "removed", False))
+                        ensure(removed, f"dns_unregister did not remove: {unreg}")
+                        after = await client.dns_list(namespace="market")
+                        after_items = getattr(after, "items", ()) or ()
+                        still = False
+                        for item in after_items:
+                            blob = str(item)
+                            if "tradefeed" in blob:
+                                still = True
+                                break
+                        ensure(not still, f"tradefeed still listed after unreg: {after}")
+                        ok("dns_unregister removed tradefeed from list")
+
             await run_with_servers(settings, _run)
 
 if __name__ == "__main__":

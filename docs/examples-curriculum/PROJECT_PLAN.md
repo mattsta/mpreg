@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase W COMPLETE — full suite green via `-n auto`)
+**Last updated:** 2026-08-05 (Phase X COMPLETE — façade teach + Phase W FQN)
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -42,7 +42,8 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G27 | **Sequential docs integrity + coverage (Phase T)**                                                     | STAGES/TRACKER/catalog truth + snapshot unit                                                                                      | [x] Phase T                                                                                     |
 | G28 | **Sequential catalog/README truth (Phase U)**                                                          | APP_CATALOG + README 97-app truth                                                                                                 | [x] Phase U                                                                                     |
 | G29 | **Sequential baseline matrix truth (Phase V)**                                                         | PROJECT_PLAN Total/baseline Phase T–U                                                                                             | [x] Phase V                                                                                     |
-| G30 | **Full test suite green (Phase W)** | Fix all pytest failures after sequential multi-axis work | [x] Phase W |
+| G30 | **Full test suite green (Phase W)**                                                                    | Fix all pytest failures after sequential multi-axis work                                                                          | [x] Phase W                                                                                     |
+| G31 | **Façade teach + Phase W FQN (Phase X)**                                                               | Untaught MPREGClient surfaces + bare/opaque function_id curriculum                                                                | [x] Phase X                                                                                     |
 
 ---
 
@@ -990,6 +991,25 @@ remote SQL/other stores backends, multi-continent SLA, ConsistencyLevel.STRONG p
 | W4 | VERIFY | full suite green + commit | [x] |
 
 **Exit:** all W `[x]`; `pytest tests/ -n auto` green — met.
+
+### Phase X — Façade teach + Phase W FQN semantics (**COMPLETE**)
+
+> **Phase X COMPLETE (2026-08-05):** Deepened 5 existing apps (still **97** total).
+> Taught untaught façade surfaces + Phase W bare/opaque `function_id` semantics.
+> Deferred scale items unchanged.
+
+| #   | Axis    | Work                                                                                         | Status |
+| --- | ------- | -------------------------------------------------------------------------------------------- | ------ |
+| X0  | PLAN    | Append after W; sole active queue                                                            | [x]    |
+| X1  | USE     | `plane_dns`: teach `dns_unregister` after register/list/resolve                              | [x]    |
+| X2  | USE     | `cluster_map_catalog` + `unified_client_tour`: teach `cluster_map_v2`                        | [x]    |
+| X3  | USE     | `unified_client_tour`: teach `cache_invalidate` on MPREGClient façade                        | [x]    |
+| X4  | USE     | `pubsub_client_backlog`: teach `unsubscribe` stops delivery                                  | [x]    |
+| X5  | CORRECT | `rpc_versioned_topic`: bare leaf + opaque `function_id` (Phase W semantics)                  | [x]    |
+| X6  | USE     | APP_FEATURES / FEATURE_CATALOG teach apps truth                                              | [x]    |
+| X7  | VERIFY  | deepened apps green + feature-join + `pytest tests/ -n auto` + commit                        | [x]    |
+
+**Exit:** all X `[x]`; untaught façade methods covered in live apps; suite green under `-n auto` — met.
 
 ## Related
 

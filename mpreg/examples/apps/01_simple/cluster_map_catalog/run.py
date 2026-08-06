@@ -6,7 +6,7 @@ import asyncio
 
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.client.cluster_client import MPREGClusterClient
-from mpreg.core.cluster_map import CatalogQueryRequest
+from mpreg.core.cluster_map import CatalogQueryRequest, ClusterMapRequest
 from mpreg.core.config import MPREGSettings
 from mpreg.core.port_allocator import port_range_context
 from mpreg.examples.apps._shared.runtime import (
@@ -86,6 +86,30 @@ async def main() -> None:
                     )
                     ensure(out == "p:map", f"got {out!r}")
                 ok("cluster_map + refresh + call")
+
+            with scenario(
+                "cluster_map_v2 scoped snapshot",
+                "disco.cluster_map",
+                "client.cluster_map",
+                "client.api",
+            ):
+                async with MPREGClientAPI(url_a) as api:
+                    v2 = await api.cluster_map_v2(
+                        ClusterMapRequest(cluster_id="map-lab", limit=32)
+                    )
+                    ensure(v2 is not None, "cluster_map_v2 None")
+                    ensure(
+                        getattr(v2, "cluster_id", None) in (None, "", "map-lab")
+                        or str(getattr(v2, "cluster_id", "")).startswith("map"),
+                        f"unexpected cluster_id on v2: {v2}",
+                    )
+                    v2_nodes = getattr(v2, "nodes", ()) or ()
+                    ensure(len(v2_nodes) >= 1, f"v2 nodes empty: {v2}")
+                    step(
+                        f"cluster_map_v2 type={type(v2).__name__} "
+                        f"nodes={len(v2_nodes)}"
+                    )
+                    ok(f"cluster_map_v2 → {len(v2_nodes)} node(s)")
 
             with scenario(
                 "catalog_query scoped",

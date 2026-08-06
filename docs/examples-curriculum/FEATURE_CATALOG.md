@@ -71,7 +71,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | ID                   | Feature                                   | Primary APIs                                                                   | Depth   | Apps                                                           |
 | -------------------- | ----------------------------------------- | ------------------------------------------------------------------------------ | ------- | -------------------------------------------------------------- |
 | `client.api`         | RPC-focused client                        | `MPREGClientAPI`                                                               | shipped | most apps                                                      |
-| `client.unified`     | Four-plane façade + discovery             | `MPREGClient` (call/publish/queue*\*/cache*_/list*peers/cluster_map/catalog*_) | shipped | `unified_client_tour`, `order_intake`                          |
+| `client.unified`     | Four-plane façade + discovery             | `MPREGClient` (call/publish/queue*/cache*/invalidate/list_peers/cluster_map_v2/catalog*) | shipped | `unified_client_tour`, `order_intake`                          |
 | `client.cluster`     | Multi-seed HA client                      | `MPREGClusterClient(seed_urls=…)`                                              | shipped | `ha_client_failover`                                           |
 | `client.cluster_map` | Live cluster map refresh                  | `cluster_map`, `refresh_cluster_map`                                           | shipped | `cluster_map_catalog`                                          |
 | `client.summary`     | Discovery summary routing                 | `summary_query`, `call_with_summary`                                           | shipped | `discovery_watch_summary` (summary_query + call_with_summary)  |
@@ -136,7 +136,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `cache.sync`            | Explicit peer sync         | `sync_cache_state(peer)`                         | shipped | `plane_cache`, `cache_plus_federation`   |
 | `cache.geo_hints`       | Geographic placement hints | `CacheMetadata.geographic_hints`                 | shipped | `cache_replication_geo`                  |
 | `cache.replication`     | Replication strategy       | `ReplicationStrategy`, `CacheReplicationPolicy`  | shipped | `cache_replication_geo`                  |
-| `cache.invalidate`      | Pattern invalidate         | `invalidate` / client `cache_invalidate`         | shipped | `cache_replication_geo`, `session_cache` |
+| `cache.invalidate`      | Pattern invalidate         | `invalidate` / client `cache_invalidate`         | shipped | `cache_replication_geo`, `session_cache`, `unified_client_tour` |
 | `cache.atomic`          | CAS / incr / append        | `AdvancedCacheOperations.atomic_operation`       | shipped | `cache_atomic_ops`                       |
 | `cache.structures`      | Set/list/map/counter ops   | `data_structure_operation`                       | shipped | `cache_atomic_ops`                       |
 | `cache.namespace_ops`   | Clear/list/scan namespace  | `namespace_operation`                            | shipped | `cache_atomic_ops`                       |
@@ -174,7 +174,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | ID                      | Feature                    | Primary APIs                                | Depth   | Apps                                              |
 | ----------------------- | -------------------------- | ------------------------------------------- | ------- | ------------------------------------------------- |
 | `disco.list_peers`      | Peer snapshots             | `list_peers`                                | shipped | `discovery_join`, `hello_cluster`                 |
-| `disco.cluster_map`     | Cluster map v1/v2          | `cluster_map`, `cluster_map_v2`             | shipped | `discovery_join`, `ha_client_failover`            |
+| `disco.cluster_map`     | Cluster map v1/v2          | `cluster_map`, `cluster_map_v2`             | shipped | `discovery_join`, `ha_client_failover`, `cluster_map_catalog`, `unified_client_tour` |
 | `disco.catalog_query`   | Scoped catalog query       | `catalog_query`                             | shipped | `cluster_map_catalog`                             |
 | `disco.catalog_watch`   | Delta watch topics         | `catalog_watch`                             | shipped | `discovery_watch_summary`                         |
 | `disco.summary_query`   | Summary records            | `summary_query`                             | shipped | `discovery_watch_summary`, `discovery_rate_limit` |
@@ -182,7 +182,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `disco.access_audit`    | Discovery access audit     | `discovery_access_audit`                    | shipped | `discovery_resolver_audit`                        |
 | `disco.resolver_stats`  | Resolver cache stats       | `resolver_cache_stats`                      | shipped | `discovery_resolver_audit`                        |
 | `disco.resolver_resync` | Force catalog resync       | `resolver_resync`                           | shipped | `discovery_resolver_audit`                        |
-| `disco.dns_register`    | DNS service register       | `dns_register` / CLI                        | shipped | `plane_dns`                                       |
+| `disco.dns_register`    | DNS service register/unreg | `dns_register` / `dns_unregister` / CLI     | shipped | `plane_dns`                                       |
 | `disco.dns_resolve`     | DNS gateway resolve        | `MPREGDnsClient`, `DnsGateway`              | shipped | `plane_dns`                                       |
 | `disco.join`            | Live node join visibility  | peers + new resources                       | shipped | `discovery_join`                                  |
 | `disco.signatures`      | Signed discovery summaries | `discovery_signatures`, `gossip_signatures` | shipped | `discovery_signatures_lab`                        |
@@ -444,11 +444,11 @@ Usability findings from building these apps: [API_FRICTION.md](./API_FRICTION.md
 | `global_edge_control_plane` | L4    | `fabric.hubs`, `mon.timeline`, multi-cluster                                            |
 | `cache_atomic_ops`          | L1    | `cache.atomic`, `cache.structures`, `cache.namespace_ops`                               |
 | `namespace_policy_gate`     | L1    | `ns.validate`, `ns.apply`, `ns.status`, `ns.export`, `ns.audit`                         |
-| `plane_dns`                 | L1    | `disco.dns_register`, `disco.dns_resolve`, `client.dns`                                 |
-| `unified_client_tour`       | L1    | `client.unified`, `cache.rpc_surface`, `queue.rpc_surface`                              |
+| `plane_dns`                 | L1    | `disco.dns_register`, `disco.dns_resolve`, `client.dns` (+ unregister)                  |
+| `unified_client_tour`       | L1    | `client.unified`, `cache.rpc_surface`, `cache.invalidate`, `queue.rpc_surface`, `disco.cluster_map` |
 | `pubsub_request_reply`      | L1    | `pubsub.publish_reply`, `pubsub.client_wire`                                            |
 | `job_queue_dlq`             | L1    | `queue.dlq`, `queue.alo`                                                                |
-| `rpc_versioned_topic`       | L1    | `rpc.function_id`, `rpc.version_constraint`                                             |
+| `rpc_versioned_topic`       | L1    | `rpc.function_id`, `rpc.version_constraint`, `rpc.fqn` (bare+opaque id)                  |
 | `client_auth_token`         | L1    | `client.auth`, `tx.security`, `mon.health`                                              |
 | `hello_queue`               | L0    | `queue.send`, `queue.subscribe`                                                         |
 | `hello_dns`                 | L0    | `disco.dns_register`, `disco.dns_resolve`                                               |

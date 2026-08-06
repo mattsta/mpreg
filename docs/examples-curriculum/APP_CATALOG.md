@@ -55,10 +55,10 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · Friction: [API_FRICTION.md]
 | `plane_monitoring`          | L1    | plane       | Full monitoring plane tour                   | monitoring                |
 | `cache_atomic_ops`          | L1    | plane       | CAS / incr / structures / ns bulk            | cache                     |
 | `namespace_policy_gate`     | L1    | plane       | Validate/apply/status/export/audit           | namespace                 |
-| `plane_dns`                 | L1    | plane       | DNS register/list/describe/resolve           | dns, discovery            |
-| `unified_client_tour`       | L1    | product     | Four-plane MPREGClient façade                | rpc, cache, queue         |
+| `plane_dns`                 | L1    | plane       | DNS register/list/describe/resolve/unregister | dns, discovery            |
+| `unified_client_tour`       | L1    | product     | Four-plane façade + invalidate + map v2      | rpc, cache, queue         |
 | `pubsub_request_reply`      | L1    | product     | publish_with_reply round-trip                | pubsub                    |
-| `rpc_versioned_topic`       | L1    | product     | function_id + version_constraint             | rpc                       |
+| `rpc_versioned_topic`       | L1    | product     | function_id + version + bare/opaque id       | rpc                       |
 | `rpc_fqn_namespace`         | L1    | product     | Bare→FQN, mpreg.\* deny, bound ns            | rpc                       |
 | `client_auth_token`         | L1    | product     | Monitoring bearer + client auth_token        | client, security          |
 | `topic_taxonomy_tour`       | L1    | plane       | TopicValidator + taxonomy templates          | pubsub, taxonomy          |
@@ -162,11 +162,11 @@ L0 ≥3 ensures; L1+ ≥5 ensures) and appear in `features.py` APP_FEATURES.
 | ID                       | Level | Kind  | Summary                                     |
 | ------------------------ | ----- | ----- | ------------------------------------------- |
 | `queue_ack_receive_lab`  | L1    | plane | Poll receive + explicit ack + broadcast/FNF |
-| `pubsub_client_backlog`  | L1    | plane | MPREGPubSubClient + get_backlog             |
+| `pubsub_client_backlog`  | L1    | plane | MPREGPubSubClient + get_backlog + unsubscribe |
 | `cache_replication_geo`  | L1    | plane | Geo/replication/L2/invalidate/pers.mode     |
 | `fabric_policy_modes`    | L1    | plane | Strict/explicit + catalog + link-state      |
 | `rpc_concurrency_lab`    | L1    | plane | Concurrent gather + M3 + routing_topic      |
-| `cluster_map_catalog`    | L1    | plane | cluster_map refresh + catalog_query         |
+| `cluster_map_catalog`    | L1    | plane | cluster_map + map_v2 + catalog_query        |
 | `mon_logging_json`       | L1    | plane | json_logs + correlation/health              |
 | `chaos_crash_recover`    | L1    | plane | FaultInjector crash/recover                 |
 | `tx_circuit_breaker_lab` | L1    | plane | CircuitBreaker state machine                |

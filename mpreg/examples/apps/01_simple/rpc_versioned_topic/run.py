@@ -209,6 +209,39 @@ async def main() -> None:
                     )
                     ok("==9.9.9 → VERSION_MISMATCH")
 
+                with scenario(
+                    "bare name + opaque function_id (Phase W)",
+                    "rpc.function_id",
+                    "rpc.fqn",
+                    "rpc.call",
+                ):
+                    # function_id is a capability key — not namespace-qualified.
+                    # Bare fun leaf still routes when paired with the opaque id.
+                    out = await client.call(
+                        "price",
+                        "SKU-W",
+                        locs=frozenset(["pricing"]),
+                        function_id="catalog.price",
+                        version_constraint="==1.0.0",
+                    )
+                    ensure(
+                        isinstance(out, dict) and out.get("version") == "1.0.0",
+                        f"bare+opaque id failed: {out}",
+                    )
+                    # Explicit FQN fun must also work with the same opaque id.
+                    out_fqn = await client.call(
+                        "app.price",
+                        "SKU-W2",
+                        locs=frozenset(["pricing"]),
+                        function_id="catalog.price",
+                        version_constraint="==1.0.0",
+                    )
+                    ensure(
+                        isinstance(out_fqn, dict) and out_fqn.get("version") == "1.0.0",
+                        f"FQN+opaque id failed: {out_fqn}",
+                    )
+                    ok("bare leaf + opaque function_id; FQN + same id")
+
         await run_with_servers(settings, _run)
 
 if __name__ == "__main__":
