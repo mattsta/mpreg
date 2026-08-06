@@ -229,6 +229,17 @@ Default **off** (`1012`). Production path: set `cache_strong_enabled=true` with
 ≥ `cache_strong_min_replicas` live peers; use `ConsistencyLevel.STRONG` on put
 only. Curriculum: `cache_strong_quorum`. Docs: `docs/CACHING_SYSTEM.md` §STRONG.
 
+Operator surfaces (monitoring HTTP — not WAN SLA):
+
+```bash
+export MPREG_MONITORING_URL=http://127.0.0.1:<mon-port>
+uv run mpreg monitor strong --url "$MPREG_MONITORING_URL"
+uv run mpreg doctor --url "$MPREG_MONITORING_URL" --strong --audit
+uv run mpreg distlab suite --track T2 --limit 5
+```
+
+Runbook: `docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md`.
+
 ### Correlation
 
 - Fabric hops may carry W3C `traceparent` in metadata.
