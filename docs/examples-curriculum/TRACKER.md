@@ -340,3 +340,27 @@ forces fabric `target_cluster` from summary). FEATURE note un-partialed.
 **App count:** **96** (no new apps).
 
 **Program:** Phases A–O at **100%**.
+
+## Phase P — Multi-axis charter (**COMPLETE**)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| P0 multi-axis living charter | [x] | G23; CAP/CORRECT/USE/OBS/ERG/PERF |
+| P1 W3C echo on RPCResponse | [x] | model + server `_run_rpc_body` + client seed |
+| P2 MPREGClient discovery surface | [x] | list_peers/cluster_map/catalog_*/summary_query |
+| P3 Four-plane warn → DEBUG | [x] | server start; config-check remains |
+| P4 snapshot depth + microbench | [x] | samples/min/max; `rpc_microbench_lab` |
+| P5 teach + unit + suite | [x] | client_trace_bind + unified_client_tour |
+
+## Verification log (Phase P)
+
+| Date | Command | Result |
+|------|---------|--------|
+| 2026-08-05 | `pytest tests/test_rpc_response_trace_echo.py tests/test_unified_client_discovery.py tests/test_metrics_snapshot_depth.py` (+trace suite) | **14 passed** |
+| 2026-08-05 | `mpreg-example run` client_trace_bind + unified_client_tour + rpc_microbench_lab | pass |
+| 2026-08-05 | `pytest tests/examples_apps -m unit` | **112 passed** |
+| 2026-08-05 | `mpreg-example suite` | **97/97 passed** (~101s) |
+
+**App count:** **97** (+ `rpc_microbench_lab`).
+
+**Program:** Phases A–P at **100%**.

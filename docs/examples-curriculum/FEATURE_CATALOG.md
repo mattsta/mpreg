@@ -71,7 +71,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | ID | Feature | Primary APIs | Depth | Apps |
 |----|---------|--------------|-------|------|
 | `client.api` | RPC-focused client | `MPREGClientAPI` | shipped | most apps |
-| `client.unified` | Four-plane façade | `MPREGClient` (call/publish/queue_*/cache_*) | shipped | `unified_client_tour`, `order_intake` |
+| `client.unified` | Four-plane façade + discovery | `MPREGClient` (call/publish/queue_*/cache_*/list_peers/cluster_map/catalog_*) | shipped | `unified_client_tour`, `order_intake` |
 | `client.cluster` | Multi-seed HA client | `MPREGClusterClient(seed_urls=…)` | shipped | `ha_client_failover` |
 | `client.cluster_map` | Live cluster map refresh | `cluster_map`, `refresh_cluster_map` | shipped | `cluster_map_catalog` |
 | `client.summary` | Discovery summary routing | `summary_query`, `call_with_summary` | shipped | `discovery_watch_summary` (summary_query + call_with_summary) |
@@ -81,7 +81,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `client.default_ha` | HA retry defaults | `default_ha_policy()` | shipped | `ha_client_failover` |
 | `client.pubsub` | Dedicated pubsub client | `MPREGPubSubClient`, `MPREGPubSubExtendedClient` | shipped | `pubsub_client_backlog` |
 | `client.dns` | DNS resolve client | `MPREGDnsClient.resolve` | shipped | `plane_dns` |
-| `client.trace` | Last W3C trace context | `last_trace_context()` | shipped | `client_trace_bind` |
+| `client.trace` | Last W3C trace context (always after RPC) | `last_trace_context()`; server `RPCResponse` echo | shipped | `client_trace_bind` |
 | `client.auth` | Token / API key on wire | `auth_token`, `api_key`, `rpc_auth_token`, `SecurityConfig` | shipped | `client_auth_token` (F11 enforced); mTLS = `tls_dev_handshake` |
 
 ---
@@ -216,6 +216,8 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `mon.slo` | SLO helpers | `core.observability.slo` | shipped | `observability_slo_trace`, probe apps |
 | `mon.logging` | Structured / JSON logs | `configure_logging`, CLI `--json-logs` | shipped | `mon_logging_json` |
 | `mon.trace_bind` | Trace context bind | `bind_trace_context`, `trace_context` | shipped | `client_trace_bind` |
+| `mon.metrics_snapshot` | In-process metrics snapshot | `ServerMetricsTracker.snapshot` (samples/min/max/p50/p95/rps) | shipped | `rpc_microbench_lab`, probe apps |
+| `mon.server_tracker` | Server metrics tracker | `ServerMetricsTracker.record_rpc` | shipped | `rpc_microbench_lab` |
 
 ---
 

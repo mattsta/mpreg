@@ -282,6 +282,18 @@ class RPCResponse(BaseModel):
         description="The unique identifier of the request this is responding to."
     )
 
+    # W3C Trace Context echo (OBS Phase P) — clients populate last_trace_context.
+    headers: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Optional response headers/metadata (e.g. W3C traceparent).",
+    )
+    traceparent: str | None = Field(
+        default=None, description="W3C traceparent echoed from the request path"
+    )
+    tracestate: str | None = Field(
+        default=None, description="W3C tracestate echoed from the request path"
+    )
+
     # Enhanced debugging fields (optional, backward compatible)
     # Using forward references to avoid circular dependency issues
     intermediate_results: tuple[RPCIntermediateResult, ...] = Field(

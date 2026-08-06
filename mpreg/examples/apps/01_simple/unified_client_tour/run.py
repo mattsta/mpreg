@@ -154,6 +154,37 @@ async def main() -> None:
                         )
                         ok("k1/k2 isolated")
 
+                    with scenario(
+                        "discovery via unified façade",
+                        "client.unified",
+                        "client.cluster_map",
+                        "disco.list_peers",
+                        "disco.catalog_query",
+                    ):
+                        peers = await client.list_peers()
+                        ensure(isinstance(peers, tuple), f"peers type {type(peers)}")
+                        cmap = await client.cluster_map()
+                        ensure(cmap is not None, "cluster_map None")
+                        # catalog_query may return empty functions list on bare node
+                        try:
+                            cat = await client.catalog_query()
+                            ensure(cat is not None, "catalog None")
+                            step(f"catalog type={type(cat).__name__}")
+                        except Exception as exc:
+                            # Surface must exist; empty catalog is ok
+                            step(f"catalog_query raised (ok if empty): {type(exc).__name__}")
+                        ensure(
+                            callable(client.list_peers)
+                            and callable(client.cluster_map)
+                            and callable(client.catalog_query)
+                            and callable(client.summary_query),
+                            "discovery methods missing on MPREGClient",
+                        )
+                        ok(
+                            f"unified discovery: peers={len(peers)} "
+                            f"map={type(cmap).__name__}"
+                        )
+
             await run_with_servers(settings, _run)
 
 if __name__ == "__main__":

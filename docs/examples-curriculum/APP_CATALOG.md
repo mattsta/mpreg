@@ -151,6 +151,7 @@ L0 ≥3 ensures; L1+ ≥5 ensures) and appear in `features.py` APP_FEATURES.
 | `discovery_signatures_lab` | L1 | plane | HMAC discovery + gossip signatures |
 | `rpc_inventory_tour` | L1 | plane | rpc_describe + rpc_report |
 | `client_trace_bind` | L1 | plane | last_trace_context + bind_trace_context |
+| `rpc_microbench_lab` | L1 | plane | RPC microbench + metrics snapshot depth | rpc, monitoring |
 | `correlation_routing_lab` | L1 | plane | CorrelationTracker + no-loop assert |
 | `mtls_mesh_handshake` | L2 | product | CERT_REQUIRED mTLS wss |
 | `blockchain_hub_settlement` | L2 | plane | HubMessageQueue settlement path |

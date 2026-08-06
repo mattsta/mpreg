@@ -9400,20 +9400,31 @@ class MPREGServer:
         # Contextualize JSON sinks with request correlation + inbound W3C trace.
         req_u = getattr(req, "u", None)
         inbound_tp: str | None = None
+        inbound_ts: str | None = None
         try:
             headers = getattr(req, "headers", None) or {}
             if isinstance(headers, dict):
                 inbound_tp = extract_traceparent(headers)
+                ts_val = headers.get("tracestate")
+                if ts_val is not None:
+                    inbound_ts = str(ts_val)
             if not inbound_tp:
                 top = getattr(req, "traceparent", None)
                 if top:
                     inbound_tp = str(top)
+            if inbound_ts is None:
+                top_ts = getattr(req, "tracestate", None)
+                if top_ts is not None:
+                    inbound_ts = str(top_ts)
             if not inbound_tp:
                 meta = getattr(req, "metadata", None) or {}
                 if isinstance(meta, dict):
                     inbound_tp = extract_traceparent(meta)
+                    if inbound_ts is None and meta.get("tracestate") is not None:
+                        inbound_ts = str(meta["tracestate"])
         except Exception:
             inbound_tp = None
+            inbound_ts = None
         # COR-05 / COR-T10-04: bind plane_rpc actor identity as task-local
         # ContextVar (not instance field) so concurrent run_rpc cannot cross-bind.
         actor_ctx = {
@@ -9429,7 +9440,7 @@ class MPREGServer:
             from mpreg.core.observability.trace_context import bind_current_trace
 
             with (
-                bind_current_trace(inbound_tp),
+                bind_current_trace(inbound_tp, tracestate=inbound_ts),
                 trace_context(
                     request_u=str(req_u) if req_u else None,
                     traceparent=inbound_tp,
@@ -9485,8 +9496,25 @@ class MPREGServer:
         self, req: RPCRequest, start_time: float
     ) -> RPCResponse:
         """Inner RPC execution (after trace + actor context are bound)."""
+        from mpreg.server_pkg.rpc_responses import w3c_trace_fields
+
         success = False
         error_code: str | int | None = None
+        # Capture inbound W3C so success/error responses echo it for clients.
+        inbound_headers: dict = {}
+        try:
+            h = getattr(req, "headers", None) or {}
+            if isinstance(h, dict):
+                inbound_headers = dict(h)
+        except Exception:
+            inbound_headers = {}
+        inbound_tp = getattr(req, "traceparent", None)
+        inbound_ts = getattr(req, "tracestate", None)
+        trace_kw = lambda: w3c_trace_fields(  # noqa: E731
+            traceparent=str(inbound_tp) if inbound_tp else None,
+            tracestate=str(inbound_ts) if inbound_ts is not None else None,
+            headers=inbound_headers or None,
+        )
         try:
             # Bare names → active namespace FQN before graph build / resolve.
             req = self._qualify_inbound_request(req)
@@ -9514,17 +9542,22 @@ class MPREGServer:
                     u=req.u,
                     intermediate_results=intermediate_results,
                     execution_summary=execution_summary,
+                    **trace_kw(),
                 )
             else:
                 # Use standard execution for backward compatibility
-                response = RPCResponse(r=await self.cluster.run(rpc), u=req.u)
+                response = RPCResponse(
+                    r=await self.cluster.run(rpc), u=req.u, **trace_kw()
+                )
                 success = True
                 return response
 
         except MPREGException as exc:
             if exc.rpc_error is not None:
                 error_code = getattr(exc.rpc_error, "code", None)
-            return RPCResponse(r=None, error=exc.rpc_error, u=req.u)
+            return RPCResponse(
+                r=None, error=exc.rpc_error, u=req.u, **trace_kw()
+            )
         except Exception:
             # Catch any exceptions during RPC execution and return an error response.
             logger.exception("Error running RPC")
@@ -12329,7 +12362,9 @@ class MPREGServer:
             self.settings.port,
             self.settings.name,
         )
-        # ERG-T10-01 / USE-T10-01: bare defaults leave cache/queue off — four-plane incomplete.
+        # ERG Phase P: bare defaults leave cache/queue off — four-plane incomplete.
+        # Log once at DEBUG so curriculum/tests are not WARN-noisy; operators still
+        # see it via config-check and --verbose. Profiles (dev.toml) enable both.
         if not getattr(self.settings, "enable_default_cache", False) or not getattr(
             self.settings, "enable_default_queue", False
         ):
@@ -12338,7 +12373,7 @@ class MPREGServer:
                 missing.append("cache")
             if not getattr(self.settings, "enable_default_queue", False):
                 missing.append("queue")
-            logger.warning(
+            logger.debug(
                 "[{}] Four-plane incomplete at start ({} off). "
                 "MPREGClient cache/queue RPCs need --enable-cache/--enable-queue "
                 "or a profile (dev.toml / federated.toml). "

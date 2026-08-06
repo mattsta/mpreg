@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase O COMPLETE — integrity polish; thin=0; fabric.gossip join; 96 apps)  
+**Last updated:** 2026-08-05 (Phase P COMPLETE — multi-axis CAP/CORRECT/USE/OBS/ERG/PERF; 97 apps)  
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -35,6 +35,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G20 | **Close last FEATURE partials** | ops.cli_planes/ns/discovery + pubsub.fabric_forward | [x] Phase M |
 | G21 | **Close residual Low DX + planning truth** | F22/F23 platform fix; scrub stale POC/VISION residuals | [x] Phase N |
 | G22 | **Integrity polish after N** | thin=0; every feature constant in APP_FEATURES; stale planned scrub | [x] Phase O |
+| G23 | **Multi-axis platform charter (Phase P)** | CAP/CORRECT/USE/OBS/ERG/PERF improvements shipped + taught | [x] Phase P |
 
 ---
 
@@ -42,9 +43,9 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 
 | Metric | Value |
 |--------|------:|
-| Shipped apps | **96** |
+| Shipped apps | **97** |
 | Smoke apps | 8 |
-| Suite apps | 96 (all registry `suite=True`) |
+| Suite apps | 97 (all registry `suite=True`) |
 | Feature IDs in `features.py` constants | ~180+ |
 | FEATURE_CATALOG prioritized gaps 1–8 | **closed** (honest non-claims where needed) |
 | Thin apps (scen<2 or L1+ ens<5) | **0** |
@@ -62,6 +63,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | Phase M | **COMPLETE** — residual CLI ops + fabric_forward |
 | Phase N | **COMPLETE** — F22/F23 Low DX + planning scrub |
 | Phase O | **COMPLETE** — integrity polish (thin + feature join + docs) |
+| Phase P | **COMPLETE** — multi-axis CAP/OBS/ERG/PERF + discovery façade |
 
 ### Thin backlog
 
@@ -798,14 +800,52 @@ API_FRICTION open curriculum rows: **0**. **96** apps.
 **Phase O (integrity polish): COMPLETE 100%.**  
 Thin L1 closed; `fabric.gossip` joined to APP_FEATURES + GossipMessage teach;
 stale “planned” operator language scrubbed. Thin=0; uncovered feature constants=0.
-**96** apps.
+**96** apps at O exit.
+
+**Phase P (multi-axis CAP/CORRECT/USE/OBS/ERG/PERF): COMPLETE 100%.**  
+W3C echo on `RPCResponse`; unified discovery façade; four-plane DEBUG;
+metrics snapshot depth; `rpc_microbench_lab`. **97** apps.
 
 Honest remaining (operator topology / kernel-level only — not curriculum blockers):
 multi-continent SLA meshes, kernel TCP byte-splice loss, multi-hub DAO treasury
-production ops.
+production ops. Living multi-axis backlog above for next charter.
 
-**Program complete through Phase O.** Further work requires a new charter
-(new platform surface, new operator topology product, or fresh friction).
+**Program complete through Phase O.** Phase P re-chartered multi-axis work.
+
+### Phase P — Multi-axis capability charter (**COMPLETE**)
+
+Exploratory charter after A–O: drive **capability, correctness, usability,
+observability, ergonomics, and performance** across client/server surfaces —
+not idle after integrity polish.
+
+| Axis | ID | Deliverable | Status |
+|------|-----|-------------|--------|
+| OBS | P1 | `RPCResponse` echoes W3C `traceparent`/`tracestate`/`headers`; client seeds + records `last_trace_context` always | [x] |
+| CAP | P2 | `MPREGClient` discovery parity: `list_peers`, `cluster_map`, `cluster_map_v2`, `catalog_query`, `catalog_watch`, `summary_query` | [x] |
+| ERG | P3 | Four-plane incomplete start message at **DEBUG** (not WARN); profiles/`config-check` remain operator path | [x] |
+| PERF | P4 | `ServerMetricsTracker.snapshot` depth (`samples`/`min_ms`/`max_ms`); `rpc_microbench_lab` curriculum app | [x] |
+| USE | P5 | Teach apps: deepen `client_trace_bind` + `unified_client_tour`; new microbench; unit + suite | [x] |
+| CORRECT | P1 | End-to-end live test: outbound inject → server echo → client `last_trace_context` | [x] |
+
+**Phase P exit criteria**
+
+- [x] `last_trace_context()` populated after every successful RPC (not optional)
+- [x] Unified client discovery methods callable without dropping to `MPREGClientAPI`
+- [x] Four-plane default WARN noise removed from curriculum paths
+- [x] Snapshot keys support min/max/samples ensures
+- [x] **97** suite apps; unit green
+
+### Living multi-axis backlog (post-P — next charter fodder)
+
+| Axis | Candidate | Notes |
+|------|-----------|-------|
+| CAP | Mgmt multi-node audit UI / CLI depth | `MANAGEMENT_UI_CLI_NEXT_STEPS.md` |
+| CAP | Discovery tiering + CI soak | `DISCOVERY_PLATFORM_ROADMAP.md` |
+| CAP | Persistence remote SQL/other stores backends | `PERSISTENCE_FRAMEWORK_PLAN.md` |
+| USE | Unification soak / plane error codes | `UNIFIED_UNIFICATION_PLAN.md` |
+| OBS | Probe default annotations on more L2+ apps | ExampleProbe already default-on |
+| PERF | Fabric hop latency histograms in snapshot | future |
+| ERG | Settings discoverability (`mpreg config-check --explain`) | partial via config-check |
 
 ---
 

@@ -363,6 +363,14 @@ APPS: tuple[ExampleApp, ...] = (
         kind="plane",
     ),
     _app(
+        "rpc_microbench_lab",
+        "RPC Microbench Lab",
+        AppLevel.L1,
+        "In-process RPC latency/throughput + ServerMetricsTracker snapshot depth.",
+        ("rpc", "monitoring", "performance"),
+        kind="plane",
+    ),
+    _app(
         "correlation_routing_lab",
         "Correlation Routing Lab",
         AppLevel.L1,

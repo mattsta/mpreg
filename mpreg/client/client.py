@@ -133,6 +133,11 @@ class Client:
         payload[TRACEPARENT_KEY] = meta[TRACEPARENT_KEY]
         if TRACESTATE_KEY in meta:
             payload[TRACESTATE_KEY] = meta[TRACESTATE_KEY]
+        # Phase P: seed last_trace from outbound so the surface is always
+        # populated even when a peer does not echo W3C on the response.
+        self._last_trace_metadata = {
+            k: str(meta[k]) for k in (TRACEPARENT_KEY, TRACESTATE_KEY) if k in meta
+        }
         return payload
 
     def _effective_timeout(self, timeout: float | None) -> float | None:

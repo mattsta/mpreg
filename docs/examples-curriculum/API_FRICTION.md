@@ -94,3 +94,12 @@ Also shipped: `ServerMetricsTracker.snapshot()`, shared `ExampleProbe`
 |----|------------|
 | F22 | `MessageHeaders.coerce` + pubsub publish accepts bare dict |
 | F23 | catalog `entry_type` default `functions` + clearer ValueError |
+
+## Phase P closes (2026-08-05)
+
+| ID | Surface | Resolution |
+|----|---------|------------|
+| P1 | `last_trace_context` empty after RPC | `RPCResponse` W3C fields + server echo + client outbound seed |
+| P2 | `MPREGClient` missing discovery | façade delegates list_peers/cluster_map/catalog_*/summary_query |
+| P3 | Four-plane WARN noise | start message → DEBUG; config-check stays operator path |
+| P4 | snapshot shallow for perf ensures | samples/min_ms/max_ms on rpc+pubsub snapshot |

@@ -213,7 +213,9 @@ def format_server_snapshot(snap: dict[str, Any], *, prefix: str = "  ◆ server-
     pub = snap.get("pubsub") or {}
     print(
         f"{prefix}: rpc total={rpc.get('total', 0)} errors={rpc.get('errors', 0)} "
-        f"avg_ms={rpc.get('avg_ms', 0)} p95_ms={rpc.get('p95_ms', 0)} "
+        f"samples={rpc.get('samples', 0)} avg_ms={rpc.get('avg_ms', 0)} "
+        f"p50_ms={rpc.get('p50_ms', 0)} p95_ms={rpc.get('p95_ms', 0)} "
+        f"min_ms={rpc.get('min_ms', 0)} max_ms={rpc.get('max_ms', 0)} "
         f"rps={rpc.get('rps', 0)}"
     )
     print(

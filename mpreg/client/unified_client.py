@@ -229,6 +229,31 @@ class MPREGClient:
     def last_trace_context(self) -> dict[str, str] | None:
         return self.api.last_trace_context()
 
+    # --- Discovery (parity with MPREGClientAPI — Phase P / CAP) ---
+    async def list_peers(self, *args: Any, **kwargs: Any) -> Any:
+        """Return the cluster peer list (delegates to :class:`MPREGClientAPI`)."""
+        return await self.api.list_peers(*args, **kwargs)
+
+    async def cluster_map(self) -> Any:
+        """Return a cluster map snapshot for discovery-aware callers."""
+        return await self.api.cluster_map()
+
+    async def cluster_map_v2(self, *args: Any, **kwargs: Any) -> Any:
+        """Return a scoped cluster map (v2) snapshot."""
+        return await self.api.cluster_map_v2(*args, **kwargs)
+
+    async def catalog_query(self, *args: Any, **kwargs: Any) -> Any:
+        """Run a scoped catalog query."""
+        return await self.api.catalog_query(*args, **kwargs)
+
+    async def catalog_watch(self, *args: Any, **kwargs: Any) -> Any:
+        """Return catalog watch topic metadata."""
+        return await self.api.catalog_watch(*args, **kwargs)
+
+    async def summary_query(self, *args: Any, **kwargs: Any) -> Any:
+        """Run a discovery summary query (delegates to API)."""
+        return await self.api.summary_query(*args, **kwargs)
+
     # --- Pub/sub ---
     async def publish(
         self,

@@ -257,3 +257,16 @@ integrity residuals (not topology non-claims):
 4. Scrub stale “planned” operator language (OPERATE chaos, APP_CATALOG, README)
 
 Exit: **96** suite apps; thin=0; feature-constant join=100%.
+
+## Phase P — Multi-axis platform charter (COMPLETE)
+
+After A–O integrity completion, Phase P chartered **six axes** of platform
+improvement rather than a single curriculum gap:
+
+1. **OBS** — RPCResponse echoes W3C trace; `last_trace_context` always set
+2. **CAP** — `MPREGClient` discovery methods match API surface
+3. **ERG** — four-plane incomplete defaults log at DEBUG
+4. **PERF** — metrics snapshot min/max/samples + microbench lab
+5. **USE/CORRECT** — teach apps + live unit proof
+
+Exit: **97** suite apps; multi-axis living backlog retained for next charter.

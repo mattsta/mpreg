@@ -38,6 +38,7 @@ CLIENT_POLICY_M2: Final = "client.policy.m2"
 CLIENT_POLICY_M3: Final = "client.policy.m3"
 CLIENT_DEFAULT_HA: Final = "client.default_ha"
 CLIENT_TRACE: Final = "client.trace"
+CLIENT_SUMMARY: Final = "client.summary"
 CLIENT_AUTH: Final = "client.auth"
 TX_SECURITY: Final = "tx.security"
 
@@ -209,6 +210,8 @@ OPS_MGMT_DETACH: Final = "ops.mgmt_detach"
 CHAOS_NO_LOOP: Final = "chaos.no_loop"
 TX_CORRELATION: Final = "tx.correlation"
 MON_TRACE_BIND: Final = "mon.trace_bind"
+MON_METRICS_SNAPSHOT: Final = "mon.metrics_snapshot"
+MON_SERVER_TRACKER: Final = "mon.server_tracker"
 FABRIC_GOSSIP: Final = "fabric.gossip"
 
 # App id → feature IDs (must stay aligned with FEATURE_CATALOG.md)
@@ -448,6 +451,9 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         CACHE_PUT_GET,
         QUEUE_RPC_SURFACE,
         QUEUE_SEND,
+        CLIENT_CLUSTER_MAP,
+        DISCO_LIST_PEERS,
+        DISCO_CATALOG_QUERY,
     ),
     "pubsub_request_reply": (
         PUBSUB_PUBLISH_REPLY,
@@ -745,6 +751,12 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         MON_TRACE_CONTEXT,
         RPC_CALL,
         CLIENT_API,
+    ),
+    "rpc_microbench_lab": (
+        RPC_CALL,
+        CLIENT_API,
+        MON_METRICS_SNAPSHOT,
+        MON_SERVER_TRACKER,
     ),
     "correlation_routing_lab": (
         TX_CORRELATION,

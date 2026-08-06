@@ -81,19 +81,31 @@ async def main() -> None:
                         )
                         ensure(out == "e:hi", f"got {out!r}")
                         ctx = client.last_trace_context()
-                        # May be None if server did not echo traceparent — surface must exist
+                        # Phase P: server echoes W3C + client seeds outbound —
+                        # last_trace_context must be populated after every call.
+                        ensure(isinstance(ctx, dict), f"ctx not dict: {ctx!r}")
                         ensure(
-                            ctx is None or isinstance(ctx, dict),
-                            f"unexpected ctx {ctx!r}",
+                            "traceparent" in ctx and str(ctx["traceparent"]).startswith("00-"),
+                            f"missing/bad traceparent in {ctx!r}",
                         )
                         ensure(
                             callable(client.last_trace_context),
                             "last_trace_context not callable",
                         )
-                        step(f"last_trace_context={ctx}")
+                        # Second call continues / refreshes trace surface
+                        out2 = await client.call(
+                            "echo", "again", locs=frozenset(["t"])
+                        )
+                        ensure(out2 == "e:again", f"got {out2!r}")
+                        ctx2 = client.last_trace_context()
+                        ensure(
+                            isinstance(ctx2, dict) and "traceparent" in ctx2,
+                            f"second ctx {ctx2!r}",
+                        )
+                        step(f"last_trace_context={ctx2}")
                         ok(
-                            "last_trace_context callable; "
-                            f"populated={ctx is not None and bool(ctx)}"
+                            "last_trace_context always populated after RPC; "
+                            f"tp={ctx2['traceparent'][:24]}…"
                         )
 
                 with scenario(

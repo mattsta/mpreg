@@ -588,24 +588,30 @@ class ServerMetricsTracker:
             "rpc": {
                 "total": int(self.rpc_total),
                 "errors": int(self.rpc_errors),
+                "samples": len(rpc_lat),
                 "avg_ms": round(
                     (sum(rpc_lat) / len(rpc_lat)) if rpc_lat else 0.0, 3
                 ),
                 "p50_ms": round(_calculate_percentile(rpc_lat, 50.0), 3),
                 "p95_ms": round(_calculate_percentile(rpc_lat, 95.0), 3),
                 "p99_ms": round(_calculate_percentile(rpc_lat, 99.0), 3),
+                "min_ms": round(min(rpc_lat), 3) if rpc_lat else 0.0,
+                "max_ms": round(max(rpc_lat), 3) if rpc_lat else 0.0,
                 "rps": round(rpc_rps, 3),
                 "error_codes": dict(self.rpc_error_codes),
             },
             "pubsub": {
                 "total": int(self.pubsub_total),
                 "errors": int(self.pubsub_errors),
+                "samples": len(pub_lat),
                 "avg_ms": round(
                     (sum(pub_lat) / len(pub_lat)) if pub_lat else 0.0, 3
                 ),
                 "p50_ms": round(_calculate_percentile(pub_lat, 50.0), 3),
                 "p95_ms": round(_calculate_percentile(pub_lat, 95.0), 3),
                 "p99_ms": round(_calculate_percentile(pub_lat, 99.0), 3),
+                "min_ms": round(min(pub_lat), 3) if pub_lat else 0.0,
+                "max_ms": round(max(pub_lat), 3) if pub_lat else 0.0,
                 "rps": round(pub_rps, 3),
                 "notifications": int(self.pubsub_notifications),
             },
