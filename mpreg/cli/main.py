@@ -86,6 +86,8 @@ def cli(ctx, verbose: bool, json_logs: bool):
       mpreg dns …               — DNS plane (alias of mpreg client dns-*)
       mpreg doctor --url HTTP   — monitoring health (not WS)
       mpreg examples …          — curriculum apps
+      mpreg distlab …           — DistLab scenarios (platform self-test)
+      mpreg test concurrent …   — high-concurrency pytest runner
     """
     setup_logging(verbose, json_logs=json_logs)
     ctx.ensure_object(dict)
@@ -2483,6 +2485,103 @@ def examples_suite(timeout: float, no_fail_fast: bool) -> None:
     if no_fail_fast:
         argv.append("--no-fail-fast")
     examples_main(argv)
+
+@cli.group("distlab")
+def distlab_group() -> None:
+    """First-party DistLab (history/checker/nemesis scenarios).
+
+    Jepsen-inspired platform self-test lab — not Elle, not WAN, not BFT.
+
+    \b
+      uv run mpreg distlab list
+      uv run mpreg distlab catalog --json
+      uv run mpreg distlab run strong.happy_3
+    """
+
+@distlab_group.command("list")
+@click.option("--track", default="", help="Filter by track id (T1..T7)")
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON catalog rows")
+def distlab_list(track: str, as_json: bool) -> None:
+    """List registered DistLab scenarios."""
+    from mpreg.testing.distlab.cli import list_scenarios
+
+    code = list_scenarios(track=track or "", as_json=as_json)
+    if code:
+        raise SystemExit(code)
+
+@distlab_group.command("catalog")
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON")
+def distlab_catalog(as_json: bool) -> None:
+    """Show scenario catalog with track/tags/description."""
+    from mpreg.testing.distlab.cli import catalog
+
+    code = catalog(as_json=as_json)
+    if code:
+        raise SystemExit(code)
+
+@distlab_group.command("run")
+@click.argument("name")
+@click.option("--json", "as_json", is_flag=True, help="Emit ScenarioResult JSON")
+def distlab_run(name: str, as_json: bool) -> None:
+    """Run one in-process DistLab scenario by name."""
+    from mpreg.testing.distlab.cli import run_scenario
+
+    code = run_scenario(name, as_json=as_json)
+    if code:
+        raise SystemExit(code)
+
+@cli.group("test")
+def test_group() -> None:
+    """Developer test runners (entry points only — never python -m)."""
+
+@test_group.command("concurrent")
+@click.option("-n", "--workers", type=int, default=16, show_default=True)
+@click.option("--stall-seconds", type=float, default=90.0, show_default=True)
+@click.option("--open-files", type=int, default=1_048_576, show_default=True)
+@click.option("--log", type=click.Path(), default=None)
+@click.option("--junit", type=click.Path(), default=None)
+@click.option("--profile-dir", type=click.Path(), default=None)
+@click.option("--no-sudo-pyspy", is_flag=True)
+@click.argument("pytest_args", nargs=-1, type=click.UNPROCESSED)
+def test_concurrent(
+    workers: int,
+    stall_seconds: float,
+    open_files: int,
+    log: str | None,
+    junit: str | None,
+    profile_dir: str | None,
+    no_sudo_pyspy: bool,
+    pytest_args: tuple[str, ...],
+) -> None:
+    """Run pytest under high concurrency with hang profiling."""
+    from pathlib import Path
+
+    from mpreg.testing.concurrent_runner import (
+        DEFAULT_PROFILE_DIR,
+        ConcurrentSuiteRunner,
+    )
+
+    runner = ConcurrentSuiteRunner(
+        workers=workers,
+        log_path=Path(log) if log else None,
+        junit_path=Path(junit) if junit else None,
+        profile_dir=Path(profile_dir) if profile_dir else DEFAULT_PROFILE_DIR,
+        stall_seconds=stall_seconds,
+        open_file_target=open_files,
+        extra_pytest_args=list(pytest_args),
+        use_sudo_for_pyspy=not no_sudo_pyspy,
+    )
+    result = runner.run()
+    console.print(
+        f"done exit={result.exit_code} duration={result.duration_seconds:.1f}s "
+        f"nofile={result.open_files.soft}/{result.open_files.hard} "
+        f"stalls={len(result.stall_dumps)}"
+    )
+    if result.summary_line:
+        console.print(result.summary_line)
+    for dump in result.stall_dumps:
+        console.print(f"stall dump: {dump}")
+    raise SystemExit(result.exit_code)
 
 @cli.command()
 @click.option(

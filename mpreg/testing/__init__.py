@@ -12,8 +12,8 @@ from mpreg.testing.oracles import (
     RpcStreamEvent,
 )
 
-# Concurrent runner is intentionally NOT imported here: `python -m
-# mpreg.testing.concurrent_runner` must load a fresh module (avoids runpy warning).
+# Concurrent runner is intentionally NOT imported here at module level;
+# use the entry point: ``uv run mpreg test concurrent``.
 
 __all__ = [
     "ConcurrentSuiteResult",

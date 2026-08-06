@@ -16,10 +16,11 @@ Import::
         get_registry, ensure_builtins,
     )
 
-CLI::
+CLI (pyproject entry point only — never ``python -m``)::
 
-    python -m mpreg.testing.distlab list
-    python -m mpreg.testing.distlab run strong.happy_3
+    uv run mpreg distlab list
+    uv run mpreg distlab catalog
+    uv run mpreg distlab run strong.happy_3
 """
 
 from __future__ import annotations

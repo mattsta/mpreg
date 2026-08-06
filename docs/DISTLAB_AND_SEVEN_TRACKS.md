@@ -21,7 +21,7 @@ DistLab is a **first-party** distributed testing lab inside MPREG:
 | Generator | `distlab/generator.py` | Sequential/concurrent puts, audit burst, fault plans |
 | Registry | `distlab/registry.py` + `builtins.py` | Named scenario catalog |
 | Live | `distlab/live.py` | Same-host MPREGServer helpers + LiveStrongSUT |
-| CLI | `python -m mpreg.testing.distlab` | list / catalog / run |
+| CLI | `uv run mpreg distlab` | list / catalog / run |
 | STRONG SUT | `distlab/adapters/strong.py` | In-process majority-commit mesh |
 | Audit SUT | `distlab/adapters/audit.py` | In-process G-Set epidemic mesh |
 | Re-export | `tests/harness` | Single import surface for suites |
@@ -178,7 +178,7 @@ DistLab is a **first-party** distributed testing lab inside MPREG:
 166. Live suites green.
 167. Commit message complete.
 168. Working tree clean.
-169–175. Optional CLI `python -m mpreg.testing.distlab` smoke (future).
+169–175. CLI `uv run mpreg distlab` list/catalog/run (shipped; never python -m).
 
 ---
 

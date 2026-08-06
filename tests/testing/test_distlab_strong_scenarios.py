@@ -498,15 +498,49 @@ async def test_distlab_registry_strong_subset() -> None:
     reg = get_registry()
     for name in (
         "strong.happy_3",
+        "strong.single_node",
+        "strong.sequential_lww",
         "strong.partition_majority",
+        "strong.partition_one_peer",
         "strong.heal",
         "strong.drop_prepare",
+        "strong.delay_beyond_timeout",
+        "strong.crash_recover",
         "strong.interleaved_fault_success",
         "strong.lie_prepare",
         "strong.not_bft_lie_commit_both",
+        "strong.pending_full_recover",
+        "reg_expired_commit",
     ):
         r = await reg.run(name)
         assert r.ok, f"{name} failed: {r.check.violations}"
+
+@pytest.mark.asyncio
+async def test_distlab_registry_all_strong_builtins_close() -> None:
+    """Every strong.* registry scenario must exit without open invokes.
+
+    Scenarios marked not_bft may skip residual/LWW; others must pass full checkers.
+    """
+    from mpreg.testing.distlab import ensure_builtins, get_registry
+
+    ensure_builtins()
+    reg = get_registry()
+    names = [n for n in reg.list() if n.startswith("strong.") or n.startswith("reg_")]
+    assert len(names) >= 20
+    for name in names:
+        # Fresh factory each time
+        sc = await reg.build(name)
+        # not_bft / strict=False scenarios: only require completed run
+        if sc.meta.get("not_bft") or not sc.strict:
+            sc.strict = False
+            r = await sc.run()
+            # History must still close
+            from mpreg.testing.distlab import NoOpenInvokeChecker
+
+            assert NoOpenInvokeChecker().check(sc.history).ok, name
+            continue
+        r = await sc.run()
+        assert r.ok, f"{name}: {r.check.violations}"
 
 @given(seed=st.integers(0, 50))
 @settings(max_examples=8, deadline=None)

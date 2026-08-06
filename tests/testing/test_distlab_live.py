@@ -85,6 +85,45 @@ async def test_distlab_live_strong_multi_origin_keys(
         assert check.ok, check.violations
 
 @pytest.mark.asyncio
+async def test_distlab_live_strong_disabled_1012(
+    test_context: AsyncTestContext,
+) -> None:
+    """When cache_strong_enabled is off, STRONG put fails closed (1012)."""
+    from mpreg.core.config import MPREGSettings
+    from mpreg.core.errors import MpregErrorCode
+    from mpreg.core.cache_models import (
+        CacheOptions,
+        ConsistencyLevel,
+        GlobalCacheKey,
+    )
+
+    with port_range_context(1, "servers") as ports:
+        s = MPREGServer(
+            MPREGSettings(
+                host="127.0.0.1",
+                port=ports[0],
+                name="D0",
+                cluster_id="distlab-disabled",
+                resources={"r-D0"},
+                log_level="ERROR",
+                monitoring_enabled=False,
+                enable_default_cache=True,
+                cache_strong_enabled=False,
+            )
+        )
+        test_context.servers.append(s)
+        test_context.tasks.append(asyncio.create_task(s.server()))
+        await asyncio.sleep(0.6)
+        key = GlobalCacheKey(namespace="d", identifier="k", version="v1")
+        res = await s._cache_manager.put(
+            key,
+            1,
+            options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
+        )
+        assert res.success is False
+        assert res.error_code == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY)
+
+@pytest.mark.asyncio
 async def test_distlab_live_strong_peer_loss_residual(
     test_context: AsyncTestContext,
 ) -> None:

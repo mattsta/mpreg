@@ -276,7 +276,7 @@ uv run pytest tests/test_advanced_topological_research.py::TestAdvancedTopologic
 uv run pytest tests/test_advanced_topological_research.py -v
 
 # Performance benchmarking
-python -m mpreg.tools.benchmark --topology=all --nodes=10 --iterations=5
+uv run mpreg (benchmark not shipped — use pytest topology tests) --topology=all --nodes=10 --iterations=5
 ```
 
 ### Custom Testing Scripts

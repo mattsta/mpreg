@@ -124,7 +124,7 @@ test helpers.
 | STRONG scenarios | `tests/testing/test_distlab_strong_scenarios.py` |
 | Audit scenarios | `tests/testing/test_distlab_audit_scenarios.py` |
 | Live mesh DistLab | `tests/testing/test_distlab_live.py` |
-| CLI | `python -m mpreg.testing.distlab list\|run` |
+| CLI | `uv run mpreg distlab list\|run` |
 | Re-export | `tests/harness` |
 
 ## Phase 4 — Seven-track expansion complete (2026-08-06)
@@ -133,5 +133,23 @@ Official master plan executed: generator + registry + live helpers + CLI,
 full in-process STRONG/audit scenario catalog, live same-host DistLab suite,
 claims/docs gate. See `docs/plans/DISTLAB_SEVEN_TRACK_MASTER_PLAN.md` status
 dashboard (T1–T7 complete).
+
+## Phase 4b — Entry points + gap closure (2026-08-06)
+
+Architecture rule enforced: **never `python -m`**. DistLab and concurrent
+test runner are top-level CLI groups only:
+
+```bash
+uv run mpreg distlab list
+uv run mpreg distlab catalog
+uv run mpreg distlab run strong.happy_3
+uv run mpreg test concurrent --help
+```
+
+`python -m mpreg.testing.distlab` exits 2 with a pointer to the entry point.
+Gap-closure plan: `docs/plans/DISTLAB_ENTRYPOINT_AND_GAP_CLOSURE_PLAN.md`
+(T8–T10). Expanded registry includes single-node, sequential LWW, partition-one,
+delay-beyond-timeout, crash-recover, pending-full recover, expired-commit
+regression, lie-commit single/both (not_bft).
 
 DistLab is **Jepsen-inspired, not Jepsen**. See claims.yaml non_claims.

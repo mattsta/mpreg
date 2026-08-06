@@ -40,7 +40,7 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 | --- | --- | --- |
 | T1-S0 | Catalog APIs | Modules listed in `__all__` |
 | T1-S1 | Generator + registry | `generator.py`, `registry.py` |
-| T1-S2 | CLI smoke | `python -m mpreg.testing.distlab` |
+| T1-S2 | CLI smoke | `uv run mpreg distlab` |
 | T1-S3 | Core unit matrix | `test_distlab_core.py` expanded |
 | T1-S4 | Harness exports | `tests/harness` complete |
 | T1-S5 | Gate | Core suite green |
@@ -114,8 +114,8 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 
 ### T1-S5 Gate
 56. `tests/testing/test_distlab_core.py` green.
-57. `python -m mpreg.testing.distlab list` works.
-58. `python -m mpreg.testing.distlab run strong.happy_3` works.
+57. `uv run mpreg distlab list` works.
+58. `uv run mpreg distlab run strong.happy_3` works.
 59. No import cycle testing ↔ server for core modules.
 60. T1 marked complete in plan status table.
 
@@ -432,7 +432,7 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 | Registry | `mpreg/testing/distlab/registry.py` |
 | Builtins | `mpreg/testing/distlab/builtins.py` (~27 scenarios) |
 | Live helpers | `mpreg/testing/distlab/live.py` |
-| CLI | `python -m mpreg.testing.distlab` |
+| CLI | `uv run mpreg distlab` |
 | Tests | `tests/testing/test_distlab_*.py` |
 
 ## Implementation order (mandatory)

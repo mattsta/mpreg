@@ -557,6 +557,250 @@ def _audit_duplicate() -> Scenario:
         meta={"track": "T4"},
     )
 
+def _strong_single_node() -> Scenario:
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+
+    sut = StrongSUT.create(1, min_replicas=1, replica_factor=1)
+
+    async def body(history: History, s: object) -> None:
+        res = await sut.put(
+            history, process="c0", origin="n0", logical_key="solo", value=1
+        )
+        assert res.success, res.error_message
+
+    return Scenario(
+        name="strong.single_node",
+        setup=lambda: sut,
+        body=body,
+        checker=default_strong_checkers(key="solo"),
+        meta={"track": "T2"},
+    )
+
+def _strong_partition_one_peer() -> Scenario:
+    """Isolate one peer; origin+other peer can still form Q=2."""
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+
+    sut = StrongSUT.create(3)
+    hooks = sut.nemesis_hooks()
+    target = FaultInjectorNemesisTarget(
+        injector=hooks["injector"],
+        nodes=list(hooks["nodes"]),
+        on_partition=hooks["on_partition"],
+        on_heal=hooks["on_heal"],
+        on_crash=hooks["on_crash"],
+        on_recover=hooks["on_recover"],
+        on_drop_rate=hooks["on_drop_rate"],
+        on_delay=hooks["on_delay"],
+    )
+
+    async def body(history: History, s: object) -> None:
+        # Isolate n2 only — n0/n1 still connected
+        target.apply_partition_groups([{"n0", "n1"}, {"n2"}])
+        res = await sut.put(
+            history, process="c0", origin="n0", logical_key="p1", value="ok"
+        )
+        assert res.success is True, res.error_message
+        target.heal_network()
+
+    return Scenario(
+        name="strong.partition_one_peer",
+        setup=lambda: sut,
+        body=body,
+        checker=default_strong_checkers(key="p1"),
+        meta={"track": "T2"},
+    )
+
+def _strong_crash_recover() -> Scenario:
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+
+    sut = StrongSUT.create(3)
+    hooks = sut.nemesis_hooks()
+    target = FaultInjectorNemesisTarget(
+        injector=hooks["injector"],
+        nodes=list(hooks["nodes"]),
+        on_partition=hooks["on_partition"],
+        on_heal=hooks["on_heal"],
+        on_crash=hooks["on_crash"],
+        on_recover=hooks["on_recover"],
+        on_drop_rate=hooks["on_drop_rate"],
+        on_delay=hooks["on_delay"],
+    )
+
+    async def body(history: History, s: object) -> None:
+        target.crash_node("n2")
+        # Q=2 still possible with n0+n1
+        res = await sut.put(
+            history, process="c0", origin="n0", logical_key="cr", value=1
+        )
+        # May succeed (2 live) or fail depending on replica selection — residual free either way
+        target.recover_node("n2")
+        target.heal_network()
+        good = await sut.put(
+            history, process="c1", origin="n0", logical_key="cr", value=2
+        )
+        assert good.success is True
+
+    return Scenario(
+        name="strong.crash_recover",
+        setup=lambda: sut,
+        body=body,
+        checker=default_strong_checkers(key="cr"),
+        meta={"track": "T2"},
+    )
+
+def _strong_delay_beyond_timeout() -> Scenario:
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+
+    sut = StrongSUT.create(3, prepare_timeout_s=0.08, commit_timeout_s=0.08)
+    sut.transport.delay_override_s = 0.25
+
+    async def body(history: History, s: object) -> None:
+        res = await sut.put(
+            history, process="c0", origin="n0", logical_key="dto", value=1
+        )
+        assert res.success is False
+
+    return Scenario(
+        name="strong.delay_beyond_timeout",
+        setup=lambda: sut,
+        body=body,
+        checker=default_strong_checkers(key="dto"),
+        meta={"track": "T2"},
+    )
+
+def _strong_lie_commit_single() -> Scenario:
+    """One peer lies on COMMIT_ACK — Q=2 may still form honestly with other peer."""
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+
+    sut = StrongSUT.create(3)
+    sut.transport.lie_commit_applied |= {"n2"}
+
+    async def body(history: History, s: object) -> None:
+        # Success is allowed; residual-free still required for any fails
+        await sut.put(
+            history, process="c0", origin="n0", logical_key="lc1", value="x"
+        )
+
+    return Scenario(
+        name="strong.lie_commit_single_peer",
+        setup=lambda: sut,
+        body=body,
+        # Only structural if success under partial lie; residual if fail
+        checker=default_strong_checkers(key="lc1"),
+        meta={"track": "T3"},
+        strict=False,  # partial BFT edge — record outcome; registry test checks residual on fail
+    )
+
+def _strong_sequential_lww() -> Scenario:
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+
+    sut = StrongSUT.create(3)
+
+    async def body(history: History, s: object) -> None:
+        for i in range(5):
+            res = await sut.put(
+                history,
+                process=f"c{i}",
+                origin=f"n{i % 3}",
+                logical_key="lww",
+                value=i,
+                op_id=f"lww-{i}",
+            )
+            assert res.success, res.error_message
+        # last successful value must be final
+        assert sut.snapshot_state().final_value("lww") == 4
+
+    return Scenario(
+        name="strong.sequential_lww",
+        setup=lambda: sut,
+        body=body,
+        checker=default_strong_checkers(key="lww"),
+        meta={"track": "T2"},
+    )
+
+def _strong_pending_full() -> Scenario:
+    """max_pending exhaustion surfaces fail without residual dirty apply."""
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+
+    sut = StrongSUT.create(3, max_pending=1)
+    # Hold a pending by dropping prepare so slot stays full, then second put
+    sut.transport.drop_prepare |= {"n1", "n2"}
+
+    async def body(history: History, s: object) -> None:
+        bad1 = await sut.put(
+            history, process="c0", origin="n0", logical_key="pf1", value=1
+        )
+        assert bad1.success is False
+        # After fail, pending should abort; second put with malice cleared
+        sut.transport.clear_malice()
+        good = await sut.put(
+            history, process="c1", origin="n0", logical_key="pf2", value=2
+        )
+        assert good.success is True
+
+    return Scenario(
+        name="strong.pending_full_recover",
+        setup=lambda: sut,
+        body=body,
+        checker=default_strong_checkers(),
+        meta={"track": "T6", "reg": "pending_full"},
+    )
+
+def _reg_expired_commit() -> Scenario:
+    """Regression: expired pending rejects commit (reason=expired path)."""
+    import time
+
+    from mpreg.core.cache_models import CacheMetadata, GlobalCacheKey
+    from mpreg.core.cache_strong import StrongVersion
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+    from mpreg.testing.distlab.checker import NoOpenInvokeChecker
+    from mpreg.testing.distlab.models import OpKind
+
+    sut = StrongSUT.create(1, min_replicas=1, replica_factor=1, pending_ttl_s=0.05)
+    be = sut.backends["n0"]
+    key = GlobalCacheKey(namespace="distlab", identifier="exp", version="v1")
+
+    async def body(history: History, s: object) -> None:
+        history.invoke("c0", OpKind.PUT, key="exp", value=1, op_id="exp-op")
+        ver = StrongVersion(
+            logical_ts=1,
+            origin_node="n0",
+            op_id="exp-op",
+        )
+        ack = await be.prepare(
+            key=key,
+            value=1,
+            metadata=CacheMetadata(),
+            strong_version=ver,
+            replica_set=("n0",),
+            quorum=1,
+            ttl_s=0.05,
+        )
+        assert ack.ok
+        # Force expiry without relying solely on purge removing slot first
+        pending = be._pending.get("exp-op")
+        if pending is not None:
+            pending.expires_at = time.time() - 1.0
+        cack = await be.commit(op_id="exp-op", key=key)
+        assert cack.ok is False
+        assert (cack.reason or "") == "expired"
+        history.fail(
+            "c0",
+            OpKind.PUT,
+            key="exp",
+            value=1,
+            op_id="exp-op",
+            error_message=cack.reason or "expired",
+        )
+
+    return Scenario(
+        name="reg_expired_commit",
+        setup=lambda: sut,
+        body=body,
+        checker=NoOpenInvokeChecker(),
+        meta={"track": "T6", "reg": "expired_commit"},
+    )
+
 def register_builtins(registry=None) -> int:
     """Idempotent registration of all built-in scenarios. Returns count."""
     global _REGISTERED
@@ -568,9 +812,12 @@ def register_builtins(registry=None) -> int:
         ("strong.happy_3", lambda: _strong_happy(3, "k3"), "T2", "3-node happy", ("strong", "happy")),
         ("strong.happy_5", lambda: _strong_happy(5, "k5"), "T2", "5-node Q=3", ("strong", "happy")),
         ("strong.happy_7", lambda: _strong_happy(7, "k7"), "T2", "7-node Q=4", ("strong", "happy")),
+        ("strong.single_node", _strong_single_node, "T2", "min_replicas=1 lab", ("strong", "happy")),
         ("strong.soak_20", lambda: _strong_soak_n(20), "T2", "20 multi-origin soak", ("strong", "soak")),
         ("strong.soak_50", lambda: _strong_soak_n(50), "T2", "50 multi-origin soak", ("strong", "soak")),
+        ("strong.sequential_lww", _strong_sequential_lww, "T2", "sequential LWW last wins", ("strong", "lww")),
         ("strong.partition_majority", _strong_partition_majority, "T2", "partition residual", ("strong", "fault")),
+        ("strong.partition_one_peer", _strong_partition_one_peer, "T2", "isolate one peer still Q", ("strong", "fault")),
         ("strong.heal", _strong_heal, "T2", "heal then success", ("strong", "fault")),
         ("strong.concurrent_same_key", _strong_concurrent, "T2", "concurrent LWW", ("strong", "conc")),
         ("strong.concurrent_multi_key", _strong_multi_key, "T2", "multi-key", ("strong", "conc")),
@@ -579,11 +826,16 @@ def register_builtins(registry=None) -> int:
         ("strong.fail_prepare", _strong_fail_prepare, "T3", "fail prepare residual", ("strong", "adv")),
         ("strong.wrong_cluster", _strong_wrong_cluster, "T3", "wrong cluster residual", ("strong", "adv")),
         ("strong.delay_within_timeout", _strong_delay_ok, "T2", "delay within timeout", ("strong", "fault")),
+        ("strong.delay_beyond_timeout", _strong_delay_beyond_timeout, "T2", "delay beyond timeout", ("strong", "fault")),
+        ("strong.crash_recover", _strong_crash_recover, "T2", "crash one then recover", ("strong", "fault")),
         ("strong.lie_prepare", _strong_lie_prepare, "T3", "lie prepare residual", ("strong", "adv")),
+        ("strong.lie_commit_single_peer", _strong_lie_commit_single, "T3", "single peer COMMIT lie", ("strong", "adv")),
         ("strong.not_bft_lie_commit_both", _strong_not_bft_lie_commit, "T3", "BFT boundary demo", ("strong", "not_bft")),
         ("strong.nemesis_concurrent", _strong_nemesis, "T2", "nemesis concurrent", ("strong", "nemesis")),
         ("strong.interleaved_fault_success", _strong_interleaved, "T2", "fault then ok", ("strong", "fault")),
         ("strong.duplicate_commit", _strong_duplicate_commit, "T2", "dup commit", ("strong", "fault")),
+        ("strong.pending_full_recover", _strong_pending_full, "T6", "pending full then recover", ("strong", "reg")),
+        ("reg_expired_commit", _reg_expired_commit, "T6", "expired commit reject", ("strong", "reg")),
         ("audit.multi_origin", _audit_multi, "T4", "multi-origin", ("audit",)),
         ("audit.burst_30", lambda: _audit_burst_n(30), "T4", "burst 30", ("audit", "soak")),
         ("audit.burst_100", lambda: _audit_burst_n(100), "T4", "burst 100", ("audit", "soak")),

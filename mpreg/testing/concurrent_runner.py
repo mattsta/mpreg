@@ -155,11 +155,12 @@ class ConcurrentSuiteRunner:
         )
 
 def main(argv: list[str] | None = None) -> int:
-    """CLI: ``python -m mpreg.testing.concurrent_runner``."""
+    """CLI entry: prefer ``uv run mpreg test concurrent`` (never ``python -m``)."""
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Run MPREG tests under high concurrency with hang profiling."
+        prog="mpreg test concurrent",
+        description="Run MPREG tests under high concurrency with hang profiling.",
     )
     parser.add_argument("-n", "--workers", type=int, default=16)
     parser.add_argument("--stall-seconds", type=float, default=90.0)

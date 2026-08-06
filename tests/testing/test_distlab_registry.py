@@ -91,20 +91,20 @@ def test_random_fault_plan_seedable() -> None:
     assert a == b
     assert a != c
 
-def test_cli_list_and_run() -> None:
-    py = sys.executable
+def test_cli_list_and_run_via_mpreg_entry() -> None:
+    """Architecture: top-level ``uv run mpreg distlab`` only (never python -m)."""
     list_p = subprocess.run(
-        [py, "-m", "mpreg.testing.distlab", "list"],
+        ["uv", "run", "mpreg", "distlab", "list"],
         capture_output=True,
         text=True,
         cwd="/Users/matt/repos/mpreg",
-        timeout=60,
+        timeout=90,
     )
     assert list_p.returncode == 0, list_p.stderr
     assert "strong.happy_3" in list_p.stdout
 
     run_p = subprocess.run(
-        [py, "-m", "mpreg.testing.distlab", "run", "strong.happy_3", "--json"],
+        ["uv", "run", "mpreg", "distlab", "run", "strong.happy_3", "--json"],
         capture_output=True,
         text=True,
         cwd="/Users/matt/repos/mpreg",
@@ -116,18 +116,31 @@ def test_cli_list_and_run() -> None:
     assert data["name"] == "strong.happy_3"
 
 def test_cli_help_mentions_non_claims() -> None:
-    py = sys.executable
     p = subprocess.run(
-        [py, "-m", "mpreg.testing.distlab", "--help"],
+        ["uv", "run", "mpreg", "distlab", "--help"],
+        capture_output=True,
+        text=True,
+        cwd="/Users/matt/repos/mpreg",
+        timeout=60,
+    )
+    assert p.returncode == 0
+    out = p.stdout + p.stderr
+    assert "Elle" in out or "not Elle" in out or "DistLab" in out
+    assert "distlab" in out.lower()
+
+def test_python_m_distlab_is_blocked() -> None:
+    """Module path must refuse — forces entry-point usage."""
+    p = subprocess.run(
+        [sys.executable, "-m", "mpreg.testing.distlab", "list"],
         capture_output=True,
         text=True,
         cwd="/Users/matt/repos/mpreg",
         timeout=30,
     )
-    assert p.returncode == 0
-    out = p.stdout + p.stderr
-    assert "Elle" in out or "not Elle" in out
-    assert "BFT" in out
+    assert p.returncode == 2
+    assert "not supported" in (p.stderr + p.stdout).lower() or "mpreg distlab" in (
+        p.stderr + p.stdout
+    )
 
 @pytest.mark.asyncio
 async def test_registry_subset_suite() -> None:

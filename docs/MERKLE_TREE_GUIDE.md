@@ -3154,7 +3154,7 @@ def test_proof_verification(tree):
 Run tests with:
 
 ```bash
-uv run python -m pytest tests/test_datastructures_merkle_tree.py -v
+uv run pytest tests/test_datastructures_merkle_tree.py -v
 ```
 
 ## 🔧 Troubleshooting

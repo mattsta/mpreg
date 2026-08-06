@@ -187,7 +187,7 @@ merged window; `scope=local` remains the default single-node view.
 `mpreg.testing.distlab` is a packaged history/checker/nemesis/scenario lab
 (Jepsen-inspired, not Elle/WAN/BFT). Includes generators, named scenario
 registry, live same-host mesh helpers, and CLI
-(`python -m mpreg.testing.distlab`). STRONG and shared-audit adapters let the
+(`uv run mpreg distlab`). STRONG and shared-audit adapters let the
 platform validate itself under fault injection. Import via
 `tests.harness` or `mpreg.testing.distlab`. Plans:
 `docs/DISTLAB_AND_SEVEN_TRACKS.md`,
