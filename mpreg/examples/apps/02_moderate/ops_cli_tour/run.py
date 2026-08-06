@@ -606,6 +606,57 @@ async def main() -> None:
                         "abort_fail_peer_count=" in sout,
                         f"strong abort_fail_peer_count missing: {strong_m.output[:300]}",
                     )
+                    # T131: monitor strong --format json residual field keys
+                    strong_j = await _invoke(
+                        ["monitor", "strong", "--format", "json"],
+                        env=env,
+                    )
+                    ensure(
+                        strong_j.exit_code == 0,
+                        f"monitor strong json failed: {strong_j.output[:400]}",
+                    )
+                    raw_mj = strong_j.output
+                    brace_mj = raw_mj.find("{")
+                    ensure(
+                        brace_mj >= 0,
+                        f"monitor strong json missing object: {raw_mj[:200]}",
+                    )
+                    try:
+                        mj, _ = json.JSONDecoder().raw_decode(raw_mj[brace_mj:])
+                    except json.JSONDecodeError as exc:
+                        ensure(False, f"monitor strong json parse: {exc}")
+                    ensure(
+                        isinstance(mj, dict),
+                        f"monitor strong json not object: {mj!r}",
+                    )
+                    mbody = (
+                        mj.get("strong") if isinstance(mj.get("strong"), dict) else mj
+                    )
+                    ensure(isinstance(mbody, dict), f"strong body missing: {mj!r}")
+                    ensure(
+                        "abort_fail_peer_count" in mbody,
+                        f"monitor json missing abort_fail_peer_count: {mbody!r}",
+                    )
+                    ensure(
+                        isinstance(mbody.get("abort_fail_peer_count"), int),
+                        f"monitor json count not int: {mbody!r}",
+                    )
+                    ensure(
+                        isinstance(mbody.get("last_abort_fail_peers"), list),
+                        f"monitor json missing peers list: {mbody!r}",
+                    )
+                    ensure(
+                        isinstance(mbody.get("residual_ops_hint"), str),
+                        f"monitor json missing residual_ops_hint: {mbody!r}",
+                    )
+                    ensure(
+                        isinstance(mbody.get("last_abort_fail_op_id"), str),
+                        f"monitor json missing last_abort_fail_op_id: {mbody!r}",
+                    )
+                    step(
+                        "ERG: monitor strong --format json → residual field keys "
+                        "(int/list/str; not auto-heal)"
+                    )
                     ensure(
                         "ttl_gc=" in sout
                         or "pending ttl" in sout

@@ -1896,7 +1896,12 @@ def start_config(settings_path: str) -> None:
     "check_strong",
     is_flag=True,
     default=False,
-    help="Also probe /metrics/strong and fail on critical health",
+    help=(
+        "Also probe /metrics/strong and fail on critical health. "
+        "JSON rows include residual_ops_hint (str), abort_fail_peer_count (int), "
+        "last_abort_fail_peers (list), last_abort_fail_op_id (str) — ops only, "
+        "not auto-heal."
+    ),
 )
 @click.option(
     "--audit",
@@ -4095,53 +4100,68 @@ def monitor_strong(url: str | None, use_mgmt: bool, output_format: str) -> None:
                 payload = await response.json()
                 # Human summary for table/plain: capabilities honesty + refuse counters
                 fmt = (output_format or "json").lower()
-                if fmt in {"table", "plain"} and isinstance(payload, dict):
-                    body = (
+                body: dict[str, Any] | None = None
+                if isinstance(payload, dict):
+                    raw_body = (
                         payload.get("strong")
                         if isinstance(payload.get("strong"), dict)
                         else payload
                     )
-                    if isinstance(body, dict):
-                        caps = body.get("capabilities") or {}
-                        counters = body.get("counters") or {}
-                        fail_peers = _strong_abort_fail_peers(body)
-                        fail_oid = _strong_abort_fail_op_id(body)
-                        console.print(
-                            "[bold]STRONG[/bold] "
-                            f"health={body.get('health')} "
-                            f"bound={body.get('coordinator_bound')} "
-                            f"pending={body.get('pending_count', 0)} "
-                            f"visible={body.get('visible_count', 0)} "
-                            f"backups={body.get('backups_count', 0)} "
-                            f"pruned={body.get('backups_pruned_total', 0)} | "
-                            f"caps put={caps.get('put_majority_commit')} "
-                            f"get_quorum={caps.get('get_quorum', False)} "
-                            f"delete_quorum={caps.get('delete_quorum', False)} "
-                            f"ryw={caps.get('local_ryw_after_put')} "
-                            f"cft={caps.get('cft_only', True)} "
-                            f"abort_be={caps.get('abort_best_effort', True)} "
-                            f"ttl_gc={caps.get('pending_ttl_clears_residual_l1', False)} "
-                            f"retry_ops={caps.get('retry_abort_ops_driven', True)} | "
-                            f"puts_ok={counters.get('puts_ok', 0)} "
-                            f"puts_fail={counters.get('puts_fail', 0)} "
-                            f"gets_refused={counters.get('gets_refused', 0)} "
-                            f"deletes_refused={counters.get('deletes_refused', 0)} "
-                            f"abort_fail={counters.get('aborts_peer_fail', 0)} "
-                            f"abort_fail_peers={fail_peers} "
-                            f"abort_fail_peer_count={_strong_abort_fail_peer_count(body)} "
-                            f"abort_fail_op_id={fail_oid or '-'} "
-                            f"retry_abort={counters.get('retry_abort_calls', body.get('retry_abort_calls', 0))} "
-                            f"retry_cleared={counters.get('retry_abort_cleared', body.get('retry_abort_cleared', 0))} "
-                            "[dim](not WAN SLA; get/delete quorum is v1.1; "
-                            "ABORT best-effort CFT; pending TTL ≠ residual GC; "
-                            "abort_fail_peers = CFT residual candidates; "
-                            "abort_fail_peer_count mirrors prom gauge; "
-                            "retry_abort = ops-driven not auto-heal)[/dim]"
-                        )
-                        # T51: remediation hint when residual candidates present
-                        hint = strong_residual_ops_hint(body)
-                        if hint:
-                            console.print(f"[yellow]{hint}[/yellow]")
+                    if isinstance(raw_body, dict):
+                        body = raw_body
+                if fmt in {"table", "plain"} and body is not None:
+                    caps = body.get("capabilities") or {}
+                    counters = body.get("counters") or {}
+                    fail_peers = _strong_abort_fail_peers(body)
+                    fail_oid = _strong_abort_fail_op_id(body)
+                    console.print(
+                        "[bold]STRONG[/bold] "
+                        f"health={body.get('health')} "
+                        f"bound={body.get('coordinator_bound')} "
+                        f"pending={body.get('pending_count', 0)} "
+                        f"visible={body.get('visible_count', 0)} "
+                        f"backups={body.get('backups_count', 0)} "
+                        f"pruned={body.get('backups_pruned_total', 0)} | "
+                        f"caps put={caps.get('put_majority_commit')} "
+                        f"get_quorum={caps.get('get_quorum', False)} "
+                        f"delete_quorum={caps.get('delete_quorum', False)} "
+                        f"ryw={caps.get('local_ryw_after_put')} "
+                        f"cft={caps.get('cft_only', True)} "
+                        f"abort_be={caps.get('abort_best_effort', True)} "
+                        f"ttl_gc={caps.get('pending_ttl_clears_residual_l1', False)} "
+                        f"retry_ops={caps.get('retry_abort_ops_driven', True)} | "
+                        f"puts_ok={counters.get('puts_ok', 0)} "
+                        f"puts_fail={counters.get('puts_fail', 0)} "
+                        f"gets_refused={counters.get('gets_refused', 0)} "
+                        f"deletes_refused={counters.get('deletes_refused', 0)} "
+                        f"abort_fail={counters.get('aborts_peer_fail', 0)} "
+                        f"abort_fail_peers={fail_peers} "
+                        f"abort_fail_peer_count={_strong_abort_fail_peer_count(body)} "
+                        f"abort_fail_op_id={fail_oid or '-'} "
+                        f"retry_abort={counters.get('retry_abort_calls', body.get('retry_abort_calls', 0))} "
+                        f"retry_cleared={counters.get('retry_abort_cleared', body.get('retry_abort_cleared', 0))} "
+                        "[dim](not WAN SLA; get/delete quorum is v1.1; "
+                        "ABORT best-effort CFT; pending TTL ≠ residual GC; "
+                        "abort_fail_peers = CFT residual candidates; "
+                        "abort_fail_peer_count mirrors prom gauge; "
+                        "retry_abort = ops-driven not auto-heal)[/dim]"
+                    )
+                    # T51: remediation hint when residual candidates present
+                    hint = strong_residual_ops_hint(body)
+                    if hint:
+                        console.print(f"[yellow]{hint}[/yellow]")
+                # T130: JSON output always carries residual field keys (same types
+                # as doctor JSON /metrics/strong) even if a server build omitted them.
+                if fmt == "json" and body is not None and isinstance(payload, dict):
+                    residual = strong_doctor_json_residual_fields(body)
+                    target = (
+                        payload["strong"]
+                        if isinstance(payload.get("strong"), dict)
+                        else payload
+                    )
+                    if isinstance(target, dict):
+                        for key, val in residual.items():
+                            target.setdefault(key, val)
                 emit(payload, output_format=output_format, table_title="STRONG")
 
     run_coro(_strong())

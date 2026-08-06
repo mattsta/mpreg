@@ -269,7 +269,7 @@ Doctor JSON (`mpreg doctor --strong --format json`) includes on
 none), `abort_fail_peer_count` (**int**, 0 when clean),
 `last_abort_fail_peers` (**list**, `[]` when clean), and
 `last_abort_fail_op_id` (**str**, empty when clean) — same JSON-native types
-as `/metrics/strong` via `strong_doctor_json_residual_fields` (not auto-heal).
+as `/metrics/strong` via `strong_doctor_json_residual_fields` (not auto-heal). `mpreg monitor strong --format json` also ensures the same residual field keys are present (setdefault when a scrape omits them).
 DistLab `strong.cft_residual_ops_hint_enriched` proves the guidance surface
 without clearing residual. Monitor table shows `cft=` / `abort_be=` /
 `abort_fail=` / `abort_fail_peers=` / `retry_abort=` / `retry_cleared=` /

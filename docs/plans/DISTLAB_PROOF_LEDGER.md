@@ -201,6 +201,16 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T127 claims T120–T129 | claims.yaml proof + non_claims | honesty |
 | T128 master index T120–T129 | DISTLAB residual honesty band | teach |
 | T129 gate T120–T129 | residual closeouts + ledger gate | support |
+| T130 monitor JSON residual ensure | monitor strong JSON setdefault residual fields | product |
+| T131 curriculum monitor JSON | ops_cli monitor strong --format json | teach |
+| T132 doctor help residual types | doctor --strong help residual field types | support ops |
+| T133 GETTING_STARTED residual | GETTING_STARTED doctor/monitor residual loop | teach |
+| T134 README residual doctor | README doctor/monitor residual field types | teach |
+| T135 doctor help unit | CLI help residual field asserts | support ops |
+| T136 claims T130–T139 | claims.yaml proof + non_claims | honesty |
+| T137 master index T130–T139 | DISTLAB residual honesty band | teach |
+| T138 OPERATE monitor JSON | OPERATE monitor strong JSON residual | teach |
+| T139 gate T130–T139 | residual closeouts + ledger gate | support |
 
 ## Non-claims (do not market)
 
@@ -299,6 +309,16 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 - claims T120–T129 inventory is proof list — not residual-free under lost ABORT
 - Master index T120–T129 is planning cross-link — not Jepsen/WAN
 - Residual honesty gate T120–T129 is same-host closeout — not WAN/BFT/Jepsen
+- monitor strong JSON residual ensure is ops presentation — not auto-heal
+- Curriculum monitor strong JSON asserts are teachable — not auto-heal
+- doctor --strong help residual types are guidance — not residual-free claim
+- GETTING_STARTED residual ops loop is guidance — not WAN SLO, not auto-heal
+- README residual doctor/monitor types are guidance — not residual-free claim
+- doctor help unit residual asserts are pure CLI help — not live mesh
+- claims T130–T139 inventory is proof list — not residual-free under lost ABORT
+- Master index T130–T139 is planning cross-link — not Jepsen/WAN
+- OPERATE monitor JSON residual docs are guidance — not residual-free claim
+- Residual honesty gate T130–T139 is same-host closeout — not WAN/BFT/Jepsen
 
 ## Gate commands
 
@@ -364,6 +384,11 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t124_residuals.py tests/chaos/test_t125_residuals.py \
   tests/chaos/test_t126_residuals.py tests/chaos/test_t127_residuals.py \
   tests/chaos/test_t128_residuals.py tests/chaos/test_t129_residuals.py \
+  tests/chaos/test_t130_residuals.py tests/chaos/test_t131_residuals.py \
+  tests/chaos/test_t132_residuals.py tests/chaos/test_t133_residuals.py \
+  tests/chaos/test_t134_residuals.py tests/chaos/test_t135_residuals.py \
+  tests/chaos/test_t136_residuals.py tests/chaos/test_t137_residuals.py \
+  tests/chaos/test_t138_residuals.py tests/chaos/test_t139_residuals.py \
   tests/integration/test_cache_strong_live_mesh.py \
   tests/testing/test_distlab_live.py::test_distlab_live_strong_metrics_e2e \
   tests/test_config_check_cli.py tests/test_unified_client.py -q

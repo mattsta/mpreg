@@ -1461,3 +1461,84 @@ Still **not** claimed: gate is WAN/BFT/Jepsen proof.
 
 Plan: `docs/plans/DISTLAB_T129_GATE_T120_T129_PLAN.md`.
 
+## Phase 118 — monitor strong JSON residual ensure (2026-08-06)
+
+T130: ``mpreg monitor strong --format json`` setdefaults residual fields via
+``strong_doctor_json_residual_fields`` so automation always sees int/list/str keys.
+
+Still **not** claimed: monitor JSON is auto-heal; residual-free proof.
+
+Plan: `docs/plans/DISTLAB_T130_MONITOR_JSON_RESIDUAL_ENSURE_PLAN.md`.
+
+## Phase 119 — Curriculum monitor strong JSON (2026-08-06)
+
+T131: ops_cli_tour asserts monitor strong JSON residual field types.
+
+Still **not** claimed: curriculum is live auto-heal.
+
+Plan: `docs/plans/DISTLAB_T131_CURRICULUM_MONITOR_JSON_PLAN.md`.
+
+## Phase 120 — doctor --strong help residual types (2026-08-06)
+
+T132: doctor ``--strong`` help documents residual JSON field types (not auto-heal).
+
+Still **not** claimed: help text is residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T132_DOCTOR_HELP_RESIDUAL_TYPES_PLAN.md`.
+
+## Phase 121 — GETTING_STARTED residual ops (2026-08-06)
+
+T133: GETTING_STARTED doctor/monitor residual ops loop pointer.
+
+Still **not** claimed: getting started is WAN SLO or auto-heal.
+
+Plan: `docs/plans/DISTLAB_T133_GETTING_STARTED_RESIDUAL_PLAN.md`.
+
+## Phase 122 — README residual doctor JSON (2026-08-06)
+
+T134: README production status mentions doctor/monitor residual field types.
+
+Still **not** claimed: README is residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T134_README_RESIDUAL_DOCTOR_PLAN.md`.
+
+## Phase 123 — doctor help unit residual types (2026-08-06)
+
+T135: CLI help unit asserts residual field names on doctor --strong help.
+
+Still **not** claimed: unit is live mesh; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T135_DOCTOR_HELP_UNIT_PLAN.md`.
+
+## Phase 124 — claims.yaml T130–T139 (2026-08-06)
+
+T136: claims proof list + non_claims for T130–T139.
+
+Still **not** claimed: claims text is residual-free under lost ABORT.
+
+Plan: `docs/plans/DISTLAB_T136_CLAIMS_T130_T139_PLAN.md`.
+
+## Phase 125 — Master/DISTLAB index T130–T139 (2026-08-06)
+
+T137: DISTLAB residual honesty index through T139.
+
+Still **not** claimed: index is Jepsen/WAN proof.
+
+Plan: `docs/plans/DISTLAB_T137_MASTER_INDEX_T130_T139_PLAN.md`.
+
+## Phase 126 — OPERATE monitor JSON residual (2026-08-06)
+
+T138: OPERATE documents monitor strong JSON residual ensure.
+
+Still **not** claimed: docs are residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T138_OPERATE_MONITOR_JSON_PLAN.md`.
+
+## Phase 127 — Gate T130–T139 (2026-08-06)
+
+T139: residual closeouts T130–T139, ledger, gate green.
+
+Still **not** claimed: gate is WAN/BFT/Jepsen proof.
+
+Plan: `docs/plans/DISTLAB_T139_GATE_T130_T139_PLAN.md`.
+

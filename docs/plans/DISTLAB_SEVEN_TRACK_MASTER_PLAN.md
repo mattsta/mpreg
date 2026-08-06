@@ -456,6 +456,6 @@ Re-run full gate after T5 and after T7.
 ## Residual honesty extension (post seven-track)
 
 After T7 complete, residual honesty continues as T17+ plans (see
-`docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md` through Phase 117 / T129).
-Peer-count + doctor JSON typing closeout: T80–T129 (op_id + live/Hypothesis). Not Jepsen/WAN/BFT.
+`docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md` through Phase 127 / T139).
+Peer-count + doctor JSON typing closeout: T80–T139 (op_id + live/Hypothesis). Not Jepsen/WAN/BFT.
 

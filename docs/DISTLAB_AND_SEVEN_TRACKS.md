@@ -186,7 +186,7 @@ DistLab is a **first-party** distributed testing lab inside MPREG:
 
 T1 core → T2 strong scenarios → T3 adv (reuse) → T4 audit scenarios → T5 live (existing + coexist) → T6 fixes as found → T7 claims/gate/commit.
 
-## Residual honesty beyond seven tracks (T17–T129)
+## Residual honesty beyond seven tracks (T17–T139)
 
 Seven-track DistLab core is **complete**. Residual honesty continues as
 numbered T-plans under `docs/plans/DISTLAB_T*_PLAN.md` with phases in
@@ -204,6 +204,7 @@ Jepsen):
 | T100–T109 | doctor JSON **int** count + **list** peers; OpenAPI example; OBS/SLO; claims/master index |
 | T110–T119 | doctor JSON **op_id** str; live/Hypothesis typing; design/ARCHITECTURE polish |
 | T120–T129 | config-check/OpenAPI residual examples; PRODUCTION residual pointer; claims/gate |
+| T130–T139 | monitor JSON residual ensure; GETTING_STARTED/README; doctor help residual types |
 
 Entry: `uv run mpreg distlab list` / `suite --preset smoke` (never `python -m`).
 

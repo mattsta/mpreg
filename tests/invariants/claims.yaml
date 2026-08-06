@@ -336,6 +336,16 @@ encapsulation:
       - tests/chaos/test_t127_residuals.py
       - tests/chaos/test_t128_residuals.py
       - tests/chaos/test_t129_residuals.py
+      - tests/chaos/test_t130_residuals.py
+      - tests/chaos/test_t131_residuals.py
+      - tests/chaos/test_t132_residuals.py
+      - tests/chaos/test_t133_residuals.py
+      - tests/chaos/test_t134_residuals.py
+      - tests/chaos/test_t135_residuals.py
+      - tests/chaos/test_t136_residuals.py
+      - tests/chaos/test_t137_residuals.py
+      - tests/chaos/test_t138_residuals.py
+      - tests/chaos/test_t139_residuals.py
       - tests/invariants/test_cache_strong_properties.py
       - tests/invariants/test_cache_strong_history.py
       - tests/integration/test_cache_strong_quorum.py
@@ -451,6 +461,17 @@ non_claims:
   - "claims.yaml residual closeout test list T120–T129 is proof inventory — not residual-free under lost ABORT"
   - "Master/DISTLAB residual honesty index T120–T129 is planning cross-link — not Jepsen/Elle/WAN proof"
   - "Residual honesty gate T120–T129 is same-host residual closeout coverage — not WAN/BFT/Jepsen proof"
+
+  - "monitor strong JSON residual field ensure is ops presentation — not automatic heal, not residual-free proof"
+  - "Curriculum monitor strong JSON residual asserts are teachable guidance — not live auto-heal, not SIEM"
+  - "doctor --strong help residual field types are operator guidance — not residual-free product claim"
+  - "GETTING_STARTED residual doctor/monitor ops loop is operator guidance — not WAN SLO, not automatic heal"
+  - "README residual doctor/monitor field types are operator guidance — not residual-free product claim"
+  - "doctor help unit residual field asserts are pure CLI help checks — not live mesh, not automatic heal"
+  - "claims.yaml residual closeout test list T130–T139 is proof inventory — not residual-free under lost ABORT"
+  - "Master/DISTLAB residual honesty index T130–T139 is planning cross-link — not Jepsen/Elle/WAN proof"
+  - "OPERATE monitor strong JSON residual docs are operator guidance — not residual-free product claim"
+  - "Residual honesty gate T130–T139 is same-host residual closeout coverage — not WAN/BFT/Jepsen proof"
 
   - "Lying COMMIT_ACK applied bits can satisfy CFT quorum math without peer L1 apply — documented non_claim (not BFT)"
   - "mpreg.testing.distlab is Jepsen-inspired (history/checker/nemesis) — not Elle, not WAN geo generators, not a JVM Jepsen port"

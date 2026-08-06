@@ -85,6 +85,13 @@ uv run mpreg config-check $(uv run mpreg profile path dev)
 # start with monitoring enabled in settings, then:
 export MPREG_MONITORING_URL=http://127.0.0.1:<monitoring-port>
 uv run mpreg doctor
+# STRONG residual candidates (ops only — not auto-heal; requires cache_strong_enabled):
+uv run mpreg doctor --strong --format json
+uv run mpreg monitor strong --format table
+# JSON residual fields: abort_fail_peer_count (int), last_abort_fail_peers (list),
+# last_abort_fail_op_id (str), residual_ops_hint (str). After recovery:
+# uv run mpreg client cache-strong-retry-abort --url <ws> --namespace NS --key ID --op-id OID
+# Runbook: docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md
 ```
 
 ### High Availability Client (Cluster Map)

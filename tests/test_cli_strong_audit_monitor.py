@@ -21,6 +21,10 @@ def test_doctor_strong_audit_flags_help() -> None:
     assert r.exit_code == 0
     assert "--strong" in r.output
     assert "--audit" in r.output
+    # T132: --strong help documents doctor JSON residual field types
+    assert "abort_fail_peer_count" in r.output
+    assert "last_abort_fail_peers" in r.output or "residual_ops_hint" in r.output
+    assert "not auto-heal" in r.output.lower() or "ops only" in r.output.lower()
 
 def test_distlab_suite_help() -> None:
     r = CliRunner().invoke(cli, ["distlab", "suite", "--help"])
