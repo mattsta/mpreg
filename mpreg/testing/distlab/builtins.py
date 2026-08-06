@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
-from mpreg.testing.distlab.checker import default_audit_checkers, default_strong_checkers
+from mpreg.testing.distlab.checker import (
+    NoOpenInvokeChecker,
+    default_audit_checkers,
+    default_strong_checkers,
+)
 from mpreg.testing.distlab.generator import AuditBurst, ConcurrentPuts, SequentialPuts
 from mpreg.testing.distlab.history import History
+from mpreg.testing.distlab.models import OpKind
 from mpreg.testing.distlab.nemesis import (
     FaultInjectorNemesisTarget,
     Nemesis,
@@ -208,6 +213,133 @@ def _strong_drop_abort() -> Scenario:
         body=body,
         checker=default_strong_checkers(key="da"),
         meta={"track": "T13", "fault": "drop_abort"},
+    )
+
+def _strong_refuse_get_delete() -> Scenario:
+    """T19: STRONG get/delete always 1012; EVENTUAL RYW after majority put.
+
+    Uses GlobalCacheManager (product surface) with lab single-node coordinator.
+    Not a quorum get/delete product — design-correct refuse only.
+    """
+    from mpreg.core.cache_models import (
+        CacheMetadata,
+        CacheOptions,
+        ConsistencyLevel,
+        GlobalCacheKey,
+    )
+    from mpreg.core.cache_strong import (
+        InProcessStrongTransport,
+        StrongLocalBackend,
+        StrongPutCoordinator,
+    )
+    from mpreg.core.errors import MpregErrorCode
+    from mpreg.core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
+
+    gcm = GlobalCacheManager(
+        GlobalCacheConfiguration(
+            enable_l2_persistent=False,
+            enable_l3_distributed=False,
+            enable_l4_federation=False,
+            local_cluster_id="refuse",
+        )
+    )
+    be = StrongLocalBackend(node_id="origin")
+    tr = InProcessStrongTransport()
+    tr.register(be)
+    gcm.attach_strong_coordinator(
+        StrongPutCoordinator(
+            origin_id="origin",
+            local=be,
+            transport=tr,
+            lab_single_node=True,
+            min_replicas=1,
+            replica_factor=1,
+        )
+    )
+    key = GlobalCacheKey(namespace="distlab", identifier="refuse-gd", version="v1")
+
+    async def body(history: History, s: object) -> None:
+        history.invoke("c0", OpKind.PUT, key="refuse-gd", value=42)
+        put = await gcm.put(
+            key,
+            42,
+            metadata=CacheMetadata(),
+            options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
+        )
+        if put.success:
+            history.ok("c0", OpKind.PUT, key="refuse-gd", value=42, op_id=put.operation_id)
+        else:
+            history.fail(
+                "c0",
+                OpKind.PUT,
+                key="refuse-gd",
+                value=42,
+                error_code=put.error_code,
+                error_message=put.error_message,
+            )
+        assert put.success, put.error_message
+
+        history.invoke("c0", OpKind.GET, key="refuse-gd")
+        bad_g = await gcm.get(
+            key, options=CacheOptions(consistency_level=ConsistencyLevel.STRONG)
+        )
+        history.fail(
+            "c0",
+            OpKind.GET,
+            key="refuse-gd",
+            error_code=bad_g.error_code,
+            error_message=bad_g.error_message,
+        )
+        assert bad_g.success is False
+        assert bad_g.error_code == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY)
+
+        history.invoke("c0", OpKind.DELETE, key="refuse-gd")
+        bad_d = await gcm.delete(
+            key, options=CacheOptions(consistency_level=ConsistencyLevel.STRONG)
+        )
+        history.fail(
+            "c0",
+            OpKind.DELETE,
+            key="refuse-gd",
+            error_code=bad_d.error_code,
+            error_message=bad_d.error_message,
+        )
+        assert bad_d.success is False
+        assert bad_d.error_code == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY)
+
+        # EVENTUAL RYW still works
+        history.invoke("c0", OpKind.GET, key="refuse-gd")
+        ryw = await gcm.get(key)
+        if ryw.success:
+            history.ok("c0", OpKind.GET, key="refuse-gd", value=ryw.entry.value if ryw.entry else None)
+        else:
+            history.fail(
+                "c0",
+                OpKind.GET,
+                key="refuse-gd",
+                error_code=ryw.error_code,
+                error_message=ryw.error_message,
+            )
+        assert ryw.success and ryw.entry is not None
+        assert ryw.entry.value == 42
+        st = gcm.strong_status()
+        assert st["gets_refused"] >= 1
+        assert st["deletes_refused"] >= 1
+        caps = st.get("capabilities") or {}
+        assert caps.get("get_quorum") is False
+        assert caps.get("delete_quorum") is False
+        assert caps.get("put_majority_commit") is True
+
+    async def cleanup(_s: object) -> None:
+        await gcm.shutdown()
+
+    return Scenario(
+        name="strong.refuse_get_delete",
+        setup=lambda: gcm,
+        body=body,
+        teardown=cleanup,
+        checker=NoOpenInvokeChecker(),
+        meta={"track": "T18", "fault": "refuse"},
     )
 
 def _strong_lie_prepare() -> Scenario:
@@ -864,11 +996,13 @@ def _reg_expired_commit() -> Scenario:
     )
 
 def register_builtins(registry=None) -> int:
-    """Idempotent registration of all built-in scenarios. Returns count."""
+    """Idempotent registration of all built-in scenarios. Returns count.
+
+    Always fills in any missing names (additive), so new scenarios ship without
+    requiring a process restart after an earlier ensure_builtins() call.
+    """
     global _REGISTERED
     reg = registry if registry is not None else DEFAULT_REGISTRY
-    if registry is None and _REGISTERED:
-        return len(reg.list())
 
     specs: list[tuple[str, object, str, str, tuple[str, ...]]] = [
         ("strong.happy_3", lambda: _strong_happy(3, "k3"), "T2", "3-node happy", ("strong", "happy")),
@@ -886,6 +1020,13 @@ def register_builtins(registry=None) -> int:
         ("strong.drop_prepare", _strong_drop_prepare, "T2", "drop prepare", ("strong", "fault")),
         ("strong.drop_commit", _strong_drop_commit, "T2", "drop commit", ("strong", "fault")),
         ("strong.drop_abort", _strong_drop_abort, "T13", "drop abort residual-free", ("strong", "fault")),
+        (
+            "strong.refuse_get_delete",
+            _strong_refuse_get_delete,
+            "T18",
+            "STRONG get/delete 1012 refuse + RYW",
+            ("strong", "refuse"),
+        ),
         ("strong.fail_prepare", _strong_fail_prepare, "T3", "fail prepare residual", ("strong", "adv")),
         ("strong.wrong_cluster", _strong_wrong_cluster, "T3", "wrong cluster residual", ("strong", "adv")),
         ("strong.delay_within_timeout", _strong_delay_ok, "T2", "delay within timeout", ("strong", "fault")),

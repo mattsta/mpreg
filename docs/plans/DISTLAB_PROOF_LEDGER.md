@@ -30,6 +30,9 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T18 smoke preset | `mpreg distlab suite --preset smoke`, `test_registry_run_suite_smoke_preset` | support |
 | T18 live audit metrics | `test_distlab_live_audit_metrics_e2e` | support ops INV-SHARED-AUDIT-01 |
 | T18 commit+abort drop hyp | `test_full_commit_drop_plus_abort_drop_residual_free_after_gc`, minority success GC | INV-CACHE-STRONG-01 |
+| T19 doctor honesty | `evaluate_strong_doctor_payload`, `test_doctor_strong_evaluate_payload_honesty` | support ops |
+| T19 refuse scenario | `strong.refuse_get_delete`, smoke preset | INV-CACHE-STRONG-01 refuse |
+| T19 monitor summary | `mpreg monitor strong --format table` capabilities line | support ops |
 
 ## Non-claims (do not market)
 

@@ -58,6 +58,56 @@ from .output import add_format_option, emit
 
 console = Console()
 
+def evaluate_strong_doctor_payload(
+    payload: dict[str, Any],
+) -> tuple[bool, str]:
+    """Semantic doctor check for /metrics/strong or /mgmt/v1/strong JSON.
+
+    Returns ``(ok, detail)``. Fails closed if capabilities claim quorum get/delete
+    (v1 put-only MVP honesty). Does not claim WAN SLA.
+    """
+    body = (
+        payload.get("strong")
+        if isinstance(payload.get("strong"), dict)
+        else payload
+    )
+    if not isinstance(body, dict):
+        return False, "strong body missing"
+    health = str(body.get("health", "")).lower()
+    caps = body.get("capabilities") or {}
+    counters = body.get("counters") or {}
+    if caps.get("get_quorum") or caps.get("delete_quorum"):
+        return (
+            False,
+            "strong dishonest capabilities (get_quorum/delete_quorum claimed)",
+        )
+    if health in {"misconfigured", "critical"}:
+        return False, f"strong health={health}"
+    if health == "disabled":
+        return (
+            True,
+            (
+                f"strong disabled (ok) "
+                f"puts_ok={counters.get('puts_ok', 0)} "
+                f"gets_refused={counters.get('gets_refused', 0)} "
+                f"deletes_refused={counters.get('deletes_refused', 0)}"
+            ),
+        )
+    return (
+        True,
+        (
+            f"strong health={health or 'n/a'} "
+            f"bound={body.get('coordinator_bound')} "
+            f"put_q={caps.get('put_majority_commit')} "
+            f"get_q={caps.get('get_quorum', False)} "
+            f"del_q={caps.get('delete_quorum', False)} "
+            f"ryw={caps.get('local_ryw_after_put')} "
+            f"puts_ok={counters.get('puts_ok', 0)} "
+            f"gets_ref={counters.get('gets_refused', 0)} "
+            f"dels_ref={counters.get('deletes_refused', 0)}"
+        ),
+    )
+
 def setup_logging(verbose: bool = False, *, json_logs: bool = False) -> None:
     """Setup logging configuration."""
     level = "DEBUG" if verbose else "INFO"
@@ -1684,15 +1734,10 @@ def doctor(
                             and name in ("metrics_strong", "mgmt_strong")
                             and isinstance(payload, dict)
                         ):
-                            body = payload.get("strong") if isinstance(
-                                payload.get("strong"), dict
-                            ) else payload
-                            health = str((body or {}).get("health", "")).lower()
-                            if health in {"misconfigured", "critical"}:
+                            sok, sdetail = evaluate_strong_doctor_payload(payload)
+                            if not sok:
                                 ok = False
-                                body_preview = f"strong health={health}: {body_preview}"
-                            elif health == "disabled":
-                                body_preview = f"strong disabled (ok): {body_preview}"
+                            body_preview = sdetail
                         if (
                             ok
                             and name == "metrics_shared_audit"
@@ -3594,6 +3639,32 @@ def monitor_strong(url: str | None, use_mgmt: bool, output_format: str) -> None:
         async with aiohttp.ClientSession() as session:
             async with session.get(endpoint) as response:
                 payload = await response.json()
+                # Human summary for table/plain: capabilities honesty + refuse counters
+                fmt = (output_format or "json").lower()
+                if fmt in {"table", "plain"} and isinstance(payload, dict):
+                    body = (
+                        payload.get("strong")
+                        if isinstance(payload.get("strong"), dict)
+                        else payload
+                    )
+                    if isinstance(body, dict):
+                        caps = body.get("capabilities") or {}
+                        counters = body.get("counters") or {}
+                        console.print(
+                            "[bold]STRONG[/bold] "
+                            f"health={body.get('health')} "
+                            f"bound={body.get('coordinator_bound')} "
+                            f"pending={body.get('pending_count', 0)} | "
+                            f"caps put={caps.get('put_majority_commit')} "
+                            f"get_quorum={caps.get('get_quorum', False)} "
+                            f"delete_quorum={caps.get('delete_quorum', False)} "
+                            f"ryw={caps.get('local_ryw_after_put')} | "
+                            f"puts_ok={counters.get('puts_ok', 0)} "
+                            f"puts_fail={counters.get('puts_fail', 0)} "
+                            f"gets_refused={counters.get('gets_refused', 0)} "
+                            f"deletes_refused={counters.get('deletes_refused', 0)} "
+                            "[dim](not WAN SLA; get/delete quorum is v1.1)[/dim]"
+                        )
                 emit(payload, output_format=output_format, table_title="STRONG")
 
     run_coro(_strong())

@@ -197,7 +197,7 @@ def test_registry_select_excludes_not_bft() -> None:
 
 @pytest.mark.asyncio
 async def test_registry_run_suite_smoke_preset() -> None:
-    """T18: smoke preset runs fast in-process core scenarios."""
+    """T18/T19: smoke preset runs fast in-process core scenarios incl. refuse."""
     from mpreg.testing.distlab.builtins import ensure_builtins
     from mpreg.testing.distlab.registry import SUITE_PRESETS, get_registry
 
@@ -206,13 +206,28 @@ async def test_registry_run_suite_smoke_preset() -> None:
     assert "smoke" in SUITE_PRESETS
     selected = reg.select(preset="smoke")
     assert "strong.happy_3" in selected
+    assert "strong.refuse_get_delete" in selected
     assert "audit.multi_origin" in selected
     assert all("not_bft" not in n for n in selected)
     report = await reg.run_suite(preset="smoke", fail_fast=True)
     assert report["preset"] == "smoke"
     assert report["ok"] is True
-    assert report["ran"] >= 3
+    assert report["ran"] >= 4
     assert report["passed"] == report["ran"]
+
+@pytest.mark.asyncio
+async def test_strong_refuse_get_delete_scenario() -> None:
+    """T19: builtin refuse scenario passes NoOpenInvokeChecker."""
+    from mpreg.testing.distlab.builtins import ensure_builtins
+    from mpreg.testing.distlab.registry import get_registry
+
+    ensure_builtins()
+    r = await get_registry().run("strong.refuse_get_delete")
+    assert r.ok
+    assert r.history_len >= 6
+    codes = (r.meta or {}).get("error_codes") or {}
+    # 1012 appears for get/delete refuses
+    assert any(int(k) == 1012 for k in codes) or codes.get(1012) or codes.get("1012")
 
 def test_cli_smoke_preset_via_mpreg_entry() -> None:
     """Architecture: uv run mpreg distlab suite --preset smoke."""

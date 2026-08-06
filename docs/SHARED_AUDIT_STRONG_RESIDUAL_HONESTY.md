@@ -199,3 +199,21 @@ Plans: `docs/plans/DISTLAB_T18_REFUSE_AUDIT_METRICS_SMOKE_PLAN.md`,
 `docs/plans/DISTLAB_PROOF_LEDGER.md`.
 
 Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete.
+
+## Phase 7 — Doctor honesty + refuse scenario + smoke expand (2026-08-06)
+
+T19 operator/ops honesty on top of T18:
+
+* **Doctor:** `evaluate_strong_doctor_payload` fails closed if metrics claim
+  `get_quorum` / `delete_quorum`; detail includes refuse counters and capability
+  flags when healthy.
+* **Monitor:** `mpreg monitor strong --format table` prints a capabilities +
+  refuse-counter summary line (not WAN SLA).
+* **DistLab:** builtin `strong.refuse_get_delete` (GCM STRONG get/delete 1012 +
+  EVENTUAL RYW); included in `smoke` / `strong-core` presets.
+* **Registration:** `register_builtins` is additive (new names fill in without
+  process restart).
+
+Plan: `docs/plans/DISTLAB_T19_OPS_HONESTY_REFUSE_SCENARIO_PLAN.md`.
+
+Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete.

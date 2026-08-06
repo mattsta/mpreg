@@ -192,6 +192,7 @@ SUITE_PRESETS: dict[str, tuple[str, ...]] = {
         "strong.happy_3",
         "strong.drop_prepare",
         "strong.drop_abort",
+        "strong.refuse_get_delete",
         "audit.multi_origin",
     ),
     "strong-core": (
@@ -201,6 +202,7 @@ SUITE_PRESETS: dict[str, tuple[str, ...]] = {
         "strong.drop_prepare",
         "strong.drop_commit",
         "strong.drop_abort",
+        "strong.refuse_get_delete",
     ),
     "audit-core": (
         "audit.multi_origin",
