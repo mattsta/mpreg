@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase U COMPLETE — catalog/README truth)  
+**Last updated:** 2026-08-05 (Phase V COMPLETE — baseline matrix truth)  
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -41,6 +41,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G26 | **Sequential polish residuals (Phase S)** | OBS print/docs + response converters keep W3C | [x] Phase S |
 | G27 | **Sequential docs integrity + coverage (Phase T)** | STAGES/TRACKER/catalog truth + snapshot unit | [x] Phase T |
 | G28 | **Sequential catalog/README truth (Phase U)** | APP_CATALOG + README 97-app truth | [x] Phase U |
+| G29 | **Sequential baseline matrix truth (Phase V)** | PROJECT_PLAN Total/baseline Phase T–U | [x] Phase V |
 
 ---
 
@@ -56,7 +57,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | Thin apps (scen<2 or L1+ ens<5) | **0** |
 | Feature constants uncovered by APP_FEATURES | **0** |
 | Branch vs origin | main ahead local only (no push unless asked) |
-| Last new-app validation | Phase O deepen (trace bind + gossip) |
+| Last new-app validation | Phase P `rpc_microbench_lab` (+ deepen Q–R) |
 | Last unit | converters + snapshot fabric + examples_apps unit → **114 passed** |
 | Last full suite | **97/97 passed** |
 | Phase G | **COMPLETE** — DX fixes + ExampleProbe + 8 apps obs-proven |
@@ -72,6 +73,9 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | Phase Q | **COMPLETE** — single sequential post-P backlog execution |
 | Phase R | **COMPLETE** — unified client full API parity |
 | Phase S | **COMPLETE** — polish residuals |
+| Phase T | **COMPLETE** — docs integrity + coverage |
+| Phase U | **COMPLETE** — catalog/README truth |
+| Phase V | **COMPLETE** — baseline matrix truth |
 
 ### Thin backlog
 
@@ -536,7 +540,7 @@ them into one linear charter:
 | L2 product/integ | ~21 | 14+ | + shipping, router, dependency |
 | L3 complex | ~16 | 12+ | + hubs, leader election |
 | L4 world | 2 | 2–3 | global_edge + multi_pop |
-| **Total** | **96** | **50–70+** | band complete; Phase M +1; 0 teachable FEATURE partials |
+| **Total** | **97** | **50–70+** | band complete through P (+1 microbench); Q–V no new apps; 0 teachable FEATURE partials |
 
 ---
 
@@ -953,6 +957,22 @@ Continues the single linear queue after T. No parallel charters.
 
 **Phase U (catalog/README truth): COMPLETE 100%.**
 APP_CATALOG P–T; README 97 apps. Deferred topology/product only.
+
+### Phase V — Sequential baseline matrix truth (**COMPLETE**)
+
+| # | Axis | Work | Status |
+|---|------|------|--------|
+| V0 | PLAN | Append after U; sole active queue | [x] |
+| V1 | USE | PROJECT_PLAN matrix Total 96→97; baseline Phase T–U rows | [x] |
+| V2 | VERIFY | commit; active queue empty of non-deferred work | [x] |
+
+**Exit:** all V `[x]`.
+
+**Phase V (baseline matrix truth): COMPLETE 100%.**
+
+**Active sequential queue empty** of curriculum/platform shippable residuals.
+Deferred only (not auto-appended): multi-node shared audit store, full mgmt UI,
+remote SQL/other stores backends, multi-continent SLA, ConsistencyLevel.STRONG product.
 
 ## Related
 

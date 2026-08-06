@@ -448,3 +448,11 @@ Only active delivery queue. Mirrors PROJECT_PLAN Phase Q table.
 | README 97 shipped apps | [x] | was stale 35 |
 | commit | [x] | |
 
+## Phase V — Sequential baseline matrix truth (COMPLETE)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| PROJECT_PLAN Total 97 | [x] | |
+| baseline Phase T–V | [x] | |
+| active queue empty (deferred only) | [x] | |
+
