@@ -16,9 +16,9 @@ uv run mpreg profile list
 uv run mpreg server start-config $(uv run mpreg profile path dev)
 
 # Curriculum (entrypoints only — never python -m / uv run python)
-uv run mpreg-example list          # 70 apps (L0–L4 curriculum)
+uv run mpreg-example list          # 99 apps (L0–L4 curriculum)
 uv run mpreg-example smoke         # 8 apps
-uv run mpreg-example suite         # full suite (~70)
+uv run mpreg-example suite         # full suite (~99)
 uv run mpreg-example demo tier1    # unified former tier demos
 ```
 
@@ -28,7 +28,8 @@ Curriculum home: [examples-curriculum/](examples-curriculum/) · catalog
 [API_FRICTION.md](examples-curriculum/API_FRICTION.md).
 
 Flagship L4 tours: `global_edge_control_plane` (hub+US/EU) and
-`multi_pop_edge_mesh` (hub+US/EU/AP).
+`multi_pop_edge_mesh` (hub+US/EU/AP). Flag-gated product labs: `shared_audit_mesh`,
+`cache_strong_quorum`.
 
 Operate examples + platform day-2: [examples-curriculum/OPERATE.md](examples-curriculum/OPERATE.md).
 CI: `.github/workflows/ci.yml` runs smoke + full suite via
@@ -36,16 +37,18 @@ CI: `.github/workflows/ci.yml` runs smoke + full suite via
 
 ## 2. Core concepts
 
-1. [ARCHITECTURE.md](ARCHITECTURE.md) — fabric layers (catalog, gossip, routes, envelope)
+1. [ARCHITECTURE.md](ARCHITECTURE.md) — fabric layers (catalog, gossip, routes, envelope, shared audit, STRONG)
 2. [MPREG_PROTOCOL_SPECIFICATION.md](MPREG_PROTOCOL_SPECIFICATION.md) — messages, errors, trace
 3. [MPREG_CLIENT_GUIDE.md](MPREG_CLIENT_GUIDE.md) — clients, retries, HA
+4. [SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md](SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md) — shared audit + STRONG put design
 
 **Big idea:** register functions (and optionally datasets/resources); clients
 call by name/identity; the fabric routes and resolves dependency graphs.
 
 ### Structured errors and traces
 
-- Stable codes: `1000`–`1010`, `1099`, discovery `1101`/`1102` (`mpreg.core.errors.MpregErrorCode`, `mpreg/core/error_codes.json`)
+- Stable codes: `1000`–`1013`, `1015`–`1018`, `1099`, discovery `1101`/`1102`
+  (`mpreg.core.errors.MpregErrorCode`, `mpreg/core/error_codes.json`)
 - OpenAPI: `GET /openapi.json` on the monitoring port
 - HA clients: `MPREGClusterClient` defaults to `default_ha_policy()`
 - Clients raise `MpregError` with `retryable` for HA policies
@@ -60,6 +63,8 @@ call by name/identity; the fabric routes and resolves dependency graphs.
 | Pub/Sub                     | topic exchange sections in architecture + examples              |
 | Queues                      | [SQS_MESSAGE_QUEUE_SYSTEM.md](SQS_MESSAGE_QUEUE_SYSTEM.md)      |
 | Cache                       | [CACHING_SYSTEM.md](CACHING_SYSTEM.md), cache federation guides |
+| Cache STRONG put            | CACHING_SYSTEM §STRONG, design doc, `cache_strong_quorum`       |
+| Shared mgmt audit           | ARCHITECTURE §4c, MANAGEMENT_UI_CLI_NEXT_STEPS, `shared_audit_mesh` |
 
 ## 4. Fabric & multi-cluster
 

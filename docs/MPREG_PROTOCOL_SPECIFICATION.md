@@ -2869,9 +2869,22 @@ RPC failures surface as `RPCError` with stable numeric codes from
 | 1008 | INVALID_ARGUMENT        | Bad request parameters            | no        |
 | 1009 | AUTH_REQUIRED           | Auth missing                      | no        |
 | 1010 | AUTH_FAILED             | Auth present but invalid          | no        |
+| 1011 | UNSUPPORTED_DELIVERY    | EXACTLY_ONCE / unsupported delivery | no      |
+| 1012 | UNSUPPORTED_CONSISTENCY | STRONG disabled / get / delete not implemented | no |
+| 1013 | ROUTE_LOOP              | Fabric route loop detected        | no        |
+| 1015 | INSUFFICIENT_QUORUM     | STRONG put: not enough eligible replicas | no |
+| 1016 | QUORUM_TIMEOUT          | STRONG put: prepare/commit barrier timeout | yes    |
+| 1017 | STRONG_CONFLICT         | STRONG put: lost LWW / concurrent apply | no     |
+| 1018 | STRONG_PENDING_FULL     | STRONG put: pending map at capacity | no      |
 | 1099 | INTERNAL                | Unexpected server failure         | no        |
 | 1101 | DISCOVERY_ACCESS_DENIED | Discovery namespace/policy denial | no        |
 | 1102 | DISCOVERY_RATE_LIMITED  | Discovery rate limit              | yes       |
+
+**Cache STRONG (flag-gated):** when `cache_strong_enabled`, `GlobalCacheManager`
+majority-commit put uses codes **1015–1018** on operational failure and **1012**
+when disabled or for STRONG get/delete. See `docs/CACHING_SYSTEM.md` and
+`docs/SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md`. **1013** is route-loop only —
+never reuse for consistency refusals.
 
 Python: `MpregError`, `map_exception` (always returns structured error),
 `rpc_error()`, `timeout_error()`, `discovery_rate_limited()`, etc.

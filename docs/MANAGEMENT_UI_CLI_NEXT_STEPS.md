@@ -30,10 +30,16 @@ by the fabric control plane so the platform manages itself.
   (in-process audit ring + optional durable JSONL via `mgmt_audit_path`;
   `/ready` honors drain)
 - CLI mutations: `mpreg admin drain|detach|audit` (monitoring HTTP)
-- Audit read-path: `GET /mgmt/v1/audit` (mgmt mutations + route decisions)
+- Audit read-path: `GET /mgmt/v1/audit` (mgmt mutations + route decisions;
+  `scope=local` default; `scope=cluster` when shared audit enabled)
+- **Multi-node shared audit store (shipped, flag-gated):**
+  `mgmt_audit_shared_enabled` → `SharedAuditStore` G-Set + per-origin
+  watermarks; gossip `MGMT_AUDIT_*` DELTA/DIGEST/PULL; package
+  `mpreg/server_pkg/shared_audit/`. Claim `INV-SHARED-AUDIT-01`. Curriculum:
+  `shared_audit_mesh`. Design: `docs/SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md`.
 - OpenAPI: mutation request bodies on `/openapi.json` and `/mgmt/v1/schema`
 
-Remaining: multi-node shared audit store, REPL modes, full UI.
+Remaining: REPL modes, full UI.
 
 ## 2.0) Prior foundation notes
 
@@ -74,8 +80,9 @@ Remaining: multi-node shared audit store, REPL modes, full UI.
 ### Gaps vs. Management Goals
 
 - Mutations (drain, detach, policy apply) are **live** over HTTP + CLI.
-  Local durability: set `mgmt_audit_path` for JSONL append; multi-node shared
-  audit store is still a gap.
+  Local durability: set `mgmt_audit_path` for JSONL append. Cluster forensic
+  visibility: set `mgmt_audit_shared_enabled` (G-Set + anti-entropy; not a SIEM;
+  not linearly consistent mutation apply).
 - CLI `--format` covers many commands; not every legacy monitor path is fully table-formatted.
 - No REPL/IOS-like CLI mode yet (exec/config/diag).
 - UI not implemented; OpenAPI lists live mutation paths with request schemas.

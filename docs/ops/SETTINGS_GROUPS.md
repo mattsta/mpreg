@@ -45,6 +45,34 @@ namespace policy, tenant mode, rate limits
 `enable_default_cache`, `enable_default_queue`, `enable_cache_federation`,
 cache geo/capacity
 
+### Cache STRONG (majority-commit put)
+
+Default **off**. When enabled, `GlobalCacheManager` STRONG put uses a
+majority-commit barrier (see `docs/CACHING_SYSTEM.md`).
+
+| Setting | Default | Notes |
+| ------- | ------- | ----- |
+| `cache_strong_enabled` | `false` | Master switch; off → error `1012` |
+| `cache_strong_replica_factor` | `3` | Target replica set size |
+| `cache_strong_min_replicas` | `3` | Fail `1015` if live eligible below this |
+| `cache_strong_lab_single_node` | `false` | Lab-only single-node path |
+| `cache_strong_prepare_timeout_s` | `2.0` | Prepare barrier |
+| `cache_strong_commit_timeout_s` | `2.0` | Commit barrier |
+| `cache_strong_pending_ttl_s` | `30.0` | Pending TTL backstop |
+
+### Management audit
+
+| Setting | Default | Notes |
+| ------- | ------- | ----- |
+| `mgmt_audit_path` | unset | Optional local JSONL durability |
+| `mgmt_audit_shared_enabled` | `false` | Cluster G-Set shared audit store |
+| `mgmt_audit_shared_max_entries` | `2000` | Per-store retention bound |
+| `mgmt_audit_shared_gossip_targets` | `3` | Epidemic fan-out |
+| `mgmt_audit_shared_reconcile_interval_s` | `2.0` | Digest/PULL anti-entropy interval |
+
+`GET /mgmt/v1/audit?scope=cluster` requires shared enabled; otherwise use
+`scope=local` (default). Design: `docs/SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md`.
+
 ### Persistence
 
 `persistence_config` (`off` via absence, or `memory` / `sqlite`)

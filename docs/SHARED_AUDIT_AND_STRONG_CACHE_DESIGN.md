@@ -6,21 +6,29 @@
 | **Author** | MPREG Platform |
 | **Track owners** | Track A (Shared Audit): Management plane / ops; Track S (STRONG): Cache data plane |
 | **Date** | 2026-08-05 |
-| **Status** | Approved (rev 3 — design review consensus) |
+| **Status** | **Shipped** (rev 3 design; Tracks A+S implemented; claims INV-SHARED-AUDIT-01 / INV-CACHE-STRONG-01) |
 | **Tracks** | Independent PR DAGs (A = Shared Audit, S = STRONG); may ship in either order |
-| **Sequencing** | Deferred from curriculum/platform sequential queue; **after** live mgmt mutations + local JSONL audit; **before** REPL modes / full UI (`docs/MANAGEMENT_UI_CLI_NEXT_STEPS.md`). REPL/UI remain out of scope. |
-| **Related** | `docs/MANAGEMENT_UI_CLI_NEXT_STEPS.md`, `tests/invariants/claims.yaml`, curriculum sequential queue deferrals |
+| **Sequencing** | **Complete** for v1 MVP. Curriculum Phase Y apps `shared_audit_mesh` / `cache_strong_quorum`. Remaining product gaps: REPL modes / full UI; STRONG get/delete v1.1. |
+| **Related** | `docs/MANAGEMENT_UI_CLI_NEXT_STEPS.md`, `docs/CACHING_SYSTEM.md`, `docs/ARCHITECTURE.md`, `tests/invariants/claims.yaml` |
 | **Mechanical conflict zones** | Both tracks touch `mpreg/core/config.py`, `mpreg/server.py` boot, `mpreg/examples/apps/_shared/features.py` + `registry.py`, and optionally monitoring metrics. No logical cross-deps, but parallel long-lived branches will conflict — prefer short-lived branches or sequential integration windows on those files. |
 
 ---
 
 ## Overview
 
-Two deferred product surfaces complete the management and cache honesty story for MPREG:
+> **Implementation status (2026-08):** Both tracks are **shipped** flag-gated products.
+> Defaults remain off/fail-closed. Operator docs, curriculum apps, and claims ledger
+> match the design below. Pre-ship “current state” tables in Background are historical.
 
-1. **Multi-node shared audit store** — today `MgmtAuditLog` (`mpreg/server_pkg/mgmt_mutations.py`) is a process-local ring (default 500) with optional JSONL via `mgmt_audit_path`. `GET /mgmt/v1/audit` and `mpreg admin audit` therefore only see the node they query. Operators need a **cluster-wide**, loss-tolerant view of drain/detach/policy mutations without standing up an external SIEM.
+Two product surfaces complete the management and cache honesty story for MPREG:
 
-2. **`ConsistencyLevel.STRONG` product** — the enum exists in `mpreg/core/cache_models.py` and a parallel refuse path in `mpreg/core/location_consistency.py`, but `GlobalCacheManager.put` fails closed before any local write (COR-01) because L3 is fire-and-forget gossip (`FabricCacheProtocol.propagate_cache_operation`), not a majority-ack barrier. Callers must get a **real quorum put** with residual-free failure semantics, honest get guarantees, and curriculum proof.
+1. **Multi-node shared audit store** — process-local `MgmtAuditLog` remains the default;
+   with `mgmt_audit_shared_enabled`, a cluster G-Set + watermarks replicates mutations
+   so `GET /mgmt/v1/audit?scope=cluster` sees peers. Package: `mpreg/server_pkg/shared_audit/`.
+
+2. **`ConsistencyLevel.STRONG` product** — with `cache_strong_enabled`, `GlobalCacheManager`
+   majority-commit put via `StrongPutCoordinator` (`mpreg/core/cache_strong.py`). Flag off
+   or unbound → `1012`. STRONG get/delete remain refuse. `location_consistency` stays fail-closed.
 
 Both products reuse existing fabric primitives. Defaults remain fail-closed and single-node safe. Each track is a well-encapsulated, self-managing module with unit + multi-node integration + curriculum teach apps + claims ledger updates.
 
@@ -47,7 +55,7 @@ Both products reuse existing fabric primitives. Defaults remain fail-closed and 
 | CLI | `mpreg admin audit` | Warns if no `mgmt_audit_path` |
 | Settings | `MPREGSettings.mgmt_audit_path` | Opt-in local durability only |
 | Curriculum | `ops_cli_tour`, `live_partition_chaos` | Local JSONL only |
-| Docs gap | `MANAGEMENT_UI_CLI_NEXT_STEPS.md` | Explicitly: “Remaining: multi-node shared audit store” |
+| Docs (post-ship) | Operator + curriculum surfaces | Updated: shared audit shipped; STRONG flag-gated; REPL/UI remain |
 | Gossip bus | `GossipMessageType` in `gossip.py` | **Closed Enum** + `from_dict` switch — no plugin registry |
 
 Pain points:

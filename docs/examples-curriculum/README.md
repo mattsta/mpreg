@@ -22,7 +22,8 @@ growth cycle: from getting-started through world-spanning fabric architectures.
 **Code lives under** `mpreg/examples/apps/`.  
 **Central runner (entrypoints only):** `uv run mpreg-example …`  
 (also `uv run mpreg examples …` / `uv run mpreg demo …` — same runner).  
-**Never** `python -m` / `uv run python`. **97 shipped apps** in one registry.
+**Never** `python -m` / `uv run python`. **99 shipped apps** in one registry
+(includes `shared_audit_mesh`, `cache_strong_quorum`).
 
 ## Quick start (users)
 

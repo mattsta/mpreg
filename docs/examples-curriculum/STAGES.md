@@ -334,3 +334,14 @@ Deepen existing 97 apps (no new shells):
 5. `rpc_versioned_topic` — bare leaf + opaque `function_id` (Phase W)
 
 Exit: **97** suite apps; façade untaught methods closed.
+
+## Phase Y — Shared audit + STRONG put (COMPLETE)
+
+Product tracks A+S from `docs/SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md`:
+
+1. `shared_audit_mesh` — multi-node G-Set audit (`mgmt_audit_shared_enabled`)
+2. `cache_strong_quorum` — majority-commit STRONG put (`cache_strong_enabled`)
+3. Claims `INV-SHARED-AUDIT-01`, `INV-CACHE-STRONG-01` (proof L1/L2/L4)
+4. Docs honesty banners + FEATURE/APP catalogs + ops settings groups
+
+Exit: **99** suite apps; operator docs match flag-gated product truth.

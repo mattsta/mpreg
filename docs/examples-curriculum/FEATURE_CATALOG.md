@@ -142,6 +142,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `cache.namespace_ops`   | Clear/list/scan namespace  | `namespace_operation`                            | shipped | `cache_atomic_ops`                       |
 | `cache.pubsub_events`   | Cache→pubsub integration   | `CachePubSubIntegration`                         | shipped | `cache_event_bus`                        |
 | `cache.rpc_surface`     | Cache via unified client   | `MPREGClient.cache_get/put`                      | shipped | `unified_client_tour`                    |
+| `cache.strong`          | Majority-commit STRONG put | `StrongPutCoordinator`, `ConsistencyLevel.STRONG`, `cache_strong_enabled` | shipped | `cache_strong_quorum` |
 
 ---
 
@@ -297,6 +298,10 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `ops.cli_discovery`             | peers / resolver        | `list-peers`, resolver cmds                     | shipped | `ops_cli_tour` |
 | `ops.example_runner`            | Curriculum runner       | `mpreg-example`, `mpreg examples`, `mpreg demo` | shipped | all            |
 | `ops.doctor` / `ops.cli_doctor` | Doctor / admin          | `mpreg doctor`                                  | shipped | `ops_cli_tour` |
+| `ops.mgmt_drain`                | Node drain mutation     | `POST /mgmt/v1/nodes/drain`, `mpreg admin drain` | shipped | `live_partition_chaos`, `shared_audit_mesh` |
+| `ops.mgmt_detach`               | Peer detach mutation    | `POST /mgmt/v1/peers/detach`, `mpreg admin detach` | shipped | `live_partition_chaos` |
+| `ops.mgmt_audit`                | Local audit read        | `GET /mgmt/v1/audit`, `mpreg admin audit`       | shipped | `ops_cli_tour`, `live_partition_chaos` |
+| `ops.shared_audit`              | Cluster G-Set audit     | `mgmt_audit_shared_enabled`, `SharedAuditStore`, `scope=cluster` | shipped | `shared_audit_mesh` |
 
 ---
 
@@ -382,7 +387,7 @@ API_FRICTION open curriculum rows → **0**.
 
 **Closed in Phase M (2026-08-05):** residual FEATURE partials —
 `ops_cli_tour` deepened (planes/ns/discovery CLI); `pubsub_fabric_forward_lab`.
-**97** apps (through Phase S). FEATURE_CATALOG teachable `partial` rows → **0**.
+**99** apps (through Phase Y: +`shared_audit_mesh`, +`cache_strong_quorum`). FEATURE_CATALOG teachable `partial` rows → **0**.
 
 **Still open / residual (operator topology — not curriculum blockers):**
 
@@ -487,6 +492,8 @@ Usability findings from building these apps: [API_FRICTION.md](./API_FRICTION.md
 | `topic_dependency_lab`      | L2    | `rpc.dependency`, `rpc.topic_aware`                                                     |
 | `shipping_fulfillment`      | L2    | `prod.shipping`                                                                         |
 | `rpc_intermediate_results`  | L2    | `rpc.intermediate`                                                                      |
+| `shared_audit_mesh`         | L2    | `ops.shared_audit`, `ops.mgmt_drain`, `ops.mgmt_audit`                                  |
+| `cache_strong_quorum`       | L2    | `cache.strong`                                                                          |
 | `routing_oracle_lab`        | L3    | `oracle.routing`, `oracle.raft`                                                         |
 | `deadline_hop_budget`       | L3    | `fabric.deadline_hop`                                                                   |
 | `fabric_hub_hierarchy`      | L3    | `fabric.hubs`, `fabric.graph`                                                           |

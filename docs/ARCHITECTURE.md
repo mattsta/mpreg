@@ -147,11 +147,33 @@ Each system uses the same fabric routing plane, but retains its own semantics:
   with delivery guarantees and consensus integration.
 - **Cache** (`mpreg/fabric/cache_federation.py`): Multi-tier cache sync via
   fabric messages and catalog-driven selection.
+- **Cache STRONG put** (optional, `cache_strong_enabled`): majority-commit
+  barrier via `StrongPutCoordinator` (`mpreg/core/cache_strong.py`) and
+  `CacheMessageKind.STRONG_*` RR on `ServerCacheTransport`. Default off
+  (fail-closed `1012`). EVENTUAL/WEAK L3 gossip is unchanged when unused.
+  See `docs/CACHING_SYSTEM.md` and claim `INV-CACHE-STRONG-01`.
 
 Why this design:
 
 - **Benefit**: Shared routing and discovery reduces duplicated protocols.
 - **Drawback**: Coupled evolution; changes in the fabric touch all systems.
+
+### 4c) Management plane + shared audit
+
+Operator mutations (drain, detach, policy apply) are served from the monitoring
+HTTP surface (`/mgmt/v1/*`) with a process-local audit ring and optional JSONL
+(`mgmt_audit_path`).
+
+When `mgmt_audit_shared_enabled`, each node runs a **SharedAuditStore**
+(`mpreg/server_pkg/shared_audit/`): a cluster G-Set of management mutations with
+per-origin retention watermarks, replicated by gossip (`MGMT_AUDIT_*` DELTA
+epidemic + digest/PULL unicast). `GET /mgmt/v1/audit?scope=cluster` returns the
+merged window; `scope=local` remains the default single-node view.
+
+- **Honesty:** shared audit makes the forensic log eventually visible within
+  retention windows; it does **not** make drain/detach linearly consistent
+  cluster-wide. Not a SIEM; not BFT. Claim `INV-SHARED-AUDIT-01`.
+- **Design:** `docs/SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md`.
 
 ### 4b) Persistence Layer
 

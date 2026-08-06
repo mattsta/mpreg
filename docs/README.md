@@ -28,15 +28,19 @@
 - [FABRIC_ROUTE_SECURITY.md](FABRIC_ROUTE_SECURITY.md)
 - [DISCOVERY_PLATFORM_ROADMAP.md](DISCOVERY_PLATFORM_ROADMAP.md)
 - [DNS_INTEROP_GUIDE.md](DNS_INTEROP_GUIDE.md)
+- [SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md](SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md) —
+  multi-node shared audit + cache STRONG put (flag-gated product)
 
 ### Operators
 
 - [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)
 - [OBSERVABILITY_TROUBLESHOOTING.md](OBSERVABILITY_TROUBLESHOOTING.md)
 - [ops/SLO_GOLDEN_SIGNALS.md](ops/SLO_GOLDEN_SIGNALS.md)
+- [ops/SETTINGS_GROUPS.md](ops/SETTINGS_GROUPS.md) — includes shared audit + STRONG flags
 - [DISCOVERY_RUNBOOKS.md](DISCOVERY_RUNBOOKS.md)
 - [DNS_RUNBOOKS.md](DNS_RUNBOOKS.md)
 - [FEDERATION_CLI.md](FEDERATION_CLI.md) (CLI reference; fabric runtime)
+- [MANAGEMENT_UI_CLI_NEXT_STEPS.md](MANAGEMENT_UI_CLI_NEXT_STEPS.md) — management API + shipped shared audit
 
 ### Extensions (optional)
 
@@ -52,7 +56,6 @@
 
 - [TEST_PARITY_MATRIX.md](TEST_PARITY_MATRIX.md)
 - [PERSISTENCE_FRAMEWORK_PLAN.md](PERSISTENCE_FRAMEWORK_PLAN.md) — persistence design notes
-- [MANAGEMENT_UI_CLI_NEXT_STEPS.md](MANAGEMENT_UI_CLI_NEXT_STEPS.md) — management API surface notes
 - [archive/README.md](archive/README.md)
 
 ### Historical federation docs

@@ -205,7 +205,29 @@ uv run mpreg monitor prometheus | head
 
 - OpenAPI: `GET {MPREG_MONITORING_URL}/openapi.json`
 - Routing decisions: `GET .../routing/decisions`
+- Mgmt mutations: `POST .../mgmt/v1/nodes/drain`, `.../peers/detach`, `.../policy/apply`
+- Audit: `GET .../mgmt/v1/audit` (`scope=local` default; `scope=cluster` when
+  `mgmt_audit_shared_enabled`)
 - Status endpoints as documented in OpenAPI surface
+
+### Admin mutations + shared audit
+
+```bash
+uv run mpreg admin drain --url "$MPREG_MONITORING_URL" ...
+uv run mpreg admin detach --url "$MPREG_MONITORING_URL" ...
+uv run mpreg admin audit --url "$MPREG_MONITORING_URL"
+# Cluster forensic view (requires mgmt_audit_shared_enabled on nodes):
+# GET $MPREG_MONITORING_URL/mgmt/v1/audit?scope=cluster
+```
+
+Curriculum: `shared_audit_mesh`, `live_partition_chaos`, `ops_cli_tour`.
+Settings: `docs/ops/SETTINGS_GROUPS.md` (mgmt audit + shared flags).
+
+### Cache STRONG put (flag-gated)
+
+Default **off** (`1012`). Production path: set `cache_strong_enabled=true` with
+≥ `cache_strong_min_replicas` live peers; use `ConsistencyLevel.STRONG` on put
+only. Curriculum: `cache_strong_quorum`. Docs: `docs/CACHING_SYSTEM.md` §STRONG.
 
 ### Correlation
 
@@ -222,6 +244,8 @@ uv run mpreg monitor prometheus | head
 | Seed down          | `ha_client_failover`            | Other seed serves call               |
 | Cross-cluster path | `multi_region_shop`             | Federated RPC with bridging config   |
 | Slow mesh          | raise timeouts in client policy | Structured timeout errors, not hangs |
+| Shared audit lag   | `shared_audit_mesh`             | Eventual G-Set visibility, not SIEM  |
+| STRONG quorum loss | `cache_strong_quorum`           | `1015` residual-free; not WAN SLA    |
 | Full test pressure | concurrent runner + `ulimit`    | See testing docs                     |
 
 For chaos injection, prefer `mpreg.testing.faults.FaultInjector` in curriculum
@@ -239,9 +263,12 @@ When promoting an example pattern:
 3. **Client** — `MPREGClusterClient` + explicit deadlines.
 4. **Observability** — monitoring URL, scrape prometheus, alert rules under `mpreg/ops/`.
 5. **Data planes** — choose queue delivery guarantees and cache levels deliberately.
+   Enable `cache_strong_enabled` only when majority-commit put is required.
 6. **Fabric** — route policies and security before exposing clusters.
 7. **Consensus** — only if you need it; Raft is not free.
-8. **Load & soak** — do not ship on demo-only timings.
+8. **Ops audit** — optional `mgmt_audit_path` + `mgmt_audit_shared_enabled` for
+   cluster forensic visibility (bounded window; not a SIEM).
+9. **Load & soak** — do not ship on demo-only timings.
 
 ---
 
@@ -265,3 +292,6 @@ When promoting an example pattern:
 - [OBSERVABILITY_TROUBLESHOOTING.md](../OBSERVABILITY_TROUBLESHOOTING.md)
 - [FABRIC_ROUTE_POLICIES.md](../FABRIC_ROUTE_POLICIES.md)
 - [ops/SETTINGS_GROUPS.md](../ops/SETTINGS_GROUPS.md)
+- [SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md](../SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md)
+- [CACHING_SYSTEM.md](../CACHING_SYSTEM.md) — STRONG majority-commit put
+- [MANAGEMENT_UI_CLI_NEXT_STEPS.md](../MANAGEMENT_UI_CLI_NEXT_STEPS.md) — mgmt + shared audit

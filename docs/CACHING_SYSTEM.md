@@ -1,4 +1,4 @@
-> **Honesty banner:** Cache `ConsistencyLevel.STRONG` is refuse-by-default (no majority-ack barrier). Use EVENTUAL/WEAK on the live path.
+> **Honesty banner:** Cache `ConsistencyLevel.STRONG` **put** is a flag-gated majority-commit barrier (`cache_strong_enabled`; default **off** → `1012 UNSUPPORTED_CONSISTENCY`). EVENTUAL/WEAK remain the default live path. STRONG **get** and **delete** stay refuse (`1012`). The separate `location_consistency` plane never implements STRONG. Design + claims: `docs/SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md`, `INV-CACHE-STRONG-01`.
 
 # MPREG Smart Caching System Documentation
 
@@ -10,6 +10,7 @@
 - [Fabric Integration](#fabric-integration)
 - [Key Components](#key-components)
 - [Advanced Cache Operations](#advanced-cache-operations)
+- [ConsistencyLevel.STRONG (majority-commit put)](#consistencylevelstrong-majority-commit-put)
 - [Implementation Details](#implementation-details)
 - [Real-World Usage Examples](#real-world-usage-examples)
 - [Use Cases and Scenarios](#use-cases-and-scenarios)
@@ -19,7 +20,7 @@
 
 ## Purpose and Goals
 
-The MPREG Smart Caching System is a **memory-aware caching solution** (STRONG is refuse-by-default; see honesty banner) designed to optimize distributed computing workloads by intelligently managing result caching with precise memory tracking and advanced eviction strategies.
+The MPREG Smart Caching System is a **memory-aware caching solution** (optional majority-commit STRONG put when enabled; see honesty banner) designed to optimize distributed computing workloads by intelligently managing result caching with precise memory tracking and advanced eviction strategies.
 
 ### Primary Goals
 
@@ -568,31 +569,76 @@ await cache.put(
 
 ### 7. Geographic Replication and Consistency
 
-Location-aware caching with configurable consistency models:
+Location-aware caching with configurable consistency models. Default path is
+**EVENTUAL** (L3 gossip heal). **STRONG** is a separate majority-commit put
+protocol — see [ConsistencyLevel.STRONG](#consistencylevelstrong-majority-commit-put).
 
 ```python
-# Regional cache with strong consistency
+from mpreg.core.cache_models import CacheOptions, ConsistencyLevel
+
+# Majority-commit STRONG put (requires cache_strong_enabled on the server)
 await cache.put(
     key=CacheKey(namespace="user_preferences", identifier="user_global"),
     value={"language": "en", "timezone": "UTC"},
-    options=CacheOptions(
-        consistency_level="strong",
-        replication_strategy="geographic",
-        preferred_regions=["us-west", "eu-west", "ap-southeast"],
-        conflict_resolution="vector_clock",
-    ),
+    options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
 )
 
-# Eventually consistent cache for high-throughput data
+# Eventually consistent cache for high-throughput data (default)
 await cache.put(
     key=CacheKey(namespace="analytics", identifier="page_views"),
     value={"count": 1000000, "last_updated": time.time()},
     options=CacheOptions(
-        consistency_level="eventual",
+        consistency_level=ConsistencyLevel.EVENTUAL,
         replication_strategy="nearest_neighbor",
         conflict_resolution="last_writer_wins",
     ),
 )
+```
+
+## ConsistencyLevel.STRONG (majority-commit put)
+
+When `MPREGSettings.cache_strong_enabled=True` and a `StrongPutCoordinator` is
+bound on `GlobalCacheManager`, `put(..., consistency_level=STRONG)` runs a
+**commit-barrier** over a frozen replica set \(R\):
+
+1. **PREPARE** — peers hold pending (invisible) state only.
+2. **COMMIT** — majority \(Q = \lfloor N/2 \rfloor + 1\) **COMMIT_ACKs**;
+   **origin commits last**.
+3. Client success only after the barrier. Failures send **ABORT** and
+   **uncommit** peer+origin L1 for that `op_id` (residual-free).
+
+| Setting | Default | Role |
+| ------- | ------- | ---- |
+| `cache_strong_enabled` | `False` | Master switch; off → `1012` |
+| `cache_strong_replica_factor` | `3` | Target \|R\| |
+| `cache_strong_min_replicas` | `3` | Fail `1015` if live eligible < this |
+| `cache_strong_lab_single_node` | `False` | Explicit lab-only single-node path |
+| `cache_strong_prepare_timeout_s` / `cache_strong_commit_timeout_s` | `2.0` | Barrier timeouts → `1016` |
+| `cache_strong_pending_ttl_s` | `30.0` | Pending TTL backstop |
+
+| Code | Name | When |
+| ---- | ---- | ---- |
+| **1012** | `UNSUPPORTED_CONSISTENCY` | Flag off, coordinator unbound, STRONG **get**/ **delete** |
+| **1015** | `INSUFFICIENT_QUORUM` | Not enough eligible peers |
+| **1016** | `QUORUM_TIMEOUT` | Prepare/commit timeout (retryable) |
+| **1017** | `STRONG_CONFLICT` | Lost LWW / concurrent apply rejected |
+| **1018** | `STRONG_PENDING_FULL` | Pending map at capacity |
+
+**Wire:** `CacheMessageKind.STRONG_*` on `ServerCacheTransport` RR
+(`mpreg/fabric/cache_transport.py`). Coordinator: `mpreg/core/cache_strong.py`.
+
+**After a successful STRONG put**, read with default/EVENTUAL get (not a quorum
+read). Curriculum: `cache_strong_quorum`. Claims: `INV-CACHE-STRONG-01`
+(proof L1/L2/L4). Non-claims: no WAN multi-region SLA, not BFT, not fsync disk
+durability, not STRONG get/delete MVP.
+
+```python
+# Flag off or unbound coordinator — fail closed, no local write
+result = await cache.put(key, value, options=CacheOptions(
+    consistency_level=ConsistencyLevel.STRONG,
+))
+assert result.success is False
+assert result.error_code == 1012  # unless cache_strong_enabled
 ```
 
 ### Implementation Benefits

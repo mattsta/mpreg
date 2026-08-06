@@ -882,7 +882,8 @@ Serialized from post-P backlog + integrity residual (`client.summary` join):
 **Exit:** every Q row `[x]`; feature constants uncovered=0; suite green; WT clean commit.
 
 **Deferred (not in Q — topology/product scale, append only after Q9):**
-multi-node shared audit store, full mgmt UI, remote SQL/other stores backends, multi-continent SLA.
+full mgmt UI, remote SQL/other stores backends, multi-continent SLA.
+(**Shipped later in Phase Y:** multi-node shared audit store, ConsistencyLevel.STRONG put.)
 
 ### Phase R — Sequential unified façade parity (**COMPLETE**)
 
@@ -939,8 +940,9 @@ Continues the single linear queue after S. No parallel charters. No idle audit.
 STAGES/TRACKER/catalog/friction truth; `format_server_snapshot` unit; OPERATE
 fabric hop fields. **97** apps.
 
-Deferred (topology/product scale only — not active queue): multi-node shared
-audit store, full mgmt UI, remote SQL/other stores backends, multi-continent SLA.
+Deferred (topology/product scale only — not active queue): full mgmt UI,
+remote SQL/other stores backends, multi-continent SLA. (Shared audit + STRONG put shipped
+in Phase Y.)
 
 ---
 
@@ -972,9 +974,24 @@ APP_CATALOG P–T; README 97 apps. Deferred topology/product only.
 
 **Phase V (baseline matrix truth): COMPLETE 100%.**
 
-**Active sequential queue empty** of curriculum/platform shippable residuals.
-Deferred only (not auto-appended): multi-node shared audit store, full mgmt UI,
-remote SQL/other stores backends, multi-continent SLA, ConsistencyLevel.STRONG product.
+**Active sequential queue empty** of curriculum/platform shippable residuals
+through Phase V/X. **Phase Y shipped** multi-node shared audit + ConsistencyLevel.STRONG
+put (apps `shared_audit_mesh`, `cache_strong_quorum`; claims INV-SHARED-AUDIT-01 /
+INV-CACHE-STRONG-01). Deferred only (not auto-appended): full mgmt UI,
+remote SQL/other stores backends, multi-continent SLA, STRONG quorum get/delete (v1.1).
+
+### Phase Y — Shared audit + STRONG put (**COMPLETE**)
+
+| #   | Axis    | Work                                                              | Status |
+| --- | ------- | ----------------------------------------------------------------- | ------ |
+| Y0  | PLAN    | Design rev3 `SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md`             | [x]    |
+| Y1  | CAP     | SharedAuditStore G-Set + gossip + HTTP `scope=cluster`            | [x]    |
+| Y2  | CAP     | StrongPutCoordinator majority-commit + codes 1015–1018            | [x]    |
+| Y3  | USE     | Curriculum `shared_audit_mesh` + `cache_strong_quorum`            | [x]    |
+| Y4  | CORRECT | Property + multi-node integration + claims L1/L2/L4               | [x]    |
+| Y5  | USE     | Operator/architecture/client docs honesty banners + catalogs      | [x]    |
+
+**Exit:** all Y `[x]`; 99 apps; claims INV-SHARED-AUDIT-01 / INV-CACHE-STRONG-01.
 
 ### Phase W — Full test suite green (**COMPLETE**)
 > **Phase W COMPLETE (2026-08-05):** Full suite green with concurrency:

@@ -28,7 +28,7 @@ uv run mpreg demo tier1   # delegates to mpreg-example
 
 Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · Friction: [API_FRICTION.md](./API_FRICTION.md)
 
-## Matrix (71 shipped)
+## Matrix (99 shipped)
 
 | ID                          | Level | Kind        | Primary lesson                               | Systems                   |
 | --------------------------- | ----- | ----------- | -------------------------------------------- | ------------------------- |
@@ -103,6 +103,8 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · Friction: [API_FRICTION.md]
 | `leader_election_lab`       | L3    | plane       | Metric + quorum leader election fitness      | consensus                 |
 | `global_edge_control_plane` | L4    | product     | Hub + US/EU edges + timeline                 | fabric, monitoring        |
 | `multi_pop_edge_mesh`       | L4    | product     | Hub + US/EU/AP edges (second world tour)     | fabric, monitoring        |
+| `shared_audit_mesh`         | L2    | product     | Cluster G-Set shared mgmt audit visibility   | ops, audit, gossip        |
+| `cache_strong_quorum`       | L2    | product     | Majority-commit STRONG put + residual-free 1015 | cache                  |
 
 ## Legacy → unified mapping
 
@@ -216,3 +218,14 @@ S: format_server_snapshot fabric; W3C converters; OPERATE `--explain`.
 T: docs integrity + snapshot unit coverage.
 
 **App count:** **97** (no new apps Q–T).
+
+### Phase Y (2026-08) — shared audit + STRONG put product
+
+| ID                    | Level | Kind    | Summary                                              |
+| --------------------- | ----- | ------- | ---------------------------------------------------- |
+| `shared_audit_mesh`   | L2    | product | `mgmt_audit_shared_enabled` G-Set cluster audit      |
+| `cache_strong_quorum` | L2    | product | Flag-gated majority-commit STRONG put + 1015 residual |
+
+**App count:** 97 → **99** (+2 Phase Y). Design:
+`docs/SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md`. Claims: `INV-SHARED-AUDIT-01`,
+`INV-CACHE-STRONG-01`.

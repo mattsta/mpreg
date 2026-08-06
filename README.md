@@ -4,7 +4,7 @@
 
 Do you need results? Everywhere? Guaranteed? Then you need to MPREG!
 
-> **Honesty banner:** Raft in MPREG is **CFT**, not BFT. `EXACTLY_ONCE` and cache `STRONG` are refuse-by-default until real barriers exist. Prefer `MPREGClient`, shipped profiles (`mpreg/profiles/`), and `docs/MPREG_CLIENT_GUIDE.md` / `tests/invariants/claims.yaml`.
+> **Honesty banner:** Raft in MPREG is **CFT**, not BFT. `EXACTLY_ONCE` delivery remains refuse-by-default (`1011`). Cache `ConsistencyLevel.STRONG` is a **flag-gated majority-commit put** (`cache_strong_enabled`; default off → `1012`); STRONG get/delete and the location-consistency plane stay refuse. Multi-node shared audit is flag-gated (`mgmt_audit_shared_enabled`). Prefer `MPREGClient`, shipped profiles (`mpreg/profiles/`), `docs/MPREG_CLIENT_GUIDE.md`, and `tests/invariants/claims.yaml`.
 
 ## What is it?
 
@@ -915,7 +915,7 @@ Local Clusters → Regional Hubs → Global Federation
 
 ## 🚀 Production Deployment Status
 
-MPREG is a **capable distributed platform** with strong tests on fabric routing, CFT Raft, and RPC modalities. Read `tests/invariants/claims.yaml` non_claims before assuming BFT/EO/STRONG:
+MPREG is a **capable distributed platform** with strong tests on fabric routing, CFT Raft, RPC modalities, flag-gated shared audit (`INV-SHARED-AUDIT-01`), and flag-gated cache STRONG put (`INV-CACHE-STRONG-01`). Read `tests/invariants/claims.yaml` non_claims before assuming BFT, EO, WAN STRONG, or STRONG quorum reads:
 
 ### ✅ **Production Readiness Checklist**
 

@@ -1,6 +1,6 @@
 # MPREG Production Deployment Guide (Unified Fabric)
 
-> **Honesty banner:** Raft is CFT (not BFT). `EXACTLY_ONCE` and cache `STRONG` are refuse-by-default. Prefer profiles + `mpreg config-check`. Proof ledger: `tests/invariants/claims.yaml`.
+> **Honesty banner:** Raft is CFT (not BFT). `EXACTLY_ONCE` remains refuse-by-default (`1011`). Cache `STRONG` put requires `cache_strong_enabled` (default off → `1012`; put-only MVP). Shared audit requires `mgmt_audit_shared_enabled`. Prefer profiles + `mpreg config-check`. Proof ledger: `tests/invariants/claims.yaml`.
 
 This guide describes how to deploy MPREG with the unified fabric control plane
 for production use. MPREG uses a single routing fabric for RPC, pub/sub, queues,

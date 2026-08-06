@@ -1,4 +1,4 @@
-> **Honesty banner:** “Production-ready” here means examples run under tests, not BFT/EO/STRONG product guarantees. See `claims.yaml` non_claims.
+> **Honesty banner:** “Production-ready” here means examples run under tests, not BFT or EO guarantees. Flag-gated STRONG put and shared audit are taught in curriculum apps `cache_strong_quorum` / `shared_audit_mesh` when enabled — see `claims.yaml` non_claims for WAN/BFT/get/delete limits.
 
 # ✅ VERIFIED WORKING EXAMPLES
 
@@ -165,7 +165,7 @@ results = await asyncio.gather(*tasks)  # Blazing fast parallel execution!
 
 ## 🎉 **Summary**
 
-**MPREG examples are verified under tests** (not BFT/EO/STRONG guarantees) with:
+**MPREG examples are verified under tests** (not BFT/EO guarantees; STRONG/shared-audit only where flags + apps assert them) with:
 
 - ✅ **41+ comprehensive tests** (all core functionality verified)
 - ✅ **Low-latency performance** under local workloads

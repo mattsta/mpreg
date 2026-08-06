@@ -475,3 +475,14 @@ Only active delivery queue. Mirrors PROJECT_PLAN Phase Q table.
 | rpc_versioned_topic bare+opaque function_id | [x] | Phase W semantics |
 | APP_FEATURES / FEATURE_CATALOG / APP_CATALOG | [x] | |
 | verify + commit | [x] | |
+
+## Phase Y — Shared audit + STRONG put (COMPLETE)
+
+| Item | Status | Notes |
+| ---- | ------ | ----- |
+| SharedAuditStore + gossip + HTTP scope=cluster | [x] | INV-SHARED-AUDIT-01 |
+| StrongPutCoordinator + 1015–1018 | [x] | INV-CACHE-STRONG-01 |
+| `shared_audit_mesh` + `cache_strong_quorum` | [x] | L2 curriculum |
+| Property + integration + claims L4 | [x] | ebf774b era |
+| Operator/architecture/client/curriculum docs | [x] | honesty banners + catalogs |
+| App count 99 | [x] | was 97 |
