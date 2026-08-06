@@ -396,16 +396,23 @@ async def cache_put(
         "namespace": namespace,
         "identifier": identifier,
     }
-    if (
+    code = getattr(result, "error_code", None)
+    if code is not None:
+        out["error_code"] = int(code)
+    elif (
         not success
         and err
         and (
             "STRONG" in str(err)
             or "strong" in str(err).lower()
             or "not implemented" in str(err).lower()
+            or "disabled" in str(err).lower()
         )
     ):
         out["error_code"] = PLANE_ERR_UNSUPPORTED_CONSISTENCY
+    qi = getattr(result, "quorum_info", None)
+    if qi is not None:
+        out["quorum_info"] = qi
     return out
 
 async def cache_invalidate(

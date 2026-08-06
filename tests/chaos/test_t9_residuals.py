@@ -58,6 +58,72 @@ async def test_chaos_strong_cache_leaves_no_dirty_l1() -> None:
     finally:
         await mgr.shutdown()
 
+@pytest.mark.asyncio
+async def test_chaos_strong_partial_prepare_abort_residual_free() -> None:
+    """Partial prepare ACKs then fail → no visible L1 for op_id on any replica."""
+    from mpreg.core.cache_strong import (
+        InProcessStrongTransport,
+        StrongLocalBackend,
+        StrongPutCoordinator,
+    )
+
+    transport = InProcessStrongTransport()
+    backends = {f"n{i}": StrongLocalBackend(node_id=f"n{i}") for i in range(3)}
+    for be in backends.values():
+        transport.register(be)
+    transport.drop_prepare.add("n1")
+    transport.drop_prepare.add("n2")
+    coord = StrongPutCoordinator(
+        origin_id="n0",
+        local=backends["n0"],
+        transport=transport,
+        replica_factor=3,
+        min_replicas=3,
+        prepare_timeout_s=0.25,
+        commit_timeout_s=0.25,
+    )
+    key = GlobalCacheKey(namespace="chaos", identifier="partial-prep")
+    res = await coord.strong_put(key, {"v": 1}, eligible_peers=["n0", "n1", "n2"])
+    assert res.success is False
+    for be in backends.values():
+        assert be.get_visible(key) is None
+        assert be.pending_count() == 0
+
+@pytest.mark.asyncio
+async def test_chaos_strong_partial_commit_uncommits_peers() -> None:
+    """Peer commit ACKs without quorum → abort uncommits peer+origin for op_id."""
+    from mpreg.core.cache_strong import (
+        InProcessStrongTransport,
+        StrongLocalBackend,
+        StrongPutCoordinator,
+        _entry_op_id,
+    )
+
+    transport = InProcessStrongTransport()
+    backends = {f"n{i}": StrongLocalBackend(node_id=f"n{i}") for i in range(3)}
+    for be in backends.values():
+        transport.register(be)
+    # Drop both peer commits so need_peers fails after prepare
+    transport.drop_commit.add("n1")
+    transport.drop_commit.add("n2")
+    coord = StrongPutCoordinator(
+        origin_id="n0",
+        local=backends["n0"],
+        transport=transport,
+        replica_factor=3,
+        min_replicas=3,
+        prepare_timeout_s=0.25,
+        commit_timeout_s=0.25,
+    )
+    key = GlobalCacheKey(namespace="chaos", identifier="partial-commit")
+    res = await coord.strong_put(key, {"v": 2}, eligible_peers=["n0", "n1", "n2"])
+    assert res.success is False
+    oid = res.operation_id
+    for be in backends.values():
+        ent = be.get_visible(key)
+        assert ent is None or _entry_op_id(ent) != oid
+        assert be.pending_count() == 0
+
 def test_chaos_delivery_guarantee_eo_not_on_queue_plane() -> None:
     """Cross-plane EO must not silently map onto queue guarantees."""
     with pytest.raises(ValueError, match="exactly_once|EXACTLY_ONCE|exactly"):

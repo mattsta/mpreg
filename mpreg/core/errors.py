@@ -34,6 +34,12 @@ class MpregErrorCode(IntEnum):
     UNSUPPORTED_CONSISTENCY = 1012  # STRONG etc. residual-free refused
     # Fabric routing (fail-closed hop advancement)
     ROUTE_LOOP = 1013
+    # 1014 reserved / unused
+    # ConsistencyLevel.STRONG operational (majority-commit barrier)
+    INSUFFICIENT_QUORUM = 1015
+    QUORUM_TIMEOUT = 1016
+    STRONG_CONFLICT = 1017
+    STRONG_PENDING_FULL = 1018
     # Discovery / control plane (1100+)
     DISCOVERY_ACCESS_DENIED = 1101
     DISCOVERY_RATE_LIMITED = 1102
@@ -61,9 +67,17 @@ _DEFAULT_MESSAGES: dict[MpregErrorCode, str] = {
         "Delivery guarantee not supported (EXACTLY_ONCE is refused)"
     ),
     MpregErrorCode.UNSUPPORTED_CONSISTENCY: (
-        "Consistency level not supported (STRONG is residual-free refused)"
+        "Consistency level not supported (STRONG disabled or not implemented)"
     ),
     MpregErrorCode.ROUTE_LOOP: "Fabric routing path loop detected",
+    MpregErrorCode.INSUFFICIENT_QUORUM: (
+        "STRONG put could not form a majority replica set"
+    ),
+    MpregErrorCode.QUORUM_TIMEOUT: (
+        "STRONG put timed out waiting for prepare/commit quorum"
+    ),
+    MpregErrorCode.STRONG_CONFLICT: "STRONG put lost last-writer-wins conflict",
+    MpregErrorCode.STRONG_PENDING_FULL: "STRONG pending prepare slots exhausted",
     MpregErrorCode.DISCOVERY_ACCESS_DENIED: "Discovery access denied",
     MpregErrorCode.DISCOVERY_RATE_LIMITED: "Discovery rate limit exceeded",
     MpregErrorCode.INTERNAL: "Internal error",
@@ -75,6 +89,8 @@ _DEFAULT_RETRYABLE: frozenset[MpregErrorCode] = frozenset(
         MpregErrorCode.UNAVAILABLE,
         MpregErrorCode.ROUTE_NOT_FOUND,
         MpregErrorCode.DISCOVERY_RATE_LIMITED,
+        MpregErrorCode.QUORUM_TIMEOUT,
+        MpregErrorCode.INSUFFICIENT_QUORUM,
     }
 )
 

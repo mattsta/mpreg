@@ -22,16 +22,14 @@ from .serialization import JsonSerializer
 class ConsistencyLevel(Enum):
     """Cache consistency levels for distributed operations.
 
-    ``STRONG`` is reserved for majority-ack puts. The live fabric path does not
-    yet implement a quorum barrier; ``GlobalCacheManager`` fails closed when
-    ``STRONG`` is requested so callers cannot mistake async propagation for
-    linearizable majority commit.
+    ``STRONG`` is a majority-commit put when ``cache_strong_enabled`` binds a
+    StrongPutCoordinator. Otherwise ``GlobalCacheManager`` fails closed with
+    error_code 1012 so callers cannot mistake async L3 gossip for a quorum
+    barrier. Get/delete remain non-quorum in v1.
     """
 
     EVENTUAL = "eventual"  # Best effort, eventual consistency
-    STRONG = (
-        "strong"  # Reserved: majority acknowledgment (fail-closed until implemented)
-    )
+    STRONG = "strong"  # majority-commit put when cache_strong_enabled
     WEAK = "weak"  # Local cache only, no synchronization
 
 class CacheLevel(Enum):

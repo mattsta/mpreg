@@ -206,6 +206,11 @@ class GossipMessageType(Enum):
     MEMBERSHIP_PROBE = "membership_probe"
     MEMBERSHIP_ACK = "membership_ack"
     MEMBERSHIP_INDIRECT_PROBE = "membership_indirect_probe"
+    # Multi-node shared management audit (G-Set + watermarks)
+    MGMT_AUDIT_DELTA = "mgmt_audit_delta"
+    MGMT_AUDIT_DIGEST = "mgmt_audit_digest"
+    MGMT_AUDIT_PULL = "mgmt_audit_pull"
+    MGMT_AUDIT_PULL_RESP = "mgmt_audit_pull_resp"
 
 class GossipStrategy(Enum):
     """Gossip propagation strategies."""
@@ -402,6 +407,14 @@ class GossipMessage:
             raw_payload, dict
         ):
             parsed_payload = HeartbeatPayload(**raw_payload)
+        elif message_type in (
+            GossipMessageType.MGMT_AUDIT_DELTA,
+            GossipMessageType.MGMT_AUDIT_DIGEST,
+            GossipMessageType.MGMT_AUDIT_PULL,
+            GossipMessageType.MGMT_AUDIT_PULL_RESP,
+        ) and isinstance(raw_payload, dict):
+            # Shared audit payloads stay as plain dicts (schema in shared_audit).
+            parsed_payload = raw_payload
         else:
             parsed_payload = raw_payload
 
@@ -1377,6 +1390,22 @@ class GossipProtocol:
             await self._handle_link_state_update(message)
         elif message.message_type == GossipMessageType.ROUTE_KEY_ANNOUNCEMENT:
             await self._handle_route_key_announcement(message)
+        elif message.message_type in (
+            GossipMessageType.MGMT_AUDIT_DELTA,
+            GossipMessageType.MGMT_AUDIT_DIGEST,
+            GossipMessageType.MGMT_AUDIT_PULL,
+            GossipMessageType.MGMT_AUDIT_PULL_RESP,
+        ):
+            # Shared audit: directed/replicator-owned fanout — do not epidemic here.
+            should_repropagate = False
+            handler = getattr(self, "mgmt_audit_handler", None)
+            if handler is not None:
+                try:
+                    result = handler(message)
+                    if hasattr(result, "__await__"):
+                        await result
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("mgmt_audit_handler failed: {}", exc)
 
         with self._lock:
             self.recent_messages[message.message_id] = message

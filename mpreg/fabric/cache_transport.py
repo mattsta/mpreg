@@ -7,7 +7,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from mpreg.core.serialization import JsonSerializer
 from mpreg.datastructures.type_aliases import JsonDict, NodeId
@@ -29,6 +29,13 @@ class CacheMessageKind(StrEnum):
     DIGEST_RESPONSE = "cache_digest_response"
     ENTRY_REQUEST = "cache_entry_request"
     ENTRY_RESPONSE = "cache_entry_response"
+    # ConsistencyLevel.STRONG majority-commit barrier (RR)
+    STRONG_PREPARE = "cache_strong_prepare"
+    STRONG_PREPARE_ACK = "cache_strong_prepare_ack"
+    STRONG_COMMIT = "cache_strong_commit"
+    STRONG_COMMIT_ACK = "cache_strong_commit_ack"
+    STRONG_ABORT = "cache_strong_abort"
+    STRONG_ABORT_ACK = "cache_strong_abort_ack"
 
 class CacheReceiver(Protocol):
     node_id: NodeId
@@ -131,6 +138,9 @@ class ServerCacheTransport:
     _pending_entries: dict[str, asyncio.Future[GlobalCacheEntry | None]] = field(
         default_factory=dict
     )
+    _pending_strong: dict[str, asyncio.Future[dict]] = field(default_factory=dict)
+    # Optional STRONG peer handler (prepare/commit/abort local apply).
+    strong_handler: Any = None
 
     def register(self, receiver: CacheReceiver) -> None:
         self._receiver = receiver
@@ -411,6 +421,262 @@ class ServerCacheTransport:
                     )
                 else:
                     future.set_result(None)
+            return
+
+        # --- STRONG barrier RR ---
+        if kind in (
+            CacheMessageKind.STRONG_PREPARE.value,
+            CacheMessageKind.STRONG_COMMIT.value,
+            CacheMessageKind.STRONG_ABORT.value,
+        ):
+            target_node = payload.get("target_node")
+            if (
+                isinstance(target_node, str)
+                and target_node != self.server.cluster.local_url
+            ):
+                await self._forward_message(
+                    message, target_node=target_node, source_peer_url=source_peer_url
+                )
+                return
+            await self._handle_strong_request(kind, payload)
+            return
+
+        if kind in (
+            CacheMessageKind.STRONG_PREPARE_ACK.value,
+            CacheMessageKind.STRONG_COMMIT_ACK.value,
+            CacheMessageKind.STRONG_ABORT_ACK.value,
+        ):
+            reply_to = payload.get("reply_to")
+            if isinstance(reply_to, str) and reply_to != self.server.cluster.local_url:
+                await self._forward_message(
+                    message, target_node=reply_to, source_peer_url=source_peer_url
+                )
+                return
+            request_id = str(payload.get("request_id", ""))
+            future = self._pending_strong.pop(request_id, None)
+            if future and not future.done():
+                future.set_result(payload if isinstance(payload, dict) else {})
+            return
+
+    async def _handle_strong_request(self, kind: str, payload: dict) -> None:
+        handler = self.strong_handler
+        reply_to = str(payload.get("reply_to") or "")
+        request_id = str(payload.get("request_id") or "")
+        if handler is None:
+            resp: dict = {
+                "request_id": request_id,
+                "reply_to": reply_to,
+                "ok": False,
+                "reason": "strong_handler_unbound",
+                "node_id": self.server.cluster.local_url,
+            }
+        elif kind == CacheMessageKind.STRONG_PREPARE.value:
+            resp = await handler.handle_prepare(payload)
+            resp["kind"] = CacheMessageKind.STRONG_PREPARE_ACK.value
+        elif kind == CacheMessageKind.STRONG_COMMIT.value:
+            resp = await handler.handle_commit(payload)
+            resp["kind"] = CacheMessageKind.STRONG_COMMIT_ACK.value
+        else:
+            resp = await handler.handle_abort(payload)
+            resp["kind"] = CacheMessageKind.STRONG_ABORT_ACK.value
+        resp.setdefault("request_id", request_id)
+        resp.setdefault("reply_to", reply_to)
+        if kind == CacheMessageKind.STRONG_PREPARE.value:
+            resp.setdefault("kind", CacheMessageKind.STRONG_PREPARE_ACK.value)
+        elif kind == CacheMessageKind.STRONG_COMMIT.value:
+            resp.setdefault("kind", CacheMessageKind.STRONG_COMMIT_ACK.value)
+        else:
+            resp.setdefault("kind", CacheMessageKind.STRONG_ABORT_ACK.value)
+        if reply_to:
+            topic = {
+                CacheMessageKind.STRONG_PREPARE.value: "mpreg.cache.strong.prepare.ack",
+                CacheMessageKind.STRONG_COMMIT.value: "mpreg.cache.strong.commit.ack",
+                CacheMessageKind.STRONG_ABORT.value: "mpreg.cache.strong.abort.ack",
+            }.get(kind, "mpreg.cache.strong.ack")
+            await self._send_payload(
+                reply_to,
+                resp,
+                correlation_id=request_id,
+                topic=topic,
+            )
+
+    async def strong_prepare(
+        self,
+        peer_id: NodeId,
+        *,
+        key: GlobalCacheKey,
+        value: Any,
+        metadata: Any,
+        strong_version: Any,
+        replica_set: tuple[str, ...],
+        quorum: int,
+        cluster_id: str,
+        timeout: float,
+    ) -> Any:
+        from mpreg.core.cache_strong import PrepareAck
+        from mpreg.core.cache_strong_handlers import (
+            key_to_payload,
+            prepare_ack_from_dict,
+        )
+
+        request_id = str(uuid.uuid4())
+        future = self._create_future(self._pending_strong, request_id)
+        if future is None:
+            return PrepareAck(str(peer_id), False, "no_event_loop")
+        meta_dict: dict = {}
+        if metadata is not None:
+            meta_dict = {
+                "access_patterns": dict(getattr(metadata, "access_patterns", None) or {}),
+                "created_by": str(getattr(metadata, "created_by", "") or ""),
+                "ttl_seconds": getattr(metadata, "ttl_seconds", None),
+            }
+        sv = (
+            strong_version.to_dict()
+            if hasattr(strong_version, "to_dict")
+            else dict(strong_version or {})
+        )
+        payload = {
+            "kind": CacheMessageKind.STRONG_PREPARE.value,
+            "request_id": request_id,
+            "reply_to": self.server.cluster.local_url,
+            "target_node": peer_id,
+            "cluster_id": cluster_id,
+            "key": key_to_payload(key),
+            "value": value,
+            "metadata": meta_dict,
+            "strong_version": sv,
+            "replica_set": list(replica_set),
+            "quorum": quorum,
+            "pending_ttl_s": timeout,
+        }
+        sent = await self._send_payload(
+            peer_id,
+            payload,
+            correlation_id=request_id,
+            topic="mpreg.cache.strong.prepare",
+        )
+        if not sent:
+            fut = self._pending_strong.pop(request_id, None)
+            if fut and not fut.done():
+                fut.set_result({"ok": False, "reason": "send_failed", "node_id": peer_id})
+            return PrepareAck(str(peer_id), False, "send_failed")
+        old_timeout = self.response_timeout
+        self.response_timeout = timeout
+        try:
+            raw = await self._await_future(self._pending_strong, request_id, future)
+        finally:
+            self.response_timeout = old_timeout
+        if not isinstance(raw, dict):
+            return PrepareAck(str(peer_id), False, "timeout")
+        return prepare_ack_from_dict(raw)
+
+    async def strong_commit(
+        self,
+        peer_id: NodeId,
+        *,
+        op_id: str,
+        key: GlobalCacheKey,
+        strong_version: Any,
+        cluster_id: str,
+        timeout: float,
+    ) -> Any:
+        from mpreg.core.cache_strong import CommitAck
+        from mpreg.core.cache_strong_handlers import (
+            commit_ack_from_dict,
+            key_to_payload,
+        )
+
+        request_id = str(uuid.uuid4())
+        future = self._create_future(self._pending_strong, request_id)
+        if future is None:
+            return CommitAck(str(peer_id), False, reason="no_event_loop")
+        sv = (
+            strong_version.to_dict()
+            if hasattr(strong_version, "to_dict")
+            else dict(strong_version or {})
+        )
+        payload = {
+            "kind": CacheMessageKind.STRONG_COMMIT.value,
+            "request_id": request_id,
+            "reply_to": self.server.cluster.local_url,
+            "target_node": peer_id,
+            "cluster_id": cluster_id,
+            "op_id": op_id,
+            "key": key_to_payload(key),
+            "strong_version": sv,
+        }
+        sent = await self._send_payload(
+            peer_id,
+            payload,
+            correlation_id=request_id,
+            topic="mpreg.cache.strong.commit",
+        )
+        if not sent:
+            fut = self._pending_strong.pop(request_id, None)
+            if fut and not fut.done():
+                fut.set_result(
+                    {"ok": False, "reason": "send_failed", "node_id": peer_id}
+                )
+            return CommitAck(str(peer_id), False, reason="send_failed")
+        old_timeout = self.response_timeout
+        self.response_timeout = timeout
+        try:
+            raw = await self._await_future(self._pending_strong, request_id, future)
+        finally:
+            self.response_timeout = old_timeout
+        if not isinstance(raw, dict):
+            return CommitAck(str(peer_id), False, reason="timeout")
+        return commit_ack_from_dict(raw)
+
+    async def strong_abort(
+        self,
+        peer_id: NodeId,
+        *,
+        op_id: str,
+        key: GlobalCacheKey,
+        strong_version: Any,
+        cluster_id: str,
+        timeout: float,
+    ) -> bool:
+        from mpreg.core.cache_strong_handlers import key_to_payload
+
+        request_id = str(uuid.uuid4())
+        future = self._create_future(self._pending_strong, request_id)
+        if future is None:
+            return False
+        sv = (
+            strong_version.to_dict()
+            if hasattr(strong_version, "to_dict")
+            else dict(strong_version or {})
+        )
+        payload = {
+            "kind": CacheMessageKind.STRONG_ABORT.value,
+            "request_id": request_id,
+            "reply_to": self.server.cluster.local_url,
+            "target_node": peer_id,
+            "cluster_id": cluster_id,
+            "op_id": op_id,
+            "key": key_to_payload(key),
+            "strong_version": sv,
+        }
+        sent = await self._send_payload(
+            peer_id,
+            payload,
+            correlation_id=request_id,
+            topic="mpreg.cache.strong.abort",
+        )
+        if not sent:
+            fut = self._pending_strong.pop(request_id, None)
+            if fut and not fut.done():
+                fut.set_result({"ok": False})
+            return False
+        old_timeout = self.response_timeout
+        self.response_timeout = timeout
+        try:
+            raw = await self._await_future(self._pending_strong, request_id, future)
+        finally:
+            self.response_timeout = old_timeout
+        return bool(isinstance(raw, dict) and raw.get("ok"))
 
     def _active_connections(self) -> dict[str, Connection]:
         return {

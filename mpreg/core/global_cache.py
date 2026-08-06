@@ -156,6 +156,11 @@ class GlobalCacheManager(ManagedObject):
         # Optional OBS sink: callable(n: int) when replication work is dropped.
         self._metrics_replication_drop: Any = None
 
+        # ConsistencyLevel.STRONG majority-commit coordinator (opt-in; default None → 1012).
+        self._strong_coordinator: Any = None
+        self._strong_backend: Any = None
+        self._strong_metrics: dict[str, int] = defaultdict(int)
+
         # Initialize namespace index for efficient namespace operations
         self.namespace_index: dict[str, set[GlobalCacheKey]] = defaultdict(set)
 
@@ -175,6 +180,65 @@ class GlobalCacheManager(ManagedObject):
     def attach_namespace_policy(self, engine: NamespacePolicyEngine | None) -> None:
         """Bind or replace the namespace/tenant data-plane gate."""
         self.namespace_policy = engine
+
+    def attach_strong_coordinator(self, coordinator: Any) -> None:
+        """Bind STRONG put coordinator (majority-commit barrier)."""
+        self._strong_coordinator = coordinator
+        self._strong_backend = getattr(coordinator, "local", None)
+
+    async def _strong_put(
+        self,
+        key: GlobalCacheKey,
+        value: Any,
+        *,
+        metadata: CacheMetadata,
+        options: CacheOptions,
+    ) -> CacheOperationResult:
+        """Majority-commit STRONG put, or 1012 when coordinator unbound."""
+        from mpreg.core.errors import MpregErrorCode
+
+        coord = self._strong_coordinator
+        if coord is None:
+            self._strong_metrics["refused_disabled"] += 1
+            return CacheOperationResult(
+                success=False,
+                error_message=(
+                    "ConsistencyLevel.STRONG is disabled "
+                    "(set cache_strong_enabled=true with eligible peers). "
+                    "Use EVENTUAL or WEAK, or enable the majority-commit path."
+                ),
+                error_code=int(MpregErrorCode.UNSUPPORTED_CONSISTENCY),
+            )
+
+        # Eligible peers: origin + fabric cache SYNC peers when transport present
+        eligible: list[str] = [str(coord.origin_id)]
+        if self.cache_protocol is not None:
+            try:
+                peers = self.cache_protocol.peer_ids()
+                eligible.extend(str(p) for p in peers if str(p) not in eligible)
+            except Exception:  # noqa: BLE001
+                pass
+        # Also accept transport peer_ids if protocol thin
+        transport = getattr(coord, "transport", None)
+        if transport is not None and hasattr(transport, "peer_ids"):
+            try:
+                for p in transport.peer_ids(exclude=None):
+                    if str(p) not in eligible:
+                        eligible.append(str(p))
+            except Exception:  # noqa: BLE001
+                pass
+
+        result = await coord.strong_put(
+            key, value, metadata=metadata, eligible_peers=eligible
+        )
+        if result.success and result.entry is not None:
+            # Apply visible entry into real L1 only after quorum success
+            self._put_to_l1(result.entry)
+            self._add_to_namespace_index(key)
+            self._strong_metrics["puts_ok"] += 1
+        else:
+            self._strong_metrics["puts_fail"] += 1
+        return result
 
     def _enqueue_replication(
         self, op: str, key: GlobalCacheKey, entry: Any = None
@@ -391,18 +455,10 @@ class GlobalCacheManager(ManagedObject):
                 error_message=f"namespace_policy_denied:{reason}",
             )
 
-        # COR-01: refuse STRONG before any local write. Live path has no majority-ack
-        # barrier; writing L1/L2 then failing on L3 left dirty residuals on "failed" puts.
-        # L1-only + STRONG is also refused (paper success is not strong consistency).
+        # COR-01: STRONG only via majority-commit coordinator when enabled.
+        # Refuse before any local write / namespace index side effects.
         if options.consistency_level is ConsistencyLevel.STRONG:
-            return CacheOperationResult(
-                success=False,
-                error_message=(
-                    "ConsistencyLevel.STRONG is not implemented on the live fabric "
-                    "cache path (no majority-ack barrier). Use EVENTUAL or WEAK, or "
-                    "await a future quorum-backed put."
-                ),
-            )
+            return await self._strong_put(key, value, metadata=metadata, options=options)
 
         str(uuid.uuid4())
         start_time = time.time()
@@ -727,14 +783,12 @@ class GlobalCacheManager(ManagedObject):
     async def _put_to_l3(self, entry: GlobalCacheEntry, options: CacheOptions) -> None:
         """Store entry in L3 distributed cache.
 
-        STRONG is refused at :meth:`put` entry (COR-01) before any local write.
-        Keep a defensive check here for direct callers / future paths.
+        STRONG must not use fire-and-forget L3 gossip — coordinator path only.
         """
         if options.consistency_level is ConsistencyLevel.STRONG:
             raise ValueError(
-                "ConsistencyLevel.STRONG is not implemented on the live fabric "
-                "cache path (no majority-ack barrier). Use EVENTUAL or WEAK, or "
-                "await a future quorum-backed put."
+                "ConsistencyLevel.STRONG must use the majority-commit coordinator "
+                "(cache_strong_enabled); L3 gossip is not a quorum barrier."
             )
         if self.cache_protocol is None:
             return

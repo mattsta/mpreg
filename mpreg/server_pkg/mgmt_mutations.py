@@ -26,15 +26,29 @@ class MgmtAuditEntry:
     actor: str | None
     success: bool
     detail: dict[str, Any] = field(default_factory=dict)
+    # Additive optional fields for shared-audit schema alignment
+    entry_id: str | None = None
+    origin_node: str | None = None
+    cluster_id: str | None = None
+    schema_version: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        out: dict[str, Any] = {
             "event": self.event,
             "timestamp": self.timestamp,
             "actor": self.actor,
             "success": self.success,
             "detail": dict(self.detail),
         }
+        if self.entry_id is not None:
+            out["entry_id"] = self.entry_id
+        if self.origin_node is not None:
+            out["origin_node"] = self.origin_node
+        if self.cluster_id is not None:
+            out["cluster_id"] = self.cluster_id
+        if self.schema_version is not None:
+            out["schema_version"] = self.schema_version
+        return out
 
 @dataclass(slots=True)
 class MgmtAuditLog:
@@ -314,13 +328,55 @@ def _audit(
     if log is None:
         log = MgmtAuditLog()
         server._mgmt_audit_log = log
-    log.record(
-        MgmtAuditEntry(
+    ts = time.time()
+    entry_id: str | None = None
+    origin_node: str | None = None
+    cluster_id: str | None = None
+    schema_version: int | None = None
+
+    # Shared audit path (opt-in): SharedAuditStore is authority; local ring mirrors origin.
+    shared_store = getattr(server, "_shared_audit_store", None)
+    shared_rep = getattr(server, "_shared_audit_replicator", None)
+    if shared_store is not None:
+        from mpreg.server_pkg.shared_audit.models import record_from_mgmt_entry
+
+        settings = getattr(server, "settings", None)
+        cluster_id = str(getattr(settings, "cluster_id", "") or "default-cluster")
+        origin_url = ""
+        try:
+            origin_url = str(server.cluster.local_url)
+        except Exception:  # noqa: BLE001
+            origin_url = ""
+        # Prefer stable peer URL as origin_node for watermark/peer identity.
+        origin_node = origin_url or str(getattr(settings, "name", "") or "local")
+        rec = record_from_mgmt_entry(
             event=event,
-            timestamp=time.time(),
+            timestamp=ts,
             actor=actor,
             success=success,
             detail=detail,
+            cluster_id=cluster_id,
+            origin_node=origin_node,
+            origin_url=origin_url,
+        )
+        stored = shared_store.insert_and_persist(rec)
+        if stored is not None:
+            entry_id = stored.entry_id
+            schema_version = stored.schema_version
+            if shared_rep is not None:
+                shared_rep.publish(stored)
+
+    log.record(
+        MgmtAuditEntry(
+            event=event,
+            timestamp=ts,
+            actor=actor,
+            success=success,
+            detail=detail,
+            entry_id=entry_id,
+            origin_node=origin_node,
+            cluster_id=cluster_id,
+            schema_version=schema_version,
         )
     )
     tracker = getattr(server, "_metrics_tracker", None)

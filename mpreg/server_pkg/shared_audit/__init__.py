@@ -14,12 +14,22 @@ from mpreg.server_pkg.shared_audit.models import (
     record_from_mgmt_entry,
     stable_canonical_json,
 )
+from mpreg.server_pkg.shared_audit.replicator import (
+    InProcessSharedAuditTransport,
+    SharedAuditHealth,
+    SharedAuditReplicator,
+)
+from mpreg.server_pkg.shared_audit.response import build_audit_response
 from mpreg.server_pkg.shared_audit.store import SharedAuditStore, Watermark
 
 __all__ = [
+    "InProcessSharedAuditTransport",
+    "SharedAuditHealth",
     "SharedAuditRecord",
+    "SharedAuditReplicator",
     "SharedAuditStore",
     "Watermark",
+    "build_audit_response",
     "entry_sort_key",
     "merge_records",
     "mint_entry_id",

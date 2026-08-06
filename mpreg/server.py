@@ -1618,6 +1618,9 @@ class MPREGServer:
     # COR-05: per-request actor identity bound by run_rpc (connection viewer).
     _rpc_actor_context: dict[str, Any] | None = field(init=False, default=None)
     _mgmt_audit_log: Any = field(init=False, default=None)
+    _shared_audit_store: Any = field(init=False, default=None)
+    _shared_audit_replicator: Any = field(init=False, default=None)
+    _strong_local_backend: Any = field(init=False, default=None)
     _queue_rpc_registered: bool = field(init=False, default=False)
     _cache_rpc_registered: bool = field(init=False, default=False)
     _dns_gateway: Any = field(init=False, default=None)
@@ -1851,9 +1854,35 @@ class MPREGServer:
         from mpreg.server_pkg.mgmt_mutations import MgmtAuditLog
 
         self._mgmt_draining = False
-        self._mgmt_audit_log = MgmtAuditLog(
-            persist_path=getattr(self.settings, "mgmt_audit_path", None) or None
+        # When shared audit is on, SharedAuditStore owns JSONL; local ring is origin mirror only.
+        _shared_on = bool(
+            getattr(self.settings, "mgmt_audit_shared_enabled", False)
         )
+        _audit_path = getattr(self.settings, "mgmt_audit_path", None) or None
+        self._mgmt_audit_log = MgmtAuditLog(
+            # Avoid double-loading JSONL into both stores when shared is on.
+            persist_path=None if _shared_on else _audit_path
+        )
+        self._shared_audit_store = None
+        self._shared_audit_replicator = None
+        if _shared_on:
+            from mpreg.server_pkg.shared_audit.store import SharedAuditStore
+
+            self._shared_audit_store = SharedAuditStore(
+                max_entries=int(
+                    getattr(self.settings, "mgmt_audit_shared_max_entries", 2000)
+                    or 2000
+                ),
+                cluster_id=str(self.settings.cluster_id),
+                local_node=str(self.settings.name),
+                persist_path=_audit_path,
+            )
+            if not _audit_path:
+                logger.warning(
+                    "[{}] mgmt_audit_shared_enabled without mgmt_audit_path — "
+                    "shared audit is memory-only",
+                    self.settings.name,
+                )
         self._namespace_policy_audit_log = NamespacePolicyAuditLog()
         self._discovery_access_audit_log = DiscoveryAccessAuditLog(
             max_entries=self.settings.discovery_access_audit_max_entries
@@ -5029,6 +5058,91 @@ class MPREGServer:
             self._cache_fabric_protocol = cache_protocol
             self._cache_fabric_transport = cache_transport
             self.attach_cache_manager(cache_manager)
+
+            # ConsistencyLevel.STRONG majority-commit (opt-in)
+            if bool(getattr(self.settings, "cache_strong_enabled", False)):
+                from mpreg.core.cache_strong import (
+                    InProcessStrongTransport,
+                    StrongLocalBackend,
+                    StrongPutCoordinator,
+                )
+                from mpreg.core.cache_strong_handlers import StrongPeerHandler
+
+                origin_id = self.cluster.local_url
+                backend = StrongLocalBackend(node_id=origin_id)
+                self._strong_local_backend = backend
+                lab = bool(
+                    getattr(self.settings, "cache_strong_lab_single_node", False)
+                )
+                strong_transport = cache_transport
+                if strong_transport is not None:
+                    strong_transport.strong_handler = StrongPeerHandler(
+                        backend,
+                        cluster_id=str(self.settings.cluster_id),
+                        pending_ttl_s=float(
+                            getattr(
+                                self.settings, "cache_strong_pending_ttl_s", 30.0
+                            )
+                            or 30.0
+                        ),
+                    )
+                elif lab:
+                    # Lab single-node: in-process transport with only origin backend.
+                    ip = InProcessStrongTransport()
+                    ip.register(backend)
+                    strong_transport = ip
+                if strong_transport is not None:
+                    coord = StrongPutCoordinator(
+                        origin_id=origin_id,
+                        local=backend,
+                        transport=strong_transport,
+                        cluster_id=str(self.settings.cluster_id),
+                        replica_factor=int(
+                            getattr(self.settings, "cache_strong_replica_factor", 3)
+                            or 3
+                        ),
+                        min_replicas=int(
+                            getattr(self.settings, "cache_strong_min_replicas", 3)
+                            or 3
+                        ),
+                        lab_single_node=lab,
+                        prepare_timeout_s=float(
+                            getattr(
+                                self.settings, "cache_strong_prepare_timeout_s", 2.0
+                            )
+                            or 2.0
+                        ),
+                        commit_timeout_s=float(
+                            getattr(
+                                self.settings, "cache_strong_commit_timeout_s", 2.0
+                            )
+                            or 2.0
+                        ),
+                        pending_ttl_s=float(
+                            getattr(
+                                self.settings, "cache_strong_pending_ttl_s", 30.0
+                            )
+                            or 30.0
+                        ),
+                    )
+                    cache_manager.attach_strong_coordinator(coord)
+                    logger.info(
+                        "[{}] ConsistencyLevel.STRONG majority-commit enabled "
+                        "(lab_single_node={})",
+                        self.settings.name,
+                        lab,
+                    )
+                else:
+                    logger.warning(
+                        "[{}] cache_strong_enabled but no cache fabric transport "
+                        "(enable L3/L4 or cache_strong_lab_single_node); "
+                        "STRONG puts will refuse 1012",
+                        self.settings.name,
+                    )
+
+        # Shared audit replicator (needs peer connections — start after systems up)
+        if self._shared_audit_store is not None:
+            self._start_shared_audit_replicator()
 
         if self.settings.enable_default_queue:
             from .core.message_queue_manager import create_reliable_queue_manager
@@ -11828,12 +11942,108 @@ class MPREGServer:
                 )
             self._auto_allocated_dns_tcp_port = None
 
-    def _mgmt_audit_snapshot(self) -> list[dict[str, object]]:
-        """Return recent management mutation audit entries."""
+    def _mgmt_audit_snapshot(
+        self,
+        scope: str = "local",
+        limit: int = 50,
+        origin_node: str | None = None,
+    ) -> dict[str, object] | list[dict[str, object]]:
+        """Return management mutation audit (local ring or cluster G-Set)."""
+        from mpreg.server_pkg.shared_audit.response import build_audit_response
+
         log = getattr(self, "_mgmt_audit_log", None)
-        if log is None:
-            return []
-        return log.snapshot()
+        local_entries: list[dict[str, object]] = (
+            log.snapshot() if log is not None else []
+        )
+        store = getattr(self, "_shared_audit_store", None)
+        rep = getattr(self, "_shared_audit_replicator", None)
+        health = rep.health() if rep is not None else None
+        return build_audit_response(
+            store=store,
+            local_entries=local_entries,  # type: ignore[arg-type]
+            route_records=None,
+            scope="cluster" if str(scope).lower() == "cluster" else "local",  # type: ignore[arg-type]
+            limit=limit,
+            origin_node_filter=origin_node,
+            self_node=str(self.settings.name),
+            shared_enabled=store is not None,
+            health=health,
+        )
+
+    def _start_shared_audit_replicator(self) -> None:
+        """Bind SharedAuditReplicator to fabric gossip transport."""
+        store = getattr(self, "_shared_audit_store", None)
+        if store is None:
+            return
+        from mpreg.server_pkg.shared_audit.fabric_transport import (
+            FabricSharedAuditTransport,
+        )
+        from mpreg.server_pkg.shared_audit.replicator import SharedAuditReplicator
+
+        def _peers() -> list[str]:
+            try:
+                return sorted(self._get_all_peer_connections().keys())
+            except Exception:  # noqa: BLE001
+                return []
+
+        async def _send(peer_id: str, message: object) -> bool:
+            transport = getattr(self, "_fabric_gossip_transport", None)
+            if transport is None:
+                return False
+            try:
+                return bool(await transport.send_message(peer_id, message))
+            except Exception:  # noqa: BLE001
+                return False
+
+        fat = FabricSharedAuditTransport(
+            send_message=_send,
+            local_node_id=self.cluster.local_url,
+            peer_list=_peers,
+            gossip_targets=int(
+                getattr(self.settings, "mgmt_audit_shared_gossip_targets", 3) or 3
+            ),
+            cluster_id=str(self.settings.cluster_id),
+        )
+        # node_id must be the peer URL so unicast/epidemic targets match connections.
+        local_id = self.cluster.local_url
+        rep = SharedAuditReplicator(
+            store=store,
+            node_id=local_id,
+            cluster_id=str(self.settings.cluster_id),
+            transport=fat,
+            peer_list=_peers,
+            gossip_targets=int(
+                getattr(self.settings, "mgmt_audit_shared_gossip_targets", 3) or 3
+            ),
+            reconcile_interval_s=float(
+                getattr(
+                    self.settings, "mgmt_audit_shared_reconcile_interval_s", 2.0
+                )
+                or 2.0
+            ),
+        )
+        self._shared_audit_replicator = rep
+        rep.start()
+
+        # Hook gossip receive path
+        if self._fabric_control_plane is not None:
+            gossip = getattr(self._fabric_control_plane, "gossip", None)
+            if gossip is not None:
+
+                def _on_audit_msg(message: object) -> None:
+                    mt = getattr(message, "message_type", None)
+                    payload = getattr(message, "payload", None)
+                    if mt is None or not isinstance(payload, dict):
+                        return
+                    type_val = getattr(mt, "value", str(mt))
+                    rep.on_message(str(type_val), payload)
+
+                gossip.mgmt_audit_handler = _on_audit_msg
+        logger.info(
+            "[{}] Shared audit replicator started (max_entries={})",
+            self.settings.name,
+            store.max_entries,
+        )
 
     def _mgmt_apply_drain(self, body: dict[str, object]) -> dict[str, object]:
         from mpreg.server_pkg.mgmt_mutations import apply_node_drain

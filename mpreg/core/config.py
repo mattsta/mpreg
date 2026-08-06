@@ -96,6 +96,19 @@ class MPREGSettings:
     fabric_snapshot_fail_on_restore_error: bool = False
     # Optional JSONL path for durable mgmt mutation audit (process ring still primary).
     mgmt_audit_path: str | None = None
+    # Multi-node shared audit (G-Set + watermarks). Default off — local ring only.
+    mgmt_audit_shared_enabled: bool = False
+    mgmt_audit_shared_max_entries: int = 2000
+    mgmt_audit_shared_gossip_targets: int = 3
+    mgmt_audit_shared_reconcile_interval_s: float = 2.0
+    # ConsistencyLevel.STRONG majority-commit put. Default off → 1012 refuse.
+    cache_strong_enabled: bool = False
+    cache_strong_replica_factor: int = 3
+    cache_strong_min_replicas: int = 3
+    cache_strong_lab_single_node: bool = False
+    cache_strong_prepare_timeout_s: float = 2.0
+    cache_strong_commit_timeout_s: float = 2.0
+    cache_strong_pending_ttl_s: float = 30.0
     # Gossip envelopes are unsigned by default; when True, require HMAC on envelope.
     fabric_gossip_require_hmac: bool = False
     fabric_gossip_hmac_secret: str | None = None

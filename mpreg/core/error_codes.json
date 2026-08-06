@@ -80,7 +80,37 @@
   {
     "code": 1012,
     "name": "UNSUPPORTED_CONSISTENCY",
-    "message": "Consistency level not supported (STRONG is residual-free refused)",
+    "message": "Consistency level not supported (STRONG disabled or not implemented)",
+    "retryable": false
+  },
+  {
+    "code": 1013,
+    "name": "ROUTE_LOOP",
+    "message": "Fabric routing path loop detected",
+    "retryable": false
+  },
+  {
+    "code": 1015,
+    "name": "INSUFFICIENT_QUORUM",
+    "message": "STRONG put could not form a majority replica set",
+    "retryable": true
+  },
+  {
+    "code": 1016,
+    "name": "QUORUM_TIMEOUT",
+    "message": "STRONG put timed out waiting for prepare/commit quorum",
+    "retryable": true
+  },
+  {
+    "code": 1017,
+    "name": "STRONG_CONFLICT",
+    "message": "STRONG put lost last-writer-wins conflict",
+    "retryable": false
+  },
+  {
+    "code": 1018,
+    "name": "STRONG_PENDING_FULL",
+    "message": "STRONG pending prepare slots exhausted",
     "retryable": false
   },
   {

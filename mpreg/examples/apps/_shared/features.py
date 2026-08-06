@@ -208,6 +208,8 @@ CHAOS_LIVE_DRAIN: Final = "chaos.live_drain"
 OPS_MGMT_DRAIN: Final = "ops.mgmt_drain"
 OPS_MGMT_DETACH: Final = "ops.mgmt_detach"
 OPS_MGMT_AUDIT: Final = "ops.mgmt_audit"
+OPS_SHARED_AUDIT: Final = "ops.shared_audit"
+CACHE_STRONG: Final = "cache.strong"
 CHAOS_NO_LOOP: Final = "chaos.no_loop"
 TX_CORRELATION: Final = "tx.correlation"
 MON_TRACE_BIND: Final = "mon.trace_bind"
@@ -529,6 +531,16 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         DISCO_DNS_REGISTER,
         DISCO_DNS_RESOLVE,
         CLIENT_DNS,
+    ),
+    "shared_audit_mesh": (
+        OPS_MGMT_DRAIN,
+        OPS_MGMT_AUDIT,
+        OPS_SHARED_AUDIT,
+    ),
+    "cache_strong_quorum": (
+        CACHE_STRONG,
+        CACHE_PUT_GET,
+        CACHE_L1,
     ),
     "ops_cli_tour": (
         OPS_CLI_CALL,

@@ -512,6 +512,20 @@ APPS: tuple[ExampleApp, ...] = (
         ("cache", "fabric"),
     ),
     _app(
+        "shared_audit_mesh",
+        "Shared Audit Mesh",
+        AppLevel.L2,
+        "Multi-node G-Set mgmt audit; scope=cluster visibility after drain.",
+        ("ops", "audit", "gossip"),
+    ),
+    _app(
+        "cache_strong_quorum",
+        "Cache STRONG Quorum",
+        AppLevel.L2,
+        "Majority-commit ConsistencyLevel.STRONG put + residual-free 1015.",
+        ("cache",),
+    ),
+    _app(
         "webhook_dispatcher",
         "Webhook Dispatcher",
         AppLevel.L2,

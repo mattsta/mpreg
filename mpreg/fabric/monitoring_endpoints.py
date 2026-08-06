@@ -2067,27 +2067,89 @@ class FederationMonitoringSystem:
     async def _get_mgmt_audit(self, request: web.Request) -> web.Response:
         """Admin mutation audit plus optional route-decision read path."""
         from mpreg.fabric.route_decision_log import get_default_route_decision_log
+        from mpreg.server_pkg.shared_audit.response import build_audit_response
 
         try:
             limit = int(request.query.get("limit", "50"))
         except ValueError:
             limit = 50
+        scope_raw = str(request.query.get("scope", "local") or "local").lower()
+        scope = "cluster" if scope_raw == "cluster" else "local"
+        origin_filter = request.query.get("origin_node") or None
 
-        mutations: list[dict[str, Any]] = []
+        # Provider may return list, dict, or full pre-built response.
         audit_fn = getattr(self, "mgmt_audit_provider", None)
         if audit_fn is not None:
             try:
-                snap = audit_fn()
-                if isinstance(snap, dict):
-                    mutations = list(snap.get("mutations") or snap.get("entries") or [])
-                elif isinstance(snap, list):
+                # Prefer signature with scope kwargs when available
+                import inspect
+
+                try:
+                    sig = inspect.signature(audit_fn)
+                    if "scope" in sig.parameters:
+                        snap = audit_fn(
+                            scope=scope, limit=limit, origin_node=origin_filter
+                        )
+                    else:
+                        snap = audit_fn()
+                except (TypeError, ValueError):
+                    snap = audit_fn()
+                if (
+                    isinstance(snap, dict)
+                    and "mutations" in snap
+                    and "scope" in snap
+                ):
+                    return web.json_response(snap)
+                if isinstance(snap, dict) and (
+                    "mutations" in snap or "entries" in snap
+                ):
+                    mutations = list(
+                        snap.get("mutations") or snap.get("entries") or []
+                    )
+                    log = (
+                        getattr(self, "route_decision_log", None)
+                        or get_default_route_decision_log()
+                    )
+                    route_records = (
+                        log.recent(limit=min(limit, 20))
+                        if hasattr(log, "recent")
+                        else []
+                    )
+                    return web.json_response(
+                        build_audit_response(
+                            store=None,
+                            local_entries=mutations,
+                            route_records=route_records,
+                            scope=scope,  # type: ignore[arg-type]
+                            limit=limit,
+                            origin_node_filter=origin_filter,
+                            shared_enabled=bool(snap.get("shared_enabled")),
+                            health=None,
+                        )
+                    )
+                if isinstance(snap, list):
                     mutations = snap
+                    log = (
+                        getattr(self, "route_decision_log", None)
+                        or get_default_route_decision_log()
+                    )
+                    route_records = (
+                        log.recent(limit=min(limit, 20))
+                        if hasattr(log, "recent")
+                        else []
+                    )
+                    return web.json_response(
+                        build_audit_response(
+                            store=None,
+                            local_entries=mutations,
+                            route_records=route_records,
+                            scope=scope,  # type: ignore[arg-type]
+                            limit=limit,
+                            origin_node_filter=origin_filter,
+                        )
+                    )
             except Exception as exc:  # noqa: BLE001
                 logger.debug("mgmt_audit_provider failed: {}", exc)
-
-        # Truncate to limit (most recent last)
-        if limit >= 0 and len(mutations) > limit:
-            mutations = mutations[-limit:]
 
         log = (
             getattr(self, "route_decision_log", None)
@@ -2097,14 +2159,14 @@ class FederationMonitoringSystem:
             log.recent(limit=min(limit, 20)) if hasattr(log, "recent") else []
         )
         return web.json_response(
-            {
-                "audit_kind": "mgmt_mutations",
-                "mutations": mutations,
-                "mutation_count": len(mutations),
-                "recent_route_decisions": [
-                    r.to_dict() if hasattr(r, "to_dict") else r for r in route_records
-                ],
-            }
+            build_audit_response(
+                store=None,
+                local_entries=[],
+                route_records=route_records,
+                scope=scope,  # type: ignore[arg-type]
+                limit=limit,
+                origin_node_filter=origin_filter,
+            )
         )
 
     async def _get_openapi(self, request: web.Request) -> web.Response:
