@@ -104,8 +104,15 @@ async def main() -> None:
                             CatalogQueryRequest(entry_type="nodes")
                         )
                         ensure(nodes is not None, "nodes catalog None")
+                        # F23: omitted / empty entry_type defaults to functions
+                        defaulted = await api.catalog_query(CatalogQueryRequest())
+                        ensure(defaulted is not None, "default catalog None")
+                        empty = await api.catalog_query(
+                            CatalogQueryRequest.from_dict({"entry_type": ""})
+                        )
+                        ensure(empty is not None, "empty entry_type catalog None")
                         ok(
-                            f"catalog_query functions+nodes → "
+                            f"catalog_query functions+nodes+default → "
                             f"{type(cat).__name__}/{type(nodes).__name__}"
                         )
 

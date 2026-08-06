@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase M COMPLETE — residual CLI + fabric_forward → 96 apps; 0 teachable FEATURE partials)  
+**Last updated:** 2026-08-05 (Phase N — Low DX F22/F23 + planning scrub → 96 apps; 0 open friction)  
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -33,6 +33,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G18 | **Promote high-value FEATURE partials** | rpc.describe/report, client.trace, tx.correlation, chaos.no_loop, mon.trace_bind | [x] Phase K |
 | G19 | **Promote remaining FEATURE partials** | queue.ack/receive, client.pubsub/backlog, cache geo/L2, fabric modes, rpc concurrency, mon.logging, chaos.crash, tx.CB, ns.engine | [x] Phase L |
 | G20 | **Close last FEATURE partials** | ops.cli_planes/ns/discovery + pubsub.fabric_forward | [x] Phase M |
+| G21 | **Close residual Low DX + planning truth** | F22/F23 platform fix; scrub stale POC/VISION residuals | [x] Phase N |
 
 ---
 
@@ -40,22 +41,24 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 
 | Metric | Value |
 |--------|------:|
-| Shipped apps | **85** |
+| Shipped apps | **96** |
 | Smoke apps | 8 |
-| Suite apps | 85 (all registry `suite=True`) |
+| Suite apps | 96 (all registry `suite=True`) |
 | Feature IDs in `features.py` constants | ~140+ |
 | FEATURE_CATALOG prioritized gaps 1–8 | **closed** (honest non-claims where needed) |
 | Thin apps (scen<2 or L1+ ens<5) | **0** |
 | Branch vs origin | main ahead local only (no push unless asked) |
-| Last new-app validation | Phase K 7 depth/partial apps green |
-| Last unit | `pytest tests/examples_apps -m unit` → **100 passed** |
-| Last full suite | **85/85 passed** (~94s) |
+| Last new-app validation | Phase M apps green; Phase N deepen F22/F23 paths |
+| Last unit | `pytest tests/examples_apps -m unit` → **111 passed** |
+| Last full suite | **96/96 passed** (~103s) |
 | Phase G | **COMPLETE** — DX fixes + ExampleProbe + 8 apps obs-proven |
 | Phase H | **COMPLETE** — FQN ns-deny + Med friction + universal probe |
 | Phase I | **COMPLETE** — residual Info polish + FQN curriculum + catalog sync |
 | Phase J | **COMPLETE** — F10/F11/F12 productized + catalog residual teach |
 | Phase K | **COMPLETE** — residual depth non-claims + catalog partials productized |
 | Phase L | **COMPLETE** — FEATURE partial promotion batch (10 apps) |
+| Phase M | **COMPLETE** — residual CLI ops + fabric_forward |
+| Phase N | **COMPLETE** — F22/F23 Low DX + planning scrub |
 
 ### Thin backlog
 
@@ -434,6 +437,43 @@ Phase L left 4 FEATURE `partial` rows (CLI ops + fabric_forward). Phase M
 
 ---
 
+### Phase N — Residual Low DX + planning truth (**COMPLETE**)
+
+Phase M left open Low friction (F22/F23) and stale POC follow-ups while
+FEATURE teachable partials were already 0. Phase N **serializes those into one
+linear charter** and closes them without inventing topology claims.
+
+#### N goals
+
+| ID | Goal | Success measure | Status |
+|----|------|-----------------|--------|
+| PN1 | Charter Phase N into living plans | G21 + waves | [x] |
+| PN2 | F22 — `publish` accepts Mapping\|MessageHeaders | `MessageHeaders.coerce` | [x] |
+| PN3 | F23 — empty `entry_type` defaults + clearer error | server + CatalogQueryRequest | [x] |
+| PN4 | Teach apps prove F22/F23 | pubsub_client_backlog + cluster_map_catalog | [x] |
+| PN5 | Scrub stale POC/VISION residuals | media_pipeline + CI smoke already real | [x] |
+| PN6 | unit + suite green | **96** apps; friction open = 0 | [x] |
+
+#### Phase N waves (sequential)
+
+| Wave | Deliverable | Status |
+|------|-------------|--------|
+| **N0** | Serialize residuals into this charter | [x] |
+| **N1** | F22 MessageHeaders Mapping coerce | [x] |
+| **N2** | F23 catalog_query entry_type default/error | [x] |
+| **N3** | Unit tests + curriculum deepen | [x] |
+| **N4** | POC_NOTES / API_FRICTION / catalogs scrub | [x] |
+| **N5** | unit + suite + commit | [x] |
+
+#### Phase N exit criteria
+
+- [x] F22/F23 fixed in platform and taught in apps  
+- [x] API_FRICTION open High/Med/Low curriculum rows = **0**  
+- [x] Stale POC follow-ups closed or honest residual only  
+- [x] unit + suite green at **96**  
+
+---
+
 ## 4. Target app matrix growth
 
 | Band | Now | Target | Notes |
@@ -502,6 +542,7 @@ uv run pytest tests/examples_apps -q
 | 2026-08-05 | Phase K complete | signatures, rpc inventory, trace bind, correlation/no-loop, CERT_REQUIRED mTLS, packet loss, hub settlement → **85** |
 | 2026-08-05 | Phase L complete | queue ack/receive, pubsub client/backlog, cache geo/L2, fabric modes, rpc concurrency, cluster map/catalog, mon json, chaos crash, tx CB, ns engine → **95** |
 | 2026-08-05 | Phase M complete | ops CLI planes/ns/discovery deepen + pubsub_fabric_forward_lab → **96**; 0 teachable FEATURE partials |
+| 2026-08-05 | Phase N complete | F22 Mapping headers coerce; F23 empty entry_type default; POC scrub; **96** apps; 0 open friction |
 
 ---
 
@@ -606,6 +647,17 @@ uv run pytest tests/examples_apps -q
 
 ---
 
+### Phase N (Low DX F22/F23 + planning scrub) — complete
+
+| Slice | Weight | Done | Status |
+|-------|-------:|-----:|--------|
+| N0 charter | 10% | 10 | [x] |
+| N1–N2 F22/F23 platform | 50% | 50 | [x] |
+| N3–N5 teach + docs + suite | 40% | 40 | [x] |
+| **Phase N overall** | **100%** | **100%** | complete |
+
+---
+
 ## 8. Working rules (non-negotiable)
 
 1. **Do not stop and claim done** after a small batch — update plan and continue next wave.  
@@ -646,6 +698,8 @@ candidates for platform DX improvements (not claims that apps are broken).
 | F19 | RaftOracle | Dual-leader raises on `observe_role` | Info | Document fail-fast | `routing_oracle_lab` **DOCUMENTED I** |
 | F20 | DiscoveryRateLimiter | soft max_keys | Med | Hard prune | **FIXED G** |
 | F21 | TopicQueueRouter | route success stats | Med | Bump on pure route | **FIXED G** |
+| F22 | PubSub headers | bare `dict` rejected by type | Low | Accept Mapping via coerce | **FIXED N** |
+| F23 | catalog_query | empty entry_type ValueError | Low | Default `functions` + clearer error | **FIXED N** |
 
 **Process:** when a new app hits friction, append a row here **and** a `step("friction: …")` in the app so operators see it live.
 
@@ -681,11 +735,17 @@ F11/F12/F10 + residual teach apps. **78** apps at J exit.
 `ops_cli_tour` deepened; `pubsub_fabric_forward_lab`. **96** apps.
 FEATURE_CATALOG teachable `partial` rows: **0**.
 
-Honest remaining (operator topology / kernel-level only):
-multi-continent SLA meshes, kernel TCP byte-splice loss, multi-hub DAO treasury
-production ops — not curriculum blockers.
+**Phase N (Low DX F22/F23 + planning scrub): COMPLETE 100%.**  
+`MessageHeaders.coerce` accepts Mapping; catalog `entry_type` defaults to
+`functions` with clearer errors; POC_NOTES/VISION residuals scrubbed.
+API_FRICTION open curriculum rows: **0**. **96** apps.
 
-**Program idle** at Phase M exit unless a new charter opens further product work.
+Honest remaining (operator topology / kernel-level only — not curriculum blockers):
+multi-continent SLA meshes, kernel TCP byte-splice loss, multi-hub DAO treasury
+production ops.
+
+**Program complete through Phase N.** Further work requires a new charter
+(new platform surface, new operator topology product, or fresh friction).
 
 ---
 

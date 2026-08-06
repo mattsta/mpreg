@@ -232,3 +232,16 @@ Linear continuation after Phase L. Closed the last teachable FEATURE `partial` r
 2. `pubsub_fabric_forward_lab` for `pubsub.fabric_forward`
 
 Exit: **96** suite apps; FEATURE teachable partials at **0**.
+
+## Phase N — Residual Low DX + planning truth (COMPLETE)
+
+Linear continuation after Phase M. Closed remaining open Low friction and stale
+planning residuals without new topology claims:
+
+1. **F22** — `MPREGPubSubClient.publish` accepts `MessageHeaders | Mapping | None`
+2. **F23** — empty/omitted `catalog_query` `entry_type` defaults to `functions`
+   with a clearer unsupported-type error
+3. Teach paths deepened in `pubsub_client_backlog` + `cluster_map_catalog`
+4. POC_NOTES follow-ups scrubbed (`media_pipeline` exists; CI runs demo smoke/suite)
+
+Exit: **96** suite apps; API_FRICTION open curriculum rows at **0**.

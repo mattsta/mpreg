@@ -9,6 +9,7 @@ provide proper type safety and clear documentation of statistics structures.
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -261,6 +262,66 @@ class MessageHeaders:
     priority: int | None = None
     ttl_seconds: int | None = None
     custom_headers: dict[str, str] | None = None
+
+    _RESERVED_KEYS = frozenset(
+        {
+            "content_type",
+            "correlation_id",
+            "reply_to",
+            "priority",
+            "ttl_seconds",
+        }
+    )
+
+    @classmethod
+    def coerce(
+        cls, headers: MessageHeaders | Mapping[str, Any] | None
+    ) -> MessageHeaders | None:
+        """Accept ``MessageHeaders``, a plain mapping, or ``None``.
+
+        Bare ``dict`` values are a common caller mistake; coerce them so
+        ``MPREGPubSubClient.publish(..., headers={"correlation_id": "…"})``
+        works without forcing the dataclass at every call site.
+        """
+        if headers is None:
+            return None
+        if isinstance(headers, MessageHeaders):
+            return headers
+        if isinstance(headers, Mapping):
+            return cls.from_mapping(headers)
+        raise TypeError(
+            "headers must be MessageHeaders, a mapping, or None; "
+            f"got {type(headers).__name__}"
+        )
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> MessageHeaders:
+        """Build headers from a plain mapping (wire or ergonomic dict)."""
+        custom = {
+            str(k): str(v)
+            for k, v in data.items()
+            if k not in cls._RESERVED_KEYS and v is not None
+        }
+        priority = data.get("priority")
+        ttl = data.get("ttl_seconds")
+        return cls(
+            content_type=(
+                str(data["content_type"])
+                if data.get("content_type") is not None
+                else None
+            ),
+            correlation_id=(
+                str(data["correlation_id"])
+                if data.get("correlation_id") is not None
+                else None
+            ),
+            reply_to=(
+                str(data["reply_to"]) if data.get("reply_to") is not None else None
+            ),
+            priority=int(priority) if priority is not None else None,
+            ttl_seconds=int(ttl) if ttl is not None else None,
+            custom_headers=custom or None,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """Convert headers to dict format for compatibility with PubSubMessage."""

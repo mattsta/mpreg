@@ -368,6 +368,11 @@ rpc.describe/report, client.trace, mon.trace_bind, tx.correlation, chaos.no_loop
 `mon_logging_json`, `chaos_crash_recover`, `tx_circuit_breaker_lab`,
 `ns_engine_direct` (+ boot.profiles / cons.raft/leader tags). **95** apps.
 
+**Closed in Phase N (2026-08-05):** Low DX F22/F23 — `MessageHeaders.coerce`
+(dict headers on publish); catalog `entry_type` defaults to `functions` with
+clearer errors. Taught in `pubsub_client_backlog` + `cluster_map_catalog`.
+API_FRICTION open curriculum rows → **0**.
+
 **Closed in Phase M (2026-08-05):** residual FEATURE partials —
 `ops_cli_tour` deepened (planes/ns/discovery CLI); `pubsub_fabric_forward_lab`.
 **96** apps. FEATURE_CATALOG teachable `partial` rows → **0**.

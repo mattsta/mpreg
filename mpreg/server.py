@@ -6404,7 +6404,10 @@ class MPREGServer:
         return _build_response(tuple(nodes), generated_at=timestamp)
 
     def _normalize_catalog_entry_type(self, entry_type: str) -> str:
-        value = entry_type.strip().lower()
+        value = (entry_type or "").strip().lower()
+        # Empty / omitted entry_type defaults to functions (most common catalog).
+        if not value:
+            return "functions"
         aliases = {
             "function": "functions",
             "node": "nodes",
@@ -6416,7 +6419,7 @@ class MPREGServer:
             "service": "services",
         }
         value = aliases.get(value, value)
-        if value not in {
+        allowed = (
             "functions",
             "nodes",
             "queues",
@@ -6424,8 +6427,15 @@ class MPREGServer:
             "services",
             "caches",
             "cache_profiles",
-        }:
-            raise ValueError(f"Unsupported catalog entry_type: {entry_type}")
+        )
+        if value not in allowed:
+            raise ValueError(
+                f"Unsupported catalog entry_type: {entry_type!r}. "
+                f"Expected one of {', '.join(allowed)} "
+                f"(aliases: function→functions, node→nodes, queue→queues, "
+                f"topic→topics, service→services, cache→caches). "
+                f"Omit entry_type or pass '' to default to 'functions'."
+            )
         return value
 
     def _catalog_query(

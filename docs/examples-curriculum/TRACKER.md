@@ -288,3 +288,27 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 **App count:** 95 → **96** (+1 Phase M).
 
 **Program:** Phases A–M at **100%**.
+
+## Phase N — Residual Low DX F22/F23 + planning scrub (**COMPLETE**)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| N0 charter into living plans | [x] | G21 |
+| F22 MessageHeaders Mapping coerce | [x] | `MessageHeaders.coerce` + publish |
+| F23 catalog entry_type default/error | [x] | server + CatalogQueryRequest |
+| Teach apps (pubsub_client_backlog, cluster_map_catalog) | [x] | deepen |
+| POC_NOTES / friction scrub | [x] | stale follow-ups closed |
+| unit + suite | [x] | see log |
+
+## Verification log (Phase N)
+
+| Date | Command | Result |
+|------|---------|--------|
+| 2026-08-05 | `pytest tests/test_message_headers_coerce.py tests/test_fabric_pubsub_forwarding.py` | **9 passed** |
+| 2026-08-05 | `pytest tests/examples_apps -m unit` | **111 passed** |
+| 2026-08-05 | `mpreg-example run` pubsub_client_backlog + cluster_map_catalog | pass |
+| 2026-08-05 | `mpreg-example suite` | **96/96 passed** (~99s) |
+
+**App count:** **96** (no new apps; platform DX + deepen).
+
+**Program:** Phases A–N at **100%**.

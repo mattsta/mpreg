@@ -262,7 +262,8 @@ class ClusterMapResponse:
 class CatalogQueryRequest:
     """Request payload for catalog_query."""
 
-    entry_type: str
+    # Default matches server empty-entry_type coercion (most common catalog).
+    entry_type: str = "functions"
     namespace: str | None = None
     scope: EndpointScope | None = None
     viewer_cluster_id: ClusterId | None = None
@@ -292,8 +293,11 @@ class CatalogQueryRequest:
         data = payload or {}
         raw_tags = data.get("tags", []) or []
         tags = (raw_tags,) if isinstance(raw_tags, str) else tuple(raw_tags)
+        # Empty / missing entry_type defaults to functions (server also defaults).
+        raw_entry = data.get("entry_type", "functions")
+        entry_type = str(raw_entry if raw_entry not in (None, "") else "functions").lower()
         return cls(
-            entry_type=str(data.get("entry_type", "")).lower(),
+            entry_type=entry_type,
             namespace=(
                 str(data.get("namespace"))
                 if data.get("namespace") is not None

@@ -75,7 +75,7 @@ class PubSubForwardingMetadata:
         if max_hops is not None:
             try:
                 parsed_max_hops = int(max_hops)
-            except TypeError, ValueError:
+            except (TypeError, ValueError):
                 parsed_max_hops = None
         return cls(
             origin_node=origin_node,

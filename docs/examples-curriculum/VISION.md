@@ -75,5 +75,6 @@ product regressions.
 
 - New contributor runs `uv run mpreg-example smoke` in < 2 minutes after `uv sync`.
 - Vertical slice path documented and runnable end-to-end.
-- TRACKER.md shows Phase A complete; B/C/D progress visible.
+- TRACKER.md shows Phases A–N complete (curriculum + platform DX through F23).
 - No app claims stronger consistency than it proves.
+- CI keeps `demo-smoke` + `demo-suite` green on every push.

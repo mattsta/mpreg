@@ -4,7 +4,7 @@
 **forced integration walk** of public MPREG APIs. Every awkward edge, missing
 error code, or CLI surprise gets logged here so platform DX can improve.
 
-**Last updated:** 2026-08-05 (Phase M — residual CLI + fabric_forward; 96 apps; 0 teachable partials)  
+**Last updated:** 2026-08-05 (Phase N — F22/F23 closed; 96 apps; 0 open friction)  
 **Source of truth also summarized in:** [PROJECT_PLAN.md §9](./PROJECT_PLAN.md)
 
 Legend severity: **High** (blocks nested/async use or confuses operators badly) ·
@@ -14,12 +14,12 @@ Legend severity: **High** (blocks nested/async use or confuses operators badly) 
 
 ## Open findings
 
-**None at High/Med/Info curriculum-blocking severity.** F10–F12 closed in Phase J;
-depth non-claims closed in Phase K. Append new rows when curriculum hits fresh friction.
+**None.** High/Med/Low/Info curriculum friction rows are closed through Phase N.
+Append new rows when curriculum hits fresh friction.
 
 ---
 
-## Fixed / documented in platform (Phases G + H + I)
+## Fixed / documented in platform (Phases G + H + I + N)
 
 | ID | Fix | Where |
 |----|-----|-------|
@@ -41,8 +41,8 @@ depth non-claims closed in Phase K. Append new rows when curriculum hits fresh f
 | F19 | **Documented:** RaftOracle dual-leader raises on `observe_role` (fail-fast) | `mpreg/testing/oracles.py`; `routing_oracle_lab` |
 | F20 | `DiscoveryRateLimiter` prunes to `max_keys-1` before insert → hard cap `≤ max_keys` | `mpreg/core/discovery_rate_limit.py` |
 | F21 | `route_message_to_queues` bumps `successful_routes` / `failed_routes`; `send_via_topic` avoids double-count | `mpreg/core/topic_queue_routing.py` |
-| F22 | PubSub publish headers | `MPREGPubSubClient.publish` requires `MessageHeaders` dataclass, not bare `dict` | Low | Accept Mapping or document MessageHeaders in client guide | `pubsub_client_backlog` |
-| F23 | catalog_query entry_type | Empty `entry_type` raises server ValueError | Low | Default entry_type or clearer client error | `cluster_map_catalog` |
+| F22 | `MPREGPubSubClient.publish` / `publish_with_reply` accept `MessageHeaders \| Mapping \| None` via `MessageHeaders.coerce` | `mpreg/core/statistics.py`, `mpreg/client/pubsub_client.py`; taught in `pubsub_client_backlog` |
+| F23 | Empty/omitted `catalog_query` `entry_type` defaults to `functions`; unsupported types list allowed values | `mpreg/server.py`, `mpreg/core/cluster_map.py`; taught in `cluster_map_catalog` |
 
 Also shipped: `ServerMetricsTracker.snapshot()`, shared `ExampleProbe`
 (`mpreg/examples/apps/_shared/obs.py`), `app_run(..., probe=True)` + `get_probe()`.
@@ -87,3 +87,10 @@ Also shipped: `ServerMetricsTracker.snapshot()`, shared `ExampleProbe`
 | rpc.describe/report | `rpc_inventory_tour` |
 | client.trace / mon.trace_bind | `client_trace_bind` |
 | tx.correlation / chaos.no_loop | `correlation_routing_lab` |
+
+## Phase N closes (2026-08-05)
+
+| ID | Resolution |
+|----|------------|
+| F22 | `MessageHeaders.coerce` + pubsub publish accepts bare dict |
+| F23 | catalog `entry_type` default `functions` + clearer ValueError |

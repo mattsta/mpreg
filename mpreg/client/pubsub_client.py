@@ -12,7 +12,7 @@ import inspect
 import asyncio
 import contextlib
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -104,7 +104,7 @@ class MPREGPubSubClient:
         self,
         topic: str,
         payload: Any,
-        headers: MessageHeaders | None = None,
+        headers: MessageHeaders | Mapping[str, Any] | None = None,
         *,
         raise_on_failure: bool = False,
     ) -> bool:
@@ -114,20 +114,21 @@ class MPREGPubSubClient:
         Args:
             topic: The topic to publish to
             payload: The message payload
-            headers: Optional message headers
+            headers: Optional :class:`MessageHeaders` or plain mapping (dict)
             raise_on_failure: When True, raise :class:`MpregError` instead of
                 returning False on a negative or missing ack (façade default).
 
         Returns:
             True if published successfully, False otherwise (when not raising)
         """
+        coerced = MessageHeaders.coerce(headers)
         message = PubSubMessage(
             topic=topic,
             payload=payload,
             timestamp=time.time(),
             message_id=str(ulid.new()),
             publisher=self._client_id,
-            headers=headers.to_dict() if headers else {},
+            headers=coerced.to_dict() if coerced else {},
         )
 
         publish_req = PubSubPublish(message=message, u=str(ulid.new()))
@@ -167,7 +168,7 @@ class MPREGPubSubClient:
         self,
         topic: str,
         payload: Any,
-        headers: MessageHeaders | None = None,
+        headers: MessageHeaders | Mapping[str, Any] | None = None,
         timeout: float = 30.0,
     ) -> PublishResponse:
         """
@@ -176,7 +177,7 @@ class MPREGPubSubClient:
         Args:
             topic: The topic to publish to
             payload: The message payload
-            headers: Optional message headers (must include reply_to for replies)
+            headers: Optional :class:`MessageHeaders` or plain mapping
             timeout: Timeout in seconds to wait for reply
 
         Returns:
@@ -185,18 +186,18 @@ class MPREGPubSubClient:
         # Generate a reply topic if not specified in headers
         reply_topic = f"reply.{str(ulid.new())}"
 
-        # Set up headers with reply_to
-        if headers is None:
+        # Set up headers with reply_to (coerce dict → MessageHeaders first)
+        base = MessageHeaders.coerce(headers)
+        if base is None:
             headers = MessageHeaders(reply_to=reply_topic)
         else:
-            # Create new headers with reply_to set
             headers = MessageHeaders(
-                content_type=headers.content_type,
-                correlation_id=headers.correlation_id,
+                content_type=base.content_type,
+                correlation_id=base.correlation_id,
                 reply_to=reply_topic,
-                priority=headers.priority,
-                ttl_seconds=headers.ttl_seconds,
-                custom_headers=headers.custom_headers,
+                priority=base.priority,
+                ttl_seconds=base.ttl_seconds,
+                custom_headers=base.custom_headers,
             )
 
         # Set up a temporary subscription for the reply
@@ -498,7 +499,7 @@ class MPREGPubSubExtendedClient(MPREGClientAPI):
         self,
         topic: str,
         payload: Any,
-        headers: MessageHeaders | None = None,
+        headers: MessageHeaders | Mapping[str, Any] | None = None,
         *,
         raise_on_failure: bool = False,
     ) -> bool:
@@ -527,7 +528,7 @@ class MPREGPubSubExtendedClient(MPREGClientAPI):
         self,
         topic: str,
         payload: Any,
-        headers: MessageHeaders | None = None,
+        headers: MessageHeaders | Mapping[str, Any] | None = None,
         timeout: float = 30.0,
     ) -> PublishResponse:
         """Publish a message to a topic and wait for a reply."""

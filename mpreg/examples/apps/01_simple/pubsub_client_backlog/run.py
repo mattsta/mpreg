@@ -109,13 +109,24 @@ async def main() -> None:
                                 ),
                             )
                             ensure(ok_pub is True, f"publish returned {ok_pub}")
+                            # F22: bare dict headers are coerced (no MessageHeaders required)
+                            got.clear()
+                            ok_dict = await ps.publish(
+                                "demo.sensor.humidity",
+                                {"rh": 0.4},
+                                headers={
+                                    "correlation_id": "dict-headers",
+                                    "x-trace": "dict-path",
+                                },
+                            )
+                            ensure(ok_dict is True, f"dict publish returned {ok_dict}")
                             for _ in range(60):
                                 if got:
                                     break
                                 await asyncio.sleep(0.05)
                             ensure(got, "no notification received")
                             step(f"received n={len(got)} sub={sub_id[:12]}…")
-                            ok("wire pubsub client deliver")
+                            ok("wire pubsub client deliver (MessageHeaders + dict)")
                         finally:
                             await ps.stop()
 
