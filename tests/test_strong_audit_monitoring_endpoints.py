@@ -95,6 +95,8 @@ async def test_strong_and_audit_monitoring_routes(
                 text = await resp.text()
                 assert "mpreg_info" in text
                 assert "mpreg_strong_enabled" in text
+                assert "mpreg_strong_gets_refused_total" in text
+                assert "mpreg_strong_deletes_refused_total" in text
                 assert "mpreg_shared_audit_enabled" in text
 
             async with session.get(f"{base}/endpoints") as resp:

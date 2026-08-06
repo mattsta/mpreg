@@ -92,12 +92,29 @@ def run_scenario(name: str, *, as_json: bool = False) -> int:
                 print(f"  - [{v.checker}] {v.message}", file=sys.stderr)
     return 0 if result.ok else 1
 
+def list_presets(*, as_json: bool = False) -> int:
+    """Print named suite presets."""
+    from mpreg.testing.distlab.registry import SUITE_PRESETS
+
+    if as_json:
+        print(
+            json.dumps(
+                {k: list(v) for k, v in sorted(SUITE_PRESETS.items())},
+                indent=2,
+            )
+        )
+        return 0
+    for name, scenarios in sorted(SUITE_PRESETS.items()):
+        print(f"{name:16s}  {', '.join(scenarios)}")
+    return 0
+
 def run_suite(
     *,
     track: str = "",
     prefix: str = "",
     tag: str = "",
     names: list[str] | None = None,
+    preset: str = "",
     include_not_bft: bool = False,
     limit: int = 0,
     fail_fast: bool = False,
@@ -113,12 +130,17 @@ def run_suite(
             prefix=prefix,
             tag=tag,
             names=names,
+            preset=preset,
             exclude_tags=exclude,
             limit=limit,
             fail_fast=fail_fast,
         )
 
-    report = asyncio.run(_run())
+    try:
+        report = asyncio.run(_run())
+    except KeyError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
     if not report.get("selected"):
         print("error: no scenarios selected", file=sys.stderr)
         return 2
@@ -126,8 +148,9 @@ def run_suite(
         print(json.dumps(report, indent=2, default=str))
     else:
         status = "PASS" if report["ok"] else "FAIL"
+        preset_s = f" preset={report['preset']}" if report.get("preset") else ""
         print(
-            f"{status} suite ran={report['ran']} passed={report['passed']} "
+            f"{status} suite{preset_s} ran={report['ran']} passed={report['passed']} "
             f"failed={len(report['failed'])} "
             f"duration={report['total_duration_s']:.3f}s"
         )
@@ -181,6 +204,11 @@ def main(argv: list[str] | None = None) -> int:
     ps.add_argument("--prefix", default="", help="Name prefix filter")
     ps.add_argument("--tag", default="", help="Require tag")
     ps.add_argument(
+        "--preset",
+        default="",
+        help="Named suite preset (smoke, strong-core, audit-core)",
+    )
+    ps.add_argument(
         "--name",
         action="append",
         default=None,
@@ -201,12 +229,17 @@ def main(argv: list[str] | None = None) -> int:
             prefix=a.prefix or "",
             tag=a.tag or "",
             names=a.names,
+            preset=a.preset or "",
             include_not_bft=bool(a.include_not_bft),
             limit=int(a.limit or 0),
             fail_fast=bool(a.fail_fast),
             as_json=bool(a.json),
         )
     )
+
+    pp = sub.add_parser("presets", help="List named suite presets")
+    pp.add_argument("--json", action="store_true")
+    pp.set_defaults(func=lambda a: list_presets(as_json=bool(a.json)))
 
     args = p.parse_args(argv)
     return int(args.func(args))

@@ -455,3 +455,86 @@ async def test_distlab_live_strong_metrics_e2e(
         got = await servers[0]._cache_manager.get(key)
         assert got.success and got.entry is not None
         assert got.entry.value == {"e2e": True}
+
+        # T18: STRONG get/delete refuse on live mesh with metrics counters
+        from mpreg.core.cache_models import CacheOptions, ConsistencyLevel
+        from mpreg.core.errors import MpregErrorCode
+
+        cm = servers[0]._cache_manager
+        bad_get = await cm.get(
+            key, options=CacheOptions(consistency_level=ConsistencyLevel.STRONG)
+        )
+        assert bad_get.success is False
+        assert bad_get.error_code == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY)
+        bad_del = await cm.delete(
+            key, options=CacheOptions(consistency_level=ConsistencyLevel.STRONG)
+        )
+        assert bad_del.success is False
+        assert bad_del.error_code == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY)
+        st = cm.strong_status()
+        assert st["gets_refused"] >= 1
+        assert st["deletes_refused"] >= 1
+        assert (st.get("capabilities") or {}).get("get_quorum") is False
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{base}/metrics/strong") as resp:
+                assert resp.status == 200
+                data = await resp.json()
+                counters = (data.get("strong") or {}).get("counters") or {}
+                assert int(counters.get("gets_refused", 0)) >= 1
+                assert int(counters.get("deletes_refused", 0)) >= 1
+            async with session.get(f"{base}/metrics/prometheus") as resp:
+                text = await resp.text()
+                assert "mpreg_strong_gets_refused_total" in text
+                assert "mpreg_strong_deletes_refused_total" in text
+
+@pytest.mark.asyncio
+async def test_distlab_live_audit_metrics_e2e(
+    test_context: AsyncTestContext,
+) -> None:
+    """T18: live shared-audit publish → scrape /metrics/shared-audit + prom."""
+    import aiohttp
+
+    with tempfile.TemporaryDirectory() as td:
+        with port_range_context(6, "servers") as ports:
+            sp, mp = ports[0:3], ports[3:6]
+            url0 = f"ws://127.0.0.1:{sp[0]}"
+            servers = [
+                MPREGServer(audit_settings(sp[0], mp[0], "AM0", td)),
+                MPREGServer(audit_settings(sp[1], mp[1], "AM1", td, peers=[url0])),
+                MPREGServer(audit_settings(sp[2], mp[2], "AM2", td, peers=[url0])),
+            ]
+            test_context.servers.extend(servers)
+            tasks = [asyncio.create_task(s.server()) for s in servers]
+            test_context.tasks.extend(tasks)
+            await asyncio.sleep(1.2)
+            await wait_gossip_connected(servers)
+
+            for s in servers:
+                apply_node_drain(s, draining=True, reason="audit-metrics-e2e")
+            await wait_audit_cluster_events(servers, min_events=3, timeout=20.0)
+
+            mon_port = servers[0]._monitoring_system.monitoring_port
+            base = f"http://127.0.0.1:{mon_port}"
+            async with aiohttp.ClientSession() as session:
+                async with session.get(f"{base}/metrics/shared-audit") as resp:
+                    assert resp.status == 200
+                    data = await resp.json()
+                    audit = data["shared_audit"]
+                    assert audit.get("enabled_flag") is True
+                    assert audit.get("store_present") is True
+                    assert int(audit.get("store_size") or 0) >= 1
+                    assert audit.get("status") in {
+                        "ok",
+                        "ok_no_peers",
+                        "degraded_drops",
+                    }
+                    counters = audit.get("counters") or {}
+                    # At least some epidemic activity after multi-origin drain
+                    assert isinstance(counters, dict)
+
+                async with session.get(f"{base}/metrics/prometheus") as resp:
+                    assert resp.status == 200
+                    text = await resp.text()
+                    assert "mpreg_shared_audit_enabled" in text
+                    assert "mpreg_shared_audit_store_size" in text

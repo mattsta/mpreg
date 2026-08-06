@@ -194,3 +194,48 @@ def test_registry_select_excludes_not_bft() -> None:
     assert "strong.not_bft_lie_commit_both" not in names
     with_bft = reg.select(prefix="strong.", exclude_tags=())
     assert "strong.not_bft_lie_commit_both" in with_bft
+
+@pytest.mark.asyncio
+async def test_registry_run_suite_smoke_preset() -> None:
+    """T18: smoke preset runs fast in-process core scenarios."""
+    from mpreg.testing.distlab.builtins import ensure_builtins
+    from mpreg.testing.distlab.registry import SUITE_PRESETS, get_registry
+
+    ensure_builtins()
+    reg = get_registry()
+    assert "smoke" in SUITE_PRESETS
+    selected = reg.select(preset="smoke")
+    assert "strong.happy_3" in selected
+    assert "audit.multi_origin" in selected
+    assert all("not_bft" not in n for n in selected)
+    report = await reg.run_suite(preset="smoke", fail_fast=True)
+    assert report["preset"] == "smoke"
+    assert report["ok"] is True
+    assert report["ran"] >= 3
+    assert report["passed"] == report["ran"]
+
+def test_cli_smoke_preset_via_mpreg_entry() -> None:
+    """Architecture: uv run mpreg distlab suite --preset smoke."""
+    list_p = subprocess.run(
+        ["uv", "run", "mpreg", "distlab", "presets", "--json"],
+        capture_output=True,
+        text=True,
+        cwd="/Users/matt/repos/mpreg",
+        timeout=90,
+    )
+    assert list_p.returncode == 0, list_p.stderr
+    presets = json.loads(list_p.stdout)
+    assert "smoke" in presets
+
+    run_p = subprocess.run(
+        ["uv", "run", "mpreg", "distlab", "suite", "--preset", "smoke", "--json"],
+        capture_output=True,
+        text=True,
+        cwd="/Users/matt/repos/mpreg",
+        timeout=180,
+    )
+    assert run_p.returncode == 0, run_p.stderr + run_p.stdout
+    data = json.loads(run_p.stdout)
+    assert data["ok"] is True
+    assert data["preset"] == "smoke"
+    assert data["ran"] >= 3

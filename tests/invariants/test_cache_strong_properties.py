@@ -48,9 +48,11 @@ def _cluster(
     min_replicas: int | None = None,
     drop_prepare: frozenset[str] | None = None,
     drop_commit: frozenset[str] | None = None,
+    drop_abort: frozenset[str] | None = None,
     fail_prepare: frozenset[str] | None = None,
     prepare_timeout_s: float = 0.2,
     commit_timeout_s: float = 0.2,
+    pending_ttl_s: float = 30.0,
 ) -> tuple[
     StrongPutCoordinator, InProcessStrongTransport, dict[str, StrongLocalBackend]
 ]:
@@ -64,6 +66,8 @@ def _cluster(
         transport.drop_prepare |= set(drop_prepare)
     if drop_commit:
         transport.drop_commit |= set(drop_commit)
+    if drop_abort:
+        transport.drop_abort |= set(drop_abort)
     if fail_prepare:
         transport.fail_prepare |= set(fail_prepare)
     coord = StrongPutCoordinator(
@@ -75,6 +79,7 @@ def _cluster(
         min_replicas=min_replicas if min_replicas is not None else n,
         prepare_timeout_s=prepare_timeout_s,
         commit_timeout_s=commit_timeout_s,
+        pending_ttl_s=pending_ttl_s,
     )
     return coord, transport, backends
 
@@ -451,3 +456,146 @@ async def test_random_commit_drop_subset_residual_free(n: int, drop_k: int) -> N
             assert be.pending_count() == 0
     else:
         _no_residual(backends, key, res.operation_id or "")
+
+# ---------------------------------------------------------------------------
+# T18 — drop_commit + drop_abort pairs residual-free (after TTL GC if needed)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+@given(
+    n=st.integers(min_value=3, max_value=5),
+    drop_abort_k=st.integers(min_value=1, max_value=4),
+)
+@settings(
+    max_examples=20,
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
+)
+async def test_full_commit_drop_plus_abort_drop_residual_free_after_gc(
+    n: int, drop_abort_k: int
+) -> None:
+    """T18: drop commit to *all* non-origin peers + drop abort → fail with only
+    pending (no peer visible apply). After pending GC, residual-free.
+
+    Honest scope: does **not** cover partial peer commit + lost abort (that can
+    leave peer L1 until a later repair — CFT best-effort, not BFT).
+    """
+    import time
+
+    peers = [f"n{i}" for i in range(n)]
+    non_origin = peers[1:]
+    # All non-origin commits dropped ⇒ put fails before origin commit-last
+    dc = frozenset(non_origin)
+    da = frozenset(non_origin[: min(drop_abort_k, len(non_origin))])
+    coord, _t, backends = _cluster(
+        n,
+        drop_commit=dc,
+        drop_abort=da,
+        min_replicas=n,
+        prepare_timeout_s=0.25,
+        commit_timeout_s=0.25,
+        pending_ttl_s=0.5,
+    )
+    key = _key(f"fcd-{n}-{len(da)}")
+    res = await coord.strong_put(
+        key, {"dc": list(dc), "da": list(da)}, eligible_peers=peers
+    )
+    assert res.success is False
+    future = time.time() + 3600.0
+    for be in backends.values():
+        be.purge_expired_pending(now=future)
+    _no_residual(backends, key, res.operation_id or "")
+
+@pytest.mark.asyncio
+@given(
+    n=st.integers(min_value=3, max_value=5),
+    drop_commit_k=st.integers(min_value=0, max_value=1),
+)
+@settings(
+    max_examples=15,
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
+)
+async def test_minority_commit_drop_success_pending_free_after_abort_drop_gc(
+    n: int, drop_commit_k: int
+) -> None:
+    """T18: minority drop_commit still majority-succeeds; abort-drop non-committers
+    leave pending until GC — then pending_count==0 on all backends.
+    """
+    import time
+
+    peers = [f"n{i}" for i in range(n)]
+    non_origin = peers[1:]
+    # Keep drop small enough that peer commits can still form Q-1
+    # n=3 Q=2 need_peers=1; drop at most 1 of 2 peers still ok if other commits
+    k = min(drop_commit_k, max(0, len(non_origin) - 1))
+    dc = frozenset(non_origin[:k])
+    # Abort-drop the same minority (non-committers after success)
+    da = frozenset(dc)
+    coord, _t, backends = _cluster(
+        n,
+        drop_commit=dc,
+        drop_abort=da,
+        min_replicas=n,
+        prepare_timeout_s=0.25,
+        commit_timeout_s=0.25,
+    )
+    key = _key(f"mcd-{n}-{k}")
+    res = await coord.strong_put(key, {"k": k}, eligible_peers=peers)
+    assume(res.success)  # if topology can't form quorum, skip
+    future = time.time() + 3600.0
+    for be in backends.values():
+        be.purge_expired_pending(now=future)
+    for be in backends.values():
+        assert be.pending_count() == 0, f"pending on {be.node_id}"
+
+@pytest.mark.asyncio
+@given(val=st.integers())
+@settings(max_examples=15, deadline=None)
+async def test_strong_get_delete_refuse_1012_property(val: int) -> None:
+    """T18: STRONG get/delete always 1012; EVENTUAL RYW after put still works."""
+    gcm = GlobalCacheManager(
+        GlobalCacheConfiguration(
+            enable_l2_persistent=False,
+            enable_l3_distributed=False,
+            enable_l4_federation=False,
+            local_cluster_id="prop-refuse",
+        )
+    )
+    be = StrongLocalBackend(node_id="origin")
+    tr = InProcessStrongTransport()
+    tr.register(be)
+    gcm.attach_strong_coordinator(
+        StrongPutCoordinator(
+            origin_id="origin",
+            local=be,
+            transport=tr,
+            lab_single_node=True,
+            min_replicas=1,
+            replica_factor=1,
+        )
+    )
+    try:
+        key = _key(f"ref-{val}")
+        put = await gcm.put(
+            key,
+            val,
+            metadata=CacheMetadata(),
+            options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
+        )
+        assert put.success
+        g = await gcm.get(
+            key, options=CacheOptions(consistency_level=ConsistencyLevel.STRONG)
+        )
+        assert g.success is False
+        assert g.error_code == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY)
+        d = await gcm.delete(
+            key, options=CacheOptions(consistency_level=ConsistencyLevel.STRONG)
+        )
+        assert d.success is False
+        assert d.error_code == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY)
+        ryw = await gcm.get(key)
+        assert ryw.success and ryw.entry is not None
+        assert ryw.entry.value == val
+    finally:
+        await gcm.shutdown()

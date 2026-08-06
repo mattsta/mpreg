@@ -2554,6 +2554,22 @@ class FederationMonitoringSystem:
                         f"{int(counters.get('refused_disabled', 0) or 0)}"
                     )
                     lines.append(
+                        "# HELP mpreg_strong_gets_refused_total STRONG gets refused (1012; quorum get is v1.1)."
+                    )
+                    lines.append("# TYPE mpreg_strong_gets_refused_total counter")
+                    lines.append(
+                        f"mpreg_strong_gets_refused_total{{{labels}}} "
+                        f"{int(counters.get('gets_refused', 0) or 0)}"
+                    )
+                    lines.append(
+                        "# HELP mpreg_strong_deletes_refused_total STRONG deletes refused (1012; quorum delete is v1.1)."
+                    )
+                    lines.append("# TYPE mpreg_strong_deletes_refused_total counter")
+                    lines.append(
+                        f"mpreg_strong_deletes_refused_total{{{labels}}} "
+                        f"{int(counters.get('deletes_refused', 0) or 0)}"
+                    )
+                    lines.append(
                         "# HELP mpreg_strong_pending Pending prepare entries on local backend."
                     )
                     lines.append("# TYPE mpreg_strong_pending gauge")

@@ -2549,7 +2549,9 @@ def distlab_group() -> None:
       uv run mpreg distlab list
       uv run mpreg distlab catalog --json
       uv run mpreg distlab run strong.happy_3
+      uv run mpreg distlab suite --preset smoke
       uv run mpreg distlab suite --track T2 --limit 5
+      uv run mpreg distlab presets
     """
 
 @distlab_group.command("list")
@@ -2589,6 +2591,11 @@ def distlab_run(name: str, as_json: bool) -> None:
 @click.option("--prefix", default="", help="Name prefix (e.g. strong.)")
 @click.option("--tag", default="", help="Require registry tag")
 @click.option(
+    "--preset",
+    default="",
+    help="Named suite preset (smoke, strong-core, audit-core)",
+)
+@click.option(
     "--name",
     "names",
     multiple=True,
@@ -2606,6 +2613,7 @@ def distlab_suite(
     track: str,
     prefix: str,
     tag: str,
+    preset: str,
     names: tuple[str, ...],
     limit: int,
     fail_fast: bool,
@@ -2620,11 +2628,22 @@ def distlab_suite(
         prefix=prefix or "",
         tag=tag or "",
         names=list(names) if names else None,
+        preset=preset or "",
         include_not_bft=include_not_bft,
         limit=limit,
         fail_fast=fail_fast,
         as_json=as_json,
     )
+    if code:
+        raise SystemExit(code)
+
+@distlab_group.command("presets")
+@click.option("--json", "as_json", is_flag=True, help="Emit JSON")
+def distlab_presets(as_json: bool) -> None:
+    """List named DistLab suite presets (smoke, strong-core, …)."""
+    from mpreg.testing.distlab.cli import list_presets
+
+    code = list_presets(as_json=as_json)
     if code:
         raise SystemExit(code)
 

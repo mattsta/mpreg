@@ -173,3 +173,29 @@ Plans: `docs/plans/DISTLAB_T11_OPS_OBS_PERF_CAPABILITY_PLAN.md`,
 `docs/plans/DISTLAB_PROOF_LEDGER.md`.
 
 Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete.
+
+## Phase 6 — Design-correct refuse + audit metrics e2e + smoke suite (2026-08-06)
+
+T18 closes product honesty on STRONG get/delete and operator smoke:
+
+* **Product:** `ConsistencyLevel.STRONG` **get** and **delete** always refuse with
+  `1012 UNSUPPORTED_CONSISTENCY` (quorum get/delete remain v1.1). Counters
+  `gets_refused` / `deletes_refused`; `strong_status.capabilities` advertises
+  `put_majority_commit` / `local_ryw_after_put` and denies `get_quorum` /
+  `delete_quorum`.
+* **Ops:** `build_strong_metrics` surfaces capabilities; Prometheus series
+  `mpreg_strong_gets_refused_total` / `mpreg_strong_deletes_refused_total`.
+* **Smoke suite:** `uv run mpreg distlab suite --preset smoke` (and
+  `strong-core` / `audit-core`); `mpreg distlab presets`.
+* **Live e2e:** shared-audit multi-origin drain → scrape
+  `/metrics/shared-audit` + prom; STRONG refuse counters on live metrics path.
+* **Hypothesis:** full commit-drop + abort-drop residual-free after pending GC;
+  minority commit-drop success leaves zero pending after GC; property that
+  STRONG get/delete always 1012 with EVENTUAL RYW intact.
+* **Honest CFT limit:** partial peer COMMIT apply + lost ABORT can leave peer
+  L1 until repair — not claimed residual-free (not BFT, not fsync recovery).
+
+Plans: `docs/plans/DISTLAB_T18_REFUSE_AUDIT_METRICS_SMOKE_PLAN.md`,
+`docs/plans/DISTLAB_PROOF_LEDGER.md`.
+
+Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete.

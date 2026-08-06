@@ -299,13 +299,22 @@ class GlobalCacheManager(ManagedObject):
     def strong_status(self) -> dict[str, Any]:
         """Compact STRONG readiness for clients/operators."""
         snap = self.strong_metrics_snapshot()
+        c = snap["counters"]
         return {
             "enabled": snap["enabled"],
             "pending_count": snap["pending_count"],
-            "puts_ok": int(snap["counters"].get("puts_ok", 0)),
-            "puts_fail": int(snap["counters"].get("puts_fail", 0)),
-            "refused_disabled": int(snap["counters"].get("refused_disabled", 0)),
+            "puts_ok": int(c.get("puts_ok", 0)),
+            "puts_fail": int(c.get("puts_fail", 0)),
+            "refused_disabled": int(c.get("refused_disabled", 0)),
+            "gets_refused": int(c.get("gets_refused", 0)),
+            "deletes_refused": int(c.get("deletes_refused", 0)),
             "coordinator": snap.get("coordinator") or {},
+            "capabilities": {
+                "put_majority_commit": bool(snap["enabled"]),
+                "get_quorum": False,  # v1.1
+                "delete_quorum": False,  # v1.1
+                "local_ryw_after_put": True,
+            },
         }
 
     def _enqueue_replication(
@@ -405,10 +414,28 @@ class GlobalCacheManager(ManagedObject):
         """
         Retrieve value from multi-tier cache.
 
-        Searches cache levels in order: L1 → L2 → L3 → L4
+        Searches cache levels in order: L1 → L2 → L3 → L4.
+
+        ConsistencyLevel.STRONG on get is not a product (v1): always refuse with
+        1012. Local read-your-write after STRONG put uses EVENTUAL/WEAK get (L1
+        + strong-backend promote). Quorum get is v1.1.
         """
         if options is None:
             options = CacheOptions()
+
+        if options.consistency_level is ConsistencyLevel.STRONG:
+            from mpreg.core.errors import MpregErrorCode
+
+            self._strong_metrics["gets_refused"] += 1
+            return CacheOperationResult(
+                success=False,
+                error_message=(
+                    "ConsistencyLevel.STRONG get is not implemented "
+                    "(quorum read is v1.1). After STRONG put, use EVENTUAL/WEAK "
+                    "get for local RYW (L1 + peer bridge)."
+                ),
+                error_code=int(MpregErrorCode.UNSUPPORTED_CONSISTENCY),
+            )
 
         allowed, reason = self._data_plane_allowed(key.namespace, write=False)
         if not allowed:
@@ -626,9 +653,26 @@ class GlobalCacheManager(ManagedObject):
     ) -> CacheOperationResult:
         """
         Delete value from multi-tier cache.
+
+        ConsistencyLevel.STRONG on delete is not a product (v1): always refuse
+        with 1012 (no majority-delete barrier). Quorum delete is v1.1.
         """
         if options is None:
             options = CacheOptions()
+
+        if options.consistency_level is ConsistencyLevel.STRONG:
+            from mpreg.core.errors import MpregErrorCode
+
+            self._strong_metrics["deletes_refused"] += 1
+            return CacheOperationResult(
+                success=False,
+                error_message=(
+                    "ConsistencyLevel.STRONG delete is not implemented "
+                    "(quorum delete is v1.1). Use EVENTUAL/WEAK delete for "
+                    "local/best-effort eviction only."
+                ),
+                error_code=int(MpregErrorCode.UNSUPPORTED_CONSISTENCY),
+            )
 
         async with self.operation_semaphore:
             try:

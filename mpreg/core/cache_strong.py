@@ -663,6 +663,7 @@ class InProcessStrongTransport:
     backends: dict[str, StrongLocalBackend] = field(default_factory=dict)
     drop_prepare: set[str] = field(default_factory=set)
     drop_commit: set[str] = field(default_factory=set)
+    drop_abort: set[str] = field(default_factory=set)
     fail_prepare: set[str] = field(default_factory=set)
 
     def register(self, backend: StrongLocalBackend) -> None:
@@ -727,6 +728,9 @@ class InProcessStrongTransport:
         cluster_id: str,
         timeout: float,
     ) -> bool:
+        if peer_id in self.drop_abort:
+            # Simulate lost abort — pending GC / TTL must still residual-free.
+            return False
         be = self.backends.get(peer_id)
         if be is None:
             return False

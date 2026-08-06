@@ -103,6 +103,13 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
         base["counters"] = dict(snap.get("counters") or {})
         base["latency_ms"] = dict(snap.get("latency_ms") or {})
         base["coordinator"] = dict(snap.get("coordinator") or {})
+        if hasattr(cm, "strong_status"):
+            try:
+                st = cm.strong_status()
+                if isinstance(st, dict) and "capabilities" in st:
+                    base["capabilities"] = dict(st["capabilities"] or {})
+            except Exception:  # noqa: BLE001
+                pass
     elif be is not None and hasattr(be, "pending_count"):
         try:
             base["pending_count"] = int(be.pending_count())
@@ -113,6 +120,15 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
     else:
         base["counters"] = {}
         base["latency_ms"] = {}
+    # Honest capability flags (v1 put-only MVP) when GCM status unavailable
+    if "capabilities" not in base:
+        bound = bool(base.get("coordinator_bound"))
+        base["capabilities"] = {
+            "put_majority_commit": bound,
+            "get_quorum": False,  # v1.1
+            "delete_quorum": False,  # v1.1
+            "local_ryw_after_put": True,
+        }
     # Simple health hint for doctor
     if not enabled_flag:
         base["health"] = "disabled"

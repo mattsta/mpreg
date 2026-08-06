@@ -214,6 +214,8 @@ encapsulation:
       + multi-origin concurrent keys + STRONG/audit coexistence on same-host mesh.
       Chaos harness: partition/heal/drop/delay/dup. Bounded single-key history
       checker (not Jepsen). Adversarial ACK / handler fuzz fail-closed (not BFT).
+      STRONG get/delete always refuse 1012 (quorum get/delete v1.1); local RYW
+      after put uses EVENTUAL/WEAK get. capabilities flags deny get/delete quorum.
     proof: [L1, L2, L4]
     tests:
       - tests/core/test_cache_strong.py

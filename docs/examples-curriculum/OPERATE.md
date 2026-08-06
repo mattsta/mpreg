@@ -235,6 +235,7 @@ Operator surfaces (monitoring HTTP — not WAN SLA):
 export MPREG_MONITORING_URL=http://127.0.0.1:<mon-port>
 uv run mpreg monitor strong --url "$MPREG_MONITORING_URL"
 uv run mpreg doctor --url "$MPREG_MONITORING_URL" --strong --audit
+uv run mpreg distlab suite --preset smoke
 uv run mpreg distlab suite --track T2 --limit 5
 ```
 

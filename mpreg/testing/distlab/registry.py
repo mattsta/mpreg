@@ -75,15 +75,32 @@ class ScenarioRegistry:
         prefix: str = "",
         tag: str = "",
         names: list[str] | None = None,
+        preset: str = "",
         exclude_tags: tuple[str, ...] = ("not_bft",),
         limit: int = 0,
+        skip_unknown: bool = True,
     ) -> list[str]:
         """Select scenario names for suite runs.
 
         By default excludes ``not_bft`` demos (they may leave intentional dirty state).
+        ``preset`` expands via :data:`SUITE_PRESETS` (e.g. ``smoke``).
         """
+        if preset:
+            preset_names = resolve_preset(preset)
+            if not preset_names:
+                raise KeyError(
+                    f"unknown suite preset {preset!r}; "
+                    f"known={sorted(SUITE_PRESETS)}"
+                )
+            names = list(preset_names) + list(names or [])
         if names:
-            chosen = list(names)
+            chosen = []
+            known = set(self._factories)
+            for n in names:
+                if n in known:
+                    chosen.append(n)
+                elif not skip_unknown:
+                    raise KeyError(f"unknown scenario {n!r}; known={self.list()}")
         else:
             chosen = []
             for n in self.list():
@@ -109,6 +126,7 @@ class ScenarioRegistry:
         prefix: str = "",
         tag: str = "",
         names: list[str] | None = None,
+        preset: str = "",
         exclude_tags: tuple[str, ...] = ("not_bft",),
         limit: int = 0,
         fail_fast: bool = False,
@@ -119,6 +137,7 @@ class ScenarioRegistry:
             prefix=prefix,
             tag=tag,
             names=names,
+            preset=preset,
             exclude_tags=exclude_tags,
             limit=limit,
         )
@@ -155,6 +174,7 @@ class ScenarioRegistry:
         return {
             "ok": not failed,
             "selected": selected,
+            "preset": preset or None,
             "ran": len(results),
             "passed": sum(1 for r in results if r.ok),
             "failed": failed,
@@ -164,6 +184,36 @@ class ScenarioRegistry:
 
 # Process-global default registry (builtins register on import of builtins module).
 DEFAULT_REGISTRY = ScenarioRegistry(name="mpreg-distlab")
+
+# Named suite presets — fast in-process subsets for CI / operator smoke.
+# Names that are not registered are skipped at select time.
+SUITE_PRESETS: dict[str, tuple[str, ...]] = {
+    "smoke": (
+        "strong.happy_3",
+        "strong.drop_prepare",
+        "strong.drop_abort",
+        "audit.multi_origin",
+    ),
+    "strong-core": (
+        "strong.happy_3",
+        "strong.happy_5",
+        "strong.partition_majority",
+        "strong.drop_prepare",
+        "strong.drop_commit",
+        "strong.drop_abort",
+    ),
+    "audit-core": (
+        "audit.multi_origin",
+        "audit.partition_heal",
+    ),
+}
+
+def resolve_preset(name: str) -> list[str]:
+    """Return scenario names for a suite preset (empty if unknown)."""
+    key = (name or "").strip().lower()
+    if key not in SUITE_PRESETS:
+        return []
+    return list(SUITE_PRESETS[key])
 
 def get_registry() -> ScenarioRegistry:
     return DEFAULT_REGISTRY

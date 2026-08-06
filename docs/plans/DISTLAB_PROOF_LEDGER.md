@@ -25,6 +25,11 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T17 live metrics e2e | `test_distlab_live_strong_metrics_e2e` | support ops |
 | T17 multi-GCM RYW | `test_mesh_ryw_all_gcms_after_strong_put` | INV-CACHE-STRONG-01 bridge |
 | T17 history taxonomy | `test_history_error_code_and_outcome_counts` | support |
+| T18 STRONG get/delete 1012 | `test_strong_get_always_refuses_1012`, `test_strong_delete_always_refuses_1012`, property | INV-CACHE-STRONG-01 refuse |
+| T18 capabilities + counters | `strong_status`, `build_strong_metrics`, prom refuse series | support ops |
+| T18 smoke preset | `mpreg distlab suite --preset smoke`, `test_registry_run_suite_smoke_preset` | support |
+| T18 live audit metrics | `test_distlab_live_audit_metrics_e2e` | support ops INV-SHARED-AUDIT-01 |
+| T18 commit+abort drop hyp | `test_full_commit_drop_plus_abort_drop_residual_free_after_gc`, minority success GC | INV-CACHE-STRONG-01 |
 
 ## Non-claims (do not market)
 
@@ -38,6 +43,7 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 
 ```bash
 uv run mpreg distlab list
+uv run mpreg distlab suite --preset smoke --json
 uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/server_pkg/test_strong_audit_metrics.py \
   tests/core/test_cache_strong*.py tests/integration/test_cache_strong*.py \
@@ -45,5 +51,6 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_strong_chaos_stress.py tests/chaos/test_shared_audit_chaos.py \
   tests/invariants/test_cache_strong*.py tests/invariants/test_shared_audit*.py \
   tests/test_strong_audit_monitoring_endpoints.py \
+  tests/test_cli_strong_audit_monitor.py \
   tests/chaos/test_t14_residuals.py::test_erg_t14_01_openapi_matches_route_table -q
 ```

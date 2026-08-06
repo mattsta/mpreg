@@ -164,9 +164,116 @@ async def test_strong_status_and_metrics_after_puts() -> None:
         assert snap["latency_ms"].get("sample_count", 0) >= 1
         st = gcm.strong_status()
         assert st["puts_ok"] >= 1
-        # local RYW
+        caps = st.get("capabilities") or {}
+        assert caps.get("put_majority_commit") is True
+        assert caps.get("get_quorum") is False
+        assert caps.get("delete_quorum") is False
+        assert caps.get("local_ryw_after_put") is True
+        # local RYW via EVENTUAL/default get (not STRONG)
         got = await gcm.get(_key())
         assert got.success and got.entry is not None
         assert got.entry.value == {"ok": True}
+    finally:
+        await gcm.shutdown()
+
+@pytest.mark.asyncio
+async def test_strong_get_always_refuses_1012() -> None:
+    """T18: ConsistencyLevel.STRONG get is design-refuse (quorum get is v1.1)."""
+    gcm = GlobalCacheManager(
+        GlobalCacheConfiguration(
+            enable_l2_persistent=False,
+            enable_l3_distributed=False,
+            enable_l4_federation=False,
+            local_cluster_id="gref",
+        )
+    )
+    be = StrongLocalBackend(node_id="origin")
+    tr = InProcessStrongTransport()
+    tr.register(be)
+    coord = StrongPutCoordinator(
+        origin_id="origin",
+        local=be,
+        transport=tr,
+        lab_single_node=True,
+        min_replicas=1,
+        replica_factor=1,
+    )
+    gcm.attach_strong_coordinator(coord)
+    try:
+        put = await gcm.put(
+            _key(),
+            {"v": 1},
+            metadata=CacheMetadata(),
+            options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
+        )
+        assert put.success
+        # STRONG get must refuse even when value is visible via EVENTUAL
+        bad = await gcm.get(
+            _key(),
+            options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
+        )
+        assert bad.success is False
+        assert bad.error_code == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY)
+        assert "not implemented" in (bad.error_message or "").lower() or "v1.1" in (
+            bad.error_message or ""
+        )
+        st = gcm.strong_status()
+        assert st["gets_refused"] >= 1
+        snap = gcm.strong_metrics_snapshot()
+        assert int(snap["counters"].get("gets_refused", 0)) >= 1
+        # EVENTUAL still RYW
+        good = await gcm.get(_key())
+        assert good.success and good.entry is not None
+        assert good.entry.value == {"v": 1}
+    finally:
+        await gcm.shutdown()
+
+@pytest.mark.asyncio
+async def test_strong_delete_always_refuses_1012() -> None:
+    """T18: ConsistencyLevel.STRONG delete is design-refuse (quorum delete is v1.1)."""
+    gcm = GlobalCacheManager(
+        GlobalCacheConfiguration(
+            enable_l2_persistent=False,
+            enable_l3_distributed=False,
+            enable_l4_federation=False,
+            local_cluster_id="dref",
+        )
+    )
+    be = StrongLocalBackend(node_id="origin")
+    tr = InProcessStrongTransport()
+    tr.register(be)
+    gcm.attach_strong_coordinator(
+        StrongPutCoordinator(
+            origin_id="origin",
+            local=be,
+            transport=tr,
+            lab_single_node=True,
+            min_replicas=1,
+            replica_factor=1,
+        )
+    )
+    try:
+        put = await gcm.put(
+            _key(),
+            7,
+            metadata=CacheMetadata(),
+            options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
+        )
+        assert put.success
+        bad = await gcm.delete(
+            _key(),
+            options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
+        )
+        assert bad.success is False
+        assert bad.error_code == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY)
+        st = gcm.strong_status()
+        assert st["deletes_refused"] >= 1
+        # Value still present (STRONG delete did not evict)
+        got = await gcm.get(_key())
+        assert got.success and got.entry is not None
+        assert got.entry.value == 7
+        # EVENTUAL delete still works
+        ev = await gcm.delete(_key())
+        assert ev.success
     finally:
         await gcm.shutdown()

@@ -34,9 +34,23 @@ def test_build_strong_metrics_from_gcm_snapshot() -> None:
     cm.strong_metrics_snapshot.return_value = {
         "enabled": True,
         "pending_count": 2,
-        "counters": {"puts_ok": 5, "puts_fail": 1},
+        "counters": {
+            "puts_ok": 5,
+            "puts_fail": 1,
+            "gets_refused": 2,
+            "deletes_refused": 1,
+        },
         "latency_ms": {"sample_count": 3, "p99_ms": 12.0, "p50_ms": 4.0},
         "coordinator": {"origin_id": "n0"},
+    }
+    cm.strong_status.return_value = {
+        "enabled": True,
+        "capabilities": {
+            "put_majority_commit": True,
+            "get_quorum": False,
+            "delete_quorum": False,
+            "local_ryw_after_put": True,
+        },
     }
     server = SimpleNamespace(
         settings=SimpleNamespace(
@@ -55,8 +69,14 @@ def test_build_strong_metrics_from_gcm_snapshot() -> None:
     assert m["coordinator_bound"] is True
     assert m["pending_count"] == 2
     assert m["counters"]["puts_ok"] == 5
+    assert m["counters"]["gets_refused"] == 2
+    assert m["counters"]["deletes_refused"] == 1
     assert m["latency_ms"]["p99_ms"] == 12.0
     assert m["health"] == "ok"
+    caps = m.get("capabilities") or {}
+    assert caps.get("get_quorum") is False
+    assert caps.get("delete_quorum") is False
+    assert caps.get("put_majority_commit") is True
 
 def test_build_shared_audit_metrics_disabled() -> None:
     server = SimpleNamespace(
