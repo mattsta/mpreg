@@ -102,3 +102,47 @@ def test_platform_rpc_constants_under_mpreg() -> None:
         if isinstance(value, str):
             assert is_platform_namespace(value), value
             assert value.startswith(f"{PLATFORM_NAMESPACE_ROOT}.")
+
+def test_inbound_qualify_preserves_opaque_function_id() -> None:
+    """function_id is a capability id — never namespace-qualify bare opaque ids."""
+    from mpreg.core.config import MPREGSettings
+    from mpreg.core.model import RPCCommand
+    from mpreg.server import MPREGServer
+
+    server = MPREGServer(
+        MPREGSettings(
+            host="127.0.0.1",
+            port=19998,
+            name="qualify-unit",
+            cluster_id="c",
+            monitoring_enabled=False,
+        )
+    )
+    cmd = RPCCommand(
+        name="step",
+        fun="mesh_function",
+        args=(),
+        locs=frozenset(),
+        function_id="mesh-function-id",
+        version_constraint=">=2.0.0,<3.0.0",
+    )
+    out = server._qualify_inbound_rpc_command(cmd)
+    assert out.fun == "app.mesh_function"
+    assert out.function_id == "mesh-function-id"
+
+    # omitted function_id stays None (name-only routing)
+    bare = RPCCommand(name="step", fun="mesh_function", args=(), locs=frozenset())
+    out_bare = server._qualify_inbound_rpc_command(bare)
+    assert out_bare.fun == "app.mesh_function"
+    assert out_bare.function_id is None
+
+    # function_id still equal to pre-qualify bare fun → align to FQN
+    tied = RPCCommand(
+        name="step",
+        fun="mesh_function",
+        args=(),
+        locs=frozenset(),
+        function_id="mesh_function",
+    )
+    out_tied = server._qualify_inbound_rpc_command(tied)
+    assert out_tied.function_id == "app.mesh_function"

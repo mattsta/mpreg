@@ -520,7 +520,8 @@ class TestFederatedRPCEdgeCases:
         import pytest
 
         with pytest.raises(
-            ValueError, match="Function 'collision_function' is already registered"
+            ValueError,
+            match=r"Function 'app\.collision_function'.*is already registered",
         ):
             server1.register_command(
                 "collision_function", collision_function, ["collision_resource"]

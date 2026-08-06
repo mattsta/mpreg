@@ -174,6 +174,24 @@ class FunctionIdentity:
             version=SemanticVersion.parse(payload["version"]),
         )
 
+def _names_compatible(selector_name: FunctionName, identity_name: FunctionName) -> bool:
+    """Exact match, or bare leaf equals the other side's leaf (FQN-aware).
+
+    Phase H qualifies registrations to ``app.<name>``. Callers and fabric
+    queries often still pass the bare short name together with ``function_id``.
+    Exact-only compare silently missed every post-FQN catalog hit.
+    """
+    if selector_name == identity_name:
+        return True
+    sel_leaf = selector_name.rsplit(".", 1)[-1]
+    id_leaf = identity_name.rsplit(".", 1)[-1]
+    # Bare selector → FQN identity (or either side leaf-equal when one is bare)
+    if "." not in selector_name and sel_leaf == id_leaf:
+        return True
+    if "." not in identity_name and sel_leaf == id_leaf:
+        return True
+    return False
+
 @dataclass(frozen=True, slots=True)
 class FunctionSelector:
     name: FunctionName | None = None
@@ -183,7 +201,7 @@ class FunctionSelector:
     def matches(self, identity: FunctionIdentity) -> bool:
         if self.function_id and self.function_id != identity.function_id:
             return False
-        if self.name and self.name != identity.name:
+        if self.name and not _names_compatible(self.name, identity.name):
             return False
         return not (
             self.version_constraint

@@ -527,9 +527,16 @@ class Cluster:
         index: dict[str, dict[frozenset[str], set[str]]] = {}
         for endpoint in catalog.functions.entries():
             fun_name = endpoint.identity.name
-            index.setdefault(fun_name, {}).setdefault(endpoint.resources, set()).add(
-                endpoint.node_id
-            )
+            # Index both FQN and bare leaf so legacy ``"name" in funtimes``
+            # checks (topo research, auto-discovery) still work after Phase H
+            # auto-qualification of registrations to ``app.<name>``.
+            keys = {fun_name}
+            if "." in fun_name:
+                keys.add(fun_name.rsplit(".", 1)[-1])
+            for key in keys:
+                index.setdefault(key, {}).setdefault(endpoint.resources, set()).add(
+                    endpoint.node_id
+                )
         return index
 
     @property
@@ -7643,8 +7650,8 @@ class MPREGServer:
                 try:
                     request_payload = local_request.to_dict()
                     rpc_command = RPCCommand(
-                        name="rpc_describe_local",
-                        fun="rpc_describe_local",
+                        name=PlatformRpc.RPC_DESCRIBE_LOCAL,
+                        fun=PlatformRpc.RPC_DESCRIBE_LOCAL,
                         args=(request_payload,),
                         locs=frozenset(),
                         target_cluster=cluster_id,
@@ -7690,11 +7697,10 @@ class MPREGServer:
                         )
                     )
                     return
-                if (
-                    "error" in result
-                    and result.get("command") == "rpc_describe_local"
-                    and result.get("error_type")
-                ):
+                if "error" in result and result.get("command") in {
+                    "rpc_describe_local",
+                    PlatformRpc.RPC_DESCRIBE_LOCAL,
+                }:
                     errors.append(
                         RpcDescribeError(
                             node_id=node_id,
@@ -7889,8 +7895,8 @@ class MPREGServer:
                 try:
                     request_payload = local_request.to_dict()
                     rpc_command = RPCCommand(
-                        name="rpc_describe_local",
-                        fun="rpc_describe_local",
+                        name=PlatformRpc.RPC_DESCRIBE_LOCAL,
+                        fun=PlatformRpc.RPC_DESCRIBE_LOCAL,
                         args=(request_payload,),
                         locs=frozenset(),
                         target_cluster=cluster_id,
@@ -7936,11 +7942,10 @@ class MPREGServer:
                         )
                     )
                     return
-                if (
-                    "error" in result
-                    and result.get("command") == "rpc_describe_local"
-                    and result.get("error_type")
-                ):
+                if "error" in result and result.get("command") in {
+                    "rpc_describe_local",
+                    PlatformRpc.RPC_DESCRIBE_LOCAL,
+                }:
                     errors.append(
                         RpcDescribeError(
                             node_id=node_id,
@@ -9472,11 +9477,18 @@ class MPREGServer:
                 self._rpc_actor_context = None
 
     def _qualify_inbound_rpc_command(self, cmd: RPCCommand) -> RPCCommand:
-        """Qualify bare ``fun`` (and bare ``function_id``) under active namespace.
+        """Qualify bare ``fun`` under active namespace; keep opaque function_ids.
 
         Clients normally send FQNs already. Low-level / legacy callers may still
-        send bare leaves; the server applies the same rule as register/call so
-        wire resolution is consistent end-to-end. Explicit dotted names pass through.
+        send bare leaves for ``fun``; the server applies the same rule as
+        register/call so wire resolution is consistent end-to-end. Explicit
+        dotted names pass through.
+
+        ``function_id`` is a stable capability id (often opaque, e.g.
+        ``mesh-function-id``), **not** an RPC name. Only rewrite it when it was
+        omitted or still tied 1:1 to the pre-qualify bare ``fun`` (register
+        default). Never namespace-qualify arbitrary bare ids — that broke fabric
+        routing after Phase H FQN work (``mesh-function-id`` → ``app.mesh-…``).
         """
         bound = getattr(self.settings, "bound_rpc_namespace", None)
         default_ns = (
@@ -9489,14 +9501,11 @@ class MPREGServer:
         if fqn != cmd.fun:
             updates["fun"] = fqn
         fid = cmd.function_id
-        if not fid:
-            # Match register_command default: function_id tracks the FQN name.
-            updates["function_id"] = fqn
-        elif fid == cmd.fun:
+        if fid and fid == cmd.fun:
             # function_id was tied to the pre-qualify bare fun — keep them aligned.
             updates["function_id"] = fqn
-        elif "." not in fid:
-            updates["function_id"] = qualify_rpc_name(fid, default_ns)
+        # Omitted function_id stays None (name-only match). Explicit ids
+        # (opaque or FQN) are left unchanged — never invent app.<id>.
         if not updates:
             return cmd
         return cmd.model_copy(update=updates)

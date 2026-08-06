@@ -4,6 +4,7 @@ import time
 import pytest
 
 from mpreg.client.client_api import MPREGClientAPI
+from mpreg.core.rpc_naming import PlatformRpc
 from mpreg.client.cluster_client import MPREGClusterClient
 from mpreg.client.pubsub_client import MPREGPubSubClient
 from mpreg.core.cluster_map import (
@@ -2310,7 +2311,7 @@ async def test_local_only_control_plane_commands_execute_locally(
             await client.rpc_report(namespace="svc")
             assert hub.cluster._remote_command_stats.total == baseline
 
-            await client.call("rpc_describe_local", {"namespace": "svc"})
+            await client.call(PlatformRpc.RPC_DESCRIBE_LOCAL, {"namespace": "svc"})
             assert hub.cluster._remote_command_stats.total == baseline
 
             await client.summary_query(namespace="svc")

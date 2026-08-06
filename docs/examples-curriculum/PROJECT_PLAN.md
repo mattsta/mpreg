@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase V COMPLETE — baseline matrix truth)  
+**Last updated:** 2026-08-05 (Phase W COMPLETE — full suite green via `-n auto`)
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -42,6 +42,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G27 | **Sequential docs integrity + coverage (Phase T)**                                                     | STAGES/TRACKER/catalog truth + snapshot unit                                                                                      | [x] Phase T                                                                                     |
 | G28 | **Sequential catalog/README truth (Phase U)**                                                          | APP_CATALOG + README 97-app truth                                                                                                 | [x] Phase U                                                                                     |
 | G29 | **Sequential baseline matrix truth (Phase V)**                                                         | PROJECT_PLAN Total/baseline Phase T–U                                                                                             | [x] Phase V                                                                                     |
+| G30 | **Full test suite green (Phase W)** | Fix all pytest failures after sequential multi-axis work | [x] Phase W |
 
 ---
 
@@ -973,6 +974,22 @@ APP_CATALOG P–T; README 97 apps. Deferred topology/product only.
 **Active sequential queue empty** of curriculum/platform shippable residuals.
 Deferred only (not auto-appended): multi-node shared audit store, full mgmt UI,
 remote SQL/other stores backends, multi-continent SLA, ConsistencyLevel.STRONG product.
+
+### Phase W — Full test suite green (**COMPLETE**)
+> **Phase W COMPLETE (2026-08-05):** Full suite green with concurrency:
+> `uv run pytest tests/ -q --tb=line -n auto` → **2579 passed**, 3 warnings, **472.92s (0:07:52)** on 18 xdist workers.
+> Fixes landed this phase: scatter remote `PlatformRpc.RPC_DESCRIBE_LOCAL` (was bare `rpc_describe_local` → `fabric_route_not_found`); leaf-aware `FunctionSelector` + dual FQN/leaf function index; stop namespace-qualifying opaque `function_id`s; client no longer forces `function_id=FQN`; FQN expectation fixes (collision regex, `queue_receive` mock); transport audit allows entire `mpreg/core/transport/` and only flags real imports outside it.
+> Always verify with `-n auto` (not serial full suite).
+
+| # | Axis | Work | Status |
+|---|------|------|--------|
+| W0 | PLAN | Append; sole active queue | [x] |
+| W1 | CORRECT | Run full `pytest tests/` inventory failures | [x] |
+| W2 | CORRECT | Fix fabric FQN selector / auto-discovery routing tests | [x] |
+| W3 | CORRECT | Fix remaining suite failures | [x] |
+| W4 | VERIFY | full suite green + commit | [x] |
+
+**Exit:** all W `[x]`; `pytest tests/ -n auto` green — met.
 
 ## Related
 

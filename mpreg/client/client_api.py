@@ -227,13 +227,16 @@ class MPREGClientAPI:
             await self.connect()
 
         fqn = self._qualify_fun(fun)
-        resolved_function_id = function_id or fqn
+        # Do not default function_id to the FQN. function_id is an optional
+        # stable capability key that may differ from the registered name
+        # (e.g. register(..., function_id="remote.beta")). Forcing FQN here
+        # made every name-only call miss custom-id catalog entries.
         command = RPCCommand(
             name=fqn,
             fun=fqn,
             args=tuple(args),
             locs=locs or frozenset(),
-            function_id=resolved_function_id,
+            function_id=function_id,
             version_constraint=version_constraint,
             target_cluster=target_cluster,
             routing_topic=routing_topic,
@@ -317,10 +320,15 @@ class MPREGClientAPI:
         qualified: list[RPCCommand] = []
         for cmd in cmds:
             fqn = self._qualify_fun(cmd.fun)
-            updates: dict[str, Any] = {"fun": fqn}
-            if not cmd.function_id:
-                updates["function_id"] = fqn
-            qualified.append(cmd.model_copy(update=updates))
+            updates: dict[str, Any] = {}
+            if fqn != cmd.fun:
+                updates["fun"] = fqn
+            # Preserve explicit function_id; leave unset when omitted so
+            # name-only routing matches custom capability ids.
+            if updates:
+                qualified.append(cmd.model_copy(update=updates))
+            else:
+                qualified.append(cmd)
         cmds = qualified
 
         policy = self.call_policy

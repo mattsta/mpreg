@@ -66,3 +66,27 @@ def test_version_constraint_roundtrip() -> None:
     loaded = VersionConstraint.from_dict(payload)
     assert loaded.matches(SemanticVersion.parse("1.5.0"))
     assert not loaded.matches(SemanticVersion.parse("2.0.0"))
+
+def test_function_selector_bare_name_matches_fqn() -> None:
+    identity = FunctionIdentity(
+        name="app.mesh_function",
+        function_id="mesh-function-id",
+        version=SemanticVersion.parse("2.1.0"),
+    )
+    bare = FunctionSelector(
+        name="mesh_function",
+        function_id="mesh-function-id",
+        version_constraint=VersionConstraint.parse(">=2.0.0,<3.0.0"),
+    )
+    assert bare.matches(identity)
+    fqn = FunctionSelector(name="app.mesh_function", function_id="mesh-function-id")
+    assert fqn.matches(identity)
+    wrong_leaf = FunctionSelector(name="other_function", function_id="mesh-function-id")
+    assert not wrong_leaf.matches(identity)
+    wrong_ns_same_leaf = FunctionSelector(
+        name="orders.mesh_function",
+        function_id="mesh-function-id",
+    )
+    # Both FQN: exact only — different namespace must not soft-match
+    assert not wrong_ns_same_leaf.matches(identity)
+

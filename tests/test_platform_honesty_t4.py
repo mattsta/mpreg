@@ -496,9 +496,11 @@ async def test_unified_client_queue_receive_method() -> None:
     client = MPREGClient(url="ws://127.0.0.1:9")
     calls: list = []
 
+    from mpreg.core.rpc_naming import PlatformRpc
+
     async def fake_call(self, fun, *args, **kwargs):
         calls.append(fun)
-        if fun == "queue_receive":
+        if fun == PlatformRpc.QUEUE_RECEIVE:
             return {"success": True, "empty": False, "message": {"payload": 1}}
         return {}
 
@@ -507,7 +509,7 @@ async def test_unified_client_queue_receive_method() -> None:
         MPREGClientAPI.call = fake_call  # type: ignore[method-assign]
         out = await client.queue_receive("jobs", timeout_seconds=1.0)
         assert out["message"]["payload"] == 1
-        assert "queue_receive" in calls
+        assert PlatformRpc.QUEUE_RECEIVE in calls
     finally:
         MPREGClientAPI.call = orig  # type: ignore[method-assign]
 
