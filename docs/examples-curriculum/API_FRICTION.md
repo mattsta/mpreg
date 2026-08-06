@@ -4,7 +4,7 @@
 **forced integration walk** of public MPREG APIs. Every awkward edge, missing
 error code, or CLI surprise gets logged here so platform DX can improve.
 
-**Last updated:** 2026-08-05 (Phase K — depth non-claims + catalog partials closed)  
+**Last updated:** 2026-08-05 (Phase L — FEATURE partial promotion batch; 95 apps)  
 **Source of truth also summarized in:** [PROJECT_PLAN.md §9](./PROJECT_PLAN.md)
 
 Legend severity: **High** (blocks nested/async use or confuses operators badly) ·
@@ -41,6 +41,8 @@ depth non-claims closed in Phase K. Append new rows when curriculum hits fresh f
 | F19 | **Documented:** RaftOracle dual-leader raises on `observe_role` (fail-fast) | `mpreg/testing/oracles.py`; `routing_oracle_lab` |
 | F20 | `DiscoveryRateLimiter` prunes to `max_keys-1` before insert → hard cap `≤ max_keys` | `mpreg/core/discovery_rate_limit.py` |
 | F21 | `route_message_to_queues` bumps `successful_routes` / `failed_routes`; `send_via_topic` avoids double-count | `mpreg/core/topic_queue_routing.py` |
+| F22 | PubSub publish headers | `MPREGPubSubClient.publish` requires `MessageHeaders` dataclass, not bare `dict` | Low | Accept Mapping or document MessageHeaders in client guide | `pubsub_client_backlog` |
+| F23 | catalog_query entry_type | Empty `entry_type` raises server ValueError | Low | Default entry_type or clearer client error | `cluster_map_catalog` |
 
 Also shipped: `ServerMetricsTracker.snapshot()`, shared `ExampleProbe`
 (`mpreg/examples/apps/_shared/obs.py`), `app_run(..., probe=True)` + `get_probe()`.

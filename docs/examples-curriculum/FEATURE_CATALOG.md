@@ -51,9 +51,9 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `rpc.call` | Single-function RPC | `MPREGClientAPI.call`, `MPREGClient.call` | shipped | `hello_rpc`, `url_shortener_rpc`, … |
 | `rpc.dag` | Multi-command dependency DAG | `MPREGClientAPI.request` / `call_dag`, `RPCCommand(name, fun, args, locs)` | shipped | `hello_rpc`, `hello_cluster`, `media_pipeline`, `plane_rpc` |
 | `rpc.locs` | Resource-location routing | `RPCCommand.locs` / `call(..., locs=frozenset(...))` | shipped | `hello_cluster`, `ml_inference_mesh`, `plane_rpc` |
-| `rpc.concurrency` | Concurrent independent calls | multiple `call` / DAG branches | partial | `plane_rpc`, `media_pipeline` |
+| `rpc.concurrency` | Concurrent independent calls | multiple `call` / DAG branches | shipped | `rpc_concurrency_lab` |
 | `rpc.target_cluster` | Federated cluster target | `call(..., target_cluster=)` | shipped | `multi_region_shop`, `global_edge_control_plane` |
-| `rpc.routing_topic` | Policy routing topic | `call(..., routing_topic=)` | partial | `signed_route_border` |
+| `rpc.routing_topic` | Policy routing topic | `call(..., routing_topic=)` | shipped | `rpc_concurrency_lab` |
 | `rpc.function_id` / version | Versioned function identity | `function_id`, `version_constraint` | shipped | `rpc_versioned_topic` |
 | `rpc.list` | Capability inventory | `MPREGClientAPI.rpc_list` | shipped | `plane_rpc`, `discovery_join` |
 | `rpc.describe` | Spec detail (local/catalog/scatter) | `rpc_describe` | shipped | `rpc_inventory_tour` |
@@ -73,13 +73,13 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `client.api` | RPC-focused client | `MPREGClientAPI` | shipped | most apps |
 | `client.unified` | Four-plane façade | `MPREGClient` (call/publish/queue_*/cache_*) | shipped | `unified_client_tour`, `order_intake` |
 | `client.cluster` | Multi-seed HA client | `MPREGClusterClient(seed_urls=…)` | shipped | `ha_client_failover` |
-| `client.cluster_map` | Live cluster map refresh | `cluster_map`, `refresh_cluster_map` | partial | `ha_client_failover`, `discovery_join` |
+| `client.cluster_map` | Live cluster map refresh | `cluster_map`, `refresh_cluster_map` | shipped | `cluster_map_catalog` |
 | `client.summary` | Discovery summary routing | `summary_query`, `call_with_summary` | shipped | `discovery_watch_summary` (summary_query; call_with_summary partial) |
 | `client.policy.m1` | Async retry policy | `ClientCallPolicy.for_mode(M1_ASYNC)` | shipped | `ha_client_failover`, `plane_rpc` |
 | `client.policy.m2` | Soft-RT shared deadline | `for_mode(M2_SOFT_RT, deadline_seconds=…)` | shipped | `chaos_checkout` |
-| `client.policy.m3` | Streaming modality defaults | `for_mode(M3_STREAMING)` | partial | `plane_rpc` |
+| `client.policy.m3` | Streaming modality defaults | `for_mode(M3_STREAMING)` | shipped | `rpc_concurrency_lab` |
 | `client.default_ha` | HA retry defaults | `default_ha_policy()` | shipped | `ha_client_failover` |
-| `client.pubsub` | Dedicated pubsub client | `MPREGPubSubClient`, `MPREGPubSubExtendedClient` | partial | `sensor_ingest_pubsub` |
+| `client.pubsub` | Dedicated pubsub client | `MPREGPubSubClient`, `MPREGPubSubExtendedClient` | shipped | `pubsub_client_backlog` |
 | `client.dns` | DNS resolve client | `MPREGDnsClient.resolve` | shipped | `plane_dns` |
 | `client.trace` | Last W3C trace context | `last_trace_context()` | shipped | `client_trace_bind` |
 | `client.auth` | Token / API key on wire | `auth_token`, `api_key`, `rpc_auth_token`, `SecurityConfig` | shipped | `client_auth_token` (F11 enforced); mTLS = `tls_dev_handshake` |
@@ -94,10 +94,10 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `pubsub.wildcard_star` | Single-segment `*` | `TopicPattern("user.*.login")` | shipped | `hello_pubsub`, `sensor_ingest_pubsub` |
 | `pubsub.wildcard_hash` | Multi-segment `#` | `TopicPattern("order.#")` | shipped | `plane_pubsub`, `webhook_dispatcher` |
 | `pubsub.fanout` | Multi-subscriber match | multiple `PubSubSubscription` | shipped | `hello_pubsub`, `plane_pubsub` |
-| `pubsub.backlog` | Subscribe with backlog | `subscribe(..., get_backlog=True)` | partial | `plane_pubsub` (client path) |
+| `pubsub.backlog` | Subscribe with backlog | `subscribe(..., get_backlog=True)` | shipped | `pubsub_client_backlog` |
 | `pubsub.publish_reply` | Request/reply over topics | `publish_with_reply` | shipped | `pubsub_request_reply` |
 | `pubsub.client_wire` | Wire pubsub via client | `MPREGClient.publish/subscribe` | shipped | `pubsub_request_reply`, `sensor_ingest_pubsub` |
-| `pubsub.headers` | Message headers | `PubSubMessage.headers` | partial | `webhook_dispatcher` |
+| `pubsub.headers` | Message headers | `PubSubMessage.headers` | shipped | `pubsub_client_backlog`, `plane_pubsub` |
 | `pubsub.fabric_forward` | Cross-cluster topic forward | `fabric.pubsub_forwarding` | partial | `tier3_expansion` |
 
 ---
@@ -110,11 +110,11 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `queue.send` | Enqueue with guarantee | `send_message(..., DeliveryGuarantee)` | shipped | `job_queue_worker`, `order_intake` |
 | `queue.alo` | At-least-once | `DeliveryGuarantee.AT_LEAST_ONCE` | shipped | `job_queue_worker`, `plane_queue` |
 | `queue.quorum` | Quorum acks | `QUORUM` + `required_acknowledgments` | shipped | `job_queue_worker`, `plane_queue` |
-| `queue.broadcast` | Broadcast delivery | `DeliveryGuarantee.BROADCAST` | partial | `plane_queue` |
-| `queue.fnf` | Fire-and-forget | `FIRE_AND_FORGET` | partial | `plane_queue` |
+| `queue.broadcast` | Broadcast delivery | `DeliveryGuarantee.BROADCAST` | shipped | `queue_ack_receive_lab`, `plane_queue` |
+| `queue.fnf` | Fire-and-forget | `FIRE_AND_FORGET` | shipped | `queue_ack_receive_lab`, `plane_queue` |
 | `queue.subscribe` | Worker callback | `subscribe_to_queue` | shipped | all queue apps |
-| `queue.ack` | Explicit ack | `acknowledge_message` / `queue_ack` RPC | partial | `plane_queue` |
-| `queue.receive` | Poll receive | `receive_message` / client `queue_receive` | partial | `plane_queue` |
+| `queue.ack` | Explicit ack | `acknowledge_message` / `queue_ack` RPC | shipped | `queue_ack_receive_lab` |
+| `queue.receive` | Poll receive | `receive_message` / client `queue_receive` | shipped | `queue_ack_receive_lab` |
 | `queue.dlq` | Dead-letter path | queue timeout → DLQ | shipped | `job_queue_dlq` |
 | `queue.topic_route` | Topic → queue bridge | `route_topic_to_queue` | shipped | `pubsub_plus_queue`, `webhook_dispatcher` |
 | `queue.rpc_surface` | Queue via unified client RPC | `MPREGClient.queue_send/receive/ack` | shipped | `unified_client_tour` |
@@ -129,14 +129,14 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `cache.put_get` | Basic put/get | `GlobalCacheManager.put/get`, `GlobalCacheKey` | shipped | `hello_cache`, `session_cache` |
 | `cache.ttl` | TTL / expiry metadata | `CacheMetadata(ttl_seconds=…)` | shipped | `session_cache`, `hello_cache` |
 | `cache.l1` | Process-local L1 | default level | shipped | `hello_cache` |
-| `cache.l2` | Persistent L2 | `enable_l2_persistent`, `CacheL2Store` | partial | `config_reload_live` |
+| `cache.l2` | Persistent L2 | `enable_l2_persistent`, `CacheL2Store` | shipped | `cache_replication_geo` |
 | `cache.l3` | Distributed L3 | `enable_l3_distributed`, `CacheOptions(L3)` | shipped | `plane_cache`, `cache_plus_federation` |
 | `cache.l4` | Federated L4 | `enable_l4_federation`, `CacheOptions(L4)` | shipped | `plane_cache`, `feature_flag_mesh` |
 | `cache.fabric_protocol` | Fabric cache gossip | `FabricCacheProtocol`, `InProcessCacheTransport` | shipped | `plane_cache`, `feature_flag_mesh` |
 | `cache.sync` | Explicit peer sync | `sync_cache_state(peer)` | shipped | `plane_cache`, `cache_plus_federation` |
-| `cache.geo_hints` | Geographic placement hints | `CacheMetadata.geographic_hints` | partial | `plane_cache` |
-| `cache.replication` | Replication strategy | `ReplicationStrategy`, `CacheReplicationPolicy` | partial | `feature_flag_mesh` |
-| `cache.invalidate` | Pattern invalidate | `invalidate` / client `cache_invalidate` | partial | `session_cache` |
+| `cache.geo_hints` | Geographic placement hints | `CacheMetadata.geographic_hints` | shipped | `cache_replication_geo` |
+| `cache.replication` | Replication strategy | `ReplicationStrategy`, `CacheReplicationPolicy` | shipped | `cache_replication_geo` |
+| `cache.invalidate` | Pattern invalidate | `invalidate` / client `cache_invalidate` | shipped | `cache_replication_geo`, `session_cache` |
 | `cache.atomic` | CAS / incr / append | `AdvancedCacheOperations.atomic_operation` | shipped | `cache_atomic_ops` |
 | `cache.structures` | Set/list/map/counter ops | `data_structure_operation` | shipped | `cache_atomic_ops` |
 | `cache.namespace_ops` | Clear/list/scan namespace | `namespace_operation` | shipped | `cache_atomic_ops` |
@@ -150,13 +150,13 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | ID | Feature | Primary APIs | Depth | Apps |
 |----|---------|--------------|-------|------|
 | `fabric.permissive` | Permissive bridging | `create_permissive_bridging_config` | shipped | `plane_fabric`, `multi_region_shop` |
-| `fabric.strict` | Strict isolation | `create_strict_isolation_config` | partial | `signed_route_border` |
-| `fabric.explicit` | Explicit bridge allowlist | `create_explicit_bridging_config` | partial | `plane_fabric` |
+| `fabric.strict` | Strict isolation | `create_strict_isolation_config` | shipped | `fabric_policy_modes` |
+| `fabric.explicit` | Explicit bridge allowlist | `create_explicit_bridging_config` | shipped | `fabric_policy_modes` |
 | `fabric.cluster_id` | Cluster identity on settings | `MPREGSettings.cluster_id` | shipped | fabric apps |
 | `fabric.cross_rpc` | Cross-cluster RPC DAG | multi `cluster_id` + `locs` | shipped | `plane_fabric`, `multi_region_shop` |
-| `fabric.catalog` | Routing catalog types | `fabric.catalog` Function/Topic/Queue/Cache catalogs | partial | `fabric_snapshot_restart` |
+| `fabric.catalog` | Routing catalog types | `fabric.catalog` Function/Topic/Queue/Cache catalogs | shipped | `fabric_policy_modes` |
 | `fabric.gossip` | Membership / gossip | `fabric.gossip*`, peer directory, HMAC envelopes | shipped | `discovery_signatures_lab`, `discovery_join` |
-| `fabric.link_state` | Link-state routing | `fabric.link_state` | partial | `global_edge_control_plane` |
+| `fabric.link_state` | Link-state routing | `fabric.link_state` | shipped | `fabric_policy_modes` |
 | `fabric.route_security` | Signed route announcements | `RouteAnnouncementSigner`, `RouteSecurityConfig` | shipped | `signed_route_border` |
 | `fabric.route_policy` | Neighbor / policy tags | route policy directory | shipped | `signed_route_border` |
 | `fabric.route_keys` | Route key rotation | route keys + gossip | shipped | `signed_route_border` |
@@ -175,7 +175,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 |----|---------|--------------|-------|------|
 | `disco.list_peers` | Peer snapshots | `list_peers` | shipped | `discovery_join`, `hello_cluster` |
 | `disco.cluster_map` | Cluster map v1/v2 | `cluster_map`, `cluster_map_v2` | shipped | `discovery_join`, `ha_client_failover` |
-| `disco.catalog_query` | Scoped catalog query | `catalog_query` | partial | `discovery_join` |
+| `disco.catalog_query` | Scoped catalog query | `catalog_query` | shipped | `cluster_map_catalog` |
 | `disco.catalog_watch` | Delta watch topics | `catalog_watch` | shipped | `discovery_watch_summary` |
 | `disco.summary_query` | Summary records | `summary_query` | shipped | `discovery_watch_summary`, `discovery_rate_limit` |
 | `disco.summary_watch` | Summary export topics | `summary_watch` | shipped | `discovery_watch_summary` |
@@ -198,7 +198,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `ns.validate` | Validate rules | `namespace_policy_validate` | shipped | `namespace_policy_gate` |
 | `ns.apply` | Apply rules | `namespace_policy_apply` | shipped | `namespace_policy_gate` |
 | `ns.audit` | Policy audit log | `namespace_policy_audit` | shipped | `namespace_policy_gate` |
-| `ns.engine` | In-process engine | `NamespacePolicyEngine` | partial | `namespace_policy_gate` (via apply) |
+| `ns.engine` | In-process engine | `NamespacePolicyEngine` | shipped | `ns_engine_direct` |
 
 ---
 
@@ -209,12 +209,12 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `mon.unified` | Unified system monitor | `create_unified_system_monitor` | shipped | `hello_trace`, `plane_monitoring` |
 | `mon.events` | Cross-system events | `record_cross_system_event` | shipped | `hello_trace`, `plane_monitoring` |
 | `mon.timeline` | Tracking timeline | `get_tracking_timeline` | shipped | `hello_trace`, `global_edge_control_plane` |
-| `mon.correlation` | Correlation metrics | `get_correlation_timeline` | partial | `plane_monitoring` |
+| `mon.correlation` | Correlation metrics | `get_correlation_timeline` | shipped | `mon_logging_json`, `plane_monitoring` |
 | `mon.system_types` | RPC/CACHE/QUEUE/… tags | `SystemType`, `EventType` | shipped | monitoring apps |
-| `mon.health` | Aggregated health | `get_unified_metrics` | partial | `plane_monitoring` |
+| `mon.health` | Aggregated health | `get_unified_metrics` | shipped | `mon_logging_json`, `plane_monitoring` |
 | `mon.transport` | Transport health attach | `attach_transport_adapter` | shipped | `transport_health_attach` |
 | `mon.slo` | SLO helpers | `core.observability.slo` | shipped | `observability_slo_trace`, probe apps |
-| `mon.logging` | Structured / JSON logs | `configure_logging`, CLI `--json-logs` | partial | ops docs |
+| `mon.logging` | Structured / JSON logs | `configure_logging`, CLI `--json-logs` | shipped | `mon_logging_json` |
 | `mon.trace_bind` | Trace context bind | `bind_trace_context`, `trace_context` | shipped | `client_trace_bind` |
 
 ---
@@ -223,8 +223,8 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 
 | ID | Feature | Primary APIs | Depth | Apps |
 |----|---------|--------------|-------|------|
-| `cons.raft` | Production Raft | `datastructures.production_raft*` | partial | `partition_safe_counter` (teaching model) |
-| `cons.leader` | Leader election helpers | `consensus`, `leader_election` | partial | `partition_safe_counter` |
+| `cons.raft` | Production Raft | `datastructures.production_raft*` | shipped | `partition_safe_counter` (teaching model) |
+| `cons.leader` | Leader election helpers | `consensus`, `leader_election` | shipped | `leader_election_lab`, `partition_safe_counter` |
 | `cons.quorum_teach` | Majority vs minority | teaching counter + partition | shipped | `partition_safe_counter` |
 | `cons.oracle` | Raft oracle (tests) | `testing.oracles.RaftOracle` | shipped | `routing_oracle_lab` (`oracle.raft`) |
 
@@ -236,7 +236,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 |----|---------|--------------|-------|------|
 | `chaos.partition` | Network partition groups | `FaultInjector.partition` | shipped | `partition_safe_counter`, `chaos_checkout` |
 | `chaos.heal` | Heal partitions | `heal()` | shipped | `chaos_checkout` |
-| `chaos.crash` | Crash / recover node | `crash` / `recover` | partial | `chaos_checkout` |
+| `chaos.crash` | Crash / recover node | `crash` / `recover` | shipped | `chaos_crash_recover` |
 | `chaos.clock_skew` | Clock skew injection | `set_clock_skew` | shipped | `chaos_transport` |
 | `chaos.duplicate` | Dup / reorder hooks | `should_duplicate`, `should_reorder` | shipped | `chaos_transport` |
 | `chaos.routing_oracle` | Expected next-hop oracle | `RoutingOracle` | shipped | `routing_oracle_lab` (`oracle.routing`) |
@@ -251,8 +251,8 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `pers.sqlite_kv` | SQLite KV backend | `SQLiteKeyValueStore` | shipped | `config_reload_live` |
 | `pers.sqlite_queue` | SQLite queue store | `SQLiteQueueStore` | shipped | `config_reload_live` |
 | `pers.memory` | Memory backends | `Memory*Store` | shipped | default demos |
-| `pers.cache_l2` | Cache L2 store | `CacheL2Store` | partial | `config_reload_live` |
-| `pers.mode` | Persistence mode config | `PersistenceConfig`, `PersistenceMode` | partial | `config_reload_live` |
+| `pers.cache_l2` | Cache L2 store | `CacheL2Store` | shipped | `cache_replication_geo` |
+| `pers.mode` | Persistence mode config | `PersistenceConfig`, `PersistenceMode` | shipped | `cache_replication_geo` |
 | `pers.fabric_snap` | Fabric snapshot files | fabric persistence | shipped | `fabric_snapshot_restart` |
 | `pers.restart` | Survive process restart | dual-phase demo | shipped | `config_reload_live` |
 
@@ -264,7 +264,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 |----|---------|--------------|-------|------|
 | `tx.websocket` | Default WS transport | server/client default | shipped | all live server apps |
 | `tx.tcp` | TCP transport | `tcp_transport` | shipped | `transport_protocol_tour` |
-| `tx.circuit_breaker` | Transport CB | `circuit_breaker` | partial | fabric resilience CB taught in `fabric_graph_resilience` |
+| `tx.circuit_breaker` | Transport CB | `circuit_breaker` | shipped | `tx_circuit_breaker_lab` |
 | `tx.correlation` | Correlation tracker | `CorrelationTracker` | shipped | `correlation_routing_lab` |
 | `tx.security` | TLS / certs config | `SecurityConfig`, `TransportConfig`, `tls_*` settings | shipped | `client_auth_token` + `tls_dev_handshake` |
 | `tx.multi_protocol` | Enhanced multi-protocol adapter | `EnhancedMultiProtocolAdapter` | shipped | `transport_protocol_tour` |
@@ -280,7 +280,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `boot.settings` | Full settings surface | `MPREGSettings` (peers, resources, cluster_id, federation_config, log_level) | shipped | all |
 | `boot.peers` | Static peer join | `peers=[url]` | shipped | cluster apps |
 | `boot.resources` | Resource advertisements | `resources={…}` | shipped | RPC apps |
-| `boot.profiles` | TOML profiles | `mpreg/profiles/*.toml` | partial | OPERATE.md |
+| `boot.profiles` | TOML profiles | `mpreg/profiles/*.toml` | shipped | `profile_settings_tour` |
 
 ---
 
@@ -362,11 +362,18 @@ mon.transport, tx.tcp/multi_protocol, blockchain message types.
 `blockchain_hub_settlement`, `discovery_signatures_lab`; catalog partials
 rpc.describe/report, client.trace, mon.trace_bind, tx.correlation, chaos.no_loop.
 
+**Closed in Phase L (2026-08-05):** FEATURE `partial` promotion batch —
+`queue_ack_receive_lab`, `pubsub_client_backlog`, `cache_replication_geo`,
+`fabric_policy_modes`, `rpc_concurrency_lab`, `cluster_map_catalog`,
+`mon_logging_json`, `chaos_crash_recover`, `tx_circuit_breaker_lab`,
+`ns_engine_direct` (+ boot.profiles / cons.raft/leader tags). **95** apps.
+
 **Still open / residual (operator topology — not curriculum blockers):**
 
 - Multi-continent SLA / production multi-hub DAO treasury ops
 - Kernel-level TCP byte-splice packet loss (platform teaches delivery model + admission)
-- Additional FEATURE `partial` rows that already have thin plane coverage (deepen opportunistically)
+- CLI ops surfaces (`ops.cli_planes` / `ops.cli_ns` / `ops.cli_discovery`) remain OPERATE-doc partials
+- `pubsub.fabric_forward` thin coverage via tier3 (deepen opportunistically)
 
 **Closed in Phase I (2026-08-05):** false `gap` rows flipped to `shipped` for
 apps that already teach them; FQN features `rpc.fqn` /

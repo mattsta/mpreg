@@ -204,5 +204,22 @@ FEATURE_CATALOG partials:
 6. Packet-loss plane model composed with live drain
 7. Blockchain hub settlement path
 
-Exit: **85** suite apps; program idle pending new charter.
+Exit: **85** suite apps.
 
+## Phase L — FEATURE partial promotion batch (COMPLETE)
+
+Linear continuation after Phase K. Promoted remaining teachable FEATURE_CATALOG
+`partial` rows into dedicated depth apps (or retagged existing apps):
+
+1. queue.ack / queue.receive / broadcast / fnf
+2. client.pubsub + pubsub.backlog
+3. cache geo/replication/L2/invalidate + pers.mode
+4. fabric.strict / explicit / catalog / link_state
+5. rpc.concurrency + routing_topic + client.policy.m3
+6. client.cluster_map + disco.catalog_query
+7. mon.logging JSON + mon.correlation/health depth
+8. chaos.crash recover
+9. tx.circuit_breaker dedicated lab
+10. ns.engine in-process
+
+Exit: **95** suite apps; residual partials are CLI ops docs + fabric_forward thin.

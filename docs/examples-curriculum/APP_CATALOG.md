@@ -151,3 +151,20 @@ L0 ≥3 ensures; L1+ ≥5 ensures) and appear in `features.py` APP_FEATURES.
 | `mtls_mesh_handshake` | L2 | product | CERT_REQUIRED mTLS wss |
 | `blockchain_hub_settlement` | L2 | plane | HubMessageQueue settlement path |
 | `packet_loss_chaos` | L3 | plane | Plane drops + live drain compose |
+
+### Phase L additions (2026-08-05)
+
+| ID | Level | Kind | Summary |
+|----|-------|------|---------|
+| `queue_ack_receive_lab` | L1 | plane | Poll receive + explicit ack + broadcast/FNF |
+| `pubsub_client_backlog` | L1 | plane | MPREGPubSubClient + get_backlog |
+| `cache_replication_geo` | L1 | plane | Geo/replication/L2/invalidate/pers.mode |
+| `fabric_policy_modes` | L1 | plane | Strict/explicit + catalog + link-state |
+| `rpc_concurrency_lab` | L1 | plane | Concurrent gather + M3 + routing_topic |
+| `cluster_map_catalog` | L1 | plane | cluster_map refresh + catalog_query |
+| `mon_logging_json` | L1 | plane | json_logs + correlation/health |
+| `chaos_crash_recover` | L1 | plane | FaultInjector crash/recover |
+| `tx_circuit_breaker_lab` | L1 | plane | CircuitBreaker state machine |
+| `ns_engine_direct` | L1 | plane | In-process NamespacePolicyEngine |
+
+**App count:** 85 → **95** (+10 Phase L).

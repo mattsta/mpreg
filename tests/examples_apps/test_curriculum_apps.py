@@ -60,6 +60,16 @@ _TIMEOUT_S: dict[str, float] = {
     "rpc_inventory_tour": 90.0,
     "client_trace_bind": 90.0,
     "blockchain_hub_settlement": 90.0,
+    "queue_ack_receive_lab": 60.0,
+    "pubsub_client_backlog": 90.0,
+    "cache_replication_geo": 60.0,
+    "fabric_policy_modes": 30.0,
+    "rpc_concurrency_lab": 90.0,
+    "cluster_map_catalog": 120.0,
+    "mon_logging_json": 60.0,
+    "chaos_crash_recover": 30.0,
+    "tx_circuit_breaker_lab": 30.0,
+    "ns_engine_direct": 30.0,
 
     "discovery_resolver_audit": 90.0,
 

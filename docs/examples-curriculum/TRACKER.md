@@ -237,3 +237,32 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 
 **Program:** Phases A–K at **100%** per PROJECT_PLAN dashboard.
 
+## Phase L — FEATURE partial promotion batch (**COMPLETE**)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| L0 charter serialized into living plans | [x] | G19 + waves L0–L8 |
+| `queue_ack_receive_lab` | [x] | queue.ack/receive/broadcast/fnf |
+| `pubsub_client_backlog` | [x] | client.pubsub + backlog |
+| `cache_replication_geo` | [x] | geo/repl/L2/invalidate/pers |
+| `fabric_policy_modes` | [x] | strict/explicit/catalog/link-state |
+| `rpc_concurrency_lab` | [x] | concurrency + M3 + routing_topic |
+| `cluster_map_catalog` | [x] | map refresh + catalog_query |
+| `mon_logging_json` | [x] | json logs + mon.correlation/health |
+| `chaos_crash_recover` | [x] | chaos.crash |
+| `tx_circuit_breaker_lab` | [x] | tx.circuit_breaker |
+| `ns_engine_direct` | [x] | ns.engine direct |
+| FEATURE/APP/STAGES sync | [x] | **95** apps |
+| unit + suite | [x] | see verification log |
+
+## Verification log (Phase L)
+
+| Date | Command | Result |
+|------|---------|--------|
+| 2026-08-05 | all 10 Phase L apps `mpreg-example run` | pass |
+| 2026-08-05 | `pytest tests/examples_apps -m unit` | **110 passed** |
+| 2026-08-05 | `mpreg-example suite` | **95/95 passed** (~100s) |
+
+**App count:** 85 → **95** (+10 Phase L).
+
+**Program:** Phases A–L at **100%** per PROJECT_PLAN dashboard.

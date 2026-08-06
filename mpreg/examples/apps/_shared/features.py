@@ -25,8 +25,11 @@ RPC_TOPIC_AWARE: Final = "rpc.topic_aware"
 RPC_FQN: Final = "rpc.fqn"
 RPC_NAMESPACE_DENY: Final = "rpc.namespace_deny"
 RPC_BOUND_NAMESPACE: Final = "rpc.bound_namespace"
+RPC_CONCURRENCY: Final = "rpc.concurrency"
+RPC_ROUTING_TOPIC: Final = "rpc.routing_topic"
 
 CLIENT_API: Final = "client.api"
+CLIENT_PUBSUB: Final = "client.pubsub"
 CLIENT_UNIFIED: Final = "client.unified"
 CLIENT_CLUSTER: Final = "client.cluster"
 CLIENT_CLUSTER_MAP: Final = "client.cluster_map"
@@ -45,6 +48,8 @@ PUBSUB_FANOUT: Final = "pubsub.fanout"
 PUBSUB_HEADERS: Final = "pubsub.headers"
 PUBSUB_PUBLISH_REPLY: Final = "pubsub.publish_reply"
 PUBSUB_CLIENT_WIRE: Final = "pubsub.client_wire"
+PUBSUB_BACKLOG: Final = "pubsub.backlog"
+PUBSUB_FABRIC_FORWARD: Final = "pubsub.fabric_forward"
 
 QUEUE_CREATE: Final = "queue.create"
 QUEUE_SEND: Final = "queue.send"
@@ -57,6 +62,8 @@ QUEUE_TOPIC_ROUTE: Final = "queue.topic_route"
 QUEUE_FACTORIES: Final = "queue.factories"
 QUEUE_RPC_SURFACE: Final = "queue.rpc_surface"
 QUEUE_DLQ: Final = "queue.dlq"
+QUEUE_ACK: Final = "queue.ack"
+QUEUE_RECEIVE: Final = "queue.receive"
 
 CACHE_PUT_GET: Final = "cache.put_get"
 CACHE_TTL: Final = "cache.ttl"
@@ -88,6 +95,7 @@ FABRIC_SNAPSHOT: Final = "fabric.snapshot"
 FABRIC_HUBS: Final = "fabric.hubs"
 FABRIC_GRAPH: Final = "fabric.graph"
 FABRIC_RESILIENCE: Final = "fabric.resilience"
+FABRIC_LINK_STATE: Final = "fabric.link_state"
 
 DISCO_LIST_PEERS: Final = "disco.list_peers"
 DISCO_CLUSTER_MAP: Final = "disco.cluster_map"
@@ -104,6 +112,7 @@ NS_EXPORT: Final = "ns.export"
 NS_VALIDATE: Final = "ns.validate"
 NS_APPLY: Final = "ns.apply"
 NS_AUDIT: Final = "ns.audit"
+NS_ENGINE: Final = "ns.engine"
 
 CLIENT_DNS: Final = "client.dns"
 
@@ -113,8 +122,11 @@ MON_TIMELINE: Final = "mon.timeline"
 MON_CORRELATION: Final = "mon.correlation"
 MON_SYSTEM_TYPES: Final = "mon.system_types"
 MON_HEALTH: Final = "mon.health"
+MON_LOGGING: Final = "mon.logging"
 
 CONS_QUORUM_TEACH: Final = "cons.quorum_teach"
+CONS_RAFT: Final = "cons.raft"
+CONS_LEADER: Final = "cons.leader"
 CHAOS_PARTITION: Final = "chaos.partition"
 CHAOS_HEAL: Final = "chaos.heal"
 CHAOS_CRASH: Final = "chaos.crash"
@@ -135,12 +147,15 @@ PERS_SQLITE_QUEUE: Final = "pers.sqlite_queue"
 PERS_CACHE_L2: Final = "pers.cache_l2"
 PERS_FABRIC_SNAP: Final = "pers.fabric_snap"
 PERS_RESTART: Final = "pers.restart"
+PERS_MODE: Final = "pers.mode"
 
 BOOT_PORT_RANGE: Final = "boot.port_range"
 BOOT_AUTO_PORT: Final = "boot.auto_port"
 BOOT_SETTINGS: Final = "boot.settings"
 BOOT_PEERS: Final = "boot.peers"
 BOOT_RESOURCES: Final = "boot.resources"
+BOOT_PROFILES: Final = "boot.profiles"
+TX_CIRCUIT_BREAKER: Final = "tx.circuit_breaker"
 
 PROD_ORDER: Final = "prod.order"
 PROD_MEDIA: Final = "prod.media"
@@ -360,6 +375,8 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
     ),
     "partition_safe_counter": (
         CONS_QUORUM_TEACH,
+        CONS_RAFT,
+        CONS_LEADER,
         CHAOS_PARTITION,
         CHAOS_HEAL,
     ),
@@ -447,6 +464,7 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
     "fabric_graph_resilience": (
         FABRIC_GRAPH,
         FABRIC_RESILIENCE,
+        TX_CIRCUIT_BREAKER,
     ),
     "cache_event_bus": (
         CACHE_PUBSUB_EVENTS,
@@ -579,6 +597,7 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
     "profile_settings_tour": (
         BOOT_SETTINGS,
         BOOT_PROFILE,
+        BOOT_PROFILES,
         FABRIC_CLUSTER_ID,
         RPC_DEADLINE,
     ),
@@ -636,6 +655,7 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
     ),
     "leader_election_lab": (
         CONS_LEADER_ELECTION,
+        CONS_LEADER,
         CONS_QUORUM_TEACH,
     ),
     "multi_pop_edge_mesh": (
@@ -740,6 +760,75 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         FABRIC_HUBS,
         FABRIC_GRAPH,
         CONS_QUORUM_TEACH,
+    ),
+
+    # Phase L — FEATURE partial → shipped depth batch
+    "queue_ack_receive_lab": (
+        QUEUE_ACK,
+        QUEUE_RECEIVE,
+        QUEUE_CREATE,
+        QUEUE_SEND,
+        QUEUE_ALO,
+        QUEUE_BROADCAST,
+        QUEUE_FNF,
+        QUEUE_SUBSCRIBE,
+    ),
+    "pubsub_client_backlog": (
+        CLIENT_PUBSUB,
+        PUBSUB_BACKLOG,
+        PUBSUB_HEADERS,
+        PUBSUB_CLIENT_WIRE,
+        PUBSUB_EXCHANGE,
+    ),
+    "cache_replication_geo": (
+        CACHE_REPLICATION,
+        CACHE_GEO,
+        CACHE_L2,
+        CACHE_INVALIDATE,
+        CACHE_PUT_GET,
+        PERS_CACHE_L2,
+        PERS_MODE,
+    ),
+    "fabric_policy_modes": (
+        FABRIC_STRICT,
+        FABRIC_EXPLICIT,
+        FABRIC_CATALOG,
+        FABRIC_LINK_STATE,
+    ),
+    "rpc_concurrency_lab": (
+        RPC_CONCURRENCY,
+        RPC_ROUTING_TOPIC,
+        RPC_CALL,
+        CLIENT_POLICY_M3,
+        CLIENT_API,
+    ),
+    "cluster_map_catalog": (
+        CLIENT_CLUSTER_MAP,
+        CLIENT_CLUSTER,
+        DISCO_CLUSTER_MAP,
+        DISCO_CATALOG_QUERY,
+        DISCO_SUMMARY_QUERY,
+        RPC_CALL,
+    ),
+    "mon_logging_json": (
+        MON_LOGGING,
+        MON_CORRELATION,
+        MON_HEALTH,
+        MON_UNIFIED,
+        MON_TIMELINE,
+    ),
+    "chaos_crash_recover": (
+        CHAOS_CRASH,
+        CHAOS_PARTITION,
+        CHAOS_HEAL,
+        CHAOS_TRANSPORT,
+    ),
+    "tx_circuit_breaker_lab": (
+        TX_CIRCUIT_BREAKER,
+        FABRIC_RESILIENCE,
+    ),
+    "ns_engine_direct": (
+        NS_ENGINE,
     ),
 
 }
