@@ -118,10 +118,22 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · Friction: [API_FRICTION.md]
 
 | ID | Level | Notes |
 |----|-------|-------|
-| deeper mTLS local-cert | L1–L2 | blocked on turnkey cert helper (F12) |
-| live WS partition chaos | L3 | injector is lab model (F10) |
-| local WS auth enforcement | L1 | client auth_token not enforced on local RPC (F11) |
-| platform DX F1–F21 | — | **G/H/I closed** High/Med + residual Info docs; F10–F12 non-claims |
+| ~~deeper mTLS local-cert~~ | L1 | **shipped** `tls_dev_handshake` (F12) |
+| ~~live WS partition chaos~~ | L3 | **shipped** `live_partition_chaos` drain/detach (F10) |
+| ~~local WS auth enforcement~~ | L1 | **shipped** `rpc_auth_token` in `client_auth_token` (F11) |
+| platform DX F1–F21 | — | **G/H/I/J closed** including F10–F12 |
+
+### Phase J additions (2026-08-05)
+
+| ID | Level | Kind | Summary | Systems |
+|----|-------|------|---------|---------|
+| `tls_dev_handshake` | L1 | product | Dev CA + wss:// RPC | security, transport, rpc |
+| `discovery_resolver_audit` | L1 | plane | resolver stats/resync + access audit | discovery |
+| `transport_health_attach` | L1 | plane | TransportHealthAggregator attach | monitoring, transport |
+| `transport_protocol_tour` | L1 | plane | TCP framing + multi-protocol adapter | transport |
+| `queue_federation_lab` | L2 | plane | Queue federation wire types | queue, fabric |
+| `blockchain_message_lab` | L2 | plane | BlockchainMessage + routes | fabric |
+| `live_partition_chaos` | L3 | plane | Live drain/detach + /ready | chaos, monitoring, ops |
 
 ## Depth contract
 

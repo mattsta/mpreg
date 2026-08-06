@@ -175,6 +175,20 @@ RPC_DEPENDENCY: Final = "rpc.dependency"
 CONS_LEADER_ELECTION: Final = "cons.leader_election"
 PROD_SHIPPING: Final = "prod.shipping"
 
+DISCO_ACCESS_AUDIT: Final = "disco.access_audit"
+DISCO_RESOLVER_STATS: Final = "disco.resolver_stats"
+DISCO_RESOLVER_RESYNC: Final = "disco.resolver_resync"
+DISCO_SIGNATURES: Final = "disco.signatures"
+FABRIC_QUEUE_FED: Final = "fabric.queue_fed"
+FABRIC_BLOCKCHAIN_MSG: Final = "fabric.blockchain_msg"
+MON_TRANSPORT: Final = "mon.transport"
+TX_TLS: Final = "tx.tls"
+TX_TCP: Final = "tx.tcp"
+TX_MULTI_PROTOCOL: Final = "tx.multi_protocol"
+CHAOS_LIVE_DRAIN: Final = "chaos.live_drain"
+OPS_MGMT_DRAIN: Final = "ops.mgmt_drain"
+OPS_MGMT_DETACH: Final = "ops.mgmt_detach"
+
 # App id → feature IDs (must stay aligned with FEATURE_CATALOG.md)
 APP_FEATURES: dict[str, tuple[str, ...]] = {
     "hello_rpc": (
@@ -465,6 +479,7 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         CLIENT_API,
         RPC_CALL,
         MON_HEALTH,
+        TX_TLS,
     ),
     "hello_queue": (
         QUEUE_CREATE,
@@ -630,6 +645,53 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         MON_UNIFIED,
         MON_TRACE_CONTEXT,
     ),
+    "tls_dev_handshake": (
+        TX_TLS,
+        TX_SECURITY,
+        CLIENT_API,
+        RPC_CALL,
+        RPC_REGISTER,
+    ),
+    "discovery_resolver_audit": (
+        DISCO_ACCESS_AUDIT,
+        DISCO_RESOLVER_STATS,
+        DISCO_RESOLVER_RESYNC,
+        DISCO_SIGNATURES,
+        DISCO_CATALOG_QUERY,
+        CLIENT_API,
+    ),
+    "queue_federation_lab": (
+        FABRIC_QUEUE_FED,
+    ),
+    "live_partition_chaos": (
+        CHAOS_PARTITION,
+        CHAOS_HEAL,
+        CHAOS_TRANSPORT,
+        CHAOS_LIVE_DRAIN,
+        OPS_MGMT_DRAIN,
+        OPS_MGMT_DETACH,
+        MON_HEALTH,
+        RPC_CALL,
+        DISCO_LIST_PEERS,
+    ),
+    "transport_health_attach": (
+        MON_TRANSPORT,
+        MON_HEALTH,
+        MON_UNIFIED,
+        TX_SECURITY,
+    ),
+    "transport_protocol_tour": (
+        TX_TCP,
+        TX_MULTI_PROTOCOL,
+        TX_SECURITY,
+        MON_TRANSPORT,
+    ),
+    "blockchain_message_lab": (
+        FABRIC_BLOCKCHAIN_MSG,
+        FABRIC_GRAPH,
+        FABRIC_HUBS,
+    ),
+
 }
 
 def features_for(app_id: str) -> tuple[str, ...]:

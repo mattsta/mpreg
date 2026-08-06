@@ -60,6 +60,14 @@ class MPREGSettings:
     monitoring_auth_token: str | None = None
     # ERG-T11-03: when True, require token for non-loopback reads even on loopback bind.
     monitoring_auth_required_for_reads: bool = False
+    # Phase J F11: when set, inbound WS clients must present matching
+    # Authorization: Bearer <token> or X-API-Key on the handshake.
+    rpc_auth_token: str | None = None
+    # Phase J F12: optional PEM paths for the WS listener (enables wss://).
+    # Use mpreg.core.dev_certs.generate_dev_tls_material for local drills.
+    tls_cert_file: str | None = None
+    tls_key_file: str | None = None
+    tls_ca_file: str | None = None
     # OBS-T10-07 / ERG-T11-09: /ready admits score >= this (default 0.4 = DEGRADED ok).
     # Federated/prod profiles should raise (e.g. 0.85).
     ready_min_score: float = 0.4

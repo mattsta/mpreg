@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase I COMPLETE — residual polish + FQN curriculum + doc/catalog sync)  
+**Last updated:** 2026-08-05 (Phase J COMPLETE — F10/F11/F12 productized + catalog residual teach)  
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -13,7 +13,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 
 | # | Goal | Success measure | Status |
 |---|------|-----------------|--------|
-| G1 | **Full-power curriculum** — every honest platform surface taught at the lowest level that can prove it | FEATURE_CATALOG rows `shipped` (or explicit non-claim if product gap) | [x] prioritized surfaces taught; residual platform-only gaps are non-claims (mTLS F12, live WS chaos F10) |
+| G1 | **Full-power curriculum** — every honest platform surface taught at the lowest level that can prove it | FEATURE_CATALOG rows `shipped` (or explicit non-claim if product gap) | [x] F10–F12 productized in Phase J; remaining internal-only surfaces taught or honest non-claim |
 | G2 | **Depth contract on every app** | ≥2 scenarios; L0 ≥3 ensures; L1+ ≥5 ensures; `app_run` summary | [x] 0 thin; new apps meet contract on land |
 | G3 | **Entrypoint-only UX** | `uv run mpreg-example` / `mpreg examples` / `mpreg demo` only | [x] |
 | G4 | **Demo-as-test** | live `main()` via pytest + smoke/suite green | [x] unit + full suite green |
@@ -27,6 +27,8 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G12 | **Long-term interface consistency** | Coerce/sync surprising APIs; hard caps; nested-async CLI | [x] Phase G |
 | G13 | **Universal example observability** | Every curriculum app emits latency/throughput via probe (default-on) | [x] Phase H |
 | G14 | **Close remaining Med friction** | F2–F8, F17 fixed in platform (or honest non-claim) | [x] Phase H (F4→FQN ns-deny) |
+| G15 | **Productize F10–F12 + catalog residuals** | Live drain/detach, WS rpc_auth, dev TLS helper + teach apps | [x] Phase J |
+| G16 | **Close FEATURE_CATALOG residual gaps** | disco resolver/audit, queue_fed, mon.transport, tx.tcp/multi, blockchain | [x] Phase J |
 
 ---
 
@@ -34,19 +36,20 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 
 | Metric | Value |
 |--------|------:|
-| Shipped apps | **71** |
+| Shipped apps | **78** |
 | Smoke apps | 8 |
-| Suite apps | 71 (all registry `suite=True`) |
+| Suite apps | 78 (all registry `suite=True`) |
 | Feature IDs in `features.py` constants | ~140+ |
 | FEATURE_CATALOG prioritized gaps 1–8 | **closed** (honest non-claims where needed) |
 | Thin apps (scen<2 or L1+ ens<5) | **0** |
 | Branch vs origin | main ahead local only (no push unless asked) |
-| Last new-app validation | Phase I `rpc_fqn_namespace` + residual friction apps green |
-| Last unit | `pytest tests/examples_apps -m unit` → **86 passed** |
-| Last full suite | **71/71 passed** (~82s) |
+| Last new-app validation | Phase J F10–F12 + 7 residual teach apps green |
+| Last unit | `pytest tests/examples_apps -m unit` → **93 passed** |
+| Last full suite | **78/78 passed** (~87s) |
 | Phase G | **COMPLETE** — DX fixes + ExampleProbe + 8 apps obs-proven |
 | Phase H | **COMPLETE** — FQN ns-deny + Med friction + universal probe |
 | Phase I | **COMPLETE** — residual Info polish + FQN curriculum + catalog sync |
+| Phase J | **COMPLETE** — F10/F11/F12 productized + catalog residual teach |
 
 ### Thin backlog
 
@@ -271,6 +274,46 @@ the program wave without inventing bulk-thin apps.
 
 ---
 
+### Phase J — Productize F10–F12 + catalog residual teach (**COMPLETE**)
+
+Phase I left F10/F11/F12 as honest Info non-claims and several FEATURE_CATALOG
+rows as platform-only gaps. Phase J **productizes** those surfaces and lands
+curriculum apps that prove them — then closes residual catalog teach paths.
+
+#### J goals
+
+| ID | Goal | Success measure | Status |
+|----|------|-----------------|--------|
+| PJ1 | Living plan Phase J charter + linear task serialization | This section + TRACKER | [x] |
+| PJ2 | F11: optional WS `rpc_auth_token` enforcement | Platform + `client_auth_token` | [x] |
+| PJ3 | F12: turnkey dev TLS helper + `wss://` path | `dev_certs` + `tls_dev_handshake` | [x] |
+| PJ4 | F10: live admission chaos (drain/detach + `/ready`) | `live_partition_chaos` | [x] |
+| PJ5 | Catalog residuals: disco resolver/audit, queue_fed | dedicated L1/L2 apps | [x] |
+| PJ6 | Catalog residuals: mon.transport, tx.tcp/multi, blockchain | dedicated teach apps | [x] |
+| PJ7 | FEATURE/APP/TRACKER/friction sync + suite | docs + unit + suite green | [x] |
+
+#### J waves
+
+| Wave | Deliverables | Status |
+|------|--------------|--------|
+| **J0** | Phase J section + open-work linearization | [x] |
+| **J1** | F11: `rpc_auth_token` on settings/server + deepen `client_auth_token` | [x] |
+| **J2** | F12: `generate_dev_tls_material` + server TLS PEMs + `tls_dev_handshake` | [x] |
+| **J3** | F10: `live_partition_chaos` drain/detach/`/ready` | [x] |
+| **J4** | Residual apps: discovery_resolver_audit, queue_federation_lab, transport_*, blockchain_message_lab | [x] |
+| **J5** | Docs sync + unit + suite + commit | [x] |
+
+#### Phase J exit criteria
+
+- [x] F11: unauthenticated WS rejected when `rpc_auth_token` set; matching token unlocks RPC  
+- [x] F12: `generate_dev_tls_material` + `wss://` RPC; plain `ws://` fail-closed  
+- [x] F10: live `/mgmt/v1/nodes/drain` → `/ready` 503; detach applied; lab injector contrast  
+- [x] Catalog residuals taught: disco audit/resolver, queue_fed, mon.transport, tx.tcp/multi, blockchain  
+- [x] FEATURE_CATALOG / APP_CATALOG / TRACKER / API_FRICTION current at **78** apps  
+- [x] unit + suite green  
+
+---
+
 ## 4. Target app matrix growth
 
 | Band | Now | Target | Notes |
@@ -280,7 +323,7 @@ the program wave without inventing bulk-thin apps.
 | L2 product/integ | ~21 | 14+ | + shipping, router, dependency |
 | L3 complex | ~16 | 12+ | + hubs, leader election |
 | L4 world | 2 | 2–3 | global_edge + multi_pop |
-| **Total** | **71** | **50–70+** | band complete; +1 FQN teach |
+| **Total** | **78** | **50–70+** | band complete; Phase J +7 residual teach |
 
 ---
 
@@ -335,6 +378,7 @@ uv run pytest tests/examples_apps -q
 | 2026-08-05 | Phase G complete | F1/F9/F18/F20/F21; ExampleProbe; ≥8 obs apps |
 | 2026-08-05 | Phase H complete | FQN ns-deny; F2–F8/F17; universal probe; 70/70 suite |
 | 2026-08-05 | Phase I complete | `rpc_fqn_namespace`; F13/F15/F16/F19; catalog/doc sync → **71** |
+| 2026-08-05 | Phase J complete | F10 drain/detach; F11 rpc_auth; F12 dev_certs/wss; +7 apps (tls/disco/queue_fed/live_chaos/transport×2/blockchain) → **78** |
 
 ---
 
@@ -393,6 +437,18 @@ uv run pytest tests/examples_apps -q
 | I5 unit + suite + commit | 10% | 10 | [x] |
 | **Phase I overall** | **100%** | **100%** | complete |
 
+### Phase J (F10–F12 + catalog residuals) — complete
+
+| Slice | Weight | Done | Status |
+|-------|-------:|-----:|--------|
+| J0 charter | 10% | 10 | [x] |
+| J1 F11 rpc_auth | 15% | 15 | [x] |
+| J2 F12 dev TLS | 15% | 15 | [x] |
+| J3 F10 live drain | 15% | 15 | [x] |
+| J4 residual apps | 25% | 25 | [x] |
+| J5 docs+suite | 20% | 20 | [x] |
+| **Phase J overall** | **100%** | **100%** | complete |
+
 ---
 
 ## 8. Working rules (non-negotiable)
@@ -423,9 +479,9 @@ candidates for platform DX improvements (not claims that apps are broken).
 | F7 | Cache events | `add_event_listener` registration-only | Med | Fire on notify | `cache_event_bus` **FIXED H** |
 | F8 | Cache invalidation | Wrong kwargs | Med | Keyword-only + TypeError | `cache_event_bus` **FIXED H** |
 | F9 | CircuitBreaker | `timeout_seconds` ≠ `current_timeout` | Med | Sync on init | **FIXED G** |
-| F10 | Chaos model | `FaultInjector` is lab-only | Info | Server partition hooks | `chaos_*` **NON-CLAIM** |
-| F11 | Auth | Client `auth_token` not enforced on local WS RPC | Info | Optional require_auth | `client_auth_token` **NON-CLAIM** |
-| F12 | mTLS | No turnkey local-cert path | Info | Dev self-signed helper | non-claim **NON-CLAIM** |
+| F10 | Chaos model | `FaultInjector` is lab-only | Info | Live drain/detach + `/ready` | `live_partition_chaos` **FIXED J** |
+| F11 | Auth | Client `auth_token` not enforced on local WS RPC | Info | `rpc_auth_token` handshake gate | `client_auth_token` **FIXED J** |
+| F12 | mTLS | No turnkey local-cert path | Info | `generate_dev_tls_material` + tls_* settings | `tls_dev_handshake` **FIXED J** |
 | F13 | Cross-cluster | Peers alone ≠ fabric bridge | Info | Clearer route errors | `multi_region_dns_policy` **FIXED I** (`route_not_found` fabric hint) |
 | F14 | DNS CLI | `--target` not `--targets` | Low | Alias | `ops_cli_tour` **FIXED H** |
 | F15 | M2 deadline | Handler runs after client fail-closed | Info | Docs / cooperative cancel | `rpc_deadline_budget` **DOCUMENTED I** |
@@ -453,15 +509,18 @@ F1/F9/F18/F20/F21 fixed; ExampleProbe + ServerMetricsTracker.snapshot; 8 apps.
 Close F2–F8/F17 in platform; default-on probe; CLI aliases; doctor URL clarity.
 
 **Phase I (residual polish + FQN curriculum + doc/catalog sync): COMPLETE 100%.**  
-`rpc_fqn_namespace`; F13/F15/F16/F19 closed or documented; FEATURE_CATALOG truth;
-**71** apps; living docs current.
+`rpc_fqn_namespace`; F13/F15/F16/F19 closed or documented; FEATURE_CATALOG truth.
 
-Still honest residual non-claims until productized: F10 live WS chaos hooks,
-F11 local WS auth enforcement, F12 mTLS turnkey helper (Info).
+**Phase J (productize F10–F12 + catalog residual teach): COMPLETE 100%.**  
+F11 `rpc_auth_token`; F12 `dev_certs` + server TLS PEMs + `wss://`; F10 live
+drain/detach/`/ready`; residual teach apps for disco resolver/audit, queue_fed,
+mon.transport, tx.tcp/multi_protocol, blockchain message types. **78** apps.
 
-**Program idle only when residual non-claims are accepted product limits** —
-do not invent bulk apps for internal transport/blockchain surfaces without a
-new phase charter.
+Honest remaining depth (not blocking): full CERT_REQUIRED mTLS mesh drills,
+raw socket packet-loss injection, on-chain settlement hub mesh — documented as
+non-claims inside the Phase J apps where relevant.
+
+**Program idle** at Phase J exit unless a new charter opens deeper product work.
 
 ---
 

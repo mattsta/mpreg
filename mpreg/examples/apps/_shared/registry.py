@@ -303,9 +303,41 @@ APPS: tuple[ExampleApp, ...] = (
         "client_auth_token",
         "Client Auth Token",
         AppLevel.L1,
-        "Monitoring bearer auth + client auth_token wiring.",
+        "Monitoring bearer + WS rpc_auth_token enforcement (F11).",
         ("client", "security", "monitoring"),
     ),
+    _app(
+        "tls_dev_handshake",
+        "TLS Dev Handshake",
+        AppLevel.L1,
+        "generate_dev_tls_material + wss:// RPC (F12).",
+        ("security", "transport", "rpc"),
+    ),
+    _app(
+        "discovery_resolver_audit",
+        "Discovery Resolver + Audit",
+        AppLevel.L1,
+        "resolver_cache_stats, resync, discovery_access_audit.",
+        ("discovery",),
+        kind="plane",
+    ),
+    _app(
+        "transport_health_attach",
+        "Transport Health Attach",
+        AppLevel.L1,
+        "TransportHealthAggregator + mon.attach_transport_adapter.",
+        ("monitoring", "transport"),
+        kind="plane",
+    ),
+    _app(
+        "transport_protocol_tour",
+        "Transport Protocol Tour",
+        AppLevel.L1,
+        "TCP framing constants + EnhancedMultiProtocolAdapter.",
+        ("transport",),
+        kind="plane",
+    ),
+
     _app(
         "topic_taxonomy_tour",
         "Topic Taxonomy Tour",
@@ -488,6 +520,24 @@ APPS: tuple[ExampleApp, ...] = (
         "Label RPC + tracking cache + carrier dispatch queue.",
         ("rpc", "cache", "queue"),
     ),
+
+    _app(
+        "queue_federation_lab",
+        "Queue Federation Lab",
+        AppLevel.L2,
+        "Queue federation wire types + manager surface.",
+        ("queue", "fabric"),
+        kind="plane",
+    ),
+    _app(
+        "blockchain_message_lab",
+        "Blockchain Message Lab",
+        AppLevel.L2,
+        "BlockchainMessage + MessageRoute types.",
+        ("fabric",),
+        kind="plane",
+    ),
+
     # L3 — complex mesh
     _app(
         "multi_region_shop",
@@ -564,6 +614,15 @@ APPS: tuple[ExampleApp, ...] = (
         ("chaos",),
         kind="plane",
     ),
+    _app(
+        "live_partition_chaos",
+        "Live Partition Chaos",
+        AppLevel.L3,
+        "Live /mgmt drain+detach + /ready admission (F10).",
+        ("chaos", "monitoring", "ops"),
+        kind="plane",
+    ),
+
     _app(
         "rpc_deadline_budget",
         "RPC Deadline Budget",

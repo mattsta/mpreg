@@ -80,11 +80,18 @@ class SecurityConfig:
     api_key: str | None = None
 
     def create_ssl_context(self) -> ssl.SSLContext | None:
-        """Create SSL context from configuration."""
+        """Create a **client-side** SSL context from configuration.
+
+        Returns a context when any of ``verify_cert``, ``cert_file``, or
+        ``ca_file`` is configured. ``verify_cert=False`` still yields a context
+        (hostname check off, CERT_NONE) so ``wss://`` clients can connect —
+        websockets rejects ``ssl=None`` on secure URIs.
+        """
         if self.ssl_context:
             return self.ssl_context
 
-        if not self.verify_cert and not self.cert_file:
+        # No TLS material and verification disabled → caller may use plaintext.
+        if not self.verify_cert and not self.cert_file and not self.ca_file:
             return None
 
         context = ssl.create_default_context()
@@ -99,6 +106,23 @@ class SecurityConfig:
         if self.ca_file:
             context.load_verify_locations(self.ca_file)
 
+        return context
+
+    def create_server_ssl_context(self) -> ssl.SSLContext | None:
+        """Create a **server-side** SSL context (TLS listener / optional mTLS).
+
+        Requires ``cert_file`` + ``key_file``. When ``ca_file`` is set, client
+        certificates are requested and verified (mTLS).
+        """
+        if self.ssl_context:
+            return self.ssl_context
+        if not self.cert_file or not self.key_file:
+            return None
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(self.cert_file, self.key_file)
+        if self.ca_file:
+            context.load_verify_locations(self.ca_file)
+            context.verify_mode = ssl.CERT_REQUIRED
         return context
 
 @dataclass(slots=True)

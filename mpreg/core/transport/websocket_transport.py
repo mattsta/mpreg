@@ -135,10 +135,16 @@ class WebSocketTransport(TransportInterface):
                 if self.config.security.api_key:
                     extra_headers["X-API-Key"] = self.config.security.api_key
 
-                # Get SSL context for wss:// connections
+                # Get SSL context for wss:// connections (never None on secure URIs)
                 ssl_context = None
                 if self.is_secure:
                     ssl_context = self.config.security.create_ssl_context()
+                    if ssl_context is None:
+                        import ssl as _ssl
+
+                        ssl_context = _ssl.create_default_context()
+                        ssl_context.check_hostname = False
+                        ssl_context.verify_mode = _ssl.CERT_NONE
 
                 # Connect with timeout
                 self._websocket = await asyncio.wait_for(
@@ -299,10 +305,13 @@ class WebSocketListener(TransportListener):
             return
 
         try:
-            # Get SSL context for secure connections
+            # Get SSL context for secure connections (server-side PEM / mTLS)
             ssl_context = None
             if self.config.security.ssl_context or self.config.security.cert_file:
-                ssl_context = self.config.security.create_ssl_context()
+                ssl_context = (
+                    self.config.security.create_server_ssl_context()
+                    or self.config.security.create_ssl_context()
+                )
 
             # Create bounded accept queue (drop-oldest under connection storms)
             from mpreg.core.transport.defaults import DEFAULT_ACCEPT_QUEUE_MAXSIZE

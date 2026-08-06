@@ -9529,6 +9529,21 @@ class MPREGServer:
             )
 
     @logger.catch
+    def _rpc_auth_headers_ok(self, headers: dict[str, str], expected: str) -> bool:
+        """True when handshake headers present a matching bearer or API key (F11)."""
+        expected = (expected or "").strip()
+        if not expected:
+            return True
+        auth_value = (headers.get("authorization") or "").strip()
+        if auth_value:
+            scheme, token = self._parse_authorization_header(auth_value)
+            if scheme == "bearer" and token == expected:
+                return True
+        api_key = (headers.get("x-api-key") or "").strip()
+        if api_key and api_key == expected:
+            return True
+        return False
+
     async def opened(self, transport: TransportInterface) -> None:
         """Handles a new incoming transport connection.
 
@@ -9544,6 +9559,24 @@ class MPREGServer:
         is_server_connection = False
 
         try:
+            # Phase J F11: optional WS handshake auth before any RPC traffic.
+            rpc_token = getattr(self.settings, "rpc_auth_token", None)
+            if rpc_token:
+                headers = getattr(transport, "peer_headers", None) or {}
+                if not self._rpc_auth_headers_ok(headers, str(rpc_token)):
+                    logger.warning(
+                        "[{}] Rejecting inbound connection: rpc_auth_token mismatch "
+                        "(present Authorization/X-API-Key required)",
+                        self.settings.name,
+                    )
+                    tracker = getattr(self, "_metrics_tracker", None)
+                    if tracker is not None and hasattr(tracker, "record_accept_reject"):
+                        tracker.record_accept_reject(1)
+                    try:
+                        await transport.close()
+                    except Exception:
+                        pass
+                    return
             # PERF-T11-01: hard cap concurrent inbound connections
             max_in = int(getattr(self.settings, "max_inbound_connections", 0) or 0)
             if max_in > 0 and len(self.clients) >= max_in:
@@ -12307,12 +12340,26 @@ class MPREGServer:
         # Default commands and RPC commands are already registered in __init__
         # No need to register them again here
 
+        from mpreg.core.transport.interfaces import SecurityConfig as _SecCfg
+
+        tls_cert = getattr(self.settings, "tls_cert_file", None)
+        tls_key = getattr(self.settings, "tls_key_file", None)
+        tls_ca = getattr(self.settings, "tls_ca_file", None)
+        security = _SecCfg()
+        if tls_cert and tls_key:
+            security = _SecCfg(
+                cert_file=str(tls_cert),
+                key_file=str(tls_key),
+                ca_file=str(tls_ca) if tls_ca else None,
+                verify_cert=True,
+            )
         transport_config = TransportConfig(
             protocol_options={
                 "max_message_size": int(
                     getattr(self.settings, "max_message_size", None) or MPREG_DATA_MAX
                 )
-            }
+            },
+            security=security,
         )
         self._transport_listener = TransportFactory.create_listener(
             "ws",

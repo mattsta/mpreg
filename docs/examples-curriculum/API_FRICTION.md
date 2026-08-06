@@ -71,3 +71,11 @@ Also shipped: `ServerMetricsTracker.snapshot()`, shared `ExampleProbe`
 | F13 | Operator-readable fabric route miss |
 | F15 / F19 | Documented fail-closed / fail-fast invariants |
 | F16 | Discoverable port categories |
+
+## Phase J closes (2026-08-05)
+
+| ID | Resolution |
+|----|------------|
+| F10 | Live `/mgmt/v1/nodes/drain` + `/peers/detach` + `/ready` taught in `live_partition_chaos` |
+| F11 | `MPREGSettings.rpc_auth_token` enforced in `MPREGServer.opened` |
+| F12 | `mpreg.core.dev_certs.generate_dev_tls_material` + `tls_*` settings + `tls_dev_handshake` |

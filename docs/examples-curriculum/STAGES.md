@@ -178,3 +178,16 @@ Phase A ──► Phase B ──► Phase C ──► Phase D
    │            │            │
    └── shared runtime + runner (required by all)
 ```
+
+## Phase J — Productize F10–F12 + catalog residual teach (COMPLETE)
+
+Linear continuation after Phase I. Productized residual Info friction:
+
+1. **F11** — optional WS handshake auth (`rpc_auth_token`)
+2. **F12** — turnkey dev TLS PEMs + server `wss://` listener
+3. **F10** — live admission control via mgmt drain/detach (not only lab injector)
+4. Catalog residual teach apps (disco resolver/audit, queue federation, transport
+   health/TCP/multi-protocol, blockchain message types)
+
+Exit: **78** suite apps; FEATURE_CATALOG residual gaps closed or honest depth non-claims.
+

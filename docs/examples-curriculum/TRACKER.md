@@ -173,3 +173,39 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 **App count:** 35 → … → 70 → **71** (`rpc_fqn_namespace`).
 
 **Program:** Phases A–I at **100%** per PROJECT_PLAN dashboard.
+
+## Phase J — Productize F10–F12 + catalog residual teach (**COMPLETE**)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| J0 charter in PROJECT_PLAN | [x] | linear waves J0–J5 |
+| F11 `rpc_auth_token` + `client_auth_token` | [x] | handshake gate |
+| F12 `dev_certs` + `tls_dev_handshake` | [x] | AKI/SKI PEMs + wss |
+| F10 `live_partition_chaos` | [x] | drain/detach/`/ready` |
+| `discovery_resolver_audit` | [x] | stats/resync/audit |
+| `queue_federation_lab` | [x] | wire codec |
+| `transport_health_attach` | [x] | mon.transport |
+| `transport_protocol_tour` | [x] | tx.tcp + multi |
+| `blockchain_message_lab` | [x] | types + bridge import |
+| FEATURE/APP/friction sync | [x] | F10–F12 FIXED J |
+| unit + suite at 78 | [x] | see verification log |
+
+## Verification log (Phase J)
+
+| Date | Command | Result |
+|------|---------|--------|
+| 2026-08-05 | `mpreg-example run client_auth_token` | pass (F11) |
+| 2026-08-05 | `mpreg-example run tls_dev_handshake` | pass (F12) |
+| 2026-08-05 | `mpreg-example run live_partition_chaos` | pass (F10) |
+| 2026-08-05 | `mpreg-example run discovery_resolver_audit` | pass |
+| 2026-08-05 | `mpreg-example run queue_federation_lab` | pass |
+| 2026-08-05 | `mpreg-example run transport_health_attach` | pass |
+| 2026-08-05 | `mpreg-example run transport_protocol_tour` | pass |
+| 2026-08-05 | `mpreg-example run blockchain_message_lab` | pass |
+| 2026-08-05 | `pytest tests/examples_apps -m unit` | **93 passed** |
+| 2026-08-05 | `mpreg-example suite` | **78/78 passed** (~87s) |
+
+**App count:** 71 → **78** (+7 Phase J).
+
+**Program:** Phases A–J at **100%** per PROJECT_PLAN dashboard.
+

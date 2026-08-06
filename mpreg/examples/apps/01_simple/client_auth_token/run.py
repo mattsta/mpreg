@@ -1,4 +1,4 @@
-"""L1 client_auth_token — monitoring bearer + client auth_token wiring."""
+"""L1 client_auth_token — monitoring bearer + optional WS rpc_auth_token (F11)."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ from mpreg.server import MPREGServer
 async def main() -> None:
     with app_run(
         "client_auth_token",
-        "Client Auth Token — bearer monitoring + client wiring",
+        "Client Auth Token — monitoring bearer + WS rpc_auth_token",
         level="L1",
     ):
         token = "curriculum-demo-token"
@@ -47,6 +47,7 @@ async def main() -> None:
                     gossip_interval=30.0,
                     monitoring_auth_token=token,
                     monitoring_enable_cors=False,
+                    rpc_auth_token=token,
                 )
             ]
 
@@ -127,13 +128,37 @@ async def main() -> None:
                         ok("X-MPREG-Monitoring-Token accepted")
 
                     with scenario(
-                        "client auth_token wiring still RPCs",
+                        "F11: WS without token rejected when rpc_auth_token set",
+                        "client.auth",
+                        "tx.security",
+                    ):
+                        rejected = False
+                        try:
+                            async with asyncio.timeout(3.0):
+                                async with MPREGClientAPI(url) as client:
+                                    await client.call(
+                                        "ping",
+                                        "noauth",
+                                        locs=frozenset(["compute"]),
+                                        timeout=2.0,
+                                    )
+                        except (Exception, asyncio.CancelledError, TimeoutError) as exc:
+                            rejected = True
+                            step(
+                                f"unauthenticated WS rejected: {type(exc).__name__}"
+                            )
+                        ensure(
+                            rejected,
+                            "RPC without token must fail when rpc_auth_token set",
+                        )
+                        ok("missing WS auth fail-closed")
+
+                    with scenario(
+                        "F11: matching auth_token unlocks WS RPC",
                         "client.auth",
                         "client.api",
                         "rpc.call",
                     ):
-                        # Demo wires auth_token into TransportConfig.security —
-                        # local WS servers do not require it for RPC; prove plumbing.
                         transport = TransportConfig(
                             security=SecurityConfig(auth_token=token)
                         )
@@ -145,10 +170,10 @@ async def main() -> None:
                                 "ping", "auth", locs=frozenset(["compute"])
                             )
                             ensure(out == "pong:auth", f"ping got {out!r}")
-                        ok("MPREGClientAPI(auth_token=…) RPC ok")
+                        ok("MPREGClientAPI(auth_token=…) RPC ok under rpc_auth_token")
 
                     with scenario(
-                        "wrong token still 401",
+                        "wrong monitoring token still 401",
                         "tx.security",
                         "client.auth",
                     ):
@@ -163,7 +188,7 @@ async def main() -> None:
                                 )
                         ok("wrong bearer rejected")
                         step(
-                            "non-claim: full mTLS client cert path needs local CA story"
+                            "mTLS local-cert path: see tls_dev_handshake (Phase J F12)"
                         )
                 finally:
                     await mon.stop()

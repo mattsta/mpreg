@@ -82,7 +82,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `client.pubsub` | Dedicated pubsub client | `MPREGPubSubClient`, `MPREGPubSubExtendedClient` | partial | `sensor_ingest_pubsub` |
 | `client.dns` | DNS resolve client | `MPREGDnsClient.resolve` | shipped | `plane_dns` |
 | `client.trace` | Last W3C trace context | `last_trace_context()` | partial | `hello_trace`, `global_edge_control_plane` |
-| `client.auth` | Token / API key on wire | `auth_token`, `api_key`, `SecurityConfig` | shipped | `client_auth_token` (mTLS deeper path = F12 non-claim) |
+| `client.auth` | Token / API key on wire | `auth_token`, `api_key`, `rpc_auth_token`, `SecurityConfig` | shipped | `client_auth_token` (F11 enforced); mTLS = `tls_dev_handshake` |
 
 ---
 
@@ -164,8 +164,8 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `fabric.hubs` | Hub hierarchy / edges | hubs, hub_registry | shipped | `global_edge_control_plane` |
 | `fabric.graph` | Graph / Dijkstra routers | `FederationGraph`, routers | shipped | `fabric_graph_resilience`, `fabric_hub_hierarchy` |
 | `fabric.resilience` | Circuit breakers / recovery | `FederationHealthMonitor` | shipped | `fabric_graph_resilience` |
-| `fabric.queue_fed` | Queue federation | `queue_federation` | gap | platform surface; no dedicated curriculum app (honest non-claim) |
-| `fabric.blockchain_msg` | Blockchain message federation | `blockchain_message_federation` | gap | platform surface; see `docs/BLOCKCHAIN_*` (honest non-claim) |
+| `fabric.queue_fed` | Queue federation | `queue_federation` | shipped | `queue_federation_lab` |
+| `fabric.blockchain_msg` | Blockchain message federation | `blockchain_message_federation` | shipped | `blockchain_message_lab` (types; hub mesh non-claim) |
 
 ---
 
@@ -179,9 +179,9 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `disco.catalog_watch` | Delta watch topics | `catalog_watch` | shipped | `discovery_watch_summary` |
 | `disco.summary_query` | Summary records | `summary_query` | shipped | `discovery_watch_summary`, `discovery_rate_limit` |
 | `disco.summary_watch` | Summary export topics | `summary_watch` | shipped | `discovery_watch_summary` |
-| `disco.access_audit` | Discovery access audit | `discovery_access_audit` | gap | platform RPC exists; no dedicated app (honest non-claim) |
-| `disco.resolver_stats` | Resolver cache stats | `resolver_cache_stats` | gap | platform RPC exists; no dedicated app (honest non-claim) |
-| `disco.resolver_resync` | Force catalog resync | `resolver_resync` | gap | platform RPC exists; no dedicated app (honest non-claim) |
+| `disco.access_audit` | Discovery access audit | `discovery_access_audit` | shipped | `discovery_resolver_audit` |
+| `disco.resolver_stats` | Resolver cache stats | `resolver_cache_stats` | shipped | `discovery_resolver_audit` |
+| `disco.resolver_resync` | Force catalog resync | `resolver_resync` | shipped | `discovery_resolver_audit` |
 | `disco.dns_register` | DNS service register | `dns_register` / CLI | shipped | `plane_dns` |
 | `disco.dns_resolve` | DNS gateway resolve | `MPREGDnsClient`, `DnsGateway` | shipped | `plane_dns` |
 | `disco.join` | Live node join visibility | peers + new resources | shipped | `discovery_join` |
@@ -212,7 +212,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `mon.correlation` | Correlation metrics | `get_correlation_timeline` | partial | `plane_monitoring` |
 | `mon.system_types` | RPC/CACHE/QUEUE/… tags | `SystemType`, `EventType` | shipped | monitoring apps |
 | `mon.health` | Aggregated health | `get_unified_metrics` | partial | `plane_monitoring` |
-| `mon.transport` | Transport health attach | `attach_transport_adapter` | gap | platform surface; honest non-claim |
+| `mon.transport` | Transport health attach | `attach_transport_adapter` | shipped | `transport_health_attach` |
 | `mon.slo` | SLO helpers | `core.observability.slo` | shipped | `observability_slo_trace`, probe apps |
 | `mon.logging` | Structured / JSON logs | `configure_logging`, CLI `--json-logs` | partial | ops docs |
 | `mon.trace_bind` | Trace context bind | `bind_trace_context` | partial | `hello_trace` |
@@ -263,11 +263,11 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | ID | Feature | Primary APIs | Depth | Apps |
 |----|---------|--------------|-------|------|
 | `tx.websocket` | Default WS transport | server/client default | shipped | all live server apps |
-| `tx.tcp` | TCP transport | `tcp_transport` | gap | internal transport; no dedicated curriculum app |
+| `tx.tcp` | TCP transport | `tcp_transport` | shipped | `transport_protocol_tour` |
 | `tx.circuit_breaker` | Transport CB | `circuit_breaker` | partial | fabric resilience CB taught in `fabric_graph_resilience` |
 | `tx.correlation` | Correlation tracker | `CorrelationTracker` | partial | monitoring |
-| `tx.security` | TLS / certs config | `SecurityConfig`, `TransportConfig` | partial | `client_auth_token` (bearer); mTLS = F12 non-claim |
-| `tx.multi_protocol` | Enhanced multi-protocol adapter | `EnhancedMultiProtocolAdapter` | gap | internal adapter; honest non-claim |
+| `tx.security` | TLS / certs config | `SecurityConfig`, `TransportConfig`, `tls_*` settings | shipped | `client_auth_token` + `tls_dev_handshake` |
+| `tx.multi_protocol` | Enhanced multi-protocol adapter | `EnhancedMultiProtocolAdapter` | shipped | `transport_protocol_tour` |
 
 ---
 
@@ -352,13 +352,17 @@ Legend: ● primary teach · ○ supporting · · absent
 
 Also E1–E5: DNS plane, namespace policy, atomic cache, unified client, publish-with-reply.
 
-**Still open / residual (honest platform non-claims):**
+**Closed in Phase J (2026-08-05):** F10 live drain/detach (`live_partition_chaos`);
+F11 `rpc_auth_token` (`client_auth_token`); F12 `generate_dev_tls_material` +
+`tls_dev_handshake`; residual teach apps for disco resolver/audit, queue_fed,
+mon.transport, tx.tcp/multi_protocol, blockchain message types.
 
-- Full mTLS local-cert story (`tx.tls` deeper than bearer) — F12
-- Live WS partition hooks (chaos injector is lab model) — F10
-- Optional deeper apps: `fabric.queue_fed`, `fabric.blockchain_msg`,
-  `disco.access_audit` / resolver stats/resync/signatures, `tx.tcp` /
-  multi-protocol internals
+**Still open / residual (honest depth non-claims inside Phase J apps):**
+
+- Full CERT_REQUIRED mTLS multi-node mesh (client cert PEMs proven; mesh drill optional)
+- Raw socket packet-loss injection (lab FaultInjector + live admission cover the teachable layers)
+- On-chain settlement hub mesh (`blockchain_message_lab` teaches types only)
+- `disco.signatures` HMAC path (honest non-claim in `discovery_resolver_audit`)
 
 **Closed in Phase I (2026-08-05):** false `gap` rows flipped to `shipped` for
 apps that already teach them; FQN features `rpc.fqn` /
@@ -423,6 +427,13 @@ Usability findings from building these apps: [API_FRICTION.md](./API_FRICTION.md
 | `cache_event_bus` | L2 | `cache.pubsub_events` |
 | `ops_cli_tour` | L2 | `ops.cli_*` |
 | `chaos_transport` | L3 | `chaos.clock_skew`, `chaos.duplicate`, `chaos.reorder`, `chaos.drop` |
+| `tls_dev_handshake` | L1 | `tx.tls`, `tx.security`, `rpc.call` |
+| `discovery_resolver_audit` | L1 | `disco.access_audit`, `disco.resolver_stats`, `disco.resolver_resync` |
+| `transport_health_attach` | L1 | `mon.transport`, `mon.health` |
+| `transport_protocol_tour` | L1 | `tx.tcp`, `tx.multi_protocol` |
+| `queue_federation_lab` | L2 | `fabric.queue_fed` |
+| `blockchain_message_lab` | L2 | `fabric.blockchain_msg` |
+| `live_partition_chaos` | L3 | `chaos.live_drain`, `ops.mgmt_drain`, `ops.mgmt_detach`, `mon.health` |
 | `rpc_deadline_budget` | L3 | `rpc.deadline`, `client.policy.m1/m2/m3` |
 | `notification_fanout` | L2 | `prod.notify`, `pubsub.*` |
 | `billing_ledger` | L2 | `prod.billing`, rpc+cache+queue |

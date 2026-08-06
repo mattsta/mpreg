@@ -52,6 +52,11 @@ _TIMEOUT_S: dict[str, float] = {
     "rpc_versioned_topic": 90.0,
     "rpc_fqn_namespace": 90.0,
     "client_auth_token": 90.0,
+    "tls_dev_handshake": 90.0,
+    "live_partition_chaos": 120.0,
+    "discovery_resolver_audit": 90.0,
+
+    "client_auth_token": 90.0,
     "hello_queue": 30.0,
     "hello_dns": 90.0,
     "ops_cli_tour": 120.0,
