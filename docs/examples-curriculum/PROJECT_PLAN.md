@@ -147,7 +147,7 @@ latency/throughput — not just curriculum workarounds.
 | PG7 | ServerMetricsTracker snapshot | In-process snapshot API for curriculum without HTTP scrape | [x] |
 | PG8 | Docs / friction log / plan living | F# marked fixed; TRACKER; completion % | [x] |
 | PG9 | Full validation | unit + suite green after platform changes | [x] |
-| PG10 | Optional: CLI aliases / doctor URL | F2/F3 deferred (Med; apps document real paths) | [~] deferred |
+| PG10 | Optional: CLI aliases / doctor URL | F2/F3 closed in Phase H (aliases + doctor URL reject) | [x] |
 
 #### Phase G waves (sequential)
 

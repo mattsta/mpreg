@@ -74,7 +74,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `client.unified` | Four-plane façade | `MPREGClient` (call/publish/queue_*/cache_*) | shipped | `unified_client_tour`, `order_intake` |
 | `client.cluster` | Multi-seed HA client | `MPREGClusterClient(seed_urls=…)` | shipped | `ha_client_failover` |
 | `client.cluster_map` | Live cluster map refresh | `cluster_map`, `refresh_cluster_map` | shipped | `cluster_map_catalog` |
-| `client.summary` | Discovery summary routing | `summary_query`, `call_with_summary` | shipped | `discovery_watch_summary` (summary_query; call_with_summary partial) |
+| `client.summary` | Discovery summary routing | `summary_query`, `call_with_summary` | shipped | `discovery_watch_summary` (summary_query + call_with_summary) |
 | `client.policy.m1` | Async retry policy | `ClientCallPolicy.for_mode(M1_ASYNC)` | shipped | `ha_client_failover`, `plane_rpc` |
 | `client.policy.m2` | Soft-RT shared deadline | `for_mode(M2_SOFT_RT, deadline_seconds=…)` | shipped | `chaos_checkout` |
 | `client.policy.m3` | Streaming modality defaults | `for_mode(M3_STREAMING)` | shipped | `rpc_concurrency_lab` |

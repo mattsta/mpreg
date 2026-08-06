@@ -479,7 +479,13 @@ class MPREGClusterClient:
         ingress: dict[str, tuple[str, ...]] | None = None,
         **kwargs: Any,
     ) -> Any:
-        """Call an RPC function preferring ingress hints from a ServiceSummary."""
+        """Call an RPC function preferring ingress hints from a ServiceSummary.
+
+        Does **not** force fabric ``target_cluster`` from ``summary.source_cluster``
+        by default — that breaks same-cluster calls when the local cluster id is
+        stamped on the summary. Cross-cluster hops should pass ``target_cluster``
+        and/or ``ingress`` URL hints explicitly (see multi-region discovery tests).
+        """
         preferred_urls: tuple[str, ...] | None = None
         summary_cluster = summary.source_cluster
         if summary_cluster:
@@ -495,7 +501,7 @@ class MPREGClusterClient:
             locs=locs,
             function_id=function_id,
             version_constraint=version_constraint,
-            target_cluster=target_cluster or summary_cluster,
+            target_cluster=target_cluster,
             routing_topic=routing_topic,
             timeout=timeout,
             preferred_urls=preferred_urls,

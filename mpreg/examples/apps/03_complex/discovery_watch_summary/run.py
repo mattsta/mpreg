@@ -6,6 +6,7 @@ import asyncio
 import time
 
 from mpreg.client.client_api import MPREGClientAPI
+from mpreg.client.cluster_client import MPREGClusterClient
 from mpreg.client.pubsub_client import MPREGPubSubClient
 from mpreg.core.config import MPREGSettings
 from mpreg.core.port_allocator import port_range_context
@@ -201,6 +202,45 @@ async def main() -> None:
                             ok(f"catalog_query items={len(items)}")
                         else:
                             ok("catalog_query API absent — skipped")
+
+                with scenario(
+                    "call_with_summary routes via ServiceSummary",
+                    "client.summary",
+                    "disco.summary_query",
+                    "client.cluster",
+                ):
+                    async with MPREGClusterClient(seed_urls=(url,)) as cluster:
+                        response = await cluster.summary_query(namespace="svc.market")
+                        items = list(getattr(response, "items", ()) or ())
+                        ensure(items, f"no summaries for call_with_summary: {response}")
+                        quote_summary = next(
+                            (
+                                s
+                                for s in items
+                                if getattr(s, "service_id", "") == "svc.market.quote"
+                            ),
+                            items[0],
+                        )
+                        out = await cluster.call_with_summary(
+                            quote_summary,
+                            "svc.market.quote",
+                            "AAPL",
+                            locs=frozenset(["market"]),
+                            function_id="market.quote",
+                            version_constraint=">=1.0.0",
+                            timeout=10.0,
+                        )
+                        ensure(
+                            isinstance(out, dict) and out.get("symbol") == "AAPL",
+                            f"call_with_summary unexpected {out!r}",
+                        )
+                        step(
+                            f"call_with_summary service_id="
+                            f"{getattr(quote_summary, 'service_id', '?')} "
+                            f"source_cluster="
+                            f"{getattr(quote_summary, 'source_cluster', None)}"
+                        )
+                        ok(f"call_with_summary → {out}")
 
             await run_with_servers(settings, _run)
 

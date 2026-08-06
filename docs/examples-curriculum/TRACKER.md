@@ -311,4 +311,8 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 
 **App count:** **96** (no new apps; platform DX + deepen).
 
+**Also in Phase N residual close:** `client.summary` / `call_with_summary`
+taught end-to-end in `discovery_watch_summary` (same-cluster path no longer
+forces fabric `target_cluster` from summary). FEATURE note un-partialed.
+
 **Program:** Phases A–N at **100%**.
