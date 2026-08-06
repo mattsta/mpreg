@@ -238,6 +238,13 @@ class StrongLocalBackend:
                     self.node_id, False, applied=False, reason="no_pending"
                 )
 
+            # Expired prepare must not become a late visible commit.
+            if pending.expires_at <= time.time():
+                del self._pending[op_id]
+                return CommitAck(
+                    self.node_id, False, applied=False, reason="expired"
+                )
+
             ks = self._key_str(pending.key)
             current = self._visible.get(ks)
             incoming = pending.strong_version
@@ -370,6 +377,15 @@ class StrongPutCoordinator:
         Q = majority_quorum(len(replica_set))
         oid = op_id or str(uuid.uuid4())
         logical_ts = self.local.next_logical_ts()
+        # Multi-origin sequential puts: wall-ms clocks often collide. Bump
+        # above any locally visible version for this key so LWW does not lose
+        # solely on origin_node tie-break after a peer-origin commit we hold.
+        existing = self.local.get_visible(key)
+        if existing is not None:
+            cur_sv = _entry_strong_version(existing)
+            if cur_sv is not None and logical_ts <= cur_sv.logical_ts:
+                logical_ts = cur_sv.logical_ts + 1
+                self.local._logical_ts = max(self.local._logical_ts, logical_ts)
         strong_version = StrongVersion(
             logical_ts=logical_ts, origin_node=self.origin_id, op_id=oid
         )

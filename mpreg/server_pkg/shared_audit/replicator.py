@@ -366,16 +366,43 @@ class SharedAuditReplicator:
 
 @dataclass(slots=True)
 class InProcessSharedAuditTransport:
-    """Deterministic inject transport for unit tests (drop/reorder capable)."""
+    """Deterministic inject transport for unit tests (drop/reorder/partition)."""
 
     peers: dict[str, SharedAuditReplicator] = field(default_factory=dict)
     drop_types: set[str] = field(default_factory=set)
     reorder_buffer: list[tuple[str, str, dict[str, Any]]] = field(default_factory=list)
     hold_reorder: bool = False
     sent: list[tuple[str, str, dict[str, Any]]] = field(default_factory=list)
+    # Bidirectional undirected partition edges: frozenset({a, b})
+    partitions: set[frozenset[str]] = field(default_factory=set)
+    # Unidirectional drops: (from_node, to_node)
+    drop_links: set[tuple[str, str]] = field(default_factory=set)
+    delay_s: float = 0.0
+    duplicate: bool = False
 
     def register(self, rep: SharedAuditReplicator) -> None:
         self.peers[rep.node_id] = rep
+
+    def partition(self, a: str, b: str) -> None:
+        """Cut bidirectional link between a and b."""
+        self.partitions.add(frozenset({a, b}))
+
+    def heal(self, a: str | None = None, b: str | None = None) -> None:
+        """Heal one link or all partitions when a/b omitted."""
+        if a is None or b is None:
+            self.partitions.clear()
+            self.drop_links.clear()
+            return
+        self.partitions.discard(frozenset({a, b}))
+        self.drop_links.discard((a, b))
+        self.drop_links.discard((b, a))
+
+    def _blocked(self, src: str, dst: str) -> bool:
+        if (src, dst) in self.drop_links:
+            return True
+        if frozenset({src, dst}) in self.partitions:
+            return True
+        return False
 
     async def send_epidemic(self, message_type: str, payload: dict[str, Any]) -> int:
         if message_type in self.drop_types:
@@ -384,14 +411,20 @@ class InProcessSharedAuditTransport:
         n = 0
         targets = [p for p in self.peers if p != sender]
         for peer_id in targets:
-            await self._deliver(peer_id, message_type, payload)
-            n += 1
+            if self._blocked(sender, peer_id):
+                continue
+            ok = await self._deliver(peer_id, message_type, payload)
+            if ok:
+                n += 1
         return n
 
     async def send_unicast(
         self, peer_id: str, message_type: str, payload: dict[str, Any]
     ) -> bool:
         if message_type in self.drop_types:
+            return False
+        sender = str(payload.get("from_node") or payload.get("requester_node") or "")
+        if sender and self._blocked(sender, peer_id):
             return False
         return await self._deliver(peer_id, message_type, payload)
 
@@ -402,10 +435,14 @@ class InProcessSharedAuditTransport:
         if self.hold_reorder:
             self.reorder_buffer.append((peer_id, message_type, payload))
             return True
+        if self.delay_s > 0:
+            await asyncio.sleep(self.delay_s)
         rep = self.peers.get(peer_id)
         if rep is None:
             return False
         await rep._handle_async(message_type, payload)
+        if self.duplicate:
+            await rep._handle_async(message_type, payload)
         return True
 
     async def flush_reorder(self) -> None:

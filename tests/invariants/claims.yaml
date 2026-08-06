@@ -186,6 +186,7 @@ encapsulation:
       watermarks monotonic; no resurrection below watermark; cross-cluster reject;
       gossip_eligible=false never leaves origin. Live multi-origin drain + late
       joiner backfill converge over real fabric gossip (same-host mesh).
+      In-process partition/heal + duplicate DELTA + outbound drop counters proven.
     proof: [L1, L2, L4]
     tests:
       - tests/server_pkg/test_shared_audit_store.py
@@ -194,28 +195,37 @@ encapsulation:
       - tests/invariants/test_shared_audit_properties.py
       - tests/integration/test_shared_audit_cluster.py
       - tests/integration/test_shared_audit_live_churn.py
+      - tests/chaos/test_shared_audit_chaos.py
+      - tests/integration/test_strong_audit_coexistence.py
   - id: INV-CACHE-STRONG-01
     claim: >
       When cache_strong_enabled, GlobalCacheManager ConsistencyLevel.STRONG put
       uses a majority-commit barrier (Q = floor(N/2)+1 COMMIT_ACKs, origin-commit-last);
       failed puts ABORT-uncommit peer+origin L1 for op_id (residual-free). Peer
       commits bridge into GCM L1 (on_visible_apply) so gcm.get works on every
-      committer. Disabled path remains error_code 1012. Operational codes
-      1015–1018. Pending invisible; LWW abort-safe; concurrent puts leave no
-      dirty pending. Live 3-node ServerCacheTransport RR + peer-loss residual
-      proven on same-host mesh. Bounded single-key history checker (not Jepsen).
-      Adversarial ACK / cluster mismatch fail-closed (not BFT).
+      committer. Expired pending rejects commit (reason=expired); server runs
+      best-effort pending purge loop. Multi-origin LWW bumps logical_ts above
+      local visible version. Disabled path remains error_code 1012. Operational
+      codes 1015–1018. Pending invisible; LWW abort-safe; concurrent puts leave
+      no dirty pending. Live 3-node ServerCacheTransport RR + peer-loss residual
+      + multi-origin concurrent keys + STRONG/audit coexistence on same-host mesh.
+      Chaos harness: partition/heal/drop/delay/dup. Bounded single-key history
+      checker (not Jepsen). Adversarial ACK / handler fuzz fail-closed (not BFT).
     proof: [L1, L2, L4]
     tests:
       - tests/core/test_cache_strong.py
       - tests/core/test_cache_strong_gcm.py
       - tests/core/test_cache_strong_gcm_bridge.py
       - tests/core/test_cache_strong_adversarial.py
+      - tests/core/test_cache_strong_handler_fuzz.py
       - tests/chaos/test_t9_residuals.py
+      - tests/chaos/test_strong_chaos_stress.py
+      - tests/chaos/harness_strong_audit.py
       - tests/invariants/test_cache_strong_properties.py
       - tests/invariants/test_cache_strong_history.py
       - tests/integration/test_cache_strong_quorum.py
       - tests/integration/test_cache_strong_live_mesh.py
+      - tests/integration/test_strong_audit_coexistence.py
 
 non_claims:
   - "Atomic multi-store fabric snapshot save (catalog+keys single blob); restore has COR-10 rollback on key failure"
@@ -231,6 +241,8 @@ non_claims:
   - "STRONG put residual proofs use process stop + drop injectors — not kernel/iptables partitions or OS kill -9 + cold restart durability"
   - "Bounded single-key STRONG history checker is not Jepsen/Elle WAN linearizability"
   - "Adversarial STRONG peer tests prove fail-closed ACKs only — not Byzantine fault tolerance under a quorum of liars"
+  - "STRONG pending TTL purge is best-effort wall-clock GC — not Byzantine time sync or crash-restart durability"
+  - "Lying COMMIT_ACK applied bits can satisfy CFT quorum math without peer L1 apply — documented non_claim (not BFT)"
   - "Shared audit is not a SIEM / infinite retention store; bounded per-origin watermark window"
   - "Shared audit is not BFT and not multi-tenant isolation beyond cluster_id reject"
   - "Shared audit live churn is same-host multi-process mesh — not WAN epidemic under sustained partition"

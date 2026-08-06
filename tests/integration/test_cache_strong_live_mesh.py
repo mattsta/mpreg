@@ -232,6 +232,61 @@ async def test_live_strong_mid_put_peer_kill_no_dirty_pending(
             assert got.entry.value == {"mid": True}
 
 @pytest.mark.asyncio
+async def test_live_concurrent_multi_origin_different_keys(
+    test_context: AsyncTestContext,
+) -> None:
+    """Three origins put different keys concurrently over live wire."""
+    with port_range_context(3, "servers") as ports:
+        url0 = f"ws://127.0.0.1:{ports[0]}"
+        servers = [
+            MPREGServer(_strong_settings(ports[0], "C0")),
+            MPREGServer(_strong_settings(ports[1], "C1", peers=[url0])),
+            MPREGServer(_strong_settings(ports[2], "C2", peers=[url0])),
+        ]
+        test_context.servers.extend(servers)
+        tasks = [asyncio.create_task(s.server()) for s in servers]
+        test_context.tasks.extend(tasks)
+
+        await asyncio.sleep(1.0)
+        await _wait_peers(servers)
+
+        async def _put(idx: int):
+            s = servers[idx]
+            k = GlobalCacheKey(
+                namespace="strong-live",
+                identifier=f"ck{idx}",
+                version="v1",
+            )
+            return k, await s._cache_manager.put(
+                k,
+                {"origin": idx},
+                options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
+            )
+
+        results = await asyncio.gather(*[_put(i) for i in range(3)])
+        successes = 0
+        for k, res in results:
+            if res.success:
+                successes += 1
+                # Origin (and committers) should see via GCM
+                for s in servers:
+                    if s.cluster.local_url in (res.quorum_info or {}).get(
+                        "commit_acks", []
+                    ):
+                        got = await s._cache_manager.get(k)
+                        assert got.success and got.entry is not None
+            else:
+                # Residual-free on all backends
+                for s in servers:
+                    be = s._strong_local_backend
+                    assert be.pending_count() == 0
+                    if res.operation_id and be.get_visible(k) is not None:
+                        from mpreg.core.cache_strong import _entry_op_id
+
+                        assert _entry_op_id(be.get_visible(k)) != res.operation_id
+        assert successes >= 1
+
+@pytest.mark.asyncio
 async def test_live_strong_disabled_still_1012(
     test_context: AsyncTestContext,
 ) -> None:

@@ -1621,6 +1621,7 @@ class MPREGServer:
     _shared_audit_store: Any = field(init=False, default=None)
     _shared_audit_replicator: Any = field(init=False, default=None)
     _strong_local_backend: Any = field(init=False, default=None)
+    _strong_pending_purge_task: Any = field(init=False, default=None)
     _queue_rpc_registered: bool = field(init=False, default=False)
     _cache_rpc_registered: bool = field(init=False, default=False)
     _dns_gateway: Any = field(init=False, default=None)
@@ -5139,6 +5140,7 @@ class MPREGServer:
                         ),
                     )
                     cache_manager.attach_strong_coordinator(coord)
+                    self._start_strong_pending_purge_loop()
                     logger.info(
                         "[{}] ConsistencyLevel.STRONG majority-commit enabled "
                         "(lab_single_node={})",
@@ -11982,6 +11984,45 @@ class MPREGServer:
             shared_enabled=store is not None,
             health=health,
         )
+
+    def _start_strong_pending_purge_loop(self) -> None:
+        """Periodically drop expired STRONG prepare slots (wall-clock TTL).
+
+        Prevents abandoned prepares from filling ``max_pending`` forever.
+        Not a durability or Byzantine-time guarantee — best-effort local GC.
+        """
+        if getattr(self, "_strong_pending_purge_task", None) is not None:
+            return
+        backend = getattr(self, "_strong_local_backend", None)
+        if backend is None or not hasattr(backend, "purge_expired_pending"):
+            return
+        ttl = float(
+            getattr(self.settings, "cache_strong_pending_ttl_s", 30.0) or 30.0
+        )
+        interval = max(0.5, min(ttl / 3.0, 5.0))
+
+        async def _purge_loop() -> None:
+            while True:
+                try:
+                    await asyncio.sleep(interval)
+                    be = getattr(self, "_strong_local_backend", None)
+                    if be is None:
+                        return
+                    be.purge_expired_pending()
+                except asyncio.CancelledError:
+                    raise
+                except Exception:  # noqa: BLE001
+                    pass
+
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        task = loop.create_task(
+            _purge_loop(), name=f"strong-pending-purge-{self.settings.name}"
+        )
+        self._strong_pending_purge_task = task
+        self._track_background_task(task)
 
     def _start_shared_audit_replicator(self) -> None:
         """Bind SharedAuditReplicator to fabric gossip transport."""

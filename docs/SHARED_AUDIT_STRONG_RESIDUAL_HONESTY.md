@@ -88,3 +88,21 @@ history. **Now** those scoped residuals have tests and one production bug
 (peer L1 blind spot + dead audit handler on slots) was fixed because of them.
 Still **not** claimed: WAN/process-kill-9/disk durability, BFT, full Jepsen/Elle,
 kernel partitions.
+
+## Phase 2 — Hardening plan (2026-08-06)
+
+Full ~120-point plan: `docs/SHARED_AUDIT_STRONG_HARDENING_PLAN.md`.
+
+| Item | Result |
+| --- | --- |
+| Chaos harness | `tests/chaos/harness_strong_audit.py` — partition/delay/drop/dup/malice |
+| STRONG stress | 5-node majority, soak, multi-key concurrent, Hypothesis drops/history |
+| Expired commit reject | `StrongLocalBackend.commit` → `reason=expired` |
+| Server pending purge | `_start_strong_pending_purge_loop` best-effort wall-clock GC |
+| Multi-origin LWW | Coordinator bumps `logical_ts` above local visible version |
+| Handler fuzz | Bad payloads / cluster mismatch never raise; BFT non_claim documented |
+| Audit chaos | Partition/heal, dup DELTA, ineligible, outbound drops, watermark |
+| Live expand | Multi-origin concurrent keys + STRONG∥audit coexistence |
+| Architecture bugs fixed by tests | LWW same-ms multi-origin soak failure → ts bump |
+
+Still **not** claimed: WAN, kill-9 cold restart, fsync, BFT, Jepsen/Elle, kernel partitions.
