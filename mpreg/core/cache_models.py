@@ -204,3 +204,7 @@ class CacheOperationResult:
     performance: CachePerformanceMetrics | None = None
     error_message: str | None = None
     operation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    # Structured codes (e.g. STRONG 1015–1018 / 1012 refuse). Optional additive.
+    error_code: int | None = None
+    # Quorum barrier diagnostics for ConsistencyLevel.STRONG puts.
+    quorum_info: dict[str, Any] | None = None
