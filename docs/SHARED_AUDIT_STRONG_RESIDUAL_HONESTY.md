@@ -117,10 +117,21 @@ test helpers.
 | Surface | Path |
 | --- | --- |
 | Product | `mpreg/testing/distlab/` |
-| Plans (7×25) | `docs/DISTLAB_AND_SEVEN_TRACKS.md` |
+| Plans (7×25 summary) | `docs/DISTLAB_AND_SEVEN_TRACKS.md` |
+| Master plan (7×~60 pts) | `docs/plans/DISTLAB_SEVEN_TRACK_MASTER_PLAN.md` |
 | Core self-tests | `tests/testing/test_distlab_core.py` |
+| Registry/CLI/generators | `tests/testing/test_distlab_registry.py` |
 | STRONG scenarios | `tests/testing/test_distlab_strong_scenarios.py` |
 | Audit scenarios | `tests/testing/test_distlab_audit_scenarios.py` |
+| Live mesh DistLab | `tests/testing/test_distlab_live.py` |
+| CLI | `python -m mpreg.testing.distlab list\|run` |
 | Re-export | `tests/harness` |
+
+## Phase 4 — Seven-track expansion complete (2026-08-06)
+
+Official master plan executed: generator + registry + live helpers + CLI,
+full in-process STRONG/audit scenario catalog, live same-host DistLab suite,
+claims/docs gate. See `docs/plans/DISTLAB_SEVEN_TRACK_MASTER_PLAN.md` status
+dashboard (T1–T7 complete).
 
 DistLab is **Jepsen-inspired, not Jepsen**. See claims.yaml non_claims.

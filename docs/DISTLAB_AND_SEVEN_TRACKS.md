@@ -2,10 +2,11 @@
 
 | Field | Value |
 | --- | --- |
-| **Status** | Active — first-party DistLab product + seven hardening tracks |
+| **Status** | Complete — expanded in official master plan |
 | **Date** | 2026-08-06 |
 | **Product** | `mpreg.testing.distlab` |
 | **Honesty** | Jepsen-inspired, **not** Elle/WAN/BFT/kernel partitions |
+| **Master plan** | `docs/plans/DISTLAB_SEVEN_TRACK_MASTER_PLAN.md` (~420 pts, T1–T7) |
 
 ## DistLab product (platform tests the platform)
 
@@ -17,6 +18,10 @@ DistLab is a **first-party** distributed testing lab inside MPREG:
 | Checkers | `distlab/checker.py` | Residual-free, LWW register, G-Set, agreement, composite |
 | Nemesis | `distlab/nemesis.py` | Scheduled faults via FaultInjector hooks |
 | Scenario | `distlab/scenario.py` | Setup → clients → nemesis → check → teardown |
+| Generator | `distlab/generator.py` | Sequential/concurrent puts, audit burst, fault plans |
+| Registry | `distlab/registry.py` + `builtins.py` | Named scenario catalog |
+| Live | `distlab/live.py` | Same-host MPREGServer helpers + LiveStrongSUT |
+| CLI | `python -m mpreg.testing.distlab` | list / catalog / run |
 | STRONG SUT | `distlab/adapters/strong.py` | In-process majority-commit mesh |
 | Audit SUT | `distlab/adapters/audit.py` | In-process G-Set epidemic mesh |
 | Re-export | `tests/harness` | Single import surface for suites |

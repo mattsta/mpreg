@@ -148,3 +148,131 @@ def test_check_result_raise() -> None:
     )
     with pytest.raises(AssertionError, match="boom"):
         r.raise_if_failed()
+
+def test_history_by_key_and_unmatched() -> None:
+    h = History()
+    h.invoke("c0", OpKind.PUT, key="a", value=1)
+    h.ok("c0", OpKind.PUT, key="a", value=1, op_id="a1")
+    h.invoke("c1", OpKind.PUT, key="b", value=2)
+    # unmatched invoke on b
+    assert [e.key for e in h.by_key("a")] == ["a", "a"]
+    pairs = h.pairs()
+    open_pairs = [p for p in pairs if p[1] is None]
+    assert len(open_pairs) == 1
+    assert open_pairs[0][0].key == "b"
+
+def test_replica_agreement_majority_null_ok() -> None:
+    from mpreg.testing.distlab.checker import ReplicaAgreementChecker
+
+    class St:
+        def replica_views(self, key: str):
+            return {"n0": ("v", "op"), "n1": ("v", "op"), "n2": None}
+
+    h = History()
+    h.invoke("c", OpKind.PUT, key="k", value="v", op_id="op")
+    h.ok("c", OpKind.PUT, key="k", value="v", op_id="op")
+    r = ReplicaAgreementChecker().check(h, state=St())
+    assert r.ok is True
+
+def test_replica_agreement_conflict_fail() -> None:
+    from mpreg.testing.distlab.checker import ReplicaAgreementChecker
+
+    class St:
+        def replica_views(self, key: str):
+            return {"n0": ("v1", "op1"), "n1": ("v2", "op2"), "n2": ("v1", "op1")}
+
+    h = History()
+    h.invoke("c", OpKind.PUT, key="k", value="v1", op_id="op1")
+    h.ok("c", OpKind.PUT, key="k", value="v1", op_id="op1")
+    r = ReplicaAgreementChecker().check(h, state=St())
+    assert r.ok is False
+
+def test_gset_checker_eligible_false_ignored() -> None:
+    from mpreg.testing.distlab.checker import GSetConvergenceChecker
+
+    class St:
+        def gset_ids_by_node(self):
+            return {"a0": {"e1"}, "a1": {"e1"}}
+
+    h = History()
+    h.invoke("c", OpKind.AUDIT_PUBLISH, meta={"eligible": False})
+    h.ok("c", OpKind.AUDIT_PUBLISH, op_id="secret", meta={"eligible": False})
+    h.invoke("c2", OpKind.AUDIT_PUBLISH, meta={"eligible": True})
+    h.ok("c2", OpKind.AUDIT_PUBLISH, op_id="e1", meta={"eligible": True})
+    r = GSetConvergenceChecker(min_ids=1).check(h, state=St())
+    assert r.ok is True
+
+def test_callable_checker_plugin() -> None:
+    from mpreg.testing.distlab import CallableChecker
+
+    def fn(history: History, state=None) -> CheckResult:
+        return CheckResult(name="plugin", ok=True, stats={"n": len(history)})
+
+    h = History()
+    h.invoke("c", OpKind.BARRIER)
+    h.ok("c", OpKind.BARRIER)
+    r = CallableChecker(name="plugin", fn=fn).check(h)
+    assert r.ok and r.stats["n"] == 2
+
+def test_nemesis_actions_matrix() -> None:
+    target = NullNemesisTarget(nodes=["n0", "n1", "n2"])
+    h = History()
+    for act in (
+        NemesisAction.PARTITION_ONE,
+        NemesisAction.PARTITION_MAJORITY,
+        NemesisAction.HEAL,
+        NemesisAction.DROP_RATE,
+        NemesisAction.CLEAR_RATES,
+        NemesisAction.DELAY,
+        NemesisAction.CRASH_ONE,
+        NemesisAction.RECOVER_ALL,
+    ):
+        nem = Nemesis(target=target, history=h, seed=3, actions=[act])
+        assert nem.step_once() is act
+
+@pytest.mark.asyncio
+async def test_scenario_non_strict_returns_ok_false() -> None:
+    async def body(history: History, sut: object) -> None:
+        history.invoke("c", OpKind.PUT, key="k", value=1)
+
+    sc = Scenario(
+        name="ns",
+        body=body,
+        checker=NoOpenInvokeChecker(),
+        strict=False,
+    )
+    r = await sc.run()
+    assert r.ok is False
+
+@pytest.mark.asyncio
+async def test_scenario_suite_stop_on_fail() -> None:
+    from mpreg.testing.distlab import ScenarioSuite
+
+    async def bad(history: History, sut: object) -> None:
+        history.invoke("c", OpKind.PUT, key="k", value=1)
+
+    async def good(history: History, sut: object) -> None:
+        history.invoke("c", OpKind.BARRIER)
+        history.ok("c", OpKind.BARRIER)
+
+    suite = ScenarioSuite(name="s")
+    suite.add(
+        Scenario(name="bad", body=bad, checker=NoOpenInvokeChecker(), strict=True)
+    )
+    suite.add(
+        Scenario(name="good", body=good, checker=NoOpenInvokeChecker(), strict=True)
+    )
+    with pytest.raises(AssertionError):
+        await suite.run_all(stop_on_fail=True)
+
+@pytest.mark.asyncio
+async def test_history_concurrent_append() -> None:
+    h = History()
+
+    async def worker(n: int) -> None:
+        for i in range(20):
+            h.invoke(f"p{n}", OpKind.BARRIER)
+            h.ok(f"p{n}", OpKind.BARRIER)
+
+    await asyncio.gather(*[worker(i) for i in range(4)])
+    assert len(h) == 160

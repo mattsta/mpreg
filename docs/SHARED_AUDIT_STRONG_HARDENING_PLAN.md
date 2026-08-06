@@ -217,3 +217,9 @@ When an expected invariant fails:
 
 Examples already fixed in Phase 1: peer L1 blind spot; gossip slots handler;
 connected-only epidemic + re-queue.
+
+## 13. DistLab seven-track master plan
+
+Full expansion (generator, registry, live DistLab, ~420 pts across T1–T7) is
+tracked in **`docs/plans/DISTLAB_SEVEN_TRACK_MASTER_PLAN.md`**. Residual honesty
+Phase 3–4: `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`.

@@ -200,3 +200,34 @@ async def test_distlab_audit_nemesis_then_converge() -> None:
         checker=default_audit_checkers(min_ids=12),
         strict=True,
     ).run()
+
+@pytest.mark.asyncio
+async def test_distlab_registry_audit_subset() -> None:
+    from mpreg.testing.distlab import ensure_builtins, get_registry
+
+    ensure_builtins()
+    reg = get_registry()
+    for name in (
+        "audit.multi_origin",
+        "audit.burst_30",
+        "audit.partition_heal",
+        "audit.digest_repair",
+        "audit.ineligible_local",
+        "audit.duplicate_idempotent",
+    ):
+        r = await reg.run(name)
+        assert r.ok, f"{name} failed: {r.check.violations}"
+
+@pytest.mark.asyncio
+async def test_distlab_audit_burst_100() -> None:
+    from mpreg.testing.distlab.generator import AuditBurst
+
+    sut = AuditSUT.create(3)
+    r = await Scenario(
+        name="audit-burst-100",
+        setup=lambda: sut,
+        body=AuditBurst(sut=sut, n=100, prefix="bb").as_body(),
+        checker=default_audit_checkers(min_ids=100),
+        strict=True,
+    ).run()
+    assert r.ok

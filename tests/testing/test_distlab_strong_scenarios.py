@@ -366,3 +366,178 @@ async def test_distlab_strong_not_bft_lie_commit_documented() -> None:
             history, state=sut.snapshot_state()
         )
         assert r.ok, r.violations
+
+@pytest.mark.asyncio
+async def test_distlab_strong_happy_7() -> None:
+    sut = _sut(7, prepare_timeout_s=0.8, commit_timeout_s=0.8)
+
+    async def body(history: History, s: StrongSUT) -> None:
+        res = await s.put(
+            history, process="c0", origin="n0", logical_key="k7", value=7
+        )
+        assert res.success
+        assert res.quorum_info and res.quorum_info["quorum"] == 4
+
+    await Scenario(
+        name="strong-happy-7",
+        setup=lambda: sut,
+        body=body,
+        checker=default_strong_checkers(key="k7"),
+        strict=True,
+    ).run()
+
+@pytest.mark.asyncio
+async def test_distlab_strong_drop_commit_residual() -> None:
+    sut = _sut(3)
+    sut.transport.drop_commit |= {"n1", "n2"}
+
+    async def body(history: History, s: StrongSUT) -> None:
+        res = await s.put(
+            history, process="c0", origin="n0", logical_key="dc", value=1
+        )
+        assert res.success is False
+
+    await Scenario(
+        name="strong-drop-commit",
+        setup=lambda: sut,
+        body=body,
+        checker=default_strong_checkers(key="dc"),
+        strict=True,
+    ).run()
+
+@pytest.mark.asyncio
+async def test_distlab_strong_fail_prepare_and_wrong_cluster() -> None:
+    for malice, key in (
+        ("fail_prepare", "fp"),
+        ("wrong_cluster", "wc"),
+    ):
+        sut = _sut(3)
+        getattr(sut.transport, malice).update({"n1", "n2"})
+
+        async def body(history: History, s: StrongSUT, k=key) -> None:
+            res = await s.put(
+                history, process="c0", origin="n0", logical_key=k, value=1
+            )
+            assert res.success is False
+
+        await Scenario(
+            name=f"strong-{malice}",
+            setup=lambda s=sut: s,
+            body=body,
+            checker=default_strong_checkers(key=key),
+            strict=True,
+        ).run()
+
+@pytest.mark.asyncio
+async def test_distlab_strong_duplicate_commit_idempotent() -> None:
+    sut = _sut(3)
+    sut.transport.duplicate_commit = True
+
+    async def body(history: History, s: StrongSUT) -> None:
+        res = await s.put(
+            history, process="c0", origin="n0", logical_key="dup", value="d"
+        )
+        assert res.success
+
+    await Scenario(
+        name="strong-dup",
+        setup=lambda: sut,
+        body=body,
+        checker=default_strong_checkers(key="dup"),
+        strict=True,
+    ).run()
+
+@pytest.mark.asyncio
+async def test_distlab_strong_interleaved_fault_success() -> None:
+    sut = _sut(3)
+
+    async def body(history: History, s: StrongSUT) -> None:
+        s.transport.drop_prepare |= {"n1", "n2"}
+        bad = await s.put(
+            history, process="c0", origin="n0", logical_key="inter", value="bad"
+        )
+        assert bad.success is False
+        s.transport.clear_malice()
+        good = await s.put(
+            history, process="c0", origin="n0", logical_key="inter", value="good"
+        )
+        assert good.success is True
+
+    await Scenario(
+        name="strong-inter",
+        setup=lambda: sut,
+        body=body,
+        checker=default_strong_checkers(key="inter"),
+        strict=True,
+    ).run()
+
+@pytest.mark.asyncio
+async def test_distlab_strong_delay_within_timeout() -> None:
+    sut = _sut(3, prepare_timeout_s=1.0, commit_timeout_s=1.0)
+    sut.transport.delay_override_s = 0.05
+
+    async def body(history: History, s: StrongSUT) -> None:
+        res = await s.put(
+            history, process="c0", origin="n0", logical_key="dlay", value=1
+        )
+        assert res.success
+
+    await Scenario(
+        name="strong-delay",
+        setup=lambda: sut,
+        body=body,
+        checker=default_strong_checkers(key="dlay"),
+        strict=True,
+    ).run()
+
+@pytest.mark.asyncio
+async def test_distlab_registry_strong_subset() -> None:
+    from mpreg.testing.distlab import ensure_builtins, get_registry
+
+    ensure_builtins()
+    reg = get_registry()
+    for name in (
+        "strong.happy_3",
+        "strong.partition_majority",
+        "strong.heal",
+        "strong.drop_prepare",
+        "strong.interleaved_fault_success",
+        "strong.lie_prepare",
+        "strong.not_bft_lie_commit_both",
+    ):
+        r = await reg.run(name)
+        assert r.ok, f"{name} failed: {r.check.violations}"
+
+@given(seed=st.integers(0, 50))
+@settings(max_examples=8, deadline=None)
+def test_distlab_hypothesis_partition_heal(seed: int) -> None:
+    async def _run() -> None:
+        sut = _sut(3, seed=seed)
+        hooks = sut.nemesis_hooks()
+        target = FaultInjectorNemesisTarget(
+            injector=hooks["injector"],
+            nodes=list(hooks["nodes"]),
+            on_partition=hooks["on_partition"],
+            on_heal=hooks["on_heal"],
+            on_crash=hooks["on_crash"],
+            on_recover=hooks["on_recover"],
+            on_drop_rate=hooks["on_drop_rate"],
+            on_delay=hooks["on_delay"],
+        )
+        target.apply_partition_groups([{"n0"}, {"n1", "n2"}])
+        history = History()
+        bad = await sut.put(
+            history, process="c0", origin="n0", logical_key="ph", value=0
+        )
+        assert bad.success is False
+        target.heal_network()
+        good = await sut.put(
+            history, process="c0", origin="n0", logical_key="ph", value=1
+        )
+        assert good.success is True
+        r = default_strong_checkers(key="ph").check(
+            history, state=sut.snapshot_state()
+        )
+        assert r.ok, r.violations
+
+    asyncio.run(_run())

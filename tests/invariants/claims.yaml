@@ -198,6 +198,8 @@ encapsulation:
       - tests/chaos/test_shared_audit_chaos.py
       - tests/integration/test_strong_audit_coexistence.py
       - tests/testing/test_distlab_audit_scenarios.py
+      - tests/testing/test_distlab_registry.py
+      - tests/testing/test_distlab_live.py
   - id: INV-CACHE-STRONG-01
     claim: >
       When cache_strong_enabled, GlobalCacheManager ConsistencyLevel.STRONG put
@@ -229,6 +231,8 @@ encapsulation:
       - tests/integration/test_strong_audit_coexistence.py
       - tests/testing/test_distlab_strong_scenarios.py
       - tests/testing/test_distlab_core.py
+      - tests/testing/test_distlab_registry.py
+      - tests/testing/test_distlab_live.py
 
 non_claims:
   - "Atomic multi-store fabric snapshot save (catalog+keys single blob); restore has COR-10 rollback on key failure"
