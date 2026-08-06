@@ -30,7 +30,16 @@ ulimit -n 1048576   # macOS/Linux shells as permitted
 uv run mpreg profile list
 uv run mpreg profile path dev
 uv run mpreg config-check $(uv run mpreg profile path dev)
+# Human field guide for each settings group (Phase Q ERG):
+uv run mpreg config-check $(uv run mpreg profile path dev) --explain
 ```
+
+### Server metrics fabric hops (Phase Q/S)
+
+`ServerMetricsTracker.snapshot()["fabric"]` exposes route-decision hop stats:
+`decisions_total`, `decisions_buffered`, `blackhole_count`, `reachable_ratio`,
+`avg_hops`, `max_hops`. Curriculum apps pretty-print via
+`format_server_snapshot()` (Phase S).
 
 ### Settings in examples
 

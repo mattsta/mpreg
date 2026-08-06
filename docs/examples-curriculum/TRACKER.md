@@ -420,3 +420,23 @@ Only active delivery queue. Mirrors PROJECT_PLAN Phase Q table.
 **App count:** **97**.
 
 **Program:** Phases A–R at **100%**.
+
+## Phase S — Sequential polish residuals (COMPLETE)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| format_server_snapshot fabric hop block | [x] | obs.py |
+| OPERATE config-check --explain | [x] | |
+| TopicAware/Enhanced W3C converters | [x] | + unit tests |
+| API_FRICTION Phase S closes | [x] | |
+| unit 112 + suite 97/97 | [x] | |
+
+## Phase T — Sequential docs integrity + coverage (COMPLETE)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| STAGES/TRACKER/catalog truth | [x] | |
+| format_server_snapshot unit | [x] | tests/test_format_server_snapshot_fabric.py |
+| OPERATE fabric hop fields | [x] | |
+| verify + commit | [x] | unit 114; suite 97/97 |
+

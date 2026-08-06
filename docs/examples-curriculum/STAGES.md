@@ -281,3 +281,30 @@ feature constants = 0.
 
 Full MPREGClient ↔ MPREGClientAPI async method parity (dns, namespace,
 resolver, summary_watch, discovery_access_audit). Teach + admin audit CLI.
+
+## Phase R — Sequential unified façade parity (COMPLETE)
+
+Full MPREGClient ↔ MPREGClientAPI async method parity (dns, namespace,
+resolver, summary_watch, discovery_access_audit). Teach + admin audit CLI.
+
+Exit: **97** suite apps.
+
+## Phase S — Sequential polish residuals (COMPLETE)
+
+1. `format_server_snapshot` prints fabric hop block (avg/max hops, decisions)
+2. OPERATE.md documents `config-check --explain`
+3. TopicAwareRPCResponse + EnhancedRPCResponse preserve W3C fields on convert
+4. API_FRICTION Phase S closes
+
+Exit: **97** suite apps; unit converters green.
+
+## Phase T — Sequential docs integrity + coverage (COMPLETE)
+
+Linear continuation after S:
+
+1. STAGES/TRACKER/FEATURE_CATALOG/API_FRICTION truth through Phase S (97 apps)
+2. Unit test for `format_server_snapshot` fabric hop line
+3. OPERATE.md server-metrics fabric hop fields
+
+Exit: **97** suite apps; docs integrity green.
+

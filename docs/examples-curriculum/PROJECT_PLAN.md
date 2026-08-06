@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase R COMPLETE — sequential unified façade parity; 97 apps)  
+**Last updated:** 2026-08-05 (Phase T COMPLETE — docs integrity + coverage)  
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -38,6 +38,8 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G23 | **Multi-axis platform charter (Phase P)** | CAP/CORRECT/USE/OBS/ERG/PERF improvements shipped + taught | [x] Phase P |
 | G24 | **Single sequential continuation (Phase Q)** | Post-P backlog linearized; execute Q1→Qn without idle stop | [x] Phase Q |
 | G25 | **Sequential façade parity (Phase R)** | Remaining MPREGClientAPI methods on MPREGClient + teach | [x] Phase R |
+| G26 | **Sequential polish residuals (Phase S)** | OBS print/docs + response converters keep W3C | [x] Phase S |
+| G27 | **Sequential docs integrity + coverage (Phase T)** | STAGES/TRACKER/catalog truth + snapshot unit | [x] Phase T |
 
 ---
 
@@ -54,8 +56,8 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | Feature constants uncovered by APP_FEATURES | **0** |
 | Branch vs origin | main ahead local only (no push unless asked) |
 | Last new-app validation | Phase O deepen (trace bind + gossip) |
-| Last unit | `pytest tests/examples_apps -m unit` → **111 passed** |
-| Last full suite | **96/96 passed** |
+| Last unit | converters + snapshot fabric + examples_apps unit → **114 passed** |
+| Last full suite | **97/97 passed** |
 | Phase G | **COMPLETE** — DX fixes + ExampleProbe + 8 apps obs-proven |
 | Phase H | **COMPLETE** — FQN ns-deny + Med friction + universal probe |
 | Phase I | **COMPLETE** — residual Info polish + FQN curriculum + catalog sync |
@@ -68,6 +70,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | Phase P | **COMPLETE** — multi-axis CAP/OBS/ERG/PERF + discovery façade |
 | Phase Q | **COMPLETE** — single sequential post-P backlog execution |
 | Phase R | **COMPLETE** — unified client full API parity |
+| Phase S | **COMPLETE** — polish residuals |
 
 ### Thin backlog
 
@@ -889,6 +892,48 @@ Continues the single linear queue after Q. No parallel charters.
 | R6 | VERIFY | unit + suite + feature-join + commit | [x] |
 
 **Exit:** all R rows `[x]`; suite green.
+
+### Phase S — Sequential polish residuals (**COMPLETE**)
+
+| # | Axis | Work | Status |
+|---|------|------|--------|
+| S0 | PLAN | Append after R; sole active queue | [x] |
+| S1 | OBS | `format_server_snapshot` prints fabric hop block | [x] |
+| S2 | ERG | OPERATE.md documents `config-check --explain` | [x] |
+| S3 | CORRECT | enhanced_rpc TopicAware to_rpc_response preserve W3C | [x] |
+| S4 | CORRECT | intermediate_results to_rpc_response preserve W3C | [x] |
+| S5 | USE | FEATURE_CATALOG / friction Phase R/S truth | [x] |
+| S6 | VERIFY | unit + suite + commit | [x] |
+
+**Exit:** all S `[x]`; suite 97/97; unit 112; converters preserve W3C.
+
+**Phase S (sequential polish residuals): COMPLETE 100%.**
+`format_server_snapshot` fabric hop print; OPERATE `--explain`; TopicAware +
+Enhanced RPC converters keep traceparent/tracestate/headers; friction closes.
+**97** apps.
+
+### Phase T — Sequential docs integrity + coverage residuals (**COMPLETE**)
+
+Continues the single linear queue after S. No parallel charters. No idle audit.
+
+| # | Axis | Work | Status |
+|---|------|------|--------|
+| T0 | PLAN | Append after S; sole active queue | [x] |
+| T1 | USE | STAGES.md + TRACKER.md Phase S/R/Q truth + 97 apps | [x] |
+| T2 | USE | FEATURE_CATALOG / baseline stale 96→97 where still wrong | [x] |
+| T3 | CORRECT | Unit test `format_server_snapshot` fabric hop line | [x] |
+| T4 | OBS | OPERATE.md notes server-metrics fabric hop fields | [x] |
+| T5 | USE | API_FRICTION header date + open=0 truth | [x] |
+| T6 | VERIFY | unit + suite + commit; then only extend this table | [x] |
+
+**Exit:** all T `[x]`.
+
+**Phase T (docs integrity + coverage): COMPLETE 100%.**
+STAGES/TRACKER/catalog/friction truth; `format_server_snapshot` unit; OPERATE
+fabric hop fields. **97** apps.
+
+Deferred (topology/product scale only — not active queue): multi-node shared
+audit store, full mgmt UI, remote SQL/other stores backends, multi-continent SLA.
 
 ---
 

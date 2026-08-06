@@ -382,7 +382,7 @@ API_FRICTION open curriculum rows → **0**.
 
 **Closed in Phase M (2026-08-05):** residual FEATURE partials —
 `ops_cli_tour` deepened (planes/ns/discovery CLI); `pubsub_fabric_forward_lab`.
-**96** apps. FEATURE_CATALOG teachable `partial` rows → **0**.
+**97** apps (through Phase S). FEATURE_CATALOG teachable `partial` rows → **0**.
 
 **Still open / residual (operator topology — not curriculum blockers):**
 
@@ -393,6 +393,11 @@ API_FRICTION open curriculum rows → **0**.
 apps that already teach them; FQN features `rpc.fqn` /
 `rpc.namespace_deny` / `rpc.bound_namespace` via `rpc_fqn_namespace`; residual
 Info friction F13/F15/F16/F19 closed or documented.
+
+**Closed in Phase Q–S (2026-08-05):** single sequential multi-axis continuation —
+client.summary join; config-check `--explain`; fabric hop snapshot; mgmt audit
+teach; full MPREGClient façade parity; W3C converters; format_server_snapshot
+fabric print. **97** apps.
 
 Usability findings from building these apps: [API_FRICTION.md](./API_FRICTION.md).
 

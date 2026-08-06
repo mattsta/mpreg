@@ -184,6 +184,11 @@ class EnhancedRPCResponse:
     error: Any = None  # Keep as Any for compatibility
     u: str = ""
 
+    # W3C Trace Context (Phase S)
+    traceparent: str | None = None
+    tracestate: str | None = None
+    headers: dict[str, Any] = field(default_factory=dict)
+
     # Enhanced debugging fields
     intermediate_results: list[RPCIntermediateResult] = field(default_factory=list)
     execution_summary: RPCExecutionSummary | None = None
@@ -200,13 +205,23 @@ class EnhancedRPCResponse:
             r=response.r,
             error=response.error,
             u=response.u,
+            traceparent=getattr(response, "traceparent", None),
+            tracestate=getattr(response, "tracestate", None),
+            headers=dict(getattr(response, "headers", None) or {}),
             intermediate_results=intermediate_results or [],
             execution_summary=execution_summary,
         )
 
     def to_rpc_response(self) -> RPCResponse:
         """Convert back to standard RPC response for compatibility."""
-        return RPCResponse(r=self.r, error=self.error, u=self.u)
+        return RPCResponse(
+            r=self.r,
+            error=self.error,
+            u=self.u,
+            traceparent=self.traceparent,
+            tracestate=self.tracestate,
+            headers=dict(self.headers or {}),
+        )
 
     @property
     def has_intermediate_results(self) -> bool:

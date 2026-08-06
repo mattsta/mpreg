@@ -4,7 +4,7 @@
 **forced integration walk** of public MPREG APIs. Every awkward edge, missing
 error code, or CLI surprise gets logged here so platform DX can improve.
 
-**Last updated:** 2026-08-05 (Phase N — F22/F23 closed; 96 apps; 0 open friction)  
+**Last updated:** 2026-08-05 (Phase S complete; 97 apps; 0 open friction)  
 **Source of truth also summarized in:** [PROJECT_PLAN.md §9](./PROJECT_PLAN.md)
 
 Legend severity: **High** (blocks nested/async use or confuses operators badly) ·
@@ -14,7 +14,7 @@ Legend severity: **High** (blocks nested/async use or confuses operators badly) 
 
 ## Open findings
 
-**None.** High/Med/Low/Info curriculum friction rows are closed through Phase N.
+**None.** High/Med/Low/Info curriculum friction rows are closed through Phase S.
 Append new rows when curriculum hits fresh friction.
 
 ---
@@ -116,3 +116,19 @@ Also shipped: `ServerMetricsTracker.snapshot()`, shared `ExampleProbe`
 | Q6 | plane error_code | teach CacheOpResult/QueueSendResult promotion |
 | Q7 | ops probe depth | ExampleProbe on `ops_cli_tour` |
 | Q8 | unified inventory | `rpc_list`/`rpc_describe`/`rpc_report` on MPREGClient |
+
+## Phase R closes (2026-08-05)
+
+| ID | Surface | Resolution |
+|----|---------|------------|
+| R1–R3 | unified missing dns/ns/resolver | full MPREGClientAPI async parity on façade |
+| R4 | fabric keys unasserted in microbench | rpc_microbench_lab fabric hop ensures |
+| R5 | admin audit CLI untaught | ops_cli_tour admin drain→audit→clear |
+
+## Phase S closes (2026-08-05)
+
+| ID | Surface | Resolution |
+|----|---------|------------|
+| S1 | format_server_snapshot shallow | prints fabric hop block |
+| S2 | OPERATE missing --explain | documented |
+| S3–S4 | converters drop W3C | preserve traceparent/tracestate/headers |

@@ -335,6 +335,11 @@ class TopicAwareRPCResponse:
     total_streamed_results: int = 0
     stream_completion_status: str = "completed"  # "completed", "partial", "timeout"
 
+    # W3C Trace Context (Phase S) — preserved across to_rpc_response()
+    traceparent: str | None = None
+    tracestate: str | None = None
+    headers: dict[str, Any] = field(default_factory=dict)
+
     @property
     def has_topic_monitoring_data(self) -> bool:
         """Check if response includes topic monitoring information."""
@@ -354,7 +359,15 @@ class TopicAwareRPCResponse:
                 else {"message": str(response.error)}
             )
 
-        return cls(r=response.r, error=error_dict, **kwargs)
+        return cls(
+            r=response.r,
+            error=error_dict,
+            request_id=getattr(response, "u", None),
+            traceparent=getattr(response, "traceparent", None),
+            tracestate=getattr(response, "tracestate", None),
+            headers=dict(getattr(response, "headers", None) or {}),
+            **kwargs,
+        )
 
     def to_rpc_response(self) -> RPCResponse:
         """Convert back to RPCResponse."""
@@ -376,6 +389,9 @@ class TopicAwareRPCResponse:
             r=self.r,
             error=error_obj,
             u=self.request_id or "unknown",  # Fixed: Add required u field
+            traceparent=self.traceparent,
+            tracestate=self.tracestate,
+            headers=dict(self.headers or {}),
         )
 
 @dataclass(slots=True)

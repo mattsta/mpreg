@@ -211,6 +211,7 @@ def format_server_snapshot(snap: dict[str, Any], *, prefix: str = "  ◆ server-
     """Pretty-print a ServerMetricsTracker.snapshot() dict."""
     rpc = snap.get("rpc") or {}
     pub = snap.get("pubsub") or {}
+    fab = snap.get("fabric") or {}
     print(
         f"{prefix}: rpc total={rpc.get('total', 0)} errors={rpc.get('errors', 0)} "
         f"samples={rpc.get('samples', 0)} avg_ms={rpc.get('avg_ms', 0)} "
@@ -220,6 +221,16 @@ def format_server_snapshot(snap: dict[str, Any], *, prefix: str = "  ◆ server-
     )
     print(
         f"{prefix}: pubsub total={pub.get('total', 0)} errors={pub.get('errors', 0)} "
-        f"avg_ms={pub.get('avg_ms', 0)} p95_ms={pub.get('p95_ms', 0)} "
-        f"rps={pub.get('rps', 0)}"
+        f"samples={pub.get('samples', 0)} avg_ms={pub.get('avg_ms', 0)} "
+        f"p95_ms={pub.get('p95_ms', 0)} rps={pub.get('rps', 0)} "
+        f"notifications={pub.get('notifications', 0)}"
     )
+    if fab:
+        print(
+            f"{prefix}: fabric decisions={fab.get('decisions_total', 0)} "
+            f"buffered={fab.get('decisions_buffered', 0)} "
+            f"blackhole={fab.get('blackhole_count', 0)} "
+            f"reachable_ratio={fab.get('reachable_ratio', 1.0)} "
+            f"avg_hops={fab.get('avg_hops', 0)} max_hops={fab.get('max_hops', 0)}"
+        )
+
