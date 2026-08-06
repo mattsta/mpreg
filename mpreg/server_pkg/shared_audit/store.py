@@ -105,8 +105,12 @@ class SharedAuditStore:
         if gossip_eligible_only:
             items = [r for r in items if r.gossip_eligible]
         items.sort(key=lambda r: r.sort_key())
-        if limit is not None and limit >= 0:
-            items = items[-limit:]
+        # Note: items[-0:] is the full list in Python — handle limit==0 explicitly.
+        if limit is not None:
+            if limit == 0:
+                items = []
+            elif limit > 0:
+                items = items[-limit:]
         return items
 
     def snapshot_dicts(self, **kwargs: Any) -> list[dict[str, Any]]:
@@ -177,7 +181,9 @@ class SharedAuditStore:
                     continue
                 out.append(r)
             out.sort(key=lambda x: x.sort_key())
-            if limit >= 0:
+            if limit == 0:
+                out = []
+            elif limit > 0:
                 out = out[-limit:]
             return out
 

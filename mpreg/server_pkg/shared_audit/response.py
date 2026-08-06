@@ -51,7 +51,7 @@ def build_audit_response(
                 "non_claims": non_claims,
             }
         records = store.snapshot(
-            limit=limit if limit >= 0 else None,
+            limit=limit if limit >= 0 else None,  # store handles limit==0
             origin_node=origin_node_filter,
         )
         mutations = [r.to_dict() for r in records]
@@ -75,7 +75,10 @@ def build_audit_response(
             for m in mutations
             if str(m.get("origin_node") or self_node) == origin_node_filter
         ]
-    if limit >= 0 and len(mutations) > limit:
+    # Note: mutations[-0:] is the full list in Python — handle limit==0 explicitly.
+    if limit == 0:
+        mutations = []
+    elif limit > 0 and len(mutations) > limit:
         mutations = mutations[-limit:]
     return {
         "audit_kind": "mgmt_mutations",

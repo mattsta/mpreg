@@ -182,23 +182,30 @@ encapsulation:
       When mgmt_audit_shared_enabled, SharedAuditStore is a cluster G-Set of
       management mutations with per-origin retention watermarks; scope=cluster
       on GET /mgmt/v1/audit returns the merged window after anti-entropy
-      (DELTA epidemic + digest/PULL unicast).
-    proof: [L1, L2]
+      (DELTA epidemic + digest/PULL unicast). Merge is commutative/idempotent;
+      watermarks monotonic; no resurrection below watermark; cross-cluster reject;
+      gossip_eligible=false never leaves origin.
+    proof: [L1, L2, L4]
     tests:
       - tests/server_pkg/test_shared_audit_store.py
       - tests/server_pkg/test_shared_audit_replicator.py
       - tests/server_pkg/test_shared_audit_response.py
+      - tests/invariants/test_shared_audit_properties.py
+      - tests/integration/test_shared_audit_cluster.py
   - id: INV-CACHE-STRONG-01
     claim: >
       When cache_strong_enabled, GlobalCacheManager ConsistencyLevel.STRONG put
       uses a majority-commit barrier (Q = floor(N/2)+1 COMMIT_ACKs, origin-commit-last);
       failed puts ABORT-uncommit peer+origin L1 for op_id (residual-free). Disabled
-      path remains error_code 1012. Operational codes 1015–1018.
-    proof: [L1, L2]
+      path remains error_code 1012. Operational codes 1015–1018. Pending invisible;
+      LWW abort-safe; concurrent puts leave no dirty pending.
+    proof: [L1, L2, L4]
     tests:
       - tests/core/test_cache_strong.py
       - tests/core/test_cache_strong_gcm.py
       - tests/chaos/test_t9_residuals.py
+      - tests/invariants/test_cache_strong_properties.py
+      - tests/integration/test_cache_strong_quorum.py
 
 non_claims:
   - "Atomic multi-store fabric snapshot save (catalog+keys single blob); restore has COR-10 rollback on key failure"
