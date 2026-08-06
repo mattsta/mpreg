@@ -1155,3 +1155,48 @@ Still **not** claimed: catalog row is residual-free product claim.
 
 Plan: `docs/plans/DISTLAB_T94_CATALOG_PEER_COUNT_PLAN.md`.
 
+## Phase 83 — GCM count_abort_fail_peers helper (2026-08-06)
+
+T95: `GlobalCacheManager.strong_status` uses shared `count_abort_fail_peers`
+for `abort_fail_peer_count` (same helper as metrics/Prometheus).
+
+Still **not** claimed: count is residual-free proof; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T95_GCM_COUNT_HELPER_PLAN.md`.
+
+## Phase 84 — Live doctor detail peer count (2026-08-06)
+
+T96: live doctor e2e asserts `abort_fail_peer_count=0` in detail after clean put;
+enriched residual e2e asserts non-zero count in doctor detail.
+
+Still **not** claimed: live seed is kernel drop; WAN; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T96_LIVE_DOCTOR_PEER_COUNT_PLAN.md`.
+
+## Phase 85 — Hypothesis peer-count max logic (2026-08-06)
+
+T97: property — `_strong_abort_fail_peer_count` returns
+`max(reported, len(peers))` so stale server 0 never hides residual peers.
+
+Still **not** claimed: pure unit property is live mesh; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T97_HYPOTHESIS_PEER_COUNT_MAX_PLAN.md`.
+
+## Phase 86 — build_strong_metrics peer count unit (2026-08-06)
+
+T98: unit tests prove `abort_fail_peer_count` always present (0 clean) and
+matches residual peers with non-empty `residual_ops_hint`.
+
+Still **not** claimed: unit mocks are live mesh; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T98_METRICS_PEER_COUNT_UNIT_PLAN.md`.
+
+## Phase 87 — OPERATE doctor/monitor peer count (2026-08-06)
+
+T99: OPERATE documents doctor detail/monitor table `abort_fail_peer_count=`
+and doctor JSON field.
+
+Still **not** claimed: docs are residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T99_OPERATE_DOCTOR_PEER_COUNT_PLAN.md`.
+

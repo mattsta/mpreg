@@ -773,6 +773,9 @@ async def test_distlab_live_residual_ops_hint_enriched_e2e(
         assert ok is True
         assert "cache-strong-retry-abort" in detail
         assert "hint-live" in detail or "sku-enriched" in detail
+        # T96: doctor detail peer count non-zero while residual present
+        assert "abort_fail_peer_count=" in detail
+        assert "abort_fail_peer_count=0" not in detail.split("|")[0]
         # Prefer server hint string
         assert strong_residual_ops_hint(body) == hint
 
@@ -946,6 +949,8 @@ async def test_distlab_live_doctor_strong_audit_e2e(
                     ok, detail = evaluate_strong_doctor_payload(data)
                     assert ok is True, detail
                     assert "get_q=False" in detail
+                    # T96: doctor detail always includes peer count field
+                    assert "abort_fail_peer_count=0" in detail
                     strong = data.get("strong") or {}
                     assert int((strong.get("counters") or {}).get("gets_refused", 0)) >= 1
                     assert int((strong.get("counters") or {}).get("puts_ok", 0)) >= 1
@@ -958,6 +963,9 @@ async def test_distlab_live_doctor_strong_audit_e2e(
                     # Happy-path put should not leave residual candidates
                     assert list(strong.get("last_abort_fail_peers") or []) == []
                     assert (strong.get("residual_ops_hint") or "") == ""
+                    # T85: abort_fail_peer_count mirrors empty peers
+                    assert "abort_fail_peer_count" in strong
+                    assert int(strong.get("abort_fail_peer_count") or 0) == 0
                     from mpreg.cli.main import strong_residual_ops_hint
 
                     assert strong_residual_ops_hint(strong) == ""

@@ -166,6 +166,11 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T92 CACHING peer count | CACHING_SYSTEM abort_fail_peer_count | teach |
 | T93 runbook peer count | runbook count_abort_fail_peers | teach |
 | T94 FEATURE_CATALOG peer count | cache.strong abort_fail_peer_count | teach |
+| T95 GCM count helper | strong_status count_abort_fail_peers | product |
+| T96 live doctor peer count | detail abort_fail_peer_count=0/>0 | support ops |
+| T97 Hypothesis peer-count max | max(reported, len(peers)) | product |
+| T98 metrics peer-count unit | build_strong_metrics abort_fail_peer_count | product |
+| T99 OPERATE doctor peer count | OPERATE detail/JSON/monitor | teach |
 
 ## Non-claims (do not market)
 
@@ -222,6 +227,13 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 - Curriculum peer-count asserts are teachable guidance — not auto-heal
 - CACHING/runbook/FEATURE_CATALOG peer-count docs are guidance — not
   residual-free product claim
+- GCM strong_status count_abort_fail_peers is the same process-local ops
+  signal — not residual-free proof, not automatic heal
+- Live doctor detail abort_fail_peer_count asserts are same-host multi-process
+  — not kernel drop, not WAN, not automatic heal
+- Hypothesis max(reported, peers) is pure unit — not live mesh, not auto-heal
+- build_strong_metrics peer-count unit tests use mocks — not live mesh
+- OPERATE doctor/monitor peer-count docs are guidance — not residual-free claim
 
 ## Gate commands
 
@@ -269,6 +281,9 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t89_residuals.py tests/chaos/test_t90_residuals.py \
   tests/chaos/test_t91_residuals.py tests/chaos/test_t92_residuals.py \
   tests/chaos/test_t93_residuals.py tests/chaos/test_t94_residuals.py \
+  tests/chaos/test_t95_residuals.py tests/chaos/test_t96_residuals.py \
+  tests/chaos/test_t97_residuals.py tests/chaos/test_t98_residuals.py \
+  tests/chaos/test_t99_residuals.py \
   tests/integration/test_cache_strong_live_mesh.py \
   tests/testing/test_distlab_live.py::test_distlab_live_strong_metrics_e2e \
   tests/test_config_check_cli.py tests/test_unified_client.py -q

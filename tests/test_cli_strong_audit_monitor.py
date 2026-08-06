@@ -420,3 +420,37 @@ def test_doctor_detail_abort_fail_peer_count() -> None:
     body2["abort_fail_peer_count"] = 0
     assert _strong_abort_fail_peer_count(body2) == 2
 
+def test_strong_abort_fail_peer_count_max_hypothesis() -> None:
+    """T97: property — peer-count helper never under-reports non-empty peers."""
+    from hypothesis import given, settings, strategies as st
+
+    from mpreg.cli.main import _strong_abort_fail_peer_count
+
+    peer = st.text(
+        alphabet=st.characters(
+            whitelist_categories=("L", "N"), whitelist_characters="-_"
+        ),
+        min_size=1,
+        max_size=8,
+    ).filter(lambda s: s.strip() != "")
+
+    @given(
+        peers=st.lists(peer, max_size=5, unique=True),
+        reported=st.integers(min_value=0, max_value=10),
+    )
+    @settings(max_examples=40, deadline=None)
+    def _prop(peers: list[str], reported: int) -> None:
+        body = {
+            "last_abort_fail_peers": list(peers),
+            "abort_fail_peer_count": reported,
+        }
+        n = _strong_abort_fail_peer_count(body)
+        if peers:
+            assert n >= len(peers)
+            assert n >= reported or n == len(peers)
+            assert n == max(reported, len(peers))
+        else:
+            assert n == max(reported, 0)
+
+    _prop()
+

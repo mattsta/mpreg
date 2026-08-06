@@ -418,7 +418,10 @@ class GlobalCacheManager(ManagedObject):
 
     def strong_status(self) -> dict[str, Any]:
         """Compact STRONG readiness for clients/operators."""
-        from mpreg.core.cache_strong import format_residual_ops_hint
+        from mpreg.core.cache_strong import (
+            count_abort_fail_peers,
+            format_residual_ops_hint,
+        )
 
         snap = self.strong_metrics_snapshot()
         c = snap["counters"]
@@ -455,19 +458,10 @@ class GlobalCacheManager(ManagedObject):
             "last_abort_fail_op_id": str(
                 (snap.get("coordinator") or {}).get("last_abort_fail_op_id") or ""
             ),
-            "abort_fail_peer_count": len(
-                [
-                    p
-                    for p in dict.fromkeys(
-                        list(
-                            (snap.get("coordinator") or {}).get(
-                                "last_abort_fail_peers"
-                            )
-                            or []
-                        )
-                    )
-                    if p
-                ]
+            "abort_fail_peer_count": count_abort_fail_peers(
+                list(
+                    (snap.get("coordinator") or {}).get("last_abort_fail_peers") or []
+                )
             ),
             "recent_abort_fails": list(
                 (snap.get("coordinator") or {}).get("recent_abort_fails") or []
