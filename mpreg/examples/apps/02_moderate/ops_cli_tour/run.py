@@ -721,11 +721,20 @@ async def main() -> None:
                             == len(list(row.get("last_abort_fail_peers") or [])),
                             f"count≠len(peers): {row!r}",
                         )
+                        # T110: last_abort_fail_op_id str on doctor JSON rows
+                        ensure(
+                            "last_abort_fail_op_id" in row,
+                            f"strong row missing last_abort_fail_op_id: {row!r}",
+                        )
+                        ensure(
+                            isinstance(row.get("last_abort_fail_op_id"), str),
+                            f"last_abort_fail_op_id not str: {row!r}",
+                        )
                     step(
                         "ERG: doctor --strong --format json → residual_ops_hint + "
-                        "abort_fail_peer_count (int) + last_abort_fail_peers (list) "
-                        "on metrics_strong/mgmt_strong (empty/0/[] when clean; "
-                        "not auto-heal)"
+                        "abort_fail_peer_count (int) + last_abort_fail_peers (list) + "
+                        "last_abort_fail_op_id (str) on metrics_strong/mgmt_strong "
+                        "(empty/0/[]/'' when clean; not auto-heal)"
                     )
                     ok(
                         f"monitor strong/audit table + doctor exit={doc.exit_code}"

@@ -639,7 +639,7 @@ after COMMIT apply (pending is already gone). DistLab
 expose it. Ops surface `abort_fail_peers` / `last_abort_fail_peers` /
 `last_abort_fail_op_id` / `residual_ops_hint` (metrics JSON + doctor/monitor;
 may fill `--namespace`/`--key` from process-local `recent_abort_fails`;
-helper `format_residual_ops_hint`; JSON `abort_fail_peer_count` / Prometheus `mpreg_strong_abort_fail_peers` = `count_abort_fail_peers(...)`; doctor JSON `--format json` strong rows use **int** `abort_fail_peer_count` + **list** `last_abort_fail_peers` matching `/metrics/strong`). After network recovery,
+helper `format_residual_ops_hint`; JSON `abort_fail_peer_count` / Prometheus `mpreg_strong_abort_fail_peers` = `count_abort_fail_peers(...)`; doctor JSON `--format json` strong rows use **int** `abort_fail_peer_count` + **list** `last_abort_fail_peers` + **str** `last_abort_fail_op_id` via `strong_doctor_json_residual_fields`, matching `/metrics/strong`). After network recovery,
 `StrongPutCoordinator.retry_abort` / `GlobalCacheManager.strong_retry_abort`
 re-delivers ABORT best-effort (`strong.cft_retry_abort_clears_residual`,
 `strong.cft_gcm_retry_abort_clears_residual`,

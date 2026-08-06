@@ -316,6 +316,16 @@ encapsulation:
       - tests/chaos/test_t107_residuals.py
       - tests/chaos/test_t108_residuals.py
       - tests/chaos/test_t109_residuals.py
+      - tests/chaos/test_t110_residuals.py
+      - tests/chaos/test_t111_residuals.py
+      - tests/chaos/test_t112_residuals.py
+      - tests/chaos/test_t113_residuals.py
+      - tests/chaos/test_t114_residuals.py
+      - tests/chaos/test_t115_residuals.py
+      - tests/chaos/test_t116_residuals.py
+      - tests/chaos/test_t117_residuals.py
+      - tests/chaos/test_t118_residuals.py
+      - tests/chaos/test_t119_residuals.py
       - tests/invariants/test_cache_strong_properties.py
       - tests/invariants/test_cache_strong_history.py
       - tests/integration/test_cache_strong_quorum.py
@@ -411,6 +421,16 @@ non_claims:
   - "Design/runbook/client doctor JSON int+list polish is documentation honesty — not residual-free product claim"
   - "strong_doctor_json_residual_fields unit tests are pure typing checks — not live mesh, not automatic heal"
   - "Residual honesty gate T100–T109 is same-host residual closeout coverage — not WAN/BFT/Jepsen proof"
+  - "Doctor JSON last_abort_fail_op_id is ops presentation — not automatic heal, not residual-free proof, not SIEM"
+  - "Live doctor JSON residual field asserts are same-host multi-process — not kernel drop, not WAN, not automatic heal"
+  - "Curriculum doctor JSON last_abort_fail_op_id assert is teachable guidance — not live auto-heal, not SIEM"
+  - "Hypothesis strong_doctor_json_residual_fields type property is pure unit — not live mesh, not automatic heal"
+  - "OPERATE/runbook/client doctor JSON op_id docs are operator guidance — not residual-free product claim"
+  - "Design/ARCHITECTURE doctor JSON residual type docs are guidance — not residual-free product claim"
+  - "claims.yaml residual closeout test list T110–T119 is proof inventory — not residual-free under lost ABORT"
+  - "Master/DISTLAB residual honesty index T110–T119 is planning cross-link — not Jepsen/Elle/WAN proof"
+  - "FEATURE/APP_CATALOG doctor JSON op_id inventory is teachable — not residual-free product claim"
+  - "Residual honesty gate T110–T119 is same-host residual closeout coverage — not WAN/BFT/Jepsen proof"
 
   - "Lying COMMIT_ACK applied bits can satisfy CFT quorum math without peer L1 apply — documented non_claim (not BFT)"
   - "mpreg.testing.distlab is Jepsen-inspired (history/checker/nemesis) — not Elle, not WAN geo generators, not a JVM Jepsen port"

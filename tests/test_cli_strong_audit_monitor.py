@@ -463,7 +463,7 @@ def test_strong_abort_fail_peer_count_max_hypothesis() -> None:
     _prop()
 
 def test_strong_doctor_json_residual_fields_types() -> None:
-    """T100/T101: doctor JSON residual fields use int + list (not str count)."""
+    """T100/T101/T110: doctor JSON residual fields use int + list + op_id str."""
     from mpreg.cli.main import strong_doctor_json_residual_fields
 
     residual = {
@@ -479,6 +479,7 @@ def test_strong_doctor_json_residual_fields_types() -> None:
         "residual_ops_hint",
         "abort_fail_peer_count",
         "last_abort_fail_peers",
+        "last_abort_fail_op_id",
     }
     assert isinstance(fields["abort_fail_peer_count"], int)
     assert fields["abort_fail_peer_count"] == 2
@@ -487,6 +488,8 @@ def test_strong_doctor_json_residual_fields_types() -> None:
     assert isinstance(fields["residual_ops_hint"], str)
     assert fields["residual_ops_hint"]
     assert "cache-strong-retry-abort" in fields["residual_ops_hint"]
+    assert fields["last_abort_fail_op_id"] == "oid-json"
+    assert isinstance(fields["last_abort_fail_op_id"], str)
     # Clean path
     clean = strong_doctor_json_residual_fields({})
     assert clean["abort_fail_peer_count"] == 0
@@ -494,6 +497,57 @@ def test_strong_doctor_json_residual_fields_types() -> None:
     assert clean["last_abort_fail_peers"] == []
     assert isinstance(clean["last_abort_fail_peers"], list)
     assert clean["residual_ops_hint"] == ""
+    assert clean["last_abort_fail_op_id"] == ""
+    assert isinstance(clean["last_abort_fail_op_id"], str)
+
+def test_strong_doctor_json_residual_fields_hypothesis() -> None:
+    """T113: property — residual doctor JSON fields keep JSON-native types."""
+    from hypothesis import given, settings, strategies as st
+
+    from mpreg.cli.main import strong_doctor_json_residual_fields
+
+    peer = st.text(
+        alphabet=st.characters(
+            whitelist_categories=("L", "N"), whitelist_characters="-_"
+        ),
+        min_size=1,
+        max_size=8,
+    ).filter(lambda s: s.strip() != "")
+    oid = st.text(
+        alphabet=st.characters(
+            whitelist_categories=("L", "N"), whitelist_characters="-_"
+        ),
+        min_size=0,
+        max_size=12,
+    )
+
+    @given(
+        peers=st.lists(peer, max_size=5, unique=True),
+        op_id=oid,
+        reported=st.integers(min_value=0, max_value=8),
+    )
+    @settings(max_examples=40, deadline=None)
+    def _prop(peers: list[str], op_id: str, reported: int) -> None:
+        body = {
+            "last_abort_fail_peers": list(peers),
+            "last_abort_fail_op_id": op_id,
+            "abort_fail_peer_count": reported,
+        }
+        fields = strong_doctor_json_residual_fields(body)
+        assert isinstance(fields["abort_fail_peer_count"], int)
+        assert isinstance(fields["last_abort_fail_peers"], list)
+        assert isinstance(fields["last_abort_fail_op_id"], str)
+        assert isinstance(fields["residual_ops_hint"], str)
+        assert fields["last_abort_fail_peers"] == list(peers)
+        assert fields["last_abort_fail_op_id"] == str(op_id or "")
+        if peers:
+            assert fields["abort_fail_peer_count"] == max(reported, len(peers))
+            assert fields["residual_ops_hint"]
+        else:
+            assert fields["abort_fail_peer_count"] == max(reported, 0)
+            assert fields["residual_ops_hint"] == ""
+
+    _prop()
 
 def test_openapi_abort_fail_peer_count_example() -> None:
     """T102: OpenAPI StrongMetrics documents integer example for peer count."""

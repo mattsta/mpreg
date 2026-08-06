@@ -1292,3 +1292,89 @@ Still **not** claimed: gate is WAN/BFT/Jepsen proof.
 
 Plan: `docs/plans/DISTLAB_T109_GATE_T100_T109_PLAN.md`.
 
+## Phase 98 — Doctor JSON last_abort_fail_op_id (2026-08-06)
+
+T110: doctor JSON strong rows include ``last_abort_fail_op_id`` (str, empty
+when clean) via ``strong_doctor_json_residual_fields``.
+
+Still **not** claimed: op_id field is auto-heal; residual-free proof.
+
+Plan: `docs/plans/DISTLAB_T110_DOCTOR_JSON_OP_ID_PLAN.md`.
+
+## Phase 99 — Live doctor JSON residual fields (2026-08-06)
+
+T111: live doctor e2e + enriched residual e2e assert
+``strong_doctor_json_residual_fields`` types (clean 0/[]/"" and residual
+count>=1 / peers / op_id / hint).
+
+Still **not** claimed: live seed is kernel drop; WAN; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T111_LIVE_DOCTOR_JSON_FIELDS_PLAN.md`.
+
+## Phase 100 — Curriculum doctor JSON op_id (2026-08-06)
+
+T112: ops_cli_tour asserts doctor JSON ``last_abort_fail_op_id`` is str.
+
+Still **not** claimed: curriculum is live auto-heal.
+
+Plan: `docs/plans/DISTLAB_T112_CURRICULUM_DOCTOR_OP_ID_PLAN.md`.
+
+## Phase 101 — Hypothesis doctor JSON residual types (2026-08-06)
+
+T113: property — residual doctor JSON fields keep int/list/str types and
+count==max(reported,len(peers)).
+
+Still **not** claimed: pure unit property is live mesh; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T113_HYPOTHESIS_DOCTOR_JSON_TYPES_PLAN.md`.
+
+## Phase 102 — OPERATE/runbook/client op_id polish (2026-08-06)
+
+T114: OPERATE, runbook, client guide document doctor JSON op_id str field.
+
+Still **not** claimed: docs are residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T114_DOCS_DOCTOR_OP_ID_PLAN.md`.
+
+## Phase 103 — Design + ARCHITECTURE doctor JSON types (2026-08-06)
+
+T115: design + ARCHITECTURE document doctor JSON residual field helper and
+types through Phase 107 / T119.
+
+Still **not** claimed: architecture text is residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T115_DESIGN_ARCH_DOCTOR_JSON_PLAN.md`.
+
+## Phase 104 — claims.yaml T110–T119 (2026-08-06)
+
+T116: claims proof list + non_claims for doctor JSON op_id and live/Hypothesis
+typing honesty.
+
+Still **not** claimed: claims text is residual-free under lost ABORT.
+
+Plan: `docs/plans/DISTLAB_T116_CLAIMS_T110_T119_PLAN.md`.
+
+## Phase 105 — Master/DISTLAB index T110–T119 (2026-08-06)
+
+T117: DISTLAB residual honesty index band extended through T119.
+
+Still **not** claimed: index is Jepsen/WAN proof.
+
+Plan: `docs/plans/DISTLAB_T117_MASTER_INDEX_T110_T119_PLAN.md`.
+
+## Phase 106 — FEATURE_CATALOG + APP_CATALOG op_id (2026-08-06)
+
+T118: FEATURE_CATALOG / APP_CATALOG note doctor JSON op_id field.
+
+Still **not** claimed: catalog is residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T118_CATALOG_DOCTOR_OP_ID_PLAN.md`.
+
+## Phase 107 — Gate T110–T119 (2026-08-06)
+
+T119: residual closeouts T110–T119, ledger, gate green.
+
+Still **not** claimed: gate is WAN/BFT/Jepsen proof.
+
+Plan: `docs/plans/DISTLAB_T119_GATE_T110_T119_PLAN.md`.
+

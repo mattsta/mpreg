@@ -117,7 +117,7 @@ non-empty, `mpreg doctor --check-strong` detail and `mpreg monitor strong
 at `cache-strong-retry-abort` (still CFT; not auto-heal; not doctor-fail).
 JSON field `residual_ops_hint` on `/metrics/strong` and GCM `strong_status`
 
-Prometheus gauge `mpreg_strong_abort_fail_peers` = `len(last_abort_fail_peers)` (CFT residual candidates; process-local). Info alert `MPREGStrongAbortFailPeersPresent` (5m) is ops guidance only — not automatic heal. JSON `abort_fail_peer_count` on `/metrics/strong` and doctor JSON rows mirror the same count (via `count_abort_fail_peers`; **int** type on doctor JSON, not a string). Doctor JSON also includes `last_abort_fail_peers` as a **list** on `metrics_strong` / `mgmt_strong` rows (`[]` when clean). Monitor table shows `abort_fail_peer_count=`.
+Prometheus gauge `mpreg_strong_abort_fail_peers` = `len(last_abort_fail_peers)` (CFT residual candidates; process-local). Info alert `MPREGStrongAbortFailPeersPresent` (5m) is ops guidance only — not automatic heal. JSON `abort_fail_peer_count` on `/metrics/strong` and doctor JSON rows mirror the same count (via `count_abort_fail_peers`; **int** type on doctor JSON, not a string). Doctor JSON strong rows (`strong_doctor_json_residual_fields`) also include `last_abort_fail_peers` (**list**), `last_abort_fail_op_id` (**str**), and `residual_ops_hint` (**str**) — empty/`0`/`[]` when clean. Monitor table shows `abort_fail_peer_count=`.
 carries the same string (empty when no candidates) for automation scrape.
 When `recent_abort_fails` records a matching `key` (`namespace/id`), the hint
 fills `--namespace` / `--key` (process-local best-effort; not SIEM).

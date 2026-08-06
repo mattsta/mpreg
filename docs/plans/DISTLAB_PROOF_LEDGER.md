@@ -181,6 +181,16 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T107 docs doctor JSON types | design/runbook/client/OPERATE/CACHING | teach |
 | T108 doctor JSON fields unit | strong_doctor_json_residual_fields unit | product |
 | T109 gate T100–T109 | residual closeouts + ledger gate | support |
+| T110 doctor JSON op_id | last_abort_fail_op_id on doctor JSON | product |
+| T111 live doctor JSON fields | live e2e strong_doctor_json_residual_fields | support ops |
+| T112 curriculum doctor op_id | ops_cli last_abort_fail_op_id str | teach |
+| T113 Hypothesis doctor JSON types | residual fields type property | product |
+| T114 docs doctor op_id | OPERATE/runbook/client op_id | teach |
+| T115 design/arch doctor JSON | design + ARCHITECTURE residual types | teach |
+| T116 claims T110–T119 | claims.yaml proof + non_claims | honesty |
+| T117 master index T110–T119 | DISTLAB residual honesty band | teach |
+| T118 catalog doctor op_id | FEATURE/APP_CATALOG | teach |
+| T119 gate T110–T119 | residual closeouts + ledger gate | support |
 
 ## Non-claims (do not market)
 
@@ -259,6 +269,17 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 - strong_doctor_json_residual_fields unit tests are pure typing — not live mesh
 - Residual honesty gate T100–T109 is same-host closeout coverage — not
   WAN/BFT/Jepsen
+- Doctor JSON last_abort_fail_op_id is ops presentation — not automatic heal
+- Live doctor JSON residual field asserts are same-host multi-process — not
+  kernel drop, not WAN, not automatic heal
+- Curriculum doctor JSON op_id assert is teachable — not auto-heal
+- Hypothesis doctor JSON residual types are pure unit — not live mesh
+- OPERATE/runbook/client op_id docs are guidance — not residual-free claim
+- Design/ARCHITECTURE doctor JSON type docs are guidance — not residual-free claim
+- claims T110–T119 inventory is proof list — not residual-free under lost ABORT
+- Master index T110–T119 is planning cross-link — not Jepsen/WAN
+- FEATURE/APP_CATALOG doctor op_id rows are teachable inventory — not residual-free claim
+- Residual honesty gate T110–T119 is same-host closeout — not WAN/BFT/Jepsen
 
 ## Gate commands
 
@@ -314,6 +335,11 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t104_residuals.py tests/chaos/test_t105_residuals.py \
   tests/chaos/test_t106_residuals.py tests/chaos/test_t107_residuals.py \
   tests/chaos/test_t108_residuals.py tests/chaos/test_t109_residuals.py \
+  tests/chaos/test_t110_residuals.py tests/chaos/test_t111_residuals.py \
+  tests/chaos/test_t112_residuals.py tests/chaos/test_t113_residuals.py \
+  tests/chaos/test_t114_residuals.py tests/chaos/test_t115_residuals.py \
+  tests/chaos/test_t116_residuals.py tests/chaos/test_t117_residuals.py \
+  tests/chaos/test_t118_residuals.py tests/chaos/test_t119_residuals.py \
   tests/integration/test_cache_strong_live_mesh.py \
   tests/testing/test_distlab_live.py::test_distlab_live_strong_metrics_e2e \
   tests/test_config_check_cli.py tests/test_unified_client.py -q

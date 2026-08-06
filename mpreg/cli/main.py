@@ -131,7 +131,8 @@ def strong_doctor_json_residual_fields(body: dict[str, Any]) -> dict[str, Any]:
 
     Returns JSON-native types matching ``/metrics/strong``:
     ``residual_ops_hint`` (str), ``abort_fail_peer_count`` (int),
-    ``last_abort_fail_peers`` (list[str]). Empty/0/[] when clean.
+    ``last_abort_fail_peers`` (list[str]), ``last_abort_fail_op_id`` (str).
+    Empty/0/[]/"" when clean.
     Ops presentation only — not automatic heal, not residual-free proof.
     """
     peers = _strong_abort_fail_peers(body)
@@ -139,6 +140,7 @@ def strong_doctor_json_residual_fields(body: dict[str, Any]) -> dict[str, Any]:
         "residual_ops_hint": strong_residual_ops_hint(body),
         "abort_fail_peer_count": int(_strong_abort_fail_peer_count(body)),
         "last_abort_fail_peers": list(peers),
+        "last_abort_fail_op_id": _strong_abort_fail_op_id(body),
     }
 
 def evaluate_strong_doctor_payload(
@@ -2083,8 +2085,8 @@ def doctor(
                             "status": "OK" if ok else str(response.status),
                             "detail": body_preview,
                         }
-                        # T71/T87/T100/T101: always keys on strong checks
-                        # (empty/0/[] when clean; int + list for JSON consumers)
+                        # T71/T87/T100/T101/T110: always keys on strong checks
+                        # (empty/0/[]/"" when clean; JSON-native types)
                         if name in ("metrics_strong", "mgmt_strong"):
                             fields = residual_fields or strong_doctor_json_residual_fields(
                                 {}
@@ -2095,6 +2097,9 @@ def doctor(
                             ]
                             row["last_abort_fail_peers"] = fields[
                                 "last_abort_fail_peers"
+                            ]
+                            row["last_abort_fail_op_id"] = fields[
+                                "last_abort_fail_op_id"
                             ]
                         rows.append(row)
                 except Exception as exc:  # noqa: BLE001 - doctor must report all failures

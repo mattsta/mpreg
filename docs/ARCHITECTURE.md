@@ -153,8 +153,11 @@ Each system uses the same fabric routing plane, but retains its own semantics:
   bridge into GCM L1 (`on_visible_apply`). Default off (fail-closed `1012`).
   EVENTUAL/WEAK L3 gossip is unchanged when unused. Same-host live mesh +
   residual-free peer-loss (when ABORT delivered) proven; CFT best-effort
-  ABORT may leave peer L1 (`abort_fail_peers` ops signal). Not
-  WAN/BFT/fsync/Jepsen — see `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`,
+  ABORT may leave peer L1 (`abort_fail_peers` ops signal; doctor JSON
+  `abort_fail_peer_count` int + `last_abort_fail_peers` list +
+  `last_abort_fail_op_id` str via `strong_doctor_json_residual_fields` —
+  ops guidance only). Not WAN/BFT/fsync/Jepsen — see
+  `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md` (through Phase 107 / T119),
   `docs/CACHING_SYSTEM.md`, claim `INV-CACHE-STRONG-01`.
 
 Why this design:

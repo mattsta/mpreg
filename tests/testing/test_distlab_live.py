@@ -778,6 +778,17 @@ async def test_distlab_live_residual_ops_hint_enriched_e2e(
         assert "abort_fail_peer_count=0" not in detail.split("|")[0]
         # Prefer server hint string
         assert strong_residual_ops_hint(body) == hint
+        # T111: doctor JSON residual fields mirror enriched metrics types
+        from mpreg.cli.main import strong_doctor_json_residual_fields
+
+        dfields = strong_doctor_json_residual_fields(body)
+        assert isinstance(dfields["abort_fail_peer_count"], int)
+        assert dfields["abort_fail_peer_count"] >= 1
+        assert isinstance(dfields["last_abort_fail_peers"], list)
+        assert peer_id in dfields["last_abort_fail_peers"]
+        assert dfields["last_abort_fail_op_id"] == oid
+        assert isinstance(dfields["last_abort_fail_op_id"], str)
+        assert dfields["residual_ops_hint"] == hint
 
 @pytest.mark.asyncio
 async def test_distlab_live_audit_metrics_e2e(
@@ -966,9 +977,21 @@ async def test_distlab_live_doctor_strong_audit_e2e(
                     # T85: abort_fail_peer_count mirrors empty peers
                     assert "abort_fail_peer_count" in strong
                     assert int(strong.get("abort_fail_peer_count") or 0) == 0
-                    from mpreg.cli.main import strong_residual_ops_hint
+                    from mpreg.cli.main import (
+                        strong_doctor_json_residual_fields,
+                        strong_residual_ops_hint,
+                    )
 
                     assert strong_residual_ops_hint(strong) == ""
+                    # T111: doctor JSON residual field helper matches clean metrics
+                    dfields = strong_doctor_json_residual_fields(strong)
+                    assert dfields["abort_fail_peer_count"] == 0
+                    assert isinstance(dfields["abort_fail_peer_count"], int)
+                    assert dfields["last_abort_fail_peers"] == []
+                    assert isinstance(dfields["last_abort_fail_peers"], list)
+                    assert dfields["last_abort_fail_op_id"] == ""
+                    assert isinstance(dfields["last_abort_fail_op_id"], str)
+                    assert dfields["residual_ops_hint"] == ""
 
                 # T72/T73: Prometheus residual-candidate gauge should be 0 after clean put
                 async with session.get(f"{base}/metrics/prometheus") as presp:

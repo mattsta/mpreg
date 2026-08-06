@@ -266,9 +266,10 @@ JSON `residual_ops_hint` on `/metrics/strong` carries the same string
 (empty when none; not auto-heal; may fill ns/key from `recent_abort_fails`).
 Doctor JSON (`mpreg doctor --strong --format json`) includes on
 `metrics_strong` / `mgmt_strong` rows: `residual_ops_hint` (str, empty when
-none), `abort_fail_peer_count` (**int**, 0 when clean), and
-`last_abort_fail_peers` (**list**, `[]` when clean) — same JSON-native types
-as `/metrics/strong` (not auto-heal).
+none), `abort_fail_peer_count` (**int**, 0 when clean),
+`last_abort_fail_peers` (**list**, `[]` when clean), and
+`last_abort_fail_op_id` (**str**, empty when clean) — same JSON-native types
+as `/metrics/strong` via `strong_doctor_json_residual_fields` (not auto-heal).
 DistLab `strong.cft_residual_ops_hint_enriched` proves the guidance surface
 without clearing residual. Monitor table shows `cft=` / `abort_be=` /
 `abort_fail=` / `abort_fail_peers=` / `retry_abort=` / `retry_cleared=` /
