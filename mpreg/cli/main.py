@@ -1780,14 +1780,25 @@ def doctor(
     help="ERG-T13-01: exit 2 on any warning (CI production gate). "
     "Default exits 0 with warnings listed (lab_ok).",
 )
+@click.option(
+    "--explain",
+    is_flag=True,
+    default=False,
+    help="ERG Phase Q: print a human field guide for each settings group "
+    "(what the knobs mean and how they interact) after the structured report.",
+)
 @add_format_option
-def config_check(settings_path: str, output_format: str, strict: bool) -> None:
+def config_check(
+    settings_path: str, output_format: str, strict: bool, explain: bool
+) -> None:
     """Validate a settings file and report grouped configuration summary.
 
     Exit codes (ERG-T13-01 / USE-T13-02):
       0 — ok or lab_ok (warnings present, non-strict)
       1 — load/parse failure (raised by Click / from_path)
       2 — strict mode with warnings, or fatal config errors
+
+    Use ``--explain`` for operator-oriented field discoverability (Phase Q / ERG).
     """
     settings = MPREGSettings.from_path(settings_path)
     groups = {
@@ -1949,14 +1960,55 @@ def config_check(settings_path: str, output_format: str, strict: bool) -> None:
         )
     # ERG-T13-01: severity tiers — stock profiles are lab_ok by default.
     status = "ok" if not warnings else "lab_ok"
+    explain_guide = {
+        "identity": (
+            "Node name + cluster_id identify this process in gossip/catalog. "
+            "host/port are the WebSocket RPC listen address (not monitoring)."
+        ),
+        "monitoring": (
+            "HTTP ops plane (health/metrics/mgmt). Prefer loopback + "
+            "monitoring_auth_token outside lab. CORS off in production."
+        ),
+        "fabric": (
+            "Cross-cluster routing/catalog TTLs and route signature policy. "
+            "require_signatures + gossip HMAC for multi-peer production."
+        ),
+        "discovery": (
+            "Resolver mode, summary export/signing, and tenant/namespace policy. "
+            "Enable discovery_policy_enabled for multi-tenant gates."
+        ),
+        "systems": (
+            "Default cache/queue managers for four-plane MPREGClient RPCs. "
+            "Profiles (dev.toml) turn both on; bare defaults leave them off."
+        ),
+        "persistence": (
+            "Unified persistence (memory|sqlite today). remote SQL/other stores backends "
+            "are not shipped — see PERSISTENCE_FRAMEWORK_PLAN. data_dir holds sqlite files."
+        ),
+        "warnings": (
+            "lab_ok means safe for curriculum/local; use --strict (exit 2) as a "
+            "CI production gate. Set mgmt_audit_path for durable JSONL audit."
+        ),
+    }
     report = {
         "groups": groups,
         "warnings": warnings,
         "ok": len(warnings) == 0,
         "status": status,
         "strict": bool(strict),
+        "explain": bool(explain),
     }
+    if explain:
+        report["guide"] = explain_guide
     emit(report, output_format=output_format, table_title="Config check")
+    if explain:
+        # Human field guide always on stderr-safe stdout after structured emit.
+        print("")
+        print("# config-check --explain (field guide)")
+        for key, blurb in explain_guide.items():
+            print(f"## {key}")
+            print(blurb)
+            print("")
     if warnings and strict:
         raise SystemExit(2)
 

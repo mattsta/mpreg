@@ -216,7 +216,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `mon.slo` | SLO helpers | `core.observability.slo` | shipped | `observability_slo_trace`, probe apps |
 | `mon.logging` | Structured / JSON logs | `configure_logging`, CLI `--json-logs` | shipped | `mon_logging_json` |
 | `mon.trace_bind` | Trace context bind | `bind_trace_context`, `trace_context` | shipped | `client_trace_bind` |
-| `mon.metrics_snapshot` | In-process metrics snapshot | `ServerMetricsTracker.snapshot` (samples/min/max/p50/p95/rps) | shipped | `rpc_microbench_lab`, probe apps |
+| `mon.metrics_snapshot` | In-process metrics snapshot | `ServerMetricsTracker.snapshot` (samples/min/max/p50/p95/rps + fabric hops) | shipped | `rpc_microbench_lab`, probe apps |
 | `mon.server_tracker` | Server metrics tracker | `ServerMetricsTracker.record_rpc` | shipped | `rpc_microbench_lab` |
 
 ---
@@ -458,7 +458,7 @@ Usability findings from building these apps: [API_FRICTION.md](./API_FRICTION.md
 | `transport_protocol_tour` | L1 | `tx.tcp`, `tx.multi_protocol` |
 | `queue_federation_lab` | L2 | `fabric.queue_fed` |
 | `blockchain_message_lab` | L2 | `fabric.blockchain_msg` |
-| `live_partition_chaos` | L3 | `chaos.live_drain`, `ops.mgmt_drain`, `ops.mgmt_detach`, `mon.health` |
+| `live_partition_chaos` | L3 | `chaos.live_drain`, `ops.mgmt_drain`, `ops.mgmt_audit`, `ops.mgmt_detach`, `mon.health` |
 | `discovery_signatures_lab` | L1 | `disco.signatures` |
 | `rpc_inventory_tour` | L1 | `rpc.describe`, `rpc.report` |
 | `client_trace_bind` | L1 | `client.trace`, `mon.trace_bind` |

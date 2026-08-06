@@ -254,6 +254,18 @@ class MPREGClient:
         """Run a discovery summary query (delegates to API)."""
         return await self.api.summary_query(*args, **kwargs)
 
+    async def rpc_list(self, *args: Any, **kwargs: Any) -> Any:
+        """List RPC capabilities (delegates to API)."""
+        return await self.api.rpc_list(*args, **kwargs)
+
+    async def rpc_describe(self, *args: Any, **kwargs: Any) -> Any:
+        """Describe RPC specs (delegates to API)."""
+        return await self.api.rpc_describe(*args, **kwargs)
+
+    async def rpc_report(self, *args: Any, **kwargs: Any) -> Any:
+        """Aggregated RPC inventory report (delegates to API)."""
+        return await self.api.rpc_report(*args, **kwargs)
+
     # --- Pub/sub ---
     async def publish(
         self,

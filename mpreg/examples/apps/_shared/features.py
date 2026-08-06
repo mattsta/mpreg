@@ -207,6 +207,7 @@ TX_MULTI_PROTOCOL: Final = "tx.multi_protocol"
 CHAOS_LIVE_DRAIN: Final = "chaos.live_drain"
 OPS_MGMT_DRAIN: Final = "ops.mgmt_drain"
 OPS_MGMT_DETACH: Final = "ops.mgmt_detach"
+OPS_MGMT_AUDIT: Final = "ops.mgmt_audit"
 CHAOS_NO_LOOP: Final = "chaos.no_loop"
 TX_CORRELATION: Final = "tx.correlation"
 MON_TRACE_BIND: Final = "mon.trace_bind"
@@ -447,6 +448,8 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         CLIENT_UNIFIED,
         RPC_CALL,
         RPC_REGISTER,
+        RPC_LIST,
+        RPC_DESCRIBE,
         CACHE_RPC_SURFACE,
         CACHE_PUT_GET,
         QUEUE_RPC_SURFACE,
@@ -469,6 +472,7 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         DISCO_CATALOG_QUERY,
         PUBSUB_CLIENT_WIRE,
         CLIENT_API,
+        CLIENT_SUMMARY,
     ),
     "fabric_graph_resilience": (
         FABRIC_GRAPH,
@@ -610,6 +614,7 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         PERS_SQLITE_KV,
         PERS_MEMORY_KV,
         PERS_RESTART,
+        PERS_MODE,
     ),
     "profile_settings_tour": (
         BOOT_SETTINGS,
@@ -711,6 +716,7 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         CHAOS_LIVE_DRAIN,
         OPS_MGMT_DRAIN,
         OPS_MGMT_DETACH,
+        OPS_MGMT_AUDIT,
         MON_HEALTH,
         RPC_CALL,
         DISCO_LIST_PEERS,

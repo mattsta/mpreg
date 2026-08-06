@@ -563,6 +563,43 @@ class ServerMetricsTracker:
     def record_pubsub_notification(self) -> None:
         self.pubsub_notifications += 1
 
+    def _fabric_route_snapshot(self) -> dict[str, float | int]:
+        """Hop / reachability stats from the process route-decision log (Phase Q)."""
+        try:
+            from mpreg.fabric.route_decision_log import get_default_route_decision_log
+
+            log = get_default_route_decision_log()
+            st = log.stats()
+            hops: list[int] = []
+            try:
+                for rec in log.recent(limit=256):
+                    hops.append(int(getattr(rec, "hops_required", 0) or 0))
+            except Exception:
+                hops = []
+            avg_hops = (sum(hops) / len(hops)) if hops else 0.0
+            max_hops = max(hops) if hops else 0
+            return {
+                "decisions_total": int(st.get("total_recorded", 0) or 0),
+                "decisions_buffered": int(st.get("size", 0) or 0),
+                "blackhole_count": int(st.get("blackhole_count", 0) or 0),
+                "reachable_ratio": round(
+                    float(st.get("reachable_ratio", 1.0) or 1.0), 4
+                ),
+                "hop_samples": len(hops),
+                "avg_hops": round(float(avg_hops), 3),
+                "max_hops": int(max_hops),
+            }
+        except Exception:
+            return {
+                "decisions_total": 0,
+                "decisions_buffered": 0,
+                "blackhole_count": 0,
+                "reachable_ratio": 1.0,
+                "hop_samples": 0,
+                "avg_hops": 0.0,
+                "max_hops": 0,
+            }
+
     def snapshot(self) -> dict[str, float | int | dict[str, int]]:
         """In-process metrics snapshot for curriculum / operator probes (PG7).
 
@@ -615,6 +652,7 @@ class ServerMetricsTracker:
                 "rps": round(pub_rps, 3),
                 "notifications": int(self.pubsub_notifications),
             },
+            "fabric": self._fabric_route_snapshot(),
         }
 
     def rpc_metrics(

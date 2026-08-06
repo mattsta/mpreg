@@ -270,3 +270,9 @@ improvement rather than a single curriculum gap:
 5. **USE/CORRECT** — teach apps + live unit proof
 
 Exit: **97** suite apps; multi-axis living backlog retained for next charter.
+
+## Phase Q — Single sequential multi-axis continuation (COMPLETE)
+
+Post-P backlog was scattered across roadmaps. Phase Q linearized it into one
+checklist (Q0–Q9) and executed without idle stop. Exit: 97 apps; uncovered
+feature constants = 0.

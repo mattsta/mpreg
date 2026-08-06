@@ -7,6 +7,7 @@ import tempfile
 import time
 from pathlib import Path
 
+from mpreg.core.persistence.config import PersistenceConfig, PersistenceMode
 from mpreg.core.persistence.backend import (
     MemoryPersistenceBackend,
     SQLitePersistenceBackend,
@@ -93,6 +94,30 @@ async def main() -> None:
                 ok(f"memory backend queues={names}")
             finally:
                 await be.close()
+
+        with scenario(
+            "PersistenceConfig modes + honest non-claims",
+            "pers.mode",
+            "pers.memory_kv",
+            "pers.sqlite_kv",
+        ):
+            mem_cfg = PersistenceConfig(mode=PersistenceMode.MEMORY)
+            ensure(mem_cfg.mode == PersistenceMode.MEMORY, "mem mode")
+            ensure(mem_cfg.mode.value == "memory", f"mem value {mem_cfg.mode}")
+            sql_cfg = PersistenceConfig(
+                mode=PersistenceMode.SQLITE,
+                data_dir=Path(tempfile.mkdtemp(prefix="mpreg-pers-cfg-")),
+            )
+            ensure(sql_cfg.mode == PersistenceMode.SQLITE, "sql mode")
+            ensure(sql_cfg.sqlite_path().name.endswith(".sqlite"), str(sql_cfg.sqlite_path()))
+            # Shipped modes only — remote SQL/other stores are plan-only (non-claim).
+            shipped = {m.value for m in PersistenceMode}
+            ensure(shipped == {"memory", "sqlite"}, f"unexpected modes {shipped}")
+            step(
+                "non-claim: remote SQL/other stores backends not in PersistenceMode — "
+                "see docs/PERSISTENCE_FRAMEWORK_PLAN.md"
+            )
+            ok(f"PersistenceConfig modes={sorted(shipped)}")
 
 if __name__ == "__main__":
     asyncio.run(main())

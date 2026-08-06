@@ -185,6 +185,45 @@ async def main() -> None:
                             f"map={type(cmap).__name__}"
                         )
 
+                    with scenario(
+                        "rpc inventory via unified façade",
+                        "client.unified",
+                        "rpc.list",
+                        "rpc.describe",
+                    ):
+                        ensure(callable(client.rpc_list), "rpc_list missing")
+                        ensure(callable(client.rpc_describe), "rpc_describe missing")
+                        ensure(callable(client.rpc_report), "rpc_report missing")
+                        listing = await client.rpc_list()
+                        ensure(listing is not None, "rpc_list None")
+                        step(f"rpc_list type={type(listing).__name__}")
+                        ok(f"unified rpc_list/describe/report surface → {type(listing).__name__}")
+
+                    with scenario(
+                        "plane error_code on façade results",
+                        "client.unified",
+                        "cache.rpc_surface",
+                    ):
+                        from mpreg.client.unified_client import CacheOpResult, QueueSendResult
+
+                        # Successful put must expose error_code attribute (None when ok)
+                        put = await client.cache_put("tour", "errk", {"ok": True})
+                        ensure(isinstance(put, CacheOpResult), type(put))
+                        ensure(hasattr(put, "error_code"), "CacheOpResult missing error_code")
+                        ensure(put.success is True, f"put failed {put}")
+                        ensure(put.error_code is None, f"ok put should have no code {put.error_code}")
+                        # Synthetic raw promotion path
+                        synthetic = CacheOpResult.from_raw(
+                            {"success": False, "error_code": 1001, "error": "nope"}
+                        )
+                        ensure(synthetic.success is False, "synth success")
+                        ensure(synthetic.error_code == 1001, f"code {synthetic.error_code}")
+                        qsyn = QueueSendResult.from_raw(
+                            {"success": False, "error_code": 42, "error_message": "q"}
+                        )
+                        ensure(qsyn.error_code == 42, f"q code {qsyn.error_code}")
+                        ok("plane error_code promoted on CacheOpResult/QueueSendResult")
+
             await run_with_servers(settings, _run)
 
 if __name__ == "__main__":

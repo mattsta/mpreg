@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase P COMPLETE — multi-axis CAP/CORRECT/USE/OBS/ERG/PERF; 97 apps)  
+**Last updated:** 2026-08-05 (Phase Q COMPLETE — single sequential multi-axis continuation; 97 apps)  
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -36,6 +36,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G21 | **Close residual Low DX + planning truth** | F22/F23 platform fix; scrub stale POC/VISION residuals | [x] Phase N |
 | G22 | **Integrity polish after N** | thin=0; every feature constant in APP_FEATURES; stale planned scrub | [x] Phase O |
 | G23 | **Multi-axis platform charter (Phase P)** | CAP/CORRECT/USE/OBS/ERG/PERF improvements shipped + taught | [x] Phase P |
+| G24 | **Single sequential continuation (Phase Q)** | Post-P backlog linearized; execute Q1→Qn without idle stop | [x] Phase Q |
 
 ---
 
@@ -64,6 +65,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | Phase N | **COMPLETE** — F22/F23 Low DX + planning scrub |
 | Phase O | **COMPLETE** — integrity polish (thin + feature join + docs) |
 | Phase P | **COMPLETE** — multi-axis CAP/OBS/ERG/PERF + discovery façade |
+| Phase Q | **COMPLETE** — single sequential post-P backlog execution |
 
 ### Thin backlog
 
@@ -806,6 +808,11 @@ stale “planned” operator language scrubbed. Thin=0; uncovered feature consta
 W3C echo on `RPCResponse`; unified discovery façade; four-plane DEBUG;
 metrics snapshot depth; `rpc_microbench_lab`. **97** apps.
 
+**Phase Q (single sequential multi-axis continuation): COMPLETE 100%.**  
+Linearized post-P backlog; `client.summary` join; config-check `--explain`;
+fabric hop stats on snapshot; mgmt audit JSONL teach; persistence mode non-claim;
+unified rpc_list/error_code; ops_cli probe. **97** apps.
+
 Honest remaining (operator topology / kernel-level only — not curriculum blockers):
 multi-continent SLA meshes, kernel TCP byte-splice loss, multi-hub DAO treasury
 production ops. Living multi-axis backlog above for next charter.
@@ -835,17 +842,31 @@ not idle after integrity polish.
 - [x] Snapshot keys support min/max/samples ensures
 - [x] **97** suite apps; unit green
 
-### Living multi-axis backlog (post-P — next charter fodder)
+### Phase Q — Single sequential multi-axis continuation (**COMPLETE**)
 
-| Axis | Candidate | Notes |
-|------|-----------|-------|
-| CAP | Mgmt multi-node audit UI / CLI depth | `MANAGEMENT_UI_CLI_NEXT_STEPS.md` |
-| CAP | Discovery tiering + CI soak | `DISCOVERY_PLATFORM_ROADMAP.md` |
-| CAP | Persistence remote SQL/other stores backends | `PERSISTENCE_FRAMEWORK_PLAN.md` |
-| USE | Unification soak / plane error codes | `UNIFIED_UNIFICATION_PLAN.md` |
-| OBS | Probe default annotations on more L2+ apps | ExampleProbe already default-on |
-| PERF | Fabric hop latency histograms in snapshot | future |
-| ERG | Settings discoverability (`mpreg config-check --explain`) | partial via config-check |
+**Rule:** one linear checklist. No parallel charters. Update this section on
+every slice. Do not stop while any `[ ]` remains. When all `[x]`, append the
+next batch here before starting it.
+
+Serialized from post-P backlog + integrity residual (`client.summary` join):
+
+| # | Axis | Work | Status |
+|---|------|------|--------|
+| Q0 | PLAN | This linear section is the only active queue | [x] |
+| Q1 | CORRECT | Join `client.summary` feature constant → APP_FEATURES (`discovery_watch_summary`) | [x] |
+| Q2 | ERG | `mpreg config-check --explain` (human field guide + groups already JSON) | [x] |
+| Q3 | OBS/PERF | Route-decision hop stats on `ServerMetricsTracker.snapshot` (`fabric.hops`) | [x] |
+| Q4 | CAP | Mgmt audit durability teach: `mgmt_audit_path` JSONL + CLI `admin audit` path | [x] |
+| Q5 | CAP | Persistence surface teach: memory/sqlite backends (remote SQL/other stores = honest non-claim) | [x] |
+| Q6 | USE | Plane error_code promotion already on façade — teach ensure path in unified tour | [x] |
+| Q7 | OBS | Absorb probe annotations depth on one additional L2 ops path (`ops_cli_tour`) | [x] |
+| Q8 | CAP | Discovery in-process residual: unified `rpc_list`/`rpc_describe` façade parity | [x] |
+| Q9 | VERIFY | unit + suite + thin/feature-join=0 + commit; then only extend this table | [x] |
+
+**Exit:** every Q row `[x]`; feature constants uncovered=0; suite green; WT clean commit.
+
+**Deferred (not in Q — topology/product scale, append only after Q9):**
+multi-node shared audit store, full mgmt UI, remote SQL/other stores backends, multi-continent SLA.
 
 ---
 

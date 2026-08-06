@@ -364,3 +364,34 @@ forces fabric `target_cluster` from summary). FEATURE note un-partialed.
 **App count:** **97** (+ `rpc_microbench_lab`).
 
 **Program:** Phases A–P at **100%**.
+
+## Phase Q — Single sequential multi-axis continuation (**COMPLETE**)
+
+Only active delivery queue. Mirrors PROJECT_PLAN Phase Q table.
+
+| Item | Status |
+|------|--------|
+| Q0 linearize plan | [x] |
+| Q1 client.summary APP_FEATURES join | [x] |
+| Q2 config-check --explain | [x] |
+| Q3 fabric hop stats on snapshot | [x] |
+| Q4 mgmt audit durability teach | [x] |
+| Q5 persistence memory/sqlite teach | [x] |
+| Q6 plane error_code teach on unified | [x] |
+| Q7 ops_cli_tour probe depth | [x] |
+| Q8 unified rpc_list/describe parity | [x] |
+| Q9 unit+suite+commit | [x] |
+
+## Verification log (Phase Q)
+
+| Date | Command | Result |
+|------|---------|--------|
+| 2026-08-05 | feature-join uncovered | **0** |
+| 2026-08-05 | pytest config-check/metrics/unified | **5 passed** |
+| 2026-08-05 | teach apps live_partition/persistence_kv/unified/ops_cli | pass |
+| 2026-08-05 | pytest tests/examples_apps -m unit | **112 passed** |
+| 2026-08-05 | mpreg-example suite | **97/97 passed** (~100s) |
+
+**App count:** **97** (deepen; no new apps).
+
+**Program:** Phases A–Q at **100%**.

@@ -103,3 +103,16 @@ Also shipped: `ServerMetricsTracker.snapshot()`, shared `ExampleProbe`
 | P2 | `MPREGClient` missing discovery | façade delegates list_peers/cluster_map/catalog_*/summary_query |
 | P3 | Four-plane WARN noise | start message → DEBUG; config-check stays operator path |
 | P4 | snapshot shallow for perf ensures | samples/min_ms/max_ms on rpc+pubsub snapshot |
+
+## Phase Q closes (2026-08-05)
+
+| ID | Surface | Resolution |
+|----|---------|------------|
+| Q1 | `client.summary` constant uncovered | APP_FEATURES join on `discovery_watch_summary` |
+| Q2 | settings discoverability | `mpreg config-check --explain` field guide |
+| Q3 | fabric hop visibility | `ServerMetricsTracker.snapshot()["fabric"]` hop stats |
+| Q4 | mgmt audit durability | teach `mgmt_audit_path` JSONL + `/mgmt/v1/audit` |
+| Q5 | persistence backend honesty | PersistenceMode memory/sqlite + remote stores non-claim |
+| Q6 | plane error_code | teach CacheOpResult/QueueSendResult promotion |
+| Q7 | ops probe depth | ExampleProbe on `ops_cli_tour` |
+| Q8 | unified inventory | `rpc_list`/`rpc_describe`/`rpc_report` on MPREGClient |

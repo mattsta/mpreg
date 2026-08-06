@@ -11,6 +11,9 @@ def test_unified_client_has_discovery_methods() -> None:
         "catalog_query",
         "catalog_watch",
         "summary_query",
+        "rpc_list",
+        "rpc_describe",
+        "rpc_report",
         "last_trace_context",
     ):
         assert hasattr(c, name), name

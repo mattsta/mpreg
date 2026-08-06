@@ -22,6 +22,7 @@ from click.testing import CliRunner
 from mpreg.cli.main import cli
 from mpreg.core.config import MPREGSettings
 from mpreg.core.port_allocator import port_range_context
+from mpreg.examples.apps._shared.obs import ExampleProbe
 from mpreg.examples.apps._shared.runtime import (
     app_run,
     ensure,
@@ -60,6 +61,34 @@ async def main() -> None:
                 f"config-check exit {result.exit_code}: {result.output[:300]}",
             )
             ok(f"config-check exit={result.exit_code}")
+
+        with scenario("config-check --explain field guide", "ops.cli_config"):
+            result = await _invoke(
+                [
+                    "config-check",
+                    "mpreg/profiles/dev.toml",
+                    "--format",
+                    "json",
+                    "--explain",
+                ]
+            )
+            ensure(
+                result.exit_code in (0, 2),
+                f"explain exit {result.exit_code}: {result.output[:400]}",
+            )
+            out = result.output
+            ensure(
+                "guide" in out or "field guide" in out or "## identity" in out,
+                f"explain missing guide: {out[:400]}",
+            )
+            ensure(
+                "four-plane" in out.lower()
+                or "systems" in out
+                or "persistence" in out.lower(),
+                f"explain thin: {out[:300]}",
+            )
+            step("ERG: --explain documents groups for operator discoverability")
+            ok("config-check --explain guide present")
 
         with scenario("examples list via mpreg CLI", "ops.cli_examples"):
             result = await _invoke(["examples", "list"])
@@ -430,6 +459,37 @@ async def main() -> None:
                         f"list-peers failed: {peers.output[:300]}",
                     )
                     ok("list-peers discovery CLI")
+
+                with scenario(
+                    "ops CLI latency probe annotations",
+                    "ops.cli_call",
+                    "mon.metrics_snapshot",
+                ):
+                    probe = ExampleProbe("ops_cli_tour")
+                    with probe.measure("cli.client_call"):
+                        r = await _invoke(
+                            [
+                                "client",
+                                "call",
+                                "ops_echo",
+                                "probe",
+                                "--url",
+                                url,
+                                "--locs",
+                                "compute",
+                            ],
+                        )
+                    ensure(r.exit_code == 0, f"probe call failed {r.output[:200]}")
+                    snap = probe.snapshot()
+                    ensure(snap["total_ops"] >= 1, f"ops={snap}")
+                    ensure("cli.client_call" in snap["operations"], snap)
+                    op = snap["operations"]["cli.client_call"]
+                    ensure(op["count"] >= 1 and "p50_ms" in op, op)
+                    probe.print_report()
+                    ok(
+                        f"ops probe n={op['count']} p50={op['p50_ms']} "
+                        f"p95={op['p95_ms']}"
+                    )
 
             await run_with_servers(settings, _run)
 
