@@ -128,8 +128,11 @@ def _strong_metrics_schema() -> dict[str, Any]:
                         "description": (
                             "Peers that exhausted ABORT retries on the last "
                             "failed put (CFT residual candidates; ops only — "
-                            "not residual-free proof, not auto-heal)."
+                            "not residual-free proof, not auto-heal). "
+                            "Doctor JSON strong rows use the same list type."
                         ),
+                        # T124: populated residual-candidate example ([] is clean-put)
+                        "example": ["ws://127.0.0.1:9001"],
                     },
                     "abort_fail_peer_count": {
                         "type": "integer",
@@ -146,7 +149,13 @@ def _strong_metrics_schema() -> dict[str, Any]:
                     },
                     "last_abort_fail_op_id": {
                         "type": "string",
-                        "description": "op_id associated with last_abort_fail_peers.",
+                        "description": (
+                            "op_id associated with last_abort_fail_peers. "
+                            "Doctor JSON strong rows use the same string type "
+                            "(empty when clean)."
+                        ),
+                        # T123: populated residual-candidate example
+                        "example": "op-abc123",
                     },
                     "residual_ops_hint": {
                         "type": "string",

@@ -550,53 +550,48 @@ def test_strong_doctor_json_residual_fields_hypothesis() -> None:
     _prop()
 
 def test_openapi_abort_fail_peer_count_example() -> None:
-    """T102: OpenAPI StrongMetrics documents integer example for peer count."""
+    """T102/T123/T124: OpenAPI residual fields document typed examples."""
+    import json
+
     from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
 
     doc = build_monitoring_openapi()
-    schemas = (doc.get("components") or {}).get("schemas") or {}
-    strong = schemas.get("StrongMetricsResponse") or schemas.get("StrongMetrics") or {}
-    # Schema may nest under properties.strong or be the metrics body itself
-    props = strong.get("properties") or {}
-    if "strong" in props and isinstance(props.get("strong"), dict):
-        inner = (props["strong"].get("properties") or {})
-        props = inner or props
-    # Walk nested strong body properties if envelope
-    body_props = props
-    if "abort_fail_peer_count" not in body_props:
-        for key in ("strong", "data", "body"):
-            node = props.get(key) or {}
-            if isinstance(node, dict) and "properties" in node:
-                body_props = node["properties"]
-                break
-    # Fallback: search whole doc text for example wiring
-    import json
-
     blob = json.dumps(doc)
     assert "abort_fail_peer_count" in blob
-    # Find the property node
-    def _find_count(obj: object) -> dict | None:
+    assert "last_abort_fail_op_id" in blob
+    assert "last_abort_fail_peers" in blob
+
+    def _find_prop(obj: object, name: str) -> dict | None:
         if isinstance(obj, dict):
-            if "abort_fail_peer_count" in obj and isinstance(
-                obj["abort_fail_peer_count"], dict
-            ):
-                return obj["abort_fail_peer_count"]  # type: ignore[return-value]
+            if name in obj and isinstance(obj[name], dict) and "type" in obj[name]:
+                return obj[name]  # type: ignore[return-value]
             for v in obj.values():
-                found = _find_count(v)
+                found = _find_prop(v, name)
                 if found is not None:
                     return found
         elif isinstance(obj, list):
             for v in obj:
-                found = _find_count(v)
+                found = _find_prop(v, name)
                 if found is not None:
                     return found
         return None
 
-    node = _find_count(doc)
-    assert node is not None
-    assert node.get("type") == "integer"
-    assert node.get("example") == 1
-    assert "doctor" in str(node.get("description", "")).lower() or "integer" in str(
-        node.get("description", "")
+    count_node = _find_prop(doc, "abort_fail_peer_count")
+    assert count_node is not None
+    assert count_node.get("type") == "integer"
+    assert count_node.get("example") == 1
+    assert "doctor" in str(count_node.get("description", "")).lower() or "integer" in str(
+        count_node.get("description", "")
     ).lower()
+
+    oid_node = _find_prop(doc, "last_abort_fail_op_id")
+    assert oid_node is not None
+    assert oid_node.get("type") == "string"
+    assert oid_node.get("example") == "op-abc123"
+
+    peers_node = _find_prop(doc, "last_abort_fail_peers")
+    assert peers_node is not None
+    assert peers_node.get("type") == "array"
+    assert isinstance(peers_node.get("example"), list)
+    assert peers_node.get("example")
 

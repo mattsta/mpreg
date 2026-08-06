@@ -326,6 +326,16 @@ encapsulation:
       - tests/chaos/test_t117_residuals.py
       - tests/chaos/test_t118_residuals.py
       - tests/chaos/test_t119_residuals.py
+      - tests/chaos/test_t120_residuals.py
+      - tests/chaos/test_t121_residuals.py
+      - tests/chaos/test_t122_residuals.py
+      - tests/chaos/test_t123_residuals.py
+      - tests/chaos/test_t124_residuals.py
+      - tests/chaos/test_t125_residuals.py
+      - tests/chaos/test_t126_residuals.py
+      - tests/chaos/test_t127_residuals.py
+      - tests/chaos/test_t128_residuals.py
+      - tests/chaos/test_t129_residuals.py
       - tests/invariants/test_cache_strong_properties.py
       - tests/invariants/test_cache_strong_history.py
       - tests/integration/test_cache_strong_quorum.py
@@ -431,6 +441,16 @@ non_claims:
   - "Master/DISTLAB residual honesty index T110–T119 is planning cross-link — not Jepsen/Elle/WAN proof"
   - "FEATURE/APP_CATALOG doctor JSON op_id inventory is teachable — not residual-free product claim"
   - "Residual honesty gate T110–T119 is same-host residual closeout coverage — not WAN/BFT/Jepsen proof"
+
+  - "config-check --explain doctor JSON residual types text is operator guidance — not automatic heal, not SIEM"
+  - "CACHING_SYSTEM doctor JSON op_id docs are operator guidance — not residual-free product claim"
+  - "PRODUCTION_DEPLOYMENT residual scrape pointer is operator guidance — not WAN SLO, not automatic heal"
+  - "OpenAPI last_abort_fail_op_id / last_abort_fail_peers examples are documentation of wire/metrics shape — not HTTP invoke, not SIEM, not auto-heal"
+  - "config-check pytest doctor JSON type asserts are operator guidance coverage — not live mesh, not automatic heal"
+  - "OpenAPI residual field example unit tests are pure schema checks — not live mesh, not automatic heal"
+  - "claims.yaml residual closeout test list T120–T129 is proof inventory — not residual-free under lost ABORT"
+  - "Master/DISTLAB residual honesty index T120–T129 is planning cross-link — not Jepsen/Elle/WAN proof"
+  - "Residual honesty gate T120–T129 is same-host residual closeout coverage — not WAN/BFT/Jepsen proof"
 
   - "Lying COMMIT_ACK applied bits can satisfy CFT quorum math without peer L1 apply — documented non_claim (not BFT)"
   - "mpreg.testing.distlab is Jepsen-inspired (history/checker/nemesis) — not Elle, not WAN geo generators, not a JVM Jepsen port"

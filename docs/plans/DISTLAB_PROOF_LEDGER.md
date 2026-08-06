@@ -191,6 +191,16 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T117 master index T110–T119 | DISTLAB residual honesty band | teach |
 | T118 catalog doctor op_id | FEATURE/APP_CATALOG | teach |
 | T119 gate T110–T119 | residual closeouts + ledger gate | support |
+| T120 config-check doctor JSON types | explain strong_cache doctor JSON types | support ops |
+| T121 CACHING doctor op_id | CACHING_SYSTEM last_abort_fail_op_id | teach |
+| T122 PRODUCTION residual pointer | PRODUCTION residual scrape + retry-abort | teach |
+| T123 OpenAPI op_id example | last_abort_fail_op_id example | support ops |
+| T124 OpenAPI peers example | last_abort_fail_peers example | support ops |
+| T125 config-check pytest doctor JSON | guide doctor JSON type asserts | support ops |
+| T126 OpenAPI residual examples unit | count/op_id/peers OpenAPI examples | product |
+| T127 claims T120–T129 | claims.yaml proof + non_claims | honesty |
+| T128 master index T120–T129 | DISTLAB residual honesty band | teach |
+| T129 gate T120–T129 | residual closeouts + ledger gate | support |
 
 ## Non-claims (do not market)
 
@@ -280,6 +290,15 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 - Master index T110–T119 is planning cross-link — not Jepsen/WAN
 - FEATURE/APP_CATALOG doctor op_id rows are teachable inventory — not residual-free claim
 - Residual honesty gate T110–T119 is same-host closeout — not WAN/BFT/Jepsen
+- config-check doctor JSON types explain is operator guidance — not auto-heal
+- CACHING_SYSTEM doctor op_id docs are guidance — not residual-free claim
+- PRODUCTION residual pointer is operator guidance — not WAN SLO, not auto-heal
+- OpenAPI last_abort_fail_op_id/peers examples are documentation — not auto-heal
+- config-check pytest doctor JSON asserts are guidance coverage — not live mesh
+- OpenAPI residual examples unit tests are pure schema checks — not live mesh
+- claims T120–T129 inventory is proof list — not residual-free under lost ABORT
+- Master index T120–T129 is planning cross-link — not Jepsen/WAN
+- Residual honesty gate T120–T129 is same-host closeout — not WAN/BFT/Jepsen
 
 ## Gate commands
 
@@ -340,6 +359,11 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t114_residuals.py tests/chaos/test_t115_residuals.py \
   tests/chaos/test_t116_residuals.py tests/chaos/test_t117_residuals.py \
   tests/chaos/test_t118_residuals.py tests/chaos/test_t119_residuals.py \
+  tests/chaos/test_t120_residuals.py tests/chaos/test_t121_residuals.py \
+  tests/chaos/test_t122_residuals.py tests/chaos/test_t123_residuals.py \
+  tests/chaos/test_t124_residuals.py tests/chaos/test_t125_residuals.py \
+  tests/chaos/test_t126_residuals.py tests/chaos/test_t127_residuals.py \
+  tests/chaos/test_t128_residuals.py tests/chaos/test_t129_residuals.py \
   tests/integration/test_cache_strong_live_mesh.py \
   tests/testing/test_distlab_live.py::test_distlab_live_strong_metrics_e2e \
   tests/test_config_check_cli.py tests/test_unified_client.py -q

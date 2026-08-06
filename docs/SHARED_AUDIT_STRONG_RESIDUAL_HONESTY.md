@@ -1378,3 +1378,86 @@ Still **not** claimed: gate is WAN/BFT/Jepsen proof.
 
 Plan: `docs/plans/DISTLAB_T119_GATE_T110_T119_PLAN.md`.
 
+## Phase 108 — config-check explain doctor JSON types (2026-08-06)
+
+T120: ``config-check --explain`` strong_cache guide documents doctor JSON
+residual field types via ``strong_doctor_json_residual_fields``.
+
+Still **not** claimed: explain text is auto-heal; SIEM.
+
+Plan: `docs/plans/DISTLAB_T120_CONFIG_CHECK_DOCTOR_JSON_TYPES_PLAN.md`.
+
+## Phase 109 — CACHING_SYSTEM doctor op_id (2026-08-06)
+
+T121: CACHING_SYSTEM ops section documents doctor JSON
+``last_abort_fail_op_id`` str + helper name.
+
+Still **not** claimed: docs are residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T121_CACHING_DOCTOR_OP_ID_PLAN.md`.
+
+## Phase 110 — PRODUCTION residual ops pointer (2026-08-06)
+
+T122: PRODUCTION_DEPLOYMENT points operators at residual scrape fields and
+retry-abort after recovery (CFT; not auto-heal).
+
+Still **not** claimed: production doc is WAN SLO or residual-free.
+
+Plan: `docs/plans/DISTLAB_T122_PRODUCTION_RESIDUAL_POINTER_PLAN.md`.
+
+## Phase 111 — OpenAPI last_abort_fail_op_id example (2026-08-06)
+
+T123: OpenAPI ``last_abort_fail_op_id`` documents string example ``op-abc123``.
+
+Still **not** claimed: OpenAPI example is HTTP invoke or auto-heal.
+
+Plan: `docs/plans/DISTLAB_T123_OPENAPI_OP_ID_EXAMPLE_PLAN.md`.
+
+## Phase 112 — OpenAPI last_abort_fail_peers example (2026-08-06)
+
+T124: OpenAPI ``last_abort_fail_peers`` documents array example with peer URL.
+
+Still **not** claimed: OpenAPI example is residual-free proof.
+
+Plan: `docs/plans/DISTLAB_T124_OPENAPI_PEERS_EXAMPLE_PLAN.md`.
+
+## Phase 113 — config-check pytest doctor JSON types (2026-08-06)
+
+T125: config-check pytest asserts doctor JSON types language in strong_cache guide.
+
+Still **not** claimed: pytest is live mesh; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T125_CONFIG_CHECK_PYTEST_DOCTOR_JSON_PLAN.md`.
+
+## Phase 114 — OpenAPI residual examples unit (2026-08-06)
+
+T126: unit tests cover OpenAPI examples for count/op_id/peers residual fields.
+
+Still **not** claimed: unit is live mesh; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T126_OPENAPI_RESIDUAL_EXAMPLES_UNIT_PLAN.md`.
+
+## Phase 115 — claims.yaml T120–T129 (2026-08-06)
+
+T127: claims proof list + non_claims for T120–T129 residual surfaces.
+
+Still **not** claimed: claims text is residual-free under lost ABORT.
+
+Plan: `docs/plans/DISTLAB_T127_CLAIMS_T120_T129_PLAN.md`.
+
+## Phase 116 — Master/DISTLAB index T120–T129 (2026-08-06)
+
+T128: DISTLAB residual honesty index band extended through T129.
+
+Still **not** claimed: index is Jepsen/WAN proof.
+
+Plan: `docs/plans/DISTLAB_T128_MASTER_INDEX_T120_T129_PLAN.md`.
+
+## Phase 117 — Gate T120–T129 (2026-08-06)
+
+T129: residual closeouts T120–T129, ledger, gate green.
+
+Still **not** claimed: gate is WAN/BFT/Jepsen proof.
+
+Plan: `docs/plans/DISTLAB_T129_GATE_T120_T129_PLAN.md`.
+

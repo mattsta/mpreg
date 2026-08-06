@@ -372,6 +372,12 @@ monitoring endpoint.
 
 See `docs/OBSERVABILITY_TROUBLESHOOTING.md` for detailed workflows.
 STRONG + shared audit operator runbook: `docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md`.
+CFT residual candidates (ops only — not auto-heal): scrape
+`/metrics/strong` or `mpreg doctor --strong --format json` for
+`abort_fail_peer_count` (int), `last_abort_fail_peers` (list),
+`last_abort_fail_op_id` (str), `residual_ops_hint` (str); Prometheus
+`mpreg_strong_abort_fail_peers`. Re-ABORT via
+`mpreg client cache-strong-retry-abort` after recovery (still CFT).
 
 Route tracing is available at the monitoring endpoint:
 `/routing/trace?destination=<cluster_id>`.
