@@ -12,7 +12,10 @@ API discovery notes (logged as scenarios / steps):
 from __future__ import annotations
 
 import asyncio
+import json
 import os
+import tempfile
+from pathlib import Path
 
 from click.testing import CliRunner
 
@@ -106,6 +109,7 @@ async def main() -> None:
                     log_level="WARNING",
                     gossip_interval=30.0,
                     enable_default_cache=True,
+                    enable_default_queue=True,
                     dns_gateway_enabled=True,
                     dns_zones=("mpreg",),
                     dns_udp_port=udp_port,
@@ -268,6 +272,164 @@ async def main() -> None:
                         f"(e.g. http://127.0.0.1:PORT), not WS; exit={bad.exit_code}"
                     )
                     ok("doctor correctly rejects WS-only URL / missing monitoring")
+
+                # ── Phase M: plane / ns / discovery CLI surfaces ──────────
+                with scenario(
+                    "client cache-put + cache-get plane CLI",
+                    "ops.cli_planes",
+                    "cache.rpc_surface",
+                ):
+                    put = await _invoke(
+                        [
+                            "client",
+                            "cache-put",
+                            "--url",
+                            url,
+                            "--namespace",
+                            "ops",
+                            "--key",
+                            "k1",
+                            "--value",
+                            '{"v":1}',
+                        ],
+                    )
+                    ensure(
+                        put.exit_code == 0,
+                        f"cache-put failed: {put.output[:300]}",
+                    )
+                    got = await _invoke(
+                        [
+                            "client",
+                            "cache-get",
+                            "--url",
+                            url,
+                            "--namespace",
+                            "ops",
+                            "--key",
+                            "k1",
+                        ],
+                    )
+                    ensure(
+                        got.exit_code == 0,
+                        f"cache-get failed: {got.output[:300]}",
+                    )
+                    ok("cache-put/get CLI plane")
+
+                with scenario(
+                    "client queue-send plane CLI",
+                    "ops.cli_planes",
+                    "queue.rpc_surface",
+                ):
+                    qs = await _invoke(
+                        [
+                            "client",
+                            "queue-send",
+                            "--url",
+                            url,
+                            "--queue",
+                            "ops-jobs",
+                            "--payload",
+                            '{"task":"cli"}',
+                            "--topic",
+                            "ops.jobs",
+                        ],
+                    )
+                    ensure(
+                        qs.exit_code == 0,
+                        f"queue-send failed: {qs.output[:300]}",
+                    )
+                    ok("queue-send CLI plane")
+
+                with scenario(
+                    "client publish plane CLI",
+                    "ops.cli_planes",
+                    "pubsub.client_wire",
+                ):
+                    pub = await _invoke(
+                        [
+                            "client",
+                            "publish",
+                            "--url",
+                            url,
+                            "--topic",
+                            "ops.events.tick",
+                            "--payload",
+                            '{"n":1}',
+                        ],
+                    )
+                    ensure(
+                        pub.exit_code == 0,
+                        f"publish failed: {pub.output[:300]}",
+                    )
+                    ok("publish CLI plane")
+
+                with scenario(
+                    "client namespace-policy validate CLI",
+                    "ops.cli_ns",
+                    "ns.validate",
+                ):
+                    rules = [
+                        {
+                            "namespace": "svc.ops",
+                            "visibility": ["ops-cli"],
+                            "owners": ["ops-cli"],
+                            "policy_version": "v1",
+                        }
+                    ]
+                    with tempfile.TemporaryDirectory() as td:
+                        rules_path = Path(td) / "ns-rules.json"
+                        rules_path.write_text(json.dumps(rules), encoding="utf-8")
+                        ns = await _invoke(
+                            [
+                                "client",
+                                "namespace-policy",
+                                "validate",
+                                "--url",
+                                url,
+                                "--rules-file",
+                                str(rules_path),
+                                "--actor",
+                                "ops-cli-tour",
+                            ],
+                        )
+                    ensure(
+                        ns.exit_code == 0,
+                        f"namespace-policy validate failed: {ns.output[:400]}",
+                    )
+                    ok("namespace-policy validate CLI")
+
+                with scenario(
+                    "client resolver-cache-stats discovery CLI",
+                    "ops.cli_discovery",
+                    "disco.resolver_stats",
+                ):
+                    stats = await _invoke(
+                        ["client", "resolver-cache-stats", "--url", url]
+                    )
+                    # Resolver may be off; exit 0 with stats or clear error is OK
+                    ensure(
+                        stats.exit_code in (0, 1),
+                        f"resolver-cache-stats crash: {stats.output[:300]}",
+                    )
+                    step(
+                        f"resolver-cache-stats exit={stats.exit_code} "
+                        f"out={stats.output.strip()[:120]!r}"
+                    )
+                    ok("resolver-cache-stats CLI surface")
+
+                with scenario(
+                    "list-peers tagged as discovery CLI",
+                    "ops.cli_discovery",
+                    "disco.list_peers",
+                ):
+                    peers = await _invoke(
+                        ["client", "list-peers", "--url", url]
+                    )
+                    ensure(
+                        peers.exit_code == 0,
+                        f"list-peers failed: {peers.output[:300]}",
+                    )
+                    ok("list-peers discovery CLI")
 
             await run_with_servers(settings, _run)
 

@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase L COMPLETE — FEATURE partial promotion batch → 95 apps)  
+**Last updated:** 2026-08-05 (Phase M COMPLETE — residual CLI + fabric_forward → 96 apps; 0 teachable FEATURE partials)  
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -32,6 +32,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G17 | **Close Phase J depth non-claims** | CERT_REQUIRED mTLS, packet-loss teach, hub settlement, disco.signatures | [x] Phase K |
 | G18 | **Promote high-value FEATURE partials** | rpc.describe/report, client.trace, tx.correlation, chaos.no_loop, mon.trace_bind | [x] Phase K |
 | G19 | **Promote remaining FEATURE partials** | queue.ack/receive, client.pubsub/backlog, cache geo/L2, fabric modes, rpc concurrency, mon.logging, chaos.crash, tx.CB, ns.engine | [x] Phase L |
+| G20 | **Close last FEATURE partials** | ops.cli_planes/ns/discovery + pubsub.fabric_forward | [x] Phase M |
 
 ---
 
@@ -411,6 +412,28 @@ teachable library surface — serialized with residual honesty for CLI-only ops.
 
 ---
 
+### Phase M — Residual CLI ops + fabric_forward (**COMPLETE**)
+
+Phase L left 4 FEATURE `partial` rows (CLI ops + fabric_forward). Phase M
+**integrates those into the living charter** and closes them.
+
+#### M goals
+
+| ID | Goal | Success measure | Status |
+|----|------|-----------------|--------|
+| PM1 | Charter Phase M | living plans | [x] |
+| PM2 | ops.cli_planes/ns/discovery | `ops_cli_tour` deepen | [x] |
+| PM3 | pubsub.fabric_forward | `pubsub_fabric_forward_lab` | [x] |
+| PM4 | FEATURE partials = 0 teachable | catalog sync | [x] |
+| PM5 | unit + suite | **96** green | [x] |
+
+#### Phase M exit criteria
+
+- [x] Last teachable FEATURE partials shipped  
+- [x] **96** apps; unit + suite green  
+
+---
+
 ## 4. Target app matrix growth
 
 | Band | Now | Target | Notes |
@@ -420,7 +443,7 @@ teachable library surface — serialized with residual honesty for CLI-only ops.
 | L2 product/integ | ~21 | 14+ | + shipping, router, dependency |
 | L3 complex | ~16 | 12+ | + hubs, leader election |
 | L4 world | 2 | 2–3 | global_edge + multi_pop |
-| **Total** | **95** | **50–70+** | band complete; Phase L +10 partial promotion |
+| **Total** | **96** | **50–70+** | band complete; Phase M +1; 0 teachable FEATURE partials |
 
 ---
 
@@ -478,6 +501,7 @@ uv run pytest tests/examples_apps -q
 | 2026-08-05 | Phase J complete | F10 drain/detach; F11 rpc_auth; F12 dev_certs/wss; +7 apps (tls/disco/queue_fed/live_chaos/transport×2/blockchain) → **78** |
 | 2026-08-05 | Phase K complete | signatures, rpc inventory, trace bind, correlation/no-loop, CERT_REQUIRED mTLS, packet loss, hub settlement → **85** |
 | 2026-08-05 | Phase L complete | queue ack/receive, pubsub client/backlog, cache geo/L2, fabric modes, rpc concurrency, cluster map/catalog, mon json, chaos crash, tx CB, ns engine → **95** |
+| 2026-08-05 | Phase M complete | ops CLI planes/ns/discovery deepen + pubsub_fabric_forward_lab → **96**; 0 teachable FEATURE partials |
 
 ---
 
@@ -571,6 +595,17 @@ uv run pytest tests/examples_apps -q
 
 ---
 
+### Phase M (residual CLI + fabric_forward) — complete
+
+| Slice | Weight | Done | Status |
+|-------|-------:|-----:|--------|
+| M0–M1 charter + ops deepen | 40% | 40 | [x] |
+| M2 fabric_forward lab | 30% | 30 | [x] |
+| M3–M5 catalog + suite | 30% | 30 | [x] |
+| **Phase M overall** | **100%** | **100%** | complete |
+
+---
+
 ## 8. Working rules (non-negotiable)
 
 1. **Do not stop and claim done** after a small batch — update plan and continue next wave.  
@@ -640,17 +675,17 @@ F11/F12/F10 + residual teach apps. **78** apps at J exit.
 `packet_loss_chaos`; `blockchain_hub_settlement`. **85** apps at K exit.
 
 **Phase L (FEATURE partial promotion batch): COMPLETE 100%.**  
-`queue_ack_receive_lab`; `pubsub_client_backlog`; `cache_replication_geo`;
-`fabric_policy_modes`; `rpc_concurrency_lab`; `cluster_map_catalog`;
-`mon_logging_json`; `chaos_crash_recover`; `tx_circuit_breaker_lab`;
-`ns_engine_direct`. **95** apps.
+10 depth labs. **95** apps at L exit.
 
-Honest remaining (operator topology / kernel-level / CLI-doc partials):
+**Phase M (residual CLI + fabric_forward): COMPLETE 100%.**  
+`ops_cli_tour` deepened; `pubsub_fabric_forward_lab`. **96** apps.
+FEATURE_CATALOG teachable `partial` rows: **0**.
+
+Honest remaining (operator topology / kernel-level only):
 multi-continent SLA meshes, kernel TCP byte-splice loss, multi-hub DAO treasury
-production ops, `ops.cli_*` OPERATE surfaces, thin `pubsub.fabric_forward` —
-not curriculum blockers.
+production ops — not curriculum blockers.
 
-**Program idle** at Phase L exit unless a new charter opens further product work.
+**Program idle** at Phase M exit unless a new charter opens further product work.
 
 ---
 

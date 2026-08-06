@@ -141,6 +141,9 @@ OPS_CLI_DNS: Final = "ops.cli_dns"
 OPS_CLI_DOCTOR: Final = "ops.cli_doctor"
 OPS_CLI_CONFIG: Final = "ops.cli_config"
 OPS_CLI_EXAMPLES: Final = "ops.cli_examples"
+OPS_CLI_PLANES: Final = "ops.cli_planes"
+OPS_CLI_NS: Final = "ops.cli_ns"
+OPS_CLI_DISCOVERY: Final = "ops.cli_discovery"
 
 PERS_SQLITE_KV: Final = "pers.sqlite_kv"
 PERS_SQLITE_QUEUE: Final = "pers.sqlite_queue"
@@ -520,9 +523,17 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         OPS_CLI_DOCTOR,
         OPS_CLI_CONFIG,
         OPS_CLI_EXAMPLES,
+        OPS_CLI_PLANES,
+        OPS_CLI_NS,
+        OPS_CLI_DISCOVERY,
         RPC_CALL,
         DISCO_DNS_REGISTER,
         DISCO_LIST_PEERS,
+        DISCO_RESOLVER_STATS,
+        CACHE_RPC_SURFACE,
+        QUEUE_RPC_SURFACE,
+        PUBSUB_CLIENT_WIRE,
+        NS_VALIDATE,
     ),
     "chaos_transport": (
         CHAOS_TRANSPORT,
@@ -829,6 +840,12 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
     ),
     "ns_engine_direct": (
         NS_ENGINE,
+    ),
+
+    # Phase M — residual CLI ops + fabric_forward
+    "pubsub_fabric_forward_lab": (
+        PUBSUB_FABRIC_FORWARD,
+        PUBSUB_HEADERS,
     ),
 
 }

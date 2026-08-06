@@ -70,6 +70,7 @@ _TIMEOUT_S: dict[str, float] = {
     "chaos_crash_recover": 30.0,
     "tx_circuit_breaker_lab": 30.0,
     "ns_engine_direct": 30.0,
+    "pubsub_fabric_forward_lab": 30.0,
 
     "discovery_resolver_audit": 90.0,
 

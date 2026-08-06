@@ -98,7 +98,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | `pubsub.publish_reply` | Request/reply over topics | `publish_with_reply` | shipped | `pubsub_request_reply` |
 | `pubsub.client_wire` | Wire pubsub via client | `MPREGClient.publish/subscribe` | shipped | `pubsub_request_reply`, `sensor_ingest_pubsub` |
 | `pubsub.headers` | Message headers | `PubSubMessage.headers` | shipped | `pubsub_client_backlog`, `plane_pubsub` |
-| `pubsub.fabric_forward` | Cross-cluster topic forward | `fabric.pubsub_forwarding` | partial | `tier3_expansion` |
+| `pubsub.fabric_forward` | Cross-cluster topic forward | `fabric.pubsub_forwarding` | shipped | `pubsub_fabric_forward_lab`, `tier3_expansion` |
 
 ---
 
@@ -289,10 +289,10 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | ID | Feature | Primary APIs | Depth | Apps |
 |----|---------|--------------|-------|------|
 | `ops.cli_call` | `mpreg call` | CLI | shipped | `ops_cli_tour` |
-| `ops.cli_planes` | queue/cache/publish CLI | `mpreg client-*` | partial | OPERATE |
+| `ops.cli_planes` | queue/cache/publish CLI | `mpreg client-*` | shipped | `ops_cli_tour` |
 | `ops.cli_dns` | DNS CLI group | `mpreg dns` / `mpreg client dns-*` | shipped | `ops_cli_tour` |
-| `ops.cli_ns` | Namespace policy CLI | `mpreg namespace-policy` | partial | `namespace_policy_gate` (API); CLI in OPERATE |
-| `ops.cli_discovery` | peers / resolver | `list-peers`, resolver cmds | partial | OPERATE |
+| `ops.cli_ns` | Namespace policy CLI | `mpreg namespace-policy` | shipped | `ops_cli_tour` |
+| `ops.cli_discovery` | peers / resolver | `list-peers`, resolver cmds | shipped | `ops_cli_tour` |
 | `ops.example_runner` | Curriculum runner | `mpreg-example`, `mpreg examples`, `mpreg demo` | shipped | all |
 | `ops.doctor` / `ops.cli_doctor` | Doctor / admin | `mpreg doctor` | shipped | `ops_cli_tour` |
 
@@ -368,12 +368,14 @@ rpc.describe/report, client.trace, mon.trace_bind, tx.correlation, chaos.no_loop
 `mon_logging_json`, `chaos_crash_recover`, `tx_circuit_breaker_lab`,
 `ns_engine_direct` (+ boot.profiles / cons.raft/leader tags). **95** apps.
 
+**Closed in Phase M (2026-08-05):** residual FEATURE partials —
+`ops_cli_tour` deepened (planes/ns/discovery CLI); `pubsub_fabric_forward_lab`.
+**96** apps. FEATURE_CATALOG teachable `partial` rows → **0**.
+
 **Still open / residual (operator topology — not curriculum blockers):**
 
 - Multi-continent SLA / production multi-hub DAO treasury ops
 - Kernel-level TCP byte-splice packet loss (platform teaches delivery model + admission)
-- CLI ops surfaces (`ops.cli_planes` / `ops.cli_ns` / `ops.cli_discovery`) remain OPERATE-doc partials
-- `pubsub.fabric_forward` thin coverage via tier3 (deepen opportunistically)
 
 **Closed in Phase I (2026-08-05):** false `gap` rows flipped to `shipped` for
 apps that already teach them; FQN features `rpc.fqn` /

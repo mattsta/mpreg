@@ -266,3 +266,25 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md)
 **App count:** 85 → **95** (+10 Phase L).
 
 **Program:** Phases A–L at **100%** per PROJECT_PLAN dashboard.
+
+## Phase M — Residual CLI ops + fabric_forward (**COMPLETE**)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| M0 charter into living plans | [x] | G20 |
+| `ops_cli_tour` planes/ns/discovery deepen | [x] | cache/queue/publish/ns/resolver |
+| `pubsub_fabric_forward_lab` | [x] | hop metadata |
+| FEATURE partials → 0 teachable | [x] | |
+| unit + suite | [x] | see log |
+
+## Verification log (Phase M)
+
+| Date | Command | Result |
+|------|---------|--------|
+| 2026-08-05 | `mpreg-example run` Phase M apps | pass |
+| 2026-08-05 | `pytest tests/examples_apps -m unit` | **111 passed** |
+| 2026-08-05 | `mpreg-example suite` | **96/96 passed** (~103s) |
+
+**App count:** 95 → **96** (+1 Phase M).
+
+**Program:** Phases A–M at **100%**.

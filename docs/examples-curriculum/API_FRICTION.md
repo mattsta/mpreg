@@ -4,7 +4,7 @@
 **forced integration walk** of public MPREG APIs. Every awkward edge, missing
 error code, or CLI surprise gets logged here so platform DX can improve.
 
-**Last updated:** 2026-08-05 (Phase L — FEATURE partial promotion batch; 95 apps)  
+**Last updated:** 2026-08-05 (Phase M — residual CLI + fabric_forward; 96 apps; 0 teachable partials)  
 **Source of truth also summarized in:** [PROJECT_PLAN.md §9](./PROJECT_PLAN.md)
 
 Legend severity: **High** (blocks nested/async use or confuses operators badly) ·

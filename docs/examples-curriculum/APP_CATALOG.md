@@ -168,3 +168,12 @@ L0 ≥3 ensures; L1+ ≥5 ensures) and appear in `features.py` APP_FEATURES.
 | `ns_engine_direct` | L1 | plane | In-process NamespacePolicyEngine |
 
 **App count:** 85 → **95** (+10 Phase L).
+
+### Phase M additions (2026-08-05)
+
+| ID | Level | Kind | Summary |
+|----|-------|------|---------|
+| `pubsub_fabric_forward_lab` | L1 | plane | PubSubForwardingMetadata hop/path/headers |
+| `ops_cli_tour` (deepen) | L2 | product | + planes/ns/discovery CLI scenarios |
+
+**App count:** 95 → **96** (+1 Phase M; ops deepen in place).

@@ -452,6 +452,14 @@ APPS: tuple[ExampleApp, ...] = (
         ("namespace",),
         kind="plane",
     ),
+    _app(
+        "pubsub_fabric_forward_lab",
+        "PubSub Fabric Forward Lab",
+        AppLevel.L1,
+        "PubSubForwardingMetadata hop path + max_hops + headers.",
+        ("pubsub", "fabric"),
+        kind="plane",
+    ),
 
     _app(
         "topic_taxonomy_tour",

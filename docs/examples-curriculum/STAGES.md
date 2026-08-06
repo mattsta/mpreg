@@ -223,3 +223,12 @@ Linear continuation after Phase K. Promoted remaining teachable FEATURE_CATALOG
 10. ns.engine in-process
 
 Exit: **95** suite apps; residual partials are CLI ops docs + fabric_forward thin.
+
+## Phase M — Residual CLI ops + fabric_forward (COMPLETE)
+
+Linear continuation after Phase L. Closed the last teachable FEATURE `partial` rows:
+
+1. Deepen `ops_cli_tour` for `ops.cli_planes` / `ops.cli_ns` / `ops.cli_discovery`
+2. `pubsub_fabric_forward_lab` for `pubsub.fabric_forward`
+
+Exit: **96** suite apps; FEATURE teachable partials at **0**.
