@@ -194,6 +194,16 @@ async def main() -> None:
                         ensure(callable(client.rpc_list), "rpc_list missing")
                         ensure(callable(client.rpc_describe), "rpc_describe missing")
                         ensure(callable(client.rpc_report), "rpc_report missing")
+                        for name in (
+                            "dns_list",
+                            "dns_register",
+                            "summary_watch",
+                            "resolver_cache_stats",
+                            "namespace_status",
+                            "namespace_policy_validate",
+                            "discovery_access_audit",
+                        ):
+                            ensure(callable(getattr(client, name)), f"{name} missing")
                         listing = await client.rpc_list()
                         ensure(listing is not None, "rpc_list None")
                         step(f"rpc_list type={type(listing).__name__}")

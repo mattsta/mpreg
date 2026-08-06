@@ -125,10 +125,25 @@ async def main() -> None:
                     format_server_snapshot(s)
                     probe.absorb_server_tracker(tracker, label="bench-server")
                     probe.print_report()
+                    fab = s.get("fabric") or {}
+                    ensure(isinstance(fab, dict), f"fabric missing {s.keys()}")
+                    for k in (
+                        "decisions_total",
+                        "avg_hops",
+                        "max_hops",
+                        "blackhole_count",
+                        "reachable_ratio",
+                    ):
+                        ensure(k in fab, f"fabric missing {k}: {fab}")
+                    step(
+                        f"fabric decisions={fab.get('decisions_total')} "
+                        f"avg_hops={fab.get('avg_hops')} max_hops={fab.get('max_hops')}"
+                    )
                     ok(
                         f"server snapshot total={rpc['total']} "
                         f"p50={rpc['p50_ms']} p95={rpc['p95_ms']} "
-                        f"min={rpc['min_ms']} max={rpc['max_ms']}"
+                        f"min={rpc['min_ms']} max={rpc['max_ms']} "
+                        f"fabric_hops_max={fab.get('max_hops')}"
                     )
 
                 with scenario(

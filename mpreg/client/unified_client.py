@@ -266,6 +266,46 @@ class MPREGClient:
         """Aggregated RPC inventory report (delegates to API)."""
         return await self.api.rpc_report(*args, **kwargs)
 
+    # --- DNS / discovery / namespace (full API parity — Phase R) ---
+    async def dns_register(self, *args: Any, **kwargs: Any) -> Any:
+        return await self.api.dns_register(*args, **kwargs)
+
+    async def dns_unregister(self, *args: Any, **kwargs: Any) -> Any:
+        return await self.api.dns_unregister(*args, **kwargs)
+
+    async def dns_list(self, *args: Any, **kwargs: Any) -> Any:
+        return await self.api.dns_list(*args, **kwargs)
+
+    async def dns_describe(self, *args: Any, **kwargs: Any) -> Any:
+        return await self.api.dns_describe(*args, **kwargs)
+
+    async def summary_watch(self, *args: Any, **kwargs: Any) -> Any:
+        return await self.api.summary_watch(*args, **kwargs)
+
+    async def resolver_cache_stats(self, *args: Any, **kwargs: Any) -> Any:
+        return await self.api.resolver_cache_stats(*args, **kwargs)
+
+    async def resolver_resync(self, *args: Any, **kwargs: Any) -> Any:
+        return await self.api.resolver_resync(*args, **kwargs)
+
+    async def discovery_access_audit(self, *args: Any, **kwargs: Any) -> Any:
+        return await self.api.discovery_access_audit(*args, **kwargs)
+
+    async def namespace_status(self, *args: Any, **kwargs: Any) -> Any:
+        return await self.api.namespace_status(*args, **kwargs)
+
+    async def namespace_policy_export(self, *args: Any, **kwargs: Any) -> Any:
+        return await self.api.namespace_policy_export(*args, **kwargs)
+
+    async def namespace_policy_validate(self, *args: Any, **kwargs: Any) -> Any:
+        return await self.api.namespace_policy_validate(*args, **kwargs)
+
+    async def namespace_policy_apply(self, *args: Any, **kwargs: Any) -> Any:
+        return await self.api.namespace_policy_apply(*args, **kwargs)
+
+    async def namespace_policy_audit(self, *args: Any, **kwargs: Any) -> Any:
+        return await self.api.namespace_policy_audit(*args, **kwargs)
+
     # --- Pub/sub ---
     async def publish(
         self,

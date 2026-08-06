@@ -276,3 +276,8 @@ Exit: **97** suite apps; multi-axis living backlog retained for next charter.
 Post-P backlog was scattered across roadmaps. Phase Q linearized it into one
 checklist (Q0–Q9) and executed without idle stop. Exit: 97 apps; uncovered
 feature constants = 0.
+
+## Phase R — Sequential unified façade parity (COMPLETE)
+
+Full MPREGClient ↔ MPREGClientAPI async method parity (dns, namespace,
+resolver, summary_watch, discovery_access_audit). Teach + admin audit CLI.

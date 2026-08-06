@@ -536,6 +536,8 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         OPS_CLI_PLANES,
         OPS_CLI_NS,
         OPS_CLI_DISCOVERY,
+        OPS_MGMT_DRAIN,
+        OPS_MGMT_AUDIT,
         RPC_CALL,
         DISCO_DNS_REGISTER,
         DISCO_LIST_PEERS,
@@ -544,6 +546,7 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
         QUEUE_RPC_SURFACE,
         PUBSUB_CLIENT_WIRE,
         NS_VALIDATE,
+        MON_METRICS_SNAPSHOT,
     ),
     "chaos_transport": (
         CHAOS_TRANSPORT,

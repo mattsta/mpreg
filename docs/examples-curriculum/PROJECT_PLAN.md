@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase Q COMPLETE — single sequential multi-axis continuation; 97 apps)  
+**Last updated:** 2026-08-05 (Phase R COMPLETE — sequential unified façade parity; 97 apps)  
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -37,6 +37,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G22 | **Integrity polish after N** | thin=0; every feature constant in APP_FEATURES; stale planned scrub | [x] Phase O |
 | G23 | **Multi-axis platform charter (Phase P)** | CAP/CORRECT/USE/OBS/ERG/PERF improvements shipped + taught | [x] Phase P |
 | G24 | **Single sequential continuation (Phase Q)** | Post-P backlog linearized; execute Q1→Qn without idle stop | [x] Phase Q |
+| G25 | **Sequential façade parity (Phase R)** | Remaining MPREGClientAPI methods on MPREGClient + teach | [x] Phase R |
 
 ---
 
@@ -66,6 +67,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | Phase O | **COMPLETE** — integrity polish (thin + feature join + docs) |
 | Phase P | **COMPLETE** — multi-axis CAP/OBS/ERG/PERF + discovery façade |
 | Phase Q | **COMPLETE** — single sequential post-P backlog execution |
+| Phase R | **COMPLETE** — unified client full API parity |
 
 ### Thin backlog
 
@@ -813,6 +815,10 @@ Linearized post-P backlog; `client.summary` join; config-check `--explain`;
 fabric hop stats on snapshot; mgmt audit JSONL teach; persistence mode non-claim;
 unified rpc_list/error_code; ops_cli probe. **97** apps.
 
+**Phase R (sequential unified façade parity): COMPLETE 100%.**  
+MPREGClient full API parity (dns/namespace/resolver/summary_watch);
+microbench fabric keys; admin drain+audit CLI. **97** apps.
+
 Honest remaining (operator topology / kernel-level only — not curriculum blockers):
 multi-continent SLA meshes, kernel TCP byte-splice loss, multi-hub DAO treasury
 production ops. Living multi-axis backlog above for next charter.
@@ -867,6 +873,22 @@ Serialized from post-P backlog + integrity residual (`client.summary` join):
 
 **Deferred (not in Q — topology/product scale, append only after Q9):**
 multi-node shared audit store, full mgmt UI, remote SQL/other stores backends, multi-continent SLA.
+
+### Phase R — Sequential unified façade parity (**COMPLETE**)
+
+Continues the single linear queue after Q. No parallel charters.
+
+| # | Axis | Work | Status |
+|---|------|------|--------|
+| R0 | PLAN | Append after Q complete; this is sole active queue | [x] |
+| R1 | CAP | MPREGClient: dns_register/list/describe/unregister | [x] |
+| R2 | CAP | MPREGClient: summary_watch + resolver_cache_stats/resync | [x] |
+| R3 | CAP | MPREGClient: namespace_status/policy_* + discovery_access_audit | [x] |
+| R4 | OBS | rpc_microbench_lab asserts snapshot `fabric` hop keys | [x] |
+| R5 | CAP | ops_cli_tour: `admin audit` CLI surface (monitoring) | [x] |
+| R6 | VERIFY | unit + suite + feature-join + commit | [x] |
+
+**Exit:** all R rows `[x]`; suite green.
 
 ---
 

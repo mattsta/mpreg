@@ -395,3 +395,28 @@ Only active delivery queue. Mirrors PROJECT_PLAN Phase Q table.
 **App count:** **97** (deepen; no new apps).
 
 **Program:** Phases A–Q at **100%**.
+
+## Phase R — Sequential unified façade parity (**COMPLETE**)
+
+| Item | Status |
+|------|--------|
+| R0 append plan | [x] |
+| R1 unified dns_* | [x] |
+| R2 unified summary_watch + resolver_* | [x] |
+| R3 unified namespace_* + discovery_access_audit | [x] |
+| R4 microbench fabric snapshot keys | [x] |
+| R5 ops admin audit CLI | [x] |
+| R6 unit+suite+commit | [x] |
+
+## Verification log (Phase R)
+
+| Date | Command | Result |
+|------|---------|--------|
+| 2026-08-05 | unified API parity unit | **6 passed** (with prior) |
+| 2026-08-05 | teach microbench/ops_cli/unified | pass |
+| 2026-08-05 | pytest tests/examples_apps -m unit | **112 passed** |
+| 2026-08-05 | mpreg-example suite | **97/97 passed** (~100s) |
+
+**App count:** **97**.
+
+**Program:** Phases A–R at **100%**.

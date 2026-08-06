@@ -126,8 +126,8 @@ async def main() -> None:
             )
             ok("documented client subcommand layout")
 
-        with port_range_context(3, "servers") as ports:
-            ws_port, udp_port, tcp_port = ports[0], ports[1], ports[2]
+        with port_range_context(4, "servers") as ports:
+            ws_port, udp_port, tcp_port, mon_port = ports[0], ports[1], ports[2], ports[3]
             settings = [
                 MPREGSettings(
                     host="127.0.0.1",
@@ -143,6 +143,10 @@ async def main() -> None:
                     dns_zones=("mpreg",),
                     dns_udp_port=udp_port,
                     dns_tcp_port=tcp_port,
+                    monitoring_enabled=True,
+                    monitoring_port=mon_port,
+                    monitoring_enable_cors=False,
+                    mgmt_audit_path=str(Path(tempfile.mkdtemp(prefix="ops-audit-")) / "a.jsonl"),
                 )
             ]
 
@@ -459,6 +463,47 @@ async def main() -> None:
                         f"list-peers failed: {peers.output[:300]}",
                     )
                     ok("list-peers discovery CLI")
+
+                with scenario(
+                    "admin drain + audit CLI",
+                    "ops.mgmt_drain",
+                    "ops.mgmt_audit",
+                ):
+                    mon_url = f"http://127.0.0.1:{mon_port}"
+                    drain = await _invoke(
+                        [
+                            "admin",
+                            "drain",
+                            "--url",
+                            mon_url,
+                            "--actor",
+                            "ops-cli-tour",
+                            "--reason",
+                            "teach-audit",
+                            "--json",
+                        ]
+                    )
+                    ensure(
+                        drain.exit_code == 0,
+                        f"admin drain failed: {drain.output[:300]}",
+                    )
+                    audit = await _invoke(
+                        ["admin", "audit", "--url", mon_url, "--json", "--limit", "10"]
+                    )
+                    ensure(
+                        audit.exit_code == 0,
+                        f"admin audit failed: {audit.output[:300]}",
+                    )
+                    ensure(
+                        "node_drain" in audit.output or "mutations" in audit.output,
+                        f"audit body unexpected: {audit.output[:300]}",
+                    )
+                    # clear drain so later calls still work
+                    clear = await _invoke(
+                        ["admin", "drain", "--url", mon_url, "--clear", "--json"]
+                    )
+                    ensure(clear.exit_code == 0, f"clear drain {clear.output[:200]}")
+                    ok("admin drain→audit→clear CLI path")
 
                 with scenario(
                     "ops CLI latency probe annotations",
