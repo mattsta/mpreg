@@ -72,6 +72,31 @@ def _strong_abort_fail_op_id(body: dict[str, Any]) -> str:
         oid = (body.get("coordinator") or {}).get("last_abort_fail_op_id")
     return str(oid or "")
 
+def _strong_abort_fail_peer_count(body: dict[str, Any]) -> int:
+    """CFT residual candidate peer count (mirrors abort_fail_peer_count / prom).
+
+    Uses ``count_abort_fail_peers`` — process-local ops signal only; not
+    residual-free proof, not automatic heal.
+    """
+    from mpreg.core.cache_strong import count_abort_fail_peers
+
+    # Prefer server-provided count when present and consistent
+    raw = body.get("abort_fail_peer_count")
+    if raw is None:
+        coord = body.get("coordinator") or {}
+        if isinstance(coord, dict):
+            raw = coord.get("abort_fail_peer_count")
+    peers = _strong_abort_fail_peers(body)
+    computed = count_abort_fail_peers(peers)
+    if raw is not None:
+        try:
+            n = int(raw)
+            # Prefer max of reported vs computed so stale 0 never hides peers
+            return max(n, computed) if peers else max(n, 0)
+        except (TypeError, ValueError):
+            pass
+    return computed
+
 def strong_residual_ops_hint(body: dict[str, Any]) -> str:
     """Ops remediation hint when CFT residual candidates are present.
 
@@ -181,6 +206,7 @@ def evaluate_strong_doctor_payload(
         f"dels_ref={counters.get('deletes_refused', 0)} "
         f"abort_fail={counters.get('aborts_peer_fail', 0)} "
         f"abort_fail_peers={fail_peers} "
+        f"abort_fail_peer_count={_strong_abort_fail_peer_count(body)} "
         f"abort_fail_op_id={fail_oid or '-'} "
         f"retry_abort={counters.get('retry_abort_calls', body.get('retry_abort_calls', 0))} "
         f"retry_cleared={counters.get('retry_abort_cleared', body.get('retry_abort_cleared', 0))} "
@@ -1990,6 +2016,7 @@ def doctor(
                                 ok = False
                                 body_preview = "missing mpreg_info metric"
                         residual_hint = ""
+                        abort_fail_peer_count_s = ""
                         if (
                             ok
                             and name in ("metrics_strong", "mgmt_strong")
@@ -1999,7 +2026,7 @@ def doctor(
                             if not sok:
                                 ok = False
                             body_preview = sdetail
-                            # T71: machine-readable residual_ops_hint on doctor JSON rows
+                            # T71/T87: machine-readable residual fields on doctor JSON rows
                             sbody = (
                                 payload.get("strong")
                                 if isinstance(payload.get("strong"), dict)
@@ -2007,6 +2034,9 @@ def doctor(
                             )
                             if isinstance(sbody, dict):
                                 residual_hint = strong_residual_ops_hint(sbody)
+                                abort_fail_peer_count_s = str(
+                                    _strong_abort_fail_peer_count(sbody)
+                                )
                         if (
                             ok
                             and name == "metrics_shared_audit"
@@ -2038,9 +2068,10 @@ def doctor(
                             "status": "OK" if ok else str(response.status),
                             "detail": body_preview,
                         }
-                        # T71: always key on strong checks (empty when no residual)
+                        # T71/T87: always keys on strong checks (empty/0 when clean)
                         if name in ("metrics_strong", "mgmt_strong"):
                             row["residual_ops_hint"] = residual_hint
+                            row["abort_fail_peer_count"] = abort_fail_peer_count_s or "0"
                         rows.append(row)
                 except Exception as exc:  # noqa: BLE001 - doctor must report all failures
                     failures += 1
@@ -2455,8 +2486,10 @@ def config_check(
             "ABORT is best-effort (aborts_peer_fail may leave peer L1 until "
             "delivered ABORT or later LWW success put — not pending TTL). "
             "Ops loop after recovery: scrape /metrics/strong for "
-            "last_abort_fail_peers / last_abort_fail_op_id / residual_ops_hint "
-            "(may fill --namespace/--key from recent_abort_fails), then "
+            "last_abort_fail_peers / abort_fail_peer_count / "
+            "last_abort_fail_op_id / residual_ops_hint "
+            "(may fill --namespace/--key from recent_abort_fails; count mirrors "
+            "Prometheus mpreg_strong_abort_fail_peers), then "
             "`mpreg client cache-strong-retry-abort` (ops-driven CFT; not "
             "auto-heal). Not WAN SLA, not BFT, not fsync. "
             "See docs/CACHING_SYSTEM.md and residual honesty."
@@ -4058,12 +4091,14 @@ def monitor_strong(url: str | None, use_mgmt: bool, output_format: str) -> None:
                             f"deletes_refused={counters.get('deletes_refused', 0)} "
                             f"abort_fail={counters.get('aborts_peer_fail', 0)} "
                             f"abort_fail_peers={fail_peers} "
+                            f"abort_fail_peer_count={_strong_abort_fail_peer_count(body)} "
                             f"abort_fail_op_id={fail_oid or '-'} "
                             f"retry_abort={counters.get('retry_abort_calls', body.get('retry_abort_calls', 0))} "
                             f"retry_cleared={counters.get('retry_abort_cleared', body.get('retry_abort_cleared', 0))} "
                             "[dim](not WAN SLA; get/delete quorum is v1.1; "
                             "ABORT best-effort CFT; pending TTL ≠ residual GC; "
                             "abort_fail_peers = CFT residual candidates; "
+                            "abort_fail_peer_count mirrors prom gauge; "
                             "retry_abort = ops-driven not auto-heal)[/dim]"
                         )
                         # T51: remediation hint when residual candidates present

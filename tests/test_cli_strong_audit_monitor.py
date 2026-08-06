@@ -168,14 +168,21 @@ def test_doctor_strong_row_residual_ops_hint_field() -> None:
     assert "--namespace ns-t71" in hint
     assert "--key key-t71" in hint
     # Same shape doctor JSON rows use for metrics_strong / mgmt_strong
+    from mpreg.cli.main import _strong_abort_fail_peer_count
+
+    n = _strong_abort_fail_peer_count(body)
+    assert n >= 1
+    assert "abort_fail_peer_count=" in detail
     row = {
         "check": "metrics_strong",
         "status": "OK",
         "detail": detail,
         "residual_ops_hint": hint,
+        "abort_fail_peer_count": str(n),
     }
     assert row["residual_ops_hint"]
     assert "not auto-heal" in row["residual_ops_hint"]
+    assert row["abort_fail_peer_count"] == str(n)
     # Empty when no residual candidates
     empty_body = {
         "health": "ok",
@@ -189,6 +196,7 @@ def test_doctor_strong_row_residual_ops_hint_field() -> None:
         "last_abort_fail_peers": [],
     }
     assert strong_residual_ops_hint(empty_body) == ""
+    assert _strong_abort_fail_peer_count(empty_body) == 0
 
 def test_doctor_shared_audit_evaluate_payload_honesty() -> None:
     """T22: evaluate_shared_audit_doctor_payload fails closed on dishonest caps."""
@@ -376,4 +384,39 @@ def test_count_abort_fail_peers_hypothesis() -> None:
         assert count_abort_fail_peers(["solo"], body={"last_abort_fail_peers": peers}) == 1
 
     _prop()
+
+def test_doctor_detail_abort_fail_peer_count() -> None:
+    """T87: doctor detail and helper surface abort_fail_peer_count."""
+    from mpreg.cli.main import (
+        _strong_abort_fail_peer_count,
+        evaluate_strong_doctor_payload,
+    )
+
+    body = {
+        "health": "ok",
+        "coordinator_bound": True,
+        "capabilities": {
+            "put_majority_commit": True,
+            "get_quorum": False,
+            "delete_quorum": False,
+            "local_ryw_after_put": True,
+            "cft_only": True,
+            "abort_best_effort": True,
+            "pending_ttl_clears_residual_l1": False,
+            "retry_abort_ops_driven": True,
+        },
+        "counters": {"puts_ok": 1, "aborts_peer_fail": 2},
+        "last_abort_fail_peers": ["n1", "n2"],
+        "last_abort_fail_op_id": "oid-count",
+        "abort_fail_peer_count": 2,
+    }
+    assert _strong_abort_fail_peer_count(body) == 2
+    ok, detail = evaluate_strong_doctor_payload({"strong": body})
+    assert ok is True
+    assert "abort_fail_peer_count=2" in detail
+    assert "abort_fail_peers=" in detail
+    # Server count 0 but peers present → still report peers length
+    body2 = dict(body)
+    body2["abort_fail_peer_count"] = 0
+    assert _strong_abort_fail_peer_count(body2) == 2
 

@@ -650,9 +650,9 @@ resource node (including a residual peer); `retry_abort` always local-aborts
 and peer-aborts remotes. LWW success put remains an alternate overwrite path.
 Still not residual-free while ABORT is lost.
 
-Ops: `mpreg monitor strong` (`abort_fail_peers=` / `abort_fail_op_id=`),
+Ops: `mpreg monitor strong` (`abort_fail_peers=` / `abort_fail_peer_count=` / `abort_fail_op_id=`),
 `mpreg doctor --check-strong` (same fields + residual ops hint), JSON
-`residual_ops_hint` on `/metrics/strong` and GCM `strong_status` (empty when no
+`residual_ops_hint` / `abort_fail_peer_count` on `/metrics/strong` and GCM `strong_status` (empty when no
 candidates; CLI template for `cache-strong-retry-abort` — not auto-heal; may
 fill ns/key from `recent_abort_fails`; helper
 `mpreg.core.cache_strong.format_residual_ops_hint`),

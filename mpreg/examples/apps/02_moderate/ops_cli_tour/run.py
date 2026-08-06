@@ -601,6 +601,11 @@ async def main() -> None:
                         "abort_fail_peers=" in sout or "residual candidate" in sout,
                         f"strong abort_fail_peers missing: {strong_m.output[:300]}",
                     )
+                    # T90: monitor table shows abort_fail_peer_count
+                    ensure(
+                        "abort_fail_peer_count=" in sout,
+                        f"strong abort_fail_peer_count missing: {strong_m.output[:300]}",
+                    )
                     ensure(
                         "ttl_gc=" in sout
                         or "pending ttl" in sout
@@ -691,9 +696,20 @@ async def main() -> None:
                             isinstance(row.get("residual_ops_hint"), str),
                             f"residual_ops_hint not str: {row!r}",
                         )
+                        # T90: doctor JSON abort_fail_peer_count (0 when clean)
+                        ensure(
+                            "abort_fail_peer_count" in row,
+                            f"strong row missing abort_fail_peer_count: {row!r}",
+                        )
+                        ensure(
+                            str(row.get("abort_fail_peer_count", "")).isdigit()
+                            or str(row.get("abort_fail_peer_count")) == "0",
+                            f"abort_fail_peer_count not numeric: {row!r}",
+                        )
                     step(
-                        "ERG: doctor --strong --format json → residual_ops_hint "
-                        "on metrics_strong/mgmt_strong (empty when clean; not auto-heal)"
+                        "ERG: doctor --strong --format json → residual_ops_hint + "
+                        "abort_fail_peer_count on metrics_strong/mgmt_strong "
+                        "(empty/0 when clean; not auto-heal)"
                     )
                     ok(
                         f"monitor strong/audit table + doctor exit={doc.exit_code}"

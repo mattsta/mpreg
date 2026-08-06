@@ -53,10 +53,11 @@ def test_config_check_explain_includes_guide() -> None:
     assert "strong_cache" in guide
     assert "shared_audit" in guide
     assert "strong_cache" in out  # field guide text after JSON
-    # T69: strong_cache explain documents residual_ops_hint ops loop (not auto-heal)
+    # T69/T89: strong_cache explain documents residual_ops_hint ops loop (not auto-heal)
     sc_guide = str(guide.get("strong_cache") or "")
     assert "residual_ops_hint" in sc_guide
     assert "cache-strong-retry-abort" in sc_guide
+    assert "abort_fail_peer_count" in sc_guide or "mpreg_strong_abort_fail_peers" in sc_guide
     assert "not" in sc_guide.lower() and (
         "auto-heal" in sc_guide.lower() or "ops-driven" in sc_guide.lower()
     )

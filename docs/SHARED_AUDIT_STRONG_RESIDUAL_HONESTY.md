@@ -1082,3 +1082,76 @@ Still **not** claimed: docs are residual-free product claim.
 
 Plan: `docs/plans/DISTLAB_T86_DESIGN_PEER_COUNT_PLAN.md`.
 
+## Phase 75 — Doctor abort_fail_peer_count (2026-08-06)
+
+T87: doctor detail includes `abort_fail_peer_count=`; JSON rows for
+`metrics_strong` / `mgmt_strong` always include the field (0 when clean).
+Helper `_strong_abort_fail_peer_count` prefers max(server count, peer list).
+
+Still **not** claimed: doctor field is auto-heal; residual-free proof.
+
+Plan: `docs/plans/DISTLAB_T87_DOCTOR_PEER_COUNT_PLAN.md`.
+
+## Phase 76 — Monitor table abort_fail_peer_count (2026-08-06)
+
+T88: `mpreg monitor strong` table shows `abort_fail_peer_count=` and dim text
+notes it mirrors the Prometheus gauge.
+
+Still **not** claimed: monitor field is auto-heal; WAN SLO.
+
+Plan: `docs/plans/DISTLAB_T88_MONITOR_PEER_COUNT_PLAN.md`.
+
+## Phase 77 — config-check explain peer count (2026-08-06)
+
+T89: `config-check --explain` `strong_cache` guide documents
+`abort_fail_peer_count` / `mpreg_strong_abort_fail_peers` in the ops loop.
+
+Still **not** claimed: explain text is auto-heal; SIEM.
+
+Plan: `docs/plans/DISTLAB_T89_CONFIG_CHECK_PEER_COUNT_PLAN.md`.
+
+## Phase 78 — ops_cli_tour peer count (2026-08-06)
+
+T90: curriculum asserts monitor table `abort_fail_peer_count=` and doctor JSON
+numeric `abort_fail_peer_count` on strong rows.
+
+Still **not** claimed: curriculum is live auto-heal.
+
+Plan: `docs/plans/DISTLAB_T90_OPS_CLI_PEER_COUNT_PLAN.md`.
+
+## Phase 79 — cache_strong_quorum peer count (2026-08-06)
+
+T91: after CFT residual, curriculum asserts GCM `abort_fail_peer_count >= 1`
+equals `len(last_abort_fail_peers)`.
+
+Still **not** claimed: curriculum clears residual automatically.
+
+Plan: `docs/plans/DISTLAB_T91_CURRICULUM_PEER_COUNT_PLAN.md`.
+
+## Phase 80 — CACHING_SYSTEM peer count (2026-08-06)
+
+T92: CACHING_SYSTEM ops section documents `abort_fail_peer_count` alongside
+`residual_ops_hint` / monitor fields.
+
+Still **not** claimed: docs are residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T92_CACHING_PEER_COUNT_PLAN.md`.
+
+## Phase 81 — Runbook peer count (2026-08-06)
+
+T93: STRONG_AND_SHARED_AUDIT_RUNBOOK documents JSON count, doctor rows,
+monitor table, and `count_abort_fail_peers`.
+
+Still **not** claimed: runbook is auto-heal orchestration.
+
+Plan: `docs/plans/DISTLAB_T93_RUNBOOK_PEER_COUNT_PLAN.md`.
+
+## Phase 82 — FEATURE_CATALOG peer count (2026-08-06)
+
+T94: FEATURE_CATALOG `cache.strong` lists `abort_fail_peer_count` with
+`residual_ops_hint` and prom gauge.
+
+Still **not** claimed: catalog row is residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T94_CATALOG_PEER_COUNT_PLAN.md`.
+

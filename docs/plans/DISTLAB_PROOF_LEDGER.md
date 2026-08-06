@@ -158,6 +158,14 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T84 Hypothesis peer count | count_abort_fail_peers properties | product |
 | T85 live peer count | live doctor 0 + enriched >= 1 | support ops |
 | T86 design/OPERATE peer count | design + OPERATE abort_fail_peer_count | teach |
+| T87 doctor peer count | detail + JSON abort_fail_peer_count | support ops |
+| T88 monitor peer count | monitor strong abort_fail_peer_count= | support ops |
+| T89 config-check peer count | explain strong_cache abort_fail_peer_count | support ops |
+| T90 ops_cli peer count | monitor + doctor JSON curriculum asserts | teach |
+| T91 curriculum peer count | cache_strong_quorum abort_fail_peer_count | teach |
+| T92 CACHING peer count | CACHING_SYSTEM abort_fail_peer_count | teach |
+| T93 runbook peer count | runbook count_abort_fail_peers | teach |
+| T94 FEATURE_CATALOG peer count | cache.strong abort_fail_peer_count | teach |
 
 ## Non-claims (do not market)
 
@@ -209,6 +217,11 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 - Live abort_fail_peer_count asserts seed coordinator fields — not kernel drop,
   not WAN, not automatic heal
 - Design/OPERATE abort_fail_peer_count docs are guidance — not residual-free claim
+- Doctor/monitor abort_fail_peer_count fields are ops presentation — not
+  automatic heal, not residual-free proof, not WAN SLO
+- Curriculum peer-count asserts are teachable guidance — not auto-heal
+- CACHING/runbook/FEATURE_CATALOG peer-count docs are guidance — not
+  residual-free product claim
 
 ## Gate commands
 
@@ -252,6 +265,10 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t82_residuals.py tests/chaos/test_t83_residuals.py \
   tests/chaos/test_t84_residuals.py tests/chaos/test_t85_residuals.py \
   tests/chaos/test_t86_residuals.py \
+  tests/chaos/test_t87_residuals.py tests/chaos/test_t88_residuals.py \
+  tests/chaos/test_t89_residuals.py tests/chaos/test_t90_residuals.py \
+  tests/chaos/test_t91_residuals.py tests/chaos/test_t92_residuals.py \
+  tests/chaos/test_t93_residuals.py tests/chaos/test_t94_residuals.py \
   tests/integration/test_cache_strong_live_mesh.py \
   tests/testing/test_distlab_live.py::test_distlab_live_strong_metrics_e2e \
   tests/test_config_check_cli.py tests/test_unified_client.py -q

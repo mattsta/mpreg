@@ -335,9 +335,16 @@ async def main() -> None:
                     ensure("not auto-heal" in hop, f"hint missing honesty: {hop}")
                     ensure("--peer n1" in hop, f"hint missing peer: {hop}")
                     ensure(oid in hop or "--op-id" in hop, f"hint missing op: {hop}")
+                    # T91: abort_fail_peer_count mirrors residual peers
+                    n_peers = int(st_hint.get("abort_fail_peer_count") or 0)
+                    ensure(n_peers >= 1, f"abort_fail_peer_count: {st_hint!r}")
+                    ensure(
+                        n_peers == len(list(st_hint.get("last_abort_fail_peers") or [])),
+                        f"count mismatch: {st_hint!r}",
+                    )
                     step(
-                        "ERG: residual_ops_hint → cache-strong-retry-abort "
-                        "(ops-driven CFT; not auto-heal)"
+                        "ERG: residual_ops_hint + abort_fail_peer_count → "
+                        "cache-strong-retry-abort (ops-driven CFT; not auto-heal)"
                     )
                 finally:
                     await gcm_hint.shutdown()
