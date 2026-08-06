@@ -316,3 +316,27 @@ taught end-to-end in `discovery_watch_summary` (same-cluster path no longer
 forces fabric `target_cluster` from summary). FEATURE note un-partialed.
 
 **Program:** Phases A–N at **100%**.
+
+## Phase O — Integrity polish (**COMPLETE**)
+
+| Item | Status | Notes |
+|------|--------|-------|
+| O0 charter into living plans | [x] | G22 |
+| `client_trace_bind` thin deepen | [x] | ≥5 ensures |
+| `fabric.gossip` APP_FEATURES join | [x] | discovery_signatures_lab |
+| GossipMessage hop/TTL scenario | [x] | fabric.gossip teach |
+| OPERATE / APP_CATALOG / README scrub | [x] | no stale planned chaos |
+| unit + suite | [x] | see log |
+
+## Verification log (Phase O)
+
+| Date | Command | Result |
+|------|---------|--------|
+| 2026-08-05 | depth/feature-join audit | thin→0; uncovered→0 |
+| 2026-08-05 | `mpreg-example run` client_trace_bind + discovery_signatures_lab | pass |
+| 2026-08-05 | `pytest tests/examples_apps -m unit` | **111 passed** |
+| 2026-08-05 | `mpreg-example suite` | **96/96** |
+
+**App count:** **96** (no new apps).
+
+**Program:** Phases A–O at **100%**.

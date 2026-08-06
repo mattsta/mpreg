@@ -57,6 +57,39 @@ async def main() -> None:
             ok(f"gossip sig present key={GOSSIP_SIG_KEY}")
 
         with scenario(
+            "GossipMessage hop/TTL/propagation model",
+            "fabric.gossip",
+        ):
+            from mpreg.fabric.gossip import GossipMessage, GossipMessageType
+
+            msg = GossipMessage(
+                message_id="lab-g1",
+                message_type=GossipMessageType.STATE_UPDATE,
+                sender_id="node-a",
+                payload={"key": "lab.peers", "value": ["a", "b"], "version": 1},
+                ttl=3,
+                hop_count=0,
+                max_hops=2,
+            )
+            ensure(msg.can_propagate() is True, "fresh msg should propagate")
+            ensure(msg.is_expired() is False, "fresh msg not expired")
+            ensure(bool(msg.digest) and bool(msg.checksum), "digest/checksum missing")
+            hopped = msg.prepare_for_propagation("node-b")
+            ensure(hopped.hop_count == 1, f"hop={hopped.hop_count}")
+            ensure(hopped.ttl == 2, f"ttl={hopped.ttl}")
+            ensure(hopped.sender_id == "node-b", f"sender={hopped.sender_id}")
+            ensure("node-b" in hopped.propagation_path, f"path={hopped.propagation_path}")
+            wire = msg.to_dict()
+            back = GossipMessage.from_dict(wire)
+            ensure(back.message_id == "lab-g1", f"roundtrip id={back.message_id}")
+            ensure(
+                back.message_type == GossipMessageType.STATE_UPDATE,
+                f"type={back.message_type}",
+            )
+            step(f"digest={msg.digest} hops={hopped.hop_count}/{hopped.max_hops}")
+            ok("GossipMessage hop/TTL + dict roundtrip")
+
+        with scenario(
             "settings knobs for live signing",
             "disco.signatures",
             "boot.settings",

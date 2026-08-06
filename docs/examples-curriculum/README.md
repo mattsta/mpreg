@@ -13,7 +13,7 @@ growth cycle: from getting-started through world-spanning fabric architectures.
 |-----|---------|
 | [VISION.md](VISION.md) | Goals, non-goals, learning principles |
 | [STAGES.md](STAGES.md) | Phases A–D with exit criteria and POC apps |
-| [APP_CATALOG.md](APP_CATALOG.md) | Full matrix of apps (built + planned) |
+| [APP_CATALOG.md](APP_CATALOG.md) | Full matrix of shipped apps (+ closed historical planned rows) |
 | [APP_CONVENTIONS.md](APP_CONVENTIONS.md) | Packaging, ports, asserts, honesty |
 | [OPERATE.md](OPERATE.md) | Configure / start / run / manage / operate |
 | [TRACKER.md](TRACKER.md) | Checklist status for this growth cycle |

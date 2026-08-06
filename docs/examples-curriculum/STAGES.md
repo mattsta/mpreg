@@ -245,3 +245,15 @@ planning residuals without new topology claims:
 4. POC_NOTES follow-ups scrubbed (`media_pipeline` exists; CI runs demo smoke/suite)
 
 Exit: **96** suite apps; API_FRICTION open curriculum rows at **0**.
+
+## Phase O — Integrity polish (COMPLETE)
+
+Linear continuation after Phase N. Post-N automated audit found curriculum
+integrity residuals (not topology non-claims):
+
+1. Deepen sole thin L1 `client_trace_bind` to ≥5 ensures
+2. Join sole uncovered feature constant `fabric.gossip` to APP_FEATURES
+3. Teach `GossipMessage` hop/TTL/roundtrip in `discovery_signatures_lab`
+4. Scrub stale “planned” operator language (OPERATE chaos, APP_CATALOG, README)
+
+Exit: **96** suite apps; thin=0; feature-constant join=100%.

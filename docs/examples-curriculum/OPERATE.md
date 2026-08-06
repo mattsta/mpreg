@@ -215,8 +215,9 @@ uv run mpreg monitor prometheus | head
 | Slow mesh | raise timeouts in client policy | Structured timeout errors, not hangs |
 | Full test pressure | concurrent runner + `ulimit` | See testing docs |
 
-For chaos injection, prefer `mpreg.testing.faults.FaultInjector` in **planned**
-`chaos_checkout` — do not randomize production defaults.
+For chaos injection, prefer `mpreg.testing.faults.FaultInjector` in curriculum
+apps (`chaos_checkout`, `packet_loss_chaos`, `chaos_crash_recover`,
+`live_partition_chaos`) — do not randomize production defaults.
 
 ---
 

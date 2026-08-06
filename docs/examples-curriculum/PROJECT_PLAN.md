@@ -1,6 +1,6 @@
 # Curriculum Examples — Living Project Plan
 
-**Last updated:** 2026-08-05 (Phase N — Low DX F22/F23 + planning scrub → 96 apps; 0 open friction)  
+**Last updated:** 2026-08-05 (Phase O COMPLETE — integrity polish; thin=0; fabric.gossip join; 96 apps)  
 **Owner drive:** sequential iterative completion of curriculum **and** long-term
 platform correctness: API unification, operator ergonomics, latency/throughput
 observability in every example path — **not** batch-and-stop.
@@ -34,6 +34,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | G19 | **Promote remaining FEATURE partials** | queue.ack/receive, client.pubsub/backlog, cache geo/L2, fabric modes, rpc concurrency, mon.logging, chaos.crash, tx.CB, ns.engine | [x] Phase L |
 | G20 | **Close last FEATURE partials** | ops.cli_planes/ns/discovery + pubsub.fabric_forward | [x] Phase M |
 | G21 | **Close residual Low DX + planning truth** | F22/F23 platform fix; scrub stale POC/VISION residuals | [x] Phase N |
+| G22 | **Integrity polish after N** | thin=0; every feature constant in APP_FEATURES; stale planned scrub | [x] Phase O |
 
 ---
 
@@ -44,13 +45,14 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | Shipped apps | **96** |
 | Smoke apps | 8 |
 | Suite apps | 96 (all registry `suite=True`) |
-| Feature IDs in `features.py` constants | ~140+ |
+| Feature IDs in `features.py` constants | ~180+ |
 | FEATURE_CATALOG prioritized gaps 1–8 | **closed** (honest non-claims where needed) |
 | Thin apps (scen<2 or L1+ ens<5) | **0** |
+| Feature constants uncovered by APP_FEATURES | **0** |
 | Branch vs origin | main ahead local only (no push unless asked) |
-| Last new-app validation | Phase M apps green; Phase N deepen F22/F23 paths |
+| Last new-app validation | Phase O deepen (trace bind + gossip) |
 | Last unit | `pytest tests/examples_apps -m unit` → **111 passed** |
-| Last full suite | **96/96 passed** (~103s) |
+| Last full suite | **96/96 passed** |
 | Phase G | **COMPLETE** — DX fixes + ExampleProbe + 8 apps obs-proven |
 | Phase H | **COMPLETE** — FQN ns-deny + Med friction + universal probe |
 | Phase I | **COMPLETE** — residual Info polish + FQN curriculum + catalog sync |
@@ -59,6 +61,7 @@ Legend: `[x]` done · `[~]` partial · `[>]` in progress · `[ ]` not started
 | Phase L | **COMPLETE** — FEATURE partial promotion batch (10 apps) |
 | Phase M | **COMPLETE** — residual CLI ops + fabric_forward |
 | Phase N | **COMPLETE** — F22/F23 Low DX + planning scrub |
+| Phase O | **COMPLETE** — integrity polish (thin + feature join + docs) |
 
 ### Thin backlog
 
@@ -474,6 +477,46 @@ linear charter** and closes them without inventing topology claims.
 
 ---
 
+### Phase O — Integrity polish after Phase N (**COMPLETE**)
+
+Post-N audit of living plans + automated depth/feature-join scan found three
+**actionable** curriculum residuals (not topology non-claims). Phase O serializes
+them into one linear charter:
+
+1. Sole thin L1 (`client_trace_bind` ensure count < 5)
+2. Sole uncovered feature constant (`fabric.gossip` missing from APP_FEATURES)
+3. Stale “planned” operator language (OPERATE chaos, APP_CATALOG planned table)
+
+#### O goals
+
+| ID | Goal | Success measure | Status |
+|----|------|-----------------|--------|
+| PO1 | Charter Phase O | G22 + living plans | [x] |
+| PO2 | Zero thin apps | `client_trace_bind` ≥5 ensures | [x] |
+| PO3 | Full APP_FEATURES join | `fabric.gossip` on discovery_signatures_lab | [x] |
+| PO4 | GossipMessage teach path | hop/TTL/roundtrip scenario | [x] |
+| PO5 | Scrub planned language | OPERATE / APP_CATALOG / README | [x] |
+| PO6 | unit + suite | **96** green | [x] |
+
+#### Phase O waves
+
+| Wave | Deliverable | Status |
+|------|-------------|--------|
+| **O0** | Serialize audit into this charter | [x] |
+| **O1** | Deepen client_trace_bind | [x] |
+| **O2** | fabric.gossip join + GossipMessage scenario | [x] |
+| **O3** | Doc scrub | [x] |
+| **O4** | unit + suite + commit | [x] |
+
+#### Phase O exit criteria
+
+- [x] Thin apps = **0**  
+- [x] Feature constants uncovered by APP_FEATURES = **0**  
+- [x] No stale “planned chaos_checkout” operator copy  
+- [x] unit + suite green at **96**  
+
+---
+
 ## 4. Target app matrix growth
 
 | Band | Now | Target | Notes |
@@ -543,6 +586,7 @@ uv run pytest tests/examples_apps -q
 | 2026-08-05 | Phase L complete | queue ack/receive, pubsub client/backlog, cache geo/L2, fabric modes, rpc concurrency, cluster map/catalog, mon json, chaos crash, tx CB, ns engine → **95** |
 | 2026-08-05 | Phase M complete | ops CLI planes/ns/discovery deepen + pubsub_fabric_forward_lab → **96**; 0 teachable FEATURE partials |
 | 2026-08-05 | Phase N complete | F22 Mapping headers coerce; F23 empty entry_type default; POC scrub; **96** apps; 0 open friction |
+| 2026-08-05 | Phase O complete | thin client_trace_bind; fabric.gossip APP_FEATURES + GossipMessage; planned-language scrub; **96** |
 
 ---
 
@@ -658,6 +702,17 @@ uv run pytest tests/examples_apps -q
 
 ---
 
+### Phase O (integrity polish) — complete
+
+| Slice | Weight | Done | Status |
+|-------|-------:|-----:|--------|
+| O0 charter | 10% | 10 | [x] |
+| O1–O2 thin + fabric.gossip | 60% | 60 | [x] |
+| O3–O4 docs + suite | 30% | 30 | [x] |
+| **Phase O overall** | **100%** | **100%** | complete |
+
+---
+
 ## 8. Working rules (non-negotiable)
 
 1. **Do not stop and claim done** after a small batch — update plan and continue next wave.  
@@ -740,11 +795,16 @@ FEATURE_CATALOG teachable `partial` rows: **0**.
 `functions` with clearer errors; POC_NOTES/VISION residuals scrubbed.
 API_FRICTION open curriculum rows: **0**. **96** apps.
 
+**Phase O (integrity polish): COMPLETE 100%.**  
+Thin L1 closed; `fabric.gossip` joined to APP_FEATURES + GossipMessage teach;
+stale “planned” operator language scrubbed. Thin=0; uncovered feature constants=0.
+**96** apps.
+
 Honest remaining (operator topology / kernel-level only — not curriculum blockers):
 multi-continent SLA meshes, kernel TCP byte-splice loss, multi-hub DAO treasury
 production ops.
 
-**Program complete through Phase N.** Further work requires a new charter
+**Program complete through Phase O.** Further work requires a new charter
 (new platform surface, new operator topology product, or fresh friction).
 
 ---

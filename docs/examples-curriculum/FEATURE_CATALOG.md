@@ -368,6 +368,11 @@ rpc.describe/report, client.trace, mon.trace_bind, tx.correlation, chaos.no_loop
 `mon_logging_json`, `chaos_crash_recover`, `tx_circuit_breaker_lab`,
 `ns_engine_direct` (+ boot.profiles / cons.raft/leader tags). **95** apps.
 
+**Closed in Phase O (2026-08-05):** integrity polish — thin `client_trace_bind`
+deepened; `fabric.gossip` joined to APP_FEATURES + GossipMessage hop/TTL scenario
+in `discovery_signatures_lab`; stale planned-operator language scrubbed.
+Thin apps → **0**; uncovered feature constants → **0**.
+
 **Closed in Phase N (2026-08-05):** Low DX F22/F23 — `MessageHeaders.coerce`
 (dict headers on publish); catalog `entry_type` defaults to `functions` with
 clearer errors. Taught in `pubsub_client_backlog` + `cluster_map_catalog`.

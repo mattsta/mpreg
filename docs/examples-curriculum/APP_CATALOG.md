@@ -116,12 +116,16 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · Friction: [API_FRICTION.md]
 
 ## Planned / residual (not empty shells)
 
+**Empty of curriculum blockers.** Historical planned rows closed through Phase N;
+Phase O only deepens truth (thin ensure count, `fabric.gossip` join).
+
 | ID | Level | Notes |
 |----|-------|-------|
 | ~~deeper mTLS local-cert~~ | L1 | **shipped** `tls_dev_handshake` (F12) |
 | ~~live WS partition chaos~~ | L3 | **shipped** `live_partition_chaos` drain/detach (F10) |
 | ~~local WS auth enforcement~~ | L1 | **shipped** `rpc_auth_token` in `client_auth_token` (F11) |
-| platform DX F1–F21 | — | **G/H/I/J closed** including F10–F12 |
+| platform DX F1–F23 | — | **G–N closed** (F22/F23 Phase N) |
+| operator topology residuals | — | multi-continent SLA / kernel TCP loss / multi-hub DAO — honest non-claims only |
 
 ### Phase J additions (2026-08-05)
 
@@ -177,3 +181,18 @@ L0 ≥3 ensures; L1+ ≥5 ensures) and appear in `features.py` APP_FEATURES.
 | `ops_cli_tour` (deepen) | L2 | product | + planes/ns/discovery CLI scenarios |
 
 **App count:** 95 → **96** (+1 Phase M; ops deepen in place).
+
+### Phase N (2026-08-05) — platform DX, no new apps
+
+F22 Mapping headers coerce; F23 catalog `entry_type` default; `call_with_summary`
+taught in `discovery_watch_summary`. **96** apps.
+
+### Phase O (2026-08-05) — integrity polish, no new apps
+
+| ID | Change |
+|----|--------|
+| `client_trace_bind` | deepen ensures (≥5) — was sole thin L1 |
+| `discovery_signatures_lab` | `fabric.gossip` APP_FEATURES join + GossipMessage hop/TTL scenario |
+| APP_CATALOG / OPERATE / README | scrub stale “planned” language |
+
+**App count:** **96** (no new apps; integrity polish).

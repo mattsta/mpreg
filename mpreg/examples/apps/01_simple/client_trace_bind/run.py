@@ -86,6 +86,10 @@ async def main() -> None:
                             ctx is None or isinstance(ctx, dict),
                             f"unexpected ctx {ctx!r}",
                         )
+                        ensure(
+                            callable(client.last_trace_context),
+                            "last_trace_context not callable",
+                        )
                         step(f"last_trace_context={ctx}")
                         ok(
                             "last_trace_context callable; "
@@ -98,7 +102,10 @@ async def main() -> None:
                 ):
                     bare = bind_trace_context()
                     ensure(bare is not None, "bare None")
-                    ok("bind with no fields returns logger")
+                    # Second bind must still return a usable logger (idempotent surface)
+                    again = bind_trace_context(correlation_id="again")
+                    ensure(again is not None, "second bind None")
+                    ok("bind with no fields + re-bind returns logger")
 
             await run_with_servers(settings, _run)
 

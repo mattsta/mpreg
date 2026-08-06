@@ -729,6 +729,7 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
 
     "discovery_signatures_lab": (
         DISCO_SIGNATURES,
+        FABRIC_GOSSIP,
         BOOT_SETTINGS,
     ),
     "rpc_inventory_tour": (
