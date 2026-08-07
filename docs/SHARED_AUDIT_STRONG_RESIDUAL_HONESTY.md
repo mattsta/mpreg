@@ -853,3 +853,35 @@ T62 first-class DistLab scenario:
 Still **not** claimed: scenario clears residual; auto-heal; BFT/WAN.
 
 Plan: `docs/plans/DISTLAB_T62_DISTLAB_HINT_ENRICHED_PLAN.md`.
+
+## Phase 51 — Hypothesis residual_ops_hint enrichment (2026-08-06)
+
+T63 property-tests pure formatter enrichment:
+
+* `test_format_residual_ops_hint_enriches_ns_key`
+* Empty peers → `""`; matching `recent_abort_fails` fills ns/key; explicit wins
+
+Still **not** claimed: string property is live mesh; auto-heal; SIEM.
+
+Plan: `docs/plans/DISTLAB_T63_HYPOTHESIS_HINT_ENRICH_PLAN.md`.
+
+## Phase 52 — Catalog + product docs residual_ops_hint (2026-08-06)
+
+T64 documents residual_ops_hint on teachable surfaces:
+
+* FEATURE_CATALOG `cache.strong`
+* MPREG_CLIENT_GUIDE helper import + DistLab scenario
+* CACHING_SYSTEM ops section
+
+Still **not** claimed: docs are residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T64_CATALOG_HINT_DOCS_PLAN.md`.
+
+## Phase 53 — config-check explain residual ops loop (2026-08-06)
+
+T65: `mpreg config-check --explain` `strong_cache` guide documents
+metrics → residual_ops_hint → `cache-strong-retry-abort` (not auto-heal).
+
+Still **not** claimed: explain text is auto-heal; SIEM.
+
+Plan: `docs/plans/DISTLAB_T65_CONFIG_CHECK_HINT_PLAN.md`.

@@ -134,6 +134,9 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T60 live enriched hint | `test_distlab_live_residual_ops_hint_enriched_e2e` | support ops |
 | T61 OpenAPI hint example | residual_ops_hint + recent_abort_fails examples | support ops |
 | T62 DistLab hint enriched | `strong.cft_residual_ops_hint_enriched` + strong-core | product |
+| T63 Hypothesis hint enrich | `test_format_residual_ops_hint_enriches_ns_key` | product |
+| T64 catalog/docs hint | FEATURE_CATALOG + client guide + CACHING_SYSTEM | teach |
+| T65 config-check explain | strong_cache guide residual_ops_hint ops loop | support ops |
 
 ## Non-claims (do not market)
 

@@ -2443,7 +2443,11 @@ def config_check(
             "always refuse 1012; local RYW via EVENTUAL/WEAK get. CFT only: "
             "ABORT is best-effort (aborts_peer_fail may leave peer L1 until "
             "delivered ABORT or later LWW success put — not pending TTL). "
-            "Not WAN SLA, not BFT, not fsync. "
+            "Ops loop after recovery: scrape /metrics/strong for "
+            "last_abort_fail_peers / last_abort_fail_op_id / residual_ops_hint "
+            "(may fill --namespace/--key from recent_abort_fails), then "
+            "`mpreg client cache-strong-retry-abort` (ops-driven CFT; not "
+            "auto-heal). Not WAN SLA, not BFT, not fsync. "
             "See docs/CACHING_SYSTEM.md and residual honesty."
         ),
         "shared_audit": (

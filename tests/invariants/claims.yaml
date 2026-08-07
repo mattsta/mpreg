@@ -269,6 +269,9 @@ encapsulation:
       - tests/chaos/test_t60_residuals.py
       - tests/chaos/test_t61_residuals.py
       - tests/chaos/test_t62_residuals.py
+      - tests/chaos/test_t63_residuals.py
+      - tests/chaos/test_t64_residuals.py
+      - tests/chaos/test_t65_residuals.py
       - tests/invariants/test_cache_strong_properties.py
       - tests/invariants/test_cache_strong_history.py
       - tests/integration/test_cache_strong_quorum.py
@@ -325,6 +328,8 @@ non_claims:
   - "Live residual_ops_hint enriched e2e seeds coordinator abort-fail diagnostics + peer prepare/commit residual — not kernel drop injectors, not WAN, not automatic heal"
   - "OpenAPI residual_ops_hint example is documentation of wire/metrics shape — not HTTP invoke, not SIEM, not auto-heal"
   - "DistLab strong.cft_residual_ops_hint_enriched proves guidance surface only — does not clear residual, not automatic heal, not BFT/WAN"
+  - "Hypothesis format_residual_ops_hint enrichment is pure string formatting — not live mesh, not automatic heal, not SIEM"
+  - "config-check --explain residual_ops_hint ops-loop text is operator guidance — not automatic heal, not SIEM orchestration"
   - "Lying COMMIT_ACK applied bits can satisfy CFT quorum math without peer L1 apply — documented non_claim (not BFT)"
   - "mpreg.testing.distlab is Jepsen-inspired (history/checker/nemesis) — not Elle, not WAN geo generators, not a JVM Jepsen port"
   - "DistLab lab SLI budgets (p99/avg soak bounds) are same-host in-process — not production WAN latency SLAs"

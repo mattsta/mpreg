@@ -34,6 +34,7 @@ from mpreg.core.cache_strong import (
     StrongPutCoordinator,
     StrongVersion,
     _entry_op_id,
+    format_residual_ops_hint,
     majority_quorum,
 )
 from mpreg.core.errors import MpregErrorCode
@@ -690,6 +691,44 @@ async def test_cft_retry_abort_self_target_clears_local(n: int) -> None:
     assert list(out.get("fail_peers") or []) == []
     ent = backends[residual].get_visible(key)
     assert ent is None or _entry_op_id(ent) != oid
+
+@given(
+    ns=st.from_regex(r"[a-z][a-z0-9_-]{0,12}", fullmatch=True),
+    kid=st.from_regex(r"[a-z][a-z0-9_-]{0,12}", fullmatch=True),
+    oid=st.from_regex(r"op-[a-z0-9]{4,16}", fullmatch=True),
+    peer=st.from_regex(r"n[0-9]", fullmatch=True),
+)
+@settings(max_examples=30, deadline=None)
+def test_format_residual_ops_hint_enriches_ns_key(
+    ns: str, kid: str, oid: str, peer: str
+) -> None:
+    """T63: matching recent_abort_fails fills --namespace/--key (ops guidance)."""
+    assert format_residual_ops_hint([], oid) == ""
+    h = format_residual_ops_hint(
+        [peer],
+        oid,
+        recent_abort_fails=[
+            {"op_id": oid, "peers": [peer], "key": f"{ns}/{kid}"},
+            # unrelated event must not override
+            {"op_id": "other-op", "peers": ["nx"], "key": "wrong/wrong"},
+        ],
+    )
+    assert "cache-strong-retry-abort" in h
+    assert f"--namespace {ns}" in h
+    assert f"--key {kid}" in h
+    assert f"--op-id {oid}" in h
+    assert f"--peer {peer}" in h
+    assert "not auto-heal" in h
+    # Explicit ns/key wins over recent ring
+    h2 = format_residual_ops_hint(
+        [peer],
+        oid,
+        namespace="explicit",
+        key_id="forced",
+        recent_abort_fails=[{"op_id": oid, "peers": [peer], "key": f"{ns}/{kid}"}],
+    )
+    assert "--namespace explicit" in h2
+    assert "--key forced" in h2
 
 @pytest.mark.asyncio
 @given(n=st.integers(min_value=5, max_value=7))

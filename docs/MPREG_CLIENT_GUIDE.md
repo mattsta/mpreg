@@ -971,8 +971,11 @@ endpoints.
   * ops loop: `GET /metrics/strong` (or `mpreg monitor strong` /
     `mpreg doctor --check-strong`) exposes `last_abort_fail_peers`,
     `last_abort_fail_op_id`, and `residual_ops_hint` (CLI command template when
-    candidates exist; empty otherwise). Hint is operator guidance after
-    network recovery — **not** automatic heal.
+    candidates exist; empty otherwise; may fill `--namespace`/`--key` from
+    process-local `recent_abort_fails[].key`). Library helper:
+    `from mpreg.core.cache_strong import format_residual_ops_hint`.
+    Hint is operator guidance after network recovery — **not** automatic heal.
+    DistLab: `strong.cft_residual_ops_hint_enriched` (guidance only).
   Still CFT; not background heal. Pending TTL does **not** clear residual L1.
   Default **off** → `1012 UNSUPPORTED_CONSISTENCY`. STRONG **get** and
   **delete** always refuse with `1012`. Operational put failures use
