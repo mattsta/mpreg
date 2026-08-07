@@ -187,6 +187,7 @@ DEFAULT_REGISTRY = ScenarioRegistry(name="mpreg-distlab")
 
 # Named suite presets — fast in-process subsets for CI / operator smoke.
 # Names that are not registered are skipped at select time.
+# ``ci-core`` is composed at resolve time (smoke ∪ strong-core ∪ audit-core).
 SUITE_PRESETS: dict[str, tuple[str, ...]] = {
     "smoke": (
         "strong.happy_3",
@@ -211,11 +212,26 @@ SUITE_PRESETS: dict[str, tuple[str, ...]] = {
         "audit.duplicate_idempotent",
         "audit.ineligible_local",
     ),
+    # Placeholder so list_presets / unknown-check know the name; expanded below.
+    "ci-core": (),
 }
 
 def resolve_preset(name: str) -> list[str]:
-    """Return scenario names for a suite preset (empty if unknown)."""
+    """Return scenario names for a suite preset (empty if unknown).
+
+    ``ci-core`` is the ordered union of smoke + strong-core + audit-core
+    (deduplicated, first-seen wins) for a single CI/operator gate.
+    """
     key = (name or "").strip().lower()
+    if key == "ci-core":
+        seen: set[str] = set()
+        out: list[str] = []
+        for part in ("smoke", "strong-core", "audit-core"):
+            for n in SUITE_PRESETS.get(part, ()):
+                if n not in seen:
+                    seen.add(n)
+                    out.append(n)
+        return out
     if key not in SUITE_PRESETS:
         return []
     return list(SUITE_PRESETS[key])

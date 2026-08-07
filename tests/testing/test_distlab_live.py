@@ -447,6 +447,17 @@ async def test_distlab_live_strong_metrics_e2e(
                 text = await resp.text()
                 assert "mpreg_strong_enabled" in text
                 assert "mpreg_strong_puts_ok_total" in text
+                # T25: capability honesty gauges after successful put
+                assert "mpreg_strong_cap_put_majority_commit" in text
+                assert "mpreg_strong_cap_get_quorum" in text
+                assert "mpreg_strong_cap_delete_quorum" in text
+                for line in text.splitlines():
+                    if line.startswith("mpreg_strong_cap_get_quorum{"):
+                        assert line.rstrip().endswith(" 0")
+                    if line.startswith("mpreg_strong_cap_delete_quorum{"):
+                        assert line.rstrip().endswith(" 0")
+                    if line.startswith("mpreg_strong_cap_put_majority_commit{"):
+                        assert line.rstrip().endswith(" 1")
 
         # Local RYW on origin GCM
         from mpreg.core.cache_models import GlobalCacheKey
@@ -487,6 +498,12 @@ async def test_distlab_live_strong_metrics_e2e(
                 text = await resp.text()
                 assert "mpreg_strong_gets_refused_total" in text
                 assert "mpreg_strong_deletes_refused_total" in text
+                # Caps remain honest after refuse path
+                for line in text.splitlines():
+                    if line.startswith("mpreg_strong_cap_get_quorum{"):
+                        assert line.rstrip().endswith(" 0")
+                    if line.startswith("mpreg_strong_cap_delete_quorum{"):
+                        assert line.rstrip().endswith(" 0")
 
 @pytest.mark.asyncio
 async def test_distlab_live_audit_metrics_e2e(
@@ -546,6 +563,27 @@ async def test_distlab_live_audit_metrics_e2e(
                     text = await resp.text()
                     assert "mpreg_shared_audit_enabled" in text
                     assert "mpreg_shared_audit_store_size" in text
+                    # T25: audit capability honesty gauges
+                    assert "mpreg_shared_audit_cap_gset_epidemic" in text
+                    assert "mpreg_shared_audit_cap_siem" in text
+                    assert "mpreg_shared_audit_cap_bft" in text
+                    for line in text.splitlines():
+                        if line.startswith("mpreg_shared_audit_cap_siem{"):
+                            assert line.rstrip().endswith(" 0")
+                        if line.startswith("mpreg_shared_audit_cap_bft{"):
+                            assert line.rstrip().endswith(" 0")
+                        if line.startswith(
+                            "mpreg_shared_audit_cap_gset_epidemic{"
+                        ):
+                            assert line.rstrip().endswith(" 1")
+                        if line.startswith(
+                            "mpreg_shared_audit_cap_infinite_retention{"
+                        ):
+                            assert line.rstrip().endswith(" 0")
+                        if line.startswith(
+                            "mpreg_shared_audit_cap_linearizable_cluster_ops{"
+                        ):
+                            assert line.rstrip().endswith(" 0")
 
 @pytest.mark.asyncio
 async def test_distlab_live_doctor_strong_audit_e2e(

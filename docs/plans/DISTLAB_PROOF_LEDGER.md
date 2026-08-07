@@ -48,6 +48,9 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T24 prom cap gauges | `mpreg_strong_cap_*` / `mpreg_shared_audit_cap_*` endpoint test | support ops |
 | T24 honesty alerts | `test_t24_prometheus_alerts_include_honesty_rules` | support ops |
 | T24 ops_cli monitor | `ops_cli_tour` monitor strong/audit + doctor scenario | support teach |
+| T25 live prom strong caps | `test_distlab_live_strong_metrics_e2e` cap gauges 0/1 | support ops |
+| T25 live prom audit caps | `test_distlab_live_audit_metrics_e2e` cap gauges 0/1 | support ops |
+| T25 ci-core preset | `test_registry_run_suite_ci_core_preset`, `resolve_preset` | support |
 
 ## Non-claims (do not market)
 
@@ -73,5 +76,5 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t14_residuals.py::test_erg_t14_01_openapi_matches_route_table \
   tests/chaos/test_t21_residuals.py tests/chaos/test_t22_residuals.py \
   tests/chaos/test_t23_residuals.py tests/chaos/test_t24_residuals.py \
-  tests/test_config_check_cli.py -q
+  tests/chaos/test_t25_residuals.py tests/test_config_check_cli.py -q
 ```

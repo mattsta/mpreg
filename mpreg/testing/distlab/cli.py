@@ -93,18 +93,14 @@ def run_scenario(name: str, *, as_json: bool = False) -> int:
     return 0 if result.ok else 1
 
 def list_presets(*, as_json: bool = False) -> int:
-    """Print named suite presets."""
-    from mpreg.testing.distlab.registry import SUITE_PRESETS
+    """Print named suite presets (composed presets expand via resolve_preset)."""
+    from mpreg.testing.distlab.registry import SUITE_PRESETS, resolve_preset
 
+    resolved = {k: resolve_preset(k) for k in sorted(SUITE_PRESETS)}
     if as_json:
-        print(
-            json.dumps(
-                {k: list(v) for k, v in sorted(SUITE_PRESETS.items())},
-                indent=2,
-            )
-        )
+        print(json.dumps(resolved, indent=2))
         return 0
-    for name, scenarios in sorted(SUITE_PRESETS.items()):
+    for name, scenarios in resolved.items():
         print(f"{name:16s}  {', '.join(scenarios)}")
     return 0
 
@@ -206,7 +202,7 @@ def main(argv: list[str] | None = None) -> int:
     ps.add_argument(
         "--preset",
         default="",
-        help="Named suite preset (smoke, strong-core, audit-core)",
+        help="Named suite preset (smoke, strong-core, audit-core, ci-core)",
     )
     ps.add_argument(
         "--name",

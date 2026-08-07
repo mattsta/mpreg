@@ -296,3 +296,16 @@ T24 scrapable honesty + operator teaching:
 Plan: `docs/plans/DISTLAB_T24_PROM_CAPS_OPS_CLI_PLAN.md`.
 
 Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM.
+
+## Phase 13 — Live prom caps scrape + ci-core preset (2026-08-06)
+
+T25 closes scrape + CI operator path:
+
+* **Live e2e:** after STRONG put/refuse and audit drain, Prometheus text includes
+  `mpreg_strong_cap_*` / `mpreg_shared_audit_cap_*` with honest 0/1 values.
+* **Preset:** `ci-core` = ordered deduped union of smoke ∪ strong-core ∪
+  audit-core (`uv run mpreg distlab suite --preset ci-core`).
+
+Plan: `docs/plans/DISTLAB_T25_LIVE_PROM_CAPS_CI_PRESET_PLAN.md`.
+
+Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM.

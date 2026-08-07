@@ -160,6 +160,7 @@ uv run mpreg distlab run strong.refuse_get_delete
 uv run mpreg distlab run strong.drop_abort
 uv run mpreg distlab run audit.partition_heal
 uv run mpreg distlab suite --preset audit-core
+uv run mpreg distlab suite --preset ci-core   # smoke ∪ strong-core ∪ audit-core
 ```
 
 Live multi-process proofs live under `tests/testing/test_distlab_live.py`.

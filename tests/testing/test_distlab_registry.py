@@ -240,6 +240,37 @@ async def test_registry_run_suite_audit_core_preset() -> None:
     assert report["passed"] == report["ran"]
 
 @pytest.mark.asyncio
+async def test_registry_run_suite_ci_core_preset() -> None:
+    """T25: ci-core = ordered union of smoke ∪ strong-core ∪ audit-core."""
+    from mpreg.testing.distlab.builtins import ensure_builtins
+    from mpreg.testing.distlab.registry import (
+        SUITE_PRESETS,
+        get_registry,
+        resolve_preset,
+    )
+
+    ensure_builtins()
+    names = resolve_preset("ci-core")
+    assert "ci-core" in SUITE_PRESETS
+    assert "strong.happy_3" in names
+    assert "strong.happy_5" in names
+    assert "strong.refuse_get_delete" in names
+    assert "audit.digest_repair" in names
+    # Dedup: happy_3 appears once
+    assert names.count("strong.happy_3") == 1
+    assert names.count("audit.multi_origin") == 1
+    # Union size >= max of parts
+    assert len(names) >= len(SUITE_PRESETS["strong-core"])
+    assert len(names) >= len(SUITE_PRESETS["audit-core"])
+
+    reg = get_registry()
+    report = await reg.run_suite(preset="ci-core", fail_fast=True)
+    assert report["preset"] == "ci-core"
+    assert report["ok"] is True
+    assert report["ran"] == len(names)
+    assert report["passed"] == report["ran"]
+
+@pytest.mark.asyncio
 async def test_strong_refuse_get_delete_scenario() -> None:
     """T19: builtin refuse scenario passes NoOpenInvokeChecker."""
     from mpreg.testing.distlab.builtins import ensure_builtins
