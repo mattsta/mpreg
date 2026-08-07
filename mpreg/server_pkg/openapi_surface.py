@@ -99,6 +99,15 @@ def _strong_metrics_schema() -> dict[str, Any]:
                                     "not uncommit residual L1 after COMMIT apply."
                                 ),
                             },
+                            "retry_abort_ops_driven": {
+                                "type": "boolean",
+                                "enum": [True],
+                                "description": (
+                                    "Always true — strong_retry_abort is "
+                                    "ops-driven CFT best-effort, not automatic "
+                                    "background heal."
+                                ),
+                            },
                         },
                         "required": ["get_quorum", "delete_quorum"],
                     },

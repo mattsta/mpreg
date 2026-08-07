@@ -2710,6 +2710,11 @@ class FederationMonitoringSystem:
                             "Always 0 — pending TTL purge does not clear residual L1 after COMMIT.",
                             bool(caps.get("pending_ttl_clears_residual_l1", False)),
                         ),
+                        (
+                            "mpreg_strong_cap_retry_abort_ops_driven",
+                            "Always 1 — strong_retry_abort is ops-driven CFT, not automatic heal.",
+                            bool(caps.get("retry_abort_ops_driven", True)),
+                        ),
                     )
                     for mname, help_s, val in cap_specs:
                         lines.append(f"# HELP {mname} {help_s}")

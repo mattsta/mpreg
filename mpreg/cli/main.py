@@ -101,6 +101,13 @@ def evaluate_strong_doctor_payload(
             "strong dishonest capabilities "
             "(pending_ttl_clears_residual_l1=true; purge is not residual GC)",
         )
+    # T41: retry_abort must stay ops-driven (never claim automatic background heal)
+    if caps and caps.get("retry_abort_ops_driven") is False:
+        return (
+            False,
+            "strong dishonest capabilities "
+            "(retry_abort_ops_driven=false; retry is ops-driven CFT, not auto-heal)",
+        )
     if health in {"misconfigured", "critical"}:
         return False, f"strong health={health}"
     if health == "disabled":
@@ -125,6 +132,7 @@ def evaluate_strong_doctor_payload(
             f"cft={caps.get('cft_only', True)} "
             f"abort_be={caps.get('abort_best_effort', True)} "
             f"ttl_gc={caps.get('pending_ttl_clears_residual_l1', False)} "
+            f"retry_ops={caps.get('retry_abort_ops_driven', True)} "
             f"puts_ok={counters.get('puts_ok', 0)} "
             f"gets_ref={counters.get('gets_refused', 0)} "
             f"dels_ref={counters.get('deletes_refused', 0)} "
@@ -2059,6 +2067,7 @@ def config_check(
                 "cft_only": True,
                 "abort_best_effort": True,
                 "pending_ttl_clears_residual_l1": False,
+                "retry_abort_ops_driven": True,
             },
         },
         "shared_audit": {
@@ -3864,7 +3873,8 @@ def monitor_strong(url: str | None, use_mgmt: bool, output_format: str) -> None:
                             f"ryw={caps.get('local_ryw_after_put')} "
                             f"cft={caps.get('cft_only', True)} "
                             f"abort_be={caps.get('abort_best_effort', True)} "
-                            f"ttl_gc={caps.get('pending_ttl_clears_residual_l1', False)} | "
+                            f"ttl_gc={caps.get('pending_ttl_clears_residual_l1', False)} "
+                            f"retry_ops={caps.get('retry_abort_ops_driven', True)} | "
                             f"puts_ok={counters.get('puts_ok', 0)} "
                             f"puts_fail={counters.get('puts_fail', 0)} "
                             f"gets_refused={counters.get('gets_refused', 0)} "

@@ -546,3 +546,18 @@ Still **not** claimed: WAN residual injection; automatic heal; residual-free
 under lost ABORT; Elle/BFT/fsync.
 
 Plan: `docs/plans/DISTLAB_T40_LIVE_RETRY_ABORT_E2E_PLAN.md`.
+
+## Phase 29 — retry_abort_ops_driven honesty cap (2026-08-06)
+
+T41 adds capability flag `retry_abort_ops_driven=true` (always) so metrics never
+imply automatic residual heal:
+
+* Caps on `strong_status` / config-check / OpenAPI
+* Prom gauge `mpreg_strong_cap_retry_abort_ops_driven` (always 1)
+* Doctor fails closed if advertised false; monitor shows `retry_ops=`
+* Alert `MPREGStrongCapRetryAbortOpsDrivenMissing`
+
+Still **not** claimed: automatic heal; residual-free under lost ABORT;
+WAN/Elle/BFT/fsync.
+
+Plan: `docs/plans/DISTLAB_T41_RETRY_OPS_DRIVEN_CAP_PLAN.md`.

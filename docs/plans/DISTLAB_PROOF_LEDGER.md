@@ -95,6 +95,8 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T39 design doc retry | CFT exception documents ops-driven retry | honesty |
 | T40 live retry e2e | `test_distlab_live_strong_metrics_e2e` retry counters + prom | support ops |
 | T40 OPERATE retry | curriculum documents retry prom + monitor fields | teach |
+| T41 retry_ops cap | `retry_abort_ops_driven` + prom/doctor/alert | honesty |
+| T41 config-check | strong_cache.capabilities.retry_abort_ops_driven | support ops |
 
 ## Non-claims (do not market)
 
@@ -132,5 +134,6 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t35_residuals.py tests/chaos/test_t36_residuals.py \
   tests/chaos/test_t37_residuals.py tests/chaos/test_t38_residuals.py \
   tests/chaos/test_t39_residuals.py tests/chaos/test_t40_residuals.py \
+  tests/chaos/test_t41_residuals.py \
   tests/test_config_check_cli.py -q
 ```

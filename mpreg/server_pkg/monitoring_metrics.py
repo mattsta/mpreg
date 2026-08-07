@@ -193,12 +193,15 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
             "cft_only": True,
             "abort_best_effort": True,
             "pending_ttl_clears_residual_l1": False,
+            "retry_abort_ops_driven": True,
         }
     else:
         # Ensure honesty flag present even when GCM status provided older shape
         caps = base["capabilities"]
         if isinstance(caps, dict) and "pending_ttl_clears_residual_l1" not in caps:
             caps["pending_ttl_clears_residual_l1"] = False
+        if isinstance(caps, dict) and "retry_abort_ops_driven" not in caps:
+            caps["retry_abort_ops_driven"] = True
     # Simple health hint for doctor
     if not enabled_flag:
         base["health"] = "disabled"

@@ -81,6 +81,7 @@ Prometheus series (process-local; **not** WAN SLO):
 | `cft_only` | **true** | Not BFT |
 | `abort_best_effort` | **true** | Lost ABORT may leave peer L1 until ABORT/LWW |
 | `pending_ttl_clears_residual_l1` | **false** | Purge is not residual GC after COMMIT |
+| `retry_abort_ops_driven` | **true** | `strong_retry_abort` is ops-driven, not auto-heal |
 
 Doctor fails closed if metrics claim `get_quorum` or `delete_quorum`, if
 `cft_only` / `abort_best_effort` are advertised as false, or if

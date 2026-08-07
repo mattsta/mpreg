@@ -154,6 +154,14 @@ def prometheus_alert_rules_yaml() -> str:
           scope: honesty
         annotations:
           summary: "STRONG dishonestly claims pending TTL clears residual L1"
+      - alert: MPREGStrongCapRetryAbortOpsDrivenMissing
+        expr: mpreg_strong_cap_retry_abort_ops_driven == 0
+        for: 0m
+        labels:
+          severity: critical
+          scope: honesty
+        annotations:
+          summary: "STRONG dishonestly omits ops-driven retry_abort (must be 1)"
       - alert: MPREGSharedAuditCapSiemClaimed
         expr: mpreg_shared_audit_cap_siem > 0
         for: 0m

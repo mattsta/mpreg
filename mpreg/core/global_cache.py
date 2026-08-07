@@ -441,6 +441,8 @@ class GlobalCacheManager(ManagedObject):
                 "abort_best_effort": True,  # lost ABORT may leave peer L1
                 # pending TTL is not residual GC after COMMIT apply
                 "pending_ttl_clears_residual_l1": False,
+                # T41: retry_abort is ops-driven API — not automatic background heal
+                "retry_abort_ops_driven": True,
             },
             "aborts_peer_ok": int(c.get("aborts_peer_ok", 0)),
             "aborts_peer_fail": int(c.get("aborts_peer_fail", 0)),

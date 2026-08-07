@@ -121,6 +121,16 @@ groups:
           summary: "STRONG dishonestly claims pending TTL clears residual L1"
           description: >-
             purge_expired_pending only drops uncommitted prepares — not residual L1 after COMMIT apply.
+      - alert: MPREGStrongCapRetryAbortOpsDrivenMissing
+        expr: mpreg_strong_cap_retry_abort_ops_driven == 0
+        for: 0m
+        labels:
+          severity: critical
+          scope: honesty
+        annotations:
+          summary: "STRONG dishonestly omits ops-driven retry_abort (must be 1)"
+          description: >-
+            strong_retry_abort is ops-driven CFT best-effort — not automatic background heal. Gauge must stay 1.
       - alert: MPREGSharedAuditCapSiemClaimed
         expr: mpreg_shared_audit_cap_siem > 0
         for: 0m
