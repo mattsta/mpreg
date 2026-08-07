@@ -396,6 +396,30 @@ release_0_3:
       - tests/release/test_r5_perf_baseline_doc.py
       - tests/release/test_r6_release_checklist.py
 
+release_0_3_1:
+  - id: REL-0.3.1-CI-SURFACE
+    claim: "0.3.1 unit-fast and typecheck surfaces expanded beyond 0.3.0 snapshot"
+    proof: [L2]
+    support_only: true
+    tests:
+      - tests/release/test_h1_ci_surface.py
+  - id: REL-0.3.1-LINT-BAR
+    claim: "0.3.1 lint gate enforces E9 full-tree and I/F401/UP035 on mpreg"
+    proof: [L2]
+    support_only: true
+    tests:
+      - tests/release/test_h2_lint_bar.py
+  - id: REL-0.3.1-CONTAINER-SUPPORT
+    proof: [L2]
+    support_only: true
+    tests:
+  - id: REL-0.3.1-PACKAGE
+    claim: "package version 0.3.1 with dynamic package-smoke version check"
+    proof: [L2]
+    support_only: true
+    tests:
+      - tests/release/test_h4_version_031.py
+
 non_claims:
   - "Atomic multi-store fabric snapshot save (catalog+keys single blob); restore has COR-10 rollback on key failure"
   - "Full OSPF adjacency FSM / LSA flooding reliability"
@@ -536,6 +560,12 @@ non_claims:
   - "config-check critical_warnings classification is ops guidance — not automatic harden or heal"
   - "scripts/release_gate.sh green is snapshot quality bar — not enterprise feature-complete claim"
 
+  - "0.3.1 Production Hardening does not claim full-tree ruff or mypy zero debt"
+
+  - "SUPPORT.md is community guidance — not a commercial support SLA"
+
+  - "0.3.1 hardening patch does not add BFT/WAN/Jepsen or residual-free guarantees"
+
 support_only:
   - tests/server_pkg/test_strong_audit_metrics.py
   - tests/test_strong_audit_monitoring_endpoints.py
@@ -555,3 +585,6 @@ support_only:
   - tests/release/test_r5_perf_baseline_doc.py
   - tests/release/test_r6_release_checklist.py
   - tests/release/test_r7_gate_artifacts.py
+  - tests/release/test_h1_ci_surface.py
+  - tests/release/test_h2_lint_bar.py
+  - tests/release/test_h4_version_031.py

@@ -1,6 +1,6 @@
 [project]
 name = "mpreg"
-version = "0.3.0"
+version = "0.3.1"
 description = "Matt’s Protocol for Results Everywhere Guaranteed"
 authors = [{ name = "Matt Stancliff", email = "matt@genges.com" }]
 requires-python = " >=3.11,<4"

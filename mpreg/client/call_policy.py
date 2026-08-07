@@ -105,7 +105,7 @@ class ClientCallPolicy:
         delay = min(self.max_backoff_seconds, exp)
         if self.jitter_seconds > 0:
             delay += random.uniform(0, self.jitter_seconds)
-        return delay
+        return float(delay)
 
 async def call_with_policy[T](
     operation: Callable[[], Awaitable[T]],

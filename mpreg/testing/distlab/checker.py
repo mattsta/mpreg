@@ -6,7 +6,7 @@ Each checker declares what it proves and what it does not.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -14,7 +14,6 @@ from mpreg.testing.distlab.history import History
 from mpreg.testing.distlab.models import (
     CheckResult,
     CheckViolation,
-    HistoryEvent,
     OpKind,
     OpStatus,
 )

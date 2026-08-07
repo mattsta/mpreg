@@ -6,6 +6,11 @@ This guide describes how to deploy MPREG with the unified fabric control plane
 for production use. MPREG uses a single routing fabric for RPC, pub/sub, queues,
 and cache. All cross-node routing is catalog-driven and gossip-propagated.
 
+## Release snapshot (0.3.0 / 0.3.1)
+
+- Hardening: `docs/RELEASE_0_3_1_PRODUCTION_HARDENING_ARCHITECTURE.md`
+- Support: `SUPPORT.md`
+
 ## Release snapshot (0.3.0)
 
 - Architecture: `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md`

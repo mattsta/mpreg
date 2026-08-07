@@ -4,7 +4,7 @@
 
 Do you need results? Everywhere? Guaranteed? Then you need to MPREG!
 
-> **Honesty banner (0.3.0 Production Snapshot):** Raft in MPREG is **CFT**, not BFT. `EXACTLY_ONCE` delivery remains refuse-by-default (`1011`). Cache `ConsistencyLevel.STRONG` is a **flag-gated majority-commit put** (`cache_strong_enabled`; default off → `1012`); STRONG get/delete and the location-consistency plane stay refuse. Multi-node shared audit is flag-gated (`mgmt_audit_shared_enabled`). Prefer `MPREGClient`, shipped profiles (`mpreg/profiles/`), `docs/MPREG_CLIENT_GUIDE.md`, and `tests/invariants/claims.yaml`. Public release gate: `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md`, `SECURITY.md`, `bash scripts/release_gate.sh`. Throughput is **hardware- and topology-dependent** (see `docs/ops/PERF_BASELINE.md`) — not a WAN SLA.
+> **Honesty banner (0.3.x Production Snapshot / Hardening):** Raft in MPREG is **CFT**, not BFT. `EXACTLY_ONCE` delivery remains refuse-by-default (`1011`). Cache `ConsistencyLevel.STRONG` is a **flag-gated majority-commit put** (`cache_strong_enabled`; default off → `1012`); STRONG get/delete and the location-consistency plane stay refuse. Multi-node shared audit is flag-gated (`mgmt_audit_shared_enabled`). Prefer `MPREGClient`, shipped profiles (`mpreg/profiles/`), `docs/MPREG_CLIENT_GUIDE.md`, and `tests/invariants/claims.yaml`. Public release gate: `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md`, `SECURITY.md`, `bash scripts/release_gate.sh`. Throughput is **hardware- and topology-dependent** (see `docs/ops/PERF_BASELINE.md`) — not a WAN SLA.
 
 ## What is it?
 

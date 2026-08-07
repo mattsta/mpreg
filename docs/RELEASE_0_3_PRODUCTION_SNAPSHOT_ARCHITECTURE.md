@@ -209,3 +209,6 @@ A stranger can:
 5. Trust that CI would have caught obvious breakage  
 
 That is the Production Snapshot.
+## Successor
+
+**0.3.1 Production Hardening:** `docs/RELEASE_0_3_1_PRODUCTION_HARDENING_ARCHITECTURE.md`.

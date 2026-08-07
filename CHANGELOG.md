@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## [0.3.1] - 2026-08-07 — Production Hardening
+
+Patch release raising the **quality floor** after the 0.3.0 Production Snapshot.
+
+### Highlights
+
+- **Broader CI unit-fast** — GCM bridge tests, unified client, client trace metadata
+- **Stronger lint bar** — ruff I/F401/UP035 clean on `mpreg/`; E9 full tree
+- **Typecheck expansion** — more import smoke + release-surface mypy modules
+- **SUPPORT.md** — how to get help; points at SECURITY and non_claims
+- Package smoke reads expected version from `pyproject.toml` (not hardcoded)
+
+### Still deferred
+
+Full-tree ruff/mypy zero debt, residual honesty T140+, OAuth2/OIDC, BFT/WAN/Jepsen.
+
+### Artifacts
+
+| Artifact | Path |
+| --- | --- |
+| Architecture | `docs/RELEASE_0_3_1_PRODUCTION_HARDENING_ARCHITECTURE.md` |
+| Master plan | `docs/plans/RELEASE_0_3_1_PRODUCTION_HARDENING_MASTER_PLAN.md` |
+| Burndown | `docs/plans/RELEASE_0_3_1_BURNDOWN.md` |
+| Gate | `bash scripts/release_gate.sh` |
+
+---
+
 ## [0.3.0] - 2026-08-07 — Production Snapshot
 
 Public **upload-ready** milestone: release engineering, claim honesty, CI quality

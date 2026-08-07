@@ -15,7 +15,7 @@ from mpreg.testing.distlab.nemesis import (
     Nemesis,
     NemesisAction,
 )
-from mpreg.testing.distlab.registry import DEFAULT_REGISTRY, get_registry
+from mpreg.testing.distlab.registry import DEFAULT_REGISTRY
 from mpreg.testing.distlab.scenario import Scenario
 
 _REGISTERED = False

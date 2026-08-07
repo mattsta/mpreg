@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# R4: build wheel and smoke entry points in isolated venv (standard CPython, not freethreaded)
+# R4/H4: build wheel and smoke entry points in isolated venv (standard CPython)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 echo "== ci_package_smoke: build =="
@@ -7,10 +7,11 @@ rm -rf dist
 uv build
 WHEEL=$(ls -1 dist/mpreg-*.whl | head -1)
 echo "Built $WHEEL"
+EXPECT_VER=$(sed -n 's/^version = "\([^"]*\)"/\1/p' pyproject.toml | head -1)
+echo "Expect version $EXPECT_VER"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
-# Prefer known standard CPython paths (orjson has no 3.14t wheels).
 PY="${MPREG_PACKAGE_SMOKE_PYTHON:-}"
 if [[ -z "$PY" ]]; then
   for cand in \
@@ -40,6 +41,6 @@ source "$TMP/venv/bin/activate"
 uv pip install "$WHEEL"
 mpreg --help >/dev/null
 mpreg-example --help >/dev/null
-python -c "from importlib.metadata import version; v=version('mpreg'); print(v); assert v=='0.3.0', v"
+python -c "from importlib.metadata import version; v=version('mpreg'); print(v); assert v=='${EXPECT_VER}', (v, '${EXPECT_VER}')"
 deactivate
 echo "ci_package_smoke OK"

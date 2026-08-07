@@ -1,4 +1,4 @@
-# MPREG 0.3.0 Release Checklist
+# MPREG 0.3.0 / 0.3.1 Release Checklist
 
 | Field | Value |
 | --- | --- |
@@ -74,6 +74,8 @@ Optional publish:
 uv build
 # uvx twine upload dist/*
 ```
+
+## Container (0.3.1+)
 
 ## Post-tag
 

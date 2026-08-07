@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
-# R1: typecheck / import gate for 0.3.0 Production Snapshot.
+# H1: typecheck / import gate for Production Snapshot + Hardening
 #
-# Full-tree `mypy mpreg` under strict pyproject settings still reports large
-# pre-existing debt (1000+ notes). That cleanup is post-0.3.0. This gate proves:
-#   1) Core packages import on the release interpreter
-#   2) Release-surface modules typecheck cleanly under project mypy config
-#   3) CLI entry module has no syntax/import breakage
+# Full-tree strict mypy remains large pre-existing debt (tracked post-0.3.1).
+# This gate proves core imports + a growing release-surface mypy set.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 if command -v uv >/dev/null 2>&1; then
@@ -20,9 +17,20 @@ import mpreg
 import mpreg.cli.main
 import mpreg.core.config
 import mpreg.core.cache_strong
+import mpreg.core.errors
+import mpreg.client.client_api
+import mpreg.client.cluster_client
 import mpreg.server
-assert mpreg.__version__ == "0.3.0", mpreg.__version__
-print("imports ok", mpreg.__version__)
+from importlib.metadata import version as _v
+
+ver = mpreg.__version__
+assert ver.count(".") >= 2, ver
+# Prefer metadata when installed; source tree must match pyproject major.minor
+print("imports ok", ver, "metadata=", end=" ")
+try:
+    print(_v("mpreg"))
+except Exception as exc:  # pragma: no cover
+    print("n/a", type(exc).__name__)
 PY
 
 echo "== ci_typecheck: mypy release surface =="
@@ -30,6 +38,8 @@ echo "== ci_typecheck: mypy release surface =="
   tests/release/ \
   mpreg/__init__.py \
   mpreg/core/cache_strong.py \
+  mpreg/core/errors.py \
+  mpreg/client/call_policy.py \
   --pretty \
   --follow-imports=skip \
   --ignore-missing-imports

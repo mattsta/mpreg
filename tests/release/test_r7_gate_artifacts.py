@@ -13,6 +13,7 @@ REQUIRED_DOCS = [
     "docs/ops/PERF_BASELINE.md",
     "SECURITY.md",
     "CHANGELOG.md",
+    "docs/RELEASE_0_3_1_PRODUCTION_HARDENING_ARCHITECTURE.md",
 ]
 
 def test_r7_required_docs_exist() -> None:

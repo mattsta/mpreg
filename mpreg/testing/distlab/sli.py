@@ -13,10 +13,10 @@ from __future__ import annotations
 
 import math
 import time
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Any, Iterator
+from typing import Any
 
 def percentile(samples: Sequence[float], p: float) -> float:
     """Nearest-rank percentile for p in [0, 100]. Empty → 0.0."""
