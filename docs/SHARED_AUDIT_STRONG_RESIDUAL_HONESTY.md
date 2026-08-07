@@ -454,3 +454,13 @@ T34 product-doc + belt-and-suspenders GC:
 Plan: `docs/plans/DISTLAB_T34_CACHING_DOC_PURGE_PRUNE_PLAN.md`.
 
 Still **not** claimed: residual-free under lost ABORT; WAN/Elle/BFT/fsync.
+
+## Phase 23 — Design doc CFT residual honesty (2026-08-06)
+
+T35 corrects the design-doc residual-free invariant to CFT best-effort wording
+and documents the partial-COMMIT+lost-ABORT exception (aligned with product +
+DistLab + claims.yaml).
+
+Plan: `docs/plans/DISTLAB_T35_DESIGN_DOC_CFT_HONESTY_PLAN.md`.
+
+Still **not** claimed: residual-free under lost ABORT; WAN/Elle/BFT/fsync.

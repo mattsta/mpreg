@@ -123,7 +123,9 @@ Pain points:
 **Goals**
 
 - Real **majority-commit barrier** for cache **put** (not prepare-only).
-- **No residual committed write on origin** if quorum fails (preserve COR-01 residual-free property); peers drop prepare/commit-intent on abort.
+- **No residual committed write on origin** if quorum fails (COR-01). Peers drop
+  prepare/commit-intent on **delivered** ABORT. ABORT is CFT best-effort: partial
+  peer COMMIT + lost ABORT may leave peer L1 (documented limit; not BFT).
 - Clear success guarantee text in API/docs/claims (see Semantics).
 - Settings for quorum size / replica-set selection from cache-capable peers (`CacheRole.SYNC`).
 - Metrics: quorum latency, ack counts, failures (minimal counters land with enablement).
@@ -622,7 +624,19 @@ class CacheMessageKind(StrEnum):
 | Coordinator crash mid-commit                           | Client may timeout (**1016**)                            | empty after local uncommit on restart recovery if intent incomplete; else retry | Peers: ABORT uncommit or client **retries same `op_id`** (idempotent commit wins cleanly)       |
 | Success                                                | `success=True`                                           | committed                                                                       | ≥ Q members hold visible commit for this `op_id` (no ABORT after success return)                |
 
-**Failed put residual-free invariant (cluster-visible):** If the client receives `success=False`, **no replica in \(R\)** (including origin) may retain a **visible** L1/namespace entry whose `strong_version.op_id` equals that put’s `op_id`. Pending-only state is allowed until ABORT/TTL. This extends COR-01 from “origin clean on refuse” to “failed STRONG put leaves no quorum-visible value anywhere in \(R\)”.
+**Failed put residual-free invariant (cluster-visible, CFT best-effort):** If the
+client receives `success=False` and ABORT is **delivered** to every contacted
+member of \(R\), **no replica in \(R\)** (including origin) may retain a
+**visible** L1/namespace entry whose `strong_version.op_id` equals that put’s
+`op_id`. Pending-only state is allowed until ABORT or pending-prepare TTL.
+
+**CFT exception (not residual-free):** if a peer has already applied COMMIT and
+ABORT is lost, that peer may retain L1 for `op_id` until a later delivered ABORT
+or a successful LWW put overwrites it. Pending TTL does **not** clear residual L1
+after COMMIT apply (pending is already gone). DistLab
+`strong.cft_partial_commit_lost_abort` documents this; counters
+`aborts_peer_fail` / caps `abort_best_effort` / `pending_ttl_clears_residual_l1=false`
+expose it. This is **not** BFT and **not** claimed residual-free under lost ABORT.
 
 **Commit ordering rule (prefer origin-commit-last):**
 
