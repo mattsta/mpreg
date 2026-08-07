@@ -7,6 +7,7 @@
 | **Product** | `mpreg.testing.distlab` |
 | **Honesty** | Jepsen-inspired, **not** Elle/WAN/BFT/kernel partitions |
 | **Master plan** | `docs/plans/DISTLAB_SEVEN_TRACK_MASTER_PLAN.md` (~420 pts, T1–T7) |
+| **Release 0.3.0** | `docs/plans/RELEASE_0_3_PRODUCTION_SNAPSHOT_MASTER_PLAN.md` (CI/honesty/security/package gate) |
 
 ## DistLab product (platform tests the platform)
 

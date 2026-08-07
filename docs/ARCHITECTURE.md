@@ -1,5 +1,7 @@
 # MPREG Architecture Documentation
 
+> **0.3.0 Production Snapshot:** release architecture and gate live in `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md` (CI matrix, honesty freeze, `scripts/release_gate.sh`). Residual honesty through T139 remains separate (`docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`).
+
 ## Overview
 
 MPREG is a unified distributed computing platform. RPC, pub/sub, queues, and

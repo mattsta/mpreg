@@ -1542,3 +1542,12 @@ Still **not** claimed: gate is WAN/BFT/Jepsen proof.
 
 Plan: `docs/plans/DISTLAB_T139_GATE_T130_T139_PLAN.md`.
 
+---
+
+## Release track (separate)
+
+Residual honesty through Phase 127 / T139 is complete for diminishing-returns ops polish.
+**Public release engineering** is the separate **0.3.0 Production Snapshot** track:
+`docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md`,
+`docs/plans/RELEASE_0_3_PRODUCTION_SNAPSHOT_MASTER_PLAN.md`.
+T140+ residual micro-bands are **not** required for the 0.3.0 tag.

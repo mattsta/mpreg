@@ -29,7 +29,6 @@ from enum import Enum
 from typing import Any, Protocol, runtime_checkable
 
 import ulid
-from hypothesis import strategies as st
 
 from mpreg.datastructures.cache_structures import CacheKey
 from mpreg.datastructures.type_aliases import (
@@ -51,6 +50,23 @@ SynchronizationToken = str
 ConsistencyLevel = str
 CacheRegion = str
 Priority = float
+
+class _LazySt:
+    """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
+
+    _mod: object | None = None
+
+    def _load(self) -> object:
+        if self._mod is None:
+            from hypothesis import strategies as st
+
+            object.__setattr__(self, "_mod", st)
+        return self._mod  # type: ignore[return-value]
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._load(), name)
+
+st = _LazySt()
 
 class CacheCoherenceState(Enum):
     """Cache coherence states following MSI/MESI/MOESI protocols."""

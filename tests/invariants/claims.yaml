@@ -3,7 +3,7 @@
 # See .local/DISTRIBUTED_SYSTEMS_VALIDATION_PLAN.md §1 and §6.
 
 version: 1
-updated: "2026-08-06"
+updated: "2026-08-07"
 
 routing:
   - id: INV-R1
@@ -360,6 +360,42 @@ encapsulation:
       - tests/test_strong_audit_monitoring_endpoints.py
       - tests/examples_apps/test_curriculum_apps.py
 
+release_0_3:
+  - id: REL-0.3.0-CI-MATRIX
+    claim: "0.3.0 CI matrix scripts + workflow cover lint/typecheck/unit-fast/invariants/distlab-core/security-deps/demo-smoke/package-smoke"
+    proof: [L2]
+    support_only: true
+    tests:
+      - tests/release/test_r1_ci_scripts_exist.py
+      - tests/release/test_r7_gate_artifacts.py
+  - id: REL-0.3.0-HONESTY
+    claim: "0.3.0 README/CHANGELOG/SECURITY honesty surface matches claims non_goals"
+    proof: [L2]
+    support_only: true
+    tests:
+      - tests/release/test_r2_readme_honesty.py
+      - tests/release/test_r2_changelog_030.py
+  - id: REL-0.3.0-SECURITY-CONFIG
+    claim: "config-check critical_warnings + strict gate for production footguns"
+    proof: [L2]
+    support_only: true
+    tests:
+      - tests/test_config_check_cli.py
+      - tests/release/test_r3_security_md.py
+  - id: REL-0.3.0-PACKAGE
+    claim: "package version 0.3.0 with wheel install smoke"
+    proof: [L2]
+    support_only: true
+    tests:
+      - tests/release/test_r4_version.py
+  - id: REL-0.3.0-PERF-OPS
+    claim: "PERF_BASELINE + RELEASE_CHECKLIST document lab evidence and golden path"
+    proof: [L2]
+    support_only: true
+    tests:
+      - tests/release/test_r5_perf_baseline_doc.py
+      - tests/release/test_r6_release_checklist.py
+
 non_claims:
   - "Atomic multi-store fabric snapshot save (catalog+keys single blob); restore has COR-10 rollback on key failure"
   - "Full OSPF adjacency FSM / LSA flooding reliability"
@@ -492,6 +528,14 @@ non_claims:
 
 # Tests present under tests/invariants/ that back tooling/support rather than a
 # named INV-* product claim (B3). Do not delete without reviewing usage.
+  - "0.3.0 Production Snapshot CI green is not pen-test certification or formal verification"
+  - "0.3.0 PERF_BASELINE lab numbers are not WAN multi-region SLA or guaranteed million+ msg/s"
+  - "SECURITY.md threat model is CFT trusted-operator guidance — not BFT, not residual-free under lost ABORT"
+  - "0.3.0 release does not ship OAuth2/OIDC IdP product (roadmap only)"
+  - "0.3.0 release engineering track is not residual honesty T140+ and not Jepsen/Elle/WAN proof"
+  - "config-check critical_warnings classification is ops guidance — not automatic harden or heal"
+  - "scripts/release_gate.sh green is snapshot quality bar — not enterprise feature-complete claim"
+
 support_only:
   - tests/server_pkg/test_strong_audit_metrics.py
   - tests/test_strong_audit_monitoring_endpoints.py
@@ -503,4 +547,11 @@ support_only:
   - tests/invariants/test_rpc_modality_bench_smoke.py
   - tests/invariants/test_rpc_stream_cancel.py
   - tests/invariants/test_server_plane_handlers.py
-
+  - tests/release/test_r1_ci_scripts_exist.py
+  - tests/release/test_r2_readme_honesty.py
+  - tests/release/test_r2_changelog_030.py
+  - tests/release/test_r3_security_md.py
+  - tests/release/test_r4_version.py
+  - tests/release/test_r5_perf_baseline_doc.py
+  - tests/release/test_r6_release_checklist.py
+  - tests/release/test_r7_gate_artifacts.py

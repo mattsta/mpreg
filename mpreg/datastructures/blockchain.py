@@ -11,8 +11,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from hypothesis import strategies as st
-
 from .block import Block, block_strategy, genesis_block_strategy
 from .blockchain_types import (
     BlockHash,
@@ -28,6 +26,23 @@ from .blockchain_types import (
 )
 from .transaction import Transaction, transaction_strategy
 from .vector_clock import VectorClock
+
+class _LazySt:
+    """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
+
+    _mod: object | None = None
+
+    def _load(self) -> object:
+        if self._mod is None:
+            from hypothesis import strategies as st
+
+            object.__setattr__(self, "_mod", st)
+        return self._mod  # type: ignore[return-value]
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._load(), name)
+
+st = _LazySt()
 
 @dataclass(frozen=True, slots=True)
 class Blockchain:

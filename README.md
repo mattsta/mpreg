@@ -4,7 +4,7 @@
 
 Do you need results? Everywhere? Guaranteed? Then you need to MPREG!
 
-> **Honesty banner:** Raft in MPREG is **CFT**, not BFT. `EXACTLY_ONCE` delivery remains refuse-by-default (`1011`). Cache `ConsistencyLevel.STRONG` is a **flag-gated majority-commit put** (`cache_strong_enabled`; default off → `1012`); STRONG get/delete and the location-consistency plane stay refuse. Multi-node shared audit is flag-gated (`mgmt_audit_shared_enabled`). Prefer `MPREGClient`, shipped profiles (`mpreg/profiles/`), `docs/MPREG_CLIENT_GUIDE.md`, and `tests/invariants/claims.yaml`.
+> **Honesty banner (0.3.0 Production Snapshot):** Raft in MPREG is **CFT**, not BFT. `EXACTLY_ONCE` delivery remains refuse-by-default (`1011`). Cache `ConsistencyLevel.STRONG` is a **flag-gated majority-commit put** (`cache_strong_enabled`; default off → `1012`); STRONG get/delete and the location-consistency plane stay refuse. Multi-node shared audit is flag-gated (`mgmt_audit_shared_enabled`). Prefer `MPREGClient`, shipped profiles (`mpreg/profiles/`), `docs/MPREG_CLIENT_GUIDE.md`, and `tests/invariants/claims.yaml`. Public release gate: `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md`, `SECURITY.md`, `bash scripts/release_gate.sh`. Throughput is **hardware- and topology-dependent** (see `docs/ops/PERF_BASELINE.md`) — not a WAN SLA.
 
 ## What is it?
 
@@ -252,7 +252,7 @@ MPREG has grown into a comprehensive distributed platform with multiple integrat
 ### 🌐 Topic Exchange (AMQP-Style Pub/Sub)
 
 ```python
-# Million+ message/second hierarchical topic routing
+# Hierarchical topic routing (lab throughput is hardware-dependent; see docs/ops/PERF_BASELINE.md)
 from mpreg.core.topic_exchange import TopicExchange
 
 exchange = TopicExchange("ws://localhost:9001", "demo_cluster")
@@ -915,7 +915,7 @@ Local Clusters → Regional Hubs → Global Federation
 
 ## 🚀 Production Deployment Status
 
-MPREG is a **capable distributed platform** with strong tests on fabric routing, CFT Raft, RPC modalities, flag-gated shared audit (`INV-SHARED-AUDIT-01`), and flag-gated cache STRONG put (`INV-CACHE-STRONG-01`). Residual honesty beyond MVP: same-host live STRONG RR + peer-loss residual, live shared-audit multi-origin churn, bounded single-key history checker, adversarial fail-closed peers — still **not** WAN/BFT/fsync/Jepsen (see `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`, through Phase 127 / T139). CFT residual ops: `mpreg doctor --strong --format json` / `mpreg monitor strong` expose `abort_fail_peer_count` (int), `last_abort_fail_peers` (list), `last_abort_fail_op_id` (str), `residual_ops_hint` (str) — **not** auto-heal. First-party DistLab (`mpreg.testing.distlab`) provides history/checker/nemesis scenarios the platform uses to test itself (Jepsen-inspired, not Elle). Run via entry point only: `uv run mpreg distlab list` / `uv run mpreg distlab run strong.happy_3` (never `python -m`). Read `tests/invariants/claims.yaml` non_claims before assuming BFT, EO, WAN STRONG, or STRONG quorum reads:
+MPREG is a **capable distributed platform** with strong tests on fabric routing, CFT Raft, RPC modalities, flag-gated shared audit (`INV-SHARED-AUDIT-01`), and flag-gated cache STRONG put (`INV-CACHE-STRONG-01`). Residual honesty beyond MVP: same-host live STRONG RR + peer-loss residual, live shared-audit multi-origin churn, bounded single-key history checker, adversarial fail-closed peers — still **not** WAN/BFT/fsync/Jepsen (see `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`, through Phase 127 / T139). **0.3.0 Production Snapshot** release engineering: `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md`. CFT residual ops: `mpreg doctor --strong --format json` / `mpreg monitor strong` expose `abort_fail_peer_count` (int), `last_abort_fail_peers` (list), `last_abort_fail_op_id` (str), `residual_ops_hint` (str) — **not** auto-heal. First-party DistLab (`mpreg.testing.distlab`) provides history/checker/nemesis scenarios the platform uses to test itself (Jepsen-inspired, not Elle). Run via entry point only: `uv run mpreg distlab list` / `uv run mpreg distlab run strong.happy_3` (never `python -m`). Read `tests/invariants/claims.yaml` non_claims before assuming BFT, EO, WAN STRONG, or STRONG quorum reads:
 
 ### ✅ **Production Readiness Checklist**
 
@@ -946,7 +946,7 @@ MPREG is a **capable distributed platform** with strong tests on fabric routing,
 **⚡ Performance & Efficiency**
 
 - ✅ **Sub-millisecond routing decisions** with intelligent caching
-- ✅ **Million+ message/second throughput** in topic exchange systems
+- ✅ **High-throughput topic exchange** in lab topologies (see `docs/ops/PERF_BASELINE.md`; not a WAN SLA)
 - ✅ **Memory-efficient implementations** with configurable resource limits
 - ✅ **Connection pooling** with persistent WebSocket optimization
 - ✅ **Bloom filter optimization** for efficient federation routing
@@ -988,30 +988,30 @@ MPREG continues evolving toward an even more comprehensive distributed computing
 
 ### 🎯 **Roadmap**
 
-**🔐 Security & Authentication**
+**🔐 Security & Authentication** *(roadmap — not shipped as product in 0.3.0)*
 
-- **OAuth2/OIDC Integration**: Enterprise-grade authentication and authorization
-- **TLS Encryption**: End-to-end encryption for all cluster communication
+- **OAuth2/OIDC Integration**: Enterprise IdP integration (not in 0.3.0; see `SECURITY.md` for current token/TLS posture)
+- **Default mTLS mesh**: Optional TLS exists for wss/tcps; full mesh-default mTLS is roadmap
 - **RBAC (Role-Based Access Control)**: Fine-grained permissions for functions and resources
-- **API Key Management**: Secure client authentication with rotation support
+- **API Key Management**: Broader key lifecycle beyond monitoring bearer / client tokens
 
 **📊 Enhanced Monitoring & Observability**
 
-- **Prometheus Metrics**: Native Prometheus export for comprehensive monitoring
-- **OpenTelemetry Integration**: Distributed tracing with industry-standard tooling
-- **Real-time Dashboards**: Built-in web UI for cluster health and performance visualization
-- **Automated Alerting**: Configurable alerts for performance anomalies and failures
+- **Prometheus Metrics**: ✅ Shipped (`/metrics/prometheus` + `mpreg/ops/prometheus_alerts.yml`)
+- **OpenTelemetry Integration**: Broader OTEL ecosystem wiring (traceparent hops exist; full productization roadmap)
+- **Real-time Dashboards**: Built-in web UI for cluster health (beyond metrics/doctor CLI) — roadmap
+- **Automated Alerting**: Packaged Prometheus rules shipped; SaaS-style anomaly product — roadmap
 
 **⚡ Performance & Optimization**
 
 - **CloudPickle Support**: Binary serialization for complex Python objects beyond JSON
-- **Adaptive Load Balancing**: ML-based routing decisions using historical performance data
+- **Adaptive Load Balancing**: ML-based routing (cluster client uses latency/error scoring today; ML product roadmap)
 - **Memory-Mapped Caching**: Zero-copy data sharing between processes on same nodes
 
 **🤖 Intelligent Automation**
 
 - **Auto-scaling Based on Load**: Dynamic cluster scaling with predictive capacity planning
-- **Resilience paths**: Reconnect and drain/detach ops (full self-healing control loop is non-claim / roadmap)
+- **Resilience paths**: Reconnect and drain/detach ops shipped; full self-healing control loop is non-claim / roadmap
 - **Performance-Driven Optimization**: AI-powered resource allocation and routing optimization
 - **Cost-Aware Scaling**: Cloud cost optimization with intelligent instance management
 

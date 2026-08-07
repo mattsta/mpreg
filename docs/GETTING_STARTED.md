@@ -1,6 +1,6 @@
 # 🚀 Getting Started with MPREG
 
-> **Honesty banner:** Raft is CFT (not BFT). `EXACTLY_ONCE` remains refuse-by-default (`1011`). Cache `STRONG` put is flag-gated (`cache_strong_enabled`; default off → `1012`); STRONG get/delete stay refuse. Shared cluster audit is flag-gated (`mgmt_audit_shared_enabled`). Prefer profiles + `mpreg config-check`. Proof ledger: `tests/invariants/claims.yaml`.
+> **Honesty banner:** Raft is CFT (not BFT). `EXACTLY_ONCE` remains refuse-by-default (`1011`). Cache `STRONG` put is flag-gated (`cache_strong_enabled`; default off → `1012`); STRONG get/delete stay refuse. Shared cluster audit is flag-gated (`mgmt_audit_shared_enabled`). Prefer profiles + `mpreg config-check`. Proof ledger: `tests/invariants/claims.yaml`. Public **0.3.0** snapshot: `docs/ops/RELEASE_CHECKLIST.md`, `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md`, `SECURITY.md`.
 
 Welcome to **MPREG** (Matt's Protocol for Results Everywhere Guaranteed) - the distributed RPC system that makes complex distributed computing feel effortless. This guide will take you from zero to hero with comprehensive examples, performance insights, and architectural best practices.
 

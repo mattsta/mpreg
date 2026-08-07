@@ -2494,8 +2494,28 @@ def config_check(
             "shared audit is a bounded G-Set epidemic (not SIEM, not BFT, "
             "not infinite retention)"
         )
+    # R3 / 0.3.0: classify critical production footguns (subset of warnings).
+    critical_warnings: list[str] = []
+    for w in warnings:
+        wl = w.lower()
+        if (
+            "change-me" in wl
+            or "monitoring cors is enabled" in wl
+            or ("non-loopback" in wl and "monitoring_auth_token" in wl)
+            or (
+                "monitoring has no auth token" in wl
+                and mon_host not in ("127.0.0.1", "localhost", "::1", "")
+            )
+            or "fabric_route_allow_unsigned=true" in wl
+        ):
+            critical_warnings.append(w)
     # ERG-T13-01: severity tiers — stock profiles are lab_ok by default.
-    status = "ok" if not warnings else "lab_ok"
+    if not warnings:
+        status = "ok"
+    elif critical_warnings:
+        status = "lab_ok_critical"
+    else:
+        status = "lab_ok"
     explain_guide = {
         "identity": (
             "Node name + cluster_id identify this process in gossip/catalog. "
@@ -2556,6 +2576,7 @@ def config_check(
     report = {
         "groups": groups,
         "warnings": warnings,
+        "critical_warnings": critical_warnings,
         "ok": len(warnings) == 0,
         "status": status,
         "strict": bool(strict),

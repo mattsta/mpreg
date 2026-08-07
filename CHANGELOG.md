@@ -1,6 +1,67 @@
 # CHANGELOG
 
-## [Unreleased] - 2026-01-04
+## [0.3.0] - 2026-08-07 — Production Snapshot
+
+Public **upload-ready** milestone: release engineering, claim honesty, CI quality
+matrix, security posture docs, packaging, and lab performance evidence.
+
+### Highlights
+
+- **CI quality matrix** — lint (ruff), typecheck (mypy), unit-fast, invariants,
+  DistLab core, dependency audit (pip-audit), demo-smoke, package-smoke
+  (`.github/workflows/ci.yml`, `scripts/ci_*.sh`, `scripts/release_gate.sh`).
+- **Honesty surface** — README/CHANGELOG aligned with `tests/invariants/claims.yaml`;
+  unshipped items stay under Roadmap (OAuth2/OIDC, etc.).
+- **Security snapshot** — `SECURITY.md` threat model (CFT, trusted operators);
+  `mpreg config-check` reports `critical_warnings` (placeholder secrets, CORS,
+  exposed mon without token); `--strict` remains the production exit gate.
+- **Packaging** — version **0.3.0**, project URLs/classifiers, wheel install smoke.
+- **Performance evidence** — `docs/ops/PERF_BASELINE.md` (lab-only; not WAN SLA).
+- **Ops golden path** — `docs/ops/RELEASE_CHECKLIST.md`.
+
+### Product (carried from 0.2.x development)
+
+- Unified fabric routing (path-vector / link-state options); CFT Raft (**not BFT**).
+- Four-plane RPC / pubsub / queue / cache via profiles + `MPREGClient`.
+- Flag-gated cache **STRONG** put (majority-commit); get/delete refuse `1012`.
+- Flag-gated **shared audit** G-Set epidemic (not SIEM).
+- Residual ops visibility (`doctor` / `monitor strong` JSON fields) — **not** auto-heal.
+- First-party **DistLab** (`uv run mpreg distlab`) — Jepsen-inspired, not Elle/WAN.
+
+### Upgrade notes
+
+1. Bump to `mpreg==0.3.0`; prefer `uv run mpreg` / `uv run mpreg-example` entry points.
+2. Before production: copy a profile, rotate `change-me` secrets, run
+   `uv run mpreg config-check <profile> --strict`.
+3. Set `monitoring_auth_token`; keep `monitoring_enable_cors=false`.
+4. Leave `cache_strong_enabled` / `mgmt_audit_shared_enabled` off unless you need them.
+5. See `SECURITY.md` and `docs/PRODUCTION_DEPLOYMENT.md`.
+
+### Non-goals (unchanged)
+
+Not BFT, not WAN multi-region SLA, not Jepsen/Elle, not automatic residual heal,
+not fsync durability as a product claim, not OAuth2/OIDC shipped, not full
+self-healing control plane. Proof ledger: `tests/invariants/claims.yaml`.
+
+### Release engineering artifacts
+
+| Artifact | Path |
+| --- | --- |
+| Architecture | `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md` |
+| Master plan | `docs/plans/RELEASE_0_3_PRODUCTION_SNAPSHOT_MASTER_PLAN.md` |
+| Burndown | `docs/plans/RELEASE_0_3_BURNDOWN.md` |
+| Proof ledger | `docs/plans/RELEASE_0_3_PROOF_LEDGER.md` |
+| Gate | `scripts/release_gate.sh` |
+
+---
+
+## [Unreleased] — post-0.3.0
+
+_Residual honesty T140+ and roadmap features are deferred unless product bugs appear._
+
+---
+
+## [0.2.0-dev] - 2026-01-04 (historical fabric rewrite notes)
 
 ### 🌟 Major Architectural Transformation: Federation → Unified Fabric
 

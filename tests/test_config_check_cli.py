@@ -133,3 +133,36 @@ monitoring_enabled = false
     warns = " ".join(data["warnings"]).lower()
     assert "mgmt_audit_path" in warns or "jsonl" in warns
     assert "siem" in warns or "g-set" in warns or "bft" in warns
+
+def test_config_check_report_includes_critical_warnings_field() -> None:
+    """R3: JSON report always includes critical_warnings list."""
+    runner = CliRunner()
+    result = runner.invoke(
+        cli, ["config-check", "mpreg/profiles/dev.toml", "--format", "json"]
+    )
+    assert result.exit_code in (0, 2)
+    data = json.loads(result.output)
+    assert "critical_warnings" in data
+    assert isinstance(data["critical_warnings"], list)
+
+def test_config_check_federated_profile_strict_exits_2() -> None:
+    """R3: stock federated.toml still has change-me → strict fails."""
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "config-check",
+            "mpreg/profiles/federated.toml",
+            "--format",
+            "json",
+            "--strict",
+        ],
+    )
+    assert result.exit_code == 2
+    # non-strict still parses
+    lab = runner.invoke(
+        cli, ["config-check", "mpreg/profiles/federated.toml", "--format", "json"]
+    )
+    data = json.loads(lab.output)
+    assert data.get("critical_warnings")
+    assert any("change-me" in w.lower() for w in data["critical_warnings"])

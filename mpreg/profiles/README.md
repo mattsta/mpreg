@@ -47,3 +47,11 @@ policy, and rotate all `change-me` secrets. Always run `mpreg config-check`.
 | `soft-rt.toml`                  | soft-rt                    | Latency defaults; not multi-tenant hardened |
 | `federated.toml`                | federated baseline         | Signatures + policy on; rotate secrets      |
 | `federated-lab.toml`            | lab federated              | Intentionally open CP for tests             |
+
+## Production gate (0.3.0)
+
+```bash
+uv run mpreg config-check path/to/profile.toml --strict --format json
+```
+
+Exit `2` means warnings remain. See `SECURITY.md` and `docs/ops/RELEASE_CHECKLIST.md`.

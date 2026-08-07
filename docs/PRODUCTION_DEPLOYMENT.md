@@ -6,6 +6,14 @@ This guide describes how to deploy MPREG with the unified fabric control plane
 for production use. MPREG uses a single routing fabric for RPC, pub/sub, queues,
 and cache. All cross-node routing is catalog-driven and gossip-propagated.
 
+## Release snapshot (0.3.0)
+
+- Architecture: `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md`
+- Checklist: `docs/ops/RELEASE_CHECKLIST.md`
+- Security: `SECURITY.md`
+- Perf lab evidence: `docs/ops/PERF_BASELINE.md`
+- Gate: `bash scripts/release_gate.sh`
+
 ## Production observability checklist
 
 1. Set `monitoring_auth_token`; keep `monitoring_enable_cors=false`.

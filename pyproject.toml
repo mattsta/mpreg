@@ -1,11 +1,24 @@
 [project]
 name = "mpreg"
-version = "0.2.0"
+version = "0.3.0"
 description = "Matt’s Protocol for Results Everywhere Guaranteed"
 authors = [{ name = "Matt Stancliff", email = "matt@genges.com" }]
 requires-python = " >=3.11,<4"
 readme = "README.md"
 license = "Apache-2.0"
+keywords = ["distributed", "rpc", "pubsub", "raft", "fabric", "cache"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: System :: Distributed Computing",
+    "Typing :: Typed",
+]
 dependencies = [
     "fastapi>=0.115.14",
     "orjson>=3.9.7",
@@ -29,6 +42,14 @@ dependencies = [
 [project.scripts]
 mpreg = "mpreg.cli:main"
 mpreg-example = "mpreg.examples.apps._shared.runner:main"
+
+[project.urls]
+Homepage = "https://github.com/mattstancliff/mpreg"
+Documentation = "https://github.com/mattstancliff/mpreg/tree/main/docs"
+Repository = "https://github.com/mattstancliff/mpreg"
+Changelog = "https://github.com/mattstancliff/mpreg/blob/main/CHANGELOG.md"
+"Release 0.3.0" = "https://github.com/mattstancliff/mpreg/blob/main/docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md"
+"Security" = "https://github.com/mattstancliff/mpreg/blob/main/SECURITY.md"
 
 [dependency-groups]
 dev = [
@@ -98,6 +119,11 @@ addopts = [
 
 [tool.mypy]
 python_version = "3.14"
+# Curriculum app dirs use numeric prefixes (invalid pkg names for mypy).
+exclude = [
+  "mpreg/examples/apps/",
+  "^mpreg/examples/apps/",
+]
 check_untyped_defs = true
 disallow_untyped_defs = true
 pretty = true

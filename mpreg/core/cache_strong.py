@@ -623,11 +623,11 @@ class StrongPutCoordinator:
                 ],
                 return_exceptions=True,
             )
-            for p, res in zip(peer_prepare_ok, peer_results, strict=True):
-                if isinstance(res, CommitAck) and res.ok and res.applied:
+            for p, cres in zip(peer_prepare_ok, peer_results, strict=True):
+                if isinstance(cres, CommitAck) and cres.ok and cres.applied:
                     commit_applied.append(p)
-                elif isinstance(res, CommitAck) and res.ok and not res.applied:
-                    if res.reason == "lww_lost":
+                elif isinstance(cres, CommitAck) and cres.ok and not cres.applied:
+                    if cres.reason == "lww_lost":
                         fail_peers = await self._abort_all(
                             replica_set, contacted, oid, key, strong_version
                         )

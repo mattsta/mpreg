@@ -5,3 +5,8 @@
 | `prometheus_alerts.yml` | Golden-signal alert rules (from `prometheus_alert_rules_yaml()`) |
 
 Load into Prometheus / your rules controller. Scrape `/metrics/prometheus` with bearer auth when configured.
+
+## Release
+
+0.3.0 Production Snapshot checklist: `docs/ops/RELEASE_CHECKLIST.md`.
+Gate: `bash scripts/release_gate.sh`.

@@ -12,7 +12,22 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from hypothesis import strategies as st
+class _LazySt:
+    """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
+
+    _mod: object | None = None
+
+    def _load(self) -> object:
+        if self._mod is None:
+            from hypothesis import strategies as st
+
+            object.__setattr__(self, "_mod", st)
+        return self._mod  # type: ignore[return-value]
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._load(), name)
+
+st = _LazySt()
 
 class CacheLevel(Enum):
     """Cache level enumeration."""
