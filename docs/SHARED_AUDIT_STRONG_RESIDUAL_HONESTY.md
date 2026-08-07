@@ -193,7 +193,8 @@ T18 closes product honesty on STRONG get/delete and operator smoke:
   minority commit-drop success leaves zero pending after GC; property that
   STRONG get/delete always 1012 with EVENTUAL RYW intact.
 * **Honest CFT limit:** partial peer COMMIT apply + lost ABORT can leave peer
-  L1 until repair — not claimed residual-free (not BFT, not fsync recovery).
+  L1 until delivered ABORT or LWW success put — not claimed residual-free
+  (not BFT, not fsync recovery; pending TTL is not residual GC).
 
 Plans: `docs/plans/DISTLAB_T18_REFUSE_AUDIT_METRICS_SMOKE_PLAN.md`,
 `docs/plans/DISTLAB_PROOF_LEDGER.md`.
@@ -393,3 +394,18 @@ T30 product fix discovered by CFT residual soak:
 Plan: `docs/plans/DISTLAB_T30_ORPHAN_BACKUP_GC_PLAN.md`.
 
 Still **not** claimed: residual-free under lost ABORT; automatic ABORT delivery.
+
+## Phase 19 — CFT ops surface polish (2026-08-06)
+
+T31 closes operator visibility for T29/T30:
+
+* **Monitor table:** `visible=` / `backups=` / `ttl_gc=` plus dim note that
+  pending TTL is not residual GC.
+* **Live e2e:** prom `mpreg_strong_cap_pending_ttl_clears_residual_l1` is 0;
+  metrics JSON includes `visible_count` / `backups_count`.
+* **Curriculum:** `ops_cli_tour` requires TTL/visible honesty tokens.
+* **Wording:** remaining "until repair" strings → ABORT/LWW (not TTL).
+
+Plan: `docs/plans/DISTLAB_T31_CFT_OPS_SURFACE_POLISH_PLAN.md`.
+
+Still **not** claimed: residual-free under lost ABORT; WAN/Elle/BFT/fsync.

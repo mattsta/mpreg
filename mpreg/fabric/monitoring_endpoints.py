@@ -2579,7 +2579,8 @@ class FederationMonitoringSystem:
                     )
                     lines.append(
                         "# HELP mpreg_strong_aborts_peer_fail_total Failed peer ABORT deliveries "
-                        "(lost ABORT; may leave peer L1 until repair — not BFT)."
+                        "(lost ABORT; may leave peer L1 until delivered ABORT "
+                        "or LWW success put — not BFT; not pending TTL)."
                     )
                     lines.append("# TYPE mpreg_strong_aborts_peer_fail_total counter")
                     lines.append(

@@ -537,10 +537,16 @@ async def main() -> None:
                         "v1.1" in sout or "not wan" in sout or "get_quorum=false" in sout,
                         f"strong honesty missing: {strong_m.output[:300]}",
                     )
-                    # T28: CFT / abort best-effort line on monitor table
+                    # T28/T31: CFT / abort / TTL honesty on monitor table
                     ensure(
                         "cft=" in sout or "abort_be=" in sout or "abort_fail=" in sout,
                         f"strong CFT honesty missing: {strong_m.output[:300]}",
+                    )
+                    ensure(
+                        "ttl_gc=" in sout
+                        or "pending ttl" in sout
+                        or "visible=" in sout,
+                        f"strong TTL/visible honesty missing: {strong_m.output[:300]}",
                     )
                     audit_m = await _invoke(
                         ["monitor", "audit", "--format", "table"],

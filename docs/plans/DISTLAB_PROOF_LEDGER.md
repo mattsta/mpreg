@@ -68,6 +68,8 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T29 Hypothesis TTL | `test_cft_residual_survives_pending_purge` | honesty |
 | T29 visible/backups | GCM snapshot `visible_count` / `backups_count` | support ops |
 | T30 orphan backup GC | `_prune_orphan_backups`, `strong.cft_orphan_backup_gc` | product fix |
+| T31 monitor polish | visible/backups/ttl_gc on `monitor strong` table | support ops |
+| T31 live TTL gauge | e2e `pending_ttl_clears_residual_l1` prom 0 | support ops |
 
 ## Non-claims (do not market)
 
@@ -97,5 +99,5 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t25_residuals.py tests/chaos/test_t26_residuals.py \
   tests/chaos/test_t27_residuals.py tests/chaos/test_t28_residuals.py \
   tests/chaos/test_t29_residuals.py tests/chaos/test_t30_residuals.py \
-  tests/test_config_check_cli.py -q
+  tests/chaos/test_t31_residuals.py tests/test_config_check_cli.py -q
 ```

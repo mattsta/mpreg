@@ -504,9 +504,12 @@ async def test_distlab_live_strong_metrics_e2e(
                 mcaps = body.get("capabilities") or {}
                 assert mcaps.get("cft_only") is True
                 assert mcaps.get("abort_best_effort") is True
+                assert mcaps.get("pending_ttl_clears_residual_l1") is False
                 # Abort counters always present (0 after clean put path)
                 assert "aborts_peer_ok" in counters
                 assert "aborts_peer_fail" in counters
+                assert "visible_count" in body
+                assert "backups_count" in body
             async with session.get(f"{base}/metrics/prometheus") as resp:
                 text = await resp.text()
                 assert "mpreg_strong_gets_refused_total" in text
@@ -515,6 +518,7 @@ async def test_distlab_live_strong_metrics_e2e(
                 assert "mpreg_strong_aborts_peer_fail_total" in text
                 assert "mpreg_strong_cap_cft_only" in text
                 assert "mpreg_strong_cap_abort_best_effort" in text
+                assert "mpreg_strong_cap_pending_ttl_clears_residual_l1" in text
                 # Caps remain honest after refuse path
                 for line in text.splitlines():
                     if line.startswith("mpreg_strong_cap_get_quorum{"):
@@ -525,6 +529,10 @@ async def test_distlab_live_strong_metrics_e2e(
                         assert line.rstrip().endswith(" 1")
                     if line.startswith("mpreg_strong_cap_abort_best_effort{"):
                         assert line.rstrip().endswith(" 1")
+                    if line.startswith(
+                        "mpreg_strong_cap_pending_ttl_clears_residual_l1{"
+                    ):
+                        assert line.rstrip().endswith(" 0")
 
 @pytest.mark.asyncio
 async def test_distlab_live_audit_metrics_e2e(

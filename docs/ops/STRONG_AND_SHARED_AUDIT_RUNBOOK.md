@@ -32,6 +32,8 @@ uv run mpreg monitor strong --mgmt --url "$MPREG_MONITORING_URL"
 uv run mpreg doctor --url "$MPREG_MONITORING_URL" --strong
 uv run mpreg distlab run strong.cft_partial_commit_lost_abort
 uv run mpreg distlab run strong.cft_residual_healed_by_lww
+uv run mpreg distlab run strong.cft_residual_survives_pending_purge
+uv run mpreg distlab run strong.cft_orphan_backup_gc
 ```
 
 HTTP:
