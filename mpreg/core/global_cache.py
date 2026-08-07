@@ -189,6 +189,58 @@ class GlobalCacheManager(ManagedObject):
         self._strong_coordinator = coordinator
         self._strong_backend = getattr(coordinator, "local", None)
 
+    async def strong_retry_abort(
+        self,
+        key: GlobalCacheKey,
+        op_id: str,
+        *,
+        peers: list[str] | tuple[str, ...] | None = None,
+    ) -> dict[str, Any]:
+        """Best-effort re-ABORT for CFT residual candidates (ops-driven).
+
+        Wraps ``StrongPutCoordinator.retry_abort``. Use after network recovery
+        when ``last_abort_fail_peers`` / failed-put ``quorum_info.abort_fail_peers``
+        listed peers that exhausted ABORT. Still CFT — not automatic heal, not
+        residual-free while ABORT is still lost, not BFT.
+
+        Returns coordinator result dict (``ok_peers``, ``fail_peers``,
+        ``cleared``, …) or ``{error, …}`` when coordinator unbound.
+        """
+        from mpreg.core.errors import MpregErrorCode
+
+        coord = self._strong_coordinator
+        if coord is None or not hasattr(coord, "retry_abort"):
+            self._strong_metrics["retry_abort_unbound"] += 1
+            return {
+                "ok_peers": [],
+                "fail_peers": list(peers or []),
+                "op_id": str(op_id or ""),
+                "attempts": 0,
+                "cleared": False,
+                "error": "strong coordinator unbound",
+                "error_code": int(MpregErrorCode.UNSUPPORTED_CONSISTENCY),
+            }
+        prev_ok = int(getattr(coord, "aborts_peer_ok", 0) or 0)
+        prev_fail = int(getattr(coord, "aborts_peer_fail", 0) or 0)
+        out = await coord.retry_abort(
+            key, op_id, peers=list(peers) if peers is not None else None
+        )
+        try:
+            d_ok = int(getattr(coord, "aborts_peer_ok", 0) or 0) - prev_ok
+            d_fail = int(getattr(coord, "aborts_peer_fail", 0) or 0) - prev_fail
+            if d_ok > 0:
+                self._strong_metrics["aborts_peer_ok"] += d_ok
+            if d_fail > 0:
+                self._strong_metrics["aborts_peer_fail"] += d_fail
+            self._strong_metrics["retry_abort_calls"] += 1
+            if out.get("cleared"):
+                self._strong_metrics["retry_abort_cleared"] += 1
+            else:
+                self._strong_metrics["retry_abort_still_fail"] += 1
+        except Exception:  # noqa: BLE001
+            pass
+        return dict(out) if isinstance(out, dict) else {"raw": out}
+
     async def _strong_put(
         self,
         key: GlobalCacheKey,
@@ -399,6 +451,10 @@ class GlobalCacheManager(ManagedObject):
             "recent_abort_fails": list(
                 (snap.get("coordinator") or {}).get("recent_abort_fails") or []
             ),
+            # T38: retry_abort ops counters (process-local)
+            "retry_abort_calls": int(c.get("retry_abort_calls", 0)),
+            "retry_abort_cleared": int(c.get("retry_abort_cleared", 0)),
+            "retry_abort_still_fail": int(c.get("retry_abort_still_fail", 0)),
         }
 
     def _enqueue_replication(

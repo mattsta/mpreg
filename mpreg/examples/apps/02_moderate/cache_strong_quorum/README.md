@@ -15,7 +15,9 @@ CFT limit (not residual-free; not BFT).
 - Flag off / unbound coordinator → `1012 UNSUPPORTED_CONSISTENCY` (no local write).
 - Insufficient eligible peers → `1015 INSUFFICIENT_QUORUM` (residual-free).
 - **CFT:** partial COMMIT + lost ABORT may leave peer L1; pending TTL does **not**
-  clear it; later successful put can LWW-heal (not reliable ABORT).
+  clear it; `quorum_info.abort_fail_peers` lists residual candidates; after
+  recovery `retry_abort` can clear residual when ABORT lands (ops-driven, not
+  automatic heal); later successful put can LWW-heal (not reliable ABORT).
 - Caps: `cft_only`, `abort_best_effort`, `pending_ttl_clears_residual_l1=false`.
 - This app teaches the same coordinator core in-process
   (`InProcessStrongTransport`); production uses `ServerCacheTransport` RR.
@@ -34,7 +36,8 @@ uv run mpreg-example run cache_strong_quorum
 - STRONG **get** / **delete** always `1012`; EVENTUAL get RYW after STRONG put
 - `strong_status.capabilities` denies `get_quorum` / `delete_quorum`; asserts
   `cft_only` / `abort_best_effort` / `pending_ttl_clears_residual_l1=false`
-- CFT residual demo (partial COMMIT + lost ABORT) then LWW heal
+- CFT residual demo (partial COMMIT + lost ABORT) → `abort_fail_peers` →
+  `retry_abort` clear → LWW heal path
 - Feature tag: `cache.strong`
 
 ## API drill-down

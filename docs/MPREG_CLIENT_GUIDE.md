@@ -956,8 +956,10 @@ endpoints.
   `cache_strong_enabled` (majority-commit barrier). Failed puts are
   **residual-free when ABORT is delivered** (CFT best-effort). Partial peer
   COMMIT + lost ABORT may leave peer L1 — check `quorum_info.abort_fail_peers`
-  / `last_abort_fail_peers` (ops candidates, not auto-heal). Pending TTL does
-  **not** clear residual L1. Default **off** → `1012 UNSUPPORTED_CONSISTENCY`.
+  / `last_abort_fail_peers` (ops candidates, not auto-heal). After recovery,
+  `GlobalCacheManager.strong_retry_abort(key, op_id, peers=…)` re-delivers
+  ABORT best-effort (still CFT; not background heal). Pending TTL does **not**
+  clear residual L1. Default **off** → `1012 UNSUPPORTED_CONSISTENCY`.
   STRONG **get** and **delete** always refuse with `1012`. Operational put
   failures use **1015–1018** (`INSUFFICIENT_QUORUM`, `QUORUM_TIMEOUT`,
   `STRONG_CONFLICT`, `STRONG_PENDING_FULL`). See `docs/CACHING_SYSTEM.md` and

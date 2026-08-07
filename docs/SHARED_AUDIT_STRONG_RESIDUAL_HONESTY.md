@@ -503,3 +503,18 @@ Still **not** claimed: automatic background heal; residual-free while ABORT
 still lost; BFT; WAN/Elle/fsync. Retry is ops-driven CFT best-effort only.
 
 Plan: `docs/plans/DISTLAB_T37_RETRY_ABORT_RESIDUAL_PLAN.md`.
+
+## Phase 26 — GCM strong_retry_abort + product docs (2026-08-06)
+
+T38 exposes retry on the product cache manager and documents the ops path:
+
+* **Product:** `GlobalCacheManager.strong_retry_abort(key, op_id, peers=…)`
+  with process-local `retry_abort_calls` / `_cleared` / `_still_fail` counters
+  on `strong_status`.
+* **Docs:** `CACHING_SYSTEM.md`, client guide, curriculum README teach
+  `abort_fail_peers` + `retry_abort` (ops-driven, not automatic heal).
+
+Still **not** claimed: automatic background heal; HTTP mgmt mutation for
+retry; residual-free under lost ABORT; WAN/Elle/BFT/fsync.
+
+Plan: `docs/plans/DISTLAB_T38_GCM_RETRY_ABORT_DOCS_PLAN.md`.

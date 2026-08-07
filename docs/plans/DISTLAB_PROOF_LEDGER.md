@@ -88,6 +88,8 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T37 DistLab retry | `strong.cft_retry_abort_clears_residual` + strong-core/ci-core | product |
 | T37 Hypothesis retry | `test_cft_retry_abort_clears_residual_after_heal` | product |
 | T37 curriculum | `cache_strong_quorum` retry_abort + LWW; ops_cli abort_fail_peers | teach |
+| T38 GCM retry | `GlobalCacheManager.strong_retry_abort` + status counters | product |
+| T38 CACHING_SYSTEM | abort_fail_peers + retry_abort product docs | honesty |
 
 ## Non-claims (do not market)
 
@@ -123,6 +125,6 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t31_residuals.py tests/chaos/test_t32_residuals.py \
   tests/chaos/test_t33_residuals.py tests/chaos/test_t34_residuals.py \
   tests/chaos/test_t35_residuals.py tests/chaos/test_t36_residuals.py \
-  tests/chaos/test_t37_residuals.py \
+  tests/chaos/test_t37_residuals.py tests/chaos/test_t38_residuals.py \
   tests/test_config_check_cli.py -q
 ```

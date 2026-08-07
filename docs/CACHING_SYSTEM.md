@@ -631,13 +631,24 @@ bound on `GlobalCacheManager`, `put(..., consistency_level=STRONG)` runs a
 (`mpreg/fabric/cache_transport.py`). Coordinator: `mpreg/core/cache_strong.py`.
 
 **After a successful STRONG put**, read with default/EVENTUAL get (not a quorum
-read). Curriculum: `cache_strong_quorum` (includes CFT residual + LWW heal demo).
+read). Curriculum: `cache_strong_quorum` (CFT residual + `retry_abort` + LWW heal).
 Claims: `INV-CACHE-STRONG-01` (proof L1/L2/L4). DistLab: `strong.cft_*` scenarios
-in `strong-core` / `ci-core`. Ops: `mpreg monitor strong`,
-`mpreg_strong_aborts_peer_*`, `mpreg_strong_visible` / `_backups` /
-`_backups_pruned_total`. Non-claims: no WAN multi-region SLA, not BFT, not fsync
-disk durability, not STRONG get/delete MVP, not residual-free under lost ABORT,
-pending TTL ≠ residual GC, LWW heal ≠ reliable ABORT.
+in `strong-core` / `ci-core` (including `strong.cft_retry_abort_clears_residual`).
+
+**CFT residual ops (T36/T37/T38):** failed puts may include
+`quorum_info.abort_fail_peers` (peers that exhausted ABORT retries — residual
+*candidates*). Coordinator / `strong_status` expose `last_abort_fail_peers` and
+bounded `recent_abort_fails`. After network recovery, call
+`GlobalCacheManager.strong_retry_abort(key, op_id, peers=…)` (or
+`StrongPutCoordinator.retry_abort`) to re-deliver ABORT — **ops-driven**, not
+automatic background heal. LWW success put remains an alternate overwrite path.
+Still not residual-free while ABORT is lost.
+
+Ops: `mpreg monitor strong` (`abort_fail_peers=`), `mpreg_strong_aborts_peer_*`,
+`mpreg_strong_visible` / `_backups` / `_backups_pruned_total`. Non-claims: no WAN
+multi-region SLA, not BFT, not fsync disk durability, not STRONG get/delete MVP,
+not residual-free under lost ABORT, pending TTL ≠ residual GC, LWW heal ≠
+reliable ABORT, `retry_abort` ≠ automatic heal.
 
 ```python
 # Flag off or unbound coordinator — fail closed, no local write
