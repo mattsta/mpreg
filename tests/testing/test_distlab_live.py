@@ -510,6 +510,8 @@ async def test_distlab_live_strong_metrics_e2e(
                 assert "aborts_peer_fail" in counters
                 assert "visible_count" in body
                 assert "backups_count" in body
+                assert "backups_pruned_total" in body
+                assert int(body.get("visible_count") or 0) >= 1  # successful put
             async with session.get(f"{base}/metrics/prometheus") as resp:
                 text = await resp.text()
                 assert "mpreg_strong_gets_refused_total" in text
@@ -519,6 +521,10 @@ async def test_distlab_live_strong_metrics_e2e(
                 assert "mpreg_strong_cap_cft_only" in text
                 assert "mpreg_strong_cap_abort_best_effort" in text
                 assert "mpreg_strong_cap_pending_ttl_clears_residual_l1" in text
+                # T32: visible/backups gauges + prune counter series present
+                assert "mpreg_strong_visible" in text
+                assert "mpreg_strong_backups" in text
+                assert "mpreg_strong_backups_pruned_total" in text
                 # Caps remain honest after refuse path
                 for line in text.splitlines():
                     if line.startswith("mpreg_strong_cap_get_quorum{"):

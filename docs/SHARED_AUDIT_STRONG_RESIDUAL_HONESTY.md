@@ -409,3 +409,20 @@ T31 closes operator visibility for T29/T30:
 Plan: `docs/plans/DISTLAB_T31_CFT_OPS_SURFACE_POLISH_PLAN.md`.
 
 Still **not** claimed: residual-free under lost ABORT; WAN/Elle/BFT/fsync.
+
+## Phase 20 — Visible/backups prom + prune counter (2026-08-06)
+
+T32 makes T29/T30 ops signals scrapable:
+
+* **Backend:** `backups_pruned_total` cumulative on orphan GC.
+* **GCM/metrics:** `visible_count`, `backups_count`, `backups_pruned_total` on
+  snapshot/status/metrics JSON.
+* **Prom:** `mpreg_strong_visible`, `mpreg_strong_backups`,
+  `mpreg_strong_backups_pruned_total` (process-local; not residual-free proof).
+* **config-check:** CFT/TTL caps asserted (`cft_only`, `abort_best_effort`,
+  `pending_ttl_clears_residual_l1=false`).
+* **Monitor:** table shows `pruned=`.
+
+Plan: `docs/plans/DISTLAB_T32_BACKUP_VISIBLE_PROM_CONFIG_PLAN.md`.
+
+Still **not** claimed: residual-free under lost ABORT; WAN/Elle/BFT/fsync.

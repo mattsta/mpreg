@@ -180,6 +180,8 @@ class StrongLocalBackend:
     _visible: dict[str, GlobalCacheEntry] = field(default_factory=dict)
     _key_op: dict[str, str] = field(default_factory=dict)  # key_str -> op_id
     _backups: dict[str, GlobalCacheEntry] = field(default_factory=dict)
+    # Cumulative orphan pre-commit backups dropped by _prune_orphan_backups (T30/T32).
+    backups_pruned_total: int = 0
     _logical_ts: int = 0
     _lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -319,7 +321,10 @@ class StrongLocalBackend:
         dead = [oid for oid in self._backups if oid not in live]
         for oid in dead:
             del self._backups[oid]
-        return len(dead)
+        n = len(dead)
+        if n:
+            self.backups_pruned_total += n
+        return n
 
     def get_visible(self, key: GlobalCacheKey) -> GlobalCacheEntry | None:
         return self._visible.get(self._key_str(key))
@@ -348,7 +353,7 @@ class StrongLocalBackend:
         return len(self._visible)
 
     def backups_count(self) -> int:
-        """Pre-commit backups retained until ABORT uncommit (or forever if lost)."""
+        """Pre-commit backups retained for live visible/pending ops (orphan GC on commit/abort)."""
         return len(self._backups)
 
 @dataclass(slots=True)

@@ -102,6 +102,7 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
         base["pending_count"] = int(snap.get("pending_count") or 0)
         base["visible_count"] = int(snap.get("visible_count") or 0)
         base["backups_count"] = int(snap.get("backups_count") or 0)
+        base["backups_pruned_total"] = int(snap.get("backups_pruned_total") or 0)
         base["counters"] = dict(snap.get("counters") or {})
         base["latency_ms"] = dict(snap.get("latency_ms") or {})
         base["coordinator"] = dict(snap.get("coordinator") or {})

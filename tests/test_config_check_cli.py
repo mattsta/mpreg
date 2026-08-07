@@ -80,6 +80,10 @@ monitoring_enabled = false
     assert caps["put_majority_commit"] is True
     assert caps["get_quorum"] is False
     assert caps["delete_quorum"] is False
+    # T32: CFT / TTL honesty caps on config-check
+    assert caps.get("cft_only") is True
+    assert caps.get("abort_best_effort") is True
+    assert caps.get("pending_ttl_clears_residual_l1") is False
     warns = " ".join(data["warnings"]).lower()
     assert "put-only" in warns or "1012" in warns
     assert "metrics/strong" in warns or "monitoring_enabled" in warns

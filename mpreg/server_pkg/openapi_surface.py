@@ -111,7 +111,15 @@ def _strong_metrics_schema() -> dict[str, Any]:
                     "backups_count": {
                         "type": "integer",
                         "minimum": 0,
-                        "description": "Pre-commit backups awaiting ABORT uncommit.",
+                        "description": "Pre-commit backups for live visible/pending ops.",
+                    },
+                    "backups_pruned_total": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": (
+                            "Cumulative orphan pre-commit backups dropped "
+                            "(not residual L1 clear)."
+                        ),
                     },
                     "coordinator": {"type": "object"},
                     "settings": {"type": "object"},

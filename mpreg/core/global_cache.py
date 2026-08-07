@@ -276,6 +276,7 @@ class GlobalCacheManager(ManagedObject):
         pending = 0
         visible = 0
         backups = 0
+        backups_pruned = 0
         if be is not None and hasattr(be, "pending_count"):
             try:
                 pending = int(be.pending_count())
@@ -291,6 +292,11 @@ class GlobalCacheManager(ManagedObject):
                 backups = int(be.backups_count())
             except Exception:  # noqa: BLE001
                 backups = 0
+        if be is not None:
+            try:
+                backups_pruned = int(getattr(be, "backups_pruned_total", 0) or 0)
+            except Exception:  # noqa: BLE001
+                backups_pruned = 0
         samples = list(self._strong_latency_ms)
         lat: dict[str, float | int] = {
             "sample_count": len(samples),
@@ -331,12 +337,15 @@ class GlobalCacheManager(ManagedObject):
         counters.setdefault("puts_fail", 0)
         counters.setdefault("gets_refused", 0)
         counters.setdefault("deletes_refused", 0)
+        # Surface prune counter inside counters for prom/ops (process-local).
+        counters["backups_pruned"] = backups_pruned
         return {
             "enabled": coord is not None,
             "pending_count": pending,
-            # T29: local L1 / backup sizes (not residual-free proof; ops only)
+            # T29/T32: local L1 / backup sizes (not residual-free proof; ops only)
             "visible_count": visible,
             "backups_count": backups,
+            "backups_pruned_total": backups_pruned,
             "counters": counters,
             "latency_ms": lat,
             "coordinator": cfg,
@@ -351,6 +360,7 @@ class GlobalCacheManager(ManagedObject):
             "pending_count": snap["pending_count"],
             "visible_count": int(snap.get("visible_count") or 0),
             "backups_count": int(snap.get("backups_count") or 0),
+            "backups_pruned_total": int(snap.get("backups_pruned_total") or 0),
             "puts_ok": int(c.get("puts_ok", 0)),
             "puts_fail": int(c.get("puts_fail", 0)),
             "refused_disabled": int(c.get("refused_disabled", 0)),

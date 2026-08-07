@@ -257,7 +257,9 @@ partial-commit+lost-abort). Pending TTL is **not** residual GC
 `strong.cft_partial_commit_lost_abort`, `strong.cft_residual_healed_by_lww`,
 `strong.cft_residual_survives_pending_purge`, `strong.cft_orphan_backup_gc`
 (in strong-core / ci-core). Monitor table shows `cft=` / `abort_be=` /
-`abort_fail=` / `ttl_gc=` / `visible=` / `backups=`.
+`abort_fail=` / `ttl_gc=` / `visible=` / `backups=` / `pruned=`.
+Prom also exposes `mpreg_strong_visible`, `mpreg_strong_backups`,
+`mpreg_strong_backups_pruned_total` (process-local; not residual-free proof).
 
 Runbook: `docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md`.
 OpenAPI: `GET $MPREG_MONITORING_URL/openapi.json` → `StrongMetricsResponse` /

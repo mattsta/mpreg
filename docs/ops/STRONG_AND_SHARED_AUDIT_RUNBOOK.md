@@ -54,6 +54,9 @@ Prometheus series (process-local; **not** WAN SLO):
 | `mpreg_strong_gets_refused_total` | Get refused — STRONG get not implemented (1012) |
 | `mpreg_strong_deletes_refused_total` | Delete refused — STRONG delete not implemented (1012) |
 | `mpreg_strong_pending` | Local pending prepare count |
+| `mpreg_strong_visible` | Local visible L1 strong entries (may include CFT residuals) |
+| `mpreg_strong_backups` | Pre-commit backups for live ops |
+| `mpreg_strong_backups_pruned_total` | Orphan backups dropped (not residual L1 clear) |
 | `mpreg_strong_put_latency_p50_ms` / `_p99_ms` | Lab latency ring |
 | `mpreg_strong_cap_put_majority_commit` | 1 when put path available |
 | `mpreg_strong_cap_get_quorum` / `_delete_quorum` | **Always 0** in v1 |

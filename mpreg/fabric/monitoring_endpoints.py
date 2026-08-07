@@ -2595,6 +2595,33 @@ class FederationMonitoringSystem:
                         f"mpreg_strong_pending{{{labels}}} "
                         f"{int(strong.get('pending_count', 0) or 0)}"
                     )
+                    lines.append(
+                        "# HELP mpreg_strong_visible Local visible L1 strong entries "
+                        "(may include CFT residuals; process-local)."
+                    )
+                    lines.append("# TYPE mpreg_strong_visible gauge")
+                    lines.append(
+                        f"mpreg_strong_visible{{{labels}}} "
+                        f"{int(strong.get('visible_count', 0) or 0)}"
+                    )
+                    lines.append(
+                        "# HELP mpreg_strong_backups Pre-commit backups for live ops "
+                        "(orphan GC on commit/abort; process-local)."
+                    )
+                    lines.append("# TYPE mpreg_strong_backups gauge")
+                    lines.append(
+                        f"mpreg_strong_backups{{{labels}}} "
+                        f"{int(strong.get('backups_count', 0) or 0)}"
+                    )
+                    lines.append(
+                        "# HELP mpreg_strong_backups_pruned_total Orphan pre-commit backups "
+                        "dropped (T30 GC; not residual L1 clear)."
+                    )
+                    lines.append("# TYPE mpreg_strong_backups_pruned_total counter")
+                    lines.append(
+                        f"mpreg_strong_backups_pruned_total{{{labels}}} "
+                        f"{int(strong.get('backups_pruned_total', 0) or counters.get('backups_pruned', 0) or 0)}"
+                    )
                     if lat.get("sample_count"):
                         lines.append(
                             "# HELP mpreg_strong_put_latency_p99_ms Process-local p99 put latency (not WAN SLA)."
