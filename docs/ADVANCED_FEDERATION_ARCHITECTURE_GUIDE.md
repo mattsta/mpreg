@@ -30,6 +30,7 @@ Avoid fixed ports in examples by allocating free ports per run:
 ```python
 import socket
 
+
 def allocate_ports(count: int) -> list[int]:
     ports: list[int] = []
     for _ in range(count):
@@ -77,6 +78,7 @@ import asyncio
 
 from mpreg.server import MPREGServer
 from mpreg.core.config import MPREGSettings
+
 
 # Create dynamic mesh nodes
 async def create_dynamic_mesh(node_count=6):
@@ -431,6 +433,7 @@ async def create_self_healing_network():
 
     return servers, partition_scenarios
 
+
 # Partition recovery simulation
 async def simulate_partition_recovery(servers, partition_scenario):
     # Simulate network partition
@@ -527,11 +530,13 @@ Based on extensive testing across all topology patterns:
 ```python
 from mpreg.tests.test_advanced_topological_research import AdvancedTopologyBuilder
 
+
 class CustomTopologyBuilder(AdvancedTopologyBuilder):
     async def create_custom_topology(self, config):
         """Implement your custom topology pattern."""
         # Your custom implementation here
         pass
+
 
 # Usage
 builder = CustomTopologyBuilder(test_context)
@@ -543,11 +548,13 @@ servers = await builder.create_custom_topology(your_config)
 ```python
 from mpreg.tests.performance_research_framework import RealTimePerformanceMonitor
 
+
 class CustomMetricsMonitor(RealTimePerformanceMonitor):
     async def collect_custom_metrics(self):
         """Add your custom metrics collection."""
         # Your custom metrics here
         pass
+
 
 # Usage
 monitor = CustomMetricsMonitor(servers)

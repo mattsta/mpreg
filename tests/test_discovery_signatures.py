@@ -4,6 +4,7 @@ from mpreg.core.discovery_signatures import (
     verify_summary,
 )
 
+
 def test_sign_and_verify() -> None:
     payload = {"source_cluster": "c1", "summaries": [{"namespace": "ns"}]}
     signed = sign_summary(payload, "s3cret")
@@ -13,6 +14,7 @@ def test_sign_and_verify() -> None:
     tampered = dict(signed)
     tampered["source_cluster"] = "evil"
     assert not verify_summary(tampered, "s3cret")
+
 
 def test_empty_secret_noop() -> None:
     payload = {"a": 1}

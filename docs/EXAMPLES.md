@@ -340,6 +340,7 @@ def analytics_bad(dataset: str, metrics: list) -> dict:
         # FAILS: TypeError: unhashable type: 'dict' when metrics contains resolved objects
     }
 
+
 # Direct call works fine:
 analytics_bad("test", ["metric1", "metric2"])  # ✅ Works
 
@@ -361,6 +362,7 @@ def analytics_safe(dataset: str, metrics: list) -> dict:
         },
         "processing_node": "Analytics-Server",
     }
+
 
 # Works for both direct and dependency-resolved calls:
 analytics_safe("test", ["metric1", "metric2"])  # ✅ Works
@@ -410,6 +412,7 @@ def aggregate_results(operation: str, data_sources: list) -> dict:
         "timestamp": "2025-01-17T12:00:00Z",
     }
 
+
 # Example usage in a dependency chain:
 workflow = await client.request(
     [
@@ -434,6 +437,7 @@ workflow = await client.request(
 
 ```python
 from typing import Union, Dict, List, Any, Optional
+
 
 def process_workflow_data(
     workflow_id: str,
@@ -499,6 +503,7 @@ def process_workflow_data(
 
 ```python
 import pytest
+
 
 class TestDependencySafeFunctions:
     """Test suite ensuring functions work with both direct and resolved arguments"""

@@ -17,6 +17,7 @@ from tests.test_live_raft_integration import TestLiveRaftIntegration
 type NodeId = str
 type Seconds = float
 
+
 @dataclass(frozen=True, slots=True)
 class ProbeConfig:
     cluster_size: int
@@ -26,6 +27,7 @@ class ProbeConfig:
     command_timeout_seconds: Seconds
     replication_wait_seconds: Seconds
     sample_interval_seconds: Seconds
+
 
 @dataclass(frozen=True, slots=True)
 class NodeStateSnapshot:
@@ -38,6 +40,7 @@ class NodeStateSnapshot:
     votes_received: int
     current_leader: NodeId | None
 
+
 @dataclass(frozen=True, slots=True)
 class ClusterSnapshot:
     elapsed_seconds: Seconds
@@ -47,6 +50,7 @@ class ClusterSnapshot:
     leader_id: NodeId | None
     states: tuple[NodeStateSnapshot, ...]
 
+
 @dataclass(frozen=True, slots=True)
 class CommandResult:
     command_index: int
@@ -54,12 +58,14 @@ class CommandResult:
     duration_seconds: Seconds
     error_message: str | None
 
+
 @dataclass(frozen=True, slots=True)
 class ConsistencyIssue:
     node_id: NodeId
     leader_log_length: int
     node_log_length: int
     state: str
+
 
 @dataclass(frozen=True, slots=True)
 class ProbeReport:
@@ -75,6 +81,7 @@ class ProbeReport:
     consistency_issues: tuple[ConsistencyIssue, ...]
     final_snapshot: ClusterSnapshot
     snapshots: tuple[ClusterSnapshot, ...]
+
 
 def _capture_snapshot(
     nodes: dict[NodeId, ProductionRaft],
@@ -120,6 +127,7 @@ def _capture_snapshot(
         states=tuple(state_rows),
     )
 
+
 def _find_leader(nodes: dict[NodeId, ProductionRaft]) -> ProductionRaft | None:
     leaders = [
         node for node in nodes.values() if node.current_state == RaftState.LEADER
@@ -127,6 +135,7 @@ def _find_leader(nodes: dict[NodeId, ProductionRaft]) -> ProductionRaft | None:
     if not leaders:
         return None
     return leaders[0]
+
 
 async def _stop_nodes(nodes: dict[NodeId, ProductionRaft]) -> None:
     for node in nodes.values():
@@ -138,6 +147,7 @@ async def _stop_nodes(nodes: dict[NodeId, ProductionRaft]) -> None:
             continue
         except Exception:
             continue
+
 
 async def _run_probe(config: ProbeConfig) -> ProbeReport:
     snapshots: list[ClusterSnapshot] = []
@@ -262,6 +272,7 @@ async def _run_probe(config: ProbeConfig) -> ProbeReport:
         snapshots=tuple(snapshots),
     )
 
+
 def _parse_args() -> tuple[ProbeConfig, Path | None]:
     parser = argparse.ArgumentParser(
         description="Probe the live raft cluster-size path with structured phase evidence"
@@ -289,6 +300,7 @@ def _parse_args() -> tuple[ProbeConfig, Path | None]:
         Path(args.output_json).resolve() if str(args.output_json).strip() else None
     )
     return config, output_json
+
 
 def main() -> int:
     config, output_json = _parse_args()
@@ -321,6 +333,7 @@ def main() -> int:
     if not report.replication_consistent:
         return 1
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

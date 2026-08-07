@@ -15,10 +15,12 @@ from mpreg.fabric.federation_planner import (
 )
 from mpreg.fabric.peer_directory import PeerNeighbor
 
+
 @dataclass(frozen=True, slots=True)
 class ClusterLink:
     source_id: str
     target_id: str
+
 
 def _build_graph(
     edges: list[ClusterLink], nodes: tuple[str, ...] | None = None
@@ -54,8 +56,10 @@ def _build_graph(
         )
     return router
 
+
 def _peer_locator(mapping: dict[str, list[str]]):
     return lambda cluster_id: mapping.get(cluster_id, [])
+
 
 def test_plan_next_hop_direct() -> None:
     router = _build_graph([ClusterLink("cluster-a", "cluster-b")])
@@ -80,6 +84,7 @@ def test_plan_next_hop_direct() -> None:
     assert plan.remaining_hops == 2
     assert plan.reason == FabricForwardingFailureReason.OK
 
+
 def test_plan_next_hop_loop_detected() -> None:
     router = _build_graph([ClusterLink("cluster-a", "cluster-b")])
     planner = FabricFederationPlanner(
@@ -98,6 +103,7 @@ def test_plan_next_hop_loop_detected() -> None:
     assert not plan.can_forward
     assert plan.reason == FabricForwardingFailureReason.LOOP_DETECTED
 
+
 def test_plan_next_hop_no_path() -> None:
     router = _build_graph([], nodes=("cluster-a", "cluster-b"))
     planner = FabricFederationPlanner(
@@ -115,6 +121,7 @@ def test_plan_next_hop_no_path() -> None:
 
     assert not plan.can_forward
     assert plan.reason == FabricForwardingFailureReason.NO_PATH
+
 
 def test_plan_next_hop_no_peer_for_next_cluster() -> None:
     router = _build_graph([ClusterLink("cluster-a", "cluster-b")])
@@ -135,6 +142,7 @@ def test_plan_next_hop_no_peer_for_next_cluster() -> None:
     assert plan.reason == FabricForwardingFailureReason.NO_PEER
     assert plan.planned_path == ("cluster-a", "cluster-b")
 
+
 def test_plan_next_hop_hop_budget_exhausted() -> None:
     router = _build_graph([ClusterLink("cluster-a", "cluster-b")])
     planner = FabricFederationPlanner(
@@ -152,6 +160,7 @@ def test_plan_next_hop_hop_budget_exhausted() -> None:
 
     assert not plan.can_forward
     assert plan.reason == FabricForwardingFailureReason.HOP_BUDGET_EXHAUSTED
+
 
 def test_plan_next_hop_fallback_neighbor() -> None:
     router = _build_graph([], nodes=("cluster-a", "cluster-b", "cluster-c"))

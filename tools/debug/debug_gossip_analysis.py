@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from mpreg.core.config import MPREGSettings
 from mpreg.server import Cluster, MPREGServer
 
+
 @dataclass
 class GossipEvent:
     """Track individual gossip events for analysis."""
@@ -24,6 +25,7 @@ class GossipEvent:
     receiver: str
     peer_count: int
     message_id: str
+
 
 @dataclass
 class PeerUpdateEvent:
@@ -36,6 +38,7 @@ class PeerUpdateEvent:
     reason: str
     old_last_seen: float
     new_last_seen: float
+
 
 class GossipAnalyzer:
     """Analyze gossip protocol behavior to identify stability issues."""
@@ -183,8 +186,10 @@ class GossipAnalyzer:
                 f"  {event.timestamp:.3f}: {event.node} {event.action} {event.peer_url} ({event.reason})"
             )
 
+
 # Global analyzer instance
 analyzer = GossipAnalyzer()
+
 
 class InstrumentedMPREGServer(MPREGServer):
     """MPREG Server with gossip instrumentation for debugging."""
@@ -210,6 +215,7 @@ class InstrumentedMPREGServer(MPREGServer):
 
         # Call original implementation
         return await super()._send_gossip_messages()
+
 
 class InstrumentedCluster(Cluster):
     """Instrumented cluster for debugging gossip processing."""
@@ -255,6 +261,7 @@ class InstrumentedCluster(Cluster):
 
     def __getattr__(self, name):
         return getattr(self.original_cluster, name)
+
 
 async def debug_gossip_protocol(num_nodes: int = 10):
     """Create a controlled gossip cluster and analyze its behavior."""
@@ -315,6 +322,7 @@ async def debug_gossip_protocol(num_nodes: int = 10):
             task.cancel()
 
     return analyzer.analyze_stability()
+
 
 if __name__ == "__main__":
     import sys

@@ -30,6 +30,7 @@ from ..datastructures.type_aliases import (
     Timestamp,
 )
 
+
 @dataclass(frozen=True, slots=True)
 class FederationMessageRoute:
     """Enhanced message route with federation-specific metadata."""
@@ -60,6 +61,7 @@ class FederationMessageRoute:
         dao_discount = 0.9 if self.preferred_by_dao else 1.0
 
         return (distance_cost + hop_cost + base_cost) * dao_discount
+
 
 @dataclass(frozen=True, slots=True)
 class HubPerformanceMetrics:
@@ -103,6 +105,7 @@ class HubPerformanceMetrics:
             return 0.0
         return float(self.total_hops_served) / float(self.messages_routed)
 
+
 @dataclass(frozen=True, slots=True)
 class CrossRegionDeliveryRequest:
     """Request for cross-region message delivery coordination."""
@@ -119,6 +122,7 @@ class CrossRegionDeliveryRequest:
     requires_exactly_once: bool = False
     max_delivery_time_ms: PathLatencyMs = 30000.0  # 30 seconds default
     created_at: Timestamp = field(default_factory=time.time)
+
 
 @dataclass(frozen=True, slots=True)
 class CrossRegionPerformanceMetrics:
@@ -167,6 +171,7 @@ class CrossRegionPerformanceMetrics:
             return 1.0
         return float(self.messages_delivered) / float(total_attempts)
 
+
 @dataclass(frozen=True, slots=True)
 class FederationPolicySpec:
     """Specification for federation-wide governance policies."""
@@ -205,6 +210,7 @@ class FederationPolicySpec:
     quorum_threshold: float = 0.1
     approval_threshold: float = 0.6
 
+
 @dataclass(frozen=True, slots=True)
 class FederationStatus:
     """Comprehensive status of the federation system."""
@@ -240,6 +246,7 @@ class FederationStatus:
     cross_region_routes: int = 0
     average_route_reliability: ReliabilityScore = 1.0
 
+
 @dataclass(frozen=True, slots=True)
 class RouteGovernanceDecision:
     """Decision made by DAO governance affecting routes."""
@@ -264,6 +271,7 @@ class RouteGovernanceDecision:
     approved_by_votes: int = 0
     total_votes: int = 0
     dao_consensus_level: float = 0.0
+
 
 @dataclass(slots=True)
 class MutableHubState:
@@ -306,6 +314,7 @@ class MutableHubState:
         if len(self.recent_metrics) > 100:
             self.recent_metrics.pop(0)
         self.last_updated = time.time()
+
 
 @dataclass(slots=True)
 class MutableCrossRegionState:

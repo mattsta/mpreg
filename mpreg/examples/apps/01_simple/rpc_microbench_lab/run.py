@@ -21,6 +21,7 @@ from mpreg.server import MPREGServer
 
 ROUNDS = 40
 
+
 async def main() -> None:
     with (
         app_run(
@@ -163,6 +164,7 @@ async def main() -> None:
                 ok(f"stability median={med:.3f}ms n={len(lat)}")
 
         await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

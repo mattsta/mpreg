@@ -9,6 +9,7 @@ from mpreg.fabric.catalog_delta import RoutingCatalogApplier, RoutingCatalogDelt
 from mpreg.fabric.catalog_policy import CatalogFilterPolicy
 from mpreg.fabric.federation_graph import GeographicCoordinate
 
+
 def _endpoint(*, name: str, function_id: str, cluster_id: str) -> FunctionEndpoint:
     return FunctionEndpoint(
         identity=FunctionIdentity(
@@ -23,11 +24,13 @@ def _endpoint(*, name: str, function_id: str, cluster_id: str) -> FunctionEndpoi
         ttl_seconds=30.0,
     )
 
+
 def _apply(delta: RoutingCatalogDelta, policy: CatalogFilterPolicy) -> RoutingCatalog:
     catalog = RoutingCatalog()
     applier = RoutingCatalogApplier(catalog, policy=policy)
     applier.apply(delta, now=100.0)
     return catalog
+
 
 def test_catalog_policy_blocks_other_clusters() -> None:
     delta = RoutingCatalogDelta(
@@ -48,6 +51,7 @@ def test_catalog_policy_blocks_other_clusters() -> None:
     catalog = _apply(delta, policy)
     assert catalog.functions.entry_count() == 0
 
+
 def test_catalog_policy_allows_configured_cluster() -> None:
     delta = RoutingCatalogDelta(
         update_id="update-1",
@@ -67,6 +71,7 @@ def test_catalog_policy_allows_configured_cluster() -> None:
     )
     catalog = _apply(delta, policy)
     assert catalog.functions.entry_count() == 1
+
 
 def test_catalog_policy_filters_allowed_functions() -> None:
     delta = RoutingCatalogDelta(
@@ -94,6 +99,7 @@ def test_catalog_policy_filters_allowed_functions() -> None:
     catalog = _apply(delta, policy)
     assert catalog.functions.entry_count() == 1
 
+
 def test_catalog_policy_filters_blocked_functions() -> None:
     delta = RoutingCatalogDelta(
         update_id="update-3",
@@ -120,6 +126,7 @@ def test_catalog_policy_filters_blocked_functions() -> None:
     catalog = _apply(delta, policy)
     assert catalog.functions.entry_count() == 1
 
+
 def test_catalog_policy_allows_local_functions_even_if_blocked() -> None:
     delta = RoutingCatalogDelta(
         update_id="update-4",
@@ -140,6 +147,7 @@ def test_catalog_policy_allows_local_functions_even_if_blocked() -> None:
     )
     catalog = _apply(delta, policy)
     assert catalog.functions.entry_count() == 1
+
 
 def test_catalog_policy_filters_cache_profiles() -> None:
     profile = CacheNodeProfile(
@@ -165,6 +173,7 @@ def test_catalog_policy_filters_cache_profiles() -> None:
     )
     catalog = _apply(delta, policy)
     assert catalog.cache_profiles.entry_count() == 0
+
 
 def test_catalog_policy_blocks_nodes_via_filter() -> None:
     node = NodeDescriptor(

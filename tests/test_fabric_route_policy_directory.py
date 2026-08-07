@@ -4,6 +4,7 @@ from mpreg.fabric.route_policy_directory import (
     RoutePolicyDirectory,
 )
 
+
 def test_route_policy_directory_default_and_override() -> None:
     default = RoutePolicy(max_hops=3)
     override = RoutePolicy(allowed_tags={"gold"})

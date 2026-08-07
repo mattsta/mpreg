@@ -16,6 +16,7 @@ from .route_keys import RouteKeyRegistry
 CATALOG_SNAPSHOT_KEY = "fabric.catalog.snapshot"
 ROUTE_KEYS_SNAPSHOT_KEY = "fabric.route_keys.snapshot"
 
+
 @dataclass(slots=True)
 class FabricSnapshotStore:
     kv_store: KeyValueStore

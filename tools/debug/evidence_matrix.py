@@ -21,6 +21,7 @@ type NodeId = str
 type RunMode = str
 type SessionId = str
 
+
 @dataclass(frozen=True, slots=True)
 class RunNodeOutcome:
     report_path: Path
@@ -29,6 +30,7 @@ class RunNodeOutcome:
     run_index: int
     nodeid: NodeId
     status: str
+
 
 @dataclass(slots=True)
 class NodeAggregate:
@@ -46,7 +48,9 @@ class NodeAggregate:
             return
         self.fail_count += 1
 
+
 FAILED_NODE_RE = re.compile(r"^FAILED\s+([^\s]+)")
+
 
 def _extract_failed_nodeids(pytest_failed_lines: list[str]) -> set[NodeId]:
     failed: set[NodeId] = set()
@@ -56,10 +60,12 @@ def _extract_failed_nodeids(pytest_failed_lines: list[str]) -> set[NodeId]:
             failed.add(match.group(1))
     return failed
 
+
 def _session_id(report_path: Path) -> SessionId:
     # report path shape:
     # .../<session_id>/evidence_report.json
     return report_path.parent.name
+
 
 def _load_outcomes(report_path: Path) -> list[RunNodeOutcome]:
     payload = json.loads(report_path.read_text(encoding="utf-8"))
@@ -120,6 +126,7 @@ def _load_outcomes(report_path: Path) -> list[RunNodeOutcome]:
             )
     return outcomes
 
+
 def _print_summary(outcomes: list[RunNodeOutcome]) -> None:
     aggregates: dict[NodeId, NodeAggregate] = {}
     for item in outcomes:
@@ -139,6 +146,7 @@ def _print_summary(outcomes: list[RunNodeOutcome]) -> None:
             f"{nodeid},pass={summary.pass_count},fail={summary.fail_count},timeout={summary.timeout_count}"
         )
 
+
 def _print_detailed(outcomes: list[RunNodeOutcome]) -> None:
     print("Detailed outcomes")
     print("session,run_mode,run_index,status,nodeid")
@@ -154,6 +162,7 @@ def _print_detailed(outcomes: list[RunNodeOutcome]) -> None:
         print(
             f"{item.session_id},{item.run_mode},{item.run_index},{item.status},{item.nodeid}"
         )
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -171,6 +180,7 @@ def _parse_args() -> argparse.Namespace:
         help="Print per-run outcomes in addition to summary",
     )
     return parser.parse_args()
+
 
 def main() -> int:
     args = _parse_args()
@@ -190,6 +200,7 @@ def main() -> int:
     if args.detailed:
         _print_detailed(outcomes)
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

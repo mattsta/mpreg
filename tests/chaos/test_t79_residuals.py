@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t79_live_enriched_prom_assert() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -16,6 +17,7 @@ def test_t79_live_enriched_prom_assert() -> None:
     assert "mpreg_strong_abort_fail_peers" in text
     assert "float(val) >= 1.0" in text or ">= 1" in text
 
+
 def test_t79_phase_67_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -23,6 +25,7 @@ def test_t79_phase_67_honesty() -> None:
         / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md"
     )
     assert "Phase 67" in path.read_text(encoding="utf-8")
+
 
 def test_t79_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]

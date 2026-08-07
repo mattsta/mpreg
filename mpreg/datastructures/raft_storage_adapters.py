@@ -51,6 +51,7 @@ from .production_raft import (
 
 storage_log = logger
 
+
 # Enhanced Storage Protocol with Additional Methods
 class EnhancedRaftStorageProtocol(RaftStorageProtocol):
     """Enhanced storage protocol with additional operations for performance."""
@@ -80,6 +81,7 @@ class EnhancedRaftStorageProtocol(RaftStorageProtocol):
     async def compact_storage(self) -> None:
         """Perform storage compaction/optimization."""
 
+
 # Base Storage Adapter Class
 class BaseRaftStorage(ABC):
     """Base class for Raft storage adapters with common functionality."""
@@ -104,6 +106,7 @@ class BaseRaftStorage(ABC):
                 if not self.is_initialized:
                     await self.initialize()
                     self.is_initialized = True
+
 
 # Enhanced Log Entry Tracking for In-Memory Storage
 @dataclass(frozen=True, slots=True)
@@ -130,6 +133,7 @@ class StoredLogEntry:
             last_accessed=current_time,
         )
 
+
 @dataclass(slots=True)
 class InMemoryStorageMetrics:
     """Comprehensive metrics for in-memory storage operations."""
@@ -144,6 +148,7 @@ class InMemoryStorageMetrics:
     storage_efficiency_score: float = 0.0
     created_at: float = field(default_factory=time.time)
     last_operation_at: float = field(default_factory=time.time)
+
 
 # In-Memory Storage Adapter (for testing)
 @dataclass
@@ -353,6 +358,7 @@ class InMemoryRaftStorage(BaseRaftStorage):
             if self._persistent_state
             else None,
         }
+
 
 # File-Based Storage Adapter
 @dataclass
@@ -567,6 +573,7 @@ class FileBasedRaftStorage(BaseRaftStorage):
         state = await self.load_persistent_state()
         if state:
             await self.save_persistent_state(state)
+
 
 # SQLite Storage Adapter
 class SQLiteRaftStorage(BaseRaftStorage):
@@ -872,6 +879,7 @@ class SQLiteRaftStorage(BaseRaftStorage):
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("VACUUM")
             self._storage_stats["operations"] += 1
+
 
 # Storage Factory
 class RaftStorageFactory:

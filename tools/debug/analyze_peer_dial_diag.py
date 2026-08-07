@@ -11,6 +11,7 @@ from pathlib import Path
 type NodeName = str
 type TargetCount = int
 
+
 @dataclass(frozen=True, slots=True)
 class LoopDiag:
     node: str
@@ -27,6 +28,7 @@ class LoopDiag:
     budget: int
     interval_seconds: float
 
+
 LOOP_RE = re.compile(
     r"\[DIAG_PEER_DIAL\] node=(?P<node>\S+) name=(?P<name>\S+) loop .*?"
     r"targets=(?P<targets>\d+) .*?"
@@ -38,6 +40,7 @@ LOOP_RE = re.compile(
     r"parallelism=(?P<parallelism>\d+) budget=(?P<budget>\d+).*?"
     r"interval=(?P<interval>\d+\.\d+)s"
 )
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -56,6 +59,7 @@ def _parse_args() -> argparse.Namespace:
         help="Minimum targets value to include in summary",
     )
     return parser.parse_args()
+
 
 def _load_entries(
     *,
@@ -93,8 +97,10 @@ def _load_entries(
         )
     return entries
 
+
 def _mean(values: list[float]) -> float:
     return sum(values) / len(values) if values else 0.0
+
 
 def _print_summary(entries: list[LoopDiag]) -> None:
     if not entries:
@@ -161,6 +167,7 @@ def _print_summary(entries: list[LoopDiag]) -> None:
             f"due={entry.due} selected={entry.selected} parallelism={entry.parallelism}"
         )
 
+
 def main() -> int:
     args = _parse_args()
     log_path = Path(str(args.log)).resolve()
@@ -174,6 +181,7 @@ def main() -> int:
     )
     _print_summary(entries)
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

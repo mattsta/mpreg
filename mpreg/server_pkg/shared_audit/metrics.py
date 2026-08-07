@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+
 @dataclass(slots=True)
 class SharedAuditMetrics:
     deltas_sent: int = 0
@@ -31,7 +32,9 @@ class SharedAuditMetrics:
             "rejected_below_watermark": self.rejected_below_watermark,
         }
 
+
 _GLOBAL: SharedAuditMetrics = SharedAuditMetrics()
+
 
 def get_shared_audit_metrics() -> SharedAuditMetrics:
     return _GLOBAL

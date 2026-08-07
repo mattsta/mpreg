@@ -8,6 +8,7 @@ from tests.port_allocator import get_port_allocator
 
 from tests.conftest import AsyncTestContext
 
+
 # EXACT copy of the fixtures from the failing test file
 @pytest.fixture
 def large_cluster_ports():
@@ -17,6 +18,7 @@ def large_cluster_ports():
     yield ports
     for port in ports:
         allocator.release_port(port)
+
 
 class TestAutoDiscoveryLargeClusters:
     """EXACT copy of the failing test class."""
@@ -32,6 +34,7 @@ class TestAutoDiscoveryLargeClusters:
         print(f"   Got {len(large_cluster_ports)} ports")
         print(f"   Context has {len(test_context.servers)} servers")
         print("✅ Test completed!")
+
 
 if __name__ == "__main__":
     import subprocess

@@ -12,10 +12,12 @@ RAFT_RPC_REQUEST_KIND = "raft-rpc-request"
 RAFT_RPC_RESPONSE_KIND = "raft-rpc-response"
 RAFT_RPC_TOPIC = "mpreg.fabric.raft.rpc"
 
+
 def _as_payload_dict(value: object) -> dict[str, Any]:
     if isinstance(value, dict):
         return {str(key): val for key, val in value.items()}
     return {}
+
 
 def _as_optional_int(value: object) -> int | None:
     if value is None:
@@ -27,10 +29,12 @@ def _as_optional_int(value: object) -> int | None:
             return None
     return None
 
+
 class RaftRpcKind(Enum):
     REQUEST_VOTE = "request_vote"
     APPEND_ENTRIES = "append_entries"
     INSTALL_SNAPSHOT = "install_snapshot"
+
 
 @dataclass(frozen=True, slots=True)
 class FabricRaftRpcRequest:
@@ -62,6 +66,7 @@ class FabricRaftRpcRequest:
             payload=_as_payload_dict(payload.get("payload", {})),
             term=_as_optional_int(payload.get("term")),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class FabricRaftRpcResponse:

@@ -19,6 +19,7 @@ from mpreg.examples.apps._shared.runtime import (
 )
 from mpreg.server import MPREGServer
 
+
 async def main() -> None:
     with app_run(
         "hello_rpc",
@@ -184,6 +185,7 @@ async def main() -> None:
                         )
 
             await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

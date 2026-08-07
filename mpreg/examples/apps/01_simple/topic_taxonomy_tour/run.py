@@ -12,6 +12,7 @@ from mpreg.core.topic_taxonomy import (
 )
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run(
         "topic_taxonomy_tour",
@@ -98,6 +99,7 @@ async def main() -> None:
             ensure(hasattr(TopicTaxonomy, name), f"missing {name}")
         ok("taxonomy constants present")
         await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

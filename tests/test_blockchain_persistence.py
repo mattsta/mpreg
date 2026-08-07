@@ -10,6 +10,7 @@ from mpreg.datastructures.blockchain import Blockchain
 from mpreg.datastructures.blockchain_store import BlockchainStore
 from mpreg.datastructures.transaction import Transaction
 
+
 def test_blockchain_store_roundtrip(tmp_path):
     db_path = tmp_path / "chain.db"
     store = BlockchainStore(str(db_path))
@@ -24,6 +25,7 @@ def test_blockchain_store_roundtrip(tmp_path):
 
     assert loaded.validate_chain()
     assert loaded.get_chain_summary() == chain.get_chain_summary()
+
 
 def test_blockchain_ledger_persists_append(tmp_path):
     db_path = tmp_path / "ledger.db"
@@ -40,6 +42,7 @@ def test_blockchain_ledger_persists_append(tmp_path):
 
     reloaded = store.load_chain("ledger_chain")
     assert reloaded.get_height() == 1
+
 
 def test_blockchain_store_rejects_bad_height(tmp_path):
     db_path = tmp_path / "bad_height.db"

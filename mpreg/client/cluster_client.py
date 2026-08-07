@@ -28,6 +28,7 @@ from .client import Client
 
 cluster_client_log = logger
 
+
 @dataclass(slots=True)
 class EndpointHealthStats:
     latency_samples_ms: deque[float] = field(default_factory=lambda: deque(maxlen=50))
@@ -70,6 +71,7 @@ class EndpointHealthStats:
         return (self.error_rate() * error_weight) + (
             self.average_latency() * latency_weight
         )
+
 
 @dataclass(slots=True)
 class MPREGClusterClient:

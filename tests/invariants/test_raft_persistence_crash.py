@@ -19,12 +19,14 @@ from tests.test_production_raft_integration import (
     TestableStateMachine,
 )
 
+
 def _cfg() -> RaftConfiguration:
     return RaftConfiguration(
         election_timeout_min=0.15,
         election_timeout_max=0.30,
         heartbeat_interval=0.025,
     )
+
 
 @pytest.mark.asyncio
 async def test_restart_recovers_committed_entries() -> None:

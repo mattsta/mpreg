@@ -24,6 +24,7 @@ from mpreg.fabric.route_control import (
     RouteTable,
 )
 
+
 def _make_router() -> GraphBasedFederationRouter:
     router = GraphBasedFederationRouter()
     router.add_node(
@@ -73,6 +74,7 @@ def _make_router() -> GraphBasedFederationRouter:
     )
     return router
 
+
 def _make_link_state_router() -> GraphBasedFederationRouter:
     router = GraphBasedFederationRouter()
     router.add_node(
@@ -103,6 +105,7 @@ def _make_link_state_router() -> GraphBasedFederationRouter:
         )
     )
     return router
+
 
 def _make_link_state_ecmp_router() -> GraphBasedFederationRouter:
     router = GraphBasedFederationRouter()
@@ -154,6 +157,7 @@ def _make_link_state_ecmp_router() -> GraphBasedFederationRouter:
     )
     return router
 
+
 def test_route_table_plan_preferred() -> None:
     table = RouteTable(local_cluster="cluster-a")
     announcement = RouteAnnouncement(
@@ -180,6 +184,7 @@ def test_route_table_plan_preferred() -> None:
     assert plan.next_cluster == "cluster-b"
     assert plan.next_peer_url == "ws://cluster-b"
 
+
 def test_graph_router_fallback_path() -> None:
     router = _make_router()
     planner = FabricFederationPlanner(
@@ -192,6 +197,7 @@ def test_graph_router_fallback_path() -> None:
     assert plan.reason is FabricForwardingFailureReason.OK
     assert plan.next_cluster == "cluster-b"
     assert plan.planned_path == ("cluster-a", "cluster-b", "cluster-c")
+
 
 def test_link_state_preferred_over_route_table() -> None:
     table = RouteTable(local_cluster="cluster-a")
@@ -222,6 +228,7 @@ def test_link_state_preferred_over_route_table() -> None:
     assert plan.next_cluster == "cluster-c"
     assert plan.planned_path == ("cluster-a", "cluster-c")
 
+
 def test_link_state_ecmp_round_robin() -> None:
     link_state_router = _make_link_state_ecmp_router()
     planner = FabricFederationPlanner(
@@ -244,6 +251,7 @@ def test_link_state_ecmp_round_robin() -> None:
         ("cluster-a", "cluster-c", "cluster-d"),
     }
 
+
 def test_visited_local_cluster_is_ignored() -> None:
     router = _make_router()
     planner = FabricFederationPlanner(
@@ -259,6 +267,7 @@ def test_visited_local_cluster_is_ignored() -> None:
     assert plan.reason is FabricForwardingFailureReason.OK
     assert plan.next_cluster == "cluster-b"
     assert plan.federation_path == ("cluster-x", "cluster-a")
+
 
 def test_hop_budget_exhausted() -> None:
     router = _make_router()

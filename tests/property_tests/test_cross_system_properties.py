@@ -22,12 +22,14 @@ from mpreg.fabric.message_codec import (
 )
 from mpreg.fabric.router import is_control_plane_message, is_federation_message
 
+
 def correlation_ids() -> st.SearchStrategy[str]:
     return st.text(
         min_size=8,
         max_size=64,
         alphabet=st.characters(whitelist_categories=("L", "N")),
     ).map(lambda s: f"corr-{s}")
+
 
 def message_ids() -> st.SearchStrategy[str]:
     return st.text(
@@ -36,6 +38,7 @@ def message_ids() -> st.SearchStrategy[str]:
         alphabet=st.characters(whitelist_categories=("L", "N")),
     ).map(lambda s: f"msg-{s}")
 
+
 def topics() -> st.SearchStrategy[str]:
     segments = st.text(
         min_size=1,
@@ -43,6 +46,7 @@ def topics() -> st.SearchStrategy[str]:
         alphabet=st.characters(whitelist_categories=("L", "N")),
     )
     return st.lists(segments, min_size=2, max_size=6).map(".".join)
+
 
 def headers() -> st.SearchStrategy[MessageHeaders]:
     return st.builds(
@@ -63,6 +67,7 @@ def headers() -> st.SearchStrategy[MessageHeaders]:
         ),
     )
 
+
 def unified_messages() -> st.SearchStrategy[UnifiedMessage]:
     return st.builds(
         UnifiedMessage,
@@ -79,6 +84,7 @@ def unified_messages() -> st.SearchStrategy[UnifiedMessage]:
         headers=headers(),
         timestamp=st.floats(min_value=1600000000, max_value=2000000000),
     )
+
 
 class TestMessageIntegrityProperties:
     @given(message=unified_messages())
@@ -117,6 +123,7 @@ class TestMessageIntegrityProperties:
             assert is_federation_message(message)
         if message.topic.startswith("mpreg.fabric."):
             assert is_federation_message(message)
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])

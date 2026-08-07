@@ -16,6 +16,7 @@ from mpreg.server import MPREGServer
 from mpreg.server_pkg.mgmt_mutations import apply_node_drain
 from tests.conftest import AsyncTestContext
 
+
 def _both_settings(
     port: int,
     mon: int,
@@ -47,6 +48,7 @@ def _both_settings(
         mgmt_audit_shared_gossip_targets=3,
     )
 
+
 async def _wait_peers(servers: list[MPREGServer], *, timeout: float = 10.0) -> None:
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -60,6 +62,7 @@ async def _wait_peers(servers: list[MPREGServer], *, timeout: float = 10.0) -> N
             return
         await asyncio.sleep(0.15)
     raise AssertionError("cache peers not ready")
+
 
 async def _wait_connected(servers: list[MPREGServer], *, timeout: float = 12.0) -> None:
     deadline = time.time() + timeout
@@ -78,6 +81,7 @@ async def _wait_connected(servers: list[MPREGServer], *, timeout: float = 12.0) 
         await asyncio.sleep(0.15)
     raise AssertionError("gossip mesh not connected")
 
+
 async def _wait_cluster_audit(
     servers: list[MPREGServer], *, min_events: int, timeout: float = 18.0
 ) -> None:
@@ -95,6 +99,7 @@ async def _wait_cluster_audit(
         await asyncio.sleep(0.2)
     raise AssertionError("audit did not converge")
 
+
 @pytest.mark.asyncio
 async def test_live_strong_and_shared_audit_coexist(
     test_context: AsyncTestContext,
@@ -105,12 +110,8 @@ async def test_live_strong_and_shared_audit_coexist(
         url0 = f"ws://127.0.0.1:{ws[0]}"
         servers = [
             MPREGServer(_both_settings(ws[0], mon[0], "X0", audit_dir)),
-            MPREGServer(
-                _both_settings(ws[1], mon[1], "X1", audit_dir, peers=[url0])
-            ),
-            MPREGServer(
-                _both_settings(ws[2], mon[2], "X2", audit_dir, peers=[url0])
-            ),
+            MPREGServer(_both_settings(ws[1], mon[1], "X1", audit_dir, peers=[url0])),
+            MPREGServer(_both_settings(ws[2], mon[2], "X2", audit_dir, peers=[url0])),
         ]
         test_context.servers.extend(servers)
         tasks = [asyncio.create_task(s.server()) for s in servers]
@@ -142,13 +143,9 @@ async def test_live_strong_and_shared_audit_coexist(
 
         # Shared audit drains from each node
         for i, s in enumerate(servers):
-            apply_node_drain(
-                s, draining=True, actor=f"x-{i}", reason=f"coexist-{i}"
-            )
+            apply_node_drain(s, draining=True, actor=f"x-{i}", reason=f"coexist-{i}")
             await asyncio.sleep(0.15)
-            apply_node_drain(
-                s, draining=False, actor=f"x-{i}", reason=f"clear-{i}"
-            )
+            apply_node_drain(s, draining=False, actor=f"x-{i}", reason=f"clear-{i}")
 
         await _wait_cluster_audit(servers, min_events=6, timeout=20.0)
 

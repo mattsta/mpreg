@@ -45,6 +45,7 @@ from tests.test_production_raft_integration import (
     TestableStateMachine,
 )
 
+
 def _node(cid: str) -> FederationGraphNode:
     return FederationGraphNode(
         node_id=cid,
@@ -53,6 +54,7 @@ def _node(cid: str) -> FederationGraphNode:
         coordinates=GeographicCoordinate(0.0, 0.0),
         max_capacity=100,
     )
+
 
 @pytest.mark.asyncio
 async def test_x1_leader_election_during_route_withdraw() -> None:
@@ -146,6 +148,7 @@ async def test_x1_leader_election_during_route_withdraw() -> None:
     finally:
         for n in nodes:
             await n.stop()
+
 
 @pytest.mark.asyncio
 async def test_x2_minority_partition_no_commit() -> None:
@@ -244,6 +247,7 @@ async def test_x2_minority_partition_no_commit() -> None:
             with contextlib.suppress(Exception):
                 await asyncio.wait_for(n.stop(), timeout=3.0)
 
+
 @pytest.mark.asyncio
 async def test_x3_restart_mid_stream_client_timeout() -> None:
     """X3: Client sees TIMEOUT / structured error, not hang, when op dies."""
@@ -261,6 +265,7 @@ async def test_x3_restart_mid_stream_client_timeout() -> None:
     with pytest.raises(MpregError) as ei:
         await call_with_policy(broken_stream, policy)
     assert ei.value.code == int(MpregErrorCode.TIMEOUT)
+
 
 def test_x4_clock_skew_view() -> None:
     """X4: Clock skew injection is observable per node."""

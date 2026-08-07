@@ -9,6 +9,7 @@ from mpreg.core.model import PubSubMessage, PubSubSubscription, TopicPattern
 from mpreg.core.topic_exchange import TopicExchange
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 def _pub(
     exchange: TopicExchange,
     topic: str,
@@ -28,6 +29,7 @@ def _pub(
             )
         )
     )
+
 
 async def main() -> None:
     with app_run("plane_pubsub", "Plane PubSub — full topic tour", level="L1"):
@@ -107,6 +109,7 @@ async def main() -> None:
         ensure(total >= 3, f"core tour total matches {total}")
         step(f"core tour total matches={total}")
         ok("plane_pubsub tour complete")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

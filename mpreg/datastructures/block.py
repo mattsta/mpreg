@@ -29,6 +29,7 @@ from .merkle_tree import MerkleProof, MerkleTree
 from .transaction import Transaction, transaction_strategy
 from .vector_clock import VectorClock
 
+
 class _LazySt:
     """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
 
@@ -44,7 +45,9 @@ class _LazySt:
     def __getattr__(self, name: str) -> object:
         return getattr(self._load(), name)
 
+
 st = _LazySt()
+
 
 @dataclass(frozen=True, slots=True)
 class Block:
@@ -388,19 +391,24 @@ class Block:
             f"hash={self.get_block_hash()[:16]}...)"
         )
 
+
 # Hypothesis strategies for property-based testing
+
 
 def block_id_strategy() -> st.SearchStrategy[BlockId]:
     """Generate valid block IDs."""
     return st.text(min_size=1, max_size=100)
 
+
 def block_hash_strategy() -> st.SearchStrategy[BlockHash]:
     """Generate valid block hashes."""
     return st.text(min_size=64, max_size=64, alphabet="0123456789abcdef")
 
+
 def merkle_hash_strategy() -> st.SearchStrategy[MerkleHash]:
     """Generate valid merkle hashes."""
     return st.text(min_size=64, max_size=64, alphabet="0123456789abcdef")
+
 
 def node_id_strategy() -> st.SearchStrategy[NodeId]:
     """Generate valid node IDs."""
@@ -411,6 +419,7 @@ def node_id_strategy() -> st.SearchStrategy[NodeId]:
             whitelist_categories=["Lu", "Ll", "Nd"], whitelist_characters="-_"
         ),
     )
+
 
 def block_strategy() -> st.SearchStrategy[Block]:
     """Generate valid Block instances for testing."""
@@ -445,6 +454,7 @@ def block_strategy() -> st.SearchStrategy[Block]:
         )
 
     return _block()
+
 
 def genesis_block_strategy() -> st.SearchStrategy[Block]:
     """Generate valid genesis blocks for testing."""

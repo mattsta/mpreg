@@ -15,6 +15,7 @@ from click.testing import CliRunner
 from mpreg.cli.main import cli
 from tests.test_helpers import TestPortManager
 
+
 class TestFederationCLI:
     """Test fabric federation CLI commands."""
 
@@ -414,6 +415,7 @@ class TestFederationCLI:
 
         finally:
             Path(output_path).unlink(missing_ok=True)
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

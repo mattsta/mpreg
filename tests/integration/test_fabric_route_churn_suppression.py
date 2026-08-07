@@ -18,6 +18,7 @@ from mpreg.fabric.route_control import (
     RouteWithdrawal,
 )
 
+
 @pytest.mark.asyncio
 async def test_route_churn_triggers_suppression() -> None:
     transport = InProcessGossipTransport()

@@ -14,6 +14,7 @@ from mpreg.fabric.message_codec import (
     message_headers_to_dict,
 )
 
+
 def test_generate_traceparent_shape() -> None:
     tp = generate_traceparent()
     parts = tp.split("-")
@@ -22,17 +23,20 @@ def test_generate_traceparent_shape() -> None:
     assert len(parts[2]) == 16
     assert parts[3] in {"00", "01"}
 
+
 def test_inject_and_ensure() -> None:
     meta: dict = {}
     tp = ensure_traceparent(meta)
     assert meta[TRACEPARENT_KEY] == tp
     assert ensure_traceparent(meta) == tp
 
+
 def test_message_headers_with_trace_context() -> None:
     headers = MessageHeaders(correlation_id="c1")
     traced = headers.with_trace_context()
     assert traced.traceparent is not None
     assert TRACEPARENT_KEY in traced.metadata
+
 
 def test_codec_accepts_top_level_traceparent() -> None:
     headers = message_headers_from_dict(
@@ -44,6 +48,7 @@ def test_codec_accepts_top_level_traceparent() -> None:
     assert headers.traceparent is not None
     encoded = message_headers_to_dict(headers)
     assert "traceparent" in encoded["metadata"]
+
 
 def test_inject_trace_metadata_preserves_existing() -> None:
     existing = generate_traceparent()

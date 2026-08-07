@@ -9,6 +9,7 @@ import pytest
 from mpreg.core.intermediate_results import IntermediateResultCollector
 from mpreg.testing.oracles import RpcOracle, RpcStreamEvent
 
+
 class BoundedStreamBuffer:
     """Minimal backpressure buffer for progressive RPC events."""
 
@@ -36,6 +37,7 @@ class BoundedStreamBuffer:
         self._q.clear()
         return out
 
+
 def test_cancel_stops_delivery() -> None:
     buf = BoundedStreamBuffer()
     o = RpcOracle()
@@ -45,12 +47,14 @@ def test_cancel_stops_delivery() -> None:
     for ev in buf.drain():
         o.observe(ev)
 
+
 def test_slow_consumer_drops_with_backpressure() -> None:
     buf = BoundedStreamBuffer(maxsize=2)
     assert buf.push(RpcStreamEvent(kind="partial"))
     assert buf.push(RpcStreamEvent(kind="intermediate", level=0))
     assert buf.push(RpcStreamEvent(kind="intermediate", level=1)) is False
     assert buf.dropped == 1
+
 
 def test_collector_monotonic_levels() -> None:
     c = IntermediateResultCollector(request_id="r", total_levels=3)

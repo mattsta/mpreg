@@ -17,6 +17,7 @@ from mpreg.fabric.route_control import (
 )
 from mpreg.testing.oracles import RoutingOracle
 
+
 def _announce(
     *,
     dest: str,
@@ -39,6 +40,7 @@ def _announce(
         ann, received_from=received_from, now=now, link_latency_ms=0.5
     )
 
+
 def test_rejects_path_containing_local() -> None:
     now = time.time()
     table = RouteTable(local_cluster="local")
@@ -52,6 +54,7 @@ def test_rejects_path_containing_local() -> None:
     )
     assert ok is False
     RoutingOracle.assert_table_loop_free(table)
+
 
 def test_accepts_simple_path_and_selects() -> None:
     now = time.time()
@@ -68,6 +71,7 @@ def test_accepts_simple_path_and_selects() -> None:
     assert rec is not None
     assert rec.next_hop == "b"
     RoutingOracle.assert_table_loop_free(table)
+
 
 def test_withdraw_removes_advertiser_routes() -> None:
     now = time.time()
@@ -90,6 +94,7 @@ def test_withdraw_removes_advertiser_routes() -> None:
     assert removed
     RoutingOracle.assert_no_route_from_advertiser(table, "c", "b")
 
+
 @given(
     mid=st.sampled_from(["x", "y", "z", "m1", "m2"]),
 )
@@ -107,6 +112,7 @@ def test_property_no_loop_accept(mid: str) -> None:
         now=now,
     )
     assert ok is False
+
 
 def test_tiebreak_stable() -> None:
     now = time.time()
@@ -133,6 +139,7 @@ def test_tiebreak_stable() -> None:
     r2 = table.select_route(RouteDestination(cluster_id="d"), now=now)
     assert r1 is not None and r2 is not None
     assert r1.advertiser == r2.advertiser
+
 
 def test_hold_down_rejects_then_recovers() -> None:
     """INV-R11: hold-down blocks re-announce, then recovers after quiet period."""
@@ -186,6 +193,7 @@ def test_hold_down_rejects_then_recovers() -> None:
     rec = table.select_route(RouteDestination(cluster_id="z"), now=now + 7)
     assert rec is not None
     assert rec.next_hop == "b"
+
 
 def test_flap_suppression_not_permanent_blackhole() -> None:
     """INV-R11: flap damping suppresses, then clears after suppression window."""

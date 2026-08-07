@@ -16,6 +16,7 @@ from typing import TypeVar
 
 T = TypeVar("T")
 
+
 def run_coro[T](coro: Coroutine[object, object, T]) -> T:
     """Run *coro* to completion, even if an event loop is already running.
 

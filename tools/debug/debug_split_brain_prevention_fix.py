@@ -16,6 +16,7 @@ sys.path.insert(0, "/Users/matt/repos/mpreg")
 from mpreg.datastructures.production_raft_implementation import RaftState
 from tests.test_raft_byzantine_edge_cases import TestRaftByzantineEdgeCases
 
+
 async def demonstrate_split_brain_prevention():
     """Demonstrate the split-brain prevention fix in action."""
 
@@ -156,6 +157,7 @@ async def demonstrate_split_brain_prevention():
                 )
             except TimeoutError:
                 print("Warning: Some nodes did not stop within timeout")
+
 
 if __name__ == "__main__":
     asyncio.run(demonstrate_split_brain_prevention())

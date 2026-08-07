@@ -14,6 +14,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 async def test_manual_approach():
     """Create 13-node cluster using manual approach (KNOWN TO WORK)."""
     print("🔧 MANUAL APPROACH: Creating 13-node cluster...")
@@ -82,6 +83,7 @@ async def test_manual_approach():
 
     return success, discovered_counts
 
+
 async def test_pytest_approach():
     """Create 13-node cluster using pytest approach (FAILING)."""
     print("\n🔧 PYTEST APPROACH: Creating 13-node cluster...")
@@ -125,6 +127,7 @@ async def test_pytest_approach():
         for port in ports:
             allocator.release_port(port)
 
+
 async def main():
     """Compare both approaches to find the difference."""
     print("🔬 DEEP DIVE COMPARISON: Manual vs Pytest approaches")
@@ -156,6 +159,7 @@ async def main():
         print("\n✅ BOTH WORK - The issue may be intermittent or environment-specific")
     else:
         print("\n⚠️  BOTH FAIL - Issue may be fundamental")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

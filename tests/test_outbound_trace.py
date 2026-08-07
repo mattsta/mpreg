@@ -1,6 +1,7 @@
 from mpreg.client.client import Client
 from mpreg.core.observability.trace_context import TRACEPARENT_KEY
 
+
 def test_inject_outbound_trace_adds_traceparent() -> None:
     # Client needs url - construct minimally
     c = Client(url="ws://127.0.0.1:1")

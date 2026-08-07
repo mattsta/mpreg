@@ -17,6 +17,7 @@ from mpreg.fabric.federation_graph import GeographicCoordinate
 from mpreg.fabric.message import DeliveryGuarantee
 from mpreg.fabric.route_keys import RouteKeyRegistry
 
+
 def test_routing_catalog_snapshot_roundtrip() -> None:
     catalog = RoutingCatalog()
     now = time.time()
@@ -109,6 +110,7 @@ def test_routing_catalog_snapshot_roundtrip() -> None:
     assert restored.caches.entry_count() == 1
     assert restored.cache_profiles.entry_count() == 1
     assert restored.nodes.entry_count() == 1
+
 
 def test_route_key_registry_snapshot_roundtrip() -> None:
     registry = RouteKeyRegistry()

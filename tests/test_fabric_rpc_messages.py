@@ -5,6 +5,7 @@ from mpreg.fabric.rpc_messages import (
     FabricRPCResponse,
 )
 
+
 def test_fabric_rpc_request_roundtrip() -> None:
     request = FabricRPCRequest(
         request_id="req-1",
@@ -26,6 +27,7 @@ def test_fabric_rpc_request_roundtrip() -> None:
 
     parsed = FabricRPCRequest.from_dict(payload)
     assert parsed == request
+
 
 def test_fabric_rpc_response_roundtrip() -> None:
     response = FabricRPCResponse(

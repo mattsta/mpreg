@@ -23,12 +23,14 @@ from mpreg.datastructures.dao import (
     dao_strategy,
 )
 
+
 @dataclass
 class FederationHubData:
     """Test data for federation hubs."""
 
     id: str
     stake: int
+
 
 @dataclass
 class CommunityMemberData:
@@ -38,6 +40,7 @@ class CommunityMemberData:
     tokens: int
     reputation: int
 
+
 @dataclass
 class TechnicalMemberData:
     """Test data for technical committee members."""
@@ -45,6 +48,7 @@ class TechnicalMemberData:
     id: str
     reputation: int
     voting_power: int
+
 
 from mpreg.datastructures.blockchain_types import OperationType
 from mpreg.datastructures.dao_types import (
@@ -58,6 +62,7 @@ from mpreg.datastructures.dao_types import (
     ProposalType,
     VoteType,
 )
+
 
 class TestDaoTypes:
     """Test DAO type definitions and validation."""
@@ -168,6 +173,7 @@ class TestDaoTypes:
             current_time + 3700
         )  # Before execution time
         assert passed_proposal.can_execute(current_time + 7300)  # After execution time
+
 
 class TestDecentralizedAutonomousOrganization:
     """Test main DAO functionality."""
@@ -523,6 +529,7 @@ class TestDecentralizedAutonomousOrganization:
         assert payload_data["action"] == "dao_join"
         assert payload_data["dao_id"] == dao.dao_id
 
+
 class TestDaoProperties:
     """Test mathematical and governance properties of DAOs."""
 
@@ -651,6 +658,7 @@ class TestDaoProperties:
         assert delegated.voting_power == member.voting_power
         assert delegated.delegated_to == "bob"
 
+
 class TestDaoStateMachine(RuleBasedStateMachine):
     """Stateful testing for DAO operations."""
 
@@ -761,8 +769,10 @@ class TestDaoStateMachine(RuleBasedStateMachine):
         """Blockchain should remain valid."""
         assert self.dao.blockchain.validate_chain()
 
+
 # Run stateful tests
 TestDaoStateMachineTest = TestDaoStateMachine.TestCase
+
 
 class TestDaoExamples:
     """Test real-world DAO examples and use cases."""

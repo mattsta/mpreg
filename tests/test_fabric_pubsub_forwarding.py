@@ -3,6 +3,7 @@ from mpreg.fabric.pubsub_forwarding import (
     PubSubForwardingMetadata,
 )
 
+
 def test_pubsub_forwarding_metadata_roundtrip() -> None:
     metadata = PubSubForwardingMetadata(
         origin_node="node-a",
@@ -17,12 +18,14 @@ def test_pubsub_forwarding_metadata_roundtrip() -> None:
     assert updated["trace_id"] == "trace-1"
     assert parsed == metadata
 
+
 def test_pubsub_forwarding_metadata_missing_payload() -> None:
     assert PubSubForwardingMetadata.from_headers({}) is None
     assert (
         PubSubForwardingMetadata.from_headers({FABRIC_PUBSUB_FORWARDING_KEY: "invalid"})
         is None
     )
+
 
 def test_pubsub_forwarding_metadata_hops() -> None:
     metadata = PubSubForwardingMetadata(

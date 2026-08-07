@@ -15,6 +15,7 @@ from tests.test_helpers import wait_for_condition
 
 type NodeIndex = int
 
+
 @dataclass(slots=True)
 class NodeProbeSnapshot:
     node_index: NodeIndex
@@ -27,6 +28,7 @@ class NodeProbeSnapshot:
     registered_functions: int
     pending_catalog_updates: int
 
+
 @dataclass(slots=True)
 class ConnectAttemptResult:
     node_index: NodeIndex
@@ -35,6 +37,7 @@ class ConnectAttemptResult:
     success: bool
     duration_seconds: float
     error: str | None
+
 
 def _build_settings(ports: list[int]) -> list[MPREGSettings]:
     settings_list: list[MPREGSettings] = []
@@ -55,11 +58,13 @@ def _build_settings(ports: list[int]) -> list[MPREGSettings]:
         )
     return settings_list
 
+
 def _make_memory_function(server_index: int, function_index: int):
     def memory_function(data: str) -> str:
         return f"Probe S{server_index}F{function_index}: {data}"
 
     return memory_function
+
 
 def _snapshot_server(
     server: MPREGServer,
@@ -105,6 +110,7 @@ def _snapshot_server(
         pending_catalog_updates=pending_catalog_updates,
     )
 
+
 async def _attempt_connect(
     *,
     node_index: int,
@@ -135,6 +141,7 @@ async def _attempt_connect(
             error=repr(exc),
         )
 
+
 async def _attempt_connect_reuse_client(
     *,
     node_index: int,
@@ -163,6 +170,7 @@ async def _attempt_connect_reuse_client(
             duration_seconds=time.monotonic() - started,
             error=repr(exc),
         )
+
 
 async def run_probe(*, num_functions: int = 100, connect_attempts: int = 3) -> None:
     allocator = get_port_allocator()
@@ -261,6 +269,7 @@ async def run_probe(*, num_functions: int = 100, connect_attempts: int = 3) -> N
 
         for port in ports:
             allocator.release_port(port)
+
 
 if __name__ == "__main__":
     asyncio.run(run_probe())

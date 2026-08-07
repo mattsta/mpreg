@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
+
 @dataclass(slots=True)
 class PeerDialState:
     """Adaptive dial scheduling state for a peer URL."""
@@ -53,6 +54,7 @@ class PeerDialState:
         jitter_seconds = delay * max(min(spread_fraction, 0.25), 0.0)
         self.next_attempt_at = now + delay + jitter_seconds
 
+
 @dataclass(frozen=True, slots=True)
 class PeerDialConnectionPolicy:
     """Connection attempt policy chosen for a peer dial."""
@@ -61,6 +63,7 @@ class PeerDialConnectionPolicy:
     base_delay_seconds: float
     connect_timeout_seconds: float
     open_timeout_seconds: float
+
 
 @dataclass(frozen=True, slots=True)
 class PeerDialDiagnosticSnapshot:
@@ -75,6 +78,7 @@ class PeerDialDiagnosticSnapshot:
     consecutive_failures: int
     policy: PeerDialConnectionPolicy
     attempt_epoch_seconds: float
+
 
 @dataclass(frozen=True, slots=True)
 class PeerDialLoopSnapshot:
@@ -94,6 +98,7 @@ class PeerDialLoopSnapshot:
     not_due_candidates: int
     reconcile_interval_seconds: float
 
+
 @dataclass(frozen=True, slots=True)
 class PeerDialBackoff:
     base_seconds: float
@@ -103,6 +108,7 @@ class PeerDialBackoff:
         if failures <= 0:
             return 0.0
         return min(self.cap_seconds, self.base_seconds * (2 ** (failures - 1)))
+
 
 def select_peer_connection_policy(
     *,
@@ -186,12 +192,14 @@ def select_peer_connection_policy(
         open_timeout_seconds=connect_timeout_seconds,
     )
 
+
 def dial_pressure(*, peer_target_count: int, connected_ratio: float = 1.0) -> float:
     target_count = max(peer_target_count, 1)
     connectivity = min(max(connected_ratio, 0.0), 1.0)
     connectivity_deficit = 1.0 - connectivity
     size_factor = max(target_count**0.5 - 2.0, 0.0) / 2.0
     return connectivity_deficit * size_factor
+
 
 def dial_parallelism(*, peer_target_count: int, connected_ratio: float = 1.0) -> int:
     target_count = max(peer_target_count, 1)
@@ -214,6 +222,7 @@ def dial_parallelism(*, peer_target_count: int, connected_ratio: float = 1.0) ->
         parallelism = max(parallelism, recovery_parallelism)
     return parallelism
 
+
 def dial_exploration_slots(
     *,
     peer_target_count: int,
@@ -230,6 +239,7 @@ def dial_exploration_slots(
     if connected_ratio < 0.50:
         return max(2, int(target_count**0.5) // 2)
     return max(1, int(target_count**0.5) // 2)
+
 
 def target_connection_count(
     *,
@@ -272,6 +282,7 @@ def target_connection_count(
 
     return min(target_count, baseline + max(deficit_bonus, discovery_bonus))
 
+
 def backoff_base_seconds(
     *,
     peer_target_count: int,
@@ -287,11 +298,13 @@ def backoff_base_seconds(
     pressure_multiplier = 1.0 + (min(pressure, 2.5) * 1.5)
     return max(0.2, by_cluster_scale, startup_pressure_floor) * pressure_multiplier
 
+
 def backoff_cap_seconds(
     *, peer_target_count: int, gossip_interval: float = 1.0
 ) -> float:
     target_count = max(peer_target_count, 1)
     return max(gossip_interval, gossip_interval * (target_count**0.5))
+
 
 def reconcile_interval_seconds(
     *,
@@ -311,10 +324,12 @@ def reconcile_interval_seconds(
     interval_cap = max(gossip_interval * 4.0, 1.5)
     return min(interval_cap, base_interval * pressure_multiplier)
 
+
 def spread_fraction_for_url(peer_url: str) -> float:
     """Deterministic jitter prevents synchronized redials without global randomness."""
     checksum = sum(ord(char) for char in peer_url) % 1000
     return checksum / 4000.0
+
 
 def selection_spread(*, local_url: str, peer_url: str) -> float:
     """Per-node deterministic spread for dial target ordering under budget pressure."""
@@ -323,12 +338,14 @@ def selection_spread(*, local_url: str, peer_url: str) -> float:
     spread_value = int.from_bytes(digest, "big")
     return spread_value / float((1 << 64) - 1)
 
+
 # Back-compat aliases used by early unit tests / docs
 def dial_pressure_from_counts(*, recent_failures: int, recent_successes: int) -> float:
     total = recent_failures + recent_successes
     if total <= 0:
         return 0.0
     return min(1.0, recent_failures / total)
+
 
 def spread_fraction(*, attempt: int, window: int = 8) -> float:
     if window <= 0:

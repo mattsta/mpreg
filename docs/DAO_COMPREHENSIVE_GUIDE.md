@@ -66,6 +66,7 @@ VotingPower = int  # Weighted voting power
 TokenAmount = int  # Token balances and amounts
 Timestamp = float  # Unix timestamps
 
+
 # Governance Enums
 class DaoType(Enum):
     FEDERATION_GOVERNANCE = "federation_governance"
@@ -74,6 +75,7 @@ class DaoType(Enum):
     COMMUNITY_GOVERNANCE = "community_governance"
     RESOURCE_ALLOCATION = "resource_allocation"
     PROTOCOL_UPGRADE = "protocol_upgrade"
+
 
 class MembershipType(Enum):
     TOKEN_HOLDER = "token_holder"  # Token-based membership
@@ -503,6 +505,7 @@ class MemberAccount:
         """Revoke voting power delegation."""
         self.delegation_target = None
 
+
 # Example account creation
 alice_account = MemberAccount("alice", initial_balance=10000)
 alice_account.reputation_score = 85
@@ -597,6 +600,7 @@ class OrganizationAccount:
             description=data["description"],
             execution_data=data.get("execution_data", b""),
         )
+
 
 # Example organization setup
 enterprise_org = OrganizationAccount("enterprise_foundation", required_signatures=3)
@@ -731,6 +735,7 @@ class DaoFactory:
 
         return dao
 
+
 # Usage examples
 community_founders = [
     DaoMember("founder_alice", voting_power=10000, token_balance=50000),
@@ -857,6 +862,7 @@ class OwnershipTransition:
             if completed_steps < total_steps
             else None,
         }
+
 
 # Example usage
 transition = OwnershipTransition(community_dao)
@@ -1027,6 +1033,7 @@ class FederationDAOHierarchy:
             },
         )
 
+
 # Create federation hierarchy
 federation = FederationDAOHierarchy()
 
@@ -1174,6 +1181,7 @@ class CrossChainDAOBridge:
         # In real implementation, this would sync via bridge
         return sync_data
 
+
 # Example cross-chain usage
 bridge = CrossChainDAOBridge(asia_dao)
 bridge.register_bridge("ethereum", "0x1234...bridge_address")
@@ -1303,6 +1311,7 @@ class VotingDelegation:
 
         # Fall back to direct voting
         return self.dao.cast_vote(delegator, proposal_id, vote_choice)
+
 
 # Example delegation setup
 delegation_system = VotingDelegation(community_dao)
@@ -1460,6 +1469,7 @@ class ReputationSystem:
         new_voting_power = int(base_power * reputation_multiplier)
 
         return self.dao.update_member_voting_power(member_id, new_voting_power)
+
 
 # Example reputation system usage
 reputation_system = ReputationSystem(community_dao)
@@ -1639,6 +1649,7 @@ class QuadraticVoting:
             "member_votes": quad_data["member_votes"],
         }
 
+
 # Example quadratic voting usage
 quad_voting = QuadraticVoting(community_dao)
 
@@ -1727,6 +1738,7 @@ print(f"Quadratic voting results: {quad_results}")
 ```python
 # Future enhancement examples
 
+
 class DAOv2Enhancements:
     """Planned enhancements for DAO v2.0"""
 
@@ -1756,6 +1768,7 @@ class DAOv2Enhancements:
             "social_recovery",
             "progressive_web_app",
         ]
+
 
 # Example future implementation preview
 class ConvictionVoting:
@@ -1804,6 +1817,7 @@ class ConvictionVoting:
             proposal_id, time.time()
         )
         return current_conviction >= threshold
+
 
 # Example rage quit mechanism
 class RageQuitMechanism:
@@ -1993,6 +2007,7 @@ import os
 import json
 from typing import List, Dict, Any
 
+
 class ProductionDAODeployment:
     """Production-ready DAO deployment with proper configuration."""
 
@@ -2066,6 +2081,7 @@ class ProductionDAODeployment:
             json.dump(backup_data, f, indent=2, default=str)
 
         return backup_filename
+
 
 # Example production deployment
 deployer = ProductionDAODeployment("production")

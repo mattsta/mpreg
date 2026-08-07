@@ -27,6 +27,7 @@ from mpreg.fabric.cache_federation import FabricCacheProtocol
 from mpreg.fabric.cache_transport import InProcessCacheTransport
 from mpreg.server import MPREGServer
 
+
 async def main() -> None:
     with app_run("rpc_plus_cache", "RPC + Cache integration", level="L2"):
         with port_range_context(1, "servers") as ports:
@@ -137,6 +138,7 @@ async def main() -> None:
                     await protocol.shutdown()
 
             await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

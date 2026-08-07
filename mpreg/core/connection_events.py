@@ -23,12 +23,14 @@ from ..datastructures.type_aliases import NodeURL
 
 event_log = logger
 
+
 class ConnectionEventType(Enum):
     """Types of connection events."""
 
     ESTABLISHED = "connection_established"
     LOST = "connection_lost"
     RECONNECTED = "connection_reconnected"
+
 
 @dataclass
 class ConnectionEvent:
@@ -64,6 +66,7 @@ class ConnectionEvent:
             local_node_url=local_node_url,
         )
 
+
 class ConnectionAwareComponent(Protocol):
     """Protocol for components that need to be aware of connection changes."""
 
@@ -74,6 +77,7 @@ class ConnectionAwareComponent(Protocol):
     def on_connection_lost(self, event: ConnectionEvent) -> None:
         """Called when a connection is lost."""
         ...
+
 
 class ConnectionEventBus:
     """Central event bus for connection state changes."""

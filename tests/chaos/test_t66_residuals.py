@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t66_ops_cli_tour_explain_residual_assert() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -21,6 +22,7 @@ def test_t66_ops_cli_tour_explain_residual_assert() -> None:
     assert "config-check" in text
     assert "--explain" in text or "explain" in text
 
+
 def test_t66_phase_54_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -29,6 +31,7 @@ def test_t66_phase_54_honesty() -> None:
     )
     text = path.read_text(encoding="utf-8")
     assert "Phase 54" in text
+
 
 def test_t66_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]

@@ -15,6 +15,7 @@ from mpreg.datastructures.production_raft_implementation import (
 from mpreg.datastructures.raft_storage_adapters import RaftStorageFactory
 from tests.test_production_raft_integration import TestableStateMachine
 
+
 class _NullTransport:
     async def send_request_vote(self, target, request):  # type: ignore[no-untyped-def]
         return None
@@ -24,6 +25,7 @@ class _NullTransport:
 
     async def send_install_snapshot(self, target, request):  # type: ignore[no-untyped-def]
         return None
+
 
 @pytest.mark.asyncio
 async def test_install_snapshot_restores_state_machine() -> None:
@@ -70,6 +72,7 @@ async def test_install_snapshot_restores_state_machine() -> None:
     # State machine restored
     assert follower_sm.state.get("k") == 1 or "k" in follower_sm.state
     assert node.volatile_state.last_applied >= 5
+
 
 @pytest.mark.asyncio
 async def test_install_snapshot_failure_returns_success_false() -> None:

@@ -8,6 +8,7 @@ from graphlib import TopologicalSorter
 
 from mpreg.core.model import RPCCommand
 
+
 def debug_dependency_resolution():
     print("=== DEBUG: Dependency Resolution for Parallel Convergence ===")
 
@@ -118,6 +119,7 @@ def debug_dependency_resolution():
         for i, level in enumerate(levels):
             if "converged_analysis" in level:
                 print(f"   converged_analysis found in level {i + 1}")
+
 
 if __name__ == "__main__":
     debug_dependency_resolution()

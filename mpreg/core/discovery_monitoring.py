@@ -22,6 +22,7 @@ from mpreg.datastructures.type_aliases import (
 
 from .namespace_policy import NamespacePolicyAuditEntry, NamespacePolicyRule
 
+
 @dataclass(frozen=True, slots=True)
 class DiscoveryAccessAuditEntry:
     event: str
@@ -55,6 +56,7 @@ class DiscoveryAccessAuditEntry:
             reason=str(payload.get("reason", "")),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class DiscoveryAccessAuditRequest:
     limit: int | None = field(default=None, metadata={PAYLOAD_INT: True})
@@ -68,6 +70,7 @@ class DiscoveryAccessAuditRequest:
 
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
+
 
 @dataclass(slots=True)
 class DiscoveryAccessAuditLog:
@@ -90,6 +93,7 @@ class DiscoveryAccessAuditLog:
             entries = entries[-limit:]
         return tuple(entries)
 
+
 @dataclass(frozen=True, slots=True)
 class DiscoveryPolicyStatus:
     enabled: bool
@@ -110,6 +114,7 @@ class DiscoveryPolicyStatus:
 
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
+
 
 @dataclass(frozen=True, slots=True)
 class DiscoveryAccessAuditResponse:
@@ -133,6 +138,7 @@ class DiscoveryAccessAuditResponse:
             generated_at=float(payload.get("generated_at", 0.0) or 0.0),
             entries=entries,
         )
+
 
 @dataclass(frozen=True, slots=True)
 class DiscoveryLagStatus:

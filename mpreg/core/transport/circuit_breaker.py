@@ -27,12 +27,14 @@ type EndpointUrl = str
 type FailureCount = int
 type SuccessCount = int
 
+
 class CircuitBreakerState(Enum):
     """Circuit breaker states for connection health management."""
 
     CLOSED = "closed"  # Normal operation
     OPEN = "open"  # Failing, rejecting requests
     HALF_OPEN = "half_open"  # Testing if service recovered
+
 
 @dataclass(frozen=True, slots=True)
 class CircuitBreakerConfig:
@@ -41,6 +43,7 @@ class CircuitBreakerConfig:
     failure_threshold: int = 5
     recovery_timeout_ms: float = 60000.0  # 1 minute
     success_threshold: int = 3  # Successes needed to close circuit
+
 
 class CircuitBreakerProtocol(Protocol):
     """Protocol for circuit breaker implementations."""
@@ -61,6 +64,7 @@ class CircuitBreakerProtocol(Protocol):
     def state(self) -> CircuitBreakerState:
         """Get current circuit breaker state."""
         ...
+
 
 @dataclass(slots=True)
 class CircuitBreaker:
@@ -127,6 +131,7 @@ class CircuitBreaker:
         self.failure_count = 0
         self.success_count = 0
         self.last_failure_time = 0.0
+
 
 # Factory function for creating circuit breakers
 def create_circuit_breaker(

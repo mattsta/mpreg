@@ -14,6 +14,7 @@ from mpreg.server_pkg.openapi_surface import (
     route_table_path_set,
 )
 
+
 def test_t23_config_check_shared_audit_capabilities_parity(tmp_path: Path) -> None:
     """config-check shared_audit.capabilities mirrors metrics honesty contract."""
     cfg = tmp_path / "t23-audit.toml"
@@ -69,16 +70,21 @@ monitoring_port = 19026
     assert d2["groups"]["shared_audit"]["capabilities"]["gset_epidemic"] is False
     assert d2["groups"]["shared_audit"]["capabilities"]["siem"] is False
 
+
 def test_t23_config_check_explain_mentions_audit_caps() -> None:
     runner = CliRunner()
     result = runner.invoke(
-        cli, ["config-check", "mpreg/profiles/dev.toml", "--format", "json", "--explain"]
+        cli,
+        ["config-check", "mpreg/profiles/dev.toml", "--format", "json", "--explain"],
     )
     assert result.exit_code in (0, 2)
     out = result.output
     assert "shared_audit" in out
     # guide text after JSON
-    assert "SIEM" in out or "siem" in out.lower() or "BFT" in out or "bft" in out.lower()
+    assert (
+        "SIEM" in out or "siem" in out.lower() or "BFT" in out or "bft" in out.lower()
+    )
+
 
 def test_t23_openapi_still_matches_route_table() -> None:
     assert openapi_path_set() == route_table_path_set()

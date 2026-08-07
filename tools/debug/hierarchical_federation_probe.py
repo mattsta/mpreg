@@ -15,11 +15,13 @@ from mpreg.server import MPREGServer
 
 type Seconds = float
 
+
 @dataclass(frozen=True, slots=True)
 class HierarchicalTierConfig:
     name: str
     regions: int
     nodes_per_region: int
+
 
 @dataclass(slots=True)
 class HierarchicalRegionData:
@@ -27,11 +29,13 @@ class HierarchicalRegionData:
     servers: list[MPREGServer]
     ports: list[int]
 
+
 @dataclass(slots=True)
 class HierarchicalTierData:
     name: str
     regions: list[HierarchicalRegionData]
     coordinators: list[MPREGServer]
+
 
 @dataclass(frozen=True, slots=True)
 class PropagationSample:
@@ -40,6 +44,7 @@ class PropagationSample:
     total_nodes: int
     success_rate: float
 
+
 @dataclass(frozen=True, slots=True)
 class ProbeConfig:
     initial_convergence_seconds: Seconds
@@ -47,6 +52,7 @@ class ProbeConfig:
     propagation_duration_seconds: Seconds
     post_fault_duration_seconds: Seconds
     failure_mode: str
+
 
 @dataclass(frozen=True, slots=True)
 class ProbeReport:
@@ -69,9 +75,11 @@ class ProbeReport:
     post_fault_max_hops_from_global: int
     post_fault_unreachable_from_global: int
 
+
 def _configure_logging() -> None:
     logging.getLogger("websockets.server").setLevel(logging.CRITICAL)
     logging.getLogger("websockets.client").setLevel(logging.CRITICAL)
+
 
 def _function_presence(
     *, servers: list[MPREGServer], function_name: str
@@ -85,6 +93,7 @@ def _function_presence(
         else:
             missing.append(node_name)
     return tuple(sorted(holders)), tuple(sorted(missing))
+
 
 def _connected_component_sizes(servers: list[MPREGServer]) -> tuple[int, ...]:
     by_url = {server.cluster.local_url: server for server in servers}
@@ -112,6 +121,7 @@ def _connected_component_sizes(servers: list[MPREGServer]) -> tuple[int, ...]:
                 queue.append(peer_url)
         component_sizes.append(len(component))
     return tuple(sorted(component_sizes, reverse=True))
+
 
 def _hop_reachability(
     servers: list[MPREGServer], *, source_node_url: str
@@ -141,6 +151,7 @@ def _hop_reachability(
     unreachable = max(0, len(by_url) - len(visited))
     return max_hops, unreachable
 
+
 async def _sample_function_propagation(
     *,
     servers: list[MPREGServer],
@@ -169,6 +180,7 @@ async def _sample_function_propagation(
             break
         await asyncio.sleep(sample_interval_seconds)
     return samples
+
 
 async def _build_hierarchy(
     *,
@@ -244,6 +256,7 @@ async def _build_hierarchy(
             bridge_count += 1
 
     return all_servers, tier_data, tasks, bridge_count
+
 
 async def _run_probe(
     *,
@@ -401,6 +414,7 @@ async def _run_probe(
                 for port in region.ports:
                     allocator.release_port(port)
 
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Probe hierarchical federation propagation/fault timelines"
@@ -438,6 +452,7 @@ def _parse_args() -> argparse.Namespace:
     )
     return parser.parse_args()
 
+
 def main() -> int:
     args = _parse_args()
     output_json = Path(args.output_json).resolve() if args.output_json else None
@@ -449,6 +464,7 @@ def main() -> int:
         failure_mode=str(args.failure_mode),
     )
     return asyncio.run(_run_probe(config=config, output_json=output_json))
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -31,6 +31,7 @@ from mpreg.fabric.router import (
     FabricRoutingPolicy,
 )
 
+
 class StubFederationPlanner:
     def __init__(self, plan: FabricForwardingPlan) -> None:
         self.plan = plan
@@ -45,6 +46,7 @@ class StubFederationPlanner:
     ) -> FabricForwardingPlan:
         self.calls.append((target_cluster, visited_clusters, remaining_hops))
         return self.plan
+
 
 def _make_message(
     *,
@@ -72,6 +74,7 @@ def _make_message(
         timestamp=123.0,
     )
 
+
 def test_policy_pattern_matching() -> None:
     policy = FabricRoutingPolicy(
         policy_id="policy-test",
@@ -90,6 +93,7 @@ def test_policy_pattern_matching() -> None:
     assert policy.matches_message(message_match)
     assert not policy.matches_message(message_no_match)
     assert not policy.matches_message(message_wrong_type)
+
 
 @pytest.mark.asyncio
 async def test_router_cache_and_statistics() -> None:
@@ -127,6 +131,7 @@ async def test_router_cache_and_statistics() -> None:
     assert route_second.reason is FabricRouteReason.LOCAL
     assert stats.total_routes_computed == 2
     assert stats.cache_hit_ratio > 0.0
+
 
 @pytest.mark.asyncio
 async def test_federation_route_hop_budget() -> None:
@@ -182,6 +187,7 @@ async def test_federation_route_hop_budget() -> None:
     assert route.federation_path == ["cluster-a", "cluster-b"]
     assert planner.calls == [("cluster-b", ("cluster-a",), 1)]
 
+
 @pytest.mark.asyncio
 async def test_queue_and_cache_routing_targets() -> None:
     routing_index = RoutingIndex()
@@ -226,6 +232,7 @@ async def test_queue_and_cache_routing_targets() -> None:
     assert queue_route.targets[0].node_id == "node-a"
     assert cache_route.targets[0].node_id == "node-a"
     assert cache_route.reason is FabricRouteReason.LOCAL
+
 
 @given(
     token=st.text(

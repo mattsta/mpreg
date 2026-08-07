@@ -28,6 +28,7 @@ from mpreg.fabric.federation_config import FederationConfig, FederationMode
 from mpreg.fabric.monitoring_endpoints import create_federation_monitoring_system
 from mpreg.server import MPREGServer
 
+
 async def main() -> None:
     with app_run(
         "client_auth_token",
@@ -197,6 +198,7 @@ async def main() -> None:
                     await unified.stop()
 
             await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

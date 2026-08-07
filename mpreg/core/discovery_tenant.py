@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from mpreg.core.payloads import PayloadMapping
 from mpreg.datastructures.type_aliases import TenantId
 
+
 @dataclass(frozen=True, slots=True)
 class DiscoveryTenantCredential:
     tenant_id: TenantId

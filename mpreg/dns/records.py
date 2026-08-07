@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from dnslib import AAAA, CNAME, QTYPE, RR, SRV, TXT, A
 
+
 @dataclass(frozen=True, slots=True)
 class DnsRecord:
     name: str
@@ -12,12 +13,14 @@ class DnsRecord:
     def to_rr(self) -> RR:
         raise NotImplementedError
 
+
 @dataclass(frozen=True, slots=True)
 class ARecord(DnsRecord):
     address: str
 
     def to_rr(self) -> RR:
         return RR(self.name, rtype=QTYPE.A, rdata=A(self.address), ttl=self.ttl)
+
 
 @dataclass(frozen=True, slots=True)
 class AAAARecord(DnsRecord):
@@ -26,12 +29,14 @@ class AAAARecord(DnsRecord):
     def to_rr(self) -> RR:
         return RR(self.name, rtype=QTYPE.AAAA, rdata=AAAA(self.address), ttl=self.ttl)
 
+
 @dataclass(frozen=True, slots=True)
 class CnameRecord(DnsRecord):
     target: str
 
     def to_rr(self) -> RR:
         return RR(self.name, rtype=QTYPE.CNAME, rdata=CNAME(self.target), ttl=self.ttl)
+
 
 @dataclass(frozen=True, slots=True)
 class SrvRecord(DnsRecord):
@@ -47,6 +52,7 @@ class SrvRecord(DnsRecord):
             rdata=SRV(self.priority, self.weight, self.port, self.target),
             ttl=self.ttl,
         )
+
 
 @dataclass(frozen=True, slots=True)
 class TxtRecord(DnsRecord):

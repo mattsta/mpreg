@@ -18,6 +18,7 @@ from mpreg.core.persistence.config import PersistenceConfig, PersistenceMode
 from mpreg.core.port_allocator import port_context
 from mpreg.server import MPREGServer
 
+
 async def _start_server(
     port: int, data_dir: Path, name: str
 ) -> tuple[MPREGServer, asyncio.Task[None]]:
@@ -40,6 +41,7 @@ async def _start_server(
     await asyncio.sleep(1.0)
     return server, task
 
+
 async def _stop_server(server: MPREGServer, task: asyncio.Task[None]) -> None:
     await server.shutdown_async()
     try:
@@ -47,6 +49,7 @@ async def _stop_server(server: MPREGServer, task: asyncio.Task[None]) -> None:
     except TimeoutError:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
+
 
 async def main() -> None:
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -74,6 +77,7 @@ async def main() -> None:
             )
             print("Cache hit after restart:", result.success)
             await _stop_server(server, task)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

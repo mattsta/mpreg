@@ -8,6 +8,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.core.model import RPCCommand
 from mpreg.server import MPREGServer
 
+
 async def debug_simple_rpc():
     """Test simple RPC execution."""
 
@@ -74,6 +75,7 @@ async def debug_simple_rpc():
             await server_task
         except asyncio.CancelledError:
             pass  # Server cancellation during cleanup is expected
+
 
 if __name__ == "__main__":
     asyncio.run(debug_simple_rpc())

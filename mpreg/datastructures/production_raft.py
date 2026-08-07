@@ -48,6 +48,7 @@ import ulid
 
 from mpreg.core.native_codec import canonical_dumps
 
+
 # Core Raft State Enumerations
 class RaftState(Enum):
     """Raft node states following the Raft protocol specification."""
@@ -56,6 +57,7 @@ class RaftState(Enum):
     CANDIDATE = "candidate"  # Actively seeking votes to become leader
     LEADER = "leader"  # Handles all client requests; sends AppendEntries
 
+
 class LogEntryType(Enum):
     """Types of log entries in the Raft log."""
 
@@ -63,6 +65,7 @@ class LogEntryType(Enum):
     CONFIGURATION_CHANGE = "config"  # Cluster membership change
     SNAPSHOT = "snapshot"  # Log compaction snapshot marker
     NOOP = "noop"  # No-operation entry for leader initialization
+
 
 # Core Raft Data Structures
 @dataclass(frozen=True, slots=True)
@@ -119,6 +122,7 @@ class LogEntry:
         except Exception:
             return False
 
+
 @dataclass(frozen=True, slots=True)
 class RaftSnapshot:
     """
@@ -158,6 +162,7 @@ class RaftSnapshot:
         serialized = canonical_dumps(snapshot_data)
         object.__setattr__(self, "checksum", hashlib.sha256(serialized).hexdigest())
 
+
 # RPC Message Types
 @dataclass(frozen=True, slots=True)
 class RequestVoteRequest:
@@ -176,6 +181,7 @@ class RequestVoteRequest:
         if self.last_log_term < 0:
             raise ValueError("Last log term cannot be negative")
 
+
 @dataclass(frozen=True, slots=True)
 class RequestVoteResponse:
     """RequestVote RPC response as specified in Raft paper."""
@@ -187,6 +193,7 @@ class RequestVoteResponse:
     def __post_init__(self) -> None:
         if self.term < 0:
             raise ValueError("Term cannot be negative")
+
 
 @dataclass(frozen=True, slots=True)
 class AppendEntriesRequest:
@@ -209,6 +216,7 @@ class AppendEntriesRequest:
         if self.leader_commit < 0:
             raise ValueError("Leader commit index cannot be negative")
 
+
 @dataclass(frozen=True, slots=True)
 class AppendEntriesResponse:
     """AppendEntries RPC response as specified in Raft paper."""
@@ -225,6 +233,7 @@ class AppendEntriesResponse:
             raise ValueError("Term cannot be negative")
         if self.match_index < 0:
             raise ValueError("Match index cannot be negative")
+
 
 @dataclass(frozen=True, slots=True)
 class InstallSnapshotRequest:
@@ -252,6 +261,7 @@ class InstallSnapshotRequest:
         if self.offset < 0:
             raise ValueError("Offset cannot be negative")
 
+
 @dataclass(frozen=True, slots=True)
 class InstallSnapshotResponse:
     """InstallSnapshot RPC response.
@@ -268,6 +278,7 @@ class InstallSnapshotResponse:
     def __post_init__(self) -> None:
         if self.term < 0:
             raise ValueError("Term cannot be negative")
+
 
 # Storage and State Management Protocols
 @dataclass(frozen=True, slots=True)
@@ -287,6 +298,7 @@ class PersistentState:
         if self.current_term < 0:
             raise ValueError("Current term cannot be negative")
 
+
 @dataclass(slots=True)
 class VolatileState:
     """
@@ -304,6 +316,7 @@ class VolatileState:
             raise ValueError("Commit index cannot be negative")
         if self.last_applied < 0:
             raise ValueError("Last applied index cannot be negative")
+
 
 @dataclass(slots=True)
 class LeaderVolatileState:
@@ -329,6 +342,7 @@ class LeaderVolatileState:
         self.match_index = {member: 0 for member in cluster_members}
         self.match_index[leader_id] = last_log_index
 
+
 # Storage Interface
 class RaftStorageProtocol(Protocol):
     """Protocol for persistent storage backend used by Raft implementation."""
@@ -353,6 +367,7 @@ class RaftStorageProtocol(Protocol):
         """Clean up old snapshots, keeping only the most recent ones."""
         ...
 
+
 # Network Communication Interface
 class RaftTransportProtocol(Protocol):
     """Protocol for network communication between Raft nodes."""
@@ -374,6 +389,7 @@ class RaftTransportProtocol(Protocol):
     ) -> InstallSnapshotResponse | None:
         """Send InstallSnapshot RPC to target node."""
         ...
+
 
 # State Machine Interface
 class StateMachineProtocol(Protocol):

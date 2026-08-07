@@ -8,6 +8,7 @@ from mpreg.core.serialization import JsonSerializer
 
 from .kv_store import KeyValueStore
 
+
 @dataclass(slots=True)
 class CacheL2Store:
     """L2 cache persistence adapter backed by a KeyValueStore."""

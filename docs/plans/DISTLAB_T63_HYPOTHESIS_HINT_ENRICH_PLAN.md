@@ -1,13 +1,13 @@
 # DistLab T63 — Hypothesis residual_ops_hint enrichment (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T59 |
-| **Scope** | Property test format_residual_ops_hint ns/key enrichment |
-| **Point budget** | **~10 pts** |
-| **Entry points only** | `uv run pytest …` |
+| Field                 | Value                                                    |
+| --------------------- | -------------------------------------------------------- |
+| **Status**            | **Complete**                                             |
+| **Date**              | 2026-08-06                                               |
+| **Authority**         | Continuation after T59                                   |
+| **Scope**             | Property test format_residual_ops_hint ns/key enrichment |
+| **Point budget**      | **~10 pts**                                              |
+| **Entry points only** | `uv run pytest …`                                        |
 
 ## Goals
 

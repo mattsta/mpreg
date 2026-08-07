@@ -17,6 +17,7 @@ from mpreg.datastructures.type_aliases import (
     TopicName,
 )
 
+
 class QueueFederationKind(Enum):
     """Supported fabric queue federation message kinds."""
 
@@ -24,6 +25,7 @@ class QueueFederationKind(Enum):
     ACK = "queue_ack"
     SUBSCRIBE = "queue_subscribe"
     UNSUBSCRIBE = "queue_unsubscribe"
+
 
 @dataclass(frozen=True, slots=True)
 class QueueMessageOptions:
@@ -61,6 +63,7 @@ class QueueMessageOptions:
             required_acknowledgments=payload.get("required_acknowledgments"),
             headers=dict(payload.get("headers", {})),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class QueueFederationRequest:
@@ -122,6 +125,7 @@ class QueueFederationRequest:
             created_at=float(payload.get("created_at", time.time())),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class QueueFederationAck:
     """Acknowledgment routed through the fabric for queue deliveries."""
@@ -159,6 +163,7 @@ class QueueFederationAck:
             error_message=payload.get("error_message"),
             ack_timestamp=float(payload.get("ack_timestamp", time.time())),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class QueueFederationSubscription:
@@ -208,9 +213,11 @@ class QueueFederationSubscription:
             created_at=float(payload.get("created_at", time.time())),
         )
 
+
 QueueFederationMessage = (
     QueueFederationRequest | QueueFederationAck | QueueFederationSubscription
 )
+
 
 def queue_message_from_dict(payload: dict[str, Any]) -> QueueFederationMessage:
     kind = payload.get("kind")

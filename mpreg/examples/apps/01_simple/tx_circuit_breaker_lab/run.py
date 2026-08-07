@@ -8,6 +8,7 @@ import time
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 from mpreg.fabric.federation_optimized import CircuitBreaker
 
+
 async def main() -> None:
     with app_run(
         "tx_circuit_breaker_lab",
@@ -90,6 +91,7 @@ async def main() -> None:
 
         await asyncio.sleep(0)
         ok("tx_circuit_breaker_lab complete")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

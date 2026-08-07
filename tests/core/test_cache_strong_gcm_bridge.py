@@ -6,8 +6,6 @@ import pytest
 
 from mpreg.core.cache_models import (
     CacheMetadata,
-    CacheOptions,
-    ConsistencyLevel,
     GlobalCacheKey,
 )
 from mpreg.core.cache_strong import (
@@ -18,6 +16,7 @@ from mpreg.core.cache_strong import (
     _entry_op_id,
 )
 from mpreg.core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
+
 
 @pytest.mark.asyncio
 async def test_peer_commit_callback_promotes_gcm_l1() -> None:
@@ -57,6 +56,7 @@ async def test_peer_commit_callback_promotes_gcm_l1() -> None:
     assert got.entry.value == {"x": 1}
     assert _entry_op_id(got.entry) == "op-bridge-1"
     await gcm.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_abort_uncommit_evicts_gcm_l1() -> None:
@@ -102,6 +102,7 @@ async def test_abort_uncommit_evicts_gcm_l1() -> None:
     assert miss.success is False
     await gcm.shutdown()
 
+
 @pytest.mark.asyncio
 async def test_gcm_get_promotes_from_strong_backend_on_l1_miss() -> None:
     """Defensive path: backend visible without callback still surfaces on get."""
@@ -146,6 +147,7 @@ async def test_gcm_get_promotes_from_strong_backend_on_l1_miss() -> None:
     # Second get hits real L1
     assert gcm.l1_cache.get(key.to_local_key()) is not None
     await gcm.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_mesh_peer_gcm_readable_after_strong_put() -> None:
@@ -214,6 +216,7 @@ async def test_mesh_peer_gcm_readable_after_strong_put() -> None:
 
     for g in gcms.values():
         await g.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_mesh_ryw_all_gcms_after_strong_put() -> None:

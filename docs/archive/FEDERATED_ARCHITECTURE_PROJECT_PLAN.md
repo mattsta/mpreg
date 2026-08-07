@@ -72,11 +72,13 @@ class RPCServerGoodbye(BaseModel):
     timestamp: float = Field(default_factory=time.time)
     # Optional: Add signature for authenticated departures
 
+
 class GoodbyeReason(Enum):
     GRACEFUL_SHUTDOWN = "graceful_shutdown"
     MAINTENANCE = "maintenance"
     CLUSTER_REBALANCE = "cluster_rebalance"
     MANUAL_REMOVAL = "manual_removal"
+
 
 # Update RPCServerMessage union type (HELLO removed; catalog handles discovery)
 type RPCServerMessage = RPCServerGoodbye | RPCServerStatus

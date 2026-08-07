@@ -25,6 +25,7 @@ from mpreg.core.model import (
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 # Custom strategies for RPC testing
 @st.composite
 def rpc_command_names(draw) -> str:
@@ -34,6 +35,7 @@ def rpc_command_names(draw) -> str:
     )
     suffix = draw(st.integers(min_value=1, max_value=100))
     return f"{prefix}_{suffix}"
+
 
 @st.composite
 def rpc_command_args(draw) -> tuple[Any, ...]:
@@ -55,6 +57,7 @@ def rpc_command_args(draw) -> tuple[Any, ...]:
 
     return tuple(args)
 
+
 @st.composite
 def resource_sets(draw) -> frozenset[str]:
     """Generate valid resource sets."""
@@ -67,6 +70,7 @@ def resource_sets(draw) -> frozenset[str]:
         )
     )
     return frozenset(resources)
+
 
 @st.composite
 def rpc_command_chains(draw) -> list[RPCCommand]:
@@ -103,6 +107,7 @@ def rpc_command_chains(draw) -> list[RPCCommand]:
 
     return commands
 
+
 @st.composite
 def enhanced_rpc_requests(draw) -> RPCRequest:
     """Generate enhanced RPC requests with intermediate results enabled."""
@@ -115,6 +120,7 @@ def enhanced_rpc_requests(draw) -> RPCRequest:
         include_execution_summary=draw(st.booleans()),
         debug_mode=draw(st.booleans()),
     )
+
 
 class TestEnhancedRPCProperties:
     """Property-based tests for enhanced RPC system."""
@@ -583,6 +589,7 @@ class TestEnhancedRPCProperties:
 
         test_request_enhancement_invariants()
         print("✅ Enhanced RPC request properties verified")
+
 
 class TestEnhancedRPCPerformanceProperties:
     """Property-based tests for enhanced RPC performance characteristics."""

@@ -1,13 +1,13 @@
 # DistLab T57 — Live residual_ops_hint scrape (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T53 |
-| **Scope** | Live mesh e2e asserts residual_ops_hint on /metrics/strong |
-| **Point budget** | **~10 pts** |
-| **Entry points only** | `uv run pytest …` |
+| Field                 | Value                                                      |
+| --------------------- | ---------------------------------------------------------- |
+| **Status**            | **Complete**                                               |
+| **Date**              | 2026-08-06                                                 |
+| **Authority**         | Continuation after T53                                     |
+| **Scope**             | Live mesh e2e asserts residual_ops_hint on /metrics/strong |
+| **Point budget**      | **~10 pts**                                                |
+| **Entry points only** | `uv run pytest …`                                          |
 
 ## Goals
 

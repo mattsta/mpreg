@@ -39,6 +39,7 @@ from mpreg.fabric.hubs import (
     RegionalHub,
 )
 
+
 def create_local_hub_capabilities():
     """Create default capabilities for local hubs."""
     return HubCapabilities(
@@ -52,6 +53,7 @@ def create_local_hub_capabilities():
         cpu_capacity=50.0,
         memory_capacity_gb=16.0,
     )
+
 
 def create_regional_hub_capabilities():
     """Create default capabilities for regional hubs."""
@@ -67,6 +69,7 @@ def create_regional_hub_capabilities():
         memory_capacity_gb=32.0,
     )
 
+
 def create_global_hub_capabilities():
     """Create default capabilities for global hubs."""
     return HubCapabilities(
@@ -81,6 +84,7 @@ def create_global_hub_capabilities():
         memory_capacity_gb=128.0,
     )
 
+
 @pytest.fixture
 def sample_routing_policy():
     """Create a sample routing policy for testing."""
@@ -92,6 +96,7 @@ def sample_routing_policy():
         cache_route_ttl_seconds=300.0,
         cache_max_entries=1000,
     )
+
 
 @pytest.fixture
 def sample_hub_topology():
@@ -192,10 +197,12 @@ def sample_hub_topology():
 
     return topology
 
+
 @pytest.fixture
 def sample_hub_selector(sample_hub_topology, sample_routing_policy):
     """Create a sample hub selector for testing."""
     return HubSelector(sample_hub_topology, sample_routing_policy)
+
 
 @pytest.fixture
 def sample_zone_partitioner():
@@ -281,10 +288,12 @@ def sample_zone_partitioner():
 
     return partitioner
 
+
 @pytest.fixture
 def sample_hierarchical_router(sample_hub_topology, sample_routing_policy):
     """Create a sample hierarchical router for testing."""
     return HierarchicalRouter(sample_hub_topology, sample_routing_policy)
+
 
 class TestRoutingPolicy:
     """Test suite for routing policy configuration."""
@@ -317,6 +326,7 @@ class TestRoutingPolicy:
         assert policy.max_load_threshold == 0.6
         assert policy.same_region_preference == 0.9
         assert policy.cross_region_penalty == 2.0
+
 
 class TestHubRoute:
     """Test suite for hub route representation."""
@@ -386,6 +396,7 @@ class TestHubRoute:
 
         assert good_score > poor_score
 
+
 class TestZoneDefinition:
     """Test suite for zone definition."""
 
@@ -448,6 +459,7 @@ class TestZoneDefinition:
         # Different zones
         external_latency = zone1.get_zone_latency_to(zone2)
         assert external_latency > 20.0
+
 
 class TestHubSelector:
     """Test suite for hub selector."""
@@ -537,6 +549,7 @@ class TestHubSelector:
         assert hasattr(stats, "policy_config")
         assert stats.selection_counts["local_selections"] > 0
 
+
 class TestZonePartitioner:
     """Test suite for zone partitioner."""
 
@@ -613,6 +626,7 @@ class TestZonePartitioner:
 
         stats = partitioner.get_zone_statistics()
         assert stats.zone_hierarchy_depth >= 3  # At least 3 levels
+
 
 class TestHierarchicalRouter:
     """Test suite for hierarchical router."""
@@ -805,6 +819,7 @@ class TestHierarchicalRouter:
             policy_config.max_latency_ms == 500.0
         )  # Using sample policy configuration
 
+
 class TestEndToEndHierarchicalRouting:
     """Test suite for end-to-end hierarchical routing."""
 
@@ -909,6 +924,7 @@ class TestEndToEndHierarchicalRouting:
         cache_hit_rate = stats.cache_statistics.cache_hit_rate
         # Note: Cache hit rate might be 0.0 if all routes are unique
         assert cache_hit_rate >= 0.0, "Invalid cache hit rate"
+
 
 class TestPerformanceAndOptimization:
     """Test suite for performance and optimization features."""
@@ -1022,6 +1038,7 @@ class TestPerformanceAndOptimization:
         # The hierarchical structure should provide O(log N) routing
         # This is achieved through the 3-tier hierarchy limiting path lengths
         assert topology_stats.hierarchy_depth == 3
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

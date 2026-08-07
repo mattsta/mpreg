@@ -7,6 +7,7 @@ from pathlib import Path
 from mpreg.core.rpc_naming import PlatformRpc
 from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
 
+
 def test_t48_openapi_platform_cache_rpc_catalog() -> None:
     doc = build_monitoring_openapi()
     schemas = (doc.get("components") or {}).get("schemas") or {}
@@ -16,9 +17,7 @@ def test_t48_openapi_platform_cache_rpc_catalog() -> None:
     assert "strong_retry_abort" in cmds
     fqn = cmds["strong_retry_abort"]["properties"]["fqn"]["enum"]
     assert PlatformRpc.CACHE_STRONG_RETRY_ABORT in fqn
-    honesty = cmds["strong_retry_abort"]["properties"]["result_honesty"][
-        "properties"
-    ]
+    honesty = cmds["strong_retry_abort"]["properties"]["result_honesty"]["properties"]
     assert honesty["ops_driven"]["enum"] == [True]
     assert honesty["automatic_heal"]["enum"] == [False]
     assert honesty["cft_best_effort"]["enum"] == [True]
@@ -30,6 +29,7 @@ def test_t48_openapi_platform_cache_rpc_catalog() -> None:
     assert cmds["invalidate"]["properties"]["fqn"]["enum"] == [
         PlatformRpc.CACHE_INVALIDATE
     ]
+
 
 def test_t48_openapi_tag_and_x_extension() -> None:
     doc = build_monitoring_openapi()
@@ -46,12 +46,14 @@ def test_t48_openapi_tag_and_x_extension() -> None:
     assert "strong_retry_abort" in desc or "retry" in desc
     assert "not http" in cat_desc or "wire" in cat_desc or "rpc" in cat_desc
 
+
 def test_t48_catalog_honesty_text() -> None:
     doc = build_monitoring_openapi()
     cat = doc["components"]["schemas"]["PlatformCacheRpcCatalog"]
     blob = str(cat).lower()
     assert "not automatic" in blob or "ops-driven" in blob
     assert "not bft" in blob or "cft" in blob
+
 
 def test_t48_phase_36_honesty() -> None:
     path = (
@@ -62,6 +64,7 @@ def test_t48_phase_36_honesty() -> None:
     text = path.read_text(encoding="utf-8")
     assert "Phase 36" in text
     assert "PlatformCacheRpcCatalog" in text or "platform-rpc" in text.lower()
+
 
 def test_t48_runbook_openapi_catalog() -> None:
     path = (

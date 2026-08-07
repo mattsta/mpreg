@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 from click.testing import CliRunner
+
 
 def test_t43_cli_help_registered() -> None:
     from mpreg.cli.main import cli
@@ -22,6 +22,7 @@ def test_t43_cli_help_registered() -> None:
     # Honesty in help text
     help_l = r2.output.lower()
     assert "not automatic" in help_l or "ops-driven" in help_l or "cft" in help_l
+
 
 def test_t43_cli_requires_url() -> None:
     from mpreg.cli.main import cli
@@ -42,6 +43,7 @@ def test_t43_cli_requires_url() -> None:
     )
     assert r.exit_code != 0
     assert "url" in (r.output + str(r.exception)).lower()
+
 
 def test_t43_cli_invokes_client_retry() -> None:
     from mpreg.cli.main import cli
@@ -98,6 +100,7 @@ def test_t43_cli_invokes_client_retry() -> None:
     assert kwargs.kwargs.get("version") == "v1"
     assert kwargs.kwargs.get("peers") == ["n1", "n2"]
 
+
 def test_t43_cli_json_and_fail_exit() -> None:
     from mpreg.cli.main import cli
     from mpreg.client.unified_client import StrongRetryAbortResult
@@ -136,27 +139,31 @@ def test_t43_cli_json_and_fail_exit() -> None:
             ],
         )
     assert r.exit_code == 1, r.output
-    assert "still_fail" in r.output or '"cleared": false' in r.output.lower() or (
-        '"success": false' in r.output.lower()
+    assert (
+        "still_fail" in r.output
+        or '"cleared": false' in r.output.lower()
+        or ('"success": false' in r.output.lower())
     )
     assert "ops_driven" in r.output
 
+
 def test_t43_docs_honesty() -> None:
     root = Path(__file__).resolve().parents[2]
-    runbook = (
-        root / "docs" / "ops" / "STRONG_AND_SHARED_AUDIT_RUNBOOK.md"
-    ).read_text(encoding="utf-8")
+    runbook = (root / "docs" / "ops" / "STRONG_AND_SHARED_AUDIT_RUNBOOK.md").read_text(
+        encoding="utf-8"
+    )
     assert "cache-strong-retry-abort" in runbook
-    residual = (
-        root / "docs" / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md"
-    ).read_text(encoding="utf-8")
+    residual = (root / "docs" / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md").read_text(
+        encoding="utf-8"
+    )
     assert "Phase 31" in residual
     guide = (root / "docs" / "MPREG_CLIENT_GUIDE.md").read_text(encoding="utf-8")
     assert "cache-strong-retry-abort" in guide
-    plan = (
-        root / "docs" / "plans" / "DISTLAB_T43_CLI_RETRY_ABORT_PLAN.md"
-    ).read_text(encoding="utf-8")
+    plan = (root / "docs" / "plans" / "DISTLAB_T43_CLI_RETRY_ABORT_PLAN.md").read_text(
+        encoding="utf-8"
+    )
     assert "not automatic" in plan.lower() or "ops-driven" in plan.lower()
+
 
 def test_t43_platform_honesty_lists_command() -> None:
     """Keep ERG-05 plane smoke list aware of retry-abort CLI."""

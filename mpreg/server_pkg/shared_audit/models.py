@@ -9,17 +9,21 @@ from typing import Any
 import orjson
 import ulid
 
+
 def stable_canonical_json(obj: Any) -> str:
     """Deterministic JSON for merge conflict resolution (bytewise-min wins)."""
     return orjson.dumps(obj, option=orjson.OPT_SORT_KEYS).decode("utf-8")
+
 
 def mint_entry_id() -> str:
     """Mint a new ULID string for an origin audit record."""
     return str(ulid.new())
 
+
 def entry_sort_key(timestamp: float, entry_id: str) -> tuple[float, str]:
     """Total order: timestamp ascending, then entry_id lexicographic."""
     return (float(timestamp), str(entry_id))
+
 
 @dataclass(frozen=True, slots=True)
 class SharedAuditRecord:
@@ -90,6 +94,7 @@ class SharedAuditRecord:
             gossip_eligible=bool(raw.get("gossip_eligible", True)),
         )
 
+
 def merge_records(
     a: SharedAuditRecord, b: SharedAuditRecord
 ) -> tuple[SharedAuditRecord, bool]:
@@ -110,6 +115,7 @@ def merge_records(
         return a, False
     winner = a if ca < cb else b
     return winner, True
+
 
 def record_from_mgmt_entry(
     *,
@@ -139,6 +145,7 @@ def record_from_mgmt_entry(
         detail=dict(detail),
         gossip_eligible=gossip_eligible,
     )
+
 
 def legacy_synthetic_id(legacy_fields: dict[str, Any]) -> str:
     """Stable non-gossip id for pre-schema JSONL lines."""

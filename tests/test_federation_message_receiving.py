@@ -10,6 +10,7 @@ from mpreg.core.transport.circuit_breaker import (
     CircuitBreakerState,
 )
 
+
 class _StubConnection:
     def __init__(self) -> None:
         self.is_connected = True
@@ -18,12 +19,14 @@ class _StubConnection:
     async def send(self, data: bytes) -> None:
         self.sent.append(data)
 
+
 class _StubServer:
     def __init__(self, connections: dict[str, _StubConnection]) -> None:
         self._connections = connections
 
     def _get_all_peer_connections(self) -> dict[str, _StubConnection]:
         return self._connections
+
 
 @pytest.mark.asyncio
 async def test_server_envelope_transport_sends() -> None:
@@ -40,6 +43,7 @@ async def test_server_envelope_transport_sends() -> None:
     assert sent is True
     assert connection.sent
 
+
 def test_server_envelope_transport_peer_ids() -> None:
     server = _StubServer({"ws://b": _StubConnection(), "ws://a": _StubConnection()})
     transport = ServerEnvelopeTransport(server=server, serializer=JsonSerializer())
@@ -47,12 +51,14 @@ def test_server_envelope_transport_peer_ids() -> None:
     assert transport.peer_ids() == ("ws://a", "ws://b")
     assert transport.peer_ids(exclude="ws://a") == ("ws://b",)
 
+
 class _FailingConnection:
     def __init__(self) -> None:
         self.is_connected = True
 
     async def send(self, data: bytes) -> None:
         raise RuntimeError("boom")
+
 
 @pytest.mark.asyncio
 async def test_server_envelope_transport_circuit_breaker_opens() -> None:

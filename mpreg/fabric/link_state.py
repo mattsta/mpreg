@@ -36,12 +36,14 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from mpreg.fabric.peer_directory import PeerNeighbor
     from mpreg.fabric.route_announcer import RouteLinkMetrics
 
+
 class LinkStateMode(StrEnum):
     """Link-state routing mode selection."""
 
     DISABLED = "disabled"
     PREFER = "prefer"
     ONLY = "only"
+
 
 @dataclass(frozen=True, slots=True)
 class LinkStateNeighbor:
@@ -71,6 +73,7 @@ class LinkStateNeighbor:
             reliability_score=float(payload.get("reliability_score", 1.0)),
             cost_score=float(payload.get("cost_score", 0.0)),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class LinkStateUpdate:
@@ -117,12 +120,14 @@ class LinkStateUpdate:
             sequence=int(payload.get("sequence", 0)),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class LinkStateEntryKey:
     """Key for a link-state entry scoped by origin + area."""
 
     origin: ClusterId
     area: AreaId | None
+
 
 @dataclass(frozen=True, slots=True)
 class LinkStateEdgeKey:
@@ -131,12 +136,14 @@ class LinkStateEdgeKey:
     source: ClusterId
     target: ClusterId
 
+
 @dataclass(frozen=True, slots=True)
 class LinkStateAreaPair:
     """Pair of source and target areas for summary export rules."""
 
     source_area: AreaId
     target_area: AreaId
+
 
 @dataclass(frozen=True, slots=True)
 class LinkStateSummaryFilter:
@@ -154,6 +161,7 @@ class LinkStateSummaryFilter:
         return not (
             self.denied_neighbors is not None and cluster_id in self.denied_neighbors
         )
+
 
 @dataclass(frozen=True, slots=True)
 class LinkStateAreaPolicy:
@@ -252,6 +260,7 @@ class LinkStateAreaPolicy:
                 summary[target_area] = sorted(selected)
         return summary
 
+
 @dataclass(slots=True)
 class LinkStateEntry:
     """Stored link-state update for a cluster."""
@@ -266,6 +275,7 @@ class LinkStateEntry:
     def is_expired(self, now: Timestamp | None = None) -> bool:
         timestamp = now if now is not None else time.time()
         return timestamp > (self.advertised_at + self.ttl_seconds)
+
 
 @dataclass(slots=True)
 class LinkStateStats:
@@ -285,6 +295,7 @@ class LinkStateStats:
             "updates_filtered": self.updates_filtered,
             "entries_expired": self.entries_expired,
         }
+
 
 @dataclass(slots=True)
 class LinkStateTable:
@@ -381,6 +392,7 @@ class LinkStateTable:
                 neighbors.add(neighbor.cluster_id)
         return frozenset(neighbors)
 
+
 @dataclass(slots=True)
 class LinkStatePublisher:
     """Publish link-state updates through the gossip protocol."""
@@ -405,6 +417,7 @@ class LinkStatePublisher:
         )
         await self.gossip.add_message(message)
         return message
+
 
 @dataclass(slots=True)
 class LinkStateProcessor:
@@ -571,6 +584,7 @@ class LinkStateProcessor:
         if area is None:
             return False
         return area in self.allowed_areas
+
 
 @dataclass(slots=True)
 class LinkStateAnnouncer:

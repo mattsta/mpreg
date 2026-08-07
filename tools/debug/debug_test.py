@@ -7,6 +7,7 @@ from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 async def test_simple_server():
     """Test basic server startup and shutdown."""
     print("Creating server...")
@@ -42,6 +43,7 @@ async def test_simple_server():
             await asyncio.wait_for(server_task, timeout=2.0)
         except TimeoutError, asyncio.CancelledError:
             print("Server shutdown completed")
+
 
 if __name__ == "__main__":
     asyncio.run(test_simple_server())

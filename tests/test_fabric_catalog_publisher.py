@@ -10,6 +10,7 @@ from mpreg.fabric.catalog_publisher import CatalogDeltaPublisher
 from mpreg.fabric.gossip import GossipMessageType, GossipProtocol
 from mpreg.fabric.gossip_transport import InProcessGossipTransport
 
+
 @pytest.mark.asyncio
 async def test_catalog_publisher_emits_gossip_message() -> None:
     catalog = RoutingCatalog()

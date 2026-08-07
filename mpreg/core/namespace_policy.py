@@ -44,23 +44,30 @@ _current_actor_cluster_id: ContextVar[ClusterId | None] = ContextVar(
     "mpreg_actor_cluster_id", default=None
 )
 
+
 def get_actor_tenant_id() -> TenantId | None:
     return _current_actor_tenant_id.get()
+
 
 def get_actor_cluster_id() -> ClusterId | None:
     return _current_actor_cluster_id.get()
 
+
 def set_actor_tenant_id(tenant_id: TenantId | None) -> Token[TenantId | None]:
     return _current_actor_tenant_id.set(tenant_id)
+
 
 def set_actor_cluster_id(cluster_id: ClusterId | None) -> Token[ClusterId | None]:
     return _current_actor_cluster_id.set(cluster_id)
 
+
 def reset_actor_tenant_id(token: Token[TenantId | None]) -> None:
     _current_actor_tenant_id.reset(token)
 
+
 def reset_actor_cluster_id(token: Token[ClusterId | None]) -> None:
     _current_actor_cluster_id.reset(token)
+
 
 @contextmanager
 def actor_context(
@@ -76,6 +83,7 @@ def actor_context(
     finally:
         reset_actor_cluster_id(cluster_token)
         reset_actor_tenant_id(tenant_token)
+
 
 @dataclass(frozen=True, slots=True)
 class CutoverWindow:
@@ -110,6 +118,7 @@ class CutoverWindow:
                 bool(allow_summaries) if allow_summaries is not None else None
             ),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class NamespacePolicyRule:
@@ -181,6 +190,7 @@ class NamespacePolicyRule:
             ),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class NamespacePolicyDecision:
     allowed: bool
@@ -189,6 +199,7 @@ class NamespacePolicyDecision:
 
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
+
 
 @dataclass(slots=True)
 class NamespacePolicyEngine:
@@ -325,6 +336,7 @@ class NamespacePolicyEngine:
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
 
+
 @dataclass(frozen=True, slots=True)
 class NamespaceCatalogFilterPolicy:
     base_policy: CatalogFilterPolicy
@@ -378,6 +390,7 @@ class NamespaceCatalogFilterPolicy:
                 return False
         return True
 
+
 @dataclass(frozen=True, slots=True)
 class NamespaceStatusRequest:
     namespace: NamespaceName
@@ -403,6 +416,7 @@ class NamespaceStatusRequest:
 
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
+
 
 @dataclass(frozen=True, slots=True)
 class NamespaceStatusResponse:
@@ -456,6 +470,7 @@ class NamespaceStatusResponse:
             ),
         )
 
+
 def _topic_prefixes(patterns: tuple[str, ...]) -> tuple[str, ...]:
     prefixes: list[str] = []
     for pattern in patterns:
@@ -467,6 +482,7 @@ def _topic_prefixes(patterns: tuple[str, ...]) -> tuple[str, ...]:
         prefix = prefix.rstrip(".")
         prefixes.append(prefix)
     return tuple(prefixes)
+
 
 @dataclass(frozen=True, slots=True)
 class NamespacePolicyValidationResponse:
@@ -488,6 +504,7 @@ class NamespacePolicyValidationResponse:
             rule_count=int(payload.get("rule_count", 0) or 0),
             errors=tuple(payload.get("errors", []) or []),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class NamespacePolicyApplyResponse:
@@ -511,6 +528,7 @@ class NamespacePolicyApplyResponse:
             rule_count=int(payload.get("rule_count", 0) or 0),
             errors=tuple(payload.get("errors", []) or []),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class NamespacePolicyExportResponse:
@@ -540,6 +558,7 @@ class NamespacePolicyExportResponse:
             rule_count=int(payload.get("rule_count", 0) or 0),
             rules=rules,
         )
+
 
 @dataclass(frozen=True, slots=True)
 class NamespacePolicyApplyRequest:
@@ -579,6 +598,7 @@ class NamespacePolicyApplyRequest:
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
 
+
 @dataclass(frozen=True, slots=True)
 class NamespacePolicyAuditRequest:
     limit: int | None = field(default=None, metadata={PAYLOAD_INT: True})
@@ -592,6 +612,7 @@ class NamespacePolicyAuditRequest:
 
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
+
 
 @dataclass(frozen=True, slots=True)
 class NamespacePolicyAuditEntry:
@@ -618,6 +639,7 @@ class NamespacePolicyAuditEntry:
             errors=tuple(payload.get("errors", []) or []),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class NamespacePolicyAuditResponse:
     generated_at: Timestamp = field(metadata={PAYLOAD_FLOAT: True})
@@ -641,6 +663,7 @@ class NamespacePolicyAuditResponse:
             entries=entries,
         )
 
+
 @dataclass(slots=True)
 class NamespacePolicyAuditLog:
     max_entries: int = 500
@@ -661,6 +684,7 @@ class NamespacePolicyAuditLog:
         if limit is not None and limit >= 0:
             entries = entries[-limit:]
         return tuple(entries)
+
 
 def validate_namespace_policy_rules(
     rules: tuple[NamespacePolicyRule, ...],

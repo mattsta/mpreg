@@ -14,6 +14,7 @@ from mpreg.core.model import RPCCommand
 from mpreg.server import MPREGServer
 from tests.test_helpers import TestPortManager
 
+
 @pytest.fixture
 async def five_node_cluster():
     """Create a 5-node cluster with different specializations."""
@@ -126,6 +127,7 @@ async def five_node_cluster():
         # Cleanup port allocations
         port_manager.cleanup()
 
+
 async def _register_specialized_functions(servers):
     """Register specialized functions on each server node."""
 
@@ -216,6 +218,7 @@ async def _register_specialized_functions(servers):
 
     servers[4].register_command("process_sensors", process_sensor_data, ["sensors"])
     servers[4].register_command("check_alert", realtime_alert, ["realtime"])
+
 
 class TestAdvancedClusterScenarios:
     """Test complex multi-node cluster scenarios."""
@@ -410,6 +413,7 @@ class TestAdvancedClusterScenarios:
 
             assert result["processed"] == "gpu_processed_test_data"
             assert result["function"] == "new_gpu_function"
+
 
 class TestTopologicalRequestRouting:
     """Test sophisticated request routing in complex topologies."""

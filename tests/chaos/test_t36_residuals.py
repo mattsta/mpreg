@@ -16,6 +16,7 @@ from mpreg.core.global_cache import GlobalCacheManager
 from mpreg.server_pkg.monitoring_metrics import build_strong_metrics
 from mpreg.server_pkg.openapi_surface import _strong_metrics_schema
 
+
 @pytest.mark.asyncio
 async def test_t36_abort_fail_peers_on_cft_residual() -> None:
     """Partial COMMIT + lost ABORT → residual peer in abort_fail_peers."""
@@ -53,6 +54,7 @@ async def test_t36_abort_fail_peers_on_cft_residual() -> None:
     ent = backends["n1"].get_visible(key)
     assert ent is not None and _entry_op_id(ent) == res.operation_id
 
+
 @pytest.mark.asyncio
 async def test_t36_abort_fail_peers_empty_when_abort_delivered() -> None:
     """Prepare-fail path with no drop_abort → empty abort_fail_peers."""
@@ -78,6 +80,7 @@ async def test_t36_abort_fail_peers_empty_when_abort_delivered() -> None:
     assert list(qi.get("abort_fail_peers") or []) == []
     assert qi.get("abort_best_effort_residual_candidates") is False
     assert coord.last_abort_fail_peers == []
+
 
 @pytest.mark.asyncio
 async def test_t36_gcm_status_surfaces_abort_fail_peers() -> None:
@@ -130,6 +133,7 @@ async def test_t36_gcm_status_surfaces_abort_fail_peers() -> None:
     assert "n1" in list(payload.get("last_abort_fail_peers") or [])
     assert payload.get("last_abort_fail_op_id") == res.operation_id
 
+
 @pytest.mark.asyncio
 async def test_t36_distlab_cft_scenario_abort_fail_peers() -> None:
     from mpreg.testing.distlab.builtins import ensure_builtins
@@ -138,6 +142,7 @@ async def test_t36_distlab_cft_scenario_abort_fail_peers() -> None:
     ensure_builtins()
     r = await get_registry().run("strong.cft_partial_commit_lost_abort")
     assert r.ok, r
+
 
 def test_t36_openapi_documents_abort_fail_peers() -> None:
     schema = _strong_metrics_schema()
@@ -149,6 +154,7 @@ def test_t36_openapi_documents_abort_fail_peers() -> None:
     assert "cft" in desc or "residual" in desc
     assert "not" in desc  # not residual-free / not auto-heal
 
+
 def test_t36_client_guide_cft_qualified() -> None:
     path = Path(__file__).resolve().parents[2] / "docs" / "MPREG_CLIENT_GUIDE.md"
     text = path.read_text(encoding="utf-8")
@@ -158,6 +164,7 @@ def test_t36_client_guide_cft_qualified() -> None:
     assert "abort_fail_peers" in lower or "cft best-effort" in lower
     assert "lost abort" in lower or "best-effort" in lower
 
+
 def test_t36_catalogs_cft_honesty() -> None:
     root = Path(__file__).resolve().parents[2]
     app = (root / "docs" / "examples-curriculum" / "APP_CATALOG.md").read_text(
@@ -165,11 +172,12 @@ def test_t36_catalogs_cft_honesty() -> None:
     )
     assert "residual-free 1015" not in app
     assert "CFT" in app or "cft" in app.lower()
-    reg = (
-        root / "mpreg" / "examples" / "apps" / "_shared" / "registry.py"
-    ).read_text(encoding="utf-8")
+    reg = (root / "mpreg" / "examples" / "apps" / "_shared" / "registry.py").read_text(
+        encoding="utf-8"
+    )
     assert "residual-free 1015" not in reg
     assert "CFT residual" in reg or "CFT" in reg
+
 
 def test_t36_design_alt_table_cft_qualified() -> None:
     path = (
@@ -181,13 +189,9 @@ def test_t36_design_alt_table_cft_qualified() -> None:
     assert "residual-free with rollback" not in text
     assert "residual-free when ABORT delivered" in text or "CFT best-effort" in text
 
+
 def test_t36_claims_mention_abort_fail_peers() -> None:
-    path = (
-        Path(__file__).resolve().parents[2]
-        / "tests"
-        / "invariants"
-        / "claims.yaml"
-    )
+    path = Path(__file__).resolve().parents[2] / "tests" / "invariants" / "claims.yaml"
     text = path.read_text(encoding="utf-8")
     assert "abort_fail_peers" in text
     assert "not automatic residual heal" in text or "not auto-heal" in text

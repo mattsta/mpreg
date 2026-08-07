@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+
 class _LazySt:
     """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
 
@@ -29,7 +30,9 @@ class _LazySt:
     def __getattr__(self, name: str) -> object:
         return getattr(self._load(), name)
 
+
 st = _LazySt()
+
 
 class MessagePriority(Enum):
     """Message priority levels."""
@@ -39,6 +42,7 @@ class MessagePriority(Enum):
     HIGH = "high"
     CRITICAL = "critical"
 
+
 class MessageStatus(Enum):
     """General message status enumeration."""
 
@@ -47,6 +51,7 @@ class MessageStatus(Enum):
     DELIVERED = "delivered"
     FAILED = "failed"
     EXPIRED = "expired"
+
 
 @dataclass(frozen=True, slots=True)
 class MessageId:
@@ -87,12 +92,14 @@ class MessageId:
     def __hash__(self) -> int:
         return hash(self.id)
 
+
 @dataclass(frozen=True, slots=True)
 class MessageHeader:
     """Typed header entry for message metadata."""
 
     key: str
     value: str
+
 
 @dataclass(frozen=True, slots=True)
 class MessageHeaders:
@@ -171,6 +178,7 @@ class MessageHeaders:
                 return header.value
         raise KeyError(f"Header '{key}' not found")
 
+
 @dataclass(frozen=True, slots=True)
 class BaseMessage:
     """
@@ -244,6 +252,7 @@ class BaseMessage:
         """Check if message has high or critical priority."""
         return self.priority in (MessagePriority.HIGH, MessagePriority.CRITICAL)
 
+
 @dataclass(frozen=True, slots=True)
 class QueuedMessage(BaseMessage):
     """
@@ -294,6 +303,7 @@ class QueuedMessage(BaseMessage):
         """Check if message is visible (not in visibility timeout)."""
         return time.time() >= (visibility_start + self.visibility_timeout)
 
+
 # Hypothesis strategies for property-based testing
 def message_id_strategy() -> st.SearchStrategy[MessageId]:
     """Generate valid MessageId instances for testing."""
@@ -304,11 +314,13 @@ def message_id_strategy() -> st.SearchStrategy[MessageId]:
         source_node=st.text(max_size=50),
     )
 
+
 def message_headers_strategy() -> st.SearchStrategy[MessageHeaders]:
     """Generate valid MessageHeaders instances for testing."""
     return st.dictionaries(
         st.text(min_size=1, max_size=50), st.text(max_size=200), max_size=20
     ).map(MessageHeaders.from_dict)
+
 
 def base_message_strategy() -> st.SearchStrategy[BaseMessage]:
     """Generate valid BaseMessage instances for testing."""
@@ -329,6 +341,7 @@ def base_message_strategy() -> st.SearchStrategy[BaseMessage]:
         source=st.text(max_size=100),
         destination=st.text(max_size=100),
     )
+
 
 def queued_message_strategy() -> st.SearchStrategy[QueuedMessage]:
     """Generate valid QueuedMessage instances for testing."""

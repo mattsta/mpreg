@@ -37,6 +37,7 @@ from ..core.statistics import (
 )
 from .federation_optimized import CircuitBreaker, ClusterIdentity
 
+
 @dataclass(frozen=True, slots=True)
 class AlertData:
     """Data structure for health alerts."""
@@ -47,6 +48,7 @@ class AlertData:
     recent_errors: list[str]
     average_latency_ms: float
 
+
 class HealthStatus(Enum):
     """Health status levels for federation components."""
 
@@ -56,6 +58,7 @@ class HealthStatus(Enum):
     CRITICAL = "critical"
     UNKNOWN = "unknown"
 
+
 class RecoveryStrategy(Enum):
     """Recovery strategies for unhealthy clusters."""
 
@@ -64,6 +67,7 @@ class RecoveryStrategy(Enum):
     CIRCUIT_BREAKER = "circuit_breaker"
     GRACEFUL_DEGRADATION = "graceful_degradation"
     FAILOVER = "failover"
+
 
 @dataclass(slots=True)
 class HealthCheckConfiguration:
@@ -78,6 +82,7 @@ class HealthCheckConfiguration:
     max_interval_seconds: float = 300.0
     health_check_timeout_multiplier: float = 1.5
 
+
 @dataclass(slots=True)
 class RetryConfiguration:
     """Configuration for retry policies."""
@@ -90,6 +95,7 @@ class RetryConfiguration:
     retry_on_timeout: bool = True
     retry_on_connection_error: bool = True
     retry_on_server_error: bool = False
+
 
 @dataclass(slots=True)
 class ClusterHealthMetrics:
@@ -121,6 +127,7 @@ class ClusterHealthMetrics:
     health_score: float = 100.0
 
     _lock: RLock = field(default_factory=RLock)
+
 
 @dataclass(slots=True)
 class AdaptiveCircuitBreaker(CircuitBreaker):
@@ -204,6 +211,7 @@ class AdaptiveCircuitBreaker(CircuitBreaker):
             return remaining_timeout * 1.5
 
         return remaining_timeout
+
 
 @dataclass(slots=True)
 class FederationHealthMonitor:
@@ -565,6 +573,7 @@ class FederationHealthMonitor:
                 ),
             )
 
+
 @dataclass(slots=True)
 class FederationAutoRecovery:
     """
@@ -761,6 +770,7 @@ class FederationAutoRecovery:
     ) -> None:
         """Add a callback for recovery events."""
         self.recovery_callbacks.append(callback)
+
 
 @dataclass(slots=True)
 class EnhancedFederationResilience:

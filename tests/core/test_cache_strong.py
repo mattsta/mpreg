@@ -17,8 +17,10 @@ from mpreg.core.cache_strong import (
     majority_quorum,
 )
 
+
 def _key(name: str = "k1") -> GlobalCacheKey:
     return GlobalCacheKey(namespace="ns", identifier=name, version="v1")
+
 
 def _cluster(
     n: int = 3, *, lab: bool = False, min_replicas: int | None = None
@@ -45,6 +47,7 @@ def _cluster(
     )
     return coord, transport, backends
 
+
 @pytest.mark.asyncio
 async def test_majority_quorum_math() -> None:
     assert majority_quorum(0) == 0
@@ -52,6 +55,7 @@ async def test_majority_quorum_math() -> None:
     assert majority_quorum(2) == 2
     assert majority_quorum(3) == 2
     assert majority_quorum(5) == 3
+
 
 @pytest.mark.asyncio
 async def test_happy_path_three_node() -> None:
@@ -79,6 +83,7 @@ async def test_happy_path_three_node() -> None:
     for be in backends.values():
         assert be.pending_count() == 0
 
+
 @pytest.mark.asyncio
 async def test_insufficient_replicas_1015() -> None:
     coord, _t, backends = _cluster(3, min_replicas=3)
@@ -88,6 +93,7 @@ async def test_insufficient_replicas_1015() -> None:
     for be in backends.values():
         assert be.get_visible(_key()) is None
         assert be.pending_count() == 0
+
 
 @pytest.mark.asyncio
 async def test_prepare_drop_residual_free() -> None:
@@ -103,6 +109,7 @@ async def test_prepare_drop_residual_free() -> None:
     for be in backends.values():
         assert be.get_visible(_key()) is None, f"residual on {be.node_id}"
         assert be.pending_count() == 0
+
 
 @pytest.mark.asyncio
 async def test_partial_commit_abort_uncommits_peers() -> None:
@@ -120,6 +127,7 @@ async def test_partial_commit_abort_uncommits_peers() -> None:
         ent = be.get_visible(_key())
         assert ent is None or _entry_op_id(ent) != res.operation_id
         assert be.pending_count() == 0
+
 
 @pytest.mark.asyncio
 async def test_pending_invisible_before_commit() -> None:
@@ -141,6 +149,7 @@ async def test_pending_invisible_before_commit() -> None:
     assert cack.applied
     assert be.get_visible(_key()) is not None
     assert not be.has_pending("op-1")
+
 
 @pytest.mark.asyncio
 async def test_abort_restores_backup() -> None:
@@ -177,6 +186,7 @@ async def test_abort_restores_backup() -> None:
     assert ent.value == "old"
     assert _entry_op_id(ent) == "op-a"
 
+
 @pytest.mark.asyncio
 async def test_lww_lost_does_not_clobber_newer() -> None:
     be = StrongLocalBackend(node_id="n0")
@@ -206,6 +216,7 @@ async def test_lww_lost_does_not_clobber_newer() -> None:
     assert cack.reason == "lww_lost"
     assert be.get_visible(_key()).value == "newer"  # type: ignore[union-attr]
 
+
 @pytest.mark.asyncio
 async def test_idempotent_reprepare() -> None:
     be = StrongLocalBackend(node_id="n0")
@@ -231,6 +242,7 @@ async def test_idempotent_reprepare() -> None:
     assert a1.ok and a2.ok
     assert be.pending_count() == 1
 
+
 @pytest.mark.asyncio
 async def test_pending_ttl_purge_fake_clock() -> None:
     be = StrongLocalBackend(node_id="n0")
@@ -249,12 +261,14 @@ async def test_pending_ttl_purge_fake_clock() -> None:
     assert n == 1
     assert be.pending_count() == 0
 
+
 @pytest.mark.asyncio
 async def test_lab_single_node() -> None:
     coord, _t, backends = _cluster(1, lab=True, min_replicas=1)
     res = await coord.strong_put(_key(), 7, eligible_peers=["n0"])
     assert res.success is True
     assert backends["n0"].get_visible(_key()).value == 7  # type: ignore[union-attr]
+
 
 @pytest.mark.asyncio
 async def test_pending_full_1018() -> None:
@@ -282,6 +296,7 @@ async def test_pending_full_1018() -> None:
     res = await coord.strong_put(_key("b"), 2, eligible_peers=["n0"])
     assert res.success is False
     assert res.error_code == int(StrongErrorCode.STRONG_PENDING_FULL)
+
 
 @pytest.mark.asyncio
 async def test_success_aborts_prepared_non_committers() -> None:

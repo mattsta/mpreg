@@ -23,6 +23,7 @@ from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 from tests.test_helpers import wait_for_condition
 
+
 def _function_visible(server: MPREGServer, name: str, cluster_id: str) -> bool:
     if not server._fabric_control_plane:
         return False
@@ -31,11 +32,13 @@ def _function_visible(server: MPREGServer, name: str, cluster_id: str) -> bool:
         server._fabric_control_plane.index.find_functions(query, now=time.time())
     )
 
+
 def _peer_node_ids(server: MPREGServer) -> set[str]:
     directory = server._peer_directory
     if not directory:
         return set()
     return {node.node_id for node in directory.nodes()}
+
 
 class TestUnifiedRPCFederation:
     async def test_response_reroute_when_reply_path_breaks(

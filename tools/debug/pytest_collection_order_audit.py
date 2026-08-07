@@ -21,11 +21,13 @@ type NodeId = str
 type Seconds = float
 type ExitCode = int
 
+
 @dataclass(frozen=True, slots=True)
 class AuditConfigSnapshot:
     files: tuple[str, ...]
     pytest_args: tuple[str, ...]
     output_dir: str
+
 
 @dataclass(frozen=True, slots=True)
 class CollectionRun:
@@ -37,11 +39,13 @@ class CollectionRun:
     collected_nodeids: tuple[NodeId, ...]
     output_path: str
 
+
 @dataclass(frozen=True, slots=True)
 class CollectionDiff:
     only_in_forward: tuple[NodeId, ...]
     only_in_reverse: tuple[NodeId, ...]
     shared_count: int
+
 
 @dataclass(frozen=True, slots=True)
 class AuditReport:
@@ -50,11 +54,14 @@ class AuditReport:
     runs: tuple[CollectionRun, ...]
     diff: CollectionDiff
 
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
+
 def _utc_now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
 
 def _parse_collected_nodeids(output_text: str) -> tuple[NodeId, ...]:
     nodeids: list[NodeId] = []
@@ -69,6 +76,7 @@ def _parse_collected_nodeids(output_text: str) -> tuple[NodeId, ...]:
         if line.startswith("tests/"):
             nodeids.append(line)
     return tuple(nodeids)
+
 
 def _run_collection(
     *,
@@ -124,6 +132,7 @@ def _run_collection(
         output_path=str(output_path),
     )
 
+
 def _build_report(
     *,
     files: tuple[str, ...],
@@ -153,6 +162,7 @@ def _build_report(
             shared_count=shared_count,
         ),
     )
+
 
 def _write_report(report: AuditReport, session_dir: Path) -> None:
     json_path = session_dir / "report.json"
@@ -193,6 +203,7 @@ def _write_report(report: AuditReport, session_dir: Path) -> None:
         lines.append(f"  - {nodeid}")
     text_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Audit pytest collection order sensitivity"
@@ -215,6 +226,7 @@ def _parse_args() -> argparse.Namespace:
         help="Directory for audit artifacts",
     )
     return parser.parse_args()
+
 
 def main() -> int:
     args = _parse_args()
@@ -266,6 +278,7 @@ def main() -> int:
     if has_error:
         return 2
     return 1 if has_diff else 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

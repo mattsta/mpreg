@@ -116,18 +116,22 @@ _TIMEOUT_S: dict[str, float] = {
     "global_edge_control_plane": 180.0,
 }
 
+
 def _ids(apps: list[ExampleApp]) -> list[str]:
     return [a.id for a in apps]
+
 
 SMOKE_IDS = _ids(list_apps(smoke_only=True))
 SUITE_IDS = _ids(list_apps(suite_only=True))
 ALL_IDS = [a.id for a in APPS]
+
 
 @pytest.mark.example_apps
 @pytest.mark.unit
 def test_registry_unique_ids() -> None:
     assert len(ALL_IDS) == len(set(ALL_IDS))
     assert len(ALL_IDS) >= 30, f"expected full matrix, got {len(ALL_IDS)}"
+
 
 @pytest.mark.example_apps
 @pytest.mark.unit
@@ -138,12 +142,14 @@ def test_registry_smoke_subset_of_suite() -> None:
     assert smoke <= suite, f"smoke apps missing from suite: {smoke - suite}"
     assert len(smoke) >= 6, f"smoke too small: {smoke}"
 
+
 @pytest.mark.example_apps
 @pytest.mark.unit
 def test_aliases_resolve() -> None:
     assert resolve_app_id("tier1_rpc") == "plane_rpc"
     assert resolve_app_id("fabric_route_security_demo") == "signed_route_border"
     assert get_app("tier1_cache").id == "plane_cache"
+
 
 @pytest.mark.example_apps
 @pytest.mark.unit
@@ -152,6 +158,7 @@ def test_demo_bundles_resolve() -> None:
         assert ids, f"empty bundle {name}"
         for i in ids:
             get_app(i)  # must not raise
+
 
 @pytest.mark.example_apps
 @pytest.mark.unit
@@ -162,6 +169,7 @@ def test_app_module_exports_async_main(app_id: str) -> None:
     assert callable(main)
     assert app.path.endswith(f"{app_id}/")
     assert app.module.endswith(".run")
+
 
 @pytest.mark.example_apps
 @pytest.mark.example_smoke
@@ -176,6 +184,7 @@ async def test_smoke_app_live(app_id: str) -> None:
         timeout_s=_TIMEOUT_S.get(app_id, 120.0),
     )
     assert report.ok, f"{app_id} failed ({report.duration_s:.2f}s): {report.error}"
+
 
 @pytest.mark.example_apps
 @pytest.mark.example_suite
@@ -192,6 +201,7 @@ async def test_suite_app_live(app_id: str) -> None:
     )
     assert report.ok, f"{app_id} failed ({report.duration_s:.2f}s): {report.error}"
 
+
 @pytest.mark.example_apps
 @pytest.mark.unit
 def test_every_app_has_feature_tags() -> None:
@@ -205,6 +215,7 @@ def test_every_app_has_feature_tags() -> None:
         mapped = APP_FEATURES.get(app.id, ())
         assert app.features == mapped, f"{app.id} features drift from APP_FEATURES"
     assert len(all_feature_ids()) >= 40, "feature catalog too thin"
+
 
 @pytest.mark.example_apps
 @pytest.mark.unit

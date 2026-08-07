@@ -19,9 +19,11 @@ from mpreg.fabric.queue_delivery import (
     QueueConsensusVote,
 )
 
+
 class DummyTransport:
     async def send_message(self, peer_id: str, message: UnifiedMessage) -> bool:
         return True
+
 
 class DummyQueueManager:
     def __init__(self, queues: set[str]) -> None:
@@ -29,6 +31,7 @@ class DummyQueueManager:
 
     def list_queues(self) -> list[str]:
         return list(self._queues)
+
 
 class DummyQueueFederation:
     def __init__(self) -> None:
@@ -45,6 +48,7 @@ class DummyQueueFederation:
                 message_id=MessageId.from_string("dispatch"),
             )
         )
+
 
 def test_cluster_weight_calculations() -> None:
     trusted = ConsensusClusterWeight(
@@ -63,6 +67,7 @@ def test_cluster_weight_calculations() -> None:
     )
     assert untrusted.effective_weight() == 0.0
 
+
 def test_global_consensus_round_quorum() -> None:
     consensus_round = QueueConsensusRound(
         cluster_weights={
@@ -80,6 +85,7 @@ def test_global_consensus_round_quorum() -> None:
     consensus_round.votes_received["cluster-2"] = True
     assert consensus_round.has_quorum()
 
+
 def test_byzantine_fault_detection() -> None:
     consensus_round = QueueConsensusRound()
     consensus_round.record_vote(
@@ -94,6 +100,7 @@ def test_byzantine_fault_detection() -> None:
     )
     byzantine = consensus_round.detect_byzantine_faults()
     assert "byzantine" in byzantine
+
 
 @pytest.mark.asyncio
 async def test_deliver_with_global_quorum_refused_by_default() -> None:
@@ -112,6 +119,7 @@ async def test_deliver_with_global_quorum_refused_by_default() -> None:
     assert result.error_message is not None
     assert "unsupported_global_consensus" in result.error_message
     assert federation.send_message_globally.await_count == 0
+
 
 @pytest.mark.asyncio
 async def test_deliver_with_global_quorum_lab_flag() -> None:
@@ -139,6 +147,7 @@ async def test_deliver_with_global_quorum_lab_flag() -> None:
     assert federation.send_message_globally.await_count == 2
     assert coordinator.delivery_stats.global_consensus_rounds == 1
     assert coordinator.delivery_stats.successful_global_consensus == 1
+
 
 @pytest.mark.asyncio
 async def test_handle_consensus_vote() -> None:

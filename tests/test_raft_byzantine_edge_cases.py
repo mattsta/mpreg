@@ -23,9 +23,11 @@ from pathlib import Path
 
 import pytest
 
+
 def get_concurrency_factor() -> float:
     """Get concurrency scaling factor for test timeouts."""
     return 4.0 if os.environ.get("PYTEST_XDIST_WORKER") else 1.0
+
 
 from mpreg.datastructures.production_raft import RaftState
 from mpreg.datastructures.production_raft_implementation import (
@@ -38,6 +40,7 @@ from tests.conftest import AsyncTestContext
 from tests.test_production_raft_integration import (
     TestableStateMachine,
 )
+
 
 class ByzantineMockNetwork:
     """Enhanced network that can simulate Byzantine failures and attacks."""
@@ -169,6 +172,7 @@ class ByzantineMockNetwork:
             and voter_id not in self.byzantine_nodes
         )
 
+
 class ByzantineNetworkTransport:
     """Transport that simulates Byzantine network conditions."""
 
@@ -297,6 +301,7 @@ class ByzantineNetworkTransport:
             return await target_node.handle_install_snapshot(request)
         except Exception:
             return None
+
 
 class TestRaftByzantineEdgeCases:
     """Test suite for Byzantine fault tolerance and network edge cases."""
@@ -944,6 +949,7 @@ class TestRaftByzantineEdgeCases:
 
             # Give extra time for resource cleanup
             await asyncio.sleep(0.2)
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])

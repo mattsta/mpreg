@@ -19,6 +19,7 @@ _EVENT_DEQUE_MAXLEN = 50
 _ERROR_CODE_LABEL_MAX = 64
 _MGMT_EVENT_LABEL_MAX = 32_000
 
+
 def _calculate_percentile(values: list[float], percentile: float) -> float:
     if not values:
         return 0.0
@@ -27,9 +28,11 @@ def _calculate_percentile(values: list[float], percentile: float) -> float:
     index = max(0, min(index, len(sorted_values) - 1))
     return float(sorted_values[index])
 
+
 def _prune_events(events: deque[float], now: float, window_seconds: float) -> None:
     while events and (now - events[0]) > window_seconds:
         events.popleft()
+
 
 # Latency histogram bucket upper bounds (ms) for Prometheus-style export.
 _LATENCY_BUCKETS_MS: tuple[float, ...] = (
@@ -46,6 +49,7 @@ _LATENCY_BUCKETS_MS: tuple[float, ...] = (
     5000.0,
     10000.0,
 )
+
 
 @dataclass(slots=True)
 class ServerMetricsTracker:
@@ -708,6 +712,7 @@ class ServerMetricsTracker:
             total_operations_last_hour=int(self.pubsub_total),
             last_updated=now,
         )
+
 
 @dataclass(slots=True)
 class ServerSystemMonitor:

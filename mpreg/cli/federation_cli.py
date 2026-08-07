@@ -44,6 +44,7 @@ from ..fabric.federation_resilience import (
 
 console = Console()
 
+
 @dataclass(slots=True)
 class ClusterRegistration:
     """Registered cluster metadata for fabric-based federation tooling."""
@@ -51,6 +52,7 @@ class ClusterRegistration:
     cluster_identity: ClusterIdentity
     server_url: str
     registered_at: float = field(default_factory=time.time)
+
 
 class FederationCLI:
     """

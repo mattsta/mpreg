@@ -4,6 +4,7 @@ Unit tests for topic taxonomy validation and matching behavior.
 
 from mpreg.core.topic_taxonomy import TopicAccessLevel, TopicPattern, TopicValidator
 
+
 class TestTopicValidator:
     """Validate wildcard rules and matching semantics."""
 
@@ -27,6 +28,7 @@ class TestTopicValidator:
         assert TopicValidator.matches_pattern("user.login.events", "user.#.events")
         assert TopicValidator.matches_pattern("user.login.deep.events", "user.#.events")
         assert not TopicValidator.matches_pattern("admin.login.events", "user.#.events")
+
 
 class TestTopicPattern:
     """Validate TopicPattern uses the shared matcher."""

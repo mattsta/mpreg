@@ -1,6 +1,7 @@
 from mpreg.fabric.adapters.cache_profile import CacheProfileCatalogAdapter
 from mpreg.fabric.federation_graph import GeographicCoordinate
 
+
 def test_cache_profile_adapter_builds_delta() -> None:
     adapter = CacheProfileCatalogAdapter(
         node_id="node-1",

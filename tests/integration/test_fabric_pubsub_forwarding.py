@@ -11,6 +11,7 @@ from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 from tests.test_helpers import TestPortManager, wait_for_condition
 
+
 @pytest.mark.asyncio
 async def test_fabric_pubsub_forwarding_across_servers() -> None:
     async with AsyncTestContext() as ctx:
@@ -96,6 +97,7 @@ async def test_fabric_pubsub_forwarding_across_servers() -> None:
 
                 await asyncio.wait_for(received.wait(), timeout=5.0)
                 assert payload_holder["payload"] == "payload"
+
 
 @pytest.mark.asyncio
 async def test_fabric_pubsub_forwarding_multi_hop() -> None:

@@ -4,16 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t69_config_check_test_asserts_hint() -> None:
-    path = (
-        Path(__file__).resolve().parents[2]
-        / "tests"
-        / "test_config_check_cli.py"
-    )
+    path = Path(__file__).resolve().parents[2] / "tests" / "test_config_check_cli.py"
     text = path.read_text(encoding="utf-8")
     assert "residual_ops_hint" in text
     assert "cache-strong-retry-abort" in text
     assert "auto-heal" in text or "ops-driven" in text
+
 
 def test_t69_phase_57_honesty() -> None:
     path = (
@@ -23,6 +21,7 @@ def test_t69_phase_57_honesty() -> None:
     )
     text = path.read_text(encoding="utf-8")
     assert "Phase 57" in text
+
 
 def test_t69_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]

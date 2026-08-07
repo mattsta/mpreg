@@ -23,6 +23,7 @@ from mpreg.datastructures.blockchain_types import (
 )
 from mpreg.datastructures.transaction import Transaction
 
+
 class TestBlockchain:
     """Test Blockchain datastructure."""
 
@@ -349,6 +350,7 @@ class TestBlockchain:
         updated_vc_state = blockchain.get_vector_clock_state()
         assert not updated_vc_state.is_empty()
 
+
 class TestBlockchainProperties:
     """Test mathematical and cryptographic properties of blockchains."""
 
@@ -446,6 +448,7 @@ class TestBlockchainProperties:
         found_block = blockchain.get_block_by_hash(new_block_hash)
         assert found_block == new_block
 
+
 class TestBlockchainConsensus:
     """Test consensus mechanisms and validation."""
 
@@ -542,6 +545,7 @@ class TestBlockchainConsensus:
             blockchain.genesis_block, few_txs, "miner"
         )
         assert blockchain.can_add_block(valid_block)
+
 
 class TestBlockchainExamples:
     """Test specific blockchain examples and use cases."""

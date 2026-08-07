@@ -8,6 +8,7 @@ import time
 import pytest
 from tests.port_allocator import get_port_allocator
 
+
 @pytest.fixture
 def debug_large_cluster_ports():
     """Debug version of large_cluster_ports with detailed logging."""
@@ -46,6 +47,7 @@ def debug_large_cluster_ports():
     print(f"   ✅ Cleanup completed in {time.time() - cleanup_start:.2f}s")
     print(f"🔧 TOTAL FIXTURE TIME: {time.time() - start_time:.2f}s")
 
+
 class TestFixtureDebug:
     """Test to isolate fixture hang."""
 
@@ -53,6 +55,7 @@ class TestFixtureDebug:
         """Simple test using the debug fixture."""
         print(f"🎯 Test running with {len(debug_large_cluster_ports)} ports")
         print("✅ Test completed successfully!")
+
 
 if __name__ == "__main__":
     import subprocess

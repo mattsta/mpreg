@@ -75,6 +75,7 @@ client_api_log = logger
 
 RequestT = TypeVar("RequestT")
 
+
 @dataclass(slots=True)
 class MPREGClientAPI:
     """

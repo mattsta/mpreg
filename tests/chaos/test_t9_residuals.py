@@ -34,6 +34,7 @@ from mpreg.fabric.message import DeliveryGuarantee as FabricDG
 from mpreg.server import MPREGServer
 from mpreg.server_pkg.gossip_admission import accept_fabric_gossip_payload
 
+
 @pytest.mark.asyncio
 async def test_chaos_strong_cache_leaves_no_dirty_l1() -> None:
     """COR-01 chaos: failed STRONG must not leave residual L1."""
@@ -57,6 +58,7 @@ async def test_chaos_strong_cache_leaves_no_dirty_l1() -> None:
         assert present is False
     finally:
         await mgr.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_chaos_strong_partial_prepare_abort_residual_free() -> None:
@@ -88,6 +90,7 @@ async def test_chaos_strong_partial_prepare_abort_residual_free() -> None:
     for be in backends.values():
         assert be.get_visible(key) is None
         assert be.pending_count() == 0
+
 
 @pytest.mark.asyncio
 async def test_chaos_strong_partial_commit_uncommits_peers() -> None:
@@ -124,11 +127,13 @@ async def test_chaos_strong_partial_commit_uncommits_peers() -> None:
         assert ent is None or _entry_op_id(ent) != oid
         assert be.pending_count() == 0
 
+
 def test_chaos_delivery_guarantee_eo_not_on_queue_plane() -> None:
     """Cross-plane EO must not silently map onto queue guarantees."""
     with pytest.raises(ValueError, match="exactly_once|EXACTLY_ONCE|exactly"):
         FabricDG.EXACTLY_ONCE.to_queue_guarantee()
     assert FabricDG.AT_LEAST_ONCE.to_queue_guarantee() is QueueDG.AT_LEAST_ONCE
+
 
 def test_chaos_metrics_drop_counters_prom() -> None:
     """OBS-01/04: drop counters appear in prometheus text."""
@@ -141,16 +146,19 @@ def test_chaos_metrics_drop_counters_prom() -> None:
     assert 'mpreg_cache_replication_drops_total{node="chaos"} 3' in text
     assert 'mpreg_cache_pubsub_notification_drops_total{node="chaos"} 4' in text
 
+
 def test_chaos_slo_latency_points_at_rpc_histogram() -> None:
     """OBS-05: golden latency uses mpreg_rpc_latency_ms."""
     latency = next(s for s in GOLDEN_SIGNALS if s.name == "latency")
     assert latency.prometheus_metric == "mpreg_rpc_latency_ms"
+
 
 def test_chaos_event_deques_bounded() -> None:
     """OBS-08: rpc/pubsub event deques have maxlen."""
     t = ServerMetricsTracker()
     assert t.rpc_events.maxlen is not None and t.rpc_events.maxlen > 0
     assert t.pubsub_events.maxlen is not None and t.pubsub_events.maxlen > 0
+
 
 def test_chaos_dlq_bounded() -> None:
     """PERF-05: DLQ drops oldest under max size."""
@@ -176,6 +184,7 @@ def test_chaos_dlq_bounded() -> None:
             q.dead_letter_queue.popleft()
     assert len(q.dead_letter_queue) <= 3
 
+
 def test_chaos_gossip_pending_bounded() -> None:
     """PERF-07: gossip pending drops under overflow."""
     transport = MagicMock()
@@ -186,6 +195,7 @@ def test_chaos_gossip_pending_bounded() -> None:
         gp._enqueue_pending({"i": i})
     assert len(gp.pending_messages) <= 5
     assert gp.pending_messages_dropped >= 15
+
 
 def test_chaos_priority_bisect_orders_high_first() -> None:
     """PERF-06: higher priority enqueues ahead of lower."""
@@ -210,6 +220,7 @@ def test_chaos_priority_bisect_orders_high_first() -> None:
     q.pending_messages.insert(idx, high)
     assert q.pending_messages[0].id.id == "high"
 
+
 def test_chaos_gossip_admission_peel() -> None:
     """PERF-02 peel: admission helper reject/accept."""
     payload = {
@@ -231,6 +242,7 @@ def test_chaos_gossip_admission_peel() -> None:
     assert out is not None
     assert SIGNATURE_KEY not in out
 
+
 @pytest.mark.asyncio
 async def test_chaos_cache_replication_metrics_sink() -> None:
     """OBS-04: GlobalCacheManager replication drop sink."""
@@ -248,6 +260,7 @@ async def test_chaos_cache_replication_metrics_sink() -> None:
         assert hits == [1]
     finally:
         await mgr.shutdown()
+
 
 def test_chaos_drain_flag_on_server_instance() -> None:
     """ERG-01: drain flag is the admission gate source."""
@@ -274,6 +287,7 @@ def test_chaos_drain_flag_on_server_instance() -> None:
     resp = drain_unavailable_response("x")
     assert "drain" in f"{resp.error.message} {resp.error.details}".lower()
 
+
 def test_chaos_rpc_request_accepts_traceparent_fields() -> None:
     """OBS-02: RPCRequest model carries W3C fields."""
     tp = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
@@ -290,6 +304,7 @@ def test_chaos_rpc_request_accepts_traceparent_fields() -> None:
     assert req.traceparent == tp
     assert req.headers["traceparent"] == tp
 
+
 def test_chaos_serialize_model_one_hop() -> None:
     """PERF-03: serialize_model dumps pydantic envelopes."""
     from mpreg.core.model import FabricMessageEnvelope
@@ -302,6 +317,7 @@ def test_chaos_serialize_model_one_hop() -> None:
     back = ser.deserialize(raw)
     assert back["role"] == "fabric-message"
     assert back["payload"] == {"a": 1}
+
 
 def test_chaos_drain_admission_helper() -> None:
     """ERG-01: drain role gate is pure and unit-testable."""

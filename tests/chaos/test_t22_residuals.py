@@ -17,14 +17,13 @@ from mpreg.server_pkg.openapi_surface import (
 )
 from mpreg.testing.distlab.registry import SUITE_PRESETS, resolve_preset
 
+
 def test_t22_shared_audit_metrics_capabilities_honesty() -> None:
     """build_shared_audit_metrics always advertises honest capability flags."""
     store = MagicMock()
     store.size.return_value = 3
     rep = MagicMock()
-    rep.health.return_value = SimpleNamespace(
-        to_dict=lambda: {"peers_known": 2}
-    )
+    rep.health.return_value = SimpleNamespace(to_dict=lambda: {"peers_known": 2})
     server = SimpleNamespace(
         settings=SimpleNamespace(
             mgmt_audit_shared_enabled=True,
@@ -59,6 +58,7 @@ def test_t22_shared_audit_metrics_capabilities_honesty() -> None:
     assert off["capabilities"]["gset_epidemic"] is False
     assert off["capabilities"]["siem"] is False
     assert off["status"] == "disabled"
+
 
 def test_t22_evaluate_shared_audit_doctor_payload_honesty() -> None:
     ok, detail = evaluate_shared_audit_doctor_payload(
@@ -133,9 +133,16 @@ def test_t22_evaluate_shared_audit_doctor_payload_honesty() -> None:
 
     # Strong path still independent
     sok, _ = evaluate_strong_doctor_payload(
-        {"strong": {"health": "ok", "capabilities": {"get_quorum": False}, "counters": {}}}
+        {
+            "strong": {
+                "health": "ok",
+                "capabilities": {"get_quorum": False},
+                "counters": {},
+            }
+        }
     )
     assert sok is True
+
 
 def test_t22_openapi_shared_audit_schema_capabilities() -> None:
     doc = build_monitoring_openapi()
@@ -166,8 +173,10 @@ def test_t22_openapi_shared_audit_schema_capabilities() -> None:
     ad = tags["audit"]["description"].lower()
     assert "siem" in ad and "bft" in ad
 
+
 def test_t22_openapi_still_matches_route_table() -> None:
     assert openapi_path_set() == route_table_path_set()
+
 
 def test_t22_audit_core_preset_expanded() -> None:
     names = resolve_preset("audit-core")

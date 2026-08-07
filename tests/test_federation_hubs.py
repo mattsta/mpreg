@@ -33,6 +33,7 @@ from mpreg.fabric.hubs import (
     RegionalHub,
 )
 
+
 def create_local_hub_capabilities():
     """Create default capabilities for local hubs."""
     return HubCapabilities(
@@ -46,6 +47,7 @@ def create_local_hub_capabilities():
         cpu_capacity=50.0,
         memory_capacity_gb=16.0,
     )
+
 
 def create_regional_hub_capabilities():
     """Create default capabilities for regional hubs."""
@@ -61,6 +63,7 @@ def create_regional_hub_capabilities():
         memory_capacity_gb=32.0,
     )
 
+
 def create_global_hub_capabilities():
     """Create default capabilities for global hubs."""
     return HubCapabilities(
@@ -75,12 +78,15 @@ def create_global_hub_capabilities():
         memory_capacity_gb=128.0,
     )
 
+
 from mpreg.fabric.federation_optimized import ClusterIdentity, OptimizedClusterState
+
 
 @pytest.fixture
 def sample_coordinates():
     """Create sample geographic coordinates."""
     return GeographicCoordinate(40.7128, -74.0060)  # New York
+
 
 @pytest.fixture
 def sample_cluster_identity():
@@ -98,6 +104,7 @@ def sample_cluster_identity():
         preference_weight=1.0,
     )
 
+
 @pytest.fixture
 def sample_message():
     """Create a sample message for testing."""
@@ -108,6 +115,7 @@ def sample_message():
         message_id="test_msg_001",
         publisher="test_publisher",
     )
+
 
 @pytest.fixture
 def local_hub(sample_coordinates):
@@ -120,6 +128,7 @@ def local_hub(sample_coordinates):
         region="us-east",
     )
 
+
 @pytest.fixture
 def regional_hub(sample_coordinates):
     """Create a regional hub for testing."""
@@ -130,6 +139,7 @@ def regional_hub(sample_coordinates):
         coordinates=sample_coordinates,
         region="us-east",
     )
+
 
 @pytest.fixture
 def global_hub(sample_coordinates):
@@ -142,10 +152,12 @@ def global_hub(sample_coordinates):
         region="global",
     )
 
+
 @pytest.fixture
 def hub_topology():
     """Create a hub topology for testing."""
     return HubTopology()
+
 
 class TestHubCapabilities:
     """Test suite for hub capabilities."""
@@ -165,6 +177,7 @@ class TestHubCapabilities:
         assert capabilities.coverage_radius_km == 100.0
         assert capabilities.reliability_class == 1
         assert capabilities.bandwidth_mbps == 10000
+
 
 class TestHubLoadMetrics:
     """Test suite for hub load metrics."""
@@ -213,6 +226,7 @@ class TestHubLoadMetrics:
         metrics.current_cpu_usage = 50.0
         metrics.last_health_check = time.time() - 120.0
         assert not metrics.is_healthy()
+
 
 class TestAggregatedSubscriptionState:
     """Test suite for aggregated subscription state."""
@@ -271,6 +285,7 @@ class TestAggregatedSubscriptionState:
         assert "very.popular.topic" in state.popular_topics
         assert "somewhat.popular.topic" in state.popular_topics
         assert state.popular_topics[0] == "very.popular.topic"  # Most popular first
+
 
 class TestLocalHub:
     """Test suite for local hub functionality."""
@@ -414,6 +429,7 @@ class TestLocalHub:
         assert hasattr(stats, "routing_statistics")
         assert hasattr(stats, "aggregation_info")
 
+
 class TestRegionalHub:
     """Test suite for regional hub functionality."""
 
@@ -497,6 +513,7 @@ class TestRegionalHub:
         # Check routing statistics
         assert regional_hub.routing_stats["messages_routed"] > 0
 
+
 class TestGlobalHub:
     """Test suite for global hub functionality."""
 
@@ -531,6 +548,7 @@ class TestGlobalHub:
 
         # Check routing statistics
         assert global_hub.routing_stats["messages_routed"] > 0
+
 
 class TestHubTopology:
     """Test suite for hub topology management."""
@@ -691,6 +709,7 @@ class TestHubTopology:
         assert regional_hub.routing_stats["hub_stopped"] > 0
         assert local_hub.routing_stats["hub_stopped"] > 0
 
+
 class TestEndToEndHubFunctionality:
     """Test suite for end-to-end hub functionality."""
 
@@ -832,6 +851,7 @@ class TestEndToEndHubFunctionality:
         # Stop hubs
         await hub_topology.stop_all_hubs()
 
+
 class TestPerformanceAndScalability:
     """Test suite for performance and scalability."""
 
@@ -949,6 +969,7 @@ class TestPerformanceAndScalability:
             local_hub.aggregated_state.total_subscriptions == 1000
         )  # 100 clusters × 10 patterns
         assert local_hub.aggregated_state.compression_ratio > 0.0
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

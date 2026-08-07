@@ -24,6 +24,7 @@ from mpreg.core.errors import MpregErrorCode
 from mpreg.core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run(
         "cache_strong_quorum",
@@ -176,33 +177,25 @@ async def main() -> None:
                         k3,
                         {"ryw": True},
                         metadata=CacheMetadata(),
-                        options=CacheOptions(
-                            consistency_level=ConsistencyLevel.STRONG
-                        ),
+                        options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
                     )
                     ensure(put3.success, f"put failed: {put3.error_message}")
                     bad_g = await gcm3.get(
                         k3,
-                        options=CacheOptions(
-                            consistency_level=ConsistencyLevel.STRONG
-                        ),
+                        options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
                     )
                     ensure(not bad_g.success, "STRONG get must refuse")
                     ensure(
-                        bad_g.error_code
-                        == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY),
+                        bad_g.error_code == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY),
                         f"get code={bad_g.error_code}",
                     )
                     bad_d = await gcm3.delete(
                         k3,
-                        options=CacheOptions(
-                            consistency_level=ConsistencyLevel.STRONG
-                        ),
+                        options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
                     )
                     ensure(not bad_d.success, "STRONG delete must refuse")
                     ensure(
-                        bad_d.error_code
-                        == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY),
+                        bad_d.error_code == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY),
                         f"delete code={bad_d.error_code}",
                     )
                     ryw = await gcm3.get(k3)  # EVENTUAL/default
@@ -339,7 +332,8 @@ async def main() -> None:
                     n_peers = int(st_hint.get("abort_fail_peer_count") or 0)
                     ensure(n_peers >= 1, f"abort_fail_peer_count: {st_hint!r}")
                     ensure(
-                        n_peers == len(list(st_hint.get("last_abort_fail_peers") or [])),
+                        n_peers
+                        == len(list(st_hint.get("last_abort_fail_peers") or [])),
                         f"count mismatch: {st_hint!r}",
                     )
                     step(
@@ -454,6 +448,7 @@ async def main() -> None:
                 ok("honesty banners retained outside majority-commit put claim")
         finally:
             await gcm.shutdown()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

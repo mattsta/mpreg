@@ -15,11 +15,13 @@ FUNCTION_NAME = "soak_echo"
 FUNCTION_ID = "soak.echo"
 VERSION_CONSTRAINT = ">=1.0.0,<2.0.0"
 
+
 def _make_echo(node_idx: int):
     def echo(payload: str) -> str:
         return f"node-{node_idx}:{payload}"
 
     return echo
+
 
 async def _start_cluster(
     test_context: AsyncTestContext,
@@ -69,6 +71,7 @@ async def _start_cluster(
     await asyncio.sleep(1.0)
     return servers
 
+
 async def _await_peer_state(
     client: MPREGClientAPI,
     expected_count: int,
@@ -92,6 +95,7 @@ async def _await_peer_state(
         f"Expected {expected_count} peers without departed URLs; got {last_count}"
     )
 
+
 async def _await_routing_ready(client: MPREGClientAPI, *, timeout: float = 8.0) -> None:
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -108,6 +112,7 @@ async def _await_routing_ready(client: MPREGClientAPI, *, timeout: float = 8.0) 
             return
         await asyncio.sleep(0.2)
     raise AssertionError("Expected soak_echo routing to converge")
+
 
 async def _call_with_retry(
     client: MPREGClientAPI,
@@ -130,6 +135,7 @@ async def _call_with_retry(
         await asyncio.sleep(delay)
     return last_result
 
+
 @pytest.mark.asyncio
 async def test_fabric_soak_routing_stability(test_context: AsyncTestContext) -> None:
     cluster_size = 15
@@ -149,6 +155,7 @@ async def test_fabric_soak_routing_stability(test_context: AsyncTestContext) -> 
                 for payload, result in zip(payloads, results, strict=False):
                     assert isinstance(result, str)
                     assert result.endswith(payload)
+
 
 @pytest.mark.asyncio
 async def test_fabric_churn_recovery(test_context: AsyncTestContext) -> None:

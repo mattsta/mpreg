@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Debug worker offset calculations."""
 
+
 def calculate_worker_offset(worker_id: str) -> int:
     """Debug version of the worker offset calculation."""
     if worker_id == "master":
@@ -29,6 +30,7 @@ def calculate_worker_offset(worker_id: str) -> int:
     # worker_num is 1-based for gw workers (gw0->1, gw1->2, etc.)
     safe_worker_num = ((worker_num - 1) % max_workers) + 1  # Map to 1-20
     return safe_worker_num * ports_per_worker
+
 
 def main():
     workers = [
@@ -74,6 +76,7 @@ def main():
 
     if not conflicts:
         print("  No conflicts found!")
+
 
 if __name__ == "__main__":
     main()

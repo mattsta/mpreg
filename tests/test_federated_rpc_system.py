@@ -25,6 +25,7 @@ from mpreg.fabric.index import FunctionQuery
 from mpreg.server import MPREGServer
 from tests.test_helpers import wait_for_condition
 
+
 class TestFunctionCatalogIdentity:
     """Validate function identity invariants in the fabric catalog."""
 
@@ -137,6 +138,7 @@ class TestFunctionCatalogIdentity:
         )
         assert not catalog.register(expired, now=5.0)
         assert catalog.entry_count() == 0
+
 
 class TestFederatedRPCBroadcasting:
     """Test federated RPC function broadcasting with real server communication."""
@@ -267,6 +269,7 @@ class TestFederatedRPCBroadcasting:
         assert result1 == "func1: test"
         assert result2 == "func2: test"
 
+
 class TestFederatedRPCMessageHandling:
     """Test federated RPC message handling and processing."""
 
@@ -334,6 +337,7 @@ class TestFederatedRPCMessageHandling:
 
         assert result1 == "server1_mapping: test"
         assert result2 == "server3_mapping: test"
+
 
 class TestFederatedRPCEdgeCases:
     """Test edge cases and error conditions in federated RPC."""

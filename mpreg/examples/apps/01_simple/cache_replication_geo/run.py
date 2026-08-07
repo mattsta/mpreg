@@ -16,6 +16,7 @@ from mpreg.core.global_cache import (
 from mpreg.core.persistence.config import PersistenceConfig, PersistenceMode
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run(
         "cache_replication_geo",
@@ -152,6 +153,7 @@ async def main() -> None:
                         await res
 
         ok("cache_replication_geo complete")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

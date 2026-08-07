@@ -73,6 +73,8 @@ from mpreg.testing.distlab.sli import (
 )
 
 __all__ = [
+    "DEFAULT_REGISTRY",
+    "DEFAULT_STRONG_SOAK_BUDGET",
     "AuditBurst",
     "AuditSUT",
     "CallableChecker",
@@ -81,8 +83,6 @@ __all__ = [
     "Checker",
     "CompositeChecker",
     "ConcurrentPuts",
-    "DEFAULT_REGISTRY",
-    "DEFAULT_STRONG_SOAK_BUDGET",
     "FaultInjectorNemesisTarget",
     "GSetConvergenceChecker",
     "History",
@@ -114,6 +114,7 @@ __all__ = [
     "register_builtins",
     "summarize_latencies_ms",
 ]
+
 
 def __getattr__(name: str) -> object:
     if name == "StrongSUT":

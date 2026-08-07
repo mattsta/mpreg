@@ -286,6 +286,7 @@ uv run mpreg (benchmark not shipped — use pytest topology tests) --topology=al
 from mpreg.core.port_allocator import port_range_context
 from mpreg.tests.test_advanced_topological_research import AdvancedTopologyBuilder
 
+
 async def test_my_topology():
     builder = AdvancedTopologyBuilder(test_context)
 

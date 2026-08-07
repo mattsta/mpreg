@@ -44,9 +44,11 @@ from mpreg.datastructures.raft_storage_adapters import (
 
 # Storage adapters are now imported from raft_storage_adapters module
 
+
 def get_concurrency_factor() -> float:
     """Get concurrency scaling factor for test timeouts."""
     return 4.0 if os.environ.get("PYTEST_XDIST_WORKER") else 1.0
+
 
 class TestableStateMachine:
     """Testable state machine with deterministic behavior."""
@@ -100,6 +102,7 @@ class TestableStateMachine:
         self.apply_count = data["apply_count"]
         # Note: we don't restore applied_commands list as it's not part of state
 
+
 class MockNetwork:
     """Controllable network for testing network partitions and message loss."""
 
@@ -139,6 +142,7 @@ class MockNetwork:
                 target_partition = partition
 
         return source_partition is not None and source_partition == target_partition
+
 
 class NetworkAwareTransport:
     """Transport that respects network conditions.
@@ -232,6 +236,7 @@ class NetworkAwareTransport:
             return await self._deliver(target_node.handle_install_snapshot(request))
 
         return None
+
 
 class TestProductionRaftIntegration:
     """Comprehensive integration tests for ProductionRaft."""
@@ -1150,6 +1155,7 @@ class TestProductionRaftIntegration:
         finally:
             for node in nodes.values():
                 await node.stop()
+
 
 if __name__ == "__main__":
     # Run specific test for debugging

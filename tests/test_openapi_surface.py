@@ -1,5 +1,6 @@
 from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
 
+
 def test_openapi_has_core_paths() -> None:
     doc = build_monitoring_openapi()
     assert doc["openapi"].startswith("3.")
@@ -19,6 +20,7 @@ def test_openapi_has_core_paths() -> None:
     ):
         assert p in paths
 
+
 def test_openapi_mgmt_mutations_have_request_bodies() -> None:
     paths = build_monitoring_openapi()["paths"]
     drain = paths["/mgmt/v1/nodes/drain"]["post"]
@@ -37,6 +39,7 @@ def test_openapi_mgmt_mutations_have_request_bodies() -> None:
         "rules"
         in apply_["requestBody"]["content"]["application/json"]["schema"]["properties"]
     )
+
 
 def test_openapi_mgmt_mutations_declare_bearer_security() -> None:
     paths = build_monitoring_openapi()["paths"]

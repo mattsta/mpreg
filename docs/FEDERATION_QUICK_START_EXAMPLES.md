@@ -17,6 +17,7 @@ from contextlib import contextmanager
 
 from mpreg.core.port_allocator import port_range_context
 
+
 @contextmanager
 def reserve_ports(count: int, label: str = "servers"):
     with port_range_context(count, label) as ports:
@@ -29,6 +30,7 @@ def reserve_ports(count: int, label: str = "servers"):
 import asyncio
 from mpreg.server import MPREGServer
 from mpreg.core.config import MPREGSettings
+
 
 async def create_edge_network():
     """Create a self-organizing edge computing network."""
@@ -67,6 +69,7 @@ async def create_edge_network():
 
     await asyncio.sleep(0.5)
     return nodes
+
 
 # Usage
 edge_nodes = await create_edge_network()
@@ -134,6 +137,7 @@ async def create_trading_system():
 
     await asyncio.sleep(0.5)
     return all_nodes
+
 
 # Usage
 trading_nodes = await create_trading_system()
@@ -243,6 +247,7 @@ async def create_enterprise_mesh():
     await asyncio.sleep(0.5)
     return all_nodes, tier_leaders
 
+
 # Usage
 enterprise_nodes, leaders = await create_enterprise_mesh()
 print(
@@ -259,6 +264,7 @@ import asyncio
 from mpreg.core.config import MPREGSettings
 from mpreg.core.port_allocator import port_range_context, port_context
 from mpreg.server import MPREGServer
+
 
 async def create_dns_gateway_demo():
     with port_range_context(2, "servers") as ports, port_context("dns-udp") as dns_port:
@@ -288,6 +294,7 @@ async def create_dns_gateway_demo():
 
         await asyncio.sleep(0.5)
         return ingress, feature, dns_port, (task, feature_task)
+
 
 # After startup, register a service and resolve via DNS:
 # mpreg client dns-register --url ws://127.0.0.1:<port> --name tradefeed --namespace market \
@@ -384,6 +391,7 @@ async def create_global_cdn():
     await asyncio.sleep(0.5)
     return all_nodes, dc_leaders
 
+
 # Usage
 cdn_nodes, dc_leaders = await create_global_cdn()
 print(f"✅ Created global CDN with {len(cdn_nodes)} nodes across 3 datacenters")
@@ -461,6 +469,7 @@ async def create_mission_critical_system():
     await asyncio.sleep(0.5)
     return all_nodes, partition_scenarios
 
+
 # Usage
 critical_nodes, scenarios = await create_mission_critical_system()
 print(
@@ -474,6 +483,7 @@ Run benchmarks to compare topologies for your use case (test utility):
 
 ```python
 from tests.performance_research_framework import ScalabilityBenchmark
+
 
 async def benchmark_topologies():
     """Compare all topology patterns for your specific needs."""
@@ -499,6 +509,7 @@ async def benchmark_topologies():
     benchmark.export_benchmark_results("topology_benchmark_results.json")
 
     return results
+
 
 # Usage
 benchmark_results = await benchmark_topologies()

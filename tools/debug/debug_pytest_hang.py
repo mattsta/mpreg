@@ -12,6 +12,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 class TestPytestHangDebug:
     """Test each component separately to find where pytest hangs."""
 
@@ -112,6 +113,7 @@ class TestPytestHangDebug:
         for port in ports:
             allocator.release_port(port)
         print("✅ Two server creation works!")
+
 
 if __name__ == "__main__":
     # Also test directly

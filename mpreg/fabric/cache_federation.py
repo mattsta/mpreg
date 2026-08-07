@@ -41,6 +41,7 @@ from .cache_transport import CacheTransport
 
 fabric_cache_log = logger
 
+
 class CacheOperationType(Enum):
     """Types of cache operations that can be propagated."""
 
@@ -50,6 +51,7 @@ class CacheOperationType(Enum):
     QUERY = "query"
     ANTI_ENTROPY = "anti_entropy"
 
+
 class ConflictResolutionStrategy(Enum):
     """Strategies for resolving cache conflicts."""
 
@@ -58,6 +60,7 @@ class ConflictResolutionStrategy(Enum):
     MOST_RECENT_ACCESS = "most_recent_access"
     HIGHEST_QUALITY = "highest_quality"
     MANUAL = "manual"
+
 
 @dataclass(frozen=True, slots=True)
 class CacheOperationMessage:
@@ -137,6 +140,7 @@ class CacheOperationMessage:
             consistency_level=consistency_level,
         )
 
+
 @dataclass(slots=True)
 class CacheDigestEntry:
     """Entry in cache digest for anti-entropy."""
@@ -171,6 +175,7 @@ class CacheDigestEntry:
             size_bytes=int(payload.get("size_bytes", 0)),
             node_id=str(payload.get("node_id", "")),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class CacheDigest:
@@ -220,6 +225,7 @@ class CacheDigest:
             digest_hash=str(payload.get("digest_hash", "")),
         )
 
+
 @dataclass(slots=True)
 class CacheConflict:
     """Represents a conflict between cache entries."""
@@ -235,6 +241,7 @@ class CacheConflict:
     resolved: bool = False
     resolution_result: GlobalCacheEntry | None = None
 
+
 @dataclass(slots=True)
 class CacheFederationStatistics:
     """Statistics for cache federation operations."""
@@ -249,6 +256,7 @@ class CacheFederationStatistics:
     digest_exchanges: int = 0
     bytes_transferred: int = 0
     last_gossip_time: float = 0.0
+
 
 class FabricCacheProtocol:
     """

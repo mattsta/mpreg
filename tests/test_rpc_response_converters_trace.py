@@ -6,6 +6,7 @@ from mpreg.core.model import RPCResponse
 
 TP = "00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01"
 
+
 def test_rpc_response_roundtrip_w3c() -> None:
     r = RPCResponse(
         r=1,
@@ -17,6 +18,7 @@ def test_rpc_response_roundtrip_w3c() -> None:
     r2 = RPCResponse.model_validate(r.model_dump())
     assert r2.traceparent == TP
     assert r2.tracestate == "v=1"
+
 
 def test_topic_aware_to_rpc_response_preserves_w3c() -> None:
     obj = TopicAwareRPCResponse(
@@ -32,6 +34,7 @@ def test_topic_aware_to_rpc_response_preserves_w3c() -> None:
     assert out.traceparent == TP
     assert out.tracestate == "x=1"
 
+
 def test_topic_aware_from_rpc_response_copies_w3c() -> None:
     base = RPCResponse(
         r=2, u="u-2", traceparent=TP, tracestate="y=2", headers={"traceparent": TP}
@@ -39,6 +42,7 @@ def test_topic_aware_from_rpc_response_copies_w3c() -> None:
     obj = TopicAwareRPCResponse.from_rpc_response(base)
     assert obj.traceparent == TP
     assert obj.to_rpc_response().traceparent == TP
+
 
 def test_enhanced_roundtrip_preserves_w3c() -> None:
     base = RPCResponse(

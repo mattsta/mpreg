@@ -10,6 +10,7 @@ from mpreg.datastructures.type_aliases import HopCount, JsonDict, NodeId
 
 FABRIC_PUBSUB_FORWARDING_KEY = "fabric_forwarding"
 
+
 @dataclass(frozen=True, slots=True)
 class PubSubForwardingMetadata:
     origin_node: NodeId

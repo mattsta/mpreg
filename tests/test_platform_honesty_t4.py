@@ -43,6 +43,7 @@ from mpreg.fabric.membership import MembershipProtocol
 from mpreg.fabric.message import MessageHeaders
 from mpreg.server import MPREGServer
 
+
 def test_owner_write_fails_closed_without_actor_cluster() -> None:
     engine = NamespacePolicyEngine(
         enabled=True,
@@ -89,6 +90,7 @@ def test_owner_write_fails_closed_without_actor_cluster() -> None:
     assert other.allowed is False
     assert other.reason == "owner_denied"
 
+
 @pytest.mark.asyncio
 async def test_location_strong_wait_and_get_fail_closed() -> None:
     key = GlobalCacheKey(namespace="ns", identifier="k", version="v1")
@@ -111,6 +113,7 @@ async def test_location_strong_wait_and_get_fail_closed() -> None:
         await LocationConsistencyManager._wait_for_strong_consistency(mgr, op)
     with pytest.raises(ValueError, match="STRONG is not implemented"):
         await LocationConsistencyManager._get_with_strong_consistency(mgr, key)
+
 
 @pytest.mark.asyncio
 async def test_location_replicate_strong_no_residual() -> None:
@@ -142,6 +145,7 @@ async def test_location_replicate_strong_no_residual() -> None:
     assert entry_key not in mgr.replicated_entries
     assert mgr.replication_queue.empty()
 
+
 def test_blockchain_exactly_once_submit_rejected() -> None:
     from mpreg.core.blockchain_message_queue import UnsupportedDeliveryGuaranteeError
 
@@ -160,10 +164,12 @@ def test_blockchain_exactly_once_submit_rejected() -> None:
     ):
         q.submit_message(msg)
 
+
 def test_queue_plane_has_no_exactly_once_member() -> None:
     names = {m.name for m in QueueDeliveryGuarantee}
     assert "EXACTLY_ONCE" not in names
     assert QueueDeliveryGuarantee.AT_LEAST_ONCE.value == "at_least_once"
+
 
 @pytest.mark.asyncio
 async def test_rpc_queue_send_rejects_exactly_once_and_unknown() -> None:
@@ -190,6 +196,7 @@ async def test_rpc_queue_send_rejects_exactly_once_and_unknown() -> None:
     assert bad["success"] is False
     assert "unsupported_delivery_guarantee:magic" in bad["error_message"]
 
+
 def test_metrics_tracker_emits_draining_and_mgmt() -> None:
     t = ServerMetricsTracker()
     t.set_draining(True)
@@ -202,6 +209,7 @@ def test_metrics_tracker_emits_draining_and_mgmt() -> None:
     assert "node_drain" in lines
     assert 'mpreg_client_notification_drops_total{node="n1"} 3' in lines
 
+
 def test_bind_trace_context_adds_fields() -> None:
     log = bind_trace_context(
         traceparent="00-abc-def-01",
@@ -211,12 +219,14 @@ def test_bind_trace_context_adds_fields() -> None:
     assert log is not None
     assert hasattr(log, "info")
 
+
 def test_mpreg_root_exports_unified_client() -> None:
     import mpreg
 
     assert hasattr(mpreg, "MPREGClient")
     assert hasattr(mpreg, "UnifiedMPREGClient")
     assert mpreg.MPREGClient is mpreg.UnifiedMPREGClient
+
 
 def test_cli_admin_commands_registered() -> None:
     from click.testing import CliRunner
@@ -230,6 +240,7 @@ def test_cli_admin_commands_registered() -> None:
     assert "detach" in result.output
     assert "audit" in result.output
 
+
 @pytest.mark.asyncio
 async def test_federation_health_probe_reports_unknown_not_fake_healthy() -> None:
     monitor = FederationHealthMonitor(
@@ -240,6 +251,7 @@ async def test_federation_health_probe_reports_unknown_not_fake_healthy() -> Non
     result = await monitor._perform_health_check("remote")
     assert result.status == HealthStatus.UNKNOWN.value
     assert "unimplemented" in (result.error_message or "").lower()
+
 
 @pytest.mark.asyncio
 async def test_federation_recovery_strategies_refuse_silent_success() -> None:
@@ -259,6 +271,7 @@ async def test_federation_recovery_strategies_refuse_silent_success() -> None:
     assert await recovery._immediate_retry_recovery("c1") is False
     assert await recovery._circuit_breaker_recovery("c1") is False
 
+
 def test_membership_module_documents_library_only() -> None:
     import mpreg.fabric.membership as mem_mod
 
@@ -272,6 +285,7 @@ def test_membership_module_documents_library_only() -> None:
         or "not wired" in blob.lower()
         or "Integration status" in blob
     )
+
 
 def test_hop_deadline_uses_measured_mono_when_stamped() -> None:
     server = object.__new__(MPREGServer)
@@ -298,6 +312,7 @@ def test_hop_deadline_uses_measured_mono_when_stamped() -> None:
     assert next_h.deadline_remaining_ms < 1000.0 - 10.0
     assert "mpreg.hop_entered_mono" in next_h.metadata
 
+
 @pytest.mark.asyncio
 async def test_global_quorum_name_vote_refused_without_lab_flag() -> None:
     from unittest.mock import MagicMock
@@ -316,6 +331,7 @@ async def test_global_quorum_name_vote_refused_without_lab_flag() -> None:
     )
     assert result.success is False
     assert "unsupported_global_consensus" in (result.error_message or "")
+
 
 def test_mgmt_audit_jsonl_persistence(tmp_path) -> None:
     from mpreg.server_pkg.mgmt_mutations import MgmtAuditEntry, MgmtAuditLog
@@ -336,6 +352,7 @@ def test_mgmt_audit_jsonl_persistence(tmp_path) -> None:
     snap = reloaded.snapshot()
     assert len(snap) == 1
     assert snap[0]["event"] == "node_drain"
+
 
 def test_pending_replications_bounded_drop_oldest() -> None:
     from mpreg.core.cache_models import GlobalCacheKey
@@ -362,6 +379,7 @@ def test_pending_replications_bounded_drop_oldest() -> None:
     finally:
         mgr.shutdown_sync()
 
+
 @pytest.mark.asyncio
 async def test_plane_rpc_module_queue_send_rejects_eo() -> None:
     from unittest.mock import MagicMock
@@ -383,6 +401,7 @@ async def test_plane_rpc_module_queue_send_rejects_eo() -> None:
     assert result["success"] is False
     assert "exactly_once" in result["error_message"]
 
+
 def test_dev_profile_four_planes_in_package() -> None:
     from pathlib import Path
 
@@ -392,7 +411,9 @@ def test_dev_profile_four_planes_in_package() -> None:
     s = MPREGSettings.from_path(path)
     assert s.enable_default_cache and s.enable_default_queue
 
+
 # --- T7 residual closeout ---
+
 
 def test_gossip_hmac_sign_verify_roundtrip() -> None:
     from mpreg.fabric.gossip_signatures import (
@@ -414,6 +435,7 @@ def test_gossip_hmac_sign_verify_roundtrip() -> None:
     assert not accept_gossip_payload(signed, require_hmac=True, secret=None)
     # require off accepts unsigned
     assert accept_gossip_payload(payload, require_hmac=False, secret=None)
+
 
 @pytest.mark.asyncio
 async def test_server_gossip_transport_signs_when_required() -> None:
@@ -445,6 +467,7 @@ async def test_server_gossip_transport_signs_when_required() -> None:
     payload = transport._captured[0].payload
     assert SIGNATURE_KEY in payload
     assert verify_gossip_payload(payload, "s3cret")
+
 
 @pytest.mark.asyncio
 async def test_queue_receive_rpc_and_manager() -> None:
@@ -488,6 +511,7 @@ async def test_queue_receive_rpc_and_manager() -> None:
     assert result["empty"] is False
     assert result["message"]["payload"] == {"y": 1}
 
+
 @pytest.mark.asyncio
 async def test_unified_client_queue_receive_method() -> None:
     from mpreg.client import MPREGClient
@@ -513,10 +537,12 @@ async def test_unified_client_queue_receive_method() -> None:
     finally:
         MPREGClientAPI.call = orig  # type: ignore[method-assign]
 
+
 def test_accept_queue_default_is_bounded() -> None:
     from mpreg.core.transport.defaults import DEFAULT_ACCEPT_QUEUE_MAXSIZE
 
     assert DEFAULT_ACCEPT_QUEUE_MAXSIZE >= 64
+
 
 def test_accept_fabric_gossip_strips_hmac_field() -> None:
     from mpreg.core.config import MPREGSettings
@@ -547,7 +573,9 @@ def test_accept_fabric_gossip_strips_hmac_field() -> None:
     # reject unsigned when required
     assert server._accept_fabric_gossip_payload(payload) is None
 
+
 # --- T9 COR residual closeout ---
+
 
 def test_delivery_guarantee_cross_plane_conversion() -> None:
     """COR-14: fabric EO cannot convert onto queue plane; shared wires round-trip."""
@@ -560,6 +588,7 @@ def test_delivery_guarantee_cross_plane_conversion() -> None:
     with pytest.raises(ValueError, match="exactly_once"):
         FabricDG.EXACTLY_ONCE.to_queue_guarantee()
 
+
 def test_name_vote_experimental_off_in_shipped_profiles() -> None:
     """COR-15: no profile enables name-vote theater."""
     from pathlib import Path
@@ -568,6 +597,7 @@ def test_name_vote_experimental_off_in_shipped_profiles() -> None:
     for path in sorted(root.glob("*.toml")):
         text = path.read_text(encoding="utf-8")
         assert "experimental_name_vote_consensus" not in text, path.name
+
 
 @pytest.mark.asyncio
 async def test_create_queue_honors_namespace_policy() -> None:
@@ -606,6 +636,7 @@ async def test_create_queue_honors_namespace_policy() -> None:
     finally:
         await mgr.shutdown()
 
+
 def test_cli_admin_policy_registered() -> None:
     """ERG-02: admin policy CLI exists."""
     from click.testing import CliRunner
@@ -616,6 +647,7 @@ def test_cli_admin_policy_registered() -> None:
     result = runner.invoke(cli, ["admin", "--help"])
     assert result.exit_code == 0
     assert "policy" in result.output
+
 
 def test_cli_client_plane_smokes_registered() -> None:
     """ERG-05: queue/cache/publish client commands registered."""
@@ -635,6 +667,7 @@ def test_cli_client_plane_smokes_registered() -> None:
     ):
         assert name in result.output, name
 
+
 def test_openapi_covers_golden_extra_routes() -> None:
     """ERG-09: OpenAPI lists topology/metrics splits/alerts/config."""
     from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
@@ -650,6 +683,7 @@ def test_openapi_covers_golden_extra_routes() -> None:
         "/discovery/summary",
     ):
         assert p in paths, p
+
 
 def test_readme_honesty_no_bft_planet_private_api() -> None:
     """ERG-03: root README front door is honest."""
@@ -667,6 +701,7 @@ def test_readme_honesty_no_bft_planet_private_api() -> None:
     body = re.sub(r"planet_scale\S*", "", body, flags=re.IGNORECASE)
     assert "planet-scale" not in body.lower()
 
+
 def test_support_only_section_in_claims() -> None:
     """B3: unclaimed invariant tests listed as support_only."""
     from pathlib import Path
@@ -677,6 +712,7 @@ def test_support_only_section_in_claims() -> None:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     assert "support_only" in data
     assert any("test_fault_injector" in s for s in data["support_only"])
+
 
 def test_docs_no_guaranteed_single_delivery_claim() -> None:
     """ERG-07: blockchain arch must not market EO as guaranteed single delivery."""
@@ -689,6 +725,7 @@ def test_docs_no_guaranteed_single_delivery_claim() -> None:
     assert "Guaranteed single delivery" not in blob
     assert "Honesty banner" in blob or "honesty banner" in blob.lower()
 
+
 def test_openapi_ready_documents_drain_semantics() -> None:
     """OBS-06/07: OpenAPI /ready describes drain and 503."""
     from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
@@ -697,6 +734,7 @@ def test_openapi_ready_documents_drain_semantics() -> None:
     assert "503" in ready.get("responses", {})
     desc = (ready.get("description") or "") + ready.get("summary", "")
     assert "drain" in desc.lower() or "503" in desc
+
 
 def test_rpc_actor_ids_ignores_body_when_policy_on() -> None:
     """COR-05: under discovery policy, body cluster_id cannot spoof actor."""
@@ -720,6 +758,7 @@ def test_rpc_actor_ids_ignores_body_when_policy_on() -> None:
     )
     assert cluster == "local-cluster"
     assert tenant is None
+
 
 def test_rpc_actor_ids_body_ok_when_policy_off() -> None:
     """COR-05 lab path: body identity allowed only when policy disabled."""

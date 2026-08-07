@@ -8,6 +8,7 @@ from mpreg.datastructures.function_identity import (
 from mpreg.fabric.catalog import FunctionCatalog, FunctionEndpoint
 from tests.test_helpers import TestPortManager
 
+
 def _make_endpoint(
     *,
     function_id: str = "func-1",
@@ -31,6 +32,7 @@ def _make_endpoint(
         ttl_seconds=ttl_seconds,
     )
 
+
 def test_function_catalog_registers_and_filters() -> None:
     with TestPortManager() as port_manager:
         catalog = FunctionCatalog()
@@ -44,6 +46,7 @@ def test_function_catalog_registers_and_filters() -> None:
         selector = FunctionSelector(function_id="func-1")
         matches = catalog.find(selector, resources=frozenset({"gpu"}))
         assert matches == [entry_b]
+
 
 def test_function_catalog_prunes_expired() -> None:
     with TestPortManager() as port_manager:
@@ -59,6 +62,7 @@ def test_function_catalog_prunes_expired() -> None:
         assert removed == 1
         selector = FunctionSelector(function_id="func-1")
         assert catalog.find(selector) == []
+
 
 def test_function_endpoint_roundtrip() -> None:
     with TestPortManager() as port_manager:

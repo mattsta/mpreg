@@ -1,15 +1,15 @@
 # MPREG 0.3.0 Production Snapshot — Master Plan (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-07 |
-| **Authority** | Official project planning for next public release milestone |
-| **Architecture** | `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md` |
-| **Burndown** | `docs/plans/RELEASE_0_3_BURNDOWN.md` |
-| **Proof ledger** | `docs/plans/RELEASE_0_3_PROOF_LEDGER.md` |
-| **Version target** | `0.3.0` |
-| **Point budget** | 7 tracks × ~20–35 pts = **~180 implementation/validation items** |
+| Field              | Value                                                            |
+| ------------------ | ---------------------------------------------------------------- |
+| **Status**         | **Complete**                                                     |
+| **Date**           | 2026-08-07                                                       |
+| **Authority**      | Official project planning for next public release milestone      |
+| **Architecture**   | `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md`           |
+| **Burndown**       | `docs/plans/RELEASE_0_3_BURNDOWN.md`                             |
+| **Proof ledger**   | `docs/plans/RELEASE_0_3_PROOF_LEDGER.md`                         |
+| **Version target** | `0.3.0`                                                          |
+| **Point budget**   | 7 tracks × ~20–35 pts = **~180 implementation/validation items** |
 
 ## Global rules
 
@@ -46,14 +46,14 @@ uv run pytest tests/release/ -q
 
 ## Stages
 
-| Stage | Name | Exit |
-| --- | --- | --- |
-| R1-S0 | Script layout | `scripts/ci_*.sh` exist |
-| R1-S1 | Workflow jobs | `.github/workflows/ci.yml` multi-job |
-| R1-S2 | Unit-fast curation | stable under 10–15 min |
-| R1-S3 | Invariants + DistLab core | green |
-| R1-S4 | Security deps job | green or documented allow |
-| R1-S5 | Gate | local `release_gate` partial R1 green |
+| Stage | Name                      | Exit                                  |
+| ----- | ------------------------- | ------------------------------------- |
+| R1-S0 | Script layout             | `scripts/ci_*.sh` exist               |
+| R1-S1 | Workflow jobs             | `.github/workflows/ci.yml` multi-job  |
+| R1-S2 | Unit-fast curation        | stable under 10–15 min                |
+| R1-S3 | Invariants + DistLab core | green                                 |
+| R1-S4 | Security deps job         | green or documented allow             |
+| R1-S5 | Gate                      | local `release_gate` partial R1 green |
 
 ## Points
 
@@ -84,14 +84,14 @@ uv run pytest tests/release/ -q
 
 ## Stages
 
-| Stage | Name | Exit |
-| --- | --- | --- |
-| R2-S0 | Inventory drift | list aspirational claims |
-| R2-S1 | README fix | features match reality |
-| R2-S2 | CHANGELOG 0.3.0 | user-facing |
-| R2-S3 | claims.yaml release | proof + non_claims |
-| R2-S4 | Cross-links | GETTING_STARTED / ARCHITECTURE |
-| R2-S5 | Gate | honesty unit tests |
+| Stage | Name                | Exit                           |
+| ----- | ------------------- | ------------------------------ |
+| R2-S0 | Inventory drift     | list aspirational claims       |
+| R2-S1 | README fix          | features match reality         |
+| R2-S2 | CHANGELOG 0.3.0     | user-facing                    |
+| R2-S3 | claims.yaml release | proof + non_claims             |
+| R2-S4 | Cross-links         | GETTING_STARTED / ARCHITECTURE |
+| R2-S5 | Gate                | honesty unit tests             |
 
 ## Points
 
@@ -113,7 +113,7 @@ uv run pytest tests/release/ -q
 36. README points to SECURITY.md
 37. README points to PERF_BASELINE.md (after R5)
 38. Freeze note: residual T140+ not required for tag
-39–45. Buffer docs polish
+    39–45. Buffer docs polish
 
 ---
 
@@ -121,13 +121,13 @@ uv run pytest tests/release/ -q
 
 ## Stages
 
-| Stage | Name | Exit |
-| --- | --- | --- |
-| R3-S0 | SECURITY.md | disclosure + threat model |
-| R3-S1 | config-check guards | mon token / strict |
-| R3-S2 | Tests | config-check + docs |
-| R3-S3 | TLS/mon docs | PRODUCTION + profiles |
-| R3-S4 | Gate | R3 tests green |
+| Stage | Name                | Exit                      |
+| ----- | ------------------- | ------------------------- |
+| R3-S0 | SECURITY.md         | disclosure + threat model |
+| R3-S1 | config-check guards | mon token / strict        |
+| R3-S2 | Tests               | config-check + docs       |
+| R3-S3 | TLS/mon docs        | PRODUCTION + profiles     |
+| R3-S4 | Gate                | R3 tests green            |
 
 ## Points
 
@@ -146,7 +146,7 @@ uv run pytest tests/release/ -q
 58. Optional: SUPPORT.md one-pager or section inside SECURITY
 59. claims non_claim: SECURITY.md ≠ pen-test certification
 60. OpenAPI/docs note unchanged for mon bearer
-61–75. Buffer: extra guards if easy (allow_unsigned already warned)
+    61–75. Buffer: extra guards if easy (allow_unsigned already warned)
 
 ---
 
@@ -154,12 +154,12 @@ uv run pytest tests/release/ -q
 
 ## Stages
 
-| Stage | Name | Exit |
-| --- | --- | --- |
-| R4-S0 | Version bump | 0.3.0 |
-| R4-S1 | Metadata | URLs/classifiers |
-| R4-S2 | Package smoke script | wheel install |
-| R4-S3 | Gate | ci_package_smoke green |
+| Stage | Name                 | Exit                   |
+| ----- | -------------------- | ---------------------- |
+| R4-S0 | Version bump         | 0.3.0                  |
+| R4-S1 | Metadata             | URLs/classifiers       |
+| R4-S2 | Package smoke script | wheel install          |
+| R4-S3 | Gate                 | ci_package_smoke green |
 
 ## Points
 
@@ -172,7 +172,7 @@ uv run pytest tests/release/ -q
 82. Confirm LICENSE Apache-2.0 referenced
 83. hatch include profiles + ops alerts
 84. Document tag procedure in RELEASE_CHECKLIST (do not push tag in CI without human)
-85–95. Buffer
+    85–95. Buffer
 
 ---
 
@@ -180,12 +180,12 @@ uv run pytest tests/release/ -q
 
 ## Stages
 
-| Stage | Name | Exit |
-| --- | --- | --- |
-| R5-S0 | PERF_BASELINE.md | written |
-| R5-S1 | Repro command | script or pytest path |
-| R5-S2 | Honesty | no false Million+ without caveat |
-| R5-S3 | Gate | doc + light test |
+| Stage | Name             | Exit                             |
+| ----- | ---------------- | -------------------------------- |
+| R5-S0 | PERF_BASELINE.md | written                          |
+| R5-S1 | Repro command    | script or pytest path            |
+| R5-S2 | Honesty          | no false Million+ without caveat |
+| R5-S3 | Gate             | doc + light test                 |
 
 ## Points
 
@@ -193,11 +193,11 @@ uv run pytest tests/release/ -q
 97. Topology: 1-node lab defaults
 98. Commands: uv run pytest tests/performance/… or dedicated smoke
 99. Non-claims: not WAN SLA; hardware-dependent
-100. Link from PRODUCTION_DEPLOYMENT + README
-101. `scripts/ci_perf_smoke.sh` optional short path (may be nightly)
-102. test_r5_perf_baseline_doc_exists
-103. Soft thresholds only if automated
-104–115. Buffer
+100.  Link from PRODUCTION_DEPLOYMENT + README
+101.  `scripts/ci_perf_smoke.sh` optional short path (may be nightly)
+102.  test_r5_perf_baseline_doc_exists
+103.  Soft thresholds only if automated
+      104–115. Buffer
 
 ---
 
@@ -205,12 +205,12 @@ uv run pytest tests/release/ -q
 
 ## Stages
 
-| Stage | Name | Exit |
-| --- | --- | --- |
-| R6-S0 | RELEASE_CHECKLIST.md | written |
-| R6-S1 | PRODUCTION cross-link | done |
-| R6-S2 | ops README | release pointer |
-| R6-S3 | Gate | doc tests |
+| Stage | Name                  | Exit            |
+| ----- | --------------------- | --------------- |
+| R6-S0 | RELEASE_CHECKLIST.md  | written         |
+| R6-S1 | PRODUCTION cross-link | done            |
+| R6-S2 | ops README            | release pointer |
+| R6-S3 | Gate                  | doc tests       |
 
 ## Points
 
@@ -221,7 +221,7 @@ uv run pytest tests/release/ -q
 120. mpreg/ops/README.md release pointer
 121. PRODUCTION_DEPLOYMENT observability checklist refresh
 122. test_r6_release_checklist_exists
-123–135. Buffer
+     123–135. Buffer
 
 ---
 
@@ -229,16 +229,16 @@ uv run pytest tests/release/ -q
 
 ## Stages
 
-| Stage | Name | Exit |
-| --- | --- | --- |
-| R7-S0 | release_gate.sh | all tracks |
-| R7-S1 | claims + ledger complete | done |
-| R7-S2 | Master/burndown status | Complete |
-| R7-S3 | Commit | clean tree |
+| Stage | Name                     | Exit       |
+| ----- | ------------------------ | ---------- |
+| R7-S0 | release_gate.sh          | all tracks |
+| R7-S1 | claims + ledger complete | done       |
+| R7-S2 | Master/burndown status   | Complete   |
+| R7-S3 | Commit                   | clean tree |
 
 ## Points
 
-136. `scripts/release_gate.sh` orchestrates all ci_* + release tests
+136. `scripts/release_gate.sh` orchestrates all ci\_\* + release tests
 137. claims.yaml R0.3 proof list complete
 138. RELEASE_0_3_PROOF_LEDGER.md rows for R1–R7
 139. Burndown all `[x]`
@@ -248,20 +248,20 @@ uv run pytest tests/release/ -q
 143. `tests/release/test_r7_gate_artifacts.py`
 144. Run full release_gate locally green
 145. Final commit message for 0.3.0 milestone work
-146–180. Buffer / fixups from gate failures
+     146–180. Buffer / fixups from gate failures
 
 ---
 
 ## Status dashboard
 
-| Track | Pts | Status |
-| --- | --- | --- |
-| R1 CI quality | ~30 | **complete** |
-| R2 Honesty | ~25 | **complete** |
-| R3 Security | ~30 | **complete** |
-| R4 Packaging | ~20 | **complete** |
+| Track          | Pts | Status       |
+| -------------- | --- | ------------ |
+| R1 CI quality  | ~30 | **complete** |
+| R2 Honesty     | ~25 | **complete** |
+| R3 Security    | ~30 | **complete** |
+| R4 Packaging   | ~20 | **complete** |
 | R5 Performance | ~20 | **complete** |
-| R6 Ops path | ~20 | **complete** |
+| R6 Ops path    | ~20 | **complete** |
 | R7 Gate/freeze | ~25 | **complete** |
 
 **Total: ~180 pts. All tracks Complete. `scripts/release_gate.sh` exits 0 (2026-08-07).**
@@ -283,9 +283,9 @@ R2 may start docs in parallel with R1 scripts; **merge order** keeps R1 first so
 
 ## Relationship to DistLab residual track
 
-| Track family | Status |
-| --- | --- |
-| DistLab T1–T7 | Complete |
+| Track family              | Status                         |
+| ------------------------- | ------------------------------ |
+| DistLab T1–T7             | Complete                       |
 | Residual honesty T17–T139 | Complete (diminishing returns) |
-| **Release 0.3.0 R1–R7** | **This plan** |
-| Residual T140+ | Deferred post-tag |
+| **Release 0.3.0 R1–R7**   | **This plan**                  |
+| Residual T140+            | Deferred post-tag              |

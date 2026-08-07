@@ -19,6 +19,7 @@ from mpreg.core.model import RPCCommand
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 class TestFederationBoundaries:
     """Test federation boundary behavior and cross-cluster limitations."""
 
@@ -490,6 +491,7 @@ class TestFederationBoundaries:
         print(
             "  - Resources with same names operate independently in different federations"
         )
+
 
 class TestFederationLimitations:
     """Document the discovered limitations of MPREG's federation system."""

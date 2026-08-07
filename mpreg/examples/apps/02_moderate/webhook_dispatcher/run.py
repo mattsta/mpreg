@@ -12,6 +12,7 @@ from mpreg.core.model import PubSubMessage, PubSubSubscription, TopicPattern
 from mpreg.core.topic_exchange import TopicExchange
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run(
         "webhook_dispatcher",
@@ -106,6 +107,7 @@ async def main() -> None:
                 step("non-claim: not HTTP delivery; queue is the egress boundary")
         finally:
             await manager.shutdown()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

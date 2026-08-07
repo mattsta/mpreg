@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from mpreg.testing.distlab.registry import SUITE_PRESETS, resolve_preset
 
+
 def test_t25_ci_core_preset_is_deduped_union() -> None:
     smoke = set(SUITE_PRESETS["smoke"])
     strong = set(SUITE_PRESETS["strong-core"])
@@ -17,13 +18,16 @@ def test_t25_ci_core_preset_is_deduped_union() -> None:
     assert "strong.refuse_get_delete" in names
     assert "audit.digest_repair" in names
 
+
 def test_t25_unknown_preset_empty() -> None:
     assert resolve_preset("no-such-preset") == []
     assert resolve_preset("") == []
 
+
 def test_t25_list_presets_includes_ci_core() -> None:
     assert "ci-core" in SUITE_PRESETS
     assert "smoke" in SUITE_PRESETS
+
 
 def test_t25_list_presets_cli_expands_ci_core() -> None:
     """``mpreg distlab presets --json`` expands composed ci-core names."""

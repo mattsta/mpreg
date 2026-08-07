@@ -36,6 +36,7 @@ from .type_aliases import (
     MerkleTreeDepth,
 )
 
+
 class _LazySt:
     """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
 
@@ -51,7 +52,9 @@ class _LazySt:
     def __getattr__(self, name: str) -> object:
         return getattr(self._load(), name)
 
+
 st = _LazySt()
+
 
 @dataclass(frozen=True, slots=True)
 class MerkleNode:
@@ -108,6 +111,7 @@ class MerkleNode:
         """Create an internal node from two children."""
         hash_value = _compute_internal_hash(left.hash_value, right.hash_value)
         return cls(hash_value=hash_value, left_child=left, right_child=right)
+
 
 @dataclass(frozen=True, slots=True)
 class MerkleProof:
@@ -171,6 +175,7 @@ class MerkleProof:
             ],
             root_hash=data["root_hash"],
         )
+
 
 @dataclass(frozen=True, slots=True)
 class MerkleTree:
@@ -402,16 +407,20 @@ class MerkleTree:
 
         return f"MerkleTree(leaves={self._leaf_count}, root={self.root_hash()[:16]}...)"
 
+
 # Helper functions for Merkle tree operations
+
 
 def _compute_leaf_hash(data: MerkleLeafData) -> MerkleHash:
     """Compute hash for leaf node data."""
     return hashlib.sha256(b"leaf:" + data).hexdigest()
 
+
 def _compute_internal_hash(left_hash: MerkleHash, right_hash: MerkleHash) -> MerkleHash:
     """Compute hash for internal node from children hashes."""
     combined = f"internal:{left_hash}:{right_hash}".encode()
     return hashlib.sha256(combined).hexdigest()
+
 
 def _build_merkle_tree(leaves: list[MerkleLeafData]) -> MerkleNode:
     """Build a Merkle tree from leaf data."""
@@ -441,6 +450,7 @@ def _build_merkle_tree(leaves: list[MerkleLeafData]) -> MerkleNode:
         nodes = next_level
 
     return nodes[0]
+
 
 def _generate_proof_path(
     root: MerkleNode, target_index: MerkleLeafIndex, tree_size: int
@@ -478,11 +488,14 @@ def _generate_proof_path(
     # Reverse the proof path since we built it top-down but verification works bottom-up
     return list(reversed(proof_path))
 
+
 # Hypothesis strategies for property-based testing
+
 
 def merkle_leaf_data_strategy() -> st.SearchStrategy[MerkleLeafData]:
     """Generate valid leaf data for testing."""
     return st.binary(min_size=1, max_size=100)
+
 
 def merkle_tree_strategy(
     max_leaves: int = 10, min_leaves: int = 0
@@ -492,11 +505,13 @@ def merkle_tree_strategy(
         merkle_leaf_data_strategy(), min_size=min_leaves, max_size=max_leaves
     ).map(MerkleTree.from_leaves)
 
+
 def non_empty_merkle_tree_strategy(
     max_leaves: int = 10,
 ) -> st.SearchStrategy[MerkleTree]:
     """Generate non-empty MerkleTree instances for testing."""
     return merkle_tree_strategy(max_leaves=max_leaves, min_leaves=1)
+
 
 def merkle_proof_strategy(
     tree: MerkleTree | None = None,

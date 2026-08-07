@@ -1,13 +1,13 @@
 # DistLab T19 — Ops Honesty, Refuse Scenario, Doctor Capabilities (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete (gated 225)** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T18 complete (`415ba0f`) |
-| **Scope** | STRONG + shared audit + DistLab ops honesty |
-| **Point budget** | **~90 pts** |
-| **Entry points only** | `uv run mpreg …` / `uv run pytest …` |
+| Field                 | Value                                       |
+| --------------------- | ------------------------------------------- |
+| **Status**            | **Complete (gated 225)**                    |
+| **Date**              | 2026-08-06                                  |
+| **Authority**         | Continuation after T18 complete (`415ba0f`) |
+| **Scope**             | STRONG + shared audit + DistLab ops honesty |
+| **Point budget**      | **~90 pts**                                 |
+| **Entry points only** | `uv run mpreg …` / `uv run pytest …`        |
 
 ## Global rules
 
@@ -18,14 +18,14 @@
 
 ## Stages
 
-| Stage | Exit |
-| --- | --- |
-| T19-S0 | Official plan |
-| T19-S1 | Doctor `--strong` surfaces capabilities + refuse counters in detail |
-| T19-S2 | Monitor strong compact human summary (capabilities line) |
+| Stage  | Exit                                                                 |
+| ------ | -------------------------------------------------------------------- |
+| T19-S0 | Official plan                                                        |
+| T19-S1 | Doctor `--strong` surfaces capabilities + refuse counters in detail  |
+| T19-S2 | Monitor strong compact human summary (capabilities line)             |
 | T19-S3 | Builtin `strong.refuse_get_delete` scenario + smoke preset inclusion |
-| T19-S4 | CLI help + unit/live tests |
-| T19-S5 | Docs, ledger, honesty Phase 7, gate, commit |
+| T19-S4 | CLI help + unit/live tests                                           |
+| T19-S5 | Docs, ledger, honesty Phase 7, gate, commit                          |
 
 ## Points
 

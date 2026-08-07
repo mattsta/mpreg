@@ -5,6 +5,7 @@ from mpreg.server_pkg.rpc_responses import (
     timeout_response,
 )
 
+
 def test_rpc_responses_codes() -> None:
     assert timeout_response("u1", "slow").error.code == int(MpregErrorCode.TIMEOUT)
     assert internal_response("u2", "x").error.code == int(MpregErrorCode.INTERNAL)

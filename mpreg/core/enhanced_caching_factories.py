@@ -18,6 +18,7 @@ from mpreg.core.caching import (
     SmartCacheManager,
 )
 
+
 def create_memory_and_count_limited_cache_manager(
     max_memory_mb: MemoryMB, max_entries: int, enforce_both: bool = False
 ) -> SmartCacheManager[Any]:
@@ -35,6 +36,7 @@ def create_memory_and_count_limited_cache_manager(
         enable_accurate_sizing=False,
     )
     return SmartCacheManager(config)
+
 
 def create_enhanced_s4lru_cache_manager(
     max_entries: int = 10000, segments: int = 4, max_memory_mb: MemoryMB | None = None
@@ -55,6 +57,7 @@ def create_enhanced_s4lru_cache_manager(
     )
     return SmartCacheManager(config)
 
+
 def create_memory_only_cache_manager(max_memory_mb: MemoryMB) -> SmartCacheManager[Any]:
     """Create cache manager limited only by memory usage."""
     limits = CacheLimits(
@@ -70,6 +73,7 @@ def create_memory_only_cache_manager(max_memory_mb: MemoryMB) -> SmartCacheManag
         enable_accurate_sizing=False,
     )
     return SmartCacheManager(config)
+
 
 def create_count_only_cache_manager(max_entries: int) -> SmartCacheManager[Any]:
     """Create cache manager limited only by entry count."""

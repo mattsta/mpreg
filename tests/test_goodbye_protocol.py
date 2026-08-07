@@ -25,14 +25,17 @@ from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 from tests.test_helpers import TestPortManager
 
+
 def _peer_node_ids(server: MPREGServer) -> set[str]:
     directory = server._peer_directory
     if not directory:
         return set()
     return {node.node_id for node in directory.nodes()}
 
+
 def _peer_count(server: MPREGServer) -> int:
     return len(_peer_node_ids(server))
+
 
 class TestGoodbyeProtocol:
     """Test suite for GOODBYE protocol functionality."""

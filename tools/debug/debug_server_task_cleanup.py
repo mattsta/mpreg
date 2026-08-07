@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from mpreg.server import MPREGServer, MPREGSettings
 
+
 async def test_server_task_cleanup():
     """Test that server tasks are properly cleaned up without warnings."""
 
@@ -110,6 +111,7 @@ async def test_server_task_cleanup():
         except Exception as cleanup_error:
             print(f"⚠️  Cleanup error: {cleanup_error}")
 
+
 async def test_multiple_server_cycles():
     """Test multiple server start/stop cycles to detect task leaks."""
 
@@ -157,6 +159,7 @@ async def test_multiple_server_cycles():
             print(f"  ❌ Cycle {cycle + 1}: Error - {e}")
 
     print("\n✅ MULTIPLE CYCLES TEST COMPLETED")
+
 
 if __name__ == "__main__":
     # Set up logging to catch task destruction warnings

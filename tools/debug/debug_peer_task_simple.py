@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from mpreg.server import MPREGServer, MPREGSettings
 
+
 async def test_peer_connection_task_only():
     """Test specifically the _manage_peer_connections task lifecycle."""
 
@@ -72,6 +73,7 @@ async def test_peer_connection_task_only():
             task_status = "done" if task.done() else "pending"
             print(f"   - {task_name} ({task_status})")
         return False
+
 
 if __name__ == "__main__":
     try:

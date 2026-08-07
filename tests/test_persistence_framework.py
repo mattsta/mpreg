@@ -17,6 +17,7 @@ from mpreg.core.persistence.config import PersistenceConfig, PersistenceMode
 from mpreg.core.persistence.kv_store import MemoryKeyValueStore
 from mpreg.core.persistence.registry import PersistenceRegistry
 
+
 @pytest.mark.asyncio
 async def test_memory_kv_store_ttl() -> None:
     store = MemoryKeyValueStore()
@@ -24,6 +25,7 @@ async def test_memory_kv_store_ttl() -> None:
     assert await store.get("key") == b"value"
     await asyncio.sleep(0.2)
     assert await store.get("key") is None
+
 
 @pytest.mark.asyncio
 async def test_sqlite_kv_store_roundtrip(tmp_path) -> None:
@@ -33,6 +35,7 @@ async def test_sqlite_kv_store_roundtrip(tmp_path) -> None:
     await store.put("alpha", b"beta")
     assert await store.get("alpha") == b"beta"
     await backend.close()
+
 
 @pytest.mark.asyncio
 async def test_queue_persistence_roundtrip(tmp_path) -> None:
@@ -54,6 +57,7 @@ async def test_queue_persistence_roundtrip(tmp_path) -> None:
     assert len(queue_restarted.pending_messages) == 1
     await queue_restarted.shutdown()
     await backend.close()
+
 
 @pytest.mark.asyncio
 async def test_cache_l2_persistence_roundtrip(tmp_path) -> None:

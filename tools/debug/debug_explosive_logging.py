@@ -17,6 +17,7 @@ from tests.port_allocator import PortAllocator
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 class LogExplosionDetector:
     """Detects where logging becomes explosive instead of controlled."""
 
@@ -301,6 +302,7 @@ class LogExplosionDetector:
             "📋 If explosive logging appeared, it should be clearly visible in the phases above"
         )
 
+
 async def main():
     """Run the explosive logging debug investigation."""
     detector = LogExplosionDetector()
@@ -308,6 +310,7 @@ async def main():
         await detector.run_debug_investigation()
     finally:
         await detector.cleanup()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

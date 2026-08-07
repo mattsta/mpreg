@@ -747,6 +747,7 @@ import subprocess
 import json
 import sys
 
+
 def get_federation_health():
     """Get federation health as Python dict."""
     result = subprocess.run(
@@ -759,6 +760,7 @@ def get_federation_health():
         return json.loads(result.stdout)
     else:
         raise Exception(f"Health check failed: {result.stderr}")
+
 
 def deploy_federation(config_path):
     """Deploy federation from configuration file."""
@@ -776,6 +778,7 @@ def deploy_federation(config_path):
     )
 
     return result.returncode == 0
+
 
 # Example usage
 if __name__ == "__main__":

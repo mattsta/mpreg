@@ -20,6 +20,7 @@ from mpreg.fabric.route_control import RouteDestination, RouteTable
 PeerLocator = Callable[[ClusterId], Sequence[NodeURL]]
 NeighborLocator = Callable[[], Sequence[PeerNeighbor]]
 
+
 class FabricForwardingFailureReason(StrEnum):
     """Reasons fabric forwarding may not select a next hop."""
 
@@ -32,6 +33,7 @@ class FabricForwardingFailureReason(StrEnum):
     NO_PATH = "no_fabric_path"
     PATH_MISMATCH = "path_mismatch"
     NO_PEER = "no_peer_for_next_hop"
+
 
 @dataclass(frozen=True, slots=True)
 class FabricForwardingPlan:
@@ -49,6 +51,7 @@ class FabricForwardingPlan:
     def can_forward(self) -> bool:
         """Check if this plan has a viable next hop."""
         return self.next_peer_url is not None
+
 
 @dataclass(slots=True)
 class FabricFederationPlanner:

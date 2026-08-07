@@ -10,12 +10,14 @@ from mpreg.core.observability.trace_context import (
 )
 from mpreg.fabric.route_decision_log import RouteDecisionLog, make_record_from_route
 
+
 def test_traceparent_round_trip_in_metadata() -> None:
     tp = generate_traceparent()
     meta = {TRACEPARENT_KEY: tp}
     assert extract_traceparent(meta) == tp
     ensured = ensure_traceparent(dict(meta))
     assert ensured == tp
+
 
 def test_decision_log_preserves_and_filters_traceparent() -> None:
     tp = generate_traceparent()

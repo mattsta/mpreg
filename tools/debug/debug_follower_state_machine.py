@@ -17,6 +17,7 @@ from tests.test_production_raft_integration import (
     TestProductionRaftIntegration,
 )
 
+
 async def debug_follower_state_machine():
     """Debug follower state machine application with detailed logging."""
 
@@ -153,6 +154,7 @@ async def debug_follower_state_machine():
         finally:
             for node in nodes.values():
                 await node.stop()
+
 
 if __name__ == "__main__":
     asyncio.run(debug_follower_state_machine())

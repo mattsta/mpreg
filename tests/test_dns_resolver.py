@@ -7,6 +7,7 @@ from mpreg.dns.resolver import DnsResolver, DnsResolverConfig
 from mpreg.fabric.catalog import RoutingCatalog, ServiceEndpoint
 from mpreg.fabric.index import RoutingIndex, ServiceQuery
 
+
 def _build_index() -> RoutingIndex:
     catalog = RoutingCatalog()
     endpoint = ServiceEndpoint(
@@ -29,6 +30,7 @@ def _build_index() -> RoutingIndex:
     catalog.services.register(endpoint, now=time.time())
     return RoutingIndex(catalog=catalog)
 
+
 def _catalog_provider(index: RoutingIndex):
     def _provider(request: CatalogQueryRequest):
         if request.entry_type != "services":
@@ -45,6 +47,7 @@ def _catalog_provider(index: RoutingIndex):
         return {"items": [entry.to_dict() for entry in endpoints]}
 
     return _provider
+
 
 def test_dns_resolver_external_names_toggle() -> None:
     index = _build_index()

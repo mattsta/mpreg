@@ -6,6 +6,7 @@ DEBUG: Test if the large_cluster_ports fixture hangs
 import pytest
 from tests.port_allocator import get_port_allocator
 
+
 @pytest.fixture
 def debug_large_ports():
     """Debug version of large_cluster_ports with detailed logging."""
@@ -24,6 +25,7 @@ def debug_large_ports():
         allocator.release_port(port)
     print("   ✅ Cleanup complete")
 
+
 class TestFixtureHang:
     """Test if large cluster fixtures hang."""
 
@@ -35,6 +37,7 @@ class TestFixtureHang:
         """Test with large port allocation to see if fixture hangs."""
         print(f"🎯 Got {len(debug_large_ports)} ports!")
         print("✅ Large ports test works!")
+
 
 if __name__ == "__main__":
     print("🧪 Running pytest with debug fixture...")

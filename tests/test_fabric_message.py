@@ -6,6 +6,7 @@ from mpreg.fabric.message import (
     UnifiedMessage,
 )
 
+
 def test_unified_message_fields() -> None:
     headers = MessageHeaders(
         correlation_id="corr-1",

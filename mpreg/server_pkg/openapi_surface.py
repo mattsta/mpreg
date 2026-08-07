@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
+
 def _strong_metrics_schema() -> dict[str, Any]:
     """JSON Schema for /metrics/strong and /mgmt/v1/strong payloads (honesty-first)."""
     return {
@@ -111,7 +112,6 @@ def _strong_metrics_schema() -> dict[str, Any]:
                         },
                         "required": ["get_quorum", "delete_quorum"],
                     },
-                    "pending_count": {"type": "integer", "minimum": 0},
                     "visible_count": {
                         "type": "integer",
                         "minimum": 0,
@@ -243,6 +243,7 @@ def _strong_metrics_schema() -> dict[str, Any]:
         },
     }
 
+
 def _shared_audit_metrics_schema() -> dict[str, Any]:
     """JSON Schema for /metrics/shared-audit (not SIEM / not BFT)."""
     return {
@@ -338,6 +339,7 @@ def _shared_audit_metrics_schema() -> dict[str, Any]:
             },
         },
     }
+
 
 def _platform_cache_rpc_catalog() -> dict[str, Any]:
     """Document platform cache RPC FQNs (wire names, not HTTP paths).
@@ -481,6 +483,7 @@ def _platform_cache_rpc_catalog() -> dict[str, Any]:
         "required": ["namespace", "commands"],
     }
 
+
 def build_monitoring_openapi() -> dict[str, Any]:
     """Return an OpenAPI 3.0 document for the monitoring HTTP server."""
     # When monitoring_auth_token is configured, mutations and metrics require bearer.
@@ -570,7 +573,9 @@ def build_monitoring_openapi() -> dict[str, Any]:
                         "description": "STRONG metrics envelope",
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": "#/components/schemas/StrongMetricsResponse"}
+                                "schema": {
+                                    "$ref": "#/components/schemas/StrongMetricsResponse"
+                                }
                             }
                         },
                     }
@@ -614,7 +619,9 @@ def build_monitoring_openapi() -> dict[str, Any]:
                         "description": "STRONG readiness / metrics",
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": "#/components/schemas/StrongMetricsResponse"}
+                                "schema": {
+                                    "$ref": "#/components/schemas/StrongMetricsResponse"
+                                }
                             }
                         },
                     }
@@ -847,9 +854,7 @@ def build_monitoring_openapi() -> dict[str, Any]:
                 "PlatformCacheRpcCatalog": _platform_cache_rpc_catalog(),
             },
             "x-mpreg-platform-rpc": {
-                "cache": {
-                    "$ref": "#/components/schemas/PlatformCacheRpcCatalog"
-                },
+                "cache": {"$ref": "#/components/schemas/PlatformCacheRpcCatalog"},
             },
         },
         "paths": paths,
@@ -882,6 +887,7 @@ def build_monitoring_openapi() -> dict[str, Any]:
             {"name": "health", "description": "Liveness and readiness"},
         ],
     }
+
 
 def monitoring_route_table() -> list[tuple[str, str]]:
     """ERG-T14-01: canonical (method, path) pairs matching FederationMonitoringSystem.
@@ -954,10 +960,12 @@ def monitoring_route_table() -> list[tuple[str, str]]:
     ]
     return [("GET", p) for p in gets] + [("POST", p) for p in posts]
 
+
 def openapi_path_set() -> set[str]:
     """Paths declared in the OpenAPI document."""
     doc = build_monitoring_openapi()
     return set((doc.get("paths") or {}).keys())
+
 
 def route_table_path_set() -> set[str]:
     return {p for _, p in monitoring_route_table()}

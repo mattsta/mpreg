@@ -16,6 +16,7 @@ from mpreg.testing.distlab.history import History
 from mpreg.testing.distlab.models import OpKind
 from mpreg.testing.faults import FaultInjector
 
+
 @dataclass
 class AuditStateSnapshot:
     stores: dict[str, SharedAuditStore]
@@ -31,6 +32,7 @@ class AuditStateSnapshot:
 
     def pending_count(self) -> int:
         return 0
+
 
 @dataclass
 class AuditSUT:
@@ -177,9 +179,9 @@ class AuditSUT:
             "on_crash": lambda _n: None,
             "on_recover": lambda _n: None,
             "on_drop_rate": lambda r: setattr(
-                tr, "drop_types", set(tr.drop_types) | (
-                    {"mgmt_audit_delta"} if r > 0.3 else set()
-                )
+                tr,
+                "drop_types",
+                set(tr.drop_types) | ({"mgmt_audit_delta"} if r > 0.3 else set()),
             ),
             "on_delay": lambda s: setattr(tr, "delay_s", s),
             "injector": self.injector,

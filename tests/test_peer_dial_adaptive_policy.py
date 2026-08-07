@@ -3,6 +3,7 @@ from __future__ import annotations
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 def _make_server(*, peers: list[str] | None = None, port: int = 12345) -> MPREGServer:
     settings = MPREGSettings(
         host="127.0.0.1",
@@ -13,6 +14,7 @@ def _make_server(*, peers: list[str] | None = None, port: int = 12345) -> MPREGS
         peers=peers,
     )
     return MPREGServer(settings=settings)
+
 
 def test_fast_connect_retry_cap_scales_down_with_cluster_size() -> None:
     server = _make_server()
@@ -47,6 +49,7 @@ def test_fast_connect_retry_cap_scales_down_with_cluster_size() -> None:
     assert sparse_large.max_retries <= 1
     assert sparse_very_large.max_retries <= sparse_large.max_retries
 
+
 def test_fast_connect_retry_cap_can_recover_after_failures() -> None:
     server = _make_server()
 
@@ -67,6 +70,7 @@ def test_fast_connect_retry_cap_can_recover_after_failures() -> None:
     assert large_healthy.max_retries >= large_sparse.max_retries
     assert large_healthy.max_retries <= 2
 
+
 def test_peer_dial_parallelism_is_bounded_for_large_fabrics() -> None:
     server = _make_server()
 
@@ -76,6 +80,7 @@ def test_peer_dial_parallelism_is_bounded_for_large_fabrics() -> None:
     assert server._peer_dial_parallelism(25, connected_ratio=0.4) <= 2
     assert server._peer_dial_parallelism(49, connected_ratio=0.3) == 1
     assert server._peer_dial_parallelism(49, connected_ratio=0.8) >= 2
+
 
 def test_peer_dial_selection_spread_varies_by_node_identity() -> None:
     node_a = _make_server(port=12345)
@@ -87,6 +92,7 @@ def test_peer_dial_selection_spread_varies_by_node_identity() -> None:
 
     assert ordered_a[:8] != ordered_b[:8]
 
+
 def test_peer_dial_backoff_base_scales_with_dial_pressure() -> None:
     server = _make_server()
 
@@ -96,6 +102,7 @@ def test_peer_dial_backoff_base_scales_with_dial_pressure() -> None:
     assert sparse > healthy
     assert sparse >= healthy * 1.5
 
+
 def test_peer_reconcile_interval_scales_with_dial_pressure() -> None:
     server = _make_server()
 
@@ -104,6 +111,7 @@ def test_peer_reconcile_interval_scales_with_dial_pressure() -> None:
 
     assert sparse > healthy
     assert sparse >= healthy * 1.5
+
 
 def test_fabric_catalog_refresh_interval_scales_with_cluster_hint() -> None:
     small = _make_server()

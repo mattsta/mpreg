@@ -16,6 +16,7 @@ from mpreg.fabric.federation_planner import (
     FabricForwardingPlan,
 )
 
+
 class StubFederationPlanner:
     def __init__(self, plan: FabricForwardingPlan) -> None:
         self.plan = plan
@@ -30,6 +31,7 @@ class StubFederationPlanner:
     ) -> FabricForwardingPlan:
         self.calls.append((target_cluster, visited_clusters, remaining_hops))
         return self.plan
+
 
 def test_routing_engine_local_match() -> None:
     index = RoutingIndex()
@@ -61,6 +63,7 @@ def test_routing_engine_local_match() -> None:
     assert plan.selected_target == endpoint
     assert plan.forwarding is None
     assert plan.reason is FunctionRouteReason.LOCAL_MATCH
+
 
 def test_routing_engine_remote_planned() -> None:
     index = RoutingIndex()
@@ -109,6 +112,7 @@ def test_routing_engine_remote_planned() -> None:
     assert plan.reason is FunctionRouteReason.REMOTE_PLANNED
     assert planner.calls == [("cluster-b", ("cluster-a",), 4)]
 
+
 def test_routing_engine_remote_without_planner() -> None:
     index = RoutingIndex()
     endpoint = FunctionEndpoint(
@@ -139,6 +143,7 @@ def test_routing_engine_remote_without_planner() -> None:
     assert plan.selected_target == endpoint
     assert plan.reason is FunctionRouteReason.NO_FEDERATION
 
+
 def test_routing_engine_cluster_route_local() -> None:
     engine = RoutingEngine(local_cluster="cluster-a", routing_index=RoutingIndex())
 
@@ -147,6 +152,7 @@ def test_routing_engine_cluster_route_local() -> None:
     assert plan.is_local is True
     assert plan.forwarding is None
     assert plan.reason is ClusterRouteReason.LOCAL
+
 
 def test_routing_engine_cluster_route_remote_planned() -> None:
     forwarding = FabricForwardingPlan(
@@ -173,6 +179,7 @@ def test_routing_engine_cluster_route_remote_planned() -> None:
     assert plan.forwarding is forwarding
     assert plan.reason is ClusterRouteReason.REMOTE_PLANNED
     assert planner.calls == [("cluster-b", ("cluster-a",), 3)]
+
 
 def test_routing_engine_cluster_route_remote_unavailable() -> None:
     forwarding = FabricForwardingPlan(

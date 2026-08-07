@@ -9,6 +9,7 @@ from loguru import logger
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from mpreg.core.persistence.backend import SQLitePersistenceBackend
 
+
 class KeyValueStore(Protocol):
     """Key/value persistence interface with optional TTL support."""
 
@@ -23,6 +24,7 @@ class KeyValueStore(Protocol):
     async def list_prefix(self, prefix: str) -> list[tuple[str, bytes]]: ...
 
     async def close(self) -> None: ...
+
 
 @dataclass(slots=True)
 class MemoryKeyValueStore:
@@ -64,6 +66,7 @@ class MemoryKeyValueStore:
 
     async def close(self) -> None:
         self._entries.clear()
+
 
 @dataclass(slots=True)
 class SQLiteKeyValueStore:

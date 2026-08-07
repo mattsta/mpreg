@@ -14,6 +14,7 @@ from mpreg.core.transport.factory import (
 )
 from mpreg.core.transport.interfaces import TransportProtocol
 
+
 def _port_available(port: int) -> bool:
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -23,12 +24,14 @@ def _port_available(port: int) -> bool:
     except OSError:
         return False
 
+
 async def _wait_for_port_free(port: int, attempts: int = 20) -> bool:
     for _ in range(attempts):
         if _port_available(port):
             return True
         await asyncio.sleep(0.05)
     return False
+
 
 @pytest.mark.asyncio
 async def test_multi_protocol_adapter_auto_port_assignment() -> None:
@@ -59,6 +62,7 @@ async def test_multi_protocol_adapter_auto_port_assignment() -> None:
         assert "ws" in snapshot["client"]
     finally:
         await adapter.stop()
+
 
 @pytest.mark.asyncio
 async def test_remove_protocol_releases_auto_port() -> None:

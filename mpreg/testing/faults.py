@@ -12,6 +12,7 @@ from collections.abc import Hashable
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+
 class FaultKind(StrEnum):
     """Kinds of injectable faults."""
 
@@ -22,6 +23,7 @@ class FaultKind(StrEnum):
     PARTITION = "partition"
     CLOCK_SKEW = "clock_skew"
     CRASH = "crash"
+
 
 @dataclass(frozen=True, slots=True)
 class NetworkView:
@@ -50,6 +52,7 @@ class NetworkView:
     def now_for(self, node_id: str, wall: float | None = None) -> float:
         base = time.time() if wall is None else wall
         return base + float(self.clock_skew_seconds.get(node_id, 0.0))
+
 
 @dataclass(slots=True)
 class FaultInjector:
@@ -145,11 +148,13 @@ class FaultInjector:
         if len(self.decisions) > 10_000:
             del self.decisions[:5_000]
 
+
 def assert_no_routing_loop(path_hops: tuple[str, ...] | list[str]) -> None:
     """INV-R2 helper: path hops must be unique."""
     hops = list(path_hops)
     if len(hops) != len(set(hops)):
         raise AssertionError(f"routing loop in path: {hops}")
+
 
 def assert_at_most_one_leader(leaders_by_term: dict[int, set[str]]) -> None:
     """INV-C1 helper."""
@@ -158,6 +163,7 @@ def assert_at_most_one_leader(leaders_by_term: dict[int, set[str]]) -> None:
             raise AssertionError(
                 f"election safety violated term={term} leaders={sorted(leaders)}"
             )
+
 
 def stable_hash_key(value: Hashable) -> str:
     """Deterministic string key for ECMP rotation tests."""

@@ -1,13 +1,13 @@
 # DistLab T53 — residual_ops_hint on metrics JSON (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T51 |
-| **Scope** | Machine-readable `residual_ops_hint` on `/metrics/strong`, GCM `strong_status`, OpenAPI |
-| **Point budget** | **~15 pts** |
-| **Entry points only** | `uv run pytest …` |
+| Field                 | Value                                                                                   |
+| --------------------- | --------------------------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                                            |
+| **Date**              | 2026-08-06                                                                              |
+| **Authority**         | Continuation after T51                                                                  |
+| **Scope**             | Machine-readable `residual_ops_hint` on `/metrics/strong`, GCM `strong_status`, OpenAPI |
+| **Point budget**      | **~15 pts**                                                                             |
+| **Entry points only** | `uv run pytest …`                                                                       |
 
 ## Goals
 

@@ -20,6 +20,7 @@ sys.path.insert(0, "/Users/matt/repos/mpreg")
 
 from tests.test_production_raft_integration import TestProductionRaftIntegration
 
+
 @dataclass
 class ElectionResult:
     run: int
@@ -28,6 +29,7 @@ class ElectionResult:
     error: str = ""
     final_state: str = ""
     final_term: int = 0
+
 
 async def debug_leader_election():
     """Debug single node leader election failures."""
@@ -105,6 +107,7 @@ async def debug_leader_election():
         print("4. Port allocation delays affecting startup")
     else:
         print("✅ Elections working correctly in this test")
+
 
 if __name__ == "__main__":
     asyncio.run(debug_leader_election())

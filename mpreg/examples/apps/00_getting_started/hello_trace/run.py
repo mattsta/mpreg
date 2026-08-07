@@ -11,6 +11,7 @@ from mpreg.core.monitoring.unified_monitoring import (
 )
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run("hello_trace", "Hello Trace — correlation timeline", level="L0"):
         monitor = create_unified_system_monitor()
@@ -91,6 +92,7 @@ async def main() -> None:
             )
         finally:
             await monitor.stop()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

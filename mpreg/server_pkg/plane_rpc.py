@@ -15,6 +15,7 @@ PLANE_ERR_INVALID_ARGUMENT = 1008  # INVALID_ARGUMENT
 PLANE_ERR_UNSUPPORTED_DELIVERY = 1011  # UNSUPPORTED_DELIVERY (EO)
 PLANE_ERR_UNSUPPORTED_CONSISTENCY = 1012  # UNSUPPORTED_CONSISTENCY (STRONG)
 
+
 def _plane_err(
     message: str,
     *,
@@ -29,12 +30,14 @@ def _plane_err(
     out.update(extra)
     return out
 
+
 def rpc_payload_dict(payload: object) -> dict[str, Any]:
     if payload is None:
         return {}
     if isinstance(payload, dict):
         return dict(payload)
     return {}
+
 
 def rpc_actor_ids(server: Any, body: dict[str, Any]) -> tuple[str, str | None]:
     """Resolve actor cluster/tenant for queue/cache RPC policy binding.
@@ -97,6 +100,7 @@ def rpc_actor_ids(server: Any, body: dict[str, Any]) -> tuple[str, str | None]:
         tenant_id = None
     return cluster_id, tenant_id
 
+
 def register_queue_rpc_commands(server: Any) -> None:
     """Expose queue manager operations on the RPC command surface under mpreg.queue.*."""
     if getattr(server, "_queue_rpc_registered", False):
@@ -125,6 +129,7 @@ def register_queue_rpc_commands(server: Any) -> None:
     )
     server._queue_rpc_registered = True
 
+
 def register_cache_rpc_commands(server: Any) -> None:
     """Expose cache manager operations on the RPC command surface under mpreg.cache.*."""
     if getattr(server, "_cache_rpc_registered", False):
@@ -151,6 +156,7 @@ def register_cache_rpc_commands(server: Any) -> None:
     )
     server._cache_rpc_registered = True
 
+
 async def queue_create(
     server: Any, payload: object = None, **kwargs: object
 ) -> dict[str, Any]:
@@ -169,6 +175,7 @@ async def queue_create(
     with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
         ok = await manager.create_queue(name)
     return {"success": bool(ok), "queue_name": name}
+
 
 async def queue_send(
     server: Any, payload: object = None, **kwargs: object
@@ -220,6 +227,7 @@ async def queue_send(
         "topic": topic,
     }
 
+
 async def queue_ack(
     server: Any, payload: object = None, **kwargs: object
 ) -> dict[str, Any]:
@@ -248,6 +256,7 @@ async def queue_ack(
         "message_id": message_id,
         "subscriber_id": subscriber_id,
     }
+
 
 async def queue_receive(
     server: Any, payload: object = None, **kwargs: object
@@ -307,6 +316,7 @@ async def queue_receive(
         "subscriber_id": subscriber_id,
     }
 
+
 async def cache_get(
     server: Any, payload: object = None, **kwargs: object
 ) -> dict[str, Any]:
@@ -343,6 +353,7 @@ async def cache_get(
         "namespace": namespace,
         "identifier": identifier,
     }
+
 
 async def cache_put(
     server: Any, payload: object = None, **kwargs: object
@@ -424,6 +435,7 @@ async def cache_put(
         out["operation_id"] = str(oid)
     return out
 
+
 async def cache_invalidate(
     server: Any, payload: object = None, **kwargs: object
 ) -> dict[str, Any]:
@@ -446,6 +458,7 @@ async def cache_invalidate(
         "error_message": getattr(result, "error_message", None),
         "pattern": pattern,
     }
+
 
 async def cache_strong_retry_abort(
     server: Any, payload: object = None, **kwargs: object

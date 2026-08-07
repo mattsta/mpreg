@@ -1,13 +1,13 @@
 # DistLab T59 — residual_ops_hint key enrichment (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T53 |
-| **Scope** | Fill `--namespace` / `--key` in residual_ops_hint from recent_abort_fails |
-| **Point budget** | **~12 pts** |
-| **Entry points only** | `uv run pytest …` |
+| Field                 | Value                                                                     |
+| --------------------- | ------------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                              |
+| **Date**              | 2026-08-06                                                                |
+| **Authority**         | Continuation after T53                                                    |
+| **Scope**             | Fill `--namespace` / `--key` in residual_ops_hint from recent_abort_fails |
+| **Point budget**      | **~12 pts**                                                               |
+| **Entry points only** | `uv run pytest …`                                                         |
 
 ## Goals
 

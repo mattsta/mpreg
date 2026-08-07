@@ -19,6 +19,7 @@ from mpreg.core.model import (
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 class TestIntermediateResults:
     """Test intermediate results functionality."""
 
@@ -428,6 +429,7 @@ class TestIntermediateResults:
         print(
             f"   Execution summary: {summary.total_execution_time_ms:.1f}ms total, {summary.parallel_commands_executed} commands"
         )
+
 
 class TestIntermediateResultsIntegration:
     """Test integration with client API and enhanced features."""

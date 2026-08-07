@@ -51,6 +51,7 @@ Update tests to use the pre-configured fixtures from `conftest.py`:
 async def test_my_function(single_server):  # Uses dynamic port
     client = MPREGClientAPI(f"ws://127.0.0.1:{single_server.settings.port}")
 
+
 # For multi-server tests
 async def test_cluster_function(cluster_2_servers):  # Uses dynamic ports
     server1, server2 = cluster_2_servers

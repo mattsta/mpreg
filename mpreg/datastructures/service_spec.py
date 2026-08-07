@@ -17,6 +17,7 @@ from mpreg.datastructures.type_aliases import (
 
 DEFAULT_SERVICE_SCOPE: EndpointScope = "zone"
 
+
 def _normalize_tags(tags: object) -> frozenset[str]:
     if tags is None:
         return frozenset()
@@ -25,6 +26,7 @@ def _normalize_tags(tags: object) -> frozenset[str]:
     if isinstance(tags, (list, tuple, set)):
         return frozenset(str(tag) for tag in tags if tag)
     return frozenset(str(tags)) if tags else frozenset()
+
 
 def _normalize_targets(targets: object) -> tuple[HostAddress, ...]:
     if targets is None:
@@ -36,6 +38,7 @@ def _normalize_targets(targets: object) -> tuple[HostAddress, ...]:
     if not values:
         return ()
     return tuple(sorted({value for value in values if value}))
+
 
 def _normalize_metadata(metadata: object) -> dict[MetadataKey, MetadataValue]:
     if not isinstance(metadata, dict):
@@ -50,6 +53,7 @@ def _normalize_metadata(metadata: object) -> dict[MetadataKey, MetadataValue]:
         else:
             normalized[key_str] = str(value)
     return normalized
+
 
 @dataclass(frozen=True, slots=True)
 class ServiceSpec:

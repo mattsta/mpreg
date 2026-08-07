@@ -866,18 +866,18 @@ next batch here before starting it.
 
 Serialized from post-P backlog + integrity residual (`client.summary` join):
 
-| #   | Axis     | Work                                                                                  | Status |
-| --- | -------- | ------------------------------------------------------------------------------------- | ------ |
-| Q0  | PLAN     | This linear section is the only active queue                                          | [x]    |
-| Q1  | CORRECT  | Join `client.summary` feature constant → APP_FEATURES (`discovery_watch_summary`)     | [x]    |
-| Q2  | ERG      | `mpreg config-check --explain` (human field guide + groups already JSON)              | [x]    |
-| Q3  | OBS/PERF | Route-decision hop stats on `ServerMetricsTracker.snapshot` (`fabric.hops`)           | [x]    |
-| Q4  | CAP      | Mgmt audit durability teach: `mgmt_audit_path` JSONL + CLI `admin audit` path         | [x]    |
+| #   | Axis     | Work                                                                                 | Status |
+| --- | -------- | ------------------------------------------------------------------------------------ | ------ |
+| Q0  | PLAN     | This linear section is the only active queue                                         | [x]    |
+| Q1  | CORRECT  | Join `client.summary` feature constant → APP_FEATURES (`discovery_watch_summary`)    | [x]    |
+| Q2  | ERG      | `mpreg config-check --explain` (human field guide + groups already JSON)             | [x]    |
+| Q3  | OBS/PERF | Route-decision hop stats on `ServerMetricsTracker.snapshot` (`fabric.hops`)          | [x]    |
+| Q4  | CAP      | Mgmt audit durability teach: `mgmt_audit_path` JSONL + CLI `admin audit` path        | [x]    |
 | Q5  | CAP      | Persistence surface teach: memory/sqlite backends (remote stores = honest non-claim) | [x]    |
-| Q6  | USE      | Plane error_code promotion already on façade — teach ensure path in unified tour      | [x]    |
-| Q7  | OBS      | Absorb probe annotations depth on one additional L2 ops path (`ops_cli_tour`)         | [x]    |
-| Q8  | CAP      | Discovery in-process residual: unified `rpc_list`/`rpc_describe` façade parity        | [x]    |
-| Q9  | VERIFY   | unit + suite + thin/feature-join=0 + commit; then only extend this table              | [x]    |
+| Q6  | USE      | Plane error_code promotion already on façade — teach ensure path in unified tour     | [x]    |
+| Q7  | OBS      | Absorb probe annotations depth on one additional L2 ops path (`ops_cli_tour`)        | [x]    |
+| Q8  | CAP      | Discovery in-process residual: unified `rpc_list`/`rpc_describe` façade parity       | [x]    |
+| Q9  | VERIFY   | unit + suite + thin/feature-join=0 + commit; then only extend this table             | [x]    |
 
 **Exit:** every Q row `[x]`; feature constants uncovered=0; suite green; WT clean commit.
 

@@ -38,6 +38,7 @@ from mpreg.core.global_cache import (
     GlobalCacheManager,
 )
 
+
 class TestValueConstraint:
     """Test value constraint functionality."""
 
@@ -66,6 +67,7 @@ class TestValueConstraint:
 
         assert len(constraints) == 6
         assert all(isinstance(c, ValueConstraint) for c in constraints)
+
 
 class TestAtomicOperationRequest:
     """Test atomic operation request data structures."""
@@ -97,6 +99,7 @@ class TestAtomicOperationRequest:
 
         assert request.operation == AtomicOperation.INCREMENT
         assert request.delta == 5
+
 
 class TestAdvancedCacheOperations:
     """Test the main AdvancedCacheOperations class."""
@@ -457,6 +460,7 @@ class TestAdvancedCacheOperations:
         # Operation should fail gracefully
         assert not result.success
         assert result.error_message is not None
+
 
 class TestAdvancedCacheOperationsIntegration:
     """Integration tests with live cache manager."""

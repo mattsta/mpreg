@@ -31,6 +31,7 @@ from mpreg.server_pkg.openapi_surface import (
 )
 from tests.test_production_raft_integration import TestableStateMachine
 
+
 class _NullTransport:
     async def send_request_vote(self, target, request):  # type: ignore[no-untyped-def]
         return None
@@ -40,6 +41,7 @@ class _NullTransport:
 
     async def send_install_snapshot(self, target, request):  # type: ignore[no-untyped-def]
         return None
+
 
 def _make_node(node_id: str = "n1") -> ProductionRaft:
     return ProductionRaft(
@@ -56,7 +58,9 @@ def _make_node(node_id: str = "n1") -> ProductionRaft:
         ),
     )
 
+
 # --- PERF-T14-01: gossip seen_messages LRU ---
+
 
 def _msg(mid: str) -> GossipMessage:
     vc = VectorClock.empty().increment("n1")
@@ -72,9 +76,11 @@ def _msg(mid: str) -> GossipMessage:
         digest=f"d-{mid}",
     )
 
+
 def test_perf_t14_01_gossip_seen_is_ordered_dict() -> None:
     f = GossipFilter(max_seen_messages=10)
     assert isinstance(f.seen_messages, OrderedDict)
+
 
 def test_perf_t14_01_gossip_lru_evicts_oldest() -> None:
     f = GossipFilter(max_seen_messages=5)
@@ -93,6 +99,7 @@ def test_perf_t14_01_gossip_lru_evicts_oldest() -> None:
     assert "m1" not in f.seen_messages
     assert "m7" in f.seen_messages
 
+
 def test_perf_t14_01_gossip_refresh_moves_to_end() -> None:
     f = GossipFilter(max_seen_messages=3)
     for mid in ("a", "b", "c"):
@@ -103,7 +110,9 @@ def test_perf_t14_01_gossip_refresh_moves_to_end() -> None:
     assert "a" in f.seen_messages
     assert "b" not in f.seen_messages  # oldest unrereshed
 
+
 # --- COR-T14-01: InstallSnapshot done fail-closed ---
+
 
 def test_cor_t14_01_install_snapshot_missing_done_false() -> None:
     data = {
@@ -118,6 +127,7 @@ def test_cor_t14_01_install_snapshot_missing_done_false() -> None:
     req = deserialize_install_snapshot(data)
     assert req.done is False
 
+
 def test_cor_t14_01_install_snapshot_explicit_done_true() -> None:
     data = {
         "term": 1,
@@ -130,6 +140,7 @@ def test_cor_t14_01_install_snapshot_explicit_done_true() -> None:
     }
     req = deserialize_install_snapshot(data)
     assert req.done is True
+
 
 @pytest.mark.asyncio
 async def test_cor_t14_01_missing_done_does_not_apply_snapshot() -> None:
@@ -158,7 +169,9 @@ async def test_cor_t14_01_missing_done_does_not_apply_snapshot() -> None:
     assert getattr(node, "_snapshot_last_index", 0) != 5
     assert node.installing_snapshot is True or len(node.snapshot_chunks) >= 0
 
+
 # --- OBS-T14-01: raft Prom bridge ---
+
 
 def test_obs_t14_01_set_raft_bridge_prom_series() -> None:
     t = ServerMetricsTracker()
@@ -183,6 +196,7 @@ def test_obs_t14_01_set_raft_bridge_prom_series() -> None:
     assert t.raft_term == 7
     assert t.raft_commit_index == 100
 
+
 def test_obs_t14_01_status_dict_includes_metrics() -> None:
     node = _make_node("n1")
     node.current_state = RaftState.FOLLOWER
@@ -196,6 +210,7 @@ def test_obs_t14_01_status_dict_includes_metrics() -> None:
     assert "metrics" in d
     assert d["metrics"]["elections_started"] == 2
     assert d["metrics"]["commands_applied"] == 5
+
 
 def test_obs_t14_01_refresh_bridge_from_provider() -> None:
     from mpreg.fabric.monitoring_endpoints import FederationMonitoringSystem
@@ -237,13 +252,16 @@ def test_obs_t14_01_refresh_bridge_from_provider() -> None:
     assert tracker.raft_elections_started == 4
     assert tracker.raft_commands_applied == 15
 
+
 # --- ERG-T14-01: OpenAPI ↔ router parity ---
+
 
 def test_erg_t14_01_openapi_matches_route_table() -> None:
     assert openapi_path_set() == route_table_path_set()
     assert "/" in openapi_path_set()
     assert "/metrics/prometheus" in openapi_path_set()
     assert "/mgmt/v1/nodes/drain" in openapi_path_set()
+
 
 def test_erg_t14_01_openapi_matches_live_router_source() -> None:
     import re
@@ -254,7 +272,9 @@ def test_erg_t14_01_openapi_matches_live_router_source() -> None:
     router |= set(re.findall(r'add_(?:get|post)\(\s*\n\s*["\']([^"\']+)', mon))
     assert router == openapi_path_set()
 
+
 # --- ERG-T14-02: profile risk tags ---
+
 
 def test_erg_t14_02_profile_list_shows_risk() -> None:
     runner = CliRunner()
@@ -268,7 +288,9 @@ def test_erg_t14_02_profile_list_shows_risk() -> None:
         or "prod-baseline" in result.output
     )
 
+
 # --- ERG-T14-03: cluster / soft-rt mon posture ---
+
 
 def test_erg_t14_03_cluster_ready_and_mon() -> None:
     from mpreg.core.config import MPREGSettings
@@ -276,6 +298,7 @@ def test_erg_t14_03_cluster_ready_and_mon() -> None:
     s = MPREGSettings.from_path("mpreg/profiles/cluster.toml")
     assert s.monitoring_host in ("127.0.0.1", "localhost")
     assert float(s.ready_min_score) >= 0.7
+
 
 def test_erg_t14_03_soft_rt_mon_loopback() -> None:
     from mpreg.core.config import MPREGSettings

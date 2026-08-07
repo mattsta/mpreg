@@ -15,6 +15,7 @@ from mpreg.core.persistence.config import PersistenceConfig, PersistenceMode
 from mpreg.core.persistence.kv_store import MemoryKeyValueStore
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run(
         "persistence_kv",
@@ -123,6 +124,7 @@ async def main() -> None:
                 "see docs/PERSISTENCE_FRAMEWORK_PLAN.md"
             )
             ok(f"PersistenceConfig modes={sorted(shipped)}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

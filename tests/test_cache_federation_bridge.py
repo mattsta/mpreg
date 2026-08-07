@@ -24,12 +24,14 @@ from mpreg.fabric.cache_transport import InProcessCacheTransport, ServerCacheTra
 from mpreg.fabric.catalog import CacheRole, CacheRoleEntry
 from mpreg.fabric.index import RoutingIndex
 
+
 class _StubServer:
     def __init__(self, cluster_id: str) -> None:
         self.settings = SimpleNamespace(cluster_id=cluster_id)
 
     def _get_all_peer_connections(self) -> JsonDict:
         return {}
+
 
 def test_server_cache_transport_allowed_clusters() -> None:
     now = time.time()
@@ -61,6 +63,7 @@ def test_server_cache_transport_allowed_clusters() -> None:
     )
 
     assert transport.peer_ids() == ("node-b",)
+
 
 @pytest.mark.asyncio
 async def test_l4_cache_operations_use_fabric() -> None:

@@ -1,13 +1,13 @@
 # DistLab T17 — E2E Ops, Residual Proof, Suite CLI, RYW (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete (gated 214)** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T11–T16 complete (`b5f7833`) |
-| **Scope** | STRONG + shared audit + DistLab — not whole-platform |
-| **Point budget** | **~120 pts** |
-| **Entry points only** | `uv run mpreg …` / `uv run pytest …` |
+| Field                 | Value                                                |
+| --------------------- | ---------------------------------------------------- |
+| **Status**            | **Complete (gated 214)**                             |
+| **Date**              | 2026-08-06                                           |
+| **Authority**         | Continuation after T11–T16 complete (`b5f7833`)      |
+| **Scope**             | STRONG + shared audit + DistLab — not whole-platform |
+| **Point budget**      | **~120 pts**                                         |
+| **Entry points only** | `uv run mpreg …` / `uv run pytest …`                 |
 
 ## Global rules
 
@@ -18,14 +18,14 @@
 
 ## Stages
 
-| Stage | Exit |
-| --- | --- |
-| T17-S0 | Official plan |
-| T17-S1 | History error taxonomy + ScenarioResult meta |
-| T17-S2 | `mpreg distlab suite` multi-scenario runner |
-| T17-S3 | Unit proof: success-path abort non-committers |
-| T17-S4 | Multi-GCM RYW + peer bridge after STRONG put |
-| T17-S5 | Live e2e: put → scrape `/metrics/strong` |
+| Stage  | Exit                                             |
+| ------ | ------------------------------------------------ |
+| T17-S0 | Official plan                                    |
+| T17-S1 | History error taxonomy + ScenarioResult meta     |
+| T17-S2 | `mpreg distlab suite` multi-scenario runner      |
+| T17-S3 | Unit proof: success-path abort non-committers    |
+| T17-S4 | Multi-GCM RYW + peer bridge after STRONG put     |
+| T17-S5 | Live e2e: put → scrape `/metrics/strong`         |
 | T17-S6 | Docs, claims, honesty, full related gate, commit |
 
 ## Points (summary)
@@ -56,11 +56,11 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
 
 ## Status dashboard
 
-| Item | Status |
-| --- | --- |
-| S0 plan | complete |
+| Item                   | Status   |
+| ---------------------- | -------- |
+| S0 plan                | complete |
 | S1–S2 taxonomy + suite | complete |
-| S3 residual proof | complete |
-| S4 RYW | complete |
-| S5 live metrics e2e | complete |
-| S6 gate/docs | complete |
+| S3 residual proof      | complete |
+| S4 RYW                 | complete |
+| S5 live metrics e2e    | complete |
+| S6 gate/docs           | complete |

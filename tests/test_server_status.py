@@ -11,6 +11,7 @@ from mpreg.core.message_queue_manager import (
 )
 from mpreg.server import MPREGServer
 
+
 class TestServerStatusMetrics:
     """Verify status metrics include queue statistics when attached."""
 

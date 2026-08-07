@@ -15,6 +15,7 @@ from mpreg.server_pkg.peer_dial import (
     target_connection_count,
 )
 
+
 def test_backoff_and_pressure_counts() -> None:
     b = PeerDialBackoff(base_seconds=0.1, cap_seconds=1.0)
     assert b.delay_for_failures(0) == 0.0
@@ -23,6 +24,7 @@ def test_backoff_and_pressure_counts() -> None:
     assert dial_pressure_from_counts(recent_failures=0, recent_successes=0) == 0.0
     assert dial_pressure_from_counts(recent_failures=3, recent_successes=1) == 0.75
     assert 0.0 <= spread_fraction(attempt=3) <= 1.0
+
 
 def test_select_peer_connection_policy_fast_vs_steady() -> None:
     fast = select_peer_connection_policy(
@@ -41,6 +43,7 @@ def test_select_peer_connection_policy_fast_vs_steady() -> None:
     assert fast.max_retries >= 0
     assert steady.max_retries >= 0
 
+
 def test_large_fabric_near_isolation_caps_retries() -> None:
     policy = select_peer_connection_policy(
         fast_connect=True,
@@ -49,6 +52,7 @@ def test_large_fabric_near_isolation_caps_retries() -> None:
         connected_ratio=0.05,
     )
     assert policy.max_retries == 0
+
 
 def test_dial_pressure_parallelism_exploration() -> None:
     p = dial_pressure(peer_target_count=36, connected_ratio=0.1)
@@ -66,6 +70,7 @@ def test_dial_pressure_parallelism_exploration() -> None:
         == 0
     )
 
+
 def test_target_connection_and_backoff() -> None:
     assert target_connection_count(peer_target_count=10) == 10
     large = target_connection_count(
@@ -82,6 +87,7 @@ def test_target_connection_and_backoff() -> None:
     )
     assert interval > 0
 
+
 def test_peer_dial_state_failure_backoff() -> None:
     state = PeerDialState()
     now = 1000.0
@@ -96,6 +102,7 @@ def test_peer_dial_state_failure_backoff() -> None:
     assert state.next_attempt_at > now
     state.record_success(now + 10)
     assert state.consecutive_failures == 0
+
 
 def test_spread_helpers_deterministic() -> None:
     a = spread_fraction_for_url("ws://a:1")

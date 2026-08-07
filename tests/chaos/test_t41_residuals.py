@@ -5,8 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from mpreg.cli.main import evaluate_strong_doctor_payload
-from mpreg.server_pkg.openapi_surface import _strong_metrics_schema
 from mpreg.server_pkg.monitoring_metrics import build_strong_metrics
+from mpreg.server_pkg.openapi_surface import _strong_metrics_schema
+
 
 def test_t41_doctor_fails_closed_if_retry_not_ops_driven() -> None:
     ok, detail = evaluate_strong_doctor_payload(
@@ -28,6 +29,7 @@ def test_t41_doctor_fails_closed_if_retry_not_ops_driven() -> None:
     )
     assert ok is False
     assert "retry_abort_ops_driven" in detail
+
 
 def test_t41_doctor_ok_shows_retry_ops() -> None:
     ok, detail = evaluate_strong_doctor_payload(
@@ -52,11 +54,13 @@ def test_t41_doctor_ok_shows_retry_ops() -> None:
     assert ok is True
     assert "retry_ops=" in detail
 
+
 def test_t41_openapi_retry_ops_driven_cap() -> None:
     props = _strong_metrics_schema()["properties"]["strong"]["properties"]
     caps = props["capabilities"]["properties"]
     assert "retry_abort_ops_driven" in caps
     assert caps["retry_abort_ops_driven"]["enum"] == [True]
+
 
 def test_t41_prom_cap_and_alert() -> None:
     mon = (
@@ -67,10 +71,7 @@ def test_t41_prom_cap_and_alert() -> None:
     ).read_text(encoding="utf-8")
     assert "mpreg_strong_cap_retry_abort_ops_driven" in mon
     yml = (
-        Path(__file__).resolve().parents[2]
-        / "mpreg"
-        / "ops"
-        / "prometheus_alerts.yml"
+        Path(__file__).resolve().parents[2] / "mpreg" / "ops" / "prometheus_alerts.yml"
     ).read_text(encoding="utf-8")
     assert "MPREGStrongCapRetryAbortOpsDrivenMissing" in yml
     assert "mpreg_strong_cap_retry_abort_ops_driven == 0" in yml
@@ -82,6 +83,7 @@ def test_t41_prom_cap_and_alert() -> None:
         / "slo.py"
     ).read_text(encoding="utf-8")
     assert "MPREGStrongCapRetryAbortOpsDrivenMissing" in slo
+
 
 def test_t41_build_metrics_default_cap() -> None:
     class _Srv:

@@ -10,12 +10,14 @@ from typing import Any
 
 from mpreg.examples.apps._shared.features import features_for
 
+
 class AppLevel(StrEnum):
     L0 = "L0"
     L1 = "L1"
     L2 = "L2"
     L3 = "L3"
     L4 = "L4"
+
 
 @dataclass(frozen=True, slots=True)
 class ExampleApp:
@@ -42,6 +44,7 @@ class ExampleApp:
             )
         return main  # type: ignore[return-value]
 
+
 _LEVEL_DIR = {
     AppLevel.L0: "00_getting_started",
     AppLevel.L1: "01_simple",
@@ -49,6 +52,7 @@ _LEVEL_DIR = {
     AppLevel.L3: "03_complex",
     AppLevel.L4: "04_world",
 }
+
 
 def _app(
     id: str,
@@ -79,6 +83,7 @@ def _app(
         kind=kind,
         features=feat,
     )
+
 
 # ── Full matrix ─────────────────────────────────────────────────────────────
 APPS: tuple[ExampleApp, ...] = (
@@ -875,9 +880,11 @@ ALIASES: dict[str, str] = {
     "fabric_snapshot_restart_demo": "fabric_snapshot_restart",
 }
 
+
 def resolve_app_id(app_id: str) -> str:
     """Resolve aliases to canonical app ids."""
     return ALIASES.get(app_id, app_id)
+
 
 def get_app(app_id: str) -> ExampleApp:
     canonical = resolve_app_id(app_id)
@@ -888,6 +895,7 @@ def get_app(app_id: str) -> ExampleApp:
         raise KeyError(
             f"Unknown app {app_id!r} (resolved {canonical!r}). Known: {known}"
         ) from exc
+
 
 def list_apps(
     *,
@@ -908,6 +916,7 @@ def list_apps(
         items = [a for a in items if a.kind == kind]
     return items
 
+
 def app_to_dict(app: ExampleApp) -> dict[str, Any]:
     return {
         "id": app.id,
@@ -923,9 +932,11 @@ def app_to_dict(app: ExampleApp) -> dict[str, Any]:
         "features": list(app.features),
     }
 
+
 def apps_covering(feature_id: str) -> list[ExampleApp]:
     """Return apps that list ``feature_id`` in their catalog tags."""
     return [a for a in APPS if feature_id in a.features]
+
 
 # Bundles for unified demo CLI
 DEMO_BUNDLES: dict[str, tuple[str, ...]] = {

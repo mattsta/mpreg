@@ -18,6 +18,7 @@ from ..catalog import CacheNodeProfile
 from ..catalog_delta import RoutingCatalogDelta
 from ..federation_graph import GeographicCoordinate
 
+
 @dataclass(slots=True)
 class CacheProfileCatalogAdapter:
     node_id: NodeId

@@ -40,8 +40,10 @@ from mpreg.core.cache_strong import (
 from mpreg.core.errors import MpregErrorCode
 from mpreg.core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
 
+
 def _key(name: str = "k") -> GlobalCacheKey:
     return GlobalCacheKey(namespace="prop", identifier=name, version="v1")
+
 
 def _cluster(
     n: int,
@@ -84,6 +86,7 @@ def _cluster(
     )
     return coord, transport, backends
 
+
 def _no_residual(
     backends: dict[str, StrongLocalBackend], key: GlobalCacheKey, op_id: str
 ) -> None:
@@ -94,9 +97,11 @@ def _no_residual(
         )
         assert be.pending_count() == 0, f"pending residual on {be.node_id}"
 
+
 # ---------------------------------------------------------------------------
 # H1 — quorum math
 # ---------------------------------------------------------------------------
+
 
 @given(n=st.integers(min_value=-5, max_value=64))
 @settings(max_examples=100, deadline=None)
@@ -109,9 +114,11 @@ def test_majority_quorum_formula(n: int) -> None:
         assert q > n / 2
         assert q <= n
 
+
 # ---------------------------------------------------------------------------
 # H2 / H9 — successful put invariants
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 @given(
@@ -152,9 +159,11 @@ async def test_success_commit_acks_and_visibility(n: int, value: Any) -> None:
     for be in backends.values():
         assert be.pending_count() == 0
 
+
 # ---------------------------------------------------------------------------
 # H3 / H8 — residual-free failure under adversarial drops
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 @given(
@@ -192,6 +201,7 @@ async def test_failure_residual_free_under_drops(n: int, drop_mode: str) -> None
     )
     _no_residual(backends, key, res.operation_id)
 
+
 @pytest.mark.asyncio
 @given(n=st.integers(min_value=3, max_value=5))
 @settings(
@@ -209,9 +219,11 @@ async def test_insufficient_eligible_1015(n: int) -> None:
         assert be.get_visible(key) is None
         assert be.pending_count() == 0
 
+
 # ---------------------------------------------------------------------------
 # H4 — pending invisible
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 @given(
@@ -235,9 +247,11 @@ async def test_pending_not_visible(ttl: float) -> None:
     assert be.has_pending("op-pend")
     assert be.get_visible(key) is None
 
+
 # ---------------------------------------------------------------------------
 # H5 — abort restores backup
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 @given(
@@ -276,6 +290,7 @@ async def test_abort_restores_backup(old: int, new: int) -> None:
     assert ent.value == old
     assert _entry_op_id(ent) == "op-old"
 
+
 @pytest.mark.asyncio
 @given(
     hi=st.integers(min_value=10, max_value=1000),
@@ -308,9 +323,11 @@ async def test_lww_lost_does_not_clobber(hi: int, lo: int) -> None:
     assert cack.ok and not cack.applied
     assert be.get_visible(key).value == "newer"  # type: ignore[union-attr]
 
+
 # ---------------------------------------------------------------------------
 # H6 — concurrent puts race
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 @given(k=st.integers(min_value=2, max_value=6))
@@ -342,6 +359,7 @@ async def test_concurrent_puts_no_dirty_pending(k: int) -> None:
     for be in backends.values():
         assert be.pending_count() == 0
 
+
 @pytest.mark.asyncio
 async def test_concurrent_same_key_lww_safe() -> None:
     """Two concurrent puts same key: both complete without leaving pending; winner is one value."""
@@ -364,9 +382,11 @@ async def test_concurrent_same_key_lww_safe() -> None:
             assert ent.value in (1, 2)
             assert _entry_op_id(ent) in ("op-a", "op-b", None) or True
 
+
 # ---------------------------------------------------------------------------
 # H7 — GCM disabled 1012
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 @given(val=st.integers())
@@ -397,9 +417,11 @@ async def test_gcm_disabled_1012_residual_free(val: int) -> None:
     finally:
         await gcm.shutdown()
 
+
 # ---------------------------------------------------------------------------
 # Idempotent re-prepare
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 @given(op=st.uuids().map(str))
@@ -429,9 +451,11 @@ async def test_reprepare_idempotent(op: str) -> None:
     assert a1.ok and a2.ok
     assert be.pending_count() == 1
 
+
 # ---------------------------------------------------------------------------
 # T15 — random commit-drop subsets residual-free (DistLab Hypothesis expand)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 @given(
@@ -458,9 +482,11 @@ async def test_random_commit_drop_subset_residual_free(n: int, drop_k: int) -> N
     else:
         _no_residual(backends, key, res.operation_id or "")
 
+
 # ---------------------------------------------------------------------------
 # T18 — drop_commit + drop_abort pairs residual-free (after TTL GC if needed)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 @given(
@@ -507,6 +533,7 @@ async def test_full_commit_drop_plus_abort_drop_residual_free_after_gc(
         be.purge_expired_pending(now=future)
     _no_residual(backends, key, res.operation_id or "")
 
+
 @pytest.mark.asyncio
 @given(
     n=st.integers(min_value=3, max_value=5),
@@ -549,6 +576,7 @@ async def test_minority_commit_drop_success_pending_free_after_abort_drop_gc(
         be.purge_expired_pending(now=future)
     for be in backends.values():
         assert be.pending_count() == 0, f"pending on {be.node_id}"
+
 
 @pytest.mark.asyncio
 @given(n=st.integers(min_value=5, max_value=7))
@@ -595,6 +623,7 @@ async def test_cft_partial_commit_plus_lost_abort_leaves_peer_l1(n: int) -> None
     qi = res.quorum_info or {}
     assert commit_peer in list(qi.get("abort_fail_peers") or [])
 
+
 @pytest.mark.asyncio
 @given(n=st.integers(min_value=5, max_value=7))
 @settings(
@@ -631,6 +660,7 @@ async def test_cft_retry_abort_clears_residual_after_heal(n: int) -> None:
     ent = backends[commit_peer].get_visible(key)
     assert ent is None or _entry_op_id(ent) != oid
     assert coord.last_abort_fail_peers == []
+
 
 @pytest.mark.asyncio
 @given(n=st.integers(min_value=3, max_value=7))
@@ -692,6 +722,7 @@ async def test_cft_retry_abort_self_target_clears_local(n: int) -> None:
     ent = backends[residual].get_visible(key)
     assert ent is None or _entry_op_id(ent) != oid
 
+
 @given(
     ns=st.from_regex(r"[a-z][a-z0-9_-]{0,12}", fullmatch=True),
     kid=st.from_regex(r"[a-z][a-z0-9_-]{0,12}", fullmatch=True),
@@ -729,6 +760,7 @@ def test_format_residual_ops_hint_enriches_ns_key(
     )
     assert "--namespace explicit" in h2
     assert "--key forced" in h2
+
 
 @pytest.mark.asyncio
 @given(n=st.integers(min_value=5, max_value=7))
@@ -784,6 +816,7 @@ async def test_cft_gcm_retry_abort_clears_residual_after_heal(n: int) -> None:
     finally:
         await gcm.shutdown()
 
+
 @pytest.mark.asyncio
 @given(
     n=st.integers(min_value=5, max_value=7),
@@ -822,6 +855,7 @@ async def test_cft_orphan_backups_bounded_under_repeated_residual(
     # Purge path also prunes orphans (belt-and-suspenders)
     be.purge_expired_pending()
     assert be.backups_count() <= 1
+
 
 @pytest.mark.asyncio
 @given(n=st.integers(min_value=5, max_value=7))
@@ -863,6 +897,7 @@ async def test_cft_residual_survives_pending_purge(n: int) -> None:
     assert be.purge_expired_pending() == 0
     peer_ent = be.get_visible(key)
     assert peer_ent is not None and _entry_op_id(peer_ent) == oid
+
 
 @pytest.mark.asyncio
 @given(val=st.integers())

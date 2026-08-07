@@ -9,6 +9,7 @@ from mpreg.core.model import GoodbyeReason
 from mpreg.server import MPREGServer
 from tests.test_helpers import TestPortManager
 
+
 async def debug_goodbye_simple():
     """Debug GOODBYE protocol with detailed logging."""
     port_manager = TestPortManager()
@@ -94,6 +95,7 @@ async def debug_goodbye_simple():
             await asyncio.gather(server1_task, server2_task, return_exceptions=True)
 
         port_manager.cleanup()
+
 
 if __name__ == "__main__":
     asyncio.run(debug_goodbye_simple())

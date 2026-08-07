@@ -35,6 +35,7 @@ from .cache_pubsub_integration import CachePubSubIntegration
 from .global_cache import GlobalCacheKey, GlobalCacheManager
 from .model import PubSubMessage
 
+
 class ConsistencyLevel(Enum):
     """Cache consistency levels for cross-cluster replication."""
 
@@ -42,6 +43,7 @@ class ConsistencyLevel(Enum):
     CAUSAL = "causal"  # Causal ordering preserved
     STRONG = "strong"  # Reserved: fail-closed until real quorum ACKs exist
     LOCATION_AWARE = "location"  # Consistency based on geographic proximity
+
 
 class ReplicationStrategy(Enum):
     """Cache replication strategies across clusters."""
@@ -51,6 +53,7 @@ class ReplicationStrategy(Enum):
     ADAPTIVE = "adaptive"  # Adapt based on access patterns
     LOCATION_BASED = "location"  # Replicate based on geographic rules
 
+
 class ConflictResolution(Enum):
     """Conflict resolution strategies for concurrent updates."""
 
@@ -58,6 +61,7 @@ class ConflictResolution(Enum):
     VECTOR_CLOCK = "vector"  # Vector clock-based resolution
     CUSTOM = "custom"  # Custom resolution function
     MERGE = "merge"  # Application-specific merging
+
 
 @dataclass(frozen=True, slots=True)
 class LocationInfo:
@@ -72,6 +76,7 @@ class LocationInfo:
     provider: str = ""
     network_tier: str = "standard"  # standard, premium, dedicated
     metadata: dict[str, Any] = field(default_factory=dict)
+
 
 @dataclass(frozen=True, slots=True)
 class ReplicatedCacheEntry:
@@ -93,6 +98,7 @@ class ReplicatedCacheEntry:
     pinned_locations: frozenset[str] = frozenset()
     metadata: dict[str, Any] = field(default_factory=dict)
 
+
 @dataclass(frozen=True, slots=True)
 class ReplicationOperation:
     """Operation for replicating cache entries across clusters."""
@@ -107,6 +113,7 @@ class ReplicationOperation:
     deadline: float | None = None
     dependencies: frozenset[str] = frozenset()  # Operation IDs this depends on
     metadata: dict[str, Any] = field(default_factory=dict)
+
 
 @dataclass(frozen=True, slots=True)
 class LocationConsistencyConfig:
@@ -139,6 +146,7 @@ class LocationConsistencyConfig:
     auto_pin_hot_keys: bool = True
     hot_key_access_threshold: int = 100
     pin_duration_seconds: int = 3600
+
 
 class LocationConsistencyManager:
     """

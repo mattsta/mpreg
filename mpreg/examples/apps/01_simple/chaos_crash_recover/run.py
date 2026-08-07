@@ -7,6 +7,7 @@ import asyncio
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 from mpreg.testing.faults import FaultInjector
 
+
 async def main() -> None:
     with app_run(
         "chaos_crash_recover",
@@ -74,6 +75,7 @@ async def main() -> None:
 
         await asyncio.sleep(0)
         ok("chaos_crash_recover complete")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -18,6 +18,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any
 
+
 def percentile(samples: Sequence[float], p: float) -> float:
     """Nearest-rank percentile for p in [0, 100]. Empty → 0.0."""
     if not samples:
@@ -28,8 +29,9 @@ def percentile(samples: Sequence[float], p: float) -> float:
         return float(max(samples))
     ordered = sorted(float(x) for x in samples)
     # nearest-rank (same style as GCM strong_metrics_snapshot)
-    idx = max(0, int(math.ceil(len(ordered) * (p / 100.0))) - 1)
+    idx = max(0, math.ceil(len(ordered) * (p / 100.0)) - 1)
     return float(ordered[min(idx, len(ordered) - 1)])
+
 
 def summarize_latencies_ms(samples: Sequence[float]) -> dict[str, float | int]:
     """Compact latency summary for scenario meta / assertions."""
@@ -51,6 +53,7 @@ def summarize_latencies_ms(samples: Sequence[float]) -> dict[str, float | int]:
         "max_ms": float(max(xs)),
         "avg_ms": float(sum(xs) / len(xs)),
     }
+
 
 @dataclass
 class WallTimer:
@@ -83,6 +86,7 @@ class WallTimer:
         out = summarize_latencies_ms(self.samples_ms)
         out["name"] = self.name  # type: ignore[assignment]
         return out
+
 
 @dataclass
 class SliBudget:
@@ -131,6 +135,7 @@ class SliBudget:
                     f"success_rate={rate:.3f} < min_success_rate={self.min_success_rate}"
                 )
         return {"ok": not violations, "violations": violations, "summary": summary}
+
 
 # Default lab soak budget for strong.soak_20 (same-host in-process).
 DEFAULT_STRONG_SOAK_BUDGET = SliBudget(

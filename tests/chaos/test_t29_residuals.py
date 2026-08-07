@@ -9,6 +9,7 @@ from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
 from mpreg.testing.distlab.builtins import ensure_builtins
 from mpreg.testing.distlab.registry import get_registry, resolve_preset
 
+
 @pytest.mark.asyncio
 async def test_t29_distlab_cft_residual_survives_pending_purge() -> None:
     ensure_builtins()
@@ -16,11 +17,13 @@ async def test_t29_distlab_cft_residual_survives_pending_purge() -> None:
     assert r.ok, r
     assert (r.meta or {}).get("pending_ttl_not_residual_gc") is True
 
+
 def test_t29_strong_core_includes_ttl_honesty_scenario() -> None:
     ensure_builtins()
     names = resolve_preset("strong-core")
     assert "strong.cft_residual_survives_pending_purge" in names
     assert "strong.cft_residual_survives_pending_purge" in resolve_preset("ci-core")
+
 
 def test_t29_openapi_pending_ttl_clears_residual_false() -> None:
     doc = build_monitoring_openapi()
@@ -32,6 +35,7 @@ def test_t29_openapi_pending_ttl_clears_residual_false() -> None:
     assert props.get("pending_ttl_clears_residual_l1", {}).get("enum") == [False]
     assert "visible_count" in (body.get("properties") or {})
     assert "backups_count" in (body.get("properties") or {})
+
 
 def test_t29_doctor_fails_closed_on_pending_ttl_residual_gc_claim() -> None:
     ok, detail = evaluate_strong_doctor_payload(
@@ -50,6 +54,7 @@ def test_t29_doctor_fails_closed_on_pending_ttl_residual_gc_claim() -> None:
     )
     assert ok is False
     assert "pending_ttl" in detail
+
 
 def test_t29_gcm_status_pending_ttl_cap_and_counts() -> None:
     from mpreg.core.cache_strong import (

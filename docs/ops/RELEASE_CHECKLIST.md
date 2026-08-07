@@ -1,30 +1,30 @@
 # MPREG 0.3.0 / 0.3.1 Release Checklist
 
-| Field | Value |
-| --- | --- |
-| **Milestone** | Production Snapshot `v0.3.0` |
-| **Architecture** | `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md` |
-| **Master plan** | `docs/plans/RELEASE_0_3_PRODUCTION_SNAPSHOT_MASTER_PLAN.md` |
-| **Gate** | `bash scripts/release_gate.sh` |
+| Field            | Value                                                       |
+| ---------------- | ----------------------------------------------------------- |
+| **Milestone**    | Production Snapshot `v0.3.0`                                |
+| **Architecture** | `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md`      |
+| **Master plan**  | `docs/plans/RELEASE_0_3_PRODUCTION_SNAPSHOT_MASTER_PLAN.md` |
+| **Gate**         | `bash scripts/release_gate.sh`                              |
 
 ## Pre-tag (automated)
 
-- [ ] `bash scripts/release_gate.sh` exits 0  
-- [ ] `uv run pytest tests/release/ -q` green  
+- [ ] `bash scripts/release_gate.sh` exits 0
+- [ ] `uv run pytest tests/release/ -q` green
 - [ ] CI workflow jobs green on the release commit (lint, typecheck, unit-fast,
-      invariants, distlab-core, security-deps, demo-smoke, package-smoke)  
-- [ ] `pyproject.toml` / `mpreg.__version__` == `0.3.0`  
-- [ ] CHANGELOG has `## [0.3.0]` with user-facing notes  
-- [ ] `SECURITY.md` present  
-- [ ] claims.yaml includes R0.3 release proofs + non_claims  
+      invariants, distlab-core, security-deps, demo-smoke, package-smoke)
+- [ ] `pyproject.toml` / `mpreg.__version__` == `0.3.0`
+- [ ] CHANGELOG has `## [0.3.0]` with user-facing notes
+- [ ] `SECURITY.md` present
+- [ ] claims.yaml includes R0.3 release proofs + non_claims
 
 ## Pre-tag (human)
 
-- [ ] README honesty matches claims (no “we ship OAuth2” drift)  
-- [ ] Working tree clean except intentional release commits  
-- [ ] No secrets in tree (`change-me` only as documented placeholders)  
-- [ ] Decide PyPI upload yes/no; if yes, credentials ready  
-- [ ] GitHub Release notes drafted from CHANGELOG 0.3.0 section  
+- [ ] README honesty matches claims (no “we ship OAuth2” drift)
+- [ ] Working tree clean except intentional release commits
+- [ ] No secrets in tree (`change-me` only as documented placeholders)
+- [ ] Decide PyPI upload yes/no; if yes, credentials ready
+- [ ] GitHub Release notes drafted from CHANGELOG 0.3.0 section
 
 ## Operator golden path (post-install verification)
 
@@ -77,10 +77,10 @@ uv build
 
 ## Post-tag
 
-- [ ] GitHub Release published  
-- [ ] PyPI (if applicable) install-smoke from clean venv  
-- [ ] Announce with honesty banner (CFT, flag-gated STRONG/audit)  
-- [ ] Open post-0.3.0 backlog (residual T140+ only if product bugs; roadmap OAuth2 etc.)  
+- [ ] GitHub Release published
+- [ ] PyPI (if applicable) install-smoke from clean venv
+- [ ] Announce with honesty banner (CFT, flag-gated STRONG/audit)
+- [ ] Open post-0.3.0 backlog (residual T140+ only if product bugs; roadmap OAuth2 etc.)
 
 ## Non-goals frozen at this tag
 

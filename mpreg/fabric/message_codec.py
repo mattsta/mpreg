@@ -13,6 +13,7 @@ from .message import (
     UnifiedMessage,
 )
 
+
 def message_headers_to_dict(headers: MessageHeaders) -> dict[str, Any]:
     payload = {
         "correlation_id": headers.correlation_id,
@@ -27,6 +28,7 @@ def message_headers_to_dict(headers: MessageHeaders) -> dict[str, Any]:
     if headers.deadline_remaining_ms is not None:
         payload["deadline_remaining_ms"] = float(headers.deadline_remaining_ms)
     return payload
+
 
 def message_headers_from_dict(payload: dict[str, Any]) -> MessageHeaders:
     correlation_id = str(payload.get("correlation_id", ""))
@@ -84,6 +86,7 @@ def message_headers_from_dict(payload: dict[str, Any]) -> MessageHeaders:
         deadline_remaining_ms=deadline_remaining_ms,
     )
 
+
 def unified_message_to_dict(message: UnifiedMessage) -> dict[str, Any]:
     return {
         "message_id": message.message_id,
@@ -94,6 +97,7 @@ def unified_message_to_dict(message: UnifiedMessage) -> dict[str, Any]:
         "headers": message_headers_to_dict(message.headers),
         "timestamp": message.timestamp,
     }
+
 
 def unified_message_from_dict(payload: dict[str, Any]) -> UnifiedMessage:
     message_id = str(payload.get("message_id", ""))

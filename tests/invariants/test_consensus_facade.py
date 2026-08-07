@@ -5,17 +5,20 @@ from __future__ import annotations
 from mpreg import consensus
 from mpreg.core import consensus_api
 
+
 def test_facade_exports() -> None:
     assert consensus.ProductionRaft is not None
     assert consensus.RaftState is not None
     assert consensus.MembershipChangeNotSupported is not None
     assert callable(consensus.status_dict)
 
+
 def test_consensus_api_reexports() -> None:
     assert consensus_api.ProductionRaft is consensus.ProductionRaft
     assert consensus_api.MembershipChangeNotSupported is (
         consensus.MembershipChangeNotSupported
     )
+
 
 def test_status_dict_shape() -> None:
     class Fake:

@@ -24,6 +24,7 @@ from mpreg.fabric.hubs import (
     RegionalHub,
 )
 
+
 async def main() -> None:
     with app_run(
         "blockchain_hub_settlement",
@@ -120,6 +121,7 @@ async def main() -> None:
             )
 
         await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

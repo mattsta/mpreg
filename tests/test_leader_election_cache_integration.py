@@ -29,6 +29,7 @@ from mpreg.datastructures.leader_election import (
 )
 from mpreg.datastructures.merkle_tree import MerkleTree
 
+
 @contextlib.asynccontextmanager
 async def raft_instance_cleanup(
     cluster_id: str,
@@ -43,6 +44,7 @@ async def raft_instance_cleanup(
             await raft.shutdown()
         except Exception:
             pass  # Ignore cleanup errors
+
 
 class TestLeaderElectionCacheIntegration:
     """Integration tests using real MPREG objects."""

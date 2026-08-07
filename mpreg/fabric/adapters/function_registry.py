@@ -25,6 +25,7 @@ from ..catalog import (
 )
 from ..catalog_delta import RoutingCatalogDelta
 
+
 @dataclass(slots=True)
 class LocalFunctionCatalogAdapter:
     registry: RpcRegistry

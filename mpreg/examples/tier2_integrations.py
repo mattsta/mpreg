@@ -28,9 +28,11 @@ from mpreg.fabric.cache_federation import FabricCacheProtocol
 from mpreg.fabric.cache_transport import InProcessCacheTransport
 from mpreg.server import MPREGServer
 
+
 def _ensure(condition: bool, message: str) -> None:
     if not condition:
         raise RuntimeError(message)
+
 
 async def rpc_plus_cache() -> None:
     """RPC output is cached and reused across requests."""
@@ -85,6 +87,7 @@ async def rpc_plus_cache() -> None:
             await cache.shutdown()
 
         await run_with_servers(settings, _run)
+
 
 async def pubsub_plus_queue() -> None:
     """Topic exchange fan-out feeds a durable queue."""
@@ -149,6 +152,7 @@ async def pubsub_plus_queue() -> None:
     _ensure(len(received) == 2, "PubSub + Queue demo: unexpected message count")
     await manager.shutdown()
 
+
 async def cache_plus_federation() -> None:
     """Cache writes replicated across fabric federation scope."""
     from mpreg.fabric.cache_federation import FabricCacheProtocol
@@ -204,11 +208,13 @@ async def cache_plus_federation() -> None:
     await cache_protocol_a.shutdown()
     await cache_protocol_b.shutdown()
 
+
 async def main() -> None:
     print("Tier 2: Integrations")
     await rpc_plus_cache()
     await pubsub_plus_queue()
     await cache_plus_federation()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

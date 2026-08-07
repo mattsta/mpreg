@@ -20,6 +20,7 @@ from mpreg.fabric.federation_config import (
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 class TestFederationSystemIntegration:
     """Test integration of federation system with MPREG servers."""
 
@@ -480,6 +481,7 @@ class TestFederationSystemIntegration:
         print(f"   Active connections: {health_summary['total_connections']}")
         print(f"   Healthy connections: {health_summary['healthy_connections']}")
 
+
 class TestFederationConfigurationIntegration:
     """Test integration of federation configuration with MPREG settings."""
 
@@ -525,6 +527,7 @@ class TestFederationConfigurationIntegration:
         )
 
         print("✅ Custom federation configuration properly integrated")
+
 
 class TestFederationSystemBackwardCompatibility:
     """Test that the new federation system maintains backward compatibility."""

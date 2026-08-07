@@ -10,6 +10,7 @@ from mpreg.core.model import PubSubMessage, PubSubSubscription, TopicPattern
 from mpreg.core.topic_exchange import TopicExchange
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 def _publish(exchange: TopicExchange, topic: str, payload: dict[str, Any]) -> list:
     return list(
         exchange.publish_message(
@@ -23,6 +24,7 @@ def _publish(exchange: TopicExchange, topic: str, payload: dict[str, Any]) -> li
             )
         )
     )
+
 
 async def main() -> None:
     with app_run(
@@ -105,6 +107,7 @@ async def main() -> None:
             hits = _publish(exchange, "sensor.temp.rack-c", {"c": 21.0, "hdr": True})
             ensure(len(hits) >= 2, f"temp+all expected >=2 got {len(hits)}")
             ok("publish with headers matched temp+all")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

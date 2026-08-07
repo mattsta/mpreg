@@ -12,6 +12,7 @@ type NodeUrl = str
 type NodeName = str
 type TimestampText = str
 
+
 @dataclass(frozen=True, slots=True)
 class LoopEntry:
     timestamp: TimestampText
@@ -22,6 +23,7 @@ class LoopEntry:
     connected: int
     due: int
     selected: int
+
 
 @dataclass(frozen=True, slots=True)
 class SaturationSummary:
@@ -34,12 +36,14 @@ class SaturationSummary:
     max_saturated_due: int
     mean_saturated_due: float
 
+
 LOOP_PATTERN = re.compile(
     r"^(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}) \| .* "
     r"\[DIAG_PEER_DIAL\] node=(?P<node>\S+) name=(?P<name>\S+) loop "
     r"targets=(?P<targets>\d+) .* desired_connected=(?P<desired>\d+) "
     r"connected=(?P<connected>\d+) due=(?P<due>\d+) selected=(?P<selected>\d+) "
 )
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -59,6 +63,7 @@ def _parse_args() -> argparse.Namespace:
         help="Number of nodes to include in node saturation ranking",
     )
     return parser.parse_args()
+
 
 def _load_entries(*, log_path: Path, min_targets: int) -> list[LoopEntry]:
     entries: list[LoopEntry] = []
@@ -83,12 +88,14 @@ def _load_entries(*, log_path: Path, min_targets: int) -> list[LoopEntry]:
         )
     return entries
 
+
 def _is_saturated(entry: LoopEntry) -> bool:
     return (
         entry.due > 0
         and entry.selected == 0
         and entry.connected >= entry.desired_connected
     )
+
 
 def _summarize(entries: list[LoopEntry]) -> tuple[SaturationSummary, dict[str, int]]:
     active_entries = [entry for entry in entries if entry.selected > 0]
@@ -116,6 +123,7 @@ def _summarize(entries: list[LoopEntry]) -> tuple[SaturationSummary, dict[str, i
         mean_saturated_due=mean_saturated_due,
     )
     return summary, by_node
+
 
 def main() -> int:
     args = _parse_args()
@@ -145,6 +153,7 @@ def main() -> int:
         for node_name, count in ranked[:top_n]:
             print(f"  {node_name}: {count}")
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

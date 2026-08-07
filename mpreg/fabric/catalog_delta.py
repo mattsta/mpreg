@@ -35,10 +35,12 @@ from .catalog import (
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .catalog_policy import CatalogFilterPolicy
 
+
 class CatalogDeltaObserver(Protocol):
     def on_catalog_delta(
         self, delta: RoutingCatalogDelta, counts: dict[str, int]
     ) -> None: ...
+
 
 @dataclass(frozen=True, slots=True)
 class RoutingCatalogDelta:
@@ -143,6 +145,7 @@ class RoutingCatalogDelta:
                 for item in payload.get("node_removals", [])
             ),
         )
+
 
 @dataclass(slots=True)
 class RoutingCatalogApplier:

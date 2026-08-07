@@ -26,6 +26,7 @@ from mpreg.core.enhanced_rpc import (
 from mpreg.core.model import RPCCommand, RPCRequest
 from mpreg.fabric.message import RoutingPriority
 
+
 class TestTopicAwareRPCDatastructures:
     """Test the topic-aware RPC datastructure conversions and functionality."""
 
@@ -154,6 +155,7 @@ class TestTopicAwareRPCDatastructures:
             assert base_cmd.fun == topic_cmd.fun
             assert base_cmd.args == topic_cmd.args
 
+
 class TestTopicAwareRPCConfig:
     """Test the configuration dataclass for topic-aware RPC."""
 
@@ -186,6 +188,7 @@ class TestTopicAwareRPCConfig:
         # Verify defaults are preserved for unspecified fields
         assert config.enable_result_streaming is True
         assert config.heartbeat_interval_ms == 5000.0
+
 
 class TestRPCResult:
     """Test the RPCResult dataclass."""
@@ -234,6 +237,7 @@ class TestRPCResult:
         assert result.success is False
         assert result.error_message == "Command failed due to timeout"
         assert result.error_type == "TimeoutError"
+
 
 class TestRPCRequestResult:
     """Test the RPCRequestResult dataclass."""
@@ -324,6 +328,7 @@ class TestRPCRequestResult:
         )
         assert result3.success_rate == 100.0
         assert result3.all_successful is True
+
 
 class TestTopicAwareRPCExecutor:
     """Test the topic-aware RPC executor."""
@@ -470,6 +475,7 @@ class TestTopicAwareRPCExecutor:
 
         assert result.request_id == custom_request_id
 
+
 class TestFactoryFunctions:
     """Test the factory functions for creating topic-aware RPC components."""
 
@@ -517,6 +523,7 @@ class TestFactoryFunctions:
         assert isinstance(executor, TopicAwareRPCExecutor)
         assert executor.config.topic_prefix == "test.factory"
         assert executor.subscription_manager is not None
+
 
 # Property-based testing with Hypothesis
 @given(
@@ -568,6 +575,7 @@ def test_topic_aware_command_conversion_property(
     assert topic_cmd.enable_result_streaming == enable_streaming
     assert isinstance(topic_cmd.command_id, str)
     assert len(topic_cmd.command_id) > 0
+
 
 @given(
     num_commands=st.integers(min_value=1, max_value=5),

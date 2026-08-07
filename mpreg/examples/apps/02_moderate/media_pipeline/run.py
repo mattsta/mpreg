@@ -19,6 +19,7 @@ from mpreg.examples.apps._shared.runtime import (
 )
 from mpreg.server import MPREGServer
 
+
 async def main() -> None:
     with app_run("media_pipeline", "Media Pipeline — 4-stage DAG", level="L2"):
         with port_range_context(4, "servers") as ports:
@@ -170,6 +171,7 @@ async def main() -> None:
                     step("non-claim: not durable media store; in-memory stages only")
 
             await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

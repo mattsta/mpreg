@@ -9,6 +9,7 @@ from mpreg.cli.main import (
     strong_residual_ops_hint,
 )
 
+
 def _ok_body(**extra: object) -> dict:
     body: dict = {
         "health": "ok",
@@ -31,6 +32,7 @@ def _ok_body(**extra: object) -> dict:
     body.update(extra)
     return body
 
+
 def test_t51_doctor_shows_abort_fail_op_id() -> None:
     ok, detail = evaluate_strong_doctor_payload(
         {
@@ -43,6 +45,7 @@ def test_t51_doctor_shows_abort_fail_op_id() -> None:
     assert ok is True
     assert "abort_fail_op_id=oid-abc" in detail
     assert "abort_fail_peers=['n1', 'n2']" in detail or "n1" in detail
+
 
 def test_t51_doctor_hint_when_residual_candidates() -> None:
     ok, detail = evaluate_strong_doctor_payload(
@@ -61,6 +64,7 @@ def test_t51_doctor_hint_when_residual_candidates() -> None:
     # Still ok=True — residual candidates are CFT honesty, not doctor fail
     assert "hint:" in detail
 
+
 def test_t51_doctor_no_hint_when_no_fail_peers() -> None:
     ok, detail = evaluate_strong_doctor_payload(
         {"strong": _ok_body(last_abort_fail_peers=[], last_abort_fail_op_id="")}
@@ -69,6 +73,7 @@ def test_t51_doctor_no_hint_when_no_fail_peers() -> None:
     assert "hint:" not in detail
     assert "cache-strong-retry-abort" not in detail
     assert "abort_fail_op_id=-" in detail or "abort_fail_op_id=" in detail
+
 
 def test_t51_hint_from_nested_coordinator() -> None:
     body = _ok_body(
@@ -86,6 +91,7 @@ def test_t51_hint_from_nested_coordinator() -> None:
     ok, detail = evaluate_strong_doctor_payload({"strong": body})
     assert ok and "nested-oid" in detail
 
+
 def test_t51_phase_39_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -95,6 +101,7 @@ def test_t51_phase_39_honesty() -> None:
     text = path.read_text(encoding="utf-8")
     assert "Phase 39" in text
     assert "abort_fail_op_id" in text or "ops hint" in text.lower()
+
 
 def test_t51_runbook_hint() -> None:
     path = (
@@ -107,12 +114,8 @@ def test_t51_runbook_hint() -> None:
     assert "abort_fail_op_id" in text or "hint" in text.lower()
     assert "cache-strong-retry-abort" in text
 
+
 def test_t51_claims_hint_non_claim() -> None:
-    path = (
-        Path(__file__).resolve().parents[2]
-        / "tests"
-        / "invariants"
-        / "claims.yaml"
-    )
+    path = Path(__file__).resolve().parents[2] / "tests" / "invariants" / "claims.yaml"
     text = path.read_text(encoding="utf-8")
     assert "hint" in text.lower() or "remediation" in text.lower()

@@ -8,12 +8,15 @@ from mpreg.core.cluster_map import CatalogQueryRequest
 from mpreg.core.statistics import MessageHeaders
 from mpreg.fabric.pubsub_forwarding import PubSubForwardingMetadata
 
+
 def test_message_headers_coerce_none() -> None:
     assert MessageHeaders.coerce(None) is None
+
 
 def test_message_headers_coerce_dataclass_passthrough() -> None:
     h = MessageHeaders(correlation_id="c1", custom_headers={"x": "1"})
     assert MessageHeaders.coerce(h) is h
+
 
 def test_message_headers_coerce_mapping() -> None:
     h = MessageHeaders.coerce(
@@ -35,9 +38,11 @@ def test_message_headers_coerce_mapping() -> None:
     assert d["correlation_id"] == "corr"
     assert d["x-trace"] == "abc"
 
+
 def test_message_headers_coerce_rejects_bad_type() -> None:
     with pytest.raises(TypeError, match="headers must be"):
         MessageHeaders.coerce("not-headers")  # type: ignore[arg-type]
+
 
 def test_catalog_query_request_default_entry_type() -> None:
     assert CatalogQueryRequest().entry_type == "functions"
@@ -45,6 +50,7 @@ def test_catalog_query_request_default_entry_type() -> None:
     assert CatalogQueryRequest.from_dict({"entry_type": ""}).entry_type == "functions"
     assert CatalogQueryRequest.from_dict({"entry_type": None}).entry_type == "functions"
     assert CatalogQueryRequest.from_dict({"entry_type": "Nodes"}).entry_type == "nodes"
+
 
 def test_pubsub_forwarding_max_hops_bad_type() -> None:
     """except (TypeError, ValueError) path for non-int max_hops."""

@@ -13,6 +13,7 @@ from mpreg.fabric.route_decision_log import (
     make_record_from_route,
 )
 
+
 class RoutingPlane:
     """Thin facade over planner + decision log for server composition."""
 

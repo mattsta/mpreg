@@ -19,15 +19,18 @@ from mpreg.datastructures.type_aliases import (
     Timestamp,
 )
 
+
 def _as_dict(value: object) -> JsonDict:
     if isinstance(value, dict):
         return {str(key): val for key, val in value.items()}
     return {}
 
+
 def _as_str_tuple(value: object) -> tuple[str, ...]:
     if isinstance(value, (list, tuple)):
         return tuple(str(item) for item in value)
     return ()
+
 
 def _as_int(value: object, default: int) -> int:
     if value is None:
@@ -39,6 +42,7 @@ def _as_int(value: object, default: int) -> int:
             return default
     return default
 
+
 def _as_float(value: object, default: float) -> float:
     if value is None:
         return default
@@ -48,6 +52,7 @@ def _as_float(value: object, default: float) -> float:
         except TypeError, ValueError:
             return default
     return default
+
 
 @dataclass(frozen=True, slots=True)
 class RouteDestination:
@@ -61,6 +66,7 @@ class RouteDestination:
     @classmethod
     def from_dict(cls, payload: JsonDict) -> RouteDestination:
         return cls(cluster_id=str(payload.get("cluster_id", "")))
+
 
 @dataclass(frozen=True, slots=True)
 class RoutePath:
@@ -90,6 +96,7 @@ class RoutePath:
     @classmethod
     def from_dict(cls, payload: JsonDict) -> RoutePath:
         return cls(hops=_as_str_tuple(payload.get("hops", ())))
+
 
 @dataclass(frozen=True, slots=True)
 class RouteMetrics:
@@ -147,6 +154,7 @@ class RouteMetrics:
             reliability_score=_as_float(payload.get("reliability_score"), 1.0),
             cost_score=_as_float(payload.get("cost_score"), 0.0),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class RouteAnnouncement:
@@ -239,6 +247,7 @@ class RouteAnnouncement:
             signature_algorithm=str(payload.get("signature_algorithm", "ed25519")),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class RouteWithdrawal:
     """Withdrawal for a previously advertised route."""
@@ -318,6 +327,7 @@ class RouteWithdrawal:
             signature_algorithm=str(payload.get("signature_algorithm", "ed25519")),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class RouteRecord:
     """A learned route entry stored in the local table."""
@@ -337,12 +347,14 @@ class RouteRecord:
         timestamp = now if now is not None else time.time()
         return timestamp > (self.advertised_at + self.ttl_seconds)
 
+
 @dataclass(frozen=True, slots=True)
 class RouteTiebreaker:
     """Tiebreaker value used for route selection ordering."""
 
     name: str
     value: float | str
+
 
 @dataclass(frozen=True, slots=True)
 class RouteCandidateTrace:
@@ -373,6 +385,7 @@ class RouteCandidateTrace:
             "filtered_reason": self.filtered_reason,
         }
 
+
 @dataclass(frozen=True, slots=True)
 class RouteSelectionTrace:
     """Explain how a route selection was made."""
@@ -392,6 +405,7 @@ class RouteSelectionTrace:
             "selected": self.selected.to_dict() if self.selected else None,
         }
 
+
 @dataclass(frozen=True, slots=True)
 class RouteBestKey:
     """Key used to detect best-route changes for convergence tracking."""
@@ -401,12 +415,14 @@ class RouteBestKey:
     path: RoutePath
     epoch: int
 
+
 @dataclass(frozen=True, slots=True)
 class RouteHoldDownKey:
     """Key used to track route hold-down windows."""
 
     destination: RouteDestination
     advertiser: ClusterId
+
 
 @dataclass(frozen=True, slots=True)
 class RouteFlapState:
@@ -415,6 +431,7 @@ class RouteFlapState:
     last_change: Timestamp
     flap_count: int
     suppressed_until: Timestamp | None = None
+
 
 @dataclass(slots=True)
 class RouteControlStats:
@@ -445,6 +462,7 @@ class RouteControlStats:
             "rejection_reasons": dict(self.rejection_reasons),
         }
 
+
 @dataclass(frozen=True, slots=True)
 class RouteStabilityPolicy:
     """Stability controls for route management."""
@@ -453,6 +471,7 @@ class RouteStabilityPolicy:
     flap_threshold: int = 0
     suppression_window_seconds: DurationSeconds = 0.0
 
+
 @dataclass(slots=True)
 class RouteConvergenceState:
     """Track convergence timing per destination."""
@@ -460,6 +479,7 @@ class RouteConvergenceState:
     first_seen_at: Timestamp
     last_change_at: Timestamp
     last_best: RouteBestKey
+
 
 @dataclass(frozen=True, slots=True)
 class RoutePolicy:
@@ -567,6 +587,7 @@ class RoutePolicy:
             elif rule == "advertiser":
                 values.append(record.advertiser)
         return tuple(values)
+
 
 @dataclass(slots=True)
 class RouteTable:

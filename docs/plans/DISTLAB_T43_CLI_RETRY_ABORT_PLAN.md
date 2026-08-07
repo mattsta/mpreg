@@ -1,13 +1,13 @@
 # DistLab T43 — CLI cache-strong-retry-abort (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T42 (`a1811fa`) |
-| **Scope** | Operator CLI for ops-driven `strong_retry_abort` |
-| **Point budget** | **~25 pts** |
-| **Entry points only** | `uv run mpreg …` / `uv run pytest …` |
+| Field                 | Value                                            |
+| --------------------- | ------------------------------------------------ |
+| **Status**            | **Complete**                                     |
+| **Date**              | 2026-08-06                                       |
+| **Authority**         | Continuation after T42 (`a1811fa`)               |
+| **Scope**             | Operator CLI for ops-driven `strong_retry_abort` |
+| **Point budget**      | **~25 pts**                                      |
+| **Entry points only** | `uv run mpreg …` / `uv run pytest …`             |
 
 ## Problem
 

@@ -12,6 +12,7 @@ from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 async def main() -> None:
     assigned: dict[str, int] = {}
 
@@ -53,6 +54,7 @@ async def main() -> None:
         server_b_task.cancel()
         server_a_task.cancel()
         await asyncio.gather(server_a_task, server_b_task, return_exceptions=True)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -26,6 +26,7 @@ from mpreg.fabric.catalog import (
 from mpreg.fabric.federation_graph import GeographicCoordinate
 from mpreg.fabric.message import DeliveryGuarantee
 
+
 def test_function_catalog_register_and_find() -> None:
     catalog = FunctionCatalog()
     identity = FunctionIdentity(
@@ -53,6 +54,7 @@ def test_function_catalog_register_and_find() -> None:
     )
     assert matches == [endpoint]
 
+
 def test_function_catalog_name_conflict() -> None:
     catalog = FunctionCatalog()
     first = FunctionEndpoint(
@@ -78,6 +80,7 @@ def test_function_catalog_name_conflict() -> None:
     assert catalog.register(first)
     with pytest.raises(ValueError):
         catalog.register(second)
+
 
 def test_function_catalog_function_id_conflict() -> None:
     catalog = FunctionCatalog()
@@ -105,6 +108,7 @@ def test_function_catalog_function_id_conflict() -> None:
     with pytest.raises(ValueError):
         catalog.register(second)
 
+
 def test_function_catalog_prune_expired() -> None:
     catalog = FunctionCatalog()
     endpoint = FunctionEndpoint(
@@ -123,6 +127,7 @@ def test_function_catalog_prune_expired() -> None:
     assert catalog.prune_expired(now=20.0) == 1
     assert catalog.entry_count() == 0
 
+
 def test_topic_catalog_register_and_match() -> None:
     catalog = TopicCatalog()
     subscription = TopicSubscription(
@@ -139,6 +144,7 @@ def test_topic_catalog_register_and_match() -> None:
 
     matches = catalog.match("bar.any.depth", now=15.0)
     assert matches == [subscription]
+
 
 def test_topic_catalog_updates_patterns() -> None:
     catalog = TopicCatalog()
@@ -160,6 +166,7 @@ def test_topic_catalog_updates_patterns() -> None:
     assert catalog.match("foo.one") == []
     assert catalog.match("baz.any.depth") == [updated]
 
+
 def test_queue_catalog_register_and_find() -> None:
     catalog = QueueCatalog()
     endpoint = QueueEndpoint(
@@ -175,6 +182,7 @@ def test_queue_catalog_register_and_find() -> None:
     matches = catalog.find("jobs", cluster_id="cluster-a", now=105.0)
     assert matches == [endpoint]
 
+
 def test_cache_catalog_register_and_find() -> None:
     catalog = CacheCatalog()
     entry = CacheRoleEntry(
@@ -187,6 +195,7 @@ def test_cache_catalog_register_and_find() -> None:
     assert catalog.register(entry, now=100.0)
     matches = catalog.find(CacheRole.COORDINATOR, cluster_id="cluster-a", now=105.0)
     assert matches == [entry]
+
 
 def test_cache_profile_catalog_register_and_find() -> None:
     catalog = CacheProfileCatalog()
@@ -206,6 +215,7 @@ def test_cache_profile_catalog_register_and_find() -> None:
     matches = catalog.find(cluster_id="cluster-a", node_id="node-1", now=105.0)
     assert matches == [profile]
 
+
 def test_node_catalog_register_and_find() -> None:
     catalog = NodeCatalog()
     node = NodeDescriptor(
@@ -219,6 +229,7 @@ def test_node_catalog_register_and_find() -> None:
     assert catalog.register(node, now=50.0)
     matches = catalog.find(cluster_id="cluster-a", now=55.0)
     assert matches == [node]
+
 
 def test_node_descriptor_round_trip_with_transport_endpoints() -> None:
     node = NodeDescriptor(
@@ -246,6 +257,7 @@ def test_node_descriptor_round_trip_with_transport_endpoints() -> None:
     payload = node.to_dict()
     round_trip = NodeDescriptor.from_dict(payload)
     assert round_trip == node
+
 
 def test_routing_catalog_prune_expired() -> None:
     catalog = RoutingCatalog()

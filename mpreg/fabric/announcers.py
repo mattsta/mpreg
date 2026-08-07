@@ -16,6 +16,7 @@ from .broadcaster import CatalogBroadcaster, CatalogBroadcastResult
 from .catalog import QueueEndpoint
 from .catalog_delta import RoutingCatalogDelta
 
+
 class FunctionCatalogAdapter(Protocol):
     def build_delta(
         self,
@@ -24,6 +25,7 @@ class FunctionCatalogAdapter(Protocol):
         include_node: bool = True,
         update_id: str | None = None,
     ) -> RoutingCatalogDelta: ...
+
 
 class ServiceCatalogAdapter(Protocol):
     def build_delta(
@@ -34,6 +36,7 @@ class ServiceCatalogAdapter(Protocol):
         update_id: str | None = None,
     ) -> RoutingCatalogDelta: ...
 
+
 @dataclass(slots=True)
 class FabricFunctionAnnouncer:
     adapter: FunctionCatalogAdapter
@@ -42,6 +45,7 @@ class FabricFunctionAnnouncer:
     async def announce(self, *, now: float | None = None) -> CatalogBroadcastResult:
         delta = self.adapter.build_delta(now=now, include_node=True)
         return await self.broadcaster.broadcast(delta, now=now)
+
 
 @dataclass(slots=True)
 class FabricQueueAnnouncer:
@@ -58,6 +62,7 @@ class FabricQueueAnnouncer:
         )
         return await self.broadcaster.broadcast(delta, now=now)
 
+
 @dataclass(slots=True)
 class FabricServiceAnnouncer:
     adapter: ServiceCatalogAdapter
@@ -66,6 +71,7 @@ class FabricServiceAnnouncer:
     async def announce(self, *, now: float | None = None) -> CatalogBroadcastResult:
         delta = self.adapter.build_delta(now=now, include_node=True)
         return await self.broadcaster.broadcast(delta, now=now)
+
 
 @dataclass(slots=True)
 class FabricCacheRoleAnnouncer:
@@ -76,6 +82,7 @@ class FabricCacheRoleAnnouncer:
         delta = self.adapter.build_delta(now=now)
         return await self.broadcaster.broadcast(delta, now=now)
 
+
 @dataclass(slots=True)
 class FabricCacheProfileAnnouncer:
     adapter: CacheProfileCatalogAdapter
@@ -84,6 +91,7 @@ class FabricCacheProfileAnnouncer:
     async def announce(self, *, now: float | None = None) -> CatalogBroadcastResult:
         delta = self.adapter.build_delta(now=now)
         return await self.broadcaster.broadcast(delta, now=now)
+
 
 @dataclass(slots=True)
 class FabricTopicAnnouncer:

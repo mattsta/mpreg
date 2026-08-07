@@ -13,6 +13,7 @@ from mpreg.core.cache_strong import (
     StrongPutCoordinator,
 )
 
+
 def test_t34_caching_system_doc_cft_honesty() -> None:
     path = Path(__file__).resolve().parents[2] / "docs" / "CACHING_SYSTEM.md"
     text = path.read_text(encoding="utf-8").lower()
@@ -20,6 +21,7 @@ def test_t34_caching_system_doc_cft_honesty() -> None:
     assert "lost abort" in text or "abort" in text
     assert "pending" in text and ("residual" in text or "not residual" in text)
     assert "lww" in text or "not residual-free" in text
+
 
 @pytest.mark.asyncio
 async def test_t34_purge_expired_pending_prunes_orphan_backups() -> None:
@@ -41,9 +43,7 @@ async def test_t34_purge_expired_pending_prunes_orphan_backups() -> None:
     be._visible[be._key_str(key)] = entry
     be._key_op[be._key_str(key)] = live_oid
     # Live backup for current op + orphan from lost-abort path
-    prior = GlobalCacheEntry(
-        key=key, value={"prior": True}, metadata=CacheMetadata()
-    )
+    prior = GlobalCacheEntry(key=key, value={"prior": True}, metadata=CacheMetadata())
     be._backups[live_oid] = prior
     be._backups[stale_oid] = prior
     assert be.backups_count() == 2
@@ -57,6 +57,7 @@ async def test_t34_purge_expired_pending_prunes_orphan_backups() -> None:
     # Residual L1 untouched
     assert be.get_visible(key) is not None
     assert be.get_visible(key).value == {"live": True}
+
 
 @pytest.mark.asyncio
 async def test_t34_hypothesis_orphan_gc_smoke() -> None:

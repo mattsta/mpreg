@@ -15,6 +15,7 @@ from mpreg.server import MPREGServer
 # Suppress all logging to see just our output
 logging.getLogger().setLevel(logging.CRITICAL + 1)
 
+
 async def test_scalability_fix():
     """Test that we can create a 20+ node cluster without exponential explosion."""
     print("🔬 Testing scalability fix: can we create 20+ nodes without explosion?")
@@ -105,6 +106,7 @@ async def test_scalability_fix():
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
 
+
 async def main():
     """Run the scalability test."""
     success = await test_scalability_fix()
@@ -112,6 +114,7 @@ async def main():
         print("\n🎉 Scalability fix validation: PASSED")
     else:
         print("\n💔 Scalability fix validation: FAILED")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

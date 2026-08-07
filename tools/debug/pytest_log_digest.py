@@ -11,20 +11,24 @@ from pathlib import Path
 
 type NodeId = str
 
+
 @dataclass(frozen=True, slots=True)
 class PatternCounter:
     label: str
     regex: str
+
 
 @dataclass(frozen=True, slots=True)
 class PatternHit:
     label: str
     count: int
 
+
 @dataclass(frozen=True, slots=True)
 class FailureEntry:
     nodeid: NodeId
     detail: str
+
 
 @dataclass(frozen=True, slots=True)
 class DigestReport:
@@ -37,6 +41,7 @@ class DigestReport:
     summary_line: str | None
     pattern_hits: tuple[PatternHit, ...]
 
+
 PATTERNS: tuple[PatternCounter, ...] = (
     PatternCounter("auto_discovery_timeout", r"Auto-discovery did not converge"),
     PatternCounter("raft_no_leader", r"No leader elected"),
@@ -44,6 +49,7 @@ PATTERNS: tuple[PatternCounter, ...] = (
     PatternCounter("transport_connection_error", r"TransportConnectionError"),
     PatternCounter("assertion_error", r"AssertionError"),
 )
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -57,6 +63,7 @@ def _parse_args() -> argparse.Namespace:
     )
     return parser.parse_args()
 
+
 def _parse_result_line(line: str, prefix: str) -> FailureEntry | None:
     if not line.startswith(prefix):
         return None
@@ -67,6 +74,7 @@ def _parse_result_line(line: str, prefix: str) -> FailureEntry | None:
         nodeid, detail = payload.split(" - ", 1)
         return FailureEntry(nodeid=nodeid.strip(), detail=detail.strip())
     return FailureEntry(nodeid=payload, detail="")
+
 
 def _digest_log(path: Path) -> DigestReport:
     failures: list[FailureEntry] = []
@@ -112,6 +120,7 @@ def _digest_log(path: Path) -> DigestReport:
         pattern_hits=hits,
     )
 
+
 def _print_report(report: DigestReport) -> None:
     print(f"log_path={report.log_path}")
     print(f"total_lines={report.total_lines}")
@@ -130,6 +139,7 @@ def _print_report(report: DigestReport) -> None:
         for error in report.errors:
             print(f"  - {error.nodeid} :: {error.detail}")
 
+
 def main() -> int:
     args = _parse_args()
     log_path = Path(str(args.log)).resolve()
@@ -144,6 +154,7 @@ def main() -> int:
         out_path.write_text(json.dumps(asdict(report), indent=2), encoding="utf-8")
         print(f"json_out={out_path}")
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

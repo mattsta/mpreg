@@ -36,6 +36,7 @@ from mpreg.core.transport.websocket_transport import (
 
 from .test_helpers import create_test_ssl_context
 
+
 class TestWebSocketTransportFactory:
     """Test WebSocket transport creation via factory."""
 
@@ -76,6 +77,7 @@ class TestWebSocketTransportFactory:
             )
             assert isinstance(listener, WebSocketListener)
             assert listener._get_protocol_scheme() == "wss"
+
 
 class TestWebSocketTransportBasic:
     """Test basic WebSocket transport functionality."""
@@ -221,6 +223,7 @@ class TestWebSocketTransportBasic:
         finally:
             await listener.stop()
 
+
 class TestWebSocketTransportAuthentication:
     """Test WebSocket authentication features."""
 
@@ -290,6 +293,7 @@ class TestWebSocketTransportAuthentication:
 
         finally:
             await listener.stop()
+
 
 class TestWebSocketTransportSecurity:
     """Test WebSocket security features."""
@@ -362,6 +366,7 @@ class TestWebSocketTransportSecurity:
         with port_context("testing") as port:
             ssl_listener = WebSocketListener("127.0.0.1", port, ssl_config)
             assert ssl_listener._get_protocol_scheme() == "wss"
+
 
 class TestWebSocketTransportErrorHandling:
     """Test WebSocket error handling and edge cases."""
@@ -546,6 +551,7 @@ class TestWebSocketTransportErrorHandling:
             await client.disconnect()
             await client.disconnect()
 
+
 class TestWebSocketTransportDataTypes:
     """Test WebSocket handling of different data types."""
 
@@ -610,6 +616,7 @@ class TestWebSocketTransportDataTypes:
 
         finally:
             await listener.stop()
+
 
 class TestWebSocketTransportPerformance:
     """Test WebSocket transport performance characteristics."""
@@ -700,6 +707,7 @@ class TestWebSocketTransportPerformance:
         finally:
             await listener.stop()
 
+
 class TestWebSocketTransportProtocolCompliance:
     """Test WebSocket protocol compliance and external client compatibility."""
 
@@ -762,6 +770,7 @@ class TestWebSocketTransportProtocolCompliance:
         assert "api-key" in auth_headers
         assert "X-API-Key" in auth_headers["api-key"]
 
+
 @given(st.binary(min_size=0, max_size=1024))
 @settings(max_examples=20, deadline=5000)
 @pytest.mark.asyncio
@@ -800,6 +809,7 @@ async def test_websocket_property_based_messaging(message_data):
                 await listener.stop()
 
     await test_message()
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

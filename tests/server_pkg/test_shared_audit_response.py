@@ -8,6 +8,7 @@ from mpreg.server_pkg.shared_audit import (
     record_from_mgmt_entry,
 )
 
+
 def test_default_local_scope() -> None:
     local = [{"event": "drain", "timestamp": 1.0, "success": True}]
     out = build_audit_response(
@@ -22,6 +23,7 @@ def test_default_local_scope() -> None:
     assert out["mutation_count"] == 1
     assert out["shared_enabled"] is False
 
+
 def test_cluster_requires_shared() -> None:
     out = build_audit_response(
         store=None,
@@ -31,6 +33,7 @@ def test_cluster_requires_shared() -> None:
     )
     assert out["error"] == "shared_audit_disabled"
     assert out["mutations"] == []
+
 
 def test_cluster_merged_view() -> None:
     store = SharedAuditStore(cluster_id="c1", local_node="n1")

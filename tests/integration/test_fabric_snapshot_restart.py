@@ -11,6 +11,7 @@ from mpreg.fabric.route_keys import RouteKeyRegistry
 from mpreg.server import MPREGServer
 from tests.test_helpers import TestPortManager, wait_for_condition
 
+
 async def _start_server(
     port: int,
     data_dir,
@@ -37,6 +38,7 @@ async def _start_server(
     await asyncio.sleep(1.0)
     return server, task
 
+
 async def _stop_server(server: MPREGServer, task: asyncio.Task[None]) -> None:
     await server.shutdown_async()
     try:
@@ -44,6 +46,7 @@ async def _stop_server(server: MPREGServer, task: asyncio.Task[None]) -> None:
     except TimeoutError:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
+
 
 @pytest.mark.asyncio
 async def test_fabric_snapshot_restores_catalog_and_route_keys(tmp_path) -> None:

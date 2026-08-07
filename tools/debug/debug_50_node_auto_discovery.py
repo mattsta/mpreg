@@ -17,6 +17,7 @@ from typing import Any
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 @dataclass
 class ClusterAnalysisMetrics:
     """Compact metrics for cluster analysis."""
@@ -28,6 +29,7 @@ class ClusterAnalysisMetrics:
     connection_matrix: dict[tuple[int, int], bool]  # (from, to) -> connected
     gossip_message_counts: dict[int, int]  # node_id -> gossip_count
     function_propagation: dict[int, bool]  # node_id -> has_test_function
+
 
 class AutoDiscoveryAnalyzer:
     """Focused analyzer for 50-node auto-discovery issues."""
@@ -270,6 +272,7 @@ class AutoDiscoveryAnalyzer:
             "metrics": self.metrics,
         }
 
+
 async def main():
     """Run the focused 50-node auto-discovery analysis."""
     analyzer = AutoDiscoveryAnalyzer()
@@ -297,6 +300,7 @@ async def main():
         if final_state["peer_distribution"]["avg"] < 30:
             print("  5. Overall low peer discovery - may need longer convergence time")
             print("  6. Consider exponential backoff in gossip intervals")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

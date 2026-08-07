@@ -17,6 +17,7 @@ from mpreg.fabric.route_security import (
     verify_route_announcement,
 )
 
+
 def _announcement(advertiser: str = "adv") -> RouteAnnouncement:
     return RouteAnnouncement(
         destination=RouteDestination(cluster_id="dest"),
@@ -26,6 +27,7 @@ def _announcement(advertiser: str = "adv") -> RouteAnnouncement:
         advertised_at=time.time(),
         ttl_seconds=60.0,
     )
+
 
 def test_unsigned_rejected_when_required() -> None:
     cfg = RouteSecurityConfig(require_signatures=True, allow_unsigned=False)
@@ -39,12 +41,14 @@ def test_unsigned_rejected_when_required() -> None:
         authorized = True
     assert authorized is False
 
+
 def test_wrong_key_rejected() -> None:
     signer_a = RouteAnnouncementSigner.create()
     signer_b = RouteAnnouncementSigner.create()
     signed = signer_a.sign(_announcement())
     assert verify_route_announcement(signed, public_key=signer_a.public_key)
     assert not verify_route_announcement(signed, public_key=signer_b.public_key)
+
 
 def test_key_rotation_overlap_accepts_both() -> None:
     now = time.time()
@@ -69,6 +73,7 @@ def test_key_rotation_overlap_accepts_both() -> None:
     assert any(verify_route_announcement(signed_old, public_key=k) for k in keys)
     assert any(verify_route_announcement(signed_new, public_key=k) for k in keys)
 
+
 def test_after_overlap_expiry_old_key_gone() -> None:
     now = 1_000.0
     registry = RouteKeyRegistry()
@@ -88,6 +93,7 @@ def test_after_overlap_expiry_old_key_gone() -> None:
     assert new.public_key in keys
     assert old.public_key not in keys
 
+
 def test_processor_rejects_unsigned_when_required() -> None:
     """COR-T10-09 / INV-R9: processor path refuses unsigned under require_signatures."""
     from mpreg.fabric.route_announcer import RouteAnnouncementProcessor
@@ -102,6 +108,7 @@ def test_processor_rejects_unsigned_when_required() -> None:
     )
     ann = _announcement(advertiser="adv")
     assert proc._is_announcement_authorized(ann, sender_cluster="adv") is False
+
 
 def test_processor_accepts_valid_signature_with_resolver() -> None:
     """COR-T10-09: signed announcement authorized via public_key_resolver pin."""
@@ -121,6 +128,7 @@ def test_processor_accepts_valid_signature_with_resolver() -> None:
     )
     signed = signer.sign(_announcement(advertiser="adv"))
     assert proc._is_announcement_authorized(signed, sender_cluster="adv") is True
+
 
 def test_processor_rejects_self_attested_key_when_required() -> None:
     """COR-T10-09: self-attested public_key is ignored when require_signatures."""

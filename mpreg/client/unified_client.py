@@ -24,6 +24,7 @@ from .pubsub_client import MPREGPubSubClient, PubSubMessage
 
 unified_log = logger
 
+
 def _result_error_code(raw: Any) -> int | None:
     """ERG-T13-03: promote plane/server error_code onto façade results."""
     if isinstance(raw, dict) and raw.get("error_code") is not None:
@@ -38,6 +39,7 @@ def _result_error_code(raw: Any) -> int | None:
         return int(code)
     except TypeError, ValueError:
         return None
+
 
 @dataclass(slots=True)
 class QueueSendResult:
@@ -78,6 +80,7 @@ class QueueSendResult:
                 raw=raw,
             )
         return cls(success=False, raw=raw)
+
 
 @dataclass(slots=True)
 class CacheOpResult:
@@ -132,6 +135,7 @@ class CacheOpResult:
             )
         return cls(success=False, value=None, raw=raw)
 
+
 @dataclass(slots=True)
 class StrongRetryAbortResult:
     """Normalized result from ops-driven ``cache_strong_retry_abort`` RPC.
@@ -181,6 +185,7 @@ class StrongRetryAbortResult:
                 raw=raw,
             )
         return cls(success=False, raw=raw)
+
 
 @dataclass(slots=True)
 class MPREGClient:
@@ -533,9 +538,7 @@ class MPREGClient:
         call_kw: dict[str, Any] = {"timeout": timeout}
         if locs is not None:
             call_kw["locs"] = frozenset(locs)
-        raw = await self.api.call(
-            PlatformRpc.CACHE_STRONG_RETRY_ABORT, body, **call_kw
-        )
+        raw = await self.api.call(PlatformRpc.CACHE_STRONG_RETRY_ABORT, body, **call_kw)
         return StrongRetryAbortResult.from_raw(raw)
 
     async def queue_ack(
@@ -602,6 +605,7 @@ class MPREGClient:
     def notification_dropped_count(self) -> int:
         """Pubsub notifications dropped under client backpressure."""
         return int(getattr(self.api, "notification_dropped_count", 0) or 0)
+
 
 # Back-compat alias used in some sketches / docs
 UnifiedMPREGClient = MPREGClient

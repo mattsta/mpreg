@@ -39,6 +39,7 @@ from ..core.statistics import (
 from ..datastructures.vector_clock import VectorClock as DataVectorClock
 from .gossip import GossipMessage, GossipMessageType, GossipProtocol, VectorClock
 
+
 class ConflictResolutionStrategy(Enum):
     """Conflict resolution strategies."""
 
@@ -48,6 +49,7 @@ class ConflictResolutionStrategy(Enum):
     CUSTOM_RESOLVER = "custom_resolver"
     VECTOR_CLOCK_DOMINANCE = "vector_clock_dominance"
     CONSENSUS_REQUIRED = "consensus_required"
+
 
 class StateType(Enum):
     """Types of distributed state."""
@@ -59,6 +61,7 @@ class StateType(Enum):
     SEQUENCE_STATE = "sequence_state"
     CUSTOM_CRDT = "custom_crdt"
 
+
 class ConsensusStatus(Enum):
     """Consensus operation status."""
 
@@ -68,6 +71,7 @@ class ConsensusStatus(Enum):
     COMMITTED = "committed"
     REJECTED = "rejected"
     TIMEOUT = "timeout"
+
 
 @dataclass(slots=True)
 class StateValue:
@@ -129,6 +133,7 @@ class StateValue:
             content_hash=self.content_hash,
         )
 
+
 @dataclass(slots=True)
 class StateConflict:
     """
@@ -161,6 +166,7 @@ class StateConflict:
             resolved=self.resolved,
             age_seconds=time.time() - self.detected_at,
         )
+
 
 @dataclass(slots=True)
 class ConsensusProposal:
@@ -225,6 +231,7 @@ class ConsensusProposal:
             is_expired=self.is_expired(),
             age_seconds=time.time() - self.proposal_timestamp,
         )
+
 
 @dataclass(slots=True)
 class ConflictResolver:
@@ -551,6 +558,7 @@ class ConflictResolver:
                 custom_resolvers=len(self.custom_resolvers),
                 resolution_history_size=len(self.resolution_history),
             )
+
 
 @dataclass(slots=True)
 class ConsensusManager:
@@ -1041,5 +1049,6 @@ class ConsensusManager:
                 proposal_history_size=len(self.proposal_history),
                 active_proposal_summaries=active_proposal_summaries,
             )
+
 
 # Note: CONSENSUS_PROPOSAL and CONSENSUS_VOTE are now defined in GossipMessageType enum

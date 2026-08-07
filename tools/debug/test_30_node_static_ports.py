@@ -11,6 +11,7 @@ import pytest
 from tests.conftest import AsyncTestContext
 from tests.test_comprehensive_auto_discovery import AutoDiscoveryTestHelpers
 
+
 class Test30NodeStaticPorts(AutoDiscoveryTestHelpers):
     """Test 30-node auto-discovery with static ports."""
 
@@ -30,6 +31,7 @@ class Test30NodeStaticPorts(AutoDiscoveryTestHelpers):
 
         assert result.success, f"30-node static ports failed: {result.failure_reason}"
         print("✅ SUCCESS with static ports!")
+
 
 if __name__ == "__main__":
     # Also run directly like my debug script

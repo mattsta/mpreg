@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from mpreg.server import MPREGServer, MPREGSettings
 
+
 async def test_fixture_shutdown_sequence():
     """Test the exact shutdown sequence used by pytest fixtures."""
 
@@ -96,6 +97,7 @@ async def test_fixture_shutdown_sequence():
 
         traceback.print_exc()
         return False
+
 
 if __name__ == "__main__":
     try:

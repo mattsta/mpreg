@@ -10,9 +10,9 @@ from mpreg.core.cache_models import GlobalCacheKey
 from mpreg.core.cache_strong import StrongLocalBackend, StrongVersion
 from mpreg.core.cache_strong_handlers import (
     StrongPeerHandler,
+    commit_ack_from_dict,
     key_to_payload,
     prepare_ack_from_dict,
-    commit_ack_from_dict,
 )
 from tests.chaos.harness_strong_audit import (
     assert_no_pending,
@@ -21,9 +21,11 @@ from tests.chaos.harness_strong_audit import (
     strong_put_on,
 )
 
+
 def _handler(cluster: str = "c-a") -> tuple[StrongLocalBackend, StrongPeerHandler]:
     be = StrongLocalBackend(node_id="p1")
     return be, StrongPeerHandler(be, cluster_id=cluster)
+
 
 @pytest.mark.asyncio
 async def test_handler_bad_key() -> None:
@@ -42,9 +44,10 @@ async def test_handler_bad_key() -> None:
     assert resp["reason"] == "bad_key"
     assert be.pending_count() == 0
 
+
 @pytest.mark.asyncio
 async def test_handler_bad_version() -> None:
-    be, h = _handler()
+    _be, h = _handler()
     k = GlobalCacheKey(namespace="h", identifier="v", version="v1")
     resp = await h.handle_prepare(
         {
@@ -59,9 +62,10 @@ async def test_handler_bad_version() -> None:
     assert resp["ok"] is False
     assert resp["reason"] == "bad_version"
 
+
 @pytest.mark.asyncio
 async def test_handler_commit_missing_op_id() -> None:
-    be, h = _handler()
+    _be, h = _handler()
     k = GlobalCacheKey(namespace="h", identifier="c", version="v1")
     resp = await h.handle_commit(
         {"cluster_id": "c-a", "key": key_to_payload(k), "op_id": ""}
@@ -69,9 +73,10 @@ async def test_handler_commit_missing_op_id() -> None:
     assert resp["ok"] is False
     assert resp["reason"] == "bad_request"
 
+
 @pytest.mark.asyncio
 async def test_handler_commit_wrong_cluster() -> None:
-    be, h = _handler("c-a")
+    _be, h = _handler("c-a")
     k = GlobalCacheKey(namespace="h", identifier="cc", version="v1")
     resp = await h.handle_commit(
         {
@@ -83,15 +88,15 @@ async def test_handler_commit_wrong_cluster() -> None:
     assert resp["ok"] is False
     assert resp["reason"] == "cluster_mismatch"
 
+
 @pytest.mark.asyncio
 async def test_handler_abort_unknown_safe() -> None:
     be, h = _handler()
     k = GlobalCacheKey(namespace="h", identifier="a", version="v1")
-    resp = await h.handle_abort(
-        {"key": key_to_payload(k), "op_id": "nope"}
-    )
+    resp = await h.handle_abort({"key": key_to_payload(k), "op_id": "nope"})
     assert resp["ok"] is True
     assert be.pending_count() == 0
+
 
 @pytest.mark.asyncio
 async def test_handler_idempotent_prepare_commit() -> None:
@@ -121,6 +126,7 @@ async def test_handler_idempotent_prepare_commit() -> None:
     assert be.get_visible(k) is not None
     assert be.pending_count() == 0
 
+
 @pytest.mark.asyncio
 async def test_flip_applied_malice_does_not_alone_satisfy_when_dropped() -> None:
     """flip_applied on peers that actually applied still ok; combine with drop."""
@@ -137,6 +143,7 @@ async def test_flip_applied_malice_does_not_alone_satisfy_when_dropped() -> None
 
         assert_residual_free(mesh.backends, k, op_id=res.operation_id)
     assert_no_pending(mesh.backends)
+
 
 @pytest.mark.asyncio
 async def test_lie_commit_without_real_apply_insufficient_for_q() -> None:
@@ -157,9 +164,7 @@ async def test_lie_commit_without_real_apply_insufficient_for_q() -> None:
         # Origin has value; peers may not — record non_claim surface
         assert mesh.backends["n0"].get_visible(k) is not None
         peer_miss = sum(
-            1
-            for nid in ("n1", "n2")
-            if mesh.backends[nid].get_visible(k) is None
+            1 for nid in ("n1", "n2") if mesh.backends[nid].get_visible(k) is None
         )
         # At least one peer lied without applying — proves not BFT
         assert peer_miss >= 1
@@ -168,11 +173,18 @@ async def test_lie_commit_without_real_apply_insufficient_for_q() -> None:
 
         assert_residual_free(mesh.backends, k, op_id=res.operation_id)
 
-@given(payload=st.dictionaries(st.text(max_size=8), st.integers() | st.text(max_size=8) | st.none(), max_size=12))
+
+@given(
+    payload=st.dictionaries(
+        st.text(max_size=8),
+        st.integers() | st.text(max_size=8) | st.none(),
+        max_size=12,
+    )
+)
 @settings(max_examples=40, deadline=None)
 def test_handler_fuzz_never_raises(payload: dict) -> None:
     async def _run() -> None:
-        be, h = _handler()
+        _be, h = _handler()
         # Must not raise
         await h.handle_prepare(payload)
         await h.handle_commit(payload)
@@ -183,6 +195,7 @@ def test_handler_fuzz_never_raises(payload: dict) -> None:
     import asyncio
 
     asyncio.run(_run())
+
 
 def test_ack_from_dict_tolerant() -> None:
     p = prepare_ack_from_dict({})

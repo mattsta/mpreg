@@ -9,12 +9,14 @@ from mpreg.cli.main import cli
 
 ROOT = Path(__file__).resolve().parents[2]
 
+
 def test_r3_security_md_exists() -> None:
     text = (ROOT / "SECURITY.md").read_text()
     assert "Threat model" in text or "threat model" in text.lower()
     assert "CFT" in text
     assert "Reporting" in text or "report" in text.lower()
     assert "BFT" in text
+
 
 def test_r3_config_check_critical_warnings_change_me(tmp_path: Path) -> None:
     cfg = tmp_path / "fed.toml"
@@ -49,6 +51,7 @@ fabric_gossip_require_hmac = true
         cli, ["config-check", str(cfg), "--format", "json", "--strict"]
     )
     assert strict.exit_code == 2
+
 
 def test_r3_config_check_cors_warning(tmp_path: Path) -> None:
     cfg = tmp_path / "cors.toml"

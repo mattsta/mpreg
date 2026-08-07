@@ -1,12 +1,12 @@
 # Shared Audit + STRONG Hardening Plan (Residual → Stress → Honesty)
 
-| Field | Value |
-| --- | --- |
-| **Status** | Active implementation track |
-| **Parent** | `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md` |
-| **Date** | 2026-08-06 |
-| **Claims** | Deepens `INV-SHARED-AUDIT-01`, `INV-CACHE-STRONG-01` without WAN/BFT/Jepsen overclaim |
-| **Point count** | ~120 implementation + proof items (this document) |
+| Field           | Value                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------- |
+| **Status**      | Active implementation track                                                           |
+| **Parent**      | `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`                                        |
+| **Date**        | 2026-08-06                                                                            |
+| **Claims**      | Deepens `INV-SHARED-AUDIT-01`, `INV-CACHE-STRONG-01` without WAN/BFT/Jepsen overclaim |
+| **Point count** | ~120 implementation + proof items (this document)                                     |
 
 ## 0. North star
 
@@ -148,12 +148,12 @@ guarantee. When a test that should pass fails, **strengthen the architecture**
 97. Live peer pre-put shutdown residual-free.
 98. Live mid-put peer kill residual-free or consistent success.
 99. Live concurrent multi-origin STRONG different keys.
-100. Live concurrent multi-origin same key LWW-safe residual-free fails.
-101. Live STRONG disabled → 1012.
-102. Live audit multi-origin drains converge.
-103. Live audit + STRONG coexistence (both flags on one mesh).
-104. Live 5-node STRONG (if ports allow) optional/slow.
-105. Live residual: after failed put, backend + GCM agree empty for op_id.
+100.  Live concurrent multi-origin same key LWW-safe residual-free fails.
+101.  Live STRONG disabled → 1012.
+102.  Live audit multi-origin drains converge.
+103.  Live audit + STRONG coexistence (both flags on one mesh).
+104.  Live 5-node STRONG (if ports allow) optional/slow.
+105.  Live residual: after failed put, backend + GCM agree empty for op_id.
 
 ---
 
@@ -196,15 +196,15 @@ guarantee. When a test that should pass fails, **strengthen the architecture**
 
 ## 11. Execution order (iterative)
 
-| Wave | Items | Exit |
-| --- | --- | --- |
-| W0 | Plan doc (this file) | Written |
-| W1 | Chaos harness + arch TTL/purge | Tests can inject; purge scheduled |
-| W2 | STRONG stress + Hypothesis expand | Residual-free under chaos |
-| W3 | Adversarial/handler expand | Fail-closed matrix green |
-| W4 | Audit partition/heal/stress | Converge after heal |
-| W5 | Live expand coexistence | Live green |
-| W6 | Claims/docs + full suite + commit | Honesty + green |
+| Wave | Items                             | Exit                              |
+| ---- | --------------------------------- | --------------------------------- |
+| W0   | Plan doc (this file)              | Written                           |
+| W1   | Chaos harness + arch TTL/purge    | Tests can inject; purge scheduled |
+| W2   | STRONG stress + Hypothesis expand | Residual-free under chaos         |
+| W3   | Adversarial/handler expand        | Fail-closed matrix green          |
+| W4   | Audit partition/heal/stress       | Converge after heal               |
+| W5   | Live expand coexistence           | Live green                        |
+| W6   | Claims/docs + full suite + commit | Honesty + green                   |
 
 ## 12. Bug-fix policy
 

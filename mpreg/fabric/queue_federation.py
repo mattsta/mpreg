@@ -48,6 +48,7 @@ from mpreg.fabric.queue_messages import (
     queue_message_from_dict,
 )
 
+
 class FabricQueueDeliveryStatus(Enum):
     """Delivery status for fabric queue federation."""
 
@@ -56,6 +57,7 @@ class FabricQueueDeliveryStatus(Enum):
     DELIVERED = "delivered"
     ACKNOWLEDGED = "acknowledged"
     FAILED = "failed"
+
 
 @dataclass(frozen=True, slots=True)
 class FabricQueueSubscription:
@@ -72,6 +74,7 @@ class FabricQueueSubscription:
     created_at: Timestamp = field(default_factory=time.time)
     callback: Callable[[QueuedMessage], None] | None = None
     metadata: dict[str, str] = field(default_factory=dict)
+
 
 @dataclass(slots=True)
 class FabricQueueInFlight:
@@ -92,6 +95,7 @@ class FabricQueueInFlight:
     def is_acknowledged(self) -> bool:
         return len(self.acknowledged_by) >= self.required_cluster_acks
 
+
 @dataclass(slots=True)
 class FabricQueueStatistics:
     """Statistics for fabric queue federation."""
@@ -107,6 +111,7 @@ class FabricQueueStatistics:
     def success_rate(self) -> float:
         total = self.successful_deliveries + self.failed_deliveries
         return self.successful_deliveries / total if total else 0.0
+
 
 @dataclass(slots=True)
 class FabricQueueFederationManager(ManagedObject):

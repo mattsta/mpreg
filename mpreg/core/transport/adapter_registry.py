@@ -13,6 +13,7 @@ from mpreg.datastructures.type_aliases import PortNumber
 from .defaults import ConnectionType
 from .interfaces import TransportProtocol
 
+
 @dataclass(frozen=True, slots=True)
 class ProtocolPortAssignment:
     """Assigned port details for a transport protocol."""
@@ -27,9 +28,11 @@ class ProtocolPortAssignment:
         """Return the fully-qualified endpoint URL."""
         return f"{self.protocol.value}://{self.host}:{self.port}"
 
+
 type ProtocolPortAssignmentCallback = Callable[
     [ProtocolPortAssignment], None | Awaitable[None]
 ]
+
 
 @dataclass(slots=True)
 class AdapterEndpointRegistry:
@@ -112,7 +115,9 @@ class AdapterEndpointRegistry:
             self._assignments.clear()
             self._last_updated = time.time()
 
+
 _endpoint_registry: AdapterEndpointRegistry | None = None
+
 
 def get_adapter_endpoint_registry() -> AdapterEndpointRegistry:
     """Return the shared adapter endpoint registry."""

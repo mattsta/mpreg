@@ -17,6 +17,7 @@ from tests.port_allocator import PortAllocator
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 class FederationScalingTester:
     """Tests federation protocol scaling without function registration noise."""
 
@@ -297,6 +298,7 @@ class FederationScalingTester:
         else:
             print("   ❌ Federation protocol fails on all tested sizes")
 
+
 async def main():
     """Run the federation scaling investigation."""
     tester = FederationScalingTester()
@@ -304,6 +306,7 @@ async def main():
         await tester.run_scaling_tests()
     finally:
         await tester.cleanup()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

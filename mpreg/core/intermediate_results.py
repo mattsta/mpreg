@@ -14,6 +14,7 @@ from typing import Any
 
 from mpreg.core.model import RPCCommand, RPCRequest, RPCResponse
 
+
 @dataclass(frozen=True, slots=True)
 class RPCIntermediateResult:
     """Intermediate result from RPC execution level completion."""
@@ -38,6 +39,7 @@ class RPCIntermediateResult:
         if self.total_levels == 0:
             return 100.0
         return (self.completed_levels / self.total_levels) * 100.0
+
 
 @dataclass(frozen=True, slots=True)
 class RPCExecutionSummary:
@@ -65,6 +67,7 @@ class RPCExecutionSummary:
         if not self.level_execution_times_ms:
             return -1
         return self.level_execution_times_ms.index(max(self.level_execution_times_ms))
+
 
 @dataclass(slots=True)
 class IntermediateResultCollector:
@@ -135,6 +138,7 @@ class IntermediateResultCollector:
             parallel_execution_efficiency=parallel_efficiency,
         )
 
+
 @dataclass(slots=True)
 class EnhancedRPCRequest:
     """Enhanced RPC request with intermediate result support."""
@@ -174,6 +178,7 @@ class EnhancedRPCRequest:
             cmds=self.cmds,
             u=self.u,
         )
+
 
 @dataclass(slots=True)
 class EnhancedRPCResponse:
@@ -244,7 +249,9 @@ class EnhancedRPCResponse:
                 return intermediate.accumulated_results
         return None
 
+
 # Utility functions for working with intermediate results
+
 
 def analyze_execution_bottlenecks(
     intermediate_results: list[RPCIntermediateResult],
@@ -285,6 +292,7 @@ def analyze_execution_bottlenecks(
         "total_levels": len(intermediate_results),
         "total_execution_time_ms": sum(execution_times),
     }
+
 
 def trace_dependency_resolution(
     intermediate_results: list[RPCIntermediateResult],
@@ -330,6 +338,7 @@ def trace_dependency_resolution(
             ),
         },
     }
+
 
 def format_intermediate_results_for_debugging(
     intermediate_results: list[RPCIntermediateResult],

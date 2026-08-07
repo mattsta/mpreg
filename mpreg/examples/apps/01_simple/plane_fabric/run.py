@@ -19,6 +19,7 @@ from mpreg.examples.apps._shared.runtime import (
 from mpreg.fabric.federation_config import create_permissive_bridging_config
 from mpreg.server import MPREGServer
 
+
 async def main() -> None:
     with app_run("plane_fabric", "Plane Fabric — multi-cluster RPC", level="L1"):
         config_a = create_permissive_bridging_config("cluster-a")
@@ -128,6 +129,7 @@ async def main() -> None:
                 step("non-claim: not global linearizability; routing availability only")
 
             await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

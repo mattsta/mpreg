@@ -5,6 +5,7 @@ from mpreg.fabric.pubsub_router import (
     PubSubRoutingPlanner,
 )
 
+
 def _add_subscription(
     catalog: RoutingCatalog,
     *,
@@ -25,6 +26,7 @@ def _add_subscription(
         now=100.0,
     )
 
+
 def test_pubsub_router_no_subscribers() -> None:
     catalog = RoutingCatalog()
     router = PubSubRoutingPlanner(
@@ -36,6 +38,7 @@ def test_pubsub_router_no_subscribers() -> None:
 
     assert plan.reason == PubSubRouteReason.NO_SUBSCRIBERS
     assert plan.target_nodes == ()
+
 
 def test_pubsub_router_local_and_remote() -> None:
     catalog = RoutingCatalog()
@@ -62,6 +65,7 @@ def test_pubsub_router_local_and_remote() -> None:
 
     assert plan.reason == PubSubRouteReason.LOCAL_AND_REMOTE
     assert plan.target_nodes == ("node-b",)
+
 
 def test_pubsub_router_filters_clusters() -> None:
     catalog = RoutingCatalog()

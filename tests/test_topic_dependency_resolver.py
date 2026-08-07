@@ -26,6 +26,7 @@ from mpreg.core.topic_dependency_resolver import (
 )
 from mpreg.core.topic_taxonomy import TopicTemplateEngine
 
+
 class TestDependencySpecification:
     """Test the dependency specification dataclass."""
 
@@ -64,6 +65,7 @@ class TestDependencySpecification:
         assert dep_spec.expected_value is None
         assert dep_spec.value_transformer is None
         assert dep_spec.description == ""
+
 
 class TestDependencyResolutionEvent:
     """Test the dependency resolution event dataclass."""
@@ -105,6 +107,7 @@ class TestDependencyResolutionEvent:
         assert event.status == DependencyStatus.FAILED
         assert event.error_message == "Dependency timeout"
         assert event.resolved_value is None
+
 
 class TestDependencyGraph:
     """Test the dependency graph dataclass."""
@@ -236,6 +239,7 @@ class TestDependencyGraph:
         assert "cmd2" in ready_commands
         assert "cmd3" in ready_commands
 
+
 class TestDependencySubscription:
     """Test the dependency subscription dataclass."""
 
@@ -258,6 +262,7 @@ class TestDependencySubscription:
         assert subscription.resolution_strategy == DependencyResolutionStrategy.BATCH
         assert isinstance(subscription.created_at, float)
         assert subscription.message_count == 0
+
 
 class TestTopicDependencyResolver:
     """Test the topic-based dependency resolver."""
@@ -523,6 +528,7 @@ class TestTopicDependencyResolver:
         )
         assert subscriptions_created == 0
 
+
 class TestFactoryFunctions:
     """Test the factory functions for dependency resolution components."""
 
@@ -549,6 +555,7 @@ class TestFactoryFunctions:
         assert resolver.topic_template_engine is template_engine
         assert resolver.default_timeout_ms == 10000.0
         assert resolver.max_concurrent_subscriptions == 500
+
 
 # Property-based testing with Hypothesis
 @given(
@@ -612,6 +619,7 @@ def test_dependency_graph_properties(
     if len(graph.pending_dependencies) == graph.total_dependencies > 0:
         assert graph.resolution_progress == 0.0
         assert graph.all_dependencies_resolved is False
+
 
 @given(
     num_dependencies=st.integers(min_value=1, max_value=5),

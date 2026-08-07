@@ -53,9 +53,11 @@ from mpreg.fabric.performance_metrics import (
 # Create performance metrics service
 metrics = create_performance_metrics_service(collection_interval=30.0)
 
+
 # Connect alerting to metrics
 async def alert_callback(alert):
     await alerting.process_alert(alert)
+
 
 metrics.add_alert_callback(alert_callback)
 
@@ -258,6 +260,7 @@ import asyncio
 from mpreg.fabric.federation_alerting import *
 from mpreg.fabric.performance_metrics import *
 
+
 async def setup_production_alerting():
     # 1. Create alerting service
     alerting = FederationAlertingService()
@@ -368,6 +371,7 @@ async def setup_production_alerting():
     print(f"📈 Escalation policies: {len(alerting.escalation_policies)}")
 
     return alerting, metrics
+
 
 # Run the setup
 # alerting, metrics = await setup_production_alerting()
@@ -495,6 +499,7 @@ async def check_alerting_health():
 
     if stats["active_alerts"] > 50:
         print("⚠️ High number of active alerts!")
+
 
 # Run periodically
 # await check_alerting_health()

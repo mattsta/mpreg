@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
+
 def build_mgmt_v1_summary(server: Any) -> dict[str, Any]:
     """Return cluster/nodes/routes/catalog/health summaries for management APIs."""
     settings = server.settings

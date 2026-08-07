@@ -8,11 +8,13 @@ from mpreg.core.errors import (
     version_mismatch,
 )
 
+
 def test_error_codes_stable() -> None:
     assert int(MpregErrorCode.COMMAND_NOT_FOUND) == 1001
     assert int(MpregErrorCode.VERSION_MISMATCH) == 1002
     assert int(MpregErrorCode.HOP_BUDGET_EXCEEDED) == 1003
     assert int(MpregErrorCode.ROUTE_LOOP) == 1013
+
 
 def test_helpers_build_rpc_error() -> None:
     err = command_not_found("foo")
@@ -33,11 +35,13 @@ def test_helpers_build_rpc_error() -> None:
     assert err.code == 1013
     assert err.retryable is False
 
+
 def test_map_timeout() -> None:
     mapped = map_exception(TimeoutError("deadline"))
     assert mapped is not None
     assert mapped.code == int(MpregErrorCode.TIMEOUT)
     assert mapped.retryable
+
 
 def test_map_connection_and_text_hints() -> None:
     mapped = map_exception(ConnectionError("peer down"))

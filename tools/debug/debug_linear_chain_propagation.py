@@ -10,6 +10,7 @@ from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 async def test_linear_chain_propagation():
     """Test function propagation in a 3-node linear chain: A → B → C"""
 
@@ -127,6 +128,7 @@ async def test_linear_chain_propagation():
     for task in [task_a, task_b, task_c]:
         with contextlib.suppress(asyncio.CancelledError):
             await task
+
 
 if __name__ == "__main__":
     asyncio.run(test_linear_chain_propagation())

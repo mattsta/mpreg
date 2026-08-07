@@ -34,6 +34,7 @@ from .interfaces import (
     TransportProtocol,
 )
 
+
 @dataclass(frozen=True, slots=True)
 class ConnectionStats:
     """Statistics for a specific transport protocol."""
@@ -41,6 +42,7 @@ class ConnectionStats:
     protocol: str
     active_connections: int
     total_connections: int
+
 
 @dataclass(frozen=True, slots=True)
 class AdapterStatus:
@@ -53,7 +55,9 @@ class AdapterStatus:
     total_active_connections: int
     protocol_stats: list[ConnectionStats]
 
+
 adapter_endpoint_registry = get_adapter_endpoint_registry()
+
 
 @dataclass(slots=True)
 class ProtocolSpec:
@@ -100,6 +104,7 @@ class ProtocolSpec:
             "auth_methods": self.auth_methods,
             "metadata": self.metadata,
         }
+
 
 class TransportRegistry:
     """Registry for transport implementations and their specifications."""
@@ -164,8 +169,10 @@ class TransportRegistry:
             protocol.value: spec.to_dict() for protocol, spec in self._specs.items()
         }
 
+
 # Global transport registry
 _registry = TransportRegistry()
+
 
 class TransportFactory:
     """Factory for creating transport instances and managing multi-protocol adapters."""
@@ -260,6 +267,7 @@ class TransportFactory:
         """Get all protocol specifications for documentation generation."""
         return _registry.get_all_specs()
 
+
 @dataclass(slots=True)
 class MultiProtocolAdapterConfig:
     """Configuration for multi-protocol adapter with connection type awareness."""
@@ -348,6 +356,7 @@ class MultiProtocolAdapterConfig:
                 self.protocols[protocol] = TransportConfig(
                     protocol_options=base_defaults.copy()
                 )
+
 
 class MultiProtocolAdapter:
     """Multi-protocol connection manager for handling multiple transport types simultaneously.
@@ -696,6 +705,7 @@ class MultiProtocolAdapter:
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Async context manager exit."""
         await self.stop()
+
 
 def register_transport(
     protocol: TransportProtocol,

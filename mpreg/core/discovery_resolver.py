@@ -32,6 +32,7 @@ from mpreg.fabric.index import RoutingIndex
 
 from .discovery_events import CatalogDeltaCounts
 
+
 @dataclass(frozen=True, slots=True)
 class CatalogEntryCounts:
     functions: EntryCount = field(default=0, metadata={PAYLOAD_INT: True})
@@ -69,10 +70,12 @@ class CatalogEntryCounts:
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
 
+
 class QueryCacheState(Enum):
     HIT = "hit"
     STALE = "stale"
     MISS = "miss"
+
 
 @dataclass(frozen=True, slots=True)
 class DiscoveryResolverQueryCacheConfig:
@@ -81,6 +84,7 @@ class DiscoveryResolverQueryCacheConfig:
     stale_while_revalidate_seconds: DurationSeconds = 20.0
     negative_ttl_seconds: DurationSeconds = 5.0
     max_entries: int = 1000
+
 
 @dataclass(frozen=True, slots=True)
 class CatalogQueryCacheKey:
@@ -102,6 +106,7 @@ class CatalogQueryCacheKey:
     topic: str | None
     tags: tuple[str, ...]
 
+
 @dataclass(frozen=True, slots=True)
 class ClusterMapQueryCacheKey:
     scope: str | None
@@ -109,6 +114,7 @@ class ClusterMapQueryCacheKey:
     capabilities: tuple[str, ...]
     resources: tuple[str, ...]
     cluster_id: ClusterId | None
+
 
 @dataclass(frozen=True, slots=True)
 class CatalogQueryCacheEntry:
@@ -119,6 +125,7 @@ class CatalogQueryCacheEntry:
     negative: bool
     generation: int
 
+
 @dataclass(frozen=True, slots=True)
 class ClusterMapQueryCacheEntry:
     nodes: tuple[ClusterNodeSnapshot, ...]
@@ -127,6 +134,7 @@ class ClusterMapQueryCacheEntry:
     stale_until: Timestamp
     negative: bool
     generation: int
+
 
 @dataclass(slots=True)
 class DiscoveryResolverQueryCacheStats:
@@ -140,6 +148,7 @@ class DiscoveryResolverQueryCacheStats:
     cluster_map_stale_serves: HitCount = 0
     cluster_map_negative_hits: HitCount = 0
     cluster_map_refreshes: int = 0
+
 
 @dataclass(frozen=True, slots=True)
 class DiscoveryResolverQueryCacheStatsSnapshot:
@@ -181,6 +190,7 @@ class DiscoveryResolverQueryCacheStatsSnapshot:
             ),
             cluster_map_refreshes=int(payload.get("cluster_map_refreshes", 0) or 0),
         )
+
 
 @dataclass(slots=True)
 class DiscoveryResolverQueryCache:
@@ -352,6 +362,7 @@ class DiscoveryResolverQueryCache:
             else:
                 self._cluster_map_entries.pop(key, None)
 
+
 @dataclass(slots=True)
 class DiscoveryResolverStats:
     deltas_applied: int = 0
@@ -365,6 +376,7 @@ class DiscoveryResolverStats:
     last_seed_counts: CatalogEntryCounts | None = None
     last_prune_at: Timestamp | None = None
     last_prune_counts: CatalogEntryCounts | None = None
+
 
 @dataclass(frozen=True, slots=True)
 class DiscoveryResolverStatsSnapshot:
@@ -460,6 +472,7 @@ class DiscoveryResolverStatsSnapshot:
             ),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class DiscoveryResolverCacheStatsResponse:
     enabled: bool
@@ -501,6 +514,7 @@ class DiscoveryResolverCacheStatsResponse:
             ),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class DiscoveryResolverResyncResponse:
     enabled: bool
@@ -535,6 +549,7 @@ class DiscoveryResolverResyncResponse:
                 str(payload.get("error")) if payload.get("error") is not None else None
             ),
         )
+
 
 @dataclass(slots=True)
 class DiscoveryResolverCache:

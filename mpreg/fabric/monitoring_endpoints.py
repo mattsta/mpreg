@@ -71,8 +71,10 @@ type DnsMetricsProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
 type StrongMetricsProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
 type SharedAuditMetricsProvider = Callable[[], Awaitable[JsonResponse] | JsonResponse]
 
+
 def _is_dataclass_obj(value: Any) -> bool:
     return is_dataclass(value) and not isinstance(value, type)
+
 
 class MonitoringEndpointType(Enum):
     """Types of federation monitoring endpoints."""
@@ -83,6 +85,7 @@ class MonitoringEndpointType(Enum):
     PERFORMANCE = "performance"
     ALERTS = "alerts"
     CONFIGURATION = "configuration"
+
 
 @dataclass(frozen=True, slots=True)
 class FederationHealthSummary:
@@ -102,6 +105,7 @@ class FederationHealthSummary:
     cross_cluster_latency_p95_ms: float
     connection_success_rate_percent: float
 
+
 @dataclass(frozen=True, slots=True)
 class FederationTopologySnapshot:
     """Current federation topology with connection states."""
@@ -116,6 +120,7 @@ class FederationTopologySnapshot:
     graph_diameter: int  # Maximum shortest path between any two nodes
     clustering_coefficient: float  # Graph connectivity measure
     snapshot_timestamp: float
+
 
 @dataclass(frozen=True, slots=True)
 class FederationPerformanceSummary:
@@ -132,6 +137,7 @@ class FederationPerformanceSummary:
     top_performing_clusters: list[ClusterId]
     recent_performance_trend: str  # "improving", "stable", "degrading"
 
+
 @dataclass(frozen=True, slots=True)
 class FederationConfigurationStatus:
     """Current federation configuration and policy status."""
@@ -145,6 +151,7 @@ class FederationConfigurationStatus:
     pending_configuration_changes: int
     configuration_validation_errors: list[str]
 
+
 @dataclass(frozen=True, slots=True)
 class FederationTopologyPathSummary:
     """Routing path summary for topology analysis."""
@@ -154,6 +161,7 @@ class FederationTopologyPathSummary:
     path_efficiency: float
     redundant_paths: int
 
+
 @dataclass(frozen=True, slots=True)
 class FederationTopologyAnalysis:
     """High-level topology analysis summary."""
@@ -162,6 +170,7 @@ class FederationTopologyAnalysis:
     network_health: HealthStatus
     topology_score: float
     recommendations: list[str]
+
 
 @dataclass(frozen=True, slots=True)
 class FederationClusterHealth:
@@ -174,6 +183,7 @@ class FederationClusterHealth:
     active_connections: int
     last_heartbeat: float
 
+
 @dataclass(frozen=True, slots=True)
 class FederationConnectionStats:
     """Connection statistics for federation links."""
@@ -183,6 +193,7 @@ class FederationConnectionStats:
     connection_success_rate: float
     average_connection_latency_ms: float
     connections_by_cluster: dict[ClusterId, int]
+
 
 @dataclass(frozen=True, slots=True)
 class FederationTopologyNode:
@@ -196,6 +207,7 @@ class FederationTopologyNode:
     status: HealthStatus
     last_seen: float
 
+
 @dataclass(frozen=True, slots=True)
 class FederationTopologyEdge:
     """Topology edge details for monitoring views."""
@@ -204,6 +216,7 @@ class FederationTopologyEdge:
     target: ClusterId
     status: HealthStatus
     latency_ms: float | None = None
+
 
 @dataclass(frozen=True, slots=True)
 class TopologyEdgeKey:
@@ -218,6 +231,7 @@ class TopologyEdgeKey:
             return cls(source=source, target=target)
         return cls(source=target, target=source)
 
+
 @dataclass(frozen=True, slots=True)
 class FederationTopologyClusterSummary:
     """Cluster summary data for topology snapshots."""
@@ -226,6 +240,7 @@ class FederationTopologyClusterSummary:
     node_count: int
     health_score: float
     status: HealthStatus
+
 
 @dataclass(slots=True)
 class FederationMonitoringSystem:
@@ -1082,7 +1097,9 @@ class FederationMonitoringSystem:
             return web.json_response(
                 {
                     "status": "ok",
-                    "strong": payload if isinstance(payload, dict) else {"raw": payload},
+                    "strong": payload
+                    if isinstance(payload, dict)
+                    else {"raw": payload},
                     "timestamp": time.time(),
                 }
             )
@@ -3640,6 +3657,7 @@ class FederationMonitoringSystem:
                 severity_counts[severity] = 0
             severity_counts[severity] += 1
         return severity_counts
+
 
 # Factory function for creating federation monitoring systems
 def create_federation_monitoring_system(

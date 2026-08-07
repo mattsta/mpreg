@@ -32,6 +32,7 @@ from mpreg.examples.apps._shared.runtime import (
 from mpreg.fabric.federation_config import create_permissive_bridging_config
 from mpreg.server import MPREGServer
 
+
 async def main() -> None:
     with app_run(
         "multi_pop_edge_mesh",
@@ -322,6 +323,7 @@ async def main() -> None:
         finally:
             await mon.stop()
 
+
 def _TP_RE_OK(tp: str) -> bool:
     parts = tp.split("-")
     return (
@@ -331,6 +333,7 @@ def _TP_RE_OK(tp: str) -> bool:
         and len(parts[2]) == 16
         and parts[3] in {"00", "01"}
     )
+
 
 if __name__ == "__main__":
     asyncio.run(main())

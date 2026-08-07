@@ -17,6 +17,7 @@ from mpreg.fabric.route_decision_log import (
     make_record_from_route,
 )
 
+
 def test_ring_buffer_filters() -> None:
     log = RouteDecisionLog(maxlen=3)
     for i in range(5):
@@ -35,6 +36,7 @@ def test_ring_buffer_filters() -> None:
         )
     assert log.stats()["size"] == 3
     assert len(log.recent(correlation_id="c1")) >= 1
+
 
 async def test_decisions_http_endpoint(server_cluster_ports: list[int]) -> None:
     get_default_route_decision_log().clear()

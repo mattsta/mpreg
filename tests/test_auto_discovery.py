@@ -34,6 +34,7 @@ from mpreg.fabric.auto_discovery import (
 )
 from mpreg.fabric.federation_resilience import HealthStatus
 
+
 @pytest.fixture
 def sample_discovered_cluster():
     """Create a sample discovered cluster for testing."""
@@ -50,6 +51,7 @@ def sample_discovered_cluster():
             metadata={"environment": "testing", "priority": "high"},
         )
         yield cluster
+
 
 @pytest.fixture
 def static_config_file():
@@ -85,6 +87,7 @@ def static_config_file():
         # Cleanup
         Path(temp_path).unlink(missing_ok=True)
 
+
 class TestDiscoveredCluster:
     """Test DiscoveredCluster dataclass functionality."""
 
@@ -113,6 +116,7 @@ class TestDiscoveredCluster:
         assert identity.bridge_url == cluster.bridge_url
         assert identity.public_key_hash == f"auto_discovery_{cluster.cluster_id}"
         assert identity.created_at == cluster.last_seen
+
 
 class TestDiscoveryConfiguration:
     """Test discovery configuration creation and validation."""
@@ -170,6 +174,7 @@ class TestDiscoveryConfiguration:
         assert config.protocol == DiscoveryProtocol.DNS_SRV
         assert config.dns_domain == "example.com"
         assert config.dns_service == "_custom._tcp"
+
 
 class TestStaticConfigDiscoveryBackend:
     """Test static configuration file discovery backend."""
@@ -262,6 +267,7 @@ class TestStaticConfigDiscoveryBackend:
 
         assert await backend_no_path.health_check() is False
 
+
 class TestDNSDiscoveryBackend:
     """Test DNS SRV discovery backend."""
 
@@ -309,6 +315,7 @@ class TestDNSDiscoveryBackend:
         result = await backend.health_check()
         assert isinstance(result, bool)
 
+
 class TestHTTPDiscoveryBackend:
     """Test HTTP endpoint discovery backend."""
 
@@ -352,6 +359,7 @@ class TestHTTPDiscoveryBackend:
 
         result = await backend.health_check()
         assert result is False
+
 
 class TestAutoDiscoveryService:
     """Test the main auto-discovery service."""
@@ -564,6 +572,7 @@ class TestAutoDiscoveryService:
         service.set_local_cluster(sample_discovered_cluster)
         assert service.local_cluster == sample_discovered_cluster
 
+
 @pytest.mark.asyncio
 async def test_integration_multiple_backends(static_config_file):
     """Test integration with multiple discovery backends."""
@@ -621,6 +630,7 @@ async def test_integration_multiple_backends(static_config_file):
     assert len(events) > 0
     discovered_events = [e for e in events if e[0] == "discovered"]
     assert len(discovered_events) > 0
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

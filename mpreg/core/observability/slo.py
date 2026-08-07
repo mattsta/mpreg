@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True, slots=True)
 class GoldenSignal:
     name: str
@@ -11,6 +12,7 @@ class GoldenSignal:
     description: str
     warning_threshold: str
     critical_threshold: str
+
 
 GOLDEN_SIGNALS: tuple[GoldenSignal, ...] = (
     GoldenSignal(
@@ -42,6 +44,7 @@ GOLDEN_SIGNALS: tuple[GoldenSignal, ...] = (
         critical_threshold="connection storms / thrash",
     ),
 )
+
 
 def prometheus_alert_rules_yaml() -> str:
     """Return example Prometheusrule YAML for golden signals."""

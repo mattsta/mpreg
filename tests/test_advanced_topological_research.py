@@ -44,6 +44,7 @@ pytestmark = pytest.mark.slow
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 @dataclass
 class PerformanceMetrics:
     """Comprehensive performance metrics for topology analysis."""
@@ -61,6 +62,7 @@ class PerformanceMetrics:
     convergence_time_ms: float = 0.0
     partition_recovery_time_ms: float | None = None
 
+
 @dataclass
 class LayerConfig:
     """Configuration for a federation layer."""
@@ -68,6 +70,7 @@ class LayerConfig:
     name: str
     cluster_sizes: list[int]
     federation_type: str
+
 
 @dataclass
 class LayerResult:
@@ -82,6 +85,7 @@ class LayerResult:
     total_connections: int
     function_success_rate: float
     servers: list[MPREGServer]
+
 
 @dataclass
 class TopologyPerformanceResult:
@@ -106,6 +110,7 @@ class TopologyPerformanceResult:
     clustering_coefficient: float = 0.0  # Network connectivity measure
     gossip_efficiency: float = 0.0  # Successful gossip messages / total messages
 
+
 @dataclass
 class TopologyConfiguration:
     """Configuration for complex topology patterns."""
@@ -117,12 +122,14 @@ class TopologyConfiguration:
     expected_cross_cluster_hops: int
     theoretical_max_connections: int
 
+
 @dataclass(frozen=True, slots=True)
 class HierarchicalReachabilitySample:
     """One connectivity observation while waiting for hierarchy convergence."""
 
     elapsed_seconds: float
     reachable_nodes: int
+
 
 @dataclass(frozen=True, slots=True)
 class HierarchicalReachabilityObservation:
@@ -133,12 +140,14 @@ class HierarchicalReachabilityObservation:
     elapsed_seconds: float
     samples: tuple[HierarchicalReachabilitySample, ...]
 
+
 @dataclass(frozen=True, slots=True)
 class PropagationRateSample:
     """Per-sample function propagation rate for adaptive observation windows."""
 
     elapsed_seconds: float
     success_rate: float
+
 
 @dataclass(frozen=True, slots=True)
 class PropagationObservation:
@@ -149,6 +158,7 @@ class PropagationObservation:
     min_duration_seconds: float
     max_duration_seconds: float
     samples: tuple[PropagationRateSample, ...]
+
 
 class AdvancedTopologyBuilder:
     """Builder for complex multi-cluster federated topologies."""
@@ -587,6 +597,7 @@ class AdvancedTopologyBuilder:
     ):
         """Measure latency for cross-cluster communication."""
         # Implementation would measure actual RPC call latency
+
 
 class TestAdvancedTopologicalResearch:
     """Advanced topological research and performance analysis test suite."""
@@ -4030,6 +4041,7 @@ class TestAdvancedTopologicalResearch:
 
         print("✅ Dynamic topology reconfiguration research completed")
 
+
 # Custom fixtures for advanced testing
 @pytest.fixture
 def large_cluster_ports():
@@ -4040,6 +4052,7 @@ def large_cluster_ports():
     for port in ports:
         allocator.release_port(port)
 
+
 @pytest.fixture
 def medium_cluster_ports():
     """Pytest fixture for medium cluster testing (20 ports)."""
@@ -4049,10 +4062,12 @@ def medium_cluster_ports():
     for port in ports:
         allocator.release_port(port)
 
+
 @pytest.fixture
 def topology_builder(test_context: AsyncTestContext) -> AdvancedTopologyBuilder:
     """Pytest fixture for advanced topology builder."""
     return AdvancedTopologyBuilder(test_context)
+
 
 # Export metrics collection for external analysis
 def export_performance_metrics(metrics_list: list[PerformanceMetrics], filename: str):

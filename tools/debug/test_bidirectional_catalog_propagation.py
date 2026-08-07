@@ -10,6 +10,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 from tests.test_helpers import TestPortManager
 
+
 async def test_bidirectional_catalog_pre_connection():
     """Test that PRE-CONNECTION functions are shared via catalog propagation."""
     print("🔥 TESTING BIDIRECTIONAL CATALOG PROPAGATION")
@@ -120,6 +121,7 @@ async def test_bidirectional_catalog_pre_connection():
 
         return success
 
+
 async def main():
     """Run the bidirectional catalog test."""
     print("🎯 BIDIRECTIONAL CATALOG PROPAGATION TEST")
@@ -135,6 +137,7 @@ async def main():
     else:
         print("💥 BIDIRECTIONAL CATALOG PROPAGATION STILL BROKEN!")
         return 1
+
 
 if __name__ == "__main__":
     exit_code = asyncio.run(main())

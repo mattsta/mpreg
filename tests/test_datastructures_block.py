@@ -19,6 +19,7 @@ from mpreg.datastructures.blockchain_types import OperationType
 from mpreg.datastructures.transaction import Transaction
 from mpreg.datastructures.vector_clock import VectorClock
 
+
 class TestBlock:
     """Test Block datastructure."""
 
@@ -188,6 +189,7 @@ class TestBlock:
         else:
             assert block1 != block2
 
+
 class TestBlockProperties:
     """Test mathematical and cryptographic properties of blocks."""
 
@@ -272,6 +274,7 @@ class TestBlockProperties:
         invalid_block = Block.create_genesis("miner", (invalid_tx,))
         assert not invalid_block.is_valid()
 
+
 class TestBlockSuccession:
     """Test block succession and chain building."""
 
@@ -351,6 +354,7 @@ class TestBlockSuccession:
         )
         # This should fail because timestamp must progress forward
         assert not invalid_block.is_valid_successor(genesis)
+
 
 class TestBlockExamples:
     """Test specific block examples and use cases."""

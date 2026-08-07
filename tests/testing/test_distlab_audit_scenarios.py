@@ -14,6 +14,7 @@ from mpreg.testing.distlab import (
     default_audit_checkers,
 )
 
+
 @pytest.mark.asyncio
 async def test_distlab_audit_multi_origin_converge() -> None:
     sut = AuditSUT.create(3)
@@ -37,6 +38,7 @@ async def test_distlab_audit_multi_origin_converge() -> None:
         strict=True,
     ).run()
 
+
 @pytest.mark.asyncio
 async def test_distlab_audit_partition_heal_converge() -> None:
     sut = AuditSUT.create(3)
@@ -55,9 +57,7 @@ async def test_distlab_audit_partition_heal_converge() -> None:
     async def body(history: History, s: AuditSUT) -> None:
         target.apply_partition_groups([{"a0"}, {"a1", "a2"}])
         for i in range(4):
-            await s.publish(
-                history, process="c0", origin="a0", event=f"p{i}"
-            )
+            await s.publish(history, process="c0", origin="a0", event=f"p{i}")
         # Isolated — a1/a2 should not have a0's events yet
         assert s.stores["a1"].size() == 0
         target.heal_network()
@@ -72,6 +72,7 @@ async def test_distlab_audit_partition_heal_converge() -> None:
         checker=default_audit_checkers(min_ids=4),
         strict=True,
     ).run()
+
 
 @pytest.mark.asyncio
 async def test_distlab_audit_drop_delta_digest_repair() -> None:
@@ -91,6 +92,7 @@ async def test_distlab_audit_drop_delta_digest_repair() -> None:
         checker=default_audit_checkers(min_ids=1),
         strict=True,
     ).run()
+
 
 @pytest.mark.asyncio
 async def test_distlab_audit_ineligible_local_only() -> None:
@@ -118,6 +120,7 @@ async def test_distlab_audit_ineligible_local_only() -> None:
         strict=True,
     ).run()
 
+
 @pytest.mark.asyncio
 async def test_distlab_audit_duplicate_idempotent() -> None:
     sut = AuditSUT.create(2)
@@ -136,6 +139,7 @@ async def test_distlab_audit_duplicate_idempotent() -> None:
         strict=True,
     ).run()
 
+
 @pytest.mark.asyncio
 async def test_distlab_audit_burst_converge() -> None:
     sut = AuditSUT.create(3)
@@ -143,9 +147,7 @@ async def test_distlab_audit_burst_converge() -> None:
     async def body(history: History, s: AuditSUT) -> None:
         for i in range(30):
             origin = s.node_ids[i % 3]
-            await s.publish(
-                history, process=f"c{i}", origin=origin, event=f"b{i}"
-            )
+            await s.publish(history, process=f"c{i}", origin=origin, event=f"b{i}")
         await s.flush_all()
         await s.reconcile_all()
 
@@ -156,6 +158,7 @@ async def test_distlab_audit_burst_converge() -> None:
         checker=default_audit_checkers(min_ids=30),
         strict=True,
     ).run()
+
 
 @pytest.mark.asyncio
 async def test_distlab_audit_nemesis_then_converge() -> None:
@@ -201,6 +204,7 @@ async def test_distlab_audit_nemesis_then_converge() -> None:
         strict=True,
     ).run()
 
+
 @pytest.mark.asyncio
 async def test_distlab_registry_audit_subset() -> None:
     from mpreg.testing.distlab import ensure_builtins, get_registry
@@ -217,6 +221,7 @@ async def test_distlab_registry_audit_subset() -> None:
     ):
         r = await reg.run(name)
         assert r.ok, f"{name} failed: {r.check.violations}"
+
 
 @pytest.mark.asyncio
 async def test_distlab_audit_burst_100() -> None:

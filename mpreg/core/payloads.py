@@ -18,6 +18,7 @@ type Payload = JsonDict
 type PayloadMapping = Mapping[str, JsonValue]
 type PayloadConverter = Callable[[object], JsonValue]
 
+
 def _is_empty(value: object) -> bool:
     if value is None:
         return True
@@ -25,8 +26,10 @@ def _is_empty(value: object) -> bool:
         return True
     return bool(isinstance(value, (tuple, list, set, frozenset, dict)) and not value)
 
+
 def _identity(value: object) -> object:
     return value
+
 
 def payload_to_dict(value: object) -> JsonValue:
     if value is None:
@@ -55,8 +58,10 @@ def payload_to_dict(value: object) -> JsonValue:
         return payload_list(value)
     raise TypeError(f"Unsupported payload value: {type(value).__name__}")
 
+
 def payload_list(value: object) -> list[JsonValue]:
     return [payload_to_dict(item) for item in _normalize_list_value(value)]
+
 
 def payload_mapping(
     value: Mapping[object, object] | None,
@@ -75,6 +80,7 @@ def payload_mapping(
             continue
         result[key_convert(key)] = value_convert(item)
     return result
+
 
 def payload_from_dataclass(instance: object) -> Payload:
     if not is_dataclass(instance):
@@ -105,6 +111,7 @@ def payload_from_dataclass(instance: object) -> Payload:
             payload[field.name] = payload_to_dict(value)
     return payload
 
+
 def _normalize_list_value(value: object) -> tuple[object, ...]:
     if value is None:
         return ()
@@ -114,7 +121,9 @@ def _normalize_list_value(value: object) -> tuple[object, ...]:
         return tuple(value)
     return (value,)
 
+
 T = TypeVar("T")
+
 
 def apply_overrides[T](instance: T, overrides: PayloadMapping) -> T:
     if not is_dataclass(instance):
@@ -139,6 +148,7 @@ def apply_overrides[T](instance: T, overrides: PayloadMapping) -> T:
     if not override_applied:
         return instance
     return type(instance)(*values)
+
 
 def parse_request[T](
     request_cls: type[T],

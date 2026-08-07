@@ -27,6 +27,7 @@ type EndpointUrl = str
 type ConnectionId = str
 type TransportLatencyMs = float
 
+
 class HealthTrend(Enum):
     """Health trend indicators."""
 
@@ -34,6 +35,7 @@ class HealthTrend(Enum):
     STABLE = "stable"
     DEGRADING = "degrading"
     CRITICAL = "critical"
+
 
 @dataclass(frozen=True, slots=True)
 class ConnectionHealthMetrics:
@@ -51,6 +53,7 @@ class ConnectionHealthMetrics:
     health_trend: HealthTrend
     circuit_breaker_state: CircuitBreakerState
 
+
 @dataclass(frozen=True, slots=True)
 class TransportHealthSnapshot:
     """Overall health snapshot for transport infrastructure."""
@@ -67,6 +70,7 @@ class TransportHealthSnapshot:
     error_rate_percent: float
     last_health_check: float
 
+
 class HealthMonitorProtocol(Protocol):
     """Protocol for health monitoring implementations."""
 
@@ -81,6 +85,7 @@ class HealthMonitorProtocol(Protocol):
     def get_health_metrics(self) -> ConnectionHealthMetrics:
         """Get comprehensive health metrics."""
         ...
+
 
 @dataclass(slots=True)
 class ConnectionHealthMonitor:
@@ -289,6 +294,7 @@ class ConnectionHealthMonitor:
             circuit_breaker_state=CircuitBreakerState.CLOSED,  # Would be provided by circuit breaker
         )
 
+
 @dataclass(slots=True)
 class TransportHealthAggregator:
     """Aggregates health metrics across multiple connections."""
@@ -373,6 +379,7 @@ class TransportHealthAggregator:
             last_health_check=time.time(),
         )
 
+
 # Factory functions for creating health monitors
 def create_connection_health_monitor(
     connection_id: ConnectionId,
@@ -385,6 +392,7 @@ def create_connection_health_monitor(
         endpoint=endpoint,
         max_recent_operations=max_recent_operations,
     )
+
 
 def create_transport_health_aggregator(
     endpoint: EndpointUrl,

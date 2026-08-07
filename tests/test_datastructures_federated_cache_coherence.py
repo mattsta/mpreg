@@ -36,6 +36,7 @@ from mpreg.datastructures.federated_cache_coherence import (
 )
 from mpreg.datastructures.vector_clock import VectorClock
 
+
 class TestFederatedCacheKey:
     """Test FederatedCacheKey datastructure creation and validation."""
 
@@ -156,6 +157,7 @@ class TestFederatedCacheKey:
         assert new_region_key.region == "new-region"
         assert new_region_key.cluster_id == key.cluster_id
         assert new_region_key.base_key == key.base_key
+
 
 class TestCacheCoherenceMetadata:
     """Test CacheCoherenceMetadata state management and transitions."""
@@ -281,6 +283,7 @@ class TestCacheCoherenceMetadata:
             CacheCoherenceState.PENDING,
         ):
             assert metadata.can_read()
+
 
 class TestCacheInvalidationMessage:
     """Test CacheInvalidationMessage creation and routing."""
@@ -451,6 +454,7 @@ class TestCacheInvalidationMessage:
         for cluster in message.target_clusters:
             assert message.affects_cluster(cluster)
 
+
 class TestCacheReplicationMessage:
     """Test CacheReplicationMessage creation and coordination."""
 
@@ -529,6 +533,7 @@ class TestCacheReplicationMessage:
                 target_clusters=frozenset(),
                 topic_pattern="test.pattern",
             )
+
 
 class TestFederatedCacheStatistics:
     """Test FederatedCacheStatistics analytics and metrics."""
@@ -676,6 +681,7 @@ class TestFederatedCacheStatistics:
         # Cross-cluster requests should be at least as large as federation hits for consistency
         assert fed_hit_stats.cross_cluster_requests >= fed_hit_stats.federation_hits
 
+
 class TestHypothesisStrategies:
     """Test the Hypothesis strategies themselves for completeness."""
 
@@ -734,6 +740,7 @@ class TestHypothesisStrategies:
         assert isinstance(stats.overall_hit_rate(), float)
         assert isinstance(stats.coherence_efficiency(), float)
         assert isinstance(stats.federation_efficiency(), float)
+
 
 # Integration tests for cross-datastructure interactions
 class TestFederatedCacheCoherenceIntegration:

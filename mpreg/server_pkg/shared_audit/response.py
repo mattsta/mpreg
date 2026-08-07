@@ -7,6 +7,7 @@ from typing import Any, Literal
 from mpreg.server_pkg.shared_audit.replicator import SharedAuditHealth
 from mpreg.server_pkg.shared_audit.store import SharedAuditStore
 
+
 def build_audit_response(
     *,
     store: SharedAuditStore | None,
@@ -91,6 +92,7 @@ def build_audit_response(
         "non_claims": non_claims if shared_enabled else [],
         "self_node": self_node,
     }
+
 
 def _route_dicts(route_records: list[Any] | None, limit: int) -> list[dict[str, Any]]:
     if not route_records:

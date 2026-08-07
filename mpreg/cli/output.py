@@ -13,6 +13,7 @@ from mpreg.core.native_codec import dumps_pretty_text, dumps_text
 
 console = Console()
 
+
 def add_format_option(fn):  # type: ignore[no-untyped-def]
     return click.option(
         "--format",
@@ -22,6 +23,7 @@ def add_format_option(fn):  # type: ignore[no-untyped-def]
         show_default=True,
         help="Output format",
     )(fn)
+
 
 def emit(
     data: Any,
@@ -77,11 +79,13 @@ def emit(
         return
     console.print(str(data))
 
+
 def _cell(value: Any) -> str:
     if isinstance(value, (dict, list)):
         text = dumps_text(value)
         return text if len(text) < 80 else text[:77] + "..."
     return str(value)
+
 
 def _jsonable(data: Any) -> Any:
     if hasattr(data, "to_dict") and callable(data.to_dict):

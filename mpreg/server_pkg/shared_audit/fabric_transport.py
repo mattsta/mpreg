@@ -19,6 +19,7 @@ _TYPE_MAP = {
     "mgmt_audit_pull_resp": GossipMessageType.MGMT_AUDIT_PULL_RESP,
 }
 
+
 @dataclass(slots=True)
 class FabricSharedAuditTransport:
     """Sends MGMT_AUDIT_* via ServerGossipTransport / peer send_message."""

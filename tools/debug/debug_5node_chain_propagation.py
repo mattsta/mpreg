@@ -10,6 +10,7 @@ from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 async def test_5node_chain_propagation():
     """Test function propagation in the exact same 5-node linear chain as the performance test."""
 
@@ -112,6 +113,7 @@ async def test_5node_chain_propagation():
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await task
+
 
 if __name__ == "__main__":
     asyncio.run(test_5node_chain_propagation())

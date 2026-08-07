@@ -89,9 +89,11 @@ from mpreg.core.transport.interfaces import TransportProtocol
 
 assigned = []
 
+
 def on_assign(assignment):
     assigned.append(assignment)
     print(f"{assignment.protocol.value} -> {assignment.endpoint}")
+
 
 config = MultiProtocolAdapterConfig(
     base_port=0,
@@ -2523,8 +2525,10 @@ use WebSocket framing and raw message envelopes.
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.client.pubsub_client import MPREGPubSubClient
 
+
 async def handle_notification(message):
     print(f"Received: {message.topic} -> {message.payload}")
+
 
 async def main():
     async with MPREGClientAPI("ws://localhost:<port>") as client:

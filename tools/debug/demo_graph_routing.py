@@ -19,6 +19,7 @@ from mpreg.fabric.federation_graph import (
     NodeType,
 )
 
+
 def create_global_federation_topology():
     """Create a realistic global federation topology for demonstration."""
     router = GraphBasedFederationRouter()
@@ -145,6 +146,7 @@ def create_global_federation_topology():
 
     return router
 
+
 def demonstrate_routing_algorithms():
     """Demonstrate the various routing algorithms."""
     print("🌍 Planet-Scale Federation Graph Routing Demo")
@@ -253,6 +255,7 @@ def demonstrate_routing_algorithms():
 
     return router
 
+
 def benchmark_performance():
     """Benchmark the performance of graph routing algorithms."""
     print("\n⚡ Performance Benchmarking")
@@ -303,6 +306,7 @@ def benchmark_performance():
         print(f"   Path Length: {len(path) if path else 0} hops")
         print(f"   Computation: {computation_time:.2f}ms")
         print(f"   Performance: {computation_time / size:.3f}ms per node")
+
 
 if __name__ == "__main__":
     # Run the comprehensive demo

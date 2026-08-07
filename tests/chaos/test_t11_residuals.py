@@ -28,6 +28,7 @@ from mpreg.server_pkg.drain_admission import (
 )
 from tests.test_production_raft_integration import TestableStateMachine
 
+
 class _NullTransport:
     async def send_request_vote(self, target, request):  # type: ignore[no-untyped-def]
         return None
@@ -37,6 +38,7 @@ class _NullTransport:
 
     async def send_install_snapshot(self, target, request):  # type: ignore[no-untyped-def]
         return None
+
 
 def _make_node(node_id: str = "n1", members: set[str] | None = None) -> ProductionRaft:
     members = members or {node_id, "n2"}
@@ -53,6 +55,7 @@ def _make_node(node_id: str = "n1", members: set[str] | None = None) -> Producti
             snapshot_threshold=5,
         ),
     )
+
 
 @pytest.mark.asyncio
 async def test_cor_t11_01_post_snapshot_log_index_absolute() -> None:
@@ -110,6 +113,7 @@ async def test_cor_t11_01_post_snapshot_log_index_absolute() -> None:
     await node._apply_committed_entries()
     assert node.volatile_state.last_applied >= 101
 
+
 @pytest.mark.asyncio
 async def test_cor_t11_02_leader_single_apply() -> None:
     """COR-T11-02: submit_command must not double-apply via SM."""
@@ -132,6 +136,7 @@ async def test_cor_t11_02_leader_single_apply() -> None:
     assert sm.apply_count == 1
     assert node.volatile_state.last_applied == 1
 
+
 @pytest.mark.asyncio
 async def test_cor_t11_03_last_applied_not_on_failure() -> None:
     """COR-T11-03: SM failure must not advance last_applied."""
@@ -149,6 +154,7 @@ async def test_cor_t11_03_last_applied_not_on_failure() -> None:
     node.volatile_state.commit_index = 1
     await node._apply_committed_entries()
     assert node.volatile_state.last_applied == 0
+
 
 def test_cor_t11_04_drain_allows_raft_control() -> None:
     """COR-T11-04: fabric-message CONTROL/raft is not refused under drain."""
@@ -177,6 +183,7 @@ def test_cor_t11_04_drain_allows_raft_control() -> None:
         is True
     )
 
+
 def test_cor_t11_08_catalog_empty_id_and_remember_after_success() -> None:
     from mpreg.fabric.catalog import RoutingCatalog
 
@@ -198,6 +205,7 @@ def test_cor_t11_08_catalog_empty_id_and_remember_after_success() -> None:
     assert applier.apply(d, now=time.time()).get("skipped_duplicate_update_id") is None
     assert applier.apply(d, now=time.time()).get("skipped_duplicate_update_id") == 1
 
+
 def test_cor_t11_10_install_snapshot_success_default_false() -> None:
     from mpreg.datastructures.raft_codec import deserialize_install_snapshot_response
 
@@ -205,6 +213,7 @@ def test_cor_t11_10_install_snapshot_success_default_false() -> None:
         {"term": 1, "follower_id": "f1"}  # no success field
     )
     assert resp.success is False
+
 
 def test_obs_t11_01_02_03_metrics() -> None:
     t = ServerMetricsTracker()
@@ -226,6 +235,7 @@ def test_obs_t11_01_02_03_metrics() -> None:
     # 200 ops over short uptime → RPS >> 0.83 (old deque cap)
     assert m.requests_per_second > 1.0 or m.total_operations_last_hour == 200
 
+
 def test_perf_t11_04_route_cache_ordered_dict() -> None:
     import mpreg.fabric.router as rmod
 
@@ -233,6 +243,7 @@ def test_perf_t11_04_route_cache_ordered_dict() -> None:
     assert "OrderedDict" in src
     assert "move_to_end" in src
     assert "PERF-T11-04" in src
+
 
 def test_erg_t11_plane_rpc_strong_error_code() -> None:
     """ERG-T11-05/06: plane path surfaces 1012 for STRONG (unit of return shape)."""

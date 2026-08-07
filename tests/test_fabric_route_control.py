@@ -9,6 +9,7 @@ from mpreg.fabric.route_control import (
     RouteWithdrawal,
 )
 
+
 def test_route_announcement_roundtrip() -> None:
     announcement = RouteAnnouncement(
         destination=RouteDestination(cluster_id="cluster-c"),
@@ -29,6 +30,7 @@ def test_route_announcement_roundtrip() -> None:
     restored = RouteAnnouncement.from_dict(announcement.to_dict())
     assert restored == announcement
 
+
 def test_route_table_rejects_loops() -> None:
     table = RouteTable(local_cluster="cluster-a")
     announcement = RouteAnnouncement(
@@ -46,6 +48,7 @@ def test_route_table_rejects_loops() -> None:
         is False
     )
     assert table.routes_for(RouteDestination("cluster-c"), now=101.0) == ()
+
 
 def test_route_table_selects_best_route() -> None:
     table = RouteTable(local_cluster="cluster-a", policy=RoutePolicy())
@@ -80,6 +83,7 @@ def test_route_table_selects_best_route() -> None:
     selected = table.select_route(destination, avoid_clusters=("cluster-b",), now=100.0)
     assert selected is not None
     assert selected.next_hop == "cluster-d"
+
 
 def test_route_selection_trace_explains_choice() -> None:
     table = RouteTable(local_cluster="cluster-a", policy=RoutePolicy())
@@ -123,6 +127,7 @@ def test_route_selection_trace_explains_choice() -> None:
     avoided = next(c for c in trace_avoid.candidates if c.next_hop == "cluster-b")
     assert avoided.filtered_reason == "avoid_clusters"
 
+
 def test_route_metrics_hop_extension() -> None:
     metrics = RouteMetrics(
         hop_count=0,
@@ -145,6 +150,7 @@ def test_route_metrics_hop_extension() -> None:
     assert extended.reliability_score == 0.9
     assert extended.cost_score == 2.0
 
+
 def test_route_table_expiration() -> None:
     table = RouteTable(local_cluster="cluster-a")
     destination = RouteDestination(cluster_id="cluster-c")
@@ -161,6 +167,7 @@ def test_route_table_expiration() -> None:
     table.apply_announcement(announcement, received_from="cluster-b", now=100.0)
     assert table.select_route(destination, now=100.5) is not None
     assert table.select_route(destination, now=102.0) is None
+
 
 def test_route_withdrawal_sets_hold_down() -> None:
     table = RouteTable(
@@ -205,6 +212,7 @@ def test_route_withdrawal_sets_hold_down() -> None:
         is True
     )
 
+
 def test_route_table_stats_counts() -> None:
     table = RouteTable(local_cluster="cluster-a")
     destination = RouteDestination(cluster_id="cluster-c")
@@ -236,6 +244,7 @@ def test_route_table_stats_counts() -> None:
     assert removed
     assert table.stats.withdrawals_received == 1
     assert table.stats.withdrawals_applied == 1
+
 
 def test_route_flap_dampening_suppresses() -> None:
     table = RouteTable(
@@ -289,6 +298,7 @@ def test_route_flap_dampening_suppresses() -> None:
         is False
     )
     assert table.stats.suppression_rejects == 1
+
 
 def test_route_table_deterministic_tiebreakers() -> None:
     policy = RoutePolicy(
@@ -370,6 +380,7 @@ def test_route_table_deterministic_tiebreakers() -> None:
     selected = table.select_route(destination_2, now=100.0)
     assert selected is not None
     assert selected.advertiser == "adv-a"
+
 
 def test_route_metrics_snapshot_reports_convergence() -> None:
     policy = RoutePolicy(

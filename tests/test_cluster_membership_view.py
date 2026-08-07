@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from mpreg.server import Cluster
 
+
 def test_known_node_ids_empty_without_engine_or_directory() -> None:
     cluster = Cluster.create(
         cluster_id="c1",
@@ -12,6 +13,7 @@ def test_known_node_ids_empty_without_engine_or_directory() -> None:
     )
     assert cluster.servers == set()
     assert cluster.known_node_ids == set()
+
 
 def test_servers_doc_distinguishes_membership() -> None:
     doc = Cluster.servers.__doc__ or ""

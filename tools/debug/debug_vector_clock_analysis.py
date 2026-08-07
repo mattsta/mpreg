@@ -22,6 +22,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.datastructures.vector_clock import VectorClock
 from mpreg.server import Cluster, MPREGServer
 
+
 @dataclass
 class VectorClockEvent:
     """Track vector clock events for deep analysis."""
@@ -35,6 +36,7 @@ class VectorClockEvent:
     comparison_result: str  # "equal", "before", "after", "concurrent"
     should_update: bool
     reason: str
+
 
 class VectorClockAnalyzer:
     """Deep analysis of vector clock behavior in gossip protocol."""
@@ -246,8 +248,10 @@ class VectorClockAnalyzer:
                 f"  {status} {event.node} -> {event.peer_url}: {event.comparison_result} ({event.reason})"
             )
 
+
 # Global analyzer instance
 analyzer = VectorClockAnalyzer()
+
 
 class InstrumentedCluster(Cluster):
     """Cluster with vector clock instrumentation."""
@@ -332,6 +336,7 @@ class InstrumentedCluster(Cluster):
     def __getattr__(self, name):
         return getattr(self.original_cluster, name)
 
+
 async def debug_vector_clock_gossip(num_nodes: int = 10, analysis_duration: int = 30):
     """Create instrumented cluster to analyze vector clock behavior."""
     print(f"🔬 Starting DEEP DIVE vector clock analysis with {num_nodes} nodes...")
@@ -391,6 +396,7 @@ async def debug_vector_clock_gossip(num_nodes: int = 10, analysis_duration: int 
     for task in tasks:
         if not task.done():
             task.cancel()
+
 
 if __name__ == "__main__":
     import sys

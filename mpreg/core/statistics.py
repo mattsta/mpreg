@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from mpreg.datastructures.trie import TrieStatistics
 
+
 @dataclass(frozen=True, slots=True)
 class PolicyConfiguration:
     """Configuration settings for routing policy."""
@@ -23,6 +24,7 @@ class PolicyConfiguration:
     default_strategy: str
     max_load_threshold: float
     cache_ttl_seconds: float
+
 
 @dataclass(frozen=True, slots=True)
 class HubSelectionStatistics:
@@ -33,6 +35,7 @@ class HubSelectionStatistics:
     cache_hit_rate: float
     policy_config: PolicyConfiguration
 
+
 @dataclass(frozen=True, slots=True)
 class ZoneDistribution:
     """Distribution of hubs across zones."""
@@ -40,6 +43,7 @@ class ZoneDistribution:
     local_hubs: int
     regional_hubs: int
     global_hubs: int
+
 
 @dataclass(frozen=True, slots=True)
 class ZoneStatistics:
@@ -51,6 +55,7 @@ class ZoneStatistics:
     partition_stats: dict[str, int]
     zone_distribution: ZoneDistribution
 
+
 @dataclass(frozen=True, slots=True)
 class CacheStatistics:
     """Cache performance statistics."""
@@ -58,6 +63,7 @@ class CacheStatistics:
     cache_size: int
     cache_hit_rate: float
     max_cache_entries: int
+
 
 @dataclass(frozen=True, slots=True)
 class RoutingPolicyInfo:
@@ -67,6 +73,7 @@ class RoutingPolicyInfo:
     max_hops: int
     max_latency_ms: float
     max_load_threshold: float
+
 
 @dataclass(frozen=True, slots=True)
 class HierarchicalRoutingStatistics:
@@ -79,6 +86,7 @@ class HierarchicalRoutingStatistics:
     zone_partitioner_stats: ZoneStatistics
     routing_policy: RoutingPolicyInfo
 
+
 @dataclass(frozen=True, slots=True)
 class GraphCollectionStatus:
     """Status information for graph metrics collection."""
@@ -87,6 +95,7 @@ class GraphCollectionStatus:
     last_collection: float | None
     collection_interval: float
     active_collectors: int
+
 
 @dataclass(frozen=True, slots=True)
 class MetricsStatistics:
@@ -99,6 +108,7 @@ class MetricsStatistics:
     error_rate: float
     stored_metrics: int
 
+
 @dataclass(frozen=True, slots=True)
 class GraphMetricsCollectorStatistics:
     """Statistics for graph metrics collection."""
@@ -107,6 +117,7 @@ class GraphMetricsCollectorStatistics:
     metrics_statistics: MetricsStatistics
     recent_metrics_by_type: dict[str, int]
 
+
 @dataclass(frozen=True, slots=True)
 class InvalidationThresholds:
     """Thresholds for cache invalidation triggers."""
@@ -114,6 +125,7 @@ class InvalidationThresholds:
     latency_change: float
     utilization_change: float
     health_change: float
+
 
 @dataclass(frozen=True, slots=True)
 class PathCacheManagerStatistics:
@@ -124,6 +136,7 @@ class PathCacheManagerStatistics:
     invalidations_by_reason: dict[str, int]
     thresholds: InvalidationThresholds
 
+
 @dataclass(frozen=True, slots=True)
 class OptimizationStatus:
     """Status information for graph optimization."""
@@ -132,12 +145,14 @@ class OptimizationStatus:
     last_optimization: float
     optimization_interval: float
 
+
 @dataclass(frozen=True, slots=True)
 class OptimizationHistory:
     """Historical information about optimizations performed."""
 
     total_optimizations: int
     optimizations_by_type: dict[str, int]
+
 
 @dataclass(frozen=True, slots=True)
 class GraphOptimizerStatistics:
@@ -148,6 +163,7 @@ class GraphOptimizerStatistics:
     current_suggestions: int
     suggestions_by_priority: dict[int, int]
 
+
 @dataclass(frozen=True, slots=True)
 class GraphCacheStatistics:
     """Graph-specific cache performance statistics."""
@@ -156,6 +172,7 @@ class GraphCacheStatistics:
     total_entries: int
     cache_hits: int
     cache_misses: int
+
 
 @dataclass(frozen=True, slots=True)
 class GraphStatistics:
@@ -172,6 +189,7 @@ class GraphStatistics:
     health_ratio: float
     usability_ratio: float
 
+
 @dataclass(frozen=True, slots=True)
 class MonitoringStatus:
     """Overall monitoring system status."""
@@ -179,6 +197,7 @@ class MonitoringStatus:
     is_monitoring: bool
     uptime_seconds: float
     start_time: float
+
 
 @dataclass(frozen=True, slots=True)
 class GraphMonitoringStatistics:
@@ -190,6 +209,7 @@ class GraphMonitoringStatistics:
     optimizer: GraphOptimizerStatistics
     graph_statistics: GraphStatistics
 
+
 @dataclass(frozen=True, slots=True)
 class HubUtilization:
     """Hub utilization by tier."""
@@ -197,6 +217,7 @@ class HubUtilization:
     global_hubs: dict[str, float]
     regional_hubs: dict[str, float]
     local_hubs: dict[str, float]
+
 
 @dataclass(frozen=True, slots=True)
 class TopologyStatistics:
@@ -210,6 +231,7 @@ class TopologyStatistics:
     hub_utilization: HubUtilization
     aggregation_ratios: dict[str, float]
 
+
 @dataclass(frozen=True, slots=True)
 class ClientStatistics:
     """Statistics for pub/sub client operations."""
@@ -219,7 +241,9 @@ class ClientStatistics:
     running: bool
     oldest_subscription: float | None
 
+
 # Client API Dataclasses for replacing dict[str, Any] usage
+
 
 @dataclass(frozen=True, slots=True)
 class RawMessageResponse:
@@ -241,6 +265,7 @@ class RawMessageResponse:
             result["timestamp"] = self.timestamp
         return result
 
+
 class RawMessageDict(dict[str, Any]):
     """A dict subclass that can be returned from send_raw_message to maintain compatibility."""
 
@@ -251,6 +276,7 @@ class RawMessageDict(dict[str, Any]):
         else:
             super().__init__()
         self.update(kwargs)
+
 
 @dataclass(frozen=True, slots=True)
 class MessageHeaders:
@@ -340,6 +366,7 @@ class MessageHeaders:
             result.update(self.custom_headers)
         return result
 
+
 @dataclass(frozen=True, slots=True)
 class SubscriptionInfo:
     """Information about an active subscription."""
@@ -349,6 +376,7 @@ class SubscriptionInfo:
     created_at: float
     subscriber: str | None = None
     backlog_enabled: bool = False
+
 
 @dataclass(slots=True)  # Not frozen because fields are mutable
 class TopicMetrics:
@@ -367,6 +395,7 @@ class TopicMetrics:
         if self.publishers_seen is None:
             self.publishers_seen = set()
 
+
 @dataclass(frozen=True, slots=True)
 class PublishResponse:
     """Response from publish operations with reply support."""
@@ -377,6 +406,7 @@ class PublishResponse:
     reply_headers: MessageHeaders | None = None
     error: str | None = None
 
+
 @dataclass(frozen=True, slots=True)
 class ClusterInfo:
     """Cluster configuration information."""
@@ -386,6 +416,7 @@ class ClusterInfo:
     active_clusters: int
     max_clusters: int
 
+
 @dataclass(frozen=True, slots=True)
 class RoutingConfiguration:
     """Routing system configuration."""
@@ -393,6 +424,7 @@ class RoutingConfiguration:
     graph_routing_enabled: bool
     monitoring_enabled: bool
     graph_routing_threshold: int
+
 
 @dataclass(frozen=True, slots=True)
 class RemoteClusterInfo:
@@ -403,6 +435,7 @@ class RemoteClusterInfo:
     latency_ms: float
     success_rate: float
 
+
 @dataclass(frozen=True, slots=True)
 class RoutingPerformance:
     """Performance metrics for routing operations."""
@@ -412,12 +445,14 @@ class RoutingPerformance:
     success_rate: float
     average_computation_time_ms: float
 
+
 @dataclass(frozen=True, slots=True)
 class AlgorithmPerformance:
     """Performance metrics for routing algorithms."""
 
     dijkstra_last_computation_ms: float
     astar_last_computation_ms: float
+
 
 @dataclass(frozen=True, slots=True)
 class GraphRouterStatistics:
@@ -426,6 +461,7 @@ class GraphRouterStatistics:
     graph_statistics: GraphStatistics
     routing_performance: RoutingPerformance
     algorithm_performance: AlgorithmPerformance
+
 
 @dataclass(slots=True)  # Not frozen so fields can be updated
 class GossipProtocolStatistics:
@@ -444,6 +480,7 @@ class GossipProtocolStatistics:
     total_messages_sent: int = 0
     messages_created: int = 0
 
+
 @dataclass(frozen=True, slots=True)
 class GossipConvergenceTracking:
     """Convergence tracking metrics for gossip protocol."""
@@ -452,6 +489,7 @@ class GossipConvergenceTracking:
     average_convergence_time: float = 0.0
     convergence_count: int = 0
     pending_convergence: float = 0.0
+
 
 @dataclass(frozen=True, slots=True)
 class LoadMetrics:
@@ -462,6 +500,7 @@ class LoadMetrics:
     network_usage: float = 0.0
     message_throughput: float = 0.0
 
+
 @dataclass(frozen=True, slots=True)
 class NodeCapabilities:
     """Node capability information."""
@@ -470,6 +509,7 @@ class NodeCapabilities:
     supports_federation: bool = True
     max_connections: int = 100
     version: str = "1.0.0"
+
 
 @dataclass(frozen=True, slots=True)
 class ConnectionInfo:
@@ -480,6 +520,7 @@ class ConnectionInfo:
     protocol: str = "tcp"
     is_secure: bool = False
 
+
 @dataclass(slots=True)  # Not frozen because fields need to be mutable for counters
 class MonitoringStatsData:
     """Monitoring statistics data."""
@@ -488,6 +529,7 @@ class MonitoringStatsData:
     hub_failures_handled: int = 0
     last_health_check: float = 0.0
     total_monitoring_cycles: int = 0
+
 
 @dataclass(slots=True)  # Not frozen because these are counters
 class RegistryPerformanceStats:
@@ -505,6 +547,7 @@ class RegistryPerformanceStats:
     hubs_deregistered: int = 0
     discovery_requests: int = 0
 
+
 @dataclass(slots=True)  # Not frozen because these are metrics
 class RegistryPerformanceMetrics:
     """Performance metrics for registry operations."""
@@ -513,6 +556,7 @@ class RegistryPerformanceMetrics:
     avg_discovery_time_ms: float = 0.0
     avg_assignment_time_ms: float = 0.0
     success_rate: float = 0.0
+
 
 @dataclass(slots=True)  # Not frozen because these are counters
 class AssignmentStatsData:
@@ -528,6 +572,7 @@ class AssignmentStatsData:
     clusters_deregistered: int = 0
     clusters_reassigned: int = 0
 
+
 # Topic Exchange Statistics
 @dataclass(frozen=True, slots=True)
 class SubscriptionHandlerStatistics:
@@ -540,6 +585,7 @@ class SubscriptionHandlerStatistics:
     failed_deliveries: int = 0
     delivery_success_rate: float = 0.0
 
+
 @dataclass(frozen=True, slots=True)
 class TopicExchangeStatistics:
     """Statistics for overall topic exchange performance."""
@@ -550,6 +596,7 @@ class TopicExchangeStatistics:
     delivery_rate: float = 0.0
     subscription_count: int = 0
 
+
 @dataclass(frozen=True, slots=True)
 class BacklogStatistics:
     """Statistics for message backlog."""
@@ -559,6 +606,7 @@ class BacklogStatistics:
     total_size_mb: float = 0.0
     active_topics: int = 0
     cleanup_queue_size: int = 0
+
 
 @dataclass(frozen=True, slots=True)
 class ClusterHealthInfo:
@@ -571,6 +619,7 @@ class ClusterHealthInfo:
     cpu_usage_percent: float
     memory_usage_percent: float
     last_check: float
+
 
 @dataclass(frozen=True, slots=True)
 class FederationHealth:
@@ -588,6 +637,7 @@ class FederationHealth:
     connectivity_issues: list[str] = field(default_factory=list)
     cluster_health: dict[str, ClusterHealthInfo] = field(default_factory=dict)
 
+
 @dataclass(frozen=True, slots=True)
 class TopicExchangeComprehensiveStats:
     """Comprehensive statistics for the main TopicExchange."""
@@ -603,6 +653,7 @@ class TopicExchangeComprehensiveStats:
     backlog_stats: BacklogStatistics
     remote_servers: int
 
+
 @dataclass(frozen=True, slots=True)
 class ClusterMetrics:
     """Metrics for a specific cluster in routing table."""
@@ -613,6 +664,7 @@ class ClusterMetrics:
     routing_weight: float
     total_requests: int
 
+
 @dataclass(frozen=True, slots=True)
 class IntelligentRoutingStatistics:
     """Statistics for intelligent routing table."""
@@ -621,6 +673,7 @@ class IntelligentRoutingStatistics:
     total_clusters: int
     cluster_metrics: dict[str, ClusterMetrics]
     last_update: float
+
 
 @dataclass(frozen=True, slots=True)
 class ClusterDelta:
@@ -631,6 +684,7 @@ class ClusterDelta:
     subscription_count: int
     last_updated: float
 
+
 @dataclass(frozen=True, slots=True)
 class HubInfo:
     """Basic hub identification information."""
@@ -640,6 +694,7 @@ class HubInfo:
     region: str
     coordinates: tuple[float, float]
 
+
 @dataclass(frozen=True, slots=True)
 class HubCapacity:
     """Hub capacity limits."""
@@ -647,6 +702,7 @@ class HubCapacity:
     max_clusters: int
     max_child_hubs: int
     max_subscriptions: int
+
 
 @dataclass(frozen=True, slots=True)
 class HubCurrentLoad:
@@ -658,6 +714,7 @@ class HubCurrentLoad:
     utilization_score: float
     is_healthy: bool
 
+
 @dataclass(frozen=True, slots=True)
 class HubAggregationInfo:
     """Hub aggregation state information."""
@@ -666,6 +723,7 @@ class HubAggregationInfo:
     compression_ratio: float
     popular_topics_count: int
     last_aggregated: float
+
 
 @dataclass(frozen=True, slots=True)
 class HubComprehensiveStatistics:
@@ -679,6 +737,7 @@ class HubComprehensiveStatistics:
     child_hubs: list[str]
     parent_hub: str | None
 
+
 @dataclass(frozen=True, slots=True)
 class ConflictSummary:
     """Summary of a consensus conflict."""
@@ -691,6 +750,7 @@ class ConflictSummary:
     resolution_strategy: str
     resolved: bool
     age_seconds: float
+
 
 @dataclass(frozen=True, slots=True)
 class ProposalSummary:
@@ -706,6 +766,7 @@ class ProposalSummary:
     is_expired: bool
     age_seconds: float
 
+
 @dataclass(frozen=True, slots=True)
 class ResolutionStatistics:
     """Statistics for conflict resolution."""
@@ -716,6 +777,7 @@ class ResolutionStatistics:
     custom_resolvers: int
     resolution_history_size: int
 
+
 @dataclass(frozen=True, slots=True)
 class ConsensusInfo:
     """Basic consensus configuration information."""
@@ -724,6 +786,7 @@ class ConsensusInfo:
     known_nodes: int
     default_threshold: float
     proposal_timeout: float
+
 
 @dataclass(frozen=True, slots=True)
 class ConsensusStatistics:
@@ -735,7 +798,9 @@ class ConsensusStatistics:
     proposal_history_size: int
     active_proposal_summaries: list[ProposalSummary]
 
+
 # Federation Resilience Dataclasses
+
 
 @dataclass(frozen=True, slots=True)
 class CircuitBreakerState:
@@ -746,6 +811,7 @@ class CircuitBreakerState:
     success_count: int
     current_timeout: float
 
+
 @dataclass(frozen=True, slots=True)
 class ResourceMetrics:
     """Resource utilization metrics for a cluster."""
@@ -754,6 +820,7 @@ class ResourceMetrics:
     memory_usage: float = 0.0
     connection_count: int = 0
     queue_depth: int = 0
+
 
 @dataclass(frozen=True, slots=True)
 class HealthCheckResult:
@@ -766,6 +833,7 @@ class HealthCheckResult:
     error_message: str | None = None
     resource_metrics: ResourceMetrics | None = None
 
+
 @dataclass(frozen=True, slots=True)
 class ResilienceMetrics:
     """Comprehensive resilience metrics."""
@@ -776,7 +844,9 @@ class ResilienceMetrics:
     active_recovery_strategies: dict[str, str]
     total_registered_clusters: int
 
+
 # Auto-Discovery Statistics Dataclasses
+
 
 @dataclass(frozen=True, slots=True)
 class DiscoveryBackendStatistics:
@@ -792,11 +862,13 @@ class DiscoveryBackendStatistics:
     registration_errors: int = 0
     last_discovery: float = 0.0
 
+
 @dataclass(frozen=True, slots=True)
 class ClustersByRegion:
     """Clusters grouped by region."""
 
     region_counts: dict[str, int] = field(default_factory=dict)
+
 
 @dataclass(frozen=True, slots=True)
 class ClustersByHealth:
@@ -807,6 +879,7 @@ class ClustersByHealth:
     unhealthy: int = 0
     critical: int = 0
     unknown: int = 0
+
 
 @dataclass(frozen=True, slots=True)
 class AutoDiscoveryStatistics:
@@ -820,6 +893,7 @@ class AutoDiscoveryStatistics:
     local_cluster_registered: bool
     discovery_running: bool = False
     total_events: int = 0
+
 
 @dataclass(frozen=True, slots=True)
 class CLIDiscoveredCluster:
@@ -869,6 +943,7 @@ class CLIDiscoveredCluster:
             health_score=config_data.get("health_score", 100.0),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class ClusterPerformanceSummary:
     """Performance summary for a single cluster."""
@@ -878,6 +953,7 @@ class ClusterPerformanceSummary:
     avg_latency_ms: float
     throughput_rps: float
     error_rate_percent: float
+
 
 @dataclass(frozen=True, slots=True)
 class AlertsSummary:
@@ -889,6 +965,7 @@ class AlertsSummary:
     critical: int = 0
     total: int = 0
 
+
 @dataclass(frozen=True, slots=True)
 class CollectionStatus:
     """Status of metrics collection system."""
@@ -896,6 +973,7 @@ class CollectionStatus:
     collecting: bool
     collectors: int
     collection_interval: float
+
 
 @dataclass(frozen=True, slots=True)
 class FederationPerformanceMetrics:
@@ -935,6 +1013,7 @@ class FederationPerformanceMetrics:
 
     # Timestamp
     collected_at: float = field(default_factory=time.time)
+
 
 @dataclass(frozen=True, slots=True)
 class PerformanceSummary:

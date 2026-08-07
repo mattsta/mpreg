@@ -3,6 +3,7 @@ import pytest
 from mpreg.client.call_policy import ClientCallPolicy, call_with_policy
 from mpreg.core.errors import MpregError, MpregErrorCode
 
+
 @pytest.mark.asyncio
 async def test_retry_on_timeout() -> None:
     attempts = {"n": 0}
@@ -19,6 +20,7 @@ async def test_retry_on_timeout() -> None:
     result = await call_with_policy(flaky, policy)
     assert result == "ok"
     assert attempts["n"] == 3
+
 
 @pytest.mark.asyncio
 async def test_no_retry_on_command_not_found() -> None:

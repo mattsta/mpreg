@@ -28,12 +28,14 @@ DEFAULT_PYSPY = Path(
     )
 )
 
+
 @dataclass(frozen=True, slots=True)
 class WorkerBreadcrumb:
     worker: str
     pid: int | None
     nodeid: str | None
     path: Path
+
 
 class HangStateDir:
     """Per-worker current-test breadcrumbs for hang correlation."""
@@ -123,6 +125,7 @@ class HangStateDir:
             uniq.append(pid)
         return uniq
 
+
 def enable_faulthandler(stream: TextIO | None = None) -> None:
     """Enable all-thread dumps; register SIGUSR1 for on-demand stacks.
 
@@ -159,10 +162,12 @@ def enable_faulthandler(stream: TextIO | None = None) -> None:
         with contextlib.suppress(Exception):
             faulthandler.register(signal.SIGUSR1, file=target, all_threads=True)
 
+
 def install_pytest_hang_hooks() -> None:
     """Side-effect import target: hooks live in tests/conftest via thin wrappers."""
     enable_faulthandler()
     HangStateDir().write_pid()
+
 
 @dataclass(slots=True)
 class ProcessCpuSnapshot:
@@ -170,6 +175,7 @@ class ProcessCpuSnapshot:
     cpu_percent: float
     rss_kb: int
     command: str = ""
+
 
 class ProcessSampler:
     """Minimal process listing without shelling out to complex pipelines."""
@@ -228,6 +234,7 @@ class ProcessSampler:
             except ValueError:
                 continue
         return pids
+
 
 @dataclass(slots=True)
 class HangProfiler:
@@ -403,6 +410,7 @@ class HangProfiler:
         stdout_path.write_text(completed.stdout or "", encoding="utf-8")
         stderr_path.write_text(completed.stderr or "", encoding="utf-8")
         return int(completed.returncode)
+
 
 @dataclass(slots=True)
 class HangWatchdog:

@@ -16,6 +16,7 @@ from mpreg.datastructures.vector_clock import VectorClock
 from mpreg.fabric.consensus import StateType, StateValue
 from mpreg.server import MPREGServer
 
+
 async def test_simple_planet_scale_consensus():
     """Test consensus between 3 MPREG servers (simulating planet scale nodes)."""
 
@@ -134,6 +135,7 @@ async def test_simple_planet_scale_consensus():
 
         logger.info("Planet scale consensus test completed")
 
+
 async def main():
     """Run the simple planet scale consensus test."""
     logger.info("Starting simple planet scale consensus integration test")
@@ -145,6 +147,7 @@ async def main():
         logger.info("✅ MPREG servers provide the networking that consensus needs!")
     else:
         logger.error("❌ CONCLUSION: Planet scale example still has issues")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

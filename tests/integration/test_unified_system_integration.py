@@ -32,6 +32,7 @@ from mpreg.fabric.message import (
 from mpreg.fabric.router import FabricRouter, FabricRouteReason, FabricRoutingConfig
 from mpreg.fabric.rpc_messages import FabricRPCRequest
 
+
 def _make_router(
     *, routing_index: RoutingIndex, local_cluster: str, local_node: str
 ) -> FabricRouter:
@@ -45,6 +46,7 @@ def _make_router(
         routing_index=routing_index,
         routing_engine=engine,
     )
+
 
 class TestFabricSystemIntegration:
     @pytest.mark.asyncio
@@ -209,6 +211,7 @@ class TestFabricSystemIntegration:
         assert route.targets
         assert route.targets[0].target_id == CacheRole.INVALIDATOR.value
         assert route.targets[0].priority_weight == 2.0
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])

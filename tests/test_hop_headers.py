@@ -8,6 +8,7 @@ from mpreg.core.errors import MpregError, MpregErrorCode
 from mpreg.fabric.hop_headers import advance_fabric_headers
 from mpreg.fabric.message import MessageHeaders
 
+
 def test_initial_headers_when_none() -> None:
     headers = advance_fabric_headers(
         correlation_id="corr-1",
@@ -25,6 +26,7 @@ def test_initial_headers_when_none() -> None:
     assert headers.federation_path == ("cluster-a",)
     assert headers.hop_budget == 7
     assert headers.metadata == {"k": "v"}
+
 
 def test_appends_paths_and_preserves_budget() -> None:
     existing = MessageHeaders(
@@ -52,6 +54,7 @@ def test_appends_paths_and_preserves_budget() -> None:
     assert next_h.target_cluster == "cluster-c"
     assert next_h.metadata.get("trace") == "1"
 
+
 def test_reenter_as_current_tail_is_route_loop() -> None:
     """Fail-closed: local node already on path (even as tail) is a loop.
 
@@ -74,6 +77,7 @@ def test_reenter_as_current_tail_is_route_loop() -> None:
         )
     assert ei.value.code == int(MpregErrorCode.ROUTE_LOOP)
 
+
 def test_route_loop_raises() -> None:
     existing = MessageHeaders(
         correlation_id="c",
@@ -91,6 +95,7 @@ def test_route_loop_raises() -> None:
     assert ei.value.code == int(MpregErrorCode.ROUTE_LOOP)
     assert ei.value.retryable is False
 
+
 def test_hop_budget_exceeded_raises() -> None:
     existing = MessageHeaders(
         correlation_id="c",
@@ -106,6 +111,7 @@ def test_hop_budget_exceeded_raises() -> None:
             max_hops=10,
         )
     assert ei.value.code == int(MpregErrorCode.HOP_BUDGET_EXCEEDED)
+
 
 def test_max_hops_tightens_existing_budget() -> None:
     existing = MessageHeaders(

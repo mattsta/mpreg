@@ -45,6 +45,7 @@ type TrackingId = (
     str  # ULID-based stable tracking identifier for end-to-end event tracing
 )
 
+
 class SystemType(Enum):
     """Types of MPREG systems being monitored."""
 
@@ -54,6 +55,7 @@ class SystemType(Enum):
     CACHE = "cache"
     FEDERATION = "federation"
     TRANSPORT = "transport"
+
 
 class EventType(Enum):
     """Types of monitoring events."""
@@ -67,6 +69,7 @@ class EventType(Enum):
     PERFORMANCE_ALERT = "performance_alert"
     CROSS_SYSTEM_CORRELATION = "cross_system_correlation"
 
+
 class HealthStatus(Enum):
     """System health status categories."""
 
@@ -74,6 +77,7 @@ class HealthStatus(Enum):
     DEGRADED = "degraded"
     CRITICAL = "critical"
     UNAVAILABLE = "unavailable"
+
 
 @dataclass(frozen=True, slots=True)
 class CrossSystemEvent:
@@ -90,6 +94,7 @@ class CrossSystemEvent:
     metadata: dict[str, Any] = field(default_factory=dict)
     error_message: str | None = None
 
+
 @dataclass(frozen=True, slots=True)
 class SystemPerformanceMetrics:
     """Performance metrics for individual system monitoring."""
@@ -104,6 +109,7 @@ class SystemPerformanceMetrics:
     active_connections: int
     total_operations_last_hour: EventCount
     last_updated: float
+
 
 @dataclass(frozen=True, slots=True)
 class CorrelationMetrics:
@@ -131,6 +137,7 @@ class CorrelationMetrics:
     end_to_end_latency_p95_ms: MonitoringLatencyMs
     total_cross_system_correlations: EventCount
     correlation_success_rate_percent: float
+
 
 @dataclass(frozen=True, slots=True)
 class UnifiedSystemMetrics:
@@ -167,6 +174,7 @@ class UnifiedSystemMetrics:
     collection_timestamp: float
     collection_duration_ms: MonitoringLatencyMs
 
+
 @dataclass(slots=True)
 class MonitoringConfig:
     """Configuration for unified system monitoring."""
@@ -195,6 +203,7 @@ class MonitoringConfig:
     enable_cache_monitoring: bool = True
     enable_cross_system_correlation: bool = True
 
+
 class MonitoringSystemProtocol(Protocol):
     """Protocol for system-specific monitoring interfaces."""
 
@@ -205,6 +214,7 @@ class MonitoringSystemProtocol(Protocol):
     async def get_health_status(self) -> tuple[HealthScore, HealthStatus]:
         """Get current health score and status."""
         ...
+
 
 @dataclass(slots=True)
 class UnifiedSystemMonitor:
@@ -971,6 +981,7 @@ class UnifiedSystemMonitor:
     def attach_transport_adapter(self, adapter: Any) -> None:
         """Attach an enhanced transport adapter for monitoring."""
         self.transport_adapter = adapter
+
 
 # Factory function for creating unified system monitors
 def create_unified_system_monitor(

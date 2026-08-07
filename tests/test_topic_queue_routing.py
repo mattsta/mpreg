@@ -49,6 +49,7 @@ from mpreg.core.topic_queue_routing import (
 )
 from mpreg.datastructures.message_structures import MessageId
 
+
 class TestTopicQueueRoutingDatastructures:
     """Test core datastructures for topic queue routing."""
 
@@ -128,6 +129,7 @@ class TestTopicQueueRoutingDatastructures:
         assert topic_msg.original_queue is None
         assert len(topic_msg.routed_queues) == 2
         assert topic_msg.message.id.id == "msg-123"
+
 
 class TestTopicQueueRouter:
     """Test the core topic queue routing functionality."""
@@ -296,6 +298,7 @@ class TestTopicQueueRouter:
         assert stats.active_queue_patterns >= 1
         assert isinstance(stats.average_routing_latency_ms, float)
 
+
 class TestTopicEnhancedMessageQueueManager:
     """Test the enhanced message queue manager with topic routing."""
 
@@ -456,6 +459,7 @@ class TestTopicEnhancedMessageQueueManager:
         assert stats.topic_patterns_registered == 2
         assert isinstance(stats.topic_routing_stats, TopicQueueRoutingStats)
 
+
 class TestTopicQueueRoutingPerformance:
     """Test performance characteristics of topic queue routing."""
 
@@ -527,6 +531,7 @@ class TestTopicQueueRoutingPerformance:
         # Cache should have been used
         assert stats_after_hit.cache_hits > stats_after_miss.cache_hits
 
+
 class TestTopicQueueRoutingFactoryFunctions:
     """Test factory functions for topic queue routing."""
 
@@ -558,6 +563,7 @@ class TestTopicQueueRoutingFactoryFunctions:
         assert router.config.routing_cache_ttl_ms == 60000.0
         assert router.config.default_routing_strategy == RoutingStrategy.LOAD_BALANCED
         assert router.config.enable_load_balancing is True
+
 
 class TestTopicQueueRoutingPropertyBased:
     """Property-based testing for topic queue routing correctness."""
@@ -670,6 +676,7 @@ class TestTopicQueueRoutingPropertyBased:
             await message_queue_manager.shutdown()
 
         await test_strategy()
+
 
 if __name__ == "__main__":
     # Run specific test classes for debugging

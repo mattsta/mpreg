@@ -18,6 +18,7 @@ from mpreg.core.model import RPCCommand
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 class TestDataPipelineWorkflows:
     """Real-world data processing pipeline examples."""
 
@@ -205,6 +206,7 @@ class TestDataPipelineWorkflows:
         assert report_data["processed_records"] == 4  # Excluding invalid row
         assert report_data["status"] == "completed"
         assert report_data["total_value"] == 526.5  # Sum of valid values
+
 
 class TestMLWorkflows:
     """Machine learning workflow examples."""
@@ -440,6 +442,7 @@ class TestMLWorkflows:
         assert "final_prediction" in explanation
         assert explanation["reliability"] in ["high", "medium", "low"]
 
+
 class TestBusinessWorkflows:
     """Business process automation examples."""
 
@@ -611,6 +614,7 @@ Status: Order confirmed and being prepared for shipment
         assert "Order Confirmation:" in confirmation_msg
         assert "Tracking Number:" in confirmation_msg
         assert "Order confirmed and being prepared for shipment" in confirmation_msg
+
 
 class TestMonitoringAndObservability:
     """Examples of monitoring and observability workflows."""

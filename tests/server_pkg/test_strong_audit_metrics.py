@@ -10,6 +10,7 @@ from mpreg.server_pkg.monitoring_metrics import (
     build_strong_metrics,
 )
 
+
 def test_build_strong_metrics_disabled() -> None:
     server = SimpleNamespace(
         settings=SimpleNamespace(
@@ -28,6 +29,7 @@ def test_build_strong_metrics_disabled() -> None:
     assert m["enabled_flag"] is False
     assert m["health"] == "disabled"
     assert m["counters"] == {}
+
 
 def test_build_strong_metrics_from_gcm_snapshot() -> None:
     cm = MagicMock()
@@ -81,7 +83,10 @@ def test_build_strong_metrics_from_gcm_snapshot() -> None:
     assert "abort_fail_peer_count" in m
     assert int(m.get("abort_fail_peer_count") or 0) == 0
     assert "residual_ops_hint" in m
-    assert m.get("residual_ops_hint") == "" or isinstance(m.get("residual_ops_hint"), str)
+    assert m.get("residual_ops_hint") == "" or isinstance(
+        m.get("residual_ops_hint"), str
+    )
+
 
 def test_build_strong_metrics_abort_fail_peer_count() -> None:
     """T98: residual candidates surface count + non-empty residual_ops_hint."""
@@ -141,6 +146,7 @@ def test_build_strong_metrics_abort_fail_peer_count() -> None:
     hint = m.get("residual_ops_hint") or ""
     assert "cache-strong-retry-abort" in hint
     assert "not auto-heal" in hint
+
 
 def test_build_shared_audit_metrics_disabled() -> None:
     server = SimpleNamespace(

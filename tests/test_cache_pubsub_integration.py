@@ -42,6 +42,7 @@ from mpreg.core.global_cache import (
 from mpreg.core.topic_exchange import TopicExchange
 from mpreg.server import MPREGServer
 
+
 class TestCacheEvent:
     """Test CacheEvent data structure."""
 
@@ -67,6 +68,7 @@ class TestCacheEvent:
         assert event.event_id is not None
         assert event.timestamp > 0
 
+
 class TestCacheNotificationConfig:
     """Test CacheNotificationConfig."""
 
@@ -83,6 +85,7 @@ class TestCacheNotificationConfig:
         assert config.include_performance_metrics is False
         assert config.async_notification is True
         assert config.max_notification_delay_ms == 100
+
 
 class TestCachePubSubIntegrationWithLiveServer:
     """Test cache-pubsub integration with live MPREG server."""
@@ -493,6 +496,7 @@ class TestCachePubSubIntegrationWithLiveServer:
         await cache_manager.shutdown()
         await cache_manager.shutdown()
 
+
 class TestCachePubSubIntegrationEdgeCases:
     """Test edge cases and error conditions."""
 
@@ -594,6 +598,7 @@ class TestCachePubSubIntegrationEdgeCases:
         # Test non-existent field
         assert integration._get_field_value(event, "nonexistent.field") is None
 
+
 # Performance test with real servers
 class TestCachePubSubPerformance:
     """Performance tests with live servers."""
@@ -682,6 +687,7 @@ class TestCachePubSubPerformance:
         print(f"Throughput: {100 / elapsed:.1f} ops/sec")
 
         await integration.shutdown()
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

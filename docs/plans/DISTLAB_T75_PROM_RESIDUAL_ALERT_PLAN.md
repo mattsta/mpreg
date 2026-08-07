@@ -1,13 +1,13 @@
 # DistLab T75 — Prometheus residual-candidate info alert (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T73 |
-| **Scope** | MPREGStrongAbortFailPeersPresent info alert (lab_process_local) |
-| **Point budget** | **~8 pts** |
-| **Entry points only** | slo helper + packaged prometheus_alerts.yml |
+| Field                 | Value                                                           |
+| --------------------- | --------------------------------------------------------------- |
+| **Status**            | **Complete**                                                    |
+| **Date**              | 2026-08-06                                                      |
+| **Authority**         | Continuation after T73                                          |
+| **Scope**             | MPREGStrongAbortFailPeersPresent info alert (lab_process_local) |
+| **Point budget**      | **~8 pts**                                                      |
+| **Entry points only** | slo helper + packaged prometheus_alerts.yml                     |
 
 ## Goals
 

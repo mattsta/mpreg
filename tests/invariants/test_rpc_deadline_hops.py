@@ -13,8 +13,10 @@ from mpreg.core.rpc_deadline import (
 from mpreg.fabric.message import MessageHeaders
 from mpreg.server_pkg.rpc_handlers import RpcPlane
 
+
 def _headers() -> MessageHeaders:
     return MessageHeaders(correlation_id="corr-1")
+
 
 def test_stamp_and_decrement() -> None:
     h = headers_with_deadline_seconds(_headers(), 1.0)
@@ -25,11 +27,13 @@ def test_stamp_and_decrement() -> None:
     assert h3.deadline_remaining_ms == pytest.approx(0.0)
     assert h3.deadline_exhausted()
 
+
 def test_budget_raise_if_exhausted() -> None:
     budget = DeadlineBudget(remaining_ms=0.0, started_mono=0.0)
     with pytest.raises(MpregError) as ei:
         budget.raise_if_exhausted()
     assert ei.value.code == int(MpregErrorCode.TIMEOUT)
+
 
 def test_rpc_plane_timeout_response() -> None:
     h = headers_with_deadline_seconds(_headers(), 0.0)
@@ -37,6 +41,7 @@ def test_rpc_plane_timeout_response() -> None:
     assert resp is not None
     assert resp.error is not None
     assert resp.error.code == int(MpregErrorCode.TIMEOUT)
+
 
 def test_apply_to_headers_preserves_correlation() -> None:
     h = headers_with_deadline_seconds(_headers(), 2.0)

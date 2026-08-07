@@ -7,6 +7,7 @@ import asyncio
 from mpreg.core.namespace_policy import NamespacePolicyEngine, NamespacePolicyRule
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run(
         "ns_engine_direct",
@@ -104,6 +105,7 @@ async def main() -> None:
 
         await asyncio.sleep(0)
         ok("ns_engine_direct complete")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

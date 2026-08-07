@@ -16,6 +16,7 @@ from mpreg.core.topic_dependency_resolver import (
 from mpreg.core.topic_taxonomy import TopicTemplateEngine
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run(
         "topic_dependency_lab",
@@ -165,6 +166,7 @@ async def main() -> None:
             ensure(g.get_ready_commands() == set(), "empty ready")
             await resolver.cleanup_request_dependencies("req-empty")
             ok("empty graph 100% progress")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -11,6 +11,7 @@ from tests.port_allocator import get_port_allocator
 
 from tests.conftest import AsyncTestContext
 
+
 @pytest_asyncio.fixture
 async def my_test_context() -> AsyncGenerator[AsyncTestContext]:
     """Copy of the test_context fixture."""
@@ -19,6 +20,7 @@ async def my_test_context() -> AsyncGenerator[AsyncTestContext]:
         print("   ✅ AsyncTestContext ready")
         yield ctx
     print("   🧹 AsyncTestContext cleaned up")
+
 
 @pytest.fixture
 def my_large_ports():
@@ -33,6 +35,7 @@ def my_large_ports():
     for port in ports:
         allocator.release_port(port)
     print("   ✅ Ports released")
+
 
 class TestAsyncPortInteraction:
     """Test interaction between async context and port allocation."""
@@ -54,6 +57,7 @@ class TestAsyncPortInteraction:
         print(f"🎯 Got context with {len(my_test_context.servers)} servers")
         print(f"🎯 Got {len(my_large_ports)} ports")
         print("✅ Both fixtures test passed")
+
 
 if __name__ == "__main__":
     import subprocess

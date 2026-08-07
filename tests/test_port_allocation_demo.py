@@ -17,6 +17,7 @@ from mpreg.server import MPREGServer
 
 from .test_helpers import TestPortManager, server_cluster_urls, test_server_url
 
+
 @pytest.mark.unit
 def test_port_allocator_basic(port_allocator):
     """Test basic port allocation functionality."""
@@ -40,6 +41,7 @@ def test_port_allocator_basic(port_allocator):
     assert port1 in info["allocated_ports"]
     assert port2 in info["allocated_ports"]
 
+
 @pytest.mark.unit
 def test_port_allocator_skips_in_use(port_allocator):
     """Ensure allocator does not hand out ports already in use."""
@@ -54,6 +56,7 @@ def test_port_allocator_skips_in_use(port_allocator):
         sock.close()
         if "allocated" in locals():
             port_allocator.release_port(allocated)
+
 
 @pytest.mark.unit
 def test_port_callback_invoked_on_auto_assignment():
@@ -78,6 +81,7 @@ def test_port_callback_invoked_on_auto_assignment():
 
             release_port(server._auto_allocated_port)
             server._auto_allocated_port = None
+
 
 @pytest.mark.unit
 def test_port_range_validation(port_allocator):
@@ -112,6 +116,7 @@ def test_port_range_validation(port_allocator):
         # Range should be reasonable (above privileged ports)
         assert start >= 10000, f"Port range in privileged range in {category}: {start}"
 
+
 @pytest.mark.unit
 def test_worker_id_detection(port_allocator):
     """Test worker ID detection and offset calculation."""
@@ -131,6 +136,7 @@ def test_worker_id_detection(port_allocator):
     if worker_id != "master":
         assert worker_offset % 200 == 0, f"Worker offset not aligned: {worker_offset}"
 
+
 @pytest.mark.unit
 def test_bulk_port_allocation(port_allocator):
     """Test efficient bulk port allocation."""
@@ -149,6 +155,7 @@ def test_bulk_port_allocation(port_allocator):
     # Clean up
     for port in bulk_ports:
         port_allocator.release_port(port)
+
 
 @pytest.mark.unit
 def test_category_isolation(port_allocator):
@@ -186,12 +193,14 @@ def test_category_isolation(port_allocator):
         for port in allocated_ports.values():
             port_allocator.release_port(port)
 
+
 @pytest.mark.unit
 def test_port_context_manager(test_port):
     """Test port allocation with context manager fixture."""
     # test_port is automatically allocated and cleaned up
     assert isinstance(test_port, int)
     assert test_port > 0
+
 
 @pytest.mark.unit
 def test_multiple_ports(port_pair, server_cluster_ports):
@@ -203,6 +212,7 @@ def test_multiple_ports(port_pair, server_cluster_ports):
     all_ports = port_pair + server_cluster_ports
     assert len(set(all_ports)) == len(all_ports)
 
+
 @pytest.mark.unit
 def test_url_helpers():
     """Test URL generation helpers."""
@@ -210,6 +220,7 @@ def test_url_helpers():
         assert server_url.startswith("ws://127.0.0.1:")
         port = int(server_url.split(":")[-1])
         assert 10000 <= port <= 15000
+
 
 @pytest.mark.unit
 def test_port_manager():
@@ -236,6 +247,7 @@ def test_port_manager():
         # All should be unique
         ports = [int(url.split(":")[-1]) for url in cluster_urls]
         assert len(set(ports)) == 3
+
 
 @pytest.mark.integration
 @pytest.mark.slow
@@ -290,6 +302,7 @@ async def test_concurrent_servers(test_context):
         except Exception as e:
             pytest.fail(f"Error in concurrent server test: {e}")
 
+
 @pytest.mark.integration
 async def test_server_cluster_startup(test_context):
     """Test that multiple servers can start with allocated ports."""
@@ -337,6 +350,7 @@ async def test_server_cluster_startup(test_context):
         async with MPREGClientAPI(f"ws://127.0.0.1:{port2}") as client2:
             result2 = await client2.call("mpreg.system.echo", "hello2")
             assert result2 == "hello2"
+
 
 @pytest.mark.unit
 def test_url_context_managers():

@@ -1,13 +1,13 @@
 # DistLab T74 — Hypothesis doctor residual hint (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T51/T63 |
-| **Scope** | Property tests: peers⇒hint; empty⇒no template; dishonest caps fail closed |
-| **Point budget** | **~10 pts** |
-| **Entry points only** | `uv run pytest tests/test_cli_strong_audit_monitor.py` |
+| Field                 | Value                                                                     |
+| --------------------- | ------------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                              |
+| **Date**              | 2026-08-06                                                                |
+| **Authority**         | Continuation after T51/T63                                                |
+| **Scope**             | Property tests: peers⇒hint; empty⇒no template; dishonest caps fail closed |
+| **Point budget**      | **~10 pts**                                                               |
+| **Entry points only** | `uv run pytest tests/test_cli_strong_audit_monitor.py`                    |
 
 ## Goals
 

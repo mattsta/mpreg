@@ -3,11 +3,11 @@
 ## How to get help
 
 1. **Docs first:** `docs/GETTING_STARTED.md`, `docs/PRODUCTION_DEPLOYMENT.md`,
- `docs/MPREG_CLIENT_GUIDE.md`, `docs/ops/RELEASE_CHECKLIST.md`.
+   `docs/MPREG_CLIENT_GUIDE.md`, `docs/ops/RELEASE_CHECKLIST.md`.
 2. **Config gate:** `uv run mpreg config-check <profile> --strict --format json`.
 3. **Health:** `uv run mpreg doctor --url $MPREG_MONITORING_URL`.
 4. **Claims / non-claims:** `tests/invariants/claims.yaml` and honesty banners in
- README / PRODUCTION docs.
+   README / PRODUCTION docs.
 
 ## Security issues
 
@@ -21,13 +21,13 @@ Do **not** file public issues for vulnerabilities. See **`SECURITY.md`**.
 
 ## What this is not
 
-| Not offered | Notes |
-| --- | --- |
-| Commercial SLA / 24×7 on-call | Community / maintainer best-effort |
-| BFT or WAN linearizability guarantees | See `non_claims` |
+| Not offered                                     | Notes                                |
+| ----------------------------------------------- | ------------------------------------ |
+| Commercial SLA / 24×7 on-call                   | Community / maintainer best-effort   |
+| BFT or WAN linearizability guarantees           | See `non_claims`                     |
 | Guaranteed residual-free cache after lost ABORT | CFT best-effort; doctor/monitor only |
-| Full pen-test certification | CI + SECURITY.md guidance only |
-| OAuth2/OIDC product support | Roadmap — not shipped in 0.3.x |
+| Full pen-test certification                     | CI + SECURITY.md guidance only       |
+| OAuth2/OIDC product support                     | Roadmap — not shipped in 0.3.x       |
 
 ## Reporting bugs
 

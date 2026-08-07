@@ -1,13 +1,13 @@
 # DistLab T54 — Hypothesis GCM.strong_retry_abort (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T52/T53 |
-| **Scope** | Property test GCM library surface clears residual + counters |
-| **Point budget** | **~12 pts** |
-| **Entry points only** | `uv run pytest …` |
+| Field                 | Value                                                        |
+| --------------------- | ------------------------------------------------------------ |
+| **Status**            | **Complete**                                                 |
+| **Date**              | 2026-08-06                                                   |
+| **Authority**         | Continuation after T52/T53                                   |
+| **Scope**             | Property test GCM library surface clears residual + counters |
+| **Point budget**      | **~12 pts**                                                  |
+| **Entry points only** | `uv run pytest …`                                            |
 
 ## Goals
 

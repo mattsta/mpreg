@@ -24,6 +24,7 @@ from mpreg.datastructures.cache_structures import (
     cache_statistics_strategy,
 )
 
+
 class TestCacheNamespace:
     """Test CacheNamespace datastructure."""
 
@@ -57,6 +58,7 @@ class TestCacheNamespace:
 
         with pytest.raises(ValueError, match="must be alphanumeric"):
             CacheNamespace(name="invalid@namespace")
+
 
 class TestCacheKey:
     """Test CacheKey datastructure."""
@@ -160,6 +162,7 @@ class TestCacheKey:
         else:
             assert key1 != key2
 
+
 class TestCacheMetadata:
     """Test CacheMetadata datastructure."""
 
@@ -234,6 +237,7 @@ class TestCacheMetadata:
         assert updated.tags == original.tags
         assert updated.source == original.source
 
+
 class TestCacheEntry:
     """Test CacheEntry datastructure."""
 
@@ -283,6 +287,7 @@ class TestCacheEntry:
         metadata2 = CacheMetadata(expiry_time=time.time() - 3600)
         entry2 = CacheEntry(key=key, value="value", metadata=metadata2)
         assert entry2.is_expired()
+
 
 class TestCacheStatistics:
     """Test CacheStatistics datastructure."""
@@ -381,6 +386,7 @@ class TestCacheStatistics:
         assert add_updated.hits == original.hits  # Other fields unchanged
         assert add_updated.misses == original.misses
 
+
 class TestCacheStructuresProperties:
     """Test mathematical properties of cache datastructures."""
 
@@ -475,6 +481,7 @@ class TestCacheStructuresProperties:
         assert evict_updated.hits == stats.hits
         assert evict_updated.misses == stats.misses
         assert evict_updated.evictions == stats.evictions + 1
+
 
 class TestCacheStructuresExamples:
     """Test specific examples and edge cases."""

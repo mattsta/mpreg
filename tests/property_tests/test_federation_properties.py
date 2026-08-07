@@ -27,6 +27,7 @@ from mpreg.fabric.monitoring_endpoints import (
     FederationTopologySnapshot,
 )
 
+
 # Custom strategies for federation testing
 @st.composite
 def cluster_ids(draw) -> ClusterId:
@@ -35,10 +36,12 @@ def cluster_ids(draw) -> ClusterId:
     suffix = draw(st.integers(min_value=1, max_value=999))
     return f"{prefix}-cluster-{suffix}"
 
+
 @st.composite
 def federation_modes(draw) -> FederationMode:
     """Generate federation modes."""
     return draw(st.sampled_from(list(FederationMode)))
+
 
 @st.composite
 def node_ids(draw) -> NodeId:
@@ -47,12 +50,14 @@ def node_ids(draw) -> NodeId:
     node_num = draw(st.integers(min_value=1, max_value=100))
     return f"{cluster}-node-{node_num}"
 
+
 @st.composite
 def federation_configs(draw) -> FederationConfig:
     """Generate valid federation configurations."""
     return FederationConfig(
         federation_mode=draw(federation_modes()), local_cluster_id=draw(cluster_ids())
     )
+
 
 @st.composite
 def federation_health_summaries(draw) -> FederationHealthSummary:
@@ -84,6 +89,7 @@ def federation_health_summaries(draw) -> FederationHealthSummary:
         connection_success_rate_percent=draw(st.floats(min_value=0.0, max_value=100.0)),
     )
 
+
 @st.composite
 def federation_graph_nodes(draw) -> list[FederationGraphNode]:
     """Generate list of federation graph nodes."""
@@ -105,6 +111,7 @@ def federation_graph_nodes(draw) -> list[FederationGraphNode]:
         nodes.append(node)
 
     return nodes
+
 
 class TestFederationConfigurationProperties:
     """Property-based tests for federation configuration."""
@@ -172,6 +179,7 @@ class TestFederationConfigurationProperties:
 
         test_mode_consistency()
         print("✅ Federation mode consistency properties verified")
+
 
 class TestFederationHealthProperties:
     """Property-based tests for federation health monitoring."""
@@ -305,6 +313,7 @@ class TestFederationHealthProperties:
         test_performance_invariants()
         print("✅ Federation performance properties verified")
 
+
 class TestFederationGraphProperties:
     """Property-based tests for federation graph structures."""
 
@@ -433,6 +442,7 @@ class TestFederationGraphProperties:
         test_topology_invariants()
         print("✅ Federation topology snapshot properties verified")
 
+
 class TestFederationMonitoringProperties:
     """Property-based tests for federation monitoring system."""
 
@@ -508,6 +518,7 @@ class TestFederationMonitoringProperties:
 
         test_metrics_collection_invariants()
         print("✅ Federation metrics collection properties verified")
+
 
 class TestFederationCommunicationProperties:
     """Property-based tests for federation communication patterns."""

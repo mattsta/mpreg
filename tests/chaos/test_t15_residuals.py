@@ -13,6 +13,7 @@ from mpreg.datastructures.federated_types import FederatedRPCAnnouncement
 from mpreg.fabric.monitoring_endpoints import FederationMonitoringSystem
 from mpreg.server_pkg.drain_admission import should_refuse_for_drain
 
+
 def test_obs_t15_01_ready_uses_server_metrics_tracker() -> None:
     """OBS-T15-01: /ready path must resolve server_metrics_tracker field."""
     tracker = ServerMetricsTracker()
@@ -35,6 +36,7 @@ def test_obs_t15_01_ready_uses_server_metrics_tracker() -> None:
         resolved.set_ready(False)
     assert tracker.node_ready == 0
 
+
 def test_obs_t15_01_prom_drain_clears_ready_without_ready_hit() -> None:
     tracker = ServerMetricsTracker()
     tracker.set_ready(True)
@@ -56,6 +58,7 @@ def test_obs_t15_01_prom_drain_clears_ready_without_ready_hit() -> None:
     tr.set_draining(draining)
     assert tracker.node_draining == 1
     assert tracker.node_ready == 0
+
 
 def test_cor_t15_01_track_inbound_peer_returns_bool() -> None:
     """COR-T15-01: refuse path returns False (callers close connection)."""
@@ -108,9 +111,11 @@ def test_cor_t15_01_track_inbound_peer_returns_bool() -> None:
     assert ok2 is True
     assert "ws://p1" in s._inbound_peer_connections
 
+
 def test_cor_t15_02_should_process_doc_marks_api_only() -> None:
     doc = FederatedRPCAnnouncement.should_process.__doc__ or ""
     assert "API-only" in doc or "catalog gossip" in doc
+
 
 def test_erg_t15_01_dev_and_discovery_mon_loopback() -> None:
     for path in (
@@ -119,6 +124,7 @@ def test_erg_t15_01_dev_and_discovery_mon_loopback() -> None:
     ):
         s = MPREGSettings.from_path(path)
         assert s.monitoring_host in ("127.0.0.1", "localhost"), path
+
 
 def test_erg_t15_01_config_check_warns_public_mon() -> None:
     import tempfile
@@ -145,11 +151,13 @@ enable_default_queue = true
             "non-loopback" in result.output or "monitoring_auth_token" in result.output
         )
 
+
 def test_erg_t15_01_profile_list_includes_discovery_resolver() -> None:
     runner = CliRunner()
     result = runner.invoke(cli, ["profile", "list"])
     assert result.exit_code == 0
     assert "discovery-resolver" in result.output
+
 
 def test_t15_drain_still_deny_unknown() -> None:
     assert should_refuse_for_drain(draining=True, role="brand-new") is True

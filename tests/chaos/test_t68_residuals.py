@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t68_ledger_t66_t71() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -14,6 +15,7 @@ def test_t68_ledger_t66_t71() -> None:
     text = path.read_text(encoding="utf-8")
     for t in ("T66", "T67", "T68", "T69", "T70", "T71"):
         assert t in text, t
+
 
 def test_t68_live_doctor_e2e_still_present() -> None:
     path = (
@@ -28,6 +30,7 @@ def test_t68_live_doctor_e2e_still_present() -> None:
     assert "evaluate_strong_doctor_payload" in text
     assert "residual_ops_hint" in text
 
+
 def test_t68_phase_56_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -36,6 +39,7 @@ def test_t68_phase_56_honesty() -> None:
     )
     text = path.read_text(encoding="utf-8")
     assert "Phase 56" in text
+
 
 def test_t68_plan() -> None:
     root = Path(__file__).resolve().parents[2]

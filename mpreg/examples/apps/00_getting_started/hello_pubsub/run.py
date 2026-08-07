@@ -9,6 +9,7 @@ from mpreg.core.model import PubSubMessage, PubSubSubscription, TopicPattern
 from mpreg.core.topic_exchange import TopicExchange
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 def _pub(
     exchange: TopicExchange,
     topic: str,
@@ -28,6 +29,7 @@ def _pub(
             )
         )
     )
+
 
 async def main() -> None:
     with app_run("hello_pubsub", "Hello PubSub — wildcards + fan-out", level="L0"):
@@ -98,6 +100,7 @@ async def main() -> None:
             )
             ensure(len(hits) >= 1, "logout should match auth")
             ok("publish with headers accepted")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

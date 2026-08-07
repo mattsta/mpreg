@@ -7,6 +7,7 @@ from typing import Any, Self
 
 from loguru import logger
 
+
 @dataclass(slots=True)
 class Timer:
     """Helper context manager to automatically print elapsed wall clock time.

@@ -8,6 +8,7 @@ from pathlib import Path
 
 type Seconds = float
 
+
 @dataclass(frozen=True, slots=True)
 class Snapshot:
     elapsed_seconds: Seconds
@@ -29,6 +30,7 @@ class Snapshot:
     min_pending_catalog_messages: int
     avg_pending_catalog_messages: float
     max_pending_catalog_messages: int
+
 
 def _snapshot_from_payload(payload: dict[str, object]) -> Snapshot:
     return Snapshot(
@@ -59,6 +61,7 @@ def _snapshot_from_payload(payload: dict[str, object]) -> Snapshot:
         max_pending_catalog_messages=int(payload["max_pending_catalog_messages"]),
     )
 
+
 def _nearest_before_timeout(
     snapshots: list[Snapshot], timeout_seconds: Seconds
 ) -> Snapshot | None:
@@ -70,6 +73,7 @@ def _nearest_before_timeout(
     if not eligible:
         return None
     return eligible[-1]
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -173,6 +177,7 @@ def main() -> int:
                 f"missing_count={missing_count}"
             )
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

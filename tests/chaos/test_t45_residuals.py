@@ -30,6 +30,7 @@ _BANNED_PHRASES = (
     "auto-heal residual",
 )
 
+
 def test_t45_product_docs_no_unqualified_residual_free() -> None:
     root = Path(__file__).resolve().parents[2]
     hits: list[str] = []
@@ -48,6 +49,7 @@ def test_t45_product_docs_no_unqualified_residual_free() -> None:
                 hits.append(f"{rel}: {phrase!r}")
     assert not hits, "unqualified residual-free/auto-heal phrases:\n" + "\n".join(hits)
 
+
 def test_t45_product_docs_qualify_cft_or_ops_retry() -> None:
     root = Path(__file__).resolve().parents[2]
     guide = (root / "docs" / "MPREG_CLIENT_GUIDE.md").read_text(encoding="utf-8")
@@ -57,16 +59,11 @@ def test_t45_product_docs_qualify_cft_or_ops_retry() -> None:
     assert "not residual-free" in caching.lower() or "cft" in caching.lower()
     assert "cache-strong-retry-abort" in caching or "strong_retry_abort" in caching
 
+
 def test_t45_ops_cli_curriculum_mentions_retry_abort() -> None:
     root = Path(__file__).resolve().parents[2]
     run_py = (
-        root
-        / "mpreg"
-        / "examples"
-        / "apps"
-        / "02_moderate"
-        / "ops_cli_tour"
-        / "run.py"
+        root / "mpreg" / "examples" / "apps" / "02_moderate" / "ops_cli_tour" / "run.py"
     ).read_text(encoding="utf-8")
     assert "cache-strong-retry-abort" in run_py
     readme = (
@@ -80,6 +77,7 @@ def test_t45_ops_cli_curriculum_mentions_retry_abort() -> None:
     ).read_text(encoding="utf-8")
     assert "cache-strong-retry-abort" in readme
 
+
 def test_t45_phase_33_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -90,12 +88,8 @@ def test_t45_phase_33_honesty() -> None:
     assert "Phase 33" in text
     assert "T45" in text or "honesty scan" in text.lower()
 
+
 def test_t45_claims_scanner_non_claim() -> None:
-    path = (
-        Path(__file__).resolve().parents[2]
-        / "tests"
-        / "invariants"
-        / "claims.yaml"
-    )
+    path = Path(__file__).resolve().parents[2] / "tests" / "invariants" / "claims.yaml"
     text = path.read_text(encoding="utf-8")
     assert "honesty scan" in text.lower() or "product-doc residual" in text.lower()

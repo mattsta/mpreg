@@ -12,6 +12,7 @@ from mpreg.consensus import (
 from mpreg.datastructures.raft_storage_adapters import RaftStorageFactory
 from tests.test_production_raft_integration import TestableStateMachine
 
+
 class _NullTransport:
     async def send_request_vote(self, target, request):  # type: ignore[no-untyped-def]
         return None
@@ -21,6 +22,7 @@ class _NullTransport:
 
     async def send_install_snapshot(self, target, request):  # type: ignore[no-untyped-def]
         return None
+
 
 @pytest.mark.asyncio
 async def test_submit_configuration_change_raises() -> None:

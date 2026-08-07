@@ -1,6 +1,7 @@
 from mpreg.fabric.route_keys import RouteKeyRegistry
 from mpreg.fabric.route_security import RouteAnnouncementSigner
 
+
 def test_route_key_registry_rotation_overlap() -> None:
     registry = RouteKeyRegistry()
     signer_old = RouteAnnouncementSigner.create()

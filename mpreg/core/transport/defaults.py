@@ -37,11 +37,13 @@ DEFAULT_ACCEPT_QUEUE_MAXSIZE = 1024
 # Connection type enumeration for clarity
 from enum import Enum
 
+
 class ConnectionType(Enum):
     """Type of connection for configuration purposes."""
 
     CLIENT = "client"  # User-facing client connections
     INTERNAL = "internal"  # Node-to-node gossip and control plane
+
 
 @dataclass(frozen=True, slots=True)
 class TransportDefaults:
@@ -103,6 +105,7 @@ class TransportDefaults:
             "max_stream_size": self.max_stream_size,
             "chunk_size": self.chunk_size,
         }
+
 
 # Pre-configured defaults for common use cases
 CLIENT_DEFAULTS = TransportDefaults.for_client_connections()

@@ -34,6 +34,7 @@ from mpreg.fabric.consensus import (
 )
 from mpreg.fabric.gossip import GossipProtocol
 
+
 @pytest.fixture
 def sample_vector_clock():
     """Create a sample vector clock for testing."""
@@ -41,6 +42,7 @@ def sample_vector_clock():
     clock = clock.increment("node_1")
     clock = clock.increment("node_2")
     return clock
+
 
 @pytest.fixture
 def sample_state_value(sample_vector_clock):
@@ -54,15 +56,18 @@ def sample_state_value(sample_vector_clock):
         state_type=StateType.SIMPLE_VALUE,
     )
 
+
 @pytest.fixture
 def sample_conflict_resolver():
     """Create a sample conflict resolver for testing."""
     return ConflictResolver()
 
+
 @pytest.fixture
 def sample_gossip_protocol():
     """Create a mock gossip protocol for testing."""
     return Mock(spec=GossipProtocol)
+
 
 @pytest.fixture
 def sample_consensus_manager(sample_gossip_protocol):
@@ -73,6 +78,7 @@ def sample_consensus_manager(sample_gossip_protocol):
         default_consensus_threshold=0.5,
         proposal_timeout=5.0,  # Short timeout for testing
     )
+
 
 class TestStateValue:
     """Test suite for state value implementation."""
@@ -160,6 +166,7 @@ class TestStateValue:
         # For immutable VectorClock, copy() returns the same object
         assert copied.vector_clock is original.vector_clock
 
+
 class TestStateConflict:
     """Test suite for state conflict representation."""
 
@@ -209,6 +216,7 @@ class TestStateConflict:
         assert "node_1" in summary.value_sources
         assert "node_2" in summary.value_sources
         assert not summary.resolved
+
 
 class TestConflictResolver:
     """Test suite for conflict resolver implementation."""
@@ -549,6 +557,7 @@ class TestConflictResolver:
         assert stats.resolution_counts["total_resolutions"] >= 1
         assert stats.resolution_counts["last_write_wins"] >= 1
 
+
 class TestConsensusProposal:
     """Test suite for consensus proposal implementation."""
 
@@ -642,6 +651,7 @@ class TestConsensusProposal:
         assert summary.votes == "1/1"
         assert summary.required_votes == 2
         assert not summary.has_consensus
+
 
 class TestConsensusManager:
     """Test suite for consensus manager implementation."""
@@ -862,6 +872,7 @@ class TestConsensusManager:
 
         assert stats.consensus_stats["test_stat"] == 42
 
+
 class TestEndToEndDistributedState:
     """Test suite for end-to-end distributed state scenarios."""
 
@@ -1064,6 +1075,7 @@ class TestEndToEndDistributedState:
         stats = resolver.get_resolution_statistics()
         assert stats.resolution_counts["total_resolutions"] == 100
         assert stats.avg_resolution_time_ms < 10  # Should be very fast per resolution
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

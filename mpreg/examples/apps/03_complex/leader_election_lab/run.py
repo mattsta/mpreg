@@ -11,6 +11,7 @@ from mpreg.datastructures.leader_election import (
 )
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 def _m(
     cid: str,
     *,
@@ -28,6 +29,7 @@ def _m(
         active_connections=conns,
         network_latency_ms=lat,
     )
+
 
 async def main() -> None:
     with app_run(
@@ -121,6 +123,7 @@ async def main() -> None:
             ensure(b == "m2", f"ns-b {b}")
             ensure(await elec.get_current_leader("ns-a") == "m1", "ns-a sticky")
             ok(f"ns-a={a} ns-b={b}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

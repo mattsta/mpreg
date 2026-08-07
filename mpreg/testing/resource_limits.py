@@ -10,6 +10,7 @@ from __future__ import annotations
 import resource
 from dataclasses import dataclass
 
+
 @dataclass(frozen=True, slots=True)
 class NoFileLimit:
     """Snapshot of the process open-file soft/hard limits."""
@@ -21,6 +22,7 @@ class NoFileLimit:
     def current(cls) -> NoFileLimit:
         soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
         return cls(soft=soft, hard=hard)
+
 
 def raise_open_file_limit(target: int = 1_048_576) -> NoFileLimit:
     """Raise soft RLIMIT_NOFILE toward ``target`` (capped by hard limit).

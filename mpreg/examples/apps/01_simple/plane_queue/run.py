@@ -9,6 +9,7 @@ from mpreg.core.message_queue import DeliveryGuarantee
 from mpreg.core.message_queue_manager import create_reliable_queue_manager
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run("plane_queue", "Plane Queue — delivery guarantee tour", level="L1"):
         manager = create_reliable_queue_manager()
@@ -102,6 +103,7 @@ async def main() -> None:
             ok("plane_queue tour complete")
         finally:
             await manager.shutdown()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

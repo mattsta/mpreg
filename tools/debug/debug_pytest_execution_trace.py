@@ -27,6 +27,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class AutoDiscoveryTestResult:
     """Results from an auto-discovery test."""
@@ -38,6 +39,7 @@ class AutoDiscoveryTestResult:
     success: bool = False
     failure_reason: str = ""
     details: list[str] = field(default_factory=list)
+
 
 class AutoDiscoveryTestHelpers:
     """Shared helper methods for auto-discovery testing with detailed logging."""
@@ -332,6 +334,7 @@ class AutoDiscoveryTestHelpers:
             log_level="ERROR",  # CRITICAL: Prevent resource exhaustion from massive logging
         )
 
+
 @pytest.fixture
 def debug_large_cluster_ports():
     """Debug version of large_cluster_ports with detailed logging."""
@@ -361,6 +364,7 @@ def debug_large_cluster_ports():
         f"FIXTURE STEP 8: Cleanup completed in {time.time() - cleanup_start:.2f}s"
     )
 
+
 class TestDebugLargeCluster(AutoDiscoveryTestHelpers):
     """Debug version of large cluster test with detailed logging."""
 
@@ -383,6 +387,7 @@ class TestDebugLargeCluster(AutoDiscoveryTestHelpers):
         )
         assert result.success, f"30-node multi-hub failed: {result.failure_reason}"
         logger.info("TEST STEP 4: test_30_node_debug completed successfully")
+
 
 if __name__ == "__main__":
     import subprocess

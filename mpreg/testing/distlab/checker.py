@@ -18,12 +18,14 @@ from mpreg.testing.distlab.models import (
     OpStatus,
 )
 
+
 class Checker(Protocol):
     """Self-describing checker protocol."""
 
     name: str
 
     def check(self, history: History, *, state: Any = None) -> CheckResult: ...
+
 
 @dataclass(slots=True)
 class CompositeChecker:
@@ -45,6 +47,7 @@ class CompositeChecker:
             for k, v in r.stats.items():
                 stats[f"{c.name}.{k}"] = v
         return CheckResult(name=self.name, ok=ok, violations=violations, stats=stats)
+
 
 @dataclass(slots=True)
 class ResidualFreeChecker:
@@ -103,6 +106,7 @@ class ResidualFreeChecker:
             stats={"failed_puts": len(failed), "pending": pending},
         )
 
+
 @dataclass(slots=True)
 class ReplicaAgreementChecker:
     """Non-null replica views agree on (value, op_id).
@@ -117,9 +121,7 @@ class ReplicaAgreementChecker:
     def check(self, history: History, *, state: Any = None) -> CheckResult:
         violations: list[CheckViolation] = []
         if state is None or not hasattr(state, "replica_views"):
-            return CheckResult(
-                name=self.name, ok=True, stats={"skipped": "no_state"}
-            )
+            return CheckResult(name=self.name, ok=True, stats={"skipped": "no_state"})
         keys = sorted({e.key for e in history.snapshot() if e.key})
         for key in keys:
             views = state.replica_views(key)  # dict[node -> (value, op_id)|None]
@@ -135,9 +137,7 @@ class ReplicaAgreementChecker:
                                 checker=self.name,
                                 message=f"replicas diverged on key {key}",
                                 evidence={
-                                    "views": {
-                                        k: _safe(v) for k, v in views.items()
-                                    }
+                                    "views": {k: _safe(v) for k, v in views.items()}
                                 },
                             )
                         )
@@ -152,9 +152,7 @@ class ReplicaAgreementChecker:
                                 checker=self.name,
                                 message=f"non-null replicas diverged on key {key}",
                                 evidence={
-                                    "views": {
-                                        k: _safe(v) for k, v in views.items()
-                                    }
+                                    "views": {k: _safe(v) for k, v in views.items()}
                                 },
                             )
                         )
@@ -164,6 +162,7 @@ class ReplicaAgreementChecker:
             violations=violations,
             stats={"keys": len(keys)},
         )
+
 
 @dataclass(slots=True)
 class LWWRegisterChecker:
@@ -184,7 +183,9 @@ class LWWRegisterChecker:
         keys = (
             [self.key]
             if self.key
-            else sorted({e.key for e in history.snapshot() if e.key and e.kind is OpKind.PUT})
+            else sorted(
+                {e.key for e in history.snapshot() if e.key and e.kind is OpKind.PUT}
+            )
         )
         stats: dict[str, Any] = {"keys_checked": 0}
         for key in keys:
@@ -237,7 +238,11 @@ class LWWRegisterChecker:
                 )
             # Value match if we can find the ok event
             for e in ok_puts:
-                if e.op_id == final_op and e.value is not None and final_val is not None:
+                if (
+                    e.op_id == final_op
+                    and e.value is not None
+                    and final_val is not None
+                ):
                     if e.value != final_val:
                         violations.append(
                             CheckViolation(
@@ -255,6 +260,7 @@ class LWWRegisterChecker:
             violations=violations,
             stats=stats,
         )
+
 
 @dataclass(slots=True)
 class GSetConvergenceChecker:
@@ -314,9 +320,7 @@ class GSetConvergenceChecker:
                     CheckViolation(
                         checker=self.name,
                         message="nodes disagree on gset membership",
-                        evidence={
-                            n: sorted(ids)[:12] for n, ids in by_node.items()
-                        },
+                        evidence={n: sorted(ids)[:12] for n, ids in by_node.items()},
                     )
                 )
             if self.min_ids and sets and len(sets[0]) < self.min_ids:
@@ -332,6 +336,7 @@ class GSetConvergenceChecker:
             violations=violations,
             stats={"expected": len(expected), "nodes": len(by_node) if state else 0},
         )
+
 
 @dataclass(slots=True)
 class NoOpenInvokeChecker:
@@ -357,6 +362,7 @@ class NoOpenInvokeChecker:
             stats={"pairs": len(history.pairs())},
         )
 
+
 @dataclass(slots=True)
 class CallableChecker:
     """Wrap a plain function as a checker (plugin hook)."""
@@ -366,6 +372,7 @@ class CallableChecker:
 
     def check(self, history: History, *, state: Any = None) -> CheckResult:
         return self.fn(history, state)
+
 
 def default_strong_checkers(*, key: str | None = None) -> CompositeChecker:
     return CompositeChecker(
@@ -378,6 +385,7 @@ def default_strong_checkers(*, key: str | None = None) -> CompositeChecker:
         ],
     )
 
+
 def default_audit_checkers(*, min_ids: int = 0) -> CompositeChecker:
     return CompositeChecker(
         name="audit_default",
@@ -386,6 +394,7 @@ def default_audit_checkers(*, min_ids: int = 0) -> CompositeChecker:
             GSetConvergenceChecker(min_ids=min_ids),
         ],
     )
+
 
 def _safe(v: Any) -> Any:
     try:

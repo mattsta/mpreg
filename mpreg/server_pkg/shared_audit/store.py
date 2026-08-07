@@ -17,6 +17,7 @@ from mpreg.server_pkg.shared_audit.models import (
     merge_records,
 )
 
+
 @dataclass(frozen=True, slots=True)
 class Watermark:
     """Per-origin retention floor: records with (ts, id) < watermark are dropped."""
@@ -46,12 +47,14 @@ class Watermark:
             min_entry_id=str(raw.get("min_entry_id") or ""),
         )
 
+
 def _max_watermark(a: Watermark | None, b: Watermark | None) -> Watermark | None:
     if a is None:
         return b
     if b is None:
         return a
     return a if a.sort_key() >= b.sort_key() else b
+
 
 @dataclass(slots=True)
 class SharedAuditStore:

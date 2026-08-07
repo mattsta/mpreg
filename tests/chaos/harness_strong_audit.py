@@ -21,6 +21,7 @@ from mpreg.core.cache_strong import (
     _entry_op_id,
 )
 
+
 @dataclass
 class ChaosStrongTransport:
     """StrongPeerTransport with partition / delay / drop / malice injectors."""
@@ -176,6 +177,7 @@ class ChaosStrongTransport:
             return False
         return await be.abort(op_id=op_id, key=key)
 
+
 @dataclass
 class StrongMesh:
     n: int
@@ -188,6 +190,7 @@ class StrongMesh:
     @property
     def eligible(self) -> list[str]:
         return list(self.peer_ids)
+
 
 def build_strong_mesh(
     n: int = 3,
@@ -232,6 +235,7 @@ def build_strong_mesh(
         peer_ids=[f"n{i}" for i in range(n)],
     )
 
+
 def assert_residual_free(
     backends: dict[str, StrongLocalBackend],
     key: GlobalCacheKey,
@@ -249,6 +253,7 @@ def assert_residual_free(
                 f"residual op {op_id} visible on {be.node_id}"
             )
 
+
 def assert_backends_agree(
     backends: dict[str, StrongLocalBackend], key: GlobalCacheKey
 ) -> object | None:
@@ -265,9 +270,11 @@ def assert_backends_agree(
         return None
     return first[0]
 
+
 def assert_no_pending(backends: dict[str, StrongLocalBackend]) -> None:
     for be in backends.values():
         assert be.pending_count() == 0, f"pending left on {be.node_id}"
+
 
 async def strong_put_on(
     mesh: StrongMesh,
@@ -286,12 +293,15 @@ async def strong_put_on(
         op_id=op_id,
     )
 
+
 def key(ns: str, ident: str, version: str = "v1") -> GlobalCacheKey:
     return GlobalCacheKey(namespace=ns, identifier=ident, version=version)
+
 
 # ---------------------------------------------------------------------------
 # History checker (bounded, not Jepsen)
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PutOutcome:
@@ -300,6 +310,7 @@ class PutOutcome:
     success: bool
     op_id: str | None
     error_code: int | None
+
 
 def check_single_key_history(
     outcomes: Sequence[PutOutcome],
@@ -330,6 +341,7 @@ def check_single_key_history(
     assert final_op in ok_ops
     assert any(o.value == final_val and o.op_id == final_op for o in success)
 
+
 async def run_concurrent_puts(
     mesh: StrongMesh,
     k: GlobalCacheKey,
@@ -337,9 +349,7 @@ async def run_concurrent_puts(
 ) -> list[PutOutcome]:
     async def one(idx: int, val: object) -> PutOutcome:
         origin = mesh.peer_ids[idx % mesh.n]
-        res = await strong_put_on(
-            mesh, origin, k, val, op_id=f"op-{idx}-{origin}"
-        )
+        res = await strong_put_on(mesh, origin, k, val, op_id=f"op-{idx}-{origin}")
         return PutOutcome(
             origin=origin,
             value=val,
@@ -349,6 +359,7 @@ async def run_concurrent_puts(
         )
 
     return list(await asyncio.gather(*[one(i, v) for i, v in enumerate(values)]))
+
 
 def deep_copy_payload(p: dict[str, Any]) -> dict[str, Any]:
     return copy.deepcopy(p)

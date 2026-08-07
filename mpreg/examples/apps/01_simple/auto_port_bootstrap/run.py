@@ -9,6 +9,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 from mpreg.server import MPREGServer
 
+
 async def main() -> None:
     with app_run(
         "auto_port_bootstrap",
@@ -89,6 +90,7 @@ async def main() -> None:
                 task_b.cancel()
                 task_a.cancel()
                 await asyncio.gather(task_a, task_b, return_exceptions=True)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

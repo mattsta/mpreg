@@ -19,6 +19,7 @@ from mpreg.datastructures.type_aliases import (
 from ..catalog import TopicSubscription
 from ..catalog_delta import RoutingCatalogDelta
 
+
 @dataclass(slots=True)
 class TopicExchangeCatalogAdapter:
     node_id: NodeId

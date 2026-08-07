@@ -13,6 +13,7 @@ from mpreg.server_pkg.shared_audit import (
     record_from_mgmt_entry,
 )
 
+
 def _make_node(node_id: str, transport: InProcessSharedAuditTransport):
     store = SharedAuditStore(cluster_id="c1", local_node=node_id, max_entries=500)
 
@@ -29,6 +30,7 @@ def _make_node(node_id: str, transport: InProcessSharedAuditTransport):
     )
     transport.register(rep)
     return store, rep
+
 
 @pytest.mark.asyncio
 async def test_delta_epidemic_visibility() -> None:
@@ -54,6 +56,7 @@ async def test_delta_epidemic_visibility() -> None:
     assert sb.get("c1", rec.entry_id) is not None
     assert sc.get("c1", rec.entry_id) is not None
     assert sb.get("c1", rec.entry_id).event == "node_drain"  # type: ignore[union-attr]
+
 
 @pytest.mark.asyncio
 async def test_drop_then_digest_pull_repairs() -> None:
@@ -86,6 +89,7 @@ async def test_drop_then_digest_pull_repairs() -> None:
     digest = ra.build_digest()
     await rb._on_digest(digest)
     assert sb.get("c1", rec.entry_id) is not None
+
 
 @pytest.mark.asyncio
 async def test_reorder_delta_still_converges() -> None:
@@ -121,6 +125,7 @@ async def test_reorder_delta_still_converges() -> None:
     await transport.flush_reorder()
     assert sb.get("c1", r1.entry_id) is not None
     assert sb.get("c1", r2.entry_id) is not None
+
 
 @pytest.mark.asyncio
 async def test_cross_cluster_delta_rejected() -> None:

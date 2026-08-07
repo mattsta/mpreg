@@ -14,6 +14,7 @@ from mpreg.fabric.message import MessageHeaders
 
 DEADLINE_METADATA_KEY = "mpreg.deadline_remaining_ms"
 
+
 @dataclass(frozen=True, slots=True)
 class DeadlineBudget:
     """Wall-clock deadline budget tracked across hops."""
@@ -72,6 +73,7 @@ class DeadlineBudget:
             deadline_remaining_ms=remaining,
         )
 
+
 def decrement_deadline_headers(
     headers: MessageHeaders, *, hop_latency_ms: float
 ) -> MessageHeaders:
@@ -100,6 +102,7 @@ def decrement_deadline_headers(
         metadata=meta,
         deadline_remaining_ms=remaining,
     )
+
 
 def headers_with_deadline_seconds(
     headers: MessageHeaders, deadline_seconds: float | None

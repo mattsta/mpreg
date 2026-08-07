@@ -15,6 +15,7 @@ import pytest
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 class TestDualRegistrationScenarios:
     """Test both pre-connection and live function registration."""
 

@@ -17,9 +17,11 @@ from mpreg.core.native_codec import canonical_dumps
 SIGNATURE_KEY = "mpreg_summary_sig"
 SIGNATURE_ALG = "hmac-sha256"
 
+
 def _canonical_bytes(payload: Mapping[str, Any]) -> bytes:
     body = {k: v for k, v in payload.items() if k != SIGNATURE_KEY}
     return canonical_dumps(body)
+
 
 def sign_summary(payload: Mapping[str, Any], secret: str) -> dict[str, Any]:
     """Return a copy of payload with HMAC signature field attached."""
@@ -31,6 +33,7 @@ def sign_summary(payload: Mapping[str, Any], secret: str) -> dict[str, Any]:
     out = dict(payload)
     out[SIGNATURE_KEY] = f"{SIGNATURE_ALG}:{digest}"
     return out
+
 
 def verify_summary(payload: Mapping[str, Any], secret: str) -> bool:
     """Verify HMAC on payload; True if valid or secret empty (verification off)."""

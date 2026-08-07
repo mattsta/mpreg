@@ -6,6 +6,7 @@ from typing import Any
 
 from mpreg.core.native_codec import canonical_dumps, dumps, loads
 
+
 class Serializer(ABC):
     """Abstract base class for data serialization."""
 
@@ -16,6 +17,7 @@ class Serializer(ABC):
     @abstractmethod
     def deserialize(self, data: bytes) -> Any:
         """Deserializes bytes into data."""
+
 
 @dataclass(slots=True)
 class JsonSerializer(Serializer):

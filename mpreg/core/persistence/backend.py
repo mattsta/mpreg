@@ -9,6 +9,7 @@ from typing import Any, Protocol
 from .kv_store import KeyValueStore, MemoryKeyValueStore, SQLiteKeyValueStore
 from .queue_store import MemoryQueueStore, QueueStore, SQLiteQueueStore
 
+
 class PersistenceBackend(Protocol):
     """Backend protocol for persistence storage."""
 
@@ -21,6 +22,7 @@ class PersistenceBackend(Protocol):
     def queue_store(self, namespace: str, queue_name: str) -> QueueStore: ...
 
     async def list_queue_names(self, namespace: str) -> list[str]: ...
+
 
 @dataclass(slots=True)
 class MemoryPersistenceBackend:
@@ -57,6 +59,7 @@ class MemoryPersistenceBackend:
             for (store_namespace, queue_name) in self._queue_stores
             if store_namespace == namespace
         )
+
 
 @dataclass(slots=True)
 class SQLitePersistenceBackend:

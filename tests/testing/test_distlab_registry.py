@@ -21,6 +21,7 @@ from mpreg.testing.distlab import (
 from mpreg.testing.distlab.generator import AuditBurst
 from mpreg.testing.distlab.registry import ScenarioRegistry
 
+
 def test_registry_list_after_builtins() -> None:
     ensure_builtins()
     reg = get_registry()
@@ -32,10 +33,12 @@ def test_registry_list_after_builtins() -> None:
     cat = reg.catalog()
     assert any(r["name"] == "strong.happy_3" and r["track"] == "T2" for r in cat)
 
+
 def test_registry_unknown_raises() -> None:
     ensure_builtins()
     with pytest.raises(KeyError, match="unknown scenario"):
         get_registry().get("does.not.exist")
+
 
 def test_registry_custom_register() -> None:
     reg = ScenarioRegistry(name="tmp")
@@ -53,6 +56,7 @@ def test_registry_custom_register() -> None:
     assert reg.list() == ["tmp.x"]
     assert reg.meta("tmp.x")["track"] == "T1"
 
+
 @pytest.mark.asyncio
 async def test_registry_run_happy_3() -> None:
     ensure_builtins()
@@ -60,6 +64,7 @@ async def test_registry_run_happy_3() -> None:
     assert r.ok
     assert r.history_len >= 2
     assert r.meta.get("track") == "T2" or True  # meta from scenario
+
 
 @pytest.mark.asyncio
 async def test_generator_sequential_puts_history() -> None:
@@ -69,6 +74,7 @@ async def test_generator_sequential_puts_history() -> None:
     await gen.as_body()(h, sut)
     assert len(h.successful_puts("g")) == 5
     assert not h.failed_puts("g")
+
 
 @pytest.mark.asyncio
 async def test_generator_concurrent_clients() -> None:
@@ -84,12 +90,14 @@ async def test_generator_concurrent_clients() -> None:
     ).run()
     assert r.ok
 
+
 def test_random_fault_plan_seedable() -> None:
     a = RandomFaultPlan(seed=1, n=8).plan()
     b = RandomFaultPlan(seed=1, n=8).plan()
     c = RandomFaultPlan(seed=2, n=8).plan()
     assert a == b
     assert a != c
+
 
 def test_cli_list_and_run_via_mpreg_entry() -> None:
     """Architecture: top-level ``uv run mpreg distlab`` only (never python -m)."""
@@ -115,6 +123,7 @@ def test_cli_list_and_run_via_mpreg_entry() -> None:
     assert data["ok"] is True
     assert data["name"] == "strong.happy_3"
 
+
 def test_cli_help_mentions_non_claims() -> None:
     p = subprocess.run(
         ["uv", "run", "mpreg", "distlab", "--help"],
@@ -127,6 +136,7 @@ def test_cli_help_mentions_non_claims() -> None:
     out = p.stdout + p.stderr
     assert "Elle" in out or "not Elle" in out or "DistLab" in out
     assert "distlab" in out.lower()
+
 
 def test_python_m_distlab_is_blocked() -> None:
     """Module path must refuse — forces entry-point usage."""
@@ -142,6 +152,7 @@ def test_python_m_distlab_is_blocked() -> None:
         p.stderr + p.stdout
     )
 
+
 @pytest.mark.asyncio
 async def test_registry_subset_suite() -> None:
     from mpreg.testing.distlab import ScenarioSuite
@@ -155,6 +166,7 @@ async def test_registry_subset_suite() -> None:
     assert all(r.ok for r in results)
     assert len(results) == 3
 
+
 @pytest.mark.asyncio
 async def test_audit_burst_generator() -> None:
     from mpreg.testing.distlab import AuditSUT, Scenario, default_audit_checkers
@@ -167,6 +179,7 @@ async def test_audit_burst_generator() -> None:
         checker=default_audit_checkers(min_ids=5),
     ).run()
     assert r.ok
+
 
 @pytest.mark.asyncio
 async def test_registry_run_suite_prefix_limit() -> None:
@@ -183,6 +196,7 @@ async def test_registry_run_suite_prefix_limit() -> None:
     for row in report["results"]:
         assert "error_codes" in (row.get("meta") or {})
 
+
 def test_registry_select_excludes_not_bft() -> None:
     from mpreg.testing.distlab.builtins import ensure_builtins
     from mpreg.testing.distlab.registry import get_registry
@@ -194,6 +208,7 @@ def test_registry_select_excludes_not_bft() -> None:
     assert "strong.not_bft_lie_commit_both" not in names
     with_bft = reg.select(prefix="strong.", exclude_tags=())
     assert "strong.not_bft_lie_commit_both" in with_bft
+
 
 @pytest.mark.asyncio
 async def test_registry_run_suite_smoke_preset() -> None:
@@ -214,6 +229,7 @@ async def test_registry_run_suite_smoke_preset() -> None:
     assert report["ok"] is True
     assert report["ran"] >= 4
     assert report["passed"] == report["ran"]
+
 
 @pytest.mark.asyncio
 async def test_registry_run_suite_audit_core_preset() -> None:
@@ -238,6 +254,7 @@ async def test_registry_run_suite_audit_core_preset() -> None:
     assert report["ok"] is True
     assert report["ran"] >= 5
     assert report["passed"] == report["ran"]
+
 
 @pytest.mark.asyncio
 async def test_registry_run_suite_ci_core_preset() -> None:
@@ -270,6 +287,7 @@ async def test_registry_run_suite_ci_core_preset() -> None:
     assert report["ran"] == len(names)
     assert report["passed"] == report["ran"]
 
+
 def test_strong_core_includes_retry_abort_ops_scenarios() -> None:
     """T56: strong-core/ci-core include full retry_abort ops surface scenarios."""
     from mpreg.testing.distlab.builtins import ensure_builtins
@@ -295,6 +313,7 @@ def test_strong_core_includes_retry_abort_ops_scenarios() -> None:
     for sc in required:
         assert sc in reg.list(), f"{sc} not registered"
 
+
 @pytest.mark.asyncio
 async def test_strong_refuse_get_delete_scenario() -> None:
     """T19: builtin refuse scenario passes NoOpenInvokeChecker."""
@@ -308,6 +327,7 @@ async def test_strong_refuse_get_delete_scenario() -> None:
     codes = (r.meta or {}).get("error_codes") or {}
     # 1012 appears for get/delete refuses
     assert any(int(k) == 1012 for k in codes) or codes.get(1012) or codes.get("1012")
+
 
 def test_cli_smoke_preset_via_mpreg_entry() -> None:
     """Architecture: uv run mpreg distlab suite --preset smoke."""

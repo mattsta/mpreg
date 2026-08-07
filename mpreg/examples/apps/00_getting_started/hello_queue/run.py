@@ -12,6 +12,7 @@ from mpreg.core.message_queue import (
 )
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run("hello_queue", "Hello Queue — send + subscribe drill", level="L0"):
         config = QueueConfiguration(
@@ -81,6 +82,7 @@ async def main() -> None:
                 out = stop()
                 if asyncio.iscoroutine(out):
                     await out
+
 
 if __name__ == "__main__":
     asyncio.run(main())

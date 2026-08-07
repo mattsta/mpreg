@@ -24,6 +24,7 @@ from mpreg.core.model import RPCCommand
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 class TestIntermediateResultsDemonstration:
     """Demonstrate the proposed intermediate results feature."""
 
@@ -536,6 +537,7 @@ class TestIntermediateResultsDemonstration:
         print("3. ✓ Dependency resolution verification")
         print("4. ✓ Intermediate value inspection for correctness")
         print("5. ✓ Timeline analysis of distributed execution")
+
 
 class TestIntermediateResultsIntegrationConcept:
     """Demonstrate how intermediate results would integrate with existing systems."""

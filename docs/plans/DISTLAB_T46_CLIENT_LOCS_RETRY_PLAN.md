@@ -1,13 +1,13 @@
 # DistLab T46 — Client locs pin for strong_retry_abort (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T45 (`6189cd3`) |
-| **Scope** | Optional routing pin for ops retry_abort client/CLI |
-| **Point budget** | **~15 pts** |
-| **Entry points only** | `uv run pytest …` / `uv run mpreg …` |
+| Field                 | Value                                               |
+| --------------------- | --------------------------------------------------- |
+| **Status**            | **Complete**                                        |
+| **Date**              | 2026-08-06                                          |
+| **Authority**         | Continuation after T45 (`6189cd3`)                  |
+| **Scope**             | Optional routing pin for ops retry_abort client/CLI |
+| **Point budget**      | **~15 pts**                                         |
+| **Entry points only** | `uv run pytest …` / `uv run mpreg …`                |
 
 ## Problem
 

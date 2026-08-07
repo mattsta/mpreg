@@ -16,6 +16,7 @@ from loguru import logger
 
 task_log = logger
 
+
 class TaskManager:
     """Manages background tasks with proper lifecycle cleanup."""
 
@@ -130,6 +131,7 @@ class TaskManager:
     def __bool__(self) -> bool:
         """Return True if there are active tasks."""
         return bool(self.tasks)
+
 
 class ManagedObject:
     """Base class for objects that manage background tasks."""

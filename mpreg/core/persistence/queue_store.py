@@ -16,6 +16,7 @@ from mpreg.core.message_queue import (
 from mpreg.core.serialization import JsonSerializer
 from mpreg.datastructures.message_structures import MessageId
 
+
 @dataclass(frozen=True, slots=True)
 class QueuePersistenceState:
     """Persisted queue state snapshot."""
@@ -26,6 +27,7 @@ class QueuePersistenceState:
     fingerprints: list[tuple[float, str]] = field(default_factory=list)
     next_sequence: int = 0
     config: QueueConfiguration | None = None
+
 
 class QueueStore(Protocol):
     """Persistence interface for queue state."""
@@ -46,6 +48,7 @@ class QueueStore(Protocol):
 
     async def add_fingerprint(self, timestamp: float, fingerprint: str) -> None: ...
 
+
 def _message_id_to_dict(message_id: MessageId) -> dict[str, Any]:
     return {
         "id": message_id.id,
@@ -53,12 +56,14 @@ def _message_id_to_dict(message_id: MessageId) -> dict[str, Any]:
         "source_node": message_id.source_node,
     }
 
+
 def _message_id_from_dict(payload: dict[str, Any]) -> MessageId:
     return MessageId(
         id=str(payload.get("id", "")),
         created_at=float(payload.get("created_at", 0.0)),
         source_node=str(payload.get("source_node", "")),
     )
+
 
 def _queued_message_to_dict(message: QueuedMessage) -> dict[str, Any]:
     return {
@@ -77,6 +82,7 @@ def _queued_message_to_dict(message: QueuedMessage) -> dict[str, Any]:
         "delivery_attempt": message._delivery_attempt,
         "fingerprint": message._fingerprint,
     }
+
 
 def _queued_message_from_dict(payload: dict[str, Any]) -> QueuedMessage:
     return QueuedMessage(
@@ -102,6 +108,7 @@ def _queued_message_from_dict(payload: dict[str, Any]) -> QueuedMessage:
         _fingerprint=str(payload.get("fingerprint", "")),
     )
 
+
 def _in_flight_to_dict(in_flight: InFlightMessage) -> dict[str, Any]:
     return {
         "message": _queued_message_to_dict(in_flight.message),
@@ -111,6 +118,7 @@ def _in_flight_to_dict(in_flight: InFlightMessage) -> dict[str, Any]:
         "acknowledged_by": list(in_flight.acknowledged_by),
         "status": in_flight.status.value,
     }
+
 
 def _in_flight_from_dict(payload: dict[str, Any]) -> InFlightMessage:
     message_payload = payload.get("message", {})
@@ -124,6 +132,7 @@ def _in_flight_from_dict(payload: dict[str, Any]) -> InFlightMessage:
         status=QueueMessageStatus(payload.get("status", "in_flight")),
     )
 
+
 def _sorted_messages(
     entries: list[tuple[int, QueuedMessage]], config: QueueConfiguration | None
 ) -> deque[QueuedMessage]:
@@ -132,6 +141,7 @@ def _sorted_messages(
     else:
         ordered = sorted(entries, key=lambda item: item[0])
     return deque(message for _, message in ordered)
+
 
 @dataclass(slots=True)
 class MemoryQueueStore:
@@ -217,6 +227,7 @@ class MemoryQueueStore:
 
     async def add_fingerprint(self, timestamp: float, fingerprint: str) -> None:
         self._fingerprints.append((timestamp, fingerprint))
+
 
 @dataclass(slots=True)
 class SQLiteQueueStore:

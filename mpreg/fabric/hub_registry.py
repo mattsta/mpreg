@@ -51,6 +51,7 @@ from .hubs import (
 
 # Data Classes for Type Safety
 
+
 @dataclass(slots=True)
 class ConnectionMetadata:
     """Connection metadata for hubs."""
@@ -78,6 +79,7 @@ class ConnectionMetadata:
 
     # Custom properties for extensions
     custom_properties: dict[str, str] = field(default_factory=dict)
+
 
 @dataclass(slots=True)
 class DiscoveryCriteria:
@@ -107,6 +109,7 @@ class DiscoveryCriteria:
     exclude_failed_hubs: bool = True
     include_experimental: bool = False
 
+
 @dataclass(slots=True)
 class RegistryInfo:
     """Registry configuration and metadata."""
@@ -115,6 +118,7 @@ class RegistryInfo:
     discovery_methods: list[str]
     heartbeat_interval: float
     cleanup_interval: float
+
 
 @dataclass(slots=True)
 class RegistrationCounts:
@@ -125,6 +129,7 @@ class RegistrationCounts:
     hubs_by_tier: dict[str, int]
     hubs_by_region: dict[str, int]
 
+
 @dataclass(slots=True)
 class RegistryStatistics:
     """Comprehensive registry statistics."""
@@ -134,6 +139,7 @@ class RegistryStatistics:
     performance_stats: RegistryPerformanceStats
     performance_metrics: RegistryPerformanceMetrics
 
+
 @dataclass(slots=True)
 class AssignmentInfo:
     """Cluster assignment configuration information."""
@@ -141,6 +147,7 @@ class AssignmentInfo:
     strategy: str
     total_assignments: int
     healthy_assignments: int
+
 
 @dataclass(slots=True)
 class AssignmentStatistics:
@@ -150,6 +157,7 @@ class AssignmentStatistics:
     assignment_stats: AssignmentStatsData
     assignment_history: list[tuple[str, str, float]]  # (cluster_id, hub_id, timestamp)
 
+
 @dataclass(slots=True)
 class MonitoringInfo:
     """Monitoring configuration information."""
@@ -157,6 +165,7 @@ class MonitoringInfo:
     monitoring_interval: float
     failure_threshold: int
     hubs_monitored: int
+
 
 @dataclass(slots=True)
 class HubHealthSummary:
@@ -167,6 +176,7 @@ class HubHealthSummary:
     failure_count: int
     last_check: float
 
+
 @dataclass(slots=True)
 class MonitoringStatistics:
     """Comprehensive monitoring statistics."""
@@ -174,6 +184,7 @@ class MonitoringStatistics:
     monitoring_info: MonitoringInfo
     monitoring_stats: MonitoringStatsData
     hub_health_summary: dict[str, HubHealthSummary]
+
 
 class RegistrationStatus(Enum):
     """Registration status for hubs and clusters."""
@@ -184,6 +195,7 @@ class RegistrationStatus(Enum):
     EXPIRED = "expired"
     DEREGISTERED = "deregistered"
 
+
 class DiscoveryMethod(Enum):
     """Methods for hub discovery."""
 
@@ -192,6 +204,7 @@ class DiscoveryMethod(Enum):
     GOSSIP = "gossip"
     STATIC = "static"
     GEOGRAPHIC = "geographic"
+
 
 @dataclass(slots=True)
 class HubRegistrationInfo:
@@ -254,6 +267,7 @@ class HubRegistrationInfo:
         self.consecutive_failures = 0
         self.health_score = min(1.0, self.health_score * 1.1)
 
+
 @dataclass(slots=True)
 class ClusterRegistrationInfo:
     """Information about a cluster registration."""
@@ -302,6 +316,7 @@ class ClusterRegistrationInfo:
         self.failover_count += 1
         self.last_failover_time = time.time()
 
+
 class HubDiscoveryProtocol(Protocol):
     """Protocol for hub discovery implementations."""
 
@@ -318,6 +333,7 @@ class HubDiscoveryProtocol(Protocol):
     async def withdraw_hub(self, hub_id: str) -> bool:
         """Withdraw a hub from the network."""
         ...
+
 
 @dataclass(slots=True)
 class HubRegistry:
@@ -750,6 +766,7 @@ class HubRegistry:
                 performance_metrics=self.performance_metrics,
             )
 
+
 @dataclass(slots=True)
 class ClusterRegistrar:
     """
@@ -984,6 +1001,7 @@ class ClusterRegistrar:
                 ],  # Last 100 assignments
             )
 
+
 @dataclass(slots=True)
 class HubHealthMonitor:
     """
@@ -1214,7 +1232,9 @@ class HubHealthMonitor:
                 hub_health_summary=hub_health_summary,
             )
 
+
 # Discovery Protocol Implementations
+
 
 @dataclass(slots=True)
 class GeographicDiscoveryProtocol:
@@ -1261,6 +1281,7 @@ class GeographicDiscoveryProtocol:
         """Withdraw hub (no-op for geographic protocol)."""
         return True
 
+
 @dataclass(slots=True)
 class BroadcastDiscoveryProtocol:
     """Broadcast-based hub discovery protocol."""
@@ -1306,6 +1327,7 @@ class BroadcastDiscoveryProtocol:
         """Withdraw hub via broadcast."""
         # Simulate broadcast withdrawal
         return True
+
 
 @dataclass(slots=True)
 class GossipDiscoveryProtocol:

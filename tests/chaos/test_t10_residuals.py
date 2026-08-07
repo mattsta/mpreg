@@ -17,6 +17,7 @@ from mpreg.server_pkg.drain_admission import (
     should_refuse_for_drain,
 )
 
+
 def test_drain_refuses_fabric_message() -> None:
     """COR-T10-03: fabric-message is a data-plane role under drain."""
     assert "fabric-message" in DATA_PLANE_ROLES
@@ -24,6 +25,7 @@ def test_drain_refuses_fabric_message() -> None:
     assert should_refuse_for_drain(draining=True, role="server") is False
     assert should_refuse_for_drain(draining=True, role="fabric-gossip") is False
     assert should_refuse_for_drain(draining=False, role="fabric-message") is False
+
 
 def test_error_codes_eo_strong() -> None:
     """ERG-T10-06: first-class MpregErrorCode for refused modalities."""
@@ -38,6 +40,7 @@ def test_error_codes_eo_strong() -> None:
     )
     assert mapped2.code == 1012
 
+
 def test_gossip_pending_drop_metric() -> None:
     """OBS-T10-01 / PERF-T10-05: tracker exports gossip pending drops."""
     t = ServerMetricsTracker()
@@ -46,6 +49,7 @@ def test_gossip_pending_drop_metric() -> None:
     assert "mpreg_gossip_pending_drops_total" in lines
     assert "mpreg_server_notification_drops_total" in lines
     assert "3" in lines
+
 
 def test_catalog_update_id_dedup() -> None:
     """COR-T10-08: identical update_id applies once."""
@@ -63,6 +67,7 @@ def test_catalog_update_id_dedup() -> None:
     assert c2.get("skipped_duplicate_update_id") == 1
     assert c1.get("skipped_duplicate_update_id") is None
 
+
 def test_lru_access_order_is_ordered_dict() -> None:
     """PERF-T10-01: SmartCacheManager uses OrderedDict for O(1) LRU."""
     from mpreg.core.caching import CacheConfiguration, SmartCacheManager
@@ -70,6 +75,7 @@ def test_lru_access_order_is_ordered_dict() -> None:
     cfg = CacheConfiguration()
     mgr = SmartCacheManager(cfg)
     assert isinstance(mgr.access_order, OrderedDict)
+
 
 @pytest.mark.asyncio
 async def test_actor_contextvar_concurrent_isolation() -> None:
@@ -103,6 +109,7 @@ async def test_actor_contextvar_concurrent_isolation() -> None:
     assert ("c-a", "t-a") in results
     assert ("c-b", "t-b") in results
 
+
 def test_status_fingerprint_tracker_dedup() -> None:
     """COR-T10-02 / INV-P7 shape: tracker marks STATUS fingerprints once."""
     tracker = FederatedAnnouncementTracker(ttl_seconds=60.0)
@@ -111,6 +118,7 @@ def test_status_fingerprint_tracker_dedup() -> None:
     tracker.mark_seen(fp, time.time())
     assert tracker.has_seen(fp) is True
 
+
 def test_slo_traffic_metric_is_real_series() -> None:
     """OBS-T10-03: golden traffic names a real counter, not a fantasy regex."""
     from mpreg.core.observability.slo import GOLDEN_SIGNALS
@@ -118,6 +126,7 @@ def test_slo_traffic_metric_is_real_series() -> None:
     traffic = next(s for s in GOLDEN_SIGNALS if s.name == "traffic")
     assert "mpreg_rpc_requests_total" in traffic.prometheus_metric
     assert ".*" not in traffic.prometheus_metric
+
 
 def test_openapi_covers_drain_and_extra_routes() -> None:
     """ERG-T10-05: OpenAPI includes drain + newly listed ops paths."""
@@ -128,6 +137,7 @@ def test_openapi_covers_drain_and_extra_routes() -> None:
     assert "/mgmt/v1/nodes/drain" in paths
     assert "/performance/trends" in paths
     assert "/transport/endpoints" in paths
+
 
 def test_rpc_to_fabric_traceparent_continuity() -> None:
     """OBS-T10-05: inject_trace_metadata continues bound RPC ingress parent."""
@@ -146,6 +156,7 @@ def test_rpc_to_fabric_traceparent_continuity() -> None:
     assert extract_traceparent(meta2) != ingress
     assert extract_traceparent(meta2) is not None
 
+
 def test_no_subscriber_requeue_bound_config() -> None:
     """COR-T10-10: QueueConfiguration exposes no-sub requeue bound."""
     from mpreg.core.message_queue import QueueConfiguration
@@ -153,6 +164,7 @@ def test_no_subscriber_requeue_bound_config() -> None:
     cfg = QueueConfiguration(name="t10-q", no_subscriber_max_requeues=5)
     assert cfg.no_subscriber_max_requeues == 5
     assert cfg.max_in_flight is None
+
 
 @pytest.mark.asyncio
 async def test_no_subscriber_eventually_dlq() -> None:
@@ -181,6 +193,7 @@ async def test_no_subscriber_eventually_dlq() -> None:
         if len(q.dead_letter_queue) >= 1:
             break
     assert len(q.dead_letter_queue) >= 1
+
 
 def test_status_fingerprint_dedup_on_server_method() -> None:
     """COR-T10-02: _handle_remote_status marks fingerprints via tracker."""

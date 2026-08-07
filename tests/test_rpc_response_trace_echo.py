@@ -16,6 +16,7 @@ from mpreg.core.port_allocator import port_range_context
 from mpreg.server import MPREGServer
 from mpreg.server_pkg.rpc_responses import w3c_trace_fields
 
+
 def test_rpc_response_accepts_w3c_fields() -> None:
     r = RPCResponse(
         r={"ok": True},
@@ -31,6 +32,7 @@ def test_rpc_response_accepts_w3c_fields() -> None:
     assert d["tracestate"] == "vendor=1"
     assert "traceparent" in d["headers"]
 
+
 def test_w3c_trace_fields_from_bind() -> None:
     from mpreg.core.observability.trace_context import bind_current_trace
 
@@ -43,12 +45,14 @@ def test_w3c_trace_fields_from_bind() -> None:
     assert kw["tracestate"] == "s=1"
     assert "headers" in kw
 
+
 def test_inject_seeds_last_trace() -> None:
     c = Client(url="ws://127.0.0.1:1")
     out = c._inject_outbound_trace({"role": "rpc", "u": "1", "cmds": []})
     assert TRACEPARENT_KEY in out
     assert c._last_trace_metadata is not None
     assert TRACEPARENT_KEY in c._last_trace_metadata
+
 
 @pytest.mark.asyncio
 async def test_live_rpc_echoes_trace_to_client() -> None:

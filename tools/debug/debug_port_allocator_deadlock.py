@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from tests.port_allocator import get_port_allocator
 
+
 def simulate_xdist_worker(worker_id: str, port_count: int):
     """Simulate what a pytest-xdist worker does."""
     print(f"🔧 Worker {worker_id}: Starting port allocation for {port_count} ports")
@@ -39,6 +40,7 @@ def simulate_xdist_worker(worker_id: str, port_count: int):
         print(f"   ❌ Worker {worker_id}: FAILED after {duration:.2f}s - {e}")
         return False
 
+
 def test_sequential_allocation():
     """Test sequential allocation (should work)."""
     print("\n" + "=" * 60)
@@ -54,6 +56,7 @@ def test_sequential_allocation():
 
     print("✅ Sequential allocation completed successfully")
     return True
+
 
 def test_concurrent_allocation():
     """Test concurrent allocation (likely to deadlock)."""
@@ -95,6 +98,7 @@ def test_concurrent_allocation():
     print("✅ Concurrent allocation completed successfully")
     return True
 
+
 def test_different_port_counts():
     """Test different port counts to find the deadlock threshold."""
     print("\n" + "=" * 60)
@@ -132,6 +136,7 @@ def test_different_port_counts():
     print("✅ All port counts work fine")
     return None
 
+
 def main():
     """Run comprehensive port allocator deadlock analysis."""
     print("🔬 PORT ALLOCATOR DEADLOCK ANALYSIS")
@@ -161,6 +166,7 @@ def main():
         print("💡 SOLUTION: Port allocator has general concurrency deadlock")
     else:
         print("🤔 No deadlock found - issue may be elsewhere")
+
 
 if __name__ == "__main__":
     main()

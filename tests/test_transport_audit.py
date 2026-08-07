@@ -6,6 +6,7 @@ _IMPORT_RE = re.compile(
     re.MULTILINE,
 )
 
+
 def test_no_websockets_outside_transport_layer() -> None:
     """websockets must only be imported under mpreg/core/transport/."""
     root = Path(__file__).resolve().parents[1]

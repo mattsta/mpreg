@@ -1,13 +1,13 @@
 # DistLab T62 — DistLab residual_ops_hint enrichment scenario (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T52/T59 |
-| **Scope** | First-class DistLab scenario: GCM status hint after CFT residual (no clear) |
-| **Point budget** | **~12 pts** |
-| **Entry points only** | `uv run pytest …` |
+| Field                 | Value                                                                       |
+| --------------------- | --------------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                                |
+| **Date**              | 2026-08-06                                                                  |
+| **Authority**         | Continuation after T52/T59                                                  |
+| **Scope**             | First-class DistLab scenario: GCM status hint after CFT residual (no clear) |
+| **Point budget**      | **~12 pts**                                                                 |
+| **Entry points only** | `uv run pytest …`                                                           |
 
 ## Goals
 

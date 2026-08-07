@@ -45,6 +45,7 @@ from mpreg.fabric.route_security import RouteSecurityConfig
 # P0: Queue AT_LEAST_ONCE crash × in_flight restore → redelivery
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_queue_in_flight_restored_as_pending_for_redelivery() -> None:
     """Kill-9 mid-delivery: unacked in-flight must re-enter pending on restore."""
@@ -102,6 +103,7 @@ async def test_queue_in_flight_restored_as_pending_for_redelivery() -> None:
     assert delivered[0].payload == {"job": "pay"}
     await q2.shutdown()
 
+
 @pytest.mark.asyncio
 async def test_queue_acked_message_not_redelivered_after_restore() -> None:
     store = MemoryQueueStore(namespace="mpreg:queues", queue_name="jobs")
@@ -133,9 +135,11 @@ async def test_queue_acked_message_not_redelivered_after_restore() -> None:
     assert len(q2.in_flight_messages) == 0
     await q2.shutdown()
 
+
 # ---------------------------------------------------------------------------
 # P0: Namespace/tenant data-plane isolation (queue / cache / pubsub)
 # ---------------------------------------------------------------------------
+
 
 def _tenant_engine() -> NamespacePolicyEngine:
     return NamespacePolicyEngine(
@@ -156,6 +160,7 @@ def _tenant_engine() -> NamespacePolicyEngine:
             ),
         ),
     )
+
 
 @pytest.mark.asyncio
 async def test_queue_refuses_cross_tenant_send() -> None:
@@ -181,6 +186,7 @@ async def test_queue_refuses_cross_tenant_send() -> None:
             assert "tenant_denied" in denied.error_message
     finally:
         await mgr.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_cache_refuses_cross_tenant_get_put() -> None:
@@ -213,6 +219,7 @@ async def test_cache_refuses_cross_tenant_get_put() -> None:
             assert "namespace_policy_denied" in (denied_put.error_message or "")
     finally:
         mgr.shutdown_sync()
+
 
 def test_pubsub_refuses_cross_tenant_publish_and_subscribe() -> None:
     engine = _tenant_engine()
@@ -262,6 +269,7 @@ def test_pubsub_refuses_cross_tenant_publish_and_subscribe() -> None:
         )
         assert notes == []
 
+
 def test_allows_data_access_requires_tenant_when_rule_scoped() -> None:
     engine = _tenant_engine()
     # No tenant identity → deny when rule has visibility_tenants.
@@ -271,9 +279,11 @@ def test_allows_data_access_requires_tenant_when_rule_scoped() -> None:
     assert d.allowed is False
     assert d.reason == "tenant_required"
 
+
 # ---------------------------------------------------------------------------
 # P1: Cache EVENTUAL anti-entropy multi-node convergence
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_cache_anti_entropy_converges_two_nodes() -> None:
@@ -327,6 +337,7 @@ async def test_cache_anti_entropy_converges_two_nodes() -> None:
         await a.shutdown()
         await b.shutdown()
 
+
 @pytest.mark.asyncio
 async def test_cache_l4_eventual_put_visible_via_protocol_peers() -> None:
     transport = InProcessCacheTransport()
@@ -367,9 +378,11 @@ async def test_cache_l4_eventual_put_visible_via_protocol_peers() -> None:
         await proto_a.shutdown()
         await proto_b.shutdown()
 
+
 # ---------------------------------------------------------------------------
 # P1: Federated profile secure-by-default
 # ---------------------------------------------------------------------------
+
 
 def test_federated_profile_requires_route_signatures_and_summary_hmac() -> None:
     from pathlib import Path
@@ -384,6 +397,7 @@ def test_federated_profile_requires_route_signatures_and_summary_hmac() -> None:
     assert settings.discovery_summary_export_enabled is True
     assert settings.discovery_summary_signing_secret
     assert settings.discovery_summary_signing_secret.startswith("change-me")
+
 
 def test_route_security_config_parses_from_flat_toml_knobs(tmp_path) -> None:
     path = tmp_path / "sec.toml"
@@ -400,6 +414,7 @@ fabric_route_allow_unsigned = false
     assert isinstance(settings.fabric_route_security_config, RouteSecurityConfig)
     assert settings.fabric_route_security_config.require_signatures is True
     assert settings.fabric_route_security_config.allow_unsigned is False
+
 
 def test_config_check_warns_on_unsigned_federated(tmp_path) -> None:
     """Unsigned multi-peer fabric must surface as config-check warning."""
@@ -427,6 +442,7 @@ discovery_summary_export_enabled = true
         cli, ["config-check", str(path), "--strict", "--format", "json"]
     )
     assert strict.exit_code == 2
+
 
 def test_config_check_warns_discovery_policy_off_on_federated_profile() -> None:
     """COR-09: federated profile keeps policy lab-off but config-check must warn."""
@@ -461,9 +477,11 @@ def test_config_check_warns_discovery_policy_off_on_federated_profile() -> None:
         or "discovery" in strict.output
     )
 
+
 # ---------------------------------------------------------------------------
 # P1: Pub/sub delivery under simple drop oracle (local exchange)
 # ---------------------------------------------------------------------------
+
 
 def test_pubsub_delivery_only_to_matching_subscribers() -> None:
     exchange = TopicExchange(server_url="ws://local", cluster_id="c")
@@ -497,9 +515,11 @@ def test_pubsub_delivery_only_to_matching_subscribers() -> None:
     assert len(notes) == 1
     assert notes[0].subscription_id == "s-match"
 
+
 # ---------------------------------------------------------------------------
 # Gossip membership under FaultInjector loss (control plane)
 # ---------------------------------------------------------------------------
+
 
 def test_fault_injector_control_drop_blocks_gossip_path() -> None:
     from mpreg.testing.faults import FaultInjector
@@ -511,6 +531,7 @@ def test_fault_injector_control_drop_blocks_gossip_path() -> None:
     assert inj.can_deliver("a", "b", plane="data") is True
     inj.partition({"a"}, {"b"})
     assert inj.can_deliver("a", "b", plane="data") is False
+
 
 def test_client_notification_queue_is_bounded_drop_oldest() -> None:
     from mpreg.client.client import Client
@@ -541,6 +562,7 @@ def test_client_notification_queue_is_bounded_drop_oldest() -> None:
     first = q.get_nowait()
     assert first.message.payload["i"] == 2
 
+
 @pytest.mark.asyncio
 async def test_client_api_exposes_request_dag() -> None:
     from mpreg.client.client_api import MPREGClientAPI
@@ -550,6 +572,7 @@ async def test_client_api_exposes_request_dag() -> None:
     assert callable(api.call_dag)
     with pytest.raises(ValueError):
         await api.request([])
+
 
 def test_delivery_guarantee_plane_values_align() -> None:
     from mpreg.core.message_queue import DeliveryGuarantee as QDG

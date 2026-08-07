@@ -20,6 +20,7 @@ import pytest
 from mpreg.core.model import RPCCommand
 from mpreg.server import MPREGServer
 
+
 class TestBasicUsageExamples:
     """Examples of basic MPREG usage patterns."""
 
@@ -89,6 +90,7 @@ class TestBasicUsageExamples:
             "data_processing", [10, 20, 30, 40, 50], locs=frozenset(["data-processor"])
         )
         assert result == 150  # sum of the list
+
 
 class TestWorkflowExamples:
     """Examples of multi-step workflows and dependency resolution."""
@@ -183,6 +185,7 @@ class TestWorkflowExamples:
 
         # Results from both parallel branches should be combined
         assert result["combined"] == [6, 15]  # sums of [1,2,3] and [4,5,6]
+
 
 class TestDistributedExamples:
     """Examples of distributed operations across multiple servers."""
@@ -308,6 +311,7 @@ class TestDistributedExamples:
         assert "report" in result
         assert result["report"] == "Final report: Analyzed 4 items, Total: 100"
 
+
 class TestConcurrencyExamples:
     """Examples of concurrent operations and load testing."""
 
@@ -409,6 +413,7 @@ class TestConcurrencyExamples:
             expected = f"load_test_{client_idx}_{request_idx}"
             assert result == expected
 
+
 class TestErrorHandlingExamples:
     """Examples of error handling and fault tolerance."""
 
@@ -467,6 +472,7 @@ class TestErrorHandlingExamples:
         # For now, just verify the client can still make calls
         result2 = await client.call("mpreg.system.echo", "after failure")
         assert result2 == "after failure"
+
 
 # Performance benchmarking example
 class TestPerformanceExamples:

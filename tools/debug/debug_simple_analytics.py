@@ -8,6 +8,7 @@ sys.path.append(".")
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.model import RPCCommand
 
+
 async def test_simple_analytics():
     print("=== SIMPLE ANALYTICS TEST ===")
 
@@ -29,6 +30,7 @@ async def test_simple_analytics():
         return False
 
     return True
+
 
 async def test_dependency_resolution():
     print("\n=== DEPENDENCY RESOLUTION TEST ===")
@@ -62,6 +64,7 @@ async def test_dependency_resolution():
         return False
 
     return True
+
 
 async def test_parallel_no_convergence():
     print("\n=== PARALLEL WITHOUT CONVERGENCE TEST ===")
@@ -104,6 +107,7 @@ async def test_parallel_no_convergence():
         return False
 
     return True
+
 
 async def test_full_convergence():
     print("\n=== FULL CONVERGENCE TEST ===")
@@ -156,6 +160,7 @@ async def test_full_convergence():
 
     return True
 
+
 async def main():
     print("Connecting to existing 5-node cluster...")
 
@@ -170,6 +175,7 @@ async def main():
         return
 
     await test_full_convergence()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

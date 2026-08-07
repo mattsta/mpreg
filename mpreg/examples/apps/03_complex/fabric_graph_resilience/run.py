@@ -15,6 +15,7 @@ from mpreg.fabric.federation_graph import (
 )
 from mpreg.fabric.federation_optimized import CircuitBreaker
 
+
 def _node(node_id: str, region: str, lat: float, lon: float) -> FederationGraphNode:
     return FederationGraphNode(
         node_id=node_id,
@@ -23,6 +24,7 @@ def _node(node_id: str, region: str, lat: float, lon: float) -> FederationGraphN
         coordinates=GeographicCoordinate(lat, lon),
         max_capacity=1000,
     )
+
 
 async def main() -> None:
     with app_run(
@@ -154,6 +156,7 @@ async def main() -> None:
         )
         ensure(graph.path_computations >= 1, "no path computations recorded")
         ok("graph stats recorded")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

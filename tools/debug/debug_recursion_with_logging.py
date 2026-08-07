@@ -24,6 +24,7 @@ from tests.test_production_raft_integration import (
     TestProductionRaftIntegration,
 )
 
+
 async def debug_with_comprehensive_logging():
     """Test with full debug logging to catch recursion."""
     print("🔍 COMPREHENSIVE DEBUG WITH LOGGING")
@@ -69,6 +70,7 @@ async def debug_with_comprehensive_logging():
                     print(f"Timeout stopping {node_id}")
                 except Exception as e:
                     print(f"Error stopping {node_id}: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(debug_with_comprehensive_logging())

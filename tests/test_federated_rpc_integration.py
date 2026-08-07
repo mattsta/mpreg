@@ -28,6 +28,7 @@ from mpreg.fabric.federation_config import (
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 class TestFederatedRPCIntegration:
     """Test federated RPC system integration and multi-node scenarios."""
 
@@ -665,6 +666,7 @@ class TestFederatedRPCIntegration:
             "✅ Network resilience: Federated RPC system operational with redundant topology"
         )
         print(f"  Cross-hub communication working: {result['hub2_test']}")
+
 
 class TestFederatedRPCComplexScenarios:
     """Test complex federated RPC scenarios and edge cases."""

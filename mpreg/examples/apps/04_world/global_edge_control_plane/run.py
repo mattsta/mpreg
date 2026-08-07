@@ -30,6 +30,7 @@ from mpreg.examples.apps._shared.runtime import (
 from mpreg.fabric.federation_config import create_permissive_bridging_config
 from mpreg.server import MPREGServer
 
+
 async def main() -> None:
     with app_run(
         "global_edge_control_plane",
@@ -222,6 +223,7 @@ async def main() -> None:
                 await run_with_servers(settings, _run)
         finally:
             await mon.stop()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

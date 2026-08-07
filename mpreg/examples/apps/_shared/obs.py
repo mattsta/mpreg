@@ -16,6 +16,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any
 
+
 def _percentile(sorted_vals: list[float], p: float) -> float:
     if not sorted_vals:
         return 0.0
@@ -27,6 +28,7 @@ def _percentile(sorted_vals: list[float], p: float) -> float:
     if f == c:
         return float(sorted_vals[f])
     return float(sorted_vals[f] + (sorted_vals[c] - sorted_vals[f]) * (k - f))
+
 
 @dataclass(slots=True)
 class OpStats:
@@ -81,6 +83,7 @@ class OpStats:
             "min_ms": round(self.min_ms, 3),
             "max_ms": round(self.max_ms, 3),
         }
+
 
 @dataclass(slots=True)
 class ExampleProbe:
@@ -205,6 +208,7 @@ class ExampleProbe:
                 # Pad list length for percentile honesty when only avg known
                 while len(st.latencies_ms) < min(st.count, 8):
                     st.latencies_ms.append(float(rpc["avg_ms"]))
+
 
 def format_server_snapshot(
     snap: dict[str, Any], *, prefix: str = "  ◆ server-metrics"

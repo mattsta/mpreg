@@ -1,13 +1,13 @@
 # DistLab T66 — Curriculum config-check residual_ops_hint assert (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T65 |
-| **Scope** | ops_cli_tour config-check --explain asserts residual_ops_hint ops loop |
-| **Point budget** | **~8 pts** |
-| **Entry points only** | `uv run mpreg-example …` / `uv run pytest …` |
+| Field                 | Value                                                                  |
+| --------------------- | ---------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                           |
+| **Date**              | 2026-08-06                                                             |
+| **Authority**         | Continuation after T65                                                 |
+| **Scope**             | ops_cli_tour config-check --explain asserts residual_ops_hint ops loop |
+| **Point budget**      | **~8 pts**                                                             |
+| **Entry points only** | `uv run mpreg-example …` / `uv run pytest …`                           |
 
 ## Goals
 

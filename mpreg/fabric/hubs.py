@@ -56,12 +56,14 @@ from .federation_optimized import (
     OptimizedClusterState,
 )
 
+
 class HubTier(Enum):
     """Tiers in the hub hierarchy."""
 
     LOCAL = "local"  # Aggregates clusters in a local area
     REGIONAL = "regional"  # Aggregates local hubs in a region
     GLOBAL = "global"  # Aggregates regional hubs globally
+
 
 @dataclass(slots=True)
 class HubCapabilities:
@@ -86,6 +88,7 @@ class HubCapabilities:
     bandwidth_mbps: int = 10000
     cpu_capacity: float = 100.0  # CPU units
     memory_capacity_gb: float = 32.0
+
 
 @dataclass(slots=True)
 class HubLoadMetrics:
@@ -127,6 +130,7 @@ class HubLoadMetrics:
             and self.get_utilization_score() < 0.9
             and time.time() - self.last_health_check < 60.0
         )
+
 
 @dataclass(slots=True)
 class AggregatedSubscriptionState:
@@ -183,6 +187,7 @@ class AggregatedSubscriptionState:
 
         self.last_aggregated = time.time()
 
+
 class HubProtocol(Protocol):
     """Protocol for hub node implementations."""
 
@@ -213,6 +218,7 @@ class HubProtocol(Protocol):
     def get_aggregated_state(self) -> AggregatedSubscriptionState:
         """Get aggregated subscription state."""
         ...
+
 
 @dataclass
 class FederationHub(ABC):
@@ -582,6 +588,7 @@ class FederationHub(ABC):
                 parent_hub=self.parent_hub.hub_id if self.parent_hub else None,
             )
 
+
 @dataclass(slots=True)
 class LocalHub(FederationHub):
     """
@@ -628,6 +635,7 @@ class LocalHub(FederationHub):
             return await self.parent_hub.route_message(message, routing_hint)
 
         return False
+
 
 @dataclass(slots=True)
 class RegionalHub(FederationHub):
@@ -678,6 +686,7 @@ class RegionalHub(FederationHub):
 
         return False
 
+
 @dataclass(slots=True)
 class GlobalHub(FederationHub):
     """
@@ -723,6 +732,7 @@ class GlobalHub(FederationHub):
             f"Global hub {self.hub_id} found no interest for message topic {message.topic}"
         )
         return False
+
 
 @dataclass(slots=True)
 class HubTopology:
@@ -888,6 +898,7 @@ class HubTopology:
         with self._lock:
             for hub in self.hub_registry.values():
                 await hub.stop()
+
 
 @dataclass(slots=True)
 class TopicBloomFilter:

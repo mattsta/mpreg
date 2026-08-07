@@ -52,9 +52,11 @@ QUEUE_CONSENSUS_TOPIC_PREFIX = "mpreg.queue.consensus."
 QUEUE_CONSENSUS_REQUEST_TOPIC = "mpreg.queue.consensus.request"
 QUEUE_CONSENSUS_VOTE_TOPIC = "mpreg.queue.consensus.vote"
 
+
 class QueueConsensusKind(Enum):
     REQUEST = "queue_consensus_request"
     VOTE = "queue_consensus_vote"
+
 
 class QueueConsensusStatus(Enum):
     INITIATED = "initiated"
@@ -64,6 +66,7 @@ class QueueConsensusStatus(Enum):
     CONSENSUS_FAILED = "consensus_failed"
     BYZANTINE_DETECTED = "byzantine_detected"
     TIMEOUT_EXCEEDED = "timeout_exceeded"
+
 
 @dataclass(frozen=True, slots=True)
 class QueueDispatchRequest:
@@ -105,6 +108,7 @@ class QueueDispatchRequest:
             ),
             created_at=float(payload.get("created_at", time.time())),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class QueueConsensusRequest:
@@ -158,6 +162,7 @@ class QueueConsensusRequest:
             payload_digest=payload.get("payload_digest"),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class QueueConsensusVote:
     consensus_id: QueueConsensusId
@@ -186,7 +191,9 @@ class QueueConsensusVote:
             timestamp=float(payload.get("timestamp", time.time())),
         )
 
+
 QueueConsensusMessage = QueueConsensusRequest | QueueConsensusVote
+
 
 def queue_consensus_message_from_dict(payload: dict[str, Any]) -> QueueConsensusMessage:
     kind = payload.get("kind")
@@ -195,6 +202,7 @@ def queue_consensus_message_from_dict(payload: dict[str, Any]) -> QueueConsensus
     if kind == QueueConsensusKind.VOTE.value:
         return QueueConsensusVote.from_dict(payload)
     raise ValueError(f"Unknown queue consensus kind: {kind}")
+
 
 @dataclass(slots=True)
 class ConsensusClusterWeight:
@@ -210,6 +218,7 @@ class ConsensusClusterWeight:
         if not self.is_trusted:
             return 0.0
         return self.weight * self.reliability_score
+
 
 @dataclass(slots=True)
 class QueueConsensusRound:
@@ -289,6 +298,7 @@ class QueueConsensusRound:
                 )
         return byzantine_clusters
 
+
 @dataclass(frozen=True, slots=True)
 class QueueCausalOrder:
     dispatch_id: QueueDispatchId
@@ -307,6 +317,7 @@ class QueueCausalOrder:
             return True
         return True
 
+
 @dataclass(slots=True)
 class QueueDeliveryStatistics:
     global_consensus_rounds: int = 0
@@ -322,6 +333,7 @@ class QueueDeliveryStatistics:
         total = self.successful_global_consensus + self.failed_global_consensus
         return self.successful_global_consensus / total if total > 0 else 0.0
 
+
 @dataclass(frozen=True, slots=True)
 class FabricQueueDeliveryResult:
     success: bool
@@ -332,6 +344,7 @@ class FabricQueueDeliveryResult:
     error_message: str | None = None
     delivery_timestamp: Timestamp = field(default_factory=time.time)
 
+
 @dataclass(frozen=True, slots=True)
 class QueueConsensusOutcome:
     success: bool
@@ -339,11 +352,13 @@ class QueueConsensusOutcome:
     byzantine_clusters: set[ClusterId] = field(default_factory=set)
     error_message: str | None = None
 
+
 @dataclass(frozen=True, slots=True)
 class QueueCausalDelivery:
     dispatch: QueueDispatchRequest
     causal_order: QueueCausalOrder
     target_clusters: set[ClusterId]
+
 
 @dataclass(slots=True)
 class FabricQueueDeliveryCoordinator(ManagedObject):
@@ -962,6 +977,7 @@ class FabricQueueDeliveryCoordinator(ManagedObject):
             return False
         queue_names = self.queue_federation.queue_manager.list_queues()
         return request.queue_name in queue_names
+
 
 def is_queue_consensus_message(message: UnifiedMessage) -> bool:
     return message.message_type is MessageType.CONTROL and message.topic.startswith(

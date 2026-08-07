@@ -7,14 +7,20 @@ from pathlib import Path
 
 from mpreg.server_pkg.openapi_surface import openapi_path_set, route_table_path_set
 
+
 def _alerts_yml_text() -> str:
-    path = Path(__file__).resolve().parents[2] / "mpreg" / "ops" / "prometheus_alerts.yml"
+    path = (
+        Path(__file__).resolve().parents[2] / "mpreg" / "ops" / "prometheus_alerts.yml"
+    )
     if path.is_file():
         return path.read_text(encoding="utf-8")
     # Fallback via package resources
-    return resources.files("mpreg.ops").joinpath("prometheus_alerts.yml").read_text(
-        encoding="utf-8"
+    return (
+        resources.files("mpreg.ops")
+        .joinpath("prometheus_alerts.yml")
+        .read_text(encoding="utf-8")
     )
+
 
 def test_t24_prometheus_alerts_include_honesty_rules() -> None:
     """Packaged alert YAML includes STRONG/audit honesty fail-closed rules."""
@@ -37,8 +43,10 @@ def test_t24_prometheus_alerts_include_honesty_rules() -> None:
     assert "mpreg_strong_cap_pending_ttl_clears_residual_l1" in text
     assert "mpreg_shared_audit_cap_siem" in text
 
+
 def test_t24_openapi_still_matches_route_table() -> None:
     assert openapi_path_set() == route_table_path_set()
+
 
 def test_t24_slo_helper_includes_honesty_group() -> None:
     from mpreg.core.observability import prometheus_alert_rules_yaml

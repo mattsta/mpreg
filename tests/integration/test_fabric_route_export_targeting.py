@@ -11,6 +11,7 @@ from mpreg.fabric.route_policy_directory import (
     RoutePolicyDirectory,
 )
 
+
 @pytest.mark.asyncio
 async def test_route_export_targeting_filters_neighbors() -> None:
     transport = InProcessGossipTransport()

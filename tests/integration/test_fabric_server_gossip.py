@@ -8,6 +8,7 @@ from mpreg.datastructures.function_identity import FunctionSelector
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 @pytest.mark.asyncio
 async def test_fabric_catalog_propagates_over_server_gossip(
     test_context: AsyncTestContext,

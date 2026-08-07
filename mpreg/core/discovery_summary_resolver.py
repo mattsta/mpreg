@@ -25,6 +25,7 @@ from .discovery_summary import DiscoverySummaryMessage, ServiceSummary
 
 type SummaryCacheKey = tuple[NamespaceName, str, ClusterId, EndpointScope | None]
 
+
 @dataclass(frozen=True, slots=True)
 class SummaryCacheEntry:
     summary: ServiceSummary
@@ -34,12 +35,14 @@ class SummaryCacheEntry:
     expires_at: Timestamp
     scope: EndpointScope | None
 
+
 @dataclass(frozen=True, slots=True)
 class SummaryCacheEntryCounts:
     summaries: EntryCount = field(default=0, metadata={PAYLOAD_INT: True})
 
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
+
 
 @dataclass(slots=True)
 class DiscoverySummaryCacheStats:
@@ -52,6 +55,7 @@ class DiscoverySummaryCacheStats:
     last_source_cluster: ClusterId | None = None
     last_source_node: NodeId | None = None
     last_prune_at: Timestamp | None = None
+
 
 @dataclass(frozen=True, slots=True)
 class DiscoverySummaryCacheStatsSnapshot:
@@ -88,6 +92,7 @@ class DiscoverySummaryCacheStatsSnapshot:
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
 
+
 @dataclass(frozen=True, slots=True)
 class DiscoverySummaryCacheStatsResponse:
     enabled: bool
@@ -100,6 +105,7 @@ class DiscoverySummaryCacheStatsResponse:
 
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
+
 
 @dataclass(slots=True)
 class DiscoverySummaryCache:

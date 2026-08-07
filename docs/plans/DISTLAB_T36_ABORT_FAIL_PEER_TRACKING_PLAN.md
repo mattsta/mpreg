@@ -1,13 +1,13 @@
 # DistLab T36 — Abort-Fail Peer Tracking + Client Honesty (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T35 (`235ca58`) |
-| **Scope** | Surface which peers exhausted ABORT retries (CFT residual candidates); fix client/catalog residual-free overclaims |
-| **Point budget** | **~40 pts** |
-| **Entry points only** | `uv run pytest …` / `uv run mpreg …` |
+| Field                 | Value                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **Status**            | **Complete**                                                                                                       |
+| **Date**              | 2026-08-06                                                                                                         |
+| **Authority**         | Continuation after T35 (`235ca58`)                                                                                 |
+| **Scope**             | Surface which peers exhausted ABORT retries (CFT residual candidates); fix client/catalog residual-free overclaims |
+| **Point budget**      | **~40 pts**                                                                                                        |
+| **Entry points only** | `uv run pytest …` / `uv run mpreg …`                                                                               |
 
 ## Problem
 
@@ -27,13 +27,13 @@
 
 ## Stages
 
-| Stage | Work | Status |
-| --- | --- | --- |
-| T36-S1 | Plan | done |
-| T36-S2 | Coordinator abort_fail peer tracking + quorum_info | done |
-| T36-S3 | GCM status/metrics + doctor/monitor | done |
-| T36-S4 | DistLab CFT assert + docs honesty | done |
-| T36-S5 | Residuals + gate + ledger + commit | done |
+| Stage  | Work                                               | Status |
+| ------ | -------------------------------------------------- | ------ |
+| T36-S1 | Plan                                               | done   |
+| T36-S2 | Coordinator abort_fail peer tracking + quorum_info | done   |
+| T36-S3 | GCM status/metrics + doctor/monitor                | done   |
+| T36-S4 | DistLab CFT assert + docs honesty                  | done   |
+| T36-S5 | Residuals + gate + ledger + commit                 | done   |
 
 ## Non-claims
 

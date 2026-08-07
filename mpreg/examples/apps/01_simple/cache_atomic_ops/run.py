@@ -21,6 +21,7 @@ from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, s
 from mpreg.fabric.cache_federation import FabricCacheProtocol
 from mpreg.fabric.cache_transport import InProcessCacheTransport
 
+
 async def main() -> None:
     with app_run(
         "cache_atomic_ops",
@@ -199,6 +200,7 @@ async def main() -> None:
         finally:
             await cache.shutdown()
             await protocol.shutdown()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

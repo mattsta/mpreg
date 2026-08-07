@@ -20,6 +20,7 @@ from mpreg.examples.apps._shared.runtime import (
 )
 from mpreg.server import MPREGServer
 
+
 async def main() -> None:
     with app_run("hello_cluster", "Hello Cluster — peers + locs DAG", level="L0"):
         with port_range_context(2, "servers") as ports:
@@ -131,6 +132,7 @@ async def main() -> None:
                             step(f"peer snapshot: {p}")
 
             await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,13 +1,13 @@
 # DistLab T38 — GCM retry_abort Surface + Product Docs (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T37 (`23acb40`) |
-| **Scope** | GlobalCacheManager.strong_retry_abort; CACHING_SYSTEM + client/curriculum docs |
-| **Point budget** | **~30 pts** |
-| **Entry points only** | `uv run pytest …` |
+| Field                 | Value                                                                          |
+| --------------------- | ------------------------------------------------------------------------------ |
+| **Status**            | **Complete**                                                                   |
+| **Date**              | 2026-08-06                                                                     |
+| **Authority**         | Continuation after T37 (`23acb40`)                                             |
+| **Scope**             | GlobalCacheManager.strong_retry_abort; CACHING_SYSTEM + client/curriculum docs |
+| **Point budget**      | **~30 pts**                                                                    |
+| **Entry points only** | `uv run pytest …`                                                              |
 
 ## Goals
 

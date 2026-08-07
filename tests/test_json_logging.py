@@ -9,6 +9,7 @@ from loguru import logger
 
 from mpreg.core.logging import configure_logging
 
+
 def test_configure_logging_json_emits_parseable_lines() -> None:
     # Capture via a custom path: configure_logging with json uses stderr sink.
     # We re-bind by temporarily swapping; call logger after configure.
@@ -33,6 +34,7 @@ def test_configure_logging_json_emits_parseable_lines() -> None:
         else:
             assert "message" in obj or "text" in obj or "msg" in obj
     assert parsed_any
+
 
 def test_configure_logging_human_default() -> None:
     buf = io.StringIO()

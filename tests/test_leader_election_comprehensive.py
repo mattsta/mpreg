@@ -26,6 +26,7 @@ from mpreg.datastructures.leader_election import (
 )
 from mpreg.datastructures.type_aliases import ClusterId
 
+
 @contextlib.asynccontextmanager
 async def raft_instance_cleanup(
     cluster_id: ClusterId,
@@ -40,6 +41,7 @@ async def raft_instance_cleanup(
             await raft.shutdown()
         except Exception:
             pass  # Ignore cleanup errors
+
 
 # Hypothesis strategies for leader election testing
 def cluster_id_strategy() -> st.SearchStrategy[ClusterId]:
@@ -61,6 +63,7 @@ def cluster_id_strategy() -> st.SearchStrategy[ClusterId]:
         ),
     )
 
+
 def leader_election_metrics_strategy() -> st.SearchStrategy[LeaderElectionMetrics]:
     """Generate valid leader election metrics."""
     return st.builds(
@@ -74,6 +77,7 @@ def leader_election_metrics_strategy() -> st.SearchStrategy[LeaderElectionMetric
         last_heartbeat=st.floats(min_value=time.time() - 3600, max_value=time.time()),
     )
 
+
 def leader_election_vote_strategy() -> st.SearchStrategy[LeaderElectionVote]:
     """Generate valid leader election votes."""
     return st.builds(
@@ -85,6 +89,7 @@ def leader_election_vote_strategy() -> st.SearchStrategy[LeaderElectionVote]:
         timestamp=st.floats(min_value=time.time() - 3600, max_value=time.time()),
     )
 
+
 def leader_election_term_strategy() -> st.SearchStrategy[LeaderElectionTerm]:
     """Generate valid leader election terms."""
     return st.builds(
@@ -93,6 +98,7 @@ def leader_election_term_strategy() -> st.SearchStrategy[LeaderElectionTerm]:
         leader_id=st.one_of(st.none(), cluster_id_strategy()),
         started_at=st.floats(min_value=time.time() - 3600, max_value=time.time()),
     )
+
 
 class TestLeaderElectionMetrics:
     """Test leader election metrics calculations and validation."""
@@ -166,6 +172,7 @@ class TestLeaderElectionMetrics:
         else:
             assert score2 > score1
 
+
 class TestLeaderElectionVote:
     """Test leader election vote validation and properties."""
 
@@ -198,6 +205,7 @@ class TestLeaderElectionVote:
         assert vote.granted == granted
         assert vote.timestamp > 0
 
+
 class TestLeaderElectionTerm:
     """Test leader election term validation and properties."""
 
@@ -221,6 +229,7 @@ class TestLeaderElectionTerm:
         assert term_info.term_number == term_number
         assert term_info.leader_id == leader_id
         assert term_info.started_at > 0
+
 
 class TestRaftBasedLeaderElection:
     """Test Raft-based leader election implementation."""
@@ -316,6 +325,7 @@ class TestRaftBasedLeaderElection:
             current_leader = await raft.get_current_leader(namespace)
             assert current_leader is None or current_leader != cluster_id
 
+
 class TestQuorumBasedLeaderElection:
     """Test Quorum-based leader election implementation."""
 
@@ -394,6 +404,7 @@ class TestQuorumBasedLeaderElection:
         )
 
         assert elected_leader == best_cluster
+
 
 class TestMetricBasedLeaderElection:
     """Test Metric-based leader election implementation."""
@@ -484,6 +495,7 @@ class TestMetricBasedLeaderElection:
         # Should no longer be leader
         current_leader = await metric.get_current_leader(namespace)
         assert current_leader is None
+
 
 class TestLeaderElectionIntegration:
     """Integration tests for leader election implementations."""

@@ -17,6 +17,7 @@ from mpreg.fabric.federation_config import FederationConfig, FederationMode
 from mpreg.fabric.monitoring_endpoints import create_federation_monitoring_system
 from mpreg.server_pkg.mgmt_summary import build_mgmt_v1_summary
 
+
 def test_build_mgmt_summary_from_settings_only() -> None:
     class FakeServer:
         settings = MPREGSettings(name="n1", cluster_id="c1", resources={"r"})
@@ -27,6 +28,7 @@ def test_build_mgmt_summary_from_settings_only() -> None:
     assert summary["cluster"]["cluster_id"] == "c1"
     assert summary["catalog"]["nodes"] >= 1
     assert "health" in summary
+
 
 async def test_mgmt_v1_http_endpoints(server_cluster_ports: list[int]) -> None:
     port = server_cluster_ports[0]

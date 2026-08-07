@@ -16,6 +16,7 @@ from mpreg.core.cache_strong import (
 )
 from mpreg.core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
 
+
 def test_t59_format_enriches_from_recent() -> None:
     h = format_residual_ops_hint(
         ["n1"],
@@ -29,18 +30,18 @@ def test_t59_format_enriches_from_recent() -> None:
     assert "--op-id oid-1" in h
     assert "--peer n1" in h
 
+
 def test_t59_format_explicit_ns_wins() -> None:
     h = format_residual_ops_hint(
         ["n1"],
         "oid-1",
         namespace="explicit",
         key_id="k",
-        recent_abort_fails=[
-            {"op_id": "oid-1", "peers": ["n1"], "key": "other/x"}
-        ],
+        recent_abort_fails=[{"op_id": "oid-1", "peers": ["n1"], "key": "other/x"}],
     )
     assert "--namespace explicit" in h
     assert "--key k" in h
+
 
 def test_t59_doctor_enriches_placeholders() -> None:
     body = {
@@ -52,13 +53,12 @@ def test_t59_doctor_enriches_placeholders() -> None:
             "--op-id oid-z --namespace <ns> --key <id> --peer n1 "
             "(CFT best-effort; still fails while ABORT dropped)"
         ),
-        "recent_abort_fails": [
-            {"op_id": "oid-z", "peers": ["n1"], "key": "nsA/idB"}
-        ],
+        "recent_abort_fails": [{"op_id": "oid-z", "peers": ["n1"], "key": "nsA/idB"}],
     }
     h = strong_residual_ops_hint(body)
     assert "--namespace nsA" in h
     assert "--key idB" in h
+
 
 @pytest.mark.asyncio
 async def test_t59_gcm_status_enriched_after_cft() -> None:
@@ -100,6 +100,7 @@ async def test_t59_gcm_status_enriched_after_cft() -> None:
     finally:
         await gcm.shutdown()
 
+
 def test_t59_phase_47_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -110,22 +111,17 @@ def test_t59_phase_47_honesty() -> None:
     assert "Phase 47" in text
     assert "recent_abort_fails" in text
 
+
 def test_t59_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]
-    assert (
-        root / "docs" / "plans" / "DISTLAB_T59_HINT_KEY_ENRICH_PLAN.md"
-    ).is_file()
+    assert (root / "docs" / "plans" / "DISTLAB_T59_HINT_KEY_ENRICH_PLAN.md").is_file()
     ledger = (root / "docs" / "plans" / "DISTLAB_PROOF_LEDGER.md").read_text(
         encoding="utf-8"
     )
     assert "T59" in ledger
 
+
 def test_t59_claims() -> None:
-    path = (
-        Path(__file__).resolve().parents[2]
-        / "tests"
-        / "invariants"
-        / "claims.yaml"
-    )
+    path = Path(__file__).resolve().parents[2] / "tests" / "invariants" / "claims.yaml"
     text = path.read_text(encoding="utf-8")
     assert "recent_abort_fails" in text or "key enrichment" in text.lower()

@@ -49,6 +49,7 @@ from mpreg.fabric.federation_graph import GeographicCoordinate
 from .consensus import ConsensusManager
 from .gossip import GossipMessage, GossipMessageType, GossipProtocol
 
+
 class MembershipState(Enum):
     """Membership states for nodes in the federation."""
 
@@ -57,6 +58,7 @@ class MembershipState(Enum):
     FAILED = "failed"
     LEFT = "left"
     JOINING = "joining"
+
 
 class ProbeResult(Enum):
     """Results of membership probes."""
@@ -67,6 +69,7 @@ class ProbeResult(Enum):
     INDIRECT_SUCCESS = "indirect_success"
     INDIRECT_FAILURE = "indirect_failure"
 
+
 class MembershipEventType(Enum):
     """Types of membership events."""
 
@@ -76,6 +79,7 @@ class MembershipEventType(Enum):
     NODE_RECOVERED = "node_recovered"
     NODE_SUSPECTED = "node_suspected"
     NODE_CONFIRMED = "node_confirmed"
+
 
 # New dataclasses for type safety
 @dataclass(slots=True)
@@ -93,6 +97,7 @@ class NodeCapabilities:
     regions: list[str] = field(default_factory=list)
     custom_attributes: dict[str, str] = field(default_factory=dict)
 
+
 @dataclass(slots=True)
 class MembershipSummary:
     """Summary of node membership information."""
@@ -108,6 +113,7 @@ class MembershipSummary:
     suspected_by_count: int
     is_available: bool
 
+
 @dataclass(slots=True)
 class EventMetadata:
     """Metadata for membership events."""
@@ -118,6 +124,7 @@ class EventMetadata:
     sequence_id: int = 0
     retry_count: int = 0
     additional_info: dict[str, str] = field(default_factory=dict)
+
 
 @dataclass(slots=True)
 class EventSummary:
@@ -132,6 +139,7 @@ class EventSummary:
     reason: str
     age_seconds: float
 
+
 @dataclass(slots=True)
 class ProbeMessagePayload:
     """Payload for probe messages."""
@@ -144,6 +152,7 @@ class ProbeMessagePayload:
     timestamp: float = field(default_factory=time.time)
     indirect_node: str = ""  # For indirect probes
 
+
 @dataclass(slots=True)
 class MembershipUpdatePayload:
     """Payload for membership update messages."""
@@ -154,6 +163,7 @@ class MembershipUpdatePayload:
     incarnation: int = 0
     region: str = ""
     capabilities: NodeCapabilities | None = None
+
 
 @dataclass(slots=True)
 class MembershipStatistics:
@@ -166,6 +176,7 @@ class MembershipStatistics:
     active_probes: int
     recent_events: int
     probe_history_size: int
+
 
 @dataclass(slots=True)
 class MembershipInfo:
@@ -260,6 +271,7 @@ class MembershipInfo:
             is_available=self.is_available(),
         )
 
+
 @dataclass(slots=True)
 class MembershipEvent:
     """
@@ -293,6 +305,7 @@ class MembershipEvent:
             age_seconds=time.time() - self.timestamp,
         )
 
+
 @dataclass(slots=True)
 class ProbeRequest:
     """
@@ -320,6 +333,7 @@ class ProbeRequest:
     def get_age(self) -> float:
         """Get age of probe request in seconds."""
         return time.time() - self.timestamp
+
 
 @dataclass(slots=True)
 class MembershipProtocol:
@@ -1077,5 +1091,6 @@ class MembershipProtocol:
                 recent_events=len(self.membership_events),
                 probe_history_size=len(self.probe_history),
             )
+
 
 # Note: MEMBERSHIP_PROBE, MEMBERSHIP_ACK, and MEMBERSHIP_INDIRECT_PROBE are now defined in GossipMessageType enum

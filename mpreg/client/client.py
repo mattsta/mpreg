@@ -41,6 +41,7 @@ except RuntimeError:
     # No event loop running, this is fine for imports
     pass
 
+
 @dataclass
 class Client:
     # websocket URL like: ws://127.0.0.1:<port>
@@ -500,6 +501,7 @@ class Client:
         finally:
             # Clean up the pending request
             self._pending_requests.pop(request_id, None)
+
 
 @client_log.catch
 def cmd() -> None:

@@ -12,6 +12,7 @@ from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 from tests.test_helpers import TestPortManager, wait_for_condition
 
+
 def _function_visible(
     server: MPREGServer,
     *,
@@ -33,6 +34,7 @@ def _function_visible(
     if node_id:
         return any(entry.node_id == node_id for entry in matches)
     return bool(matches)
+
 
 @pytest.mark.asyncio
 async def test_fabric_rpc_forwarding_via_intermediate() -> None:
@@ -122,6 +124,7 @@ async def test_fabric_rpc_forwarding_via_intermediate() -> None:
             )
 
         assert result == "mesh:payload"
+
 
 @pytest.mark.asyncio
 async def test_fabric_rpc_resource_filtering() -> None:
@@ -250,6 +253,7 @@ async def test_fabric_rpc_resource_filtering() -> None:
                     function_id="func-tensor",
                     version_constraint="==1.0.0",
                 )
+
 
 def test_fabric_hop_budget_blocks_forward_headers() -> None:
     from mpreg.core.errors import MpregError, MpregErrorCode

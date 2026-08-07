@@ -25,6 +25,7 @@ from ..core.topic_taxonomy import TopicValidator
 
 FAST_HASH_AVAILABLE = True  # Built-in hash is always available
 
+
 class ClusterStatus(Enum):
     """Status of a federated cluster connection."""
 
@@ -35,6 +36,7 @@ class ClusterStatus(Enum):
     ACTIVE = "active"
     FAILED = "failed"
     CIRCUIT_BREAKER_OPEN = "circuit_breaker_open"
+
 
 @dataclass(slots=True, frozen=True)
 class ClusterIdentity:
@@ -51,6 +53,7 @@ class ClusterIdentity:
     network_tier: int = 1  # 1=premium, 2=standard, 3=economy
     max_bandwidth_mbps: int = 1000
     preference_weight: float = 1.0  # Manual weight adjustment
+
 
 @dataclass(slots=True)
 class OptimizedBloomFilter:
@@ -170,6 +173,7 @@ class OptimizedBloomFilter:
         current_fp_rate = self.get_false_positive_rate()
         return current_fp_rate > self.false_positive_rate * 2  # 2x threshold for resize
 
+
 @dataclass(slots=True)
 class LatencyMetrics:
     """Tracks latency and performance metrics for intelligent routing."""
@@ -250,6 +254,7 @@ class LatencyMetrics:
 
         return max(0.0, min(1.0, weight))  # Clamp to [0, 1]
 
+
 @dataclass(slots=True)
 class CircuitBreaker:
     """Advanced circuit breaker with exponential backoff and jitter."""
@@ -322,6 +327,7 @@ class CircuitBreaker:
                 return False
             else:  # half_open
                 return True
+
 
 @dataclass(slots=True)
 class OptimizedClusterState:
@@ -405,6 +411,7 @@ class OptimizedClusterState:
                 subscription_count=self.subscription_count,
                 last_updated=self.last_updated,
             )
+
 
 @dataclass(slots=True)
 class IntelligentRoutingTable:
@@ -586,6 +593,7 @@ class IntelligentRoutingTable:
                 cluster_metrics=cluster_metrics_dict,
                 last_update=self.last_update,
             )
+
 
 # Additional optimized classes would go here...
 # This is a partial implementation showing the key optimizations.

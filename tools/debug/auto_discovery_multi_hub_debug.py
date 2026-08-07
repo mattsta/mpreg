@@ -16,10 +16,12 @@ from mpreg.server import MPREGServer
 type NodeCount = int
 type Seconds = float
 
+
 @dataclass(frozen=True, slots=True)
 class ConvergenceThreshold:
     min_discovered_peers: int
     min_nodes_meeting_threshold: int
+
 
 @dataclass(frozen=True, slots=True)
 class ConvergenceSnapshot:
@@ -86,20 +88,24 @@ class ConvergenceSnapshot:
     avg_reachable_total: float
     max_reachable_total: int
 
+
 @dataclass(frozen=True, slots=True)
 class NodeDiscoveryCount:
     node_id: str
     discovered_peers: int
+
 
 @dataclass(frozen=True, slots=True)
 class PeerFrequency:
     peer_id: str
     seen_by_nodes: int
 
+
 @dataclass(frozen=True, slots=True)
 class LocalFunctionCount:
     node_id: str
     count: int
+
 
 @dataclass(frozen=True, slots=True)
 class RefreshTaskState:
@@ -107,20 +113,24 @@ class RefreshTaskState:
     catalog_refresh_running: bool
     node_refresh_running: bool
 
+
 @dataclass(frozen=True, slots=True)
 class NodeDepartedCount:
     node_id: str
     departed_peer_count: int
+
 
 @dataclass(frozen=True, slots=True)
 class DepartedPeerMark:
     peer_id: str
     marked_by_nodes: int
 
+
 @dataclass(frozen=True, slots=True)
 class MissingPeersForNode:
     node_id: str
     missing_peers: tuple[str, ...]
+
 
 @dataclass(frozen=True, slots=True)
 class FinalNodeMetrics:
@@ -134,6 +144,7 @@ class FinalNodeMetrics:
     connected_ratio: float
     pending_messages: int
     pending_catalog_messages: int
+
 
 @dataclass(frozen=True, slots=True)
 class DistributionSummary:
@@ -149,6 +160,7 @@ class DistributionSummary:
     final_node_metrics: tuple[FinalNodeMetrics, ...]
     zero_local_function_nodes: tuple[str, ...]
     seed_dial_lines: tuple[str, ...]
+
 
 def _build_settings(
     *,
@@ -182,10 +194,12 @@ def _build_settings(
         fabric_routing_enabled=False,
     )
 
+
 def _configure_debug_logging() -> None:
     # Reduce websocket handshake-noise so convergence metrics stay visible.
     logging.getLogger("websockets.server").setLevel(logging.CRITICAL)
     logging.getLogger("websockets.client").setLevel(logging.CRITICAL)
+
 
 def _build_thresholds(node_count: int) -> ConvergenceThreshold:
     expected_peers = max(node_count - 1, 1)
@@ -195,6 +209,7 @@ def _build_thresholds(node_count: int) -> ConvergenceThreshold:
         min_discovered_peers=min_discovered_peers,
         min_nodes_meeting_threshold=min_nodes_meeting_threshold,
     )
+
 
 def _capture_snapshot(
     *,
@@ -448,6 +463,7 @@ def _capture_snapshot(
         max_reachable_total=max(reachable_total_counts),
     )
 
+
 def _capture_discovery_distribution(
     servers: list[MPREGServer],
 ) -> tuple[list[NodeDiscoveryCount], list[PeerFrequency]]:
@@ -483,6 +499,7 @@ def _capture_discovery_distribution(
         key=lambda entry: (-entry.seen_by_nodes, entry.peer_id),
     )
     return ordered_node_counts, ordered_peer_frequency
+
 
 def _print_distribution_summary(
     servers: list[MPREGServer], seed_targets: list[str | None]
@@ -729,6 +746,7 @@ def _print_distribution_summary(
         seed_dial_lines=tuple(seed_dial_lines),
     )
 
+
 def _write_json_report(
     *,
     output_path: Path,
@@ -762,6 +780,7 @@ def _write_json_report(
     output_path.write_text(
         json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
     )
+
 
 async def _run_debug(
     *,
@@ -964,6 +983,7 @@ async def _run_debug(
             allocator.release_port(port)
         print("Cleanup complete.")
 
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Deep-dive auto-discovery debugger for multi-hub topologies"
@@ -1006,6 +1026,7 @@ def _parse_args() -> argparse.Namespace:
     )
     return parser.parse_args()
 
+
 def main() -> int:
     args = _parse_args()
     output_json = (
@@ -1022,6 +1043,7 @@ def main() -> int:
             output_json=output_json,
         )
     )
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

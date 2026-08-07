@@ -45,6 +45,7 @@ type DependencyFieldPath = str
 type DependencyValue = Any
 type DependencyPattern = str
 
+
 class DependencyType(Enum):
     """Types of dependencies that RPC commands can have."""
 
@@ -54,6 +55,7 @@ class DependencyType(Enum):
     EXTERNAL_EVENT = "external_event"  # Depends on an external system event
     CACHE_UPDATE = "cache_update"  # Depends on a cache update/invalidation
     FEDERATION_SYNC = "federation_sync"  # Depends on federation synchronization
+
 
 class DependencyStatus(Enum):
     """Status of a dependency resolution."""
@@ -65,6 +67,7 @@ class DependencyStatus(Enum):
     TIMEOUT = "timeout"  # Dependency resolution timed out
     CANCELLED = "cancelled"  # Dependency resolution cancelled
 
+
 class DependencyResolutionStrategy(Enum):
     """Strategies for resolving dependencies."""
 
@@ -72,6 +75,7 @@ class DependencyResolutionStrategy(Enum):
     BATCH = "batch"  # Batch resolve with other dependencies
     DELAYED = "delayed"  # Resolve after a specified delay
     CONDITIONAL = "conditional"  # Resolve only if conditions are met
+
 
 @dataclass(frozen=True, slots=True)
 class DependencySpecification:
@@ -97,6 +101,7 @@ class DependencySpecification:
     description: str = ""
     correlation_id: CorrelationId | None = None
 
+
 @dataclass(frozen=True, slots=True)
 class DependencyResolutionEvent:
     """Event indicating a dependency has been resolved."""
@@ -119,6 +124,7 @@ class DependencyResolutionEvent:
     timestamp: float = field(default_factory=time.time)
     correlation_id: CorrelationId | None = None
     error_message: str | None = None
+
 
 @dataclass(frozen=True, slots=True)
 class DependencyGraph:
@@ -172,6 +178,7 @@ class DependencyGraph:
 
         return ready_commands
 
+
 @dataclass(slots=True)
 class DependencySubscription:
     """Tracks a topic subscription for dependency resolution."""
@@ -191,6 +198,7 @@ class DependencySubscription:
     resolution_strategy: DependencyResolutionStrategy = (
         DependencyResolutionStrategy.IMMEDIATE
     )
+
 
 @dataclass(slots=True)
 class TopicDependencyResolver:
@@ -630,7 +638,9 @@ class TopicDependencyResolver:
             * 100.0,
         }
 
+
 # Factory functions for creating dependency resolution components
+
 
 def create_topic_dependency_resolver(
     topic_template_engine: TopicTemplateEngine | None = None,

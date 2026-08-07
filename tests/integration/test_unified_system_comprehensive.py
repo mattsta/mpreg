@@ -37,6 +37,7 @@ from mpreg.fabric.router import (
 )
 from mpreg.fabric.rpc_messages import FabricRPCRequest
 
+
 class StubFederationPlanner:
     def __init__(self, plan: FabricForwardingPlan) -> None:
         self._plan = plan
@@ -49,6 +50,7 @@ class StubFederationPlanner:
         remaining_hops: int | None = None,
     ) -> FabricForwardingPlan:
         return self._plan
+
 
 def _make_router(
     *, routing_index: RoutingIndex, local_cluster: str, local_node: str, planner=None
@@ -72,6 +74,7 @@ def _make_router(
         routing_engine=engine,
         pubsub_planner=pubsub_planner,
     )
+
 
 class TestFabricRoutingComprehensive:
     @pytest.mark.asyncio
@@ -303,6 +306,7 @@ class TestFabricRoutingComprehensive:
         policy = router.config.get_policy_for_message(message)
 
         assert policy.policy_id == "critical-control"
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])

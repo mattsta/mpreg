@@ -39,6 +39,7 @@ from .production_raft_implementation import ProductionRaft, RaftConfiguration
 from .raft_storage_adapters import RaftStorageFactory
 from .type_aliases import ClusterId, Timestamp
 
+
 def _get_cluster_fitness_score(
     cluster_id: ClusterId,
     self_cluster_id: ClusterId,
@@ -67,6 +68,7 @@ def _get_cluster_fitness_score(
 
     return default_unknown_score
 
+
 class LeaderElectionState(Enum):
     """States for leader election process."""
 
@@ -74,6 +76,7 @@ class LeaderElectionState(Enum):
     CANDIDATE = "candidate"  # Node is campaigning to be leader
     LEADER = "leader"  # Node is the current leader
     OFFLINE = "offline"  # Node is offline/unreachable
+
 
 @dataclass(frozen=True, slots=True)
 class LeaderElectionTerm:
@@ -94,6 +97,7 @@ class LeaderElectionTerm:
         if self.started_at <= 0:
             raise ValueError("Start time must be positive")
 
+
 @dataclass(frozen=True, slots=True)
 class LeaderElectionVote:
     """Vote in a leader election process."""
@@ -113,6 +117,7 @@ class LeaderElectionVote:
             raise ValueError("Voter ID cannot be empty")
         if self.timestamp <= 0:
             raise ValueError("Timestamp must be positive")
+
 
 @dataclass(frozen=True, slots=True)
 class LeaderElectionMetrics:
@@ -168,6 +173,7 @@ class LeaderElectionMetrics:
         )
 
         return min(total_score, 100.0)
+
 
 @runtime_checkable
 class LeaderElection(Protocol):
@@ -240,6 +246,7 @@ class LeaderElection(Protocol):
         """
         ...
 
+
 class _NullRaftTransport:
     async def send_request_vote(self, target, request):
         return None
@@ -250,6 +257,7 @@ class _NullRaftTransport:
     async def send_install_snapshot(self, target, request):
         return None
 
+
 class _NoOpRaftStateMachine:
     async def apply_command(self, command: Any, index: int) -> Any:
         return None
@@ -259,6 +267,7 @@ class _NoOpRaftStateMachine:
 
     async def restore_from_snapshot(self, snapshot_data: bytes) -> None:
         return None
+
 
 @dataclass(slots=True)
 class RaftBasedLeaderElection:
@@ -386,6 +395,7 @@ class RaftBasedLeaderElection:
         await self._raft.start()
         self._started = True
 
+
 @dataclass(slots=True)
 class QuorumBasedLeaderElection:
     """
@@ -463,6 +473,7 @@ class QuorumBasedLeaderElection:
         return _get_cluster_fitness_score(
             cluster_id, self.cluster_id, self.cluster_metrics, default_self_score=80.0
         )
+
 
 @dataclass(slots=True)
 class MetricBasedLeaderElection:

@@ -37,6 +37,7 @@ from mpreg.fabric.federation_graph_monitor import (
     PathCacheManager,
 )
 
+
 class MockMetricsCollector:
     """Mock metrics collector for testing."""
 
@@ -85,6 +86,7 @@ class MockMetricsCollector:
     def get_collection_interval(self) -> float:
         """Get collection interval."""
         return self.collection_interval
+
 
 @pytest.fixture
 def sample_graph():
@@ -157,6 +159,7 @@ def sample_graph():
         graph.add_edge(edge)
 
     return graph
+
 
 class TestGraphMetricsCollector:
     """Test suite for GraphMetricsCollector."""
@@ -327,6 +330,7 @@ class TestGraphMetricsCollector:
         assert total_collected > 0
         assert collector.metrics_collected > 0
 
+
 class TestPathCacheManager:
     """Test suite for PathCacheManager."""
 
@@ -456,6 +460,7 @@ class TestPathCacheManager:
         assert stats.invalidations_triggered > 0
         assert hasattr(stats, "invalidations_by_reason")
         assert hasattr(stats, "thresholds")
+
 
 class TestGraphOptimizer:
     """Test suite for GraphOptimizer."""
@@ -660,6 +665,7 @@ class TestGraphOptimizer:
         assert stats.optimization_history.total_optimizations == 0
         assert stats.current_suggestions == len(suggestions)
 
+
 class TestFederationGraphMonitor:
     """Test suite for FederationGraphMonitor (integration tests)."""
 
@@ -770,6 +776,7 @@ class TestFederationGraphMonitor:
         assert status.graph_statistics.total_nodes == 3
         assert status.graph_statistics.total_edges == 3
 
+
 class TestPerformanceAndScalability:
     """Test suite for performance and scalability."""
 
@@ -877,6 +884,7 @@ class TestPerformanceAndScalability:
         status = monitor.get_comprehensive_status()
         assert status.metrics_collector.metrics_statistics.total_collected > 0
         assert status.metrics_collector.metrics_statistics.success_rate > 0.5
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

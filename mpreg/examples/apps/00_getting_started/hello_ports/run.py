@@ -17,6 +17,7 @@ from mpreg.examples.apps._shared.runtime import (
 )
 from mpreg.server import MPREGServer
 
+
 async def main() -> None:
     with app_run("hello_ports", "Hello Ports — allocator + RPC", level="L0"):
         with scenario(
@@ -110,6 +111,7 @@ async def main() -> None:
                         ok(f"second port {ports[1]} answered")
 
                 await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

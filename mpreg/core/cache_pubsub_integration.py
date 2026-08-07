@@ -38,6 +38,7 @@ from .model import PubSubMessage, PubSubSubscription, TopicPattern
 from .task_manager import ManagedObject
 from .topic_exchange import TopicExchange
 
+
 class CacheEventType(Enum):
     """Types of cache events that can trigger pub/sub notifications."""
 
@@ -53,6 +54,7 @@ class CacheEventType(Enum):
     CACHE_PROMOTION = "cache_promotion"
     CONSTRAINT_VIOLATION = "constraint_violation"
 
+
 @dataclass(slots=True)
 class CachePubSubIntegrationStats:
     """Statistics for cache-pub/sub integration."""
@@ -61,6 +63,7 @@ class CachePubSubIntegrationStats:
     notifications_failed: int = 0
     events_processed: int = 0
     cache_operations_triggered: int = 0
+
 
 @dataclass(frozen=True, slots=True)
 class CacheNotificationConfig:
@@ -76,6 +79,7 @@ class CacheNotificationConfig:
     async_notification: bool = True
     max_notification_delay_ms: int = 100
 
+
 @dataclass(frozen=True, slots=True)
 class CacheEvent:
     """Cache event data for pub/sub notifications."""
@@ -90,6 +94,7 @@ class CacheEvent:
     timestamp: float = field(default_factory=time.time)
     event_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     cluster_id: str = ""
+
 
 class CachePubSubIntegration(ManagedObject):
     """
@@ -585,6 +590,7 @@ class CachePubSubIntegration(ManagedObject):
 
         except Exception as e:
             logger.error(f"Error during cache-pub/sub integration shutdown: {e}")
+
 
 class EnhancedAdvancedCacheOperations(AdvancedCacheOperations):
     """

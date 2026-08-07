@@ -42,6 +42,7 @@ from .type_aliases import (
 DEFAULT_RPC_SPEC_VERSION: RpcSpecVersion = "1"
 DEFAULT_RPC_SCOPE: EndpointScope = "zone"
 
+
 class RpcParamKind(Enum):
     POSITIONAL_ONLY = "positional_only"
     POSITIONAL_OR_KEYWORD = "positional_or_keyword"
@@ -49,10 +50,12 @@ class RpcParamKind(Enum):
     KEYWORD_ONLY = "keyword_only"
     VAR_KEYWORD = "var_keyword"
 
+
 class RpcDefaultEncoding(Enum):
     NONE = "none"
     JSON = "json"
     REPR = "repr"
+
 
 @dataclass(frozen=True, slots=True)
 class RpcTypeSpec:
@@ -88,6 +91,7 @@ class RpcTypeSpec:
             is_optional=bool(payload.get("is_optional", False)),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class RpcDefaultSpec:
     has_default: bool
@@ -119,6 +123,7 @@ class RpcDefaultSpec:
             else None,
         )
 
+
 @dataclass(frozen=True, slots=True)
 class RpcParamDoc:
     name: RpcParamName
@@ -133,6 +138,7 @@ class RpcParamDoc:
             name=str(payload.get("name", "")),
             description=str(payload.get("description", "")),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class RpcDocSpec:
@@ -160,6 +166,7 @@ class RpcDocSpec:
             ),
             return_doc=str(payload.get("return_doc", "")),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class RpcParamSpec:
@@ -199,6 +206,7 @@ class RpcParamSpec:
             doc=str(payload.get("doc", "")),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class RpcReturnSpec:
     type_spec: RpcTypeSpec
@@ -215,6 +223,7 @@ class RpcReturnSpec:
             ),
             doc=str(payload.get("doc", "")),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class RpcExampleSpec:
@@ -242,6 +251,7 @@ class RpcExampleSpec:
             request=payload.get("request"),
             response=payload.get("response"),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class RpcSpec:
@@ -357,6 +367,7 @@ class RpcSpec:
         digest = _compute_spec_digest(spec)
         return replace(spec, spec_digest=digest)
 
+
 @dataclass(frozen=True, slots=True)
 class RpcSpecSummary:
     identity: FunctionIdentity
@@ -411,6 +422,7 @@ class RpcSpecSummary:
             spec_digest=spec.spec_digest,
         )
 
+
 @dataclass(frozen=True, slots=True)
 class RpcHandlerSpec:
     handler_name: str
@@ -428,6 +440,7 @@ class RpcHandlerSpec:
             handler_signature=str(inspect.signature(handler)),
             handler_is_async=inspect.iscoroutinefunction(handler),
         )
+
 
 @dataclass(slots=True)
 class RpcRegistration:
@@ -486,16 +499,19 @@ class RpcRegistration:
             registration_id=registration_id or str(uuid.uuid4()),
         )
 
+
 def _namespace_from_name(name: RpcName) -> RpcNamespace:
     if "." in name:
         return name.rsplit(".", 1)[0]
     return ""
+
 
 def _compute_spec_digest(spec: RpcSpec) -> RpcSpecDigest:
     from mpreg.core.native_codec import canonical_hash_hex
 
     payload = spec.to_dict(include_digest=False)
     return canonical_hash_hex(payload, algorithm="sha256")
+
 
 def _parse_docstring(doc: str) -> RpcDocSpec:
     if not doc:
@@ -554,6 +570,7 @@ def _parse_docstring(doc: str) -> RpcDocSpec:
         return_doc=return_doc,
     )
 
+
 def _build_param_specs(
     handler: Callable[..., Any],
     *,
@@ -594,6 +611,7 @@ def _build_param_specs(
         )
     return tuple(param_specs)
 
+
 def _build_return_spec(
     handler: Callable[..., Any],
     *,
@@ -607,6 +625,7 @@ def _build_return_spec(
         doc=return_doc or annotation_doc or "",
     )
 
+
 def _split_annotated(annotation: Any) -> tuple[Any, RpcDocString]:
     origin = get_origin(annotation)
     if origin is Annotated:
@@ -618,6 +637,7 @@ def _split_annotated(annotation: Any) -> tuple[Any, RpcDocString]:
             return base, doc
     return annotation, ""
 
+
 def _annotation_doc(metadata: tuple[Any, ...]) -> RpcDocString:
     for item in metadata:
         if isinstance(item, RpcParamDoc):
@@ -625,6 +645,7 @@ def _annotation_doc(metadata: tuple[Any, ...]) -> RpcDocString:
         if isinstance(item, str):
             return item
     return ""
+
 
 def _safe_type_hints(handler: Callable[..., Any]) -> dict[str, Any]:
     try:
@@ -636,6 +657,7 @@ def _safe_type_hints(handler: Callable[..., Any]) -> dict[str, Any]:
             return dict(getattr(handler, "__annotations__", {}) or {})
     except Exception:
         return dict(getattr(handler, "__annotations__", {}) or {})
+
 
 def _type_spec_from_annotation(annotation: Any) -> RpcTypeSpec:
     if annotation is inspect.Signature.empty or annotation is inspect._empty:
@@ -659,6 +681,7 @@ def _type_spec_from_annotation(annotation: Any) -> RpcTypeSpec:
         is_optional=is_optional,
     )
 
+
 def _default_spec_from_value(value: Any) -> RpcDefaultSpec:
     if value is inspect.Signature.empty or value is inspect._empty:
         return RpcDefaultSpec(has_default=False, encoding=RpcDefaultEncoding.NONE)
@@ -674,6 +697,7 @@ def _default_spec_from_value(value: Any) -> RpcDefaultSpec:
         encoding=RpcDefaultEncoding.REPR,
         repr_value=repr(value),
     )
+
 
 def _jsonable_default(value: Any) -> JsonValue | None:
     if value is None:
@@ -710,6 +734,7 @@ def _jsonable_default(value: Any) -> JsonValue | None:
         return out
     return None
 
+
 def _render_annotation(annotation: Any) -> str:
     if annotation is Any:
         return "Any"
@@ -736,9 +761,11 @@ def _render_annotation(annotation: Any) -> str:
         return rendered
     return str(annotation)
 
+
 def _is_union_origin(origin: Any) -> bool:
     union_type = getattr(types, "UnionType", None)
     return origin is Union or (union_type is not None and origin is union_type)
+
 
 def _is_optional_annotation(annotation: Any) -> bool:
     origin = get_origin(annotation)
@@ -749,17 +776,20 @@ def _is_optional_annotation(annotation: Any) -> bool:
         return False
     return any(arg is type(None) for arg in args)
 
+
 def _origin_name(origin: Any) -> RpcTypeName | None:
     if origin is None:
         return None
     name = getattr(origin, "__name__", None)
     return name or str(origin)
 
+
 def _module_name(annotation: Any, origin: Any) -> str | None:
     module = getattr(annotation, "__module__", None)
     if module:
         return module
     return getattr(origin, "__module__", None)
+
 
 def _qualname(annotation: Any, origin: Any) -> str | None:
     qualname = getattr(annotation, "__qualname__", None)

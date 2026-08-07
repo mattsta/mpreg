@@ -29,10 +29,11 @@ __all__ = [
     "RoutingOracle",
     "RpcOracle",
     "RpcStreamEvent",
-    "raise_open_file_limit",
     # DistLab (first-party distributed testing lab)
     "distlab",
+    "raise_open_file_limit",
 ]
+
 
 def __getattr__(name: str) -> object:
     """Lazy exports for concurrent/hang infrastructure and DistLab."""

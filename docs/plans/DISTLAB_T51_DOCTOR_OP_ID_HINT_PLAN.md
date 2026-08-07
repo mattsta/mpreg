@@ -1,13 +1,13 @@
 # DistLab T51 — Doctor op_id + residual ops hint (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T50 |
-| **Scope** | Surface `last_abort_fail_op_id` + ops remediation hint on doctor/monitor when residual candidates present |
-| **Point budget** | **~15 pts** |
-| **Entry points only** | `uv run mpreg doctor …` / `uv run mpreg monitor strong …` / `uv run pytest …` |
+| Field                 | Value                                                                                                     |
+| --------------------- | --------------------------------------------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                                                              |
+| **Date**              | 2026-08-06                                                                                                |
+| **Authority**         | Continuation after T50                                                                                    |
+| **Scope**             | Surface `last_abort_fail_op_id` + ops remediation hint on doctor/monitor when residual candidates present |
+| **Point budget**      | **~15 pts**                                                                                               |
+| **Entry points only** | `uv run mpreg doctor …` / `uv run mpreg monitor strong …` / `uv run pytest …`                             |
 
 ## Goals
 

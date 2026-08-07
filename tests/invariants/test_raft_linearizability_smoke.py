@@ -23,6 +23,7 @@ from tests.test_production_raft_integration import (
     TestableStateMachine,
 )
 
+
 async def _poll_until(
     predicate: Callable[[], bool],
     *,
@@ -36,6 +37,7 @@ async def _poll_until(
             return True
         await asyncio.sleep(interval_s)
     return predicate()
+
 
 @pytest.mark.asyncio
 async def test_sequential_writes_match_state_machine() -> None:

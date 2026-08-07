@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t60_live_enriched_hint_test_present() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -18,6 +19,7 @@ def test_t60_live_enriched_hint_test_present() -> None:
     assert "T60" in text
     assert "not auto-heal" in text
 
+
 def test_t60_phase_48_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -27,6 +29,7 @@ def test_t60_phase_48_honesty() -> None:
     text = path.read_text(encoding="utf-8")
     assert "Phase 48" in text
     assert "enriched" in text.lower() or "residual_ops_hint" in text
+
 
 def test_t60_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]
@@ -38,12 +41,8 @@ def test_t60_plan_and_ledger() -> None:
     )
     assert "T60" in ledger
 
+
 def test_t60_claims() -> None:
-    path = (
-        Path(__file__).resolve().parents[2]
-        / "tests"
-        / "invariants"
-        / "claims.yaml"
-    )
+    path = Path(__file__).resolve().parents[2] / "tests" / "invariants" / "claims.yaml"
     text = path.read_text(encoding="utf-8")
     assert "T60" in text or "enriched" in text.lower() or "seed" in text.lower()

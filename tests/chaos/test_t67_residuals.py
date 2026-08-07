@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t67_design_doc_residual_ops_hint() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -19,6 +20,7 @@ def test_t67_design_doc_residual_ops_hint() -> None:
         "auto" in text.lower() or "ops-driven" in text.lower()
     )
 
+
 def test_t67_phase_55_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -27,6 +29,7 @@ def test_t67_phase_55_honesty() -> None:
     )
     text = path.read_text(encoding="utf-8")
     assert "Phase 55" in text
+
 
 def test_t67_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]

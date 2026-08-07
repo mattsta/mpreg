@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t99_operate() -> None:
     text = (
         Path(__file__).resolve().parents[2]
@@ -15,12 +16,14 @@ def test_t99_operate() -> None:
     assert "doctor" in text.lower()
     assert "monitor" in text.lower() or "Doctor detail" in text
 
+
 def test_t99_phase_87_honesty() -> None:
     assert "Phase 87" in (
         Path(__file__).resolve().parents[2]
         / "docs"
         / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md"
     ).read_text(encoding="utf-8")
+
 
 def test_t99_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]

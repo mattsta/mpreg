@@ -7,6 +7,7 @@ import asyncio
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 from mpreg.testing.faults import FaultInjector
 
+
 async def main() -> None:
     """Honest Raft-shaped teaching without spinning a full ProductionRaft cluster.
 
@@ -76,6 +77,7 @@ async def main() -> None:
                 "non-claim: teaching model only — see tests/test_production_raft_* "
                 "for live Raft"
             )
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -19,6 +19,7 @@ from loguru import logger
 from .caching import CacheKey as LocalCacheKey
 from .serialization import JsonSerializer
 
+
 class ConsistencyLevel(Enum):
     """Cache consistency levels for distributed operations.
 
@@ -32,6 +33,7 @@ class ConsistencyLevel(Enum):
     STRONG = "strong"  # majority-commit put when cache_strong_enabled
     WEAK = "weak"  # Local cache only, no synchronization
 
+
 class CacheLevel(Enum):
     """Multi-tier cache levels."""
 
@@ -39,6 +41,7 @@ class CacheLevel(Enum):
     L2 = "L2"  # Persistent cache
     L3 = "L3"  # Distributed cache
     L4 = "L4"  # Fabric federation
+
 
 class ReplicationStrategy(Enum):
     """Cache replication strategies."""
@@ -48,6 +51,7 @@ class ReplicationStrategy(Enum):
     PROXIMITY = "proximity"  # Replicate to nearby nodes
     LOAD_BASED = "load_based"  # Replicate based on access patterns
     HYBRID = "hybrid"  # Combination of strategies
+
 
 @dataclass(frozen=True, slots=True)
 class GlobalCacheKey:
@@ -110,6 +114,7 @@ class GlobalCacheKey:
     def __str__(self) -> str:
         return f"{self.namespace}:{self.identifier}:{self.version}"
 
+
 @dataclass(frozen=True, slots=True)
 class CacheOptions:
     """Options for cache operations."""
@@ -126,6 +131,7 @@ class CacheOptions:
     prefer_local: bool = True
     max_staleness_seconds: float = 300.0
 
+
 @dataclass(slots=True)
 class CacheMetadata:
     """Metadata for cached entries."""
@@ -140,6 +146,7 @@ class CacheMetadata:
     created_by: str = ""  # Node that created the entry
     size_estimate_bytes: int = 0
 
+
 @dataclass(frozen=True, slots=True)
 class CachePerformanceMetrics:
     """Performance metrics for cache operations."""
@@ -149,6 +156,7 @@ class CachePerformanceMetrics:
     cache_efficiency: float  # 0.0 - 1.0
     replication_latency_ms: float = 0.0
     conflict_resolution_time_ms: float = 0.0
+
 
 @dataclass(slots=True)
 class GlobalCacheEntry:
@@ -191,6 +199,7 @@ class GlobalCacheEntry:
         except Exception as e:
             logger.warning("Cache integrity check failed for {}: {}", self.key, e)
             return False
+
 
 @dataclass(frozen=True, slots=True)
 class CacheOperationResult:

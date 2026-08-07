@@ -49,6 +49,7 @@ STREAM_FLAG_CONTINUE = 0x01  # More chunks follow
 STREAM_FLAG_END = 0x02  # Final chunk
 STREAM_FLAG_ERROR = 0x04  # Error in stream
 
+
 class TCPTransport(TransportInterface):
     """TCP transport implementation.
 
@@ -651,6 +652,7 @@ class TCPTransport(TransportInterface):
         except Exception as e:
             raise TransportError(f"TCP ping error: {e}")
 
+
 class TCPListener(TransportListener):
     """TCP listener for accepting incoming connections."""
 
@@ -776,6 +778,7 @@ class TCPListener(TransportListener):
                 )
                 with contextlib.suppress(Exception):
                     writer.close()
+
 
 class _TCPServerTransport(TransportInterface):
     """TCP transport wrapper for server-side connections."""
@@ -1129,6 +1132,7 @@ class _TCPServerTransport(TransportInterface):
 
         # Reassemble all chunks
         return b"".join(chunks)
+
 
 # Fix socket import for TCP keepalive
 try:

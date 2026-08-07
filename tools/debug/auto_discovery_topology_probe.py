@@ -18,6 +18,7 @@ type NodeCount = int
 type Seconds = float
 type TopologyName = str
 
+
 @dataclass(frozen=True, slots=True)
 class ProbeConfig:
     nodes: NodeCount
@@ -29,11 +30,13 @@ class ProbeConfig:
     concurrency_factor: float
     peer_dial_diagnostics: bool
 
+
 @dataclass(frozen=True, slots=True)
 class ThresholdConfig:
     min_discovered_peers: int
     min_nodes_meeting_threshold: int
     discovery_timeout_seconds: Seconds
+
 
 @dataclass(frozen=True, slots=True)
 class ConvergenceSnapshot:
@@ -75,6 +78,7 @@ class ConvergenceSnapshot:
     avg_pending_catalog_duplicate_updates: float
     max_pending_catalog_duplicate_updates: int
 
+
 @dataclass(frozen=True, slots=True)
 class NodeDiscoveryDetails:
     node_id: str
@@ -89,6 +93,7 @@ class NodeDiscoveryDetails:
     pending_messages: int
     pending_catalog_messages: int
 
+
 @dataclass(frozen=True, slots=True)
 class ProbeResult:
     converged: bool
@@ -98,6 +103,7 @@ class ProbeResult:
     snapshot_count: int
     nodes: tuple[NodeDiscoveryDetails, ...]
 
+
 @dataclass(frozen=True, slots=True)
 class ProbeReport:
     generated_at_unix: float
@@ -105,9 +111,11 @@ class ProbeReport:
     result: ProbeResult
     snapshots: tuple[ConvergenceSnapshot, ...]
 
+
 def _configure_log_noise_suppression() -> None:
     logging.getLogger("websockets.server").setLevel(logging.CRITICAL)
     logging.getLogger("websockets.client").setLevel(logging.CRITICAL)
+
 
 def _build_threshold(config: ProbeConfig) -> ThresholdConfig:
     expected_peers = max(config.nodes - 1, 1)
@@ -128,6 +136,7 @@ def _build_threshold(config: ProbeConfig) -> ThresholdConfig:
         min_nodes_meeting_threshold=min_nodes_meeting_threshold,
         discovery_timeout_seconds=base_timeout * config.concurrency_factor,
     )
+
 
 def _connect_target(
     *,
@@ -157,6 +166,7 @@ def _connect_target(
         return f"ws://127.0.0.1:{hub_port}"
     raise ValueError(f"Unsupported topology: {topology}")
 
+
 def _node_settings(
     *,
     node_index: int,
@@ -184,12 +194,14 @@ def _node_settings(
         monitoring_enabled=False,
     )
 
+
 def _startup_pattern(node_count: int) -> tuple[int, float, float]:
     if node_count >= 50:
         return 5, 1.0, 0.5
     if node_count >= 20:
         return 8, 0.5, 0.3
     return node_count, 0.0, 0.1
+
 
 async def _start_servers(
     *,
@@ -210,6 +222,7 @@ async def _start_servers(
             await asyncio.sleep(per_node_delay)
         if batch_delay > 0 and batch_end < len(servers):
             await asyncio.sleep(batch_delay)
+
 
 def _capture_snapshot(
     *,
@@ -352,6 +365,7 @@ def _capture_snapshot(
         max_pending_catalog_duplicate_updates=max(pending_catalog_duplicate_updates),
     )
 
+
 def _node_details(servers: list[MPREGServer]) -> tuple[NodeDiscoveryDetails, ...]:
     all_node_ids = sorted(server.cluster.local_url for server in servers)
     now = time.time()
@@ -422,6 +436,7 @@ def _node_details(servers: list[MPREGServer]) -> tuple[NodeDiscoveryDetails, ...
             )
         )
     return tuple(details)
+
 
 async def _run_probe(config: ProbeConfig) -> ProbeReport:
     _configure_log_noise_suppression()
@@ -533,6 +548,7 @@ async def _run_probe(config: ProbeConfig) -> ProbeReport:
             allocator.release_port(port)
         print("Cleanup complete.")
 
+
 def _parse_args() -> tuple[ProbeConfig, Path | None]:
     parser = argparse.ArgumentParser(
         description="Topology-aware auto-discovery probe with structured convergence evidence"
@@ -573,6 +589,7 @@ def _parse_args() -> tuple[ProbeConfig, Path | None]:
     )
     return config, output_path
 
+
 def main() -> int:
     config, output_path = _parse_args()
     report = asyncio.run(_run_probe(config))
@@ -591,6 +608,7 @@ def main() -> int:
         print(f"wrote_report={output_path}")
 
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

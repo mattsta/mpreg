@@ -20,6 +20,7 @@ from mpreg.datastructures.transaction import (
     transaction_strategy,
 )
 
+
 class TestTransaction:
     """Test Transaction datastructure."""
 
@@ -187,6 +188,7 @@ class TestTransaction:
         else:
             assert tx1 != tx2
 
+
 class TestTransactionPool:
     """Test TransactionPool datastructure."""
 
@@ -326,6 +328,7 @@ class TestTransactionPool:
         assert valid_tx in valid_txs
         assert future_tx not in valid_txs
 
+
 class TestTransactionProperties:
     """Test mathematical and cryptographic properties of transactions."""
 
@@ -382,6 +385,7 @@ class TestTransactionProperties:
             timestamp=current_time + 1000,  # 1000 seconds in future
         )
         assert not far_future_tx.is_valid(current_time)
+
 
 class TestTransactionExamples:
     """Test specific transaction examples and use cases."""

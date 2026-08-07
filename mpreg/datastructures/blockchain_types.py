@@ -45,6 +45,7 @@ type GasPrice = int
 type NetworkId = str
 type PeerId = str
 
+
 class OperationType(Enum):
     """Types of operations supported in transactions."""
 
@@ -57,6 +58,7 @@ class OperationType(Enum):
     CONSENSUS_VOTE = "consensus_vote"
     SMART_CONTRACT = "smart_contract"
 
+
 class ConsensusType(Enum):
     """Supported consensus mechanisms."""
 
@@ -64,6 +66,7 @@ class ConsensusType(Enum):
     PROOF_OF_STAKE = "proof_of_stake"
     PROOF_OF_WORK = "proof_of_work"
     FEDERATED_BYZANTINE = "federated_byzantine"
+
 
 @dataclass(frozen=True, slots=True)
 class ConsensusConfig:
@@ -76,6 +79,7 @@ class ConsensusConfig:
     minimum_stake: StakeAmount = 0  # For proof-of-stake
     authority_threshold: float = 0.67  # Fraction of authorities needed
 
+
 @dataclass(frozen=True, slots=True)
 class SlashingConfig:
     """Configuration for proof-of-stake slashing penalties."""
@@ -84,6 +88,7 @@ class SlashingConfig:
     offline_penalty: float = 0.001  # 0.1% stake loss
     byzantine_penalty: float = 0.30  # 30% stake loss
     evidence_validity_period: int = 100  # Blocks
+
 
 @dataclass(frozen=True, slots=True)
 class NetworkConfig:
@@ -96,6 +101,7 @@ class NetworkConfig:
     maximum_block_size: int = 1024 * 1024  # 1MB
     transaction_timeout: int = 3600  # 1 hour
 
+
 @dataclass(frozen=True, slots=True)
 class CryptoConfig:
     """Configuration for cryptographic parameters."""
@@ -105,6 +111,7 @@ class CryptoConfig:
     key_length: int = 256
     require_signatures: bool = False
 
+
 # Utility functions for type creation
 def generate_transaction_id() -> TransactionId:
     """Generate unique transaction ID."""
@@ -112,15 +119,18 @@ def generate_transaction_id() -> TransactionId:
 
     return str(uuid.uuid4())
 
+
 def generate_block_id() -> BlockId:
     """Generate unique block ID."""
     import uuid
 
     return str(uuid.uuid4())
 
+
 def current_timestamp() -> Timestamp:
     """Get current timestamp."""
     return time.time()
+
 
 def compute_block_hash(
     previous_hash: BlockHash,
@@ -133,6 +143,7 @@ def compute_block_hash(
 
     data = f"{previous_hash}:{merkle_root}:{timestamp}:{nonce}"
     return hashlib.sha256(data.encode()).hexdigest()
+
 
 def compute_transaction_hash(
     sender: NodeId,

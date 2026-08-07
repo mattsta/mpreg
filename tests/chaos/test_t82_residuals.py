@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t82_ops_cli_doctor_json_assert() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -20,6 +21,7 @@ def test_t82_ops_cli_doctor_json_assert() -> None:
     assert "metrics_strong" in text
     assert "mgmt_strong" in text
 
+
 def test_t82_phase_70_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -27,6 +29,7 @@ def test_t82_phase_70_honesty() -> None:
         / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md"
     )
     assert "Phase 70" in path.read_text(encoding="utf-8")
+
 
 def test_t82_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]

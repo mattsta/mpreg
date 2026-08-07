@@ -7,6 +7,7 @@ from contextlib import redirect_stdout
 
 from mpreg.examples.apps._shared.obs import format_server_snapshot
 
+
 def test_format_server_snapshot_prints_fabric_hops() -> None:
     snap = {
         "rpc": {
@@ -47,6 +48,7 @@ def test_format_server_snapshot_prints_fabric_hops() -> None:
     assert "max_hops=3" in out
     assert "buffered=1" in out
     assert "rpc total=2" in out
+
 
 def test_format_server_snapshot_skips_empty_fabric() -> None:
     buf = io.StringIO()

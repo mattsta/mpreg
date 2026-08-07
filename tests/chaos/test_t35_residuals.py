@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t35_design_doc_qualifies_residual_free_cft() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -17,8 +18,11 @@ def test_t35_design_doc_qualifies_residual_free_cft() -> None:
     assert "not residual-free" in lower or "not claimed residual-free" in lower
     assert "pending ttl" in lower and "residual" in lower
     # Must not leave the old absolute claim without CFT qualification nearby
-    assert "Failed put residual-free invariant (cluster-visible, CFT best-effort)" in text
+    assert (
+        "Failed put residual-free invariant (cluster-visible, CFT best-effort)" in text
+    )
     assert "CFT exception" in text or "cft exception" in lower
+
 
 def test_t35_design_doc_goals_mention_abort_best_effort() -> None:
     path = (

@@ -14,6 +14,7 @@ from mpreg.server import MPREGServer
 type NodeCount = int
 type Seconds = float
 
+
 @dataclass(frozen=True, slots=True)
 class ProbeConfig:
     sizes: tuple[NodeCount, ...]
@@ -25,6 +26,7 @@ class ProbeConfig:
     gossip_interval_seconds: Seconds
     log_level: str
 
+
 @dataclass(frozen=True, slots=True)
 class ConvergenceSample:
     elapsed_seconds: Seconds
@@ -32,6 +34,7 @@ class ConvergenceSample:
     discovered_nodes: int
     total_connections: int
     efficiency: float
+
 
 @dataclass(frozen=True, slots=True)
 class SizeProbeResult:
@@ -49,6 +52,7 @@ class SizeProbeResult:
     converged_to_70: bool
     converged_to_100: bool
     sample_count: int
+
 
 def _build_settings(
     *,
@@ -74,6 +78,7 @@ def _build_settings(
         monitoring_enabled=False,
     )
 
+
 def _snapshot(servers: list[MPREGServer]) -> tuple[float, int, float]:
     if not servers:
         return 0.0, 0, 0.0
@@ -85,6 +90,7 @@ def _snapshot(servers: list[MPREGServer]) -> tuple[float, int, float]:
     theoretical_max = len(servers) * max(len(servers) - 1, 0)
     efficiency = total_connections / theoretical_max if theoretical_max > 0 else 0.0
     return success_rate, total_connections, efficiency
+
 
 async def _shutdown_servers(
     servers: list[MPREGServer], tasks: list[asyncio.Task[None]]
@@ -98,6 +104,7 @@ async def _shutdown_servers(
             task.cancel()
     if tasks:
         await asyncio.gather(*tasks, return_exceptions=True)
+
 
 async def _run_size_probe(config: ProbeConfig, size: int) -> SizeProbeResult:
     allocator = get_port_allocator()
@@ -194,6 +201,7 @@ async def _run_size_probe(config: ProbeConfig, size: int) -> SizeProbeResult:
         for port in ports:
             allocator.release_port(port)
 
+
 def _parse_sizes(raw_sizes: str) -> tuple[int, ...]:
     values: list[int] = []
     for raw in raw_sizes.split(","):
@@ -204,6 +212,7 @@ def _parse_sizes(raw_sizes: str) -> tuple[int, ...]:
     if not values:
         raise ValueError("At least one size is required")
     return tuple(values)
+
 
 def _parse_args() -> tuple[ProbeConfig, Path | None]:
     parser = argparse.ArgumentParser(
@@ -279,6 +288,7 @@ def _parse_args() -> tuple[ProbeConfig, Path | None]:
     )
     return config, output_path
 
+
 async def _run_probe(config: ProbeConfig) -> list[SizeProbeResult]:
     results: list[SizeProbeResult] = []
     print("Scalability boundary probe")
@@ -302,6 +312,7 @@ async def _run_probe(config: ProbeConfig) -> list[SizeProbeResult]:
         )
     return results
 
+
 def main() -> int:
     config, output_path = _parse_args()
     results = asyncio.run(_run_probe(config))
@@ -320,6 +331,7 @@ def main() -> int:
     if all(result.converged_to_70 for result in results):
         return 0
     return 1
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

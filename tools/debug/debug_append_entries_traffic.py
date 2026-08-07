@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 # Simple debugging without network interception
 
+
 async def debug_append_entries_traffic():
     """Debug AppendEntries traffic to identify commit_index propagation bug."""
 
@@ -115,6 +116,7 @@ async def debug_append_entries_traffic():
         finally:
             for node in nodes.values():
                 await node.stop()
+
 
 if __name__ == "__main__":
     asyncio.run(debug_append_entries_traffic())

@@ -17,9 +17,11 @@ from mpreg.core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
 from mpreg.server_pkg.monitoring_metrics import build_strong_metrics
 from mpreg.server_pkg.openapi_surface import _strong_metrics_schema
 
+
 def test_t53_format_residual_ops_hint_empty() -> None:
     assert format_residual_ops_hint([]) == ""
     assert format_residual_ops_hint(None) == ""
+
 
 def test_t53_format_residual_ops_hint_content() -> None:
     h = format_residual_ops_hint(["n1", "n2"], "oid-1")
@@ -28,6 +30,7 @@ def test_t53_format_residual_ops_hint_content() -> None:
     assert "--peer n1" in h
     assert "--peer n2" in h
     assert "not auto-heal" in h
+
 
 @pytest.mark.asyncio
 async def test_t53_gcm_status_and_metrics_hint() -> None:
@@ -87,12 +90,14 @@ async def test_t53_gcm_status_and_metrics_hint() -> None:
     finally:
         await gcm.shutdown()
 
+
 def test_t53_openapi_residual_ops_hint() -> None:
     props = _strong_metrics_schema()["properties"]["strong"]["properties"]
     assert "residual_ops_hint" in props
     desc = (props["residual_ops_hint"].get("description") or "").lower()
     assert "not automatic" in desc or "not auto" in desc
     assert "cache-strong-retry-abort" in desc or "remediation" in desc
+
 
 def test_t53_phase_41_honesty() -> None:
     path = (
@@ -104,21 +109,14 @@ def test_t53_phase_41_honesty() -> None:
     assert "Phase 41" in text
     assert "residual_ops_hint" in text
 
+
 def test_t53_client_guide_hint() -> None:
-    path = (
-        Path(__file__).resolve().parents[2]
-        / "docs"
-        / "MPREG_CLIENT_GUIDE.md"
-    )
+    path = Path(__file__).resolve().parents[2] / "docs" / "MPREG_CLIENT_GUIDE.md"
     text = path.read_text(encoding="utf-8")
     assert "residual_ops_hint" in text
 
+
 def test_t53_claims_hint_json() -> None:
-    path = (
-        Path(__file__).resolve().parents[2]
-        / "tests"
-        / "invariants"
-        / "claims.yaml"
-    )
+    path = Path(__file__).resolve().parents[2] / "tests" / "invariants" / "claims.yaml"
     text = path.read_text(encoding="utf-8")
     assert "residual_ops_hint" in text

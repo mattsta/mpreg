@@ -15,6 +15,7 @@ from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 from tests.test_helpers import TestPortManager, wait_for_condition
 
+
 def _queue_visible(server: MPREGServer, queue_name: str, cluster_id: str) -> bool:
     if not server._fabric_control_plane:
         return False
@@ -23,6 +24,7 @@ def _queue_visible(server: MPREGServer, queue_name: str, cluster_id: str) -> boo
         now=time.time(),
     )
     return any(entry.cluster_id == cluster_id for entry in matches)
+
 
 async def _start_queue_servers(
     ctx: AsyncTestContext, port_manager: TestPortManager
@@ -69,6 +71,7 @@ async def _start_queue_servers(
 
     await asyncio.sleep(1.5)
     return server_a, server_b
+
 
 async def _start_queue_chain(
     ctx: AsyncTestContext, port_manager: TestPortManager
@@ -138,6 +141,7 @@ async def _start_queue_chain(
     await asyncio.sleep(2.0)
     return server_a, server_b, server_c
 
+
 @pytest.mark.asyncio
 async def test_fabric_queue_delivery_and_ack() -> None:
     async with AsyncTestContext() as ctx:
@@ -189,6 +193,7 @@ async def test_fabric_queue_delivery_and_ack() -> None:
                 interval=0.2,
                 error_message="Queue federation ack did not clear in-flight state",
             )
+
 
 @pytest.mark.asyncio
 async def test_fabric_queue_global_subscription_forwarding() -> None:
@@ -243,6 +248,7 @@ async def test_fabric_queue_global_subscription_forwarding() -> None:
 
             await asyncio.wait_for(received.wait(), timeout=5.0)
 
+
 @pytest.mark.asyncio
 async def test_fabric_queue_global_quorum_delivery() -> None:
     async with AsyncTestContext() as ctx:
@@ -290,6 +296,7 @@ async def test_fabric_queue_global_quorum_delivery() -> None:
             )
 
             assert result.success is True
+
 
 @pytest.mark.asyncio
 async def test_fabric_queue_multi_hop_delivery() -> None:

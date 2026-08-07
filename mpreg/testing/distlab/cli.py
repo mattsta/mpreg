@@ -20,12 +20,14 @@ NON_CLAIMS = (
     "not fsync / kill-9 cold restart guarantees",
 )
 
+
 def _ensure_registry():
     from mpreg.testing.distlab.builtins import ensure_builtins
     from mpreg.testing.distlab.registry import get_registry
 
     ensure_builtins()
     return get_registry()
+
 
 def list_scenarios(*, track: str = "", as_json: bool = False) -> int:
     """Print registered scenario names. Exit 0."""
@@ -44,6 +46,7 @@ def list_scenarios(*, track: str = "", as_json: bool = False) -> int:
         print(f"{n:40s}  {tr:4s}  {desc}")
     return 0
 
+
 def catalog(*, as_json: bool = False) -> int:
     """Print full scenario catalog with metadata."""
     reg = _ensure_registry()
@@ -58,6 +61,7 @@ def catalog(*, as_json: bool = False) -> int:
                 f"tags={tags:24s}  {row.get('description', '')}"
             )
     return 0
+
 
 def run_scenario(name: str, *, as_json: bool = False) -> int:
     """Run one in-process scenario by name. Exit 0 pass / 1 fail / 2 unknown."""
@@ -92,6 +96,7 @@ def run_scenario(name: str, *, as_json: bool = False) -> int:
                 print(f"  - [{v.checker}] {v.message}", file=sys.stderr)
     return 0 if result.ok else 1
 
+
 def list_presets(*, as_json: bool = False) -> int:
     """Print named suite presets (composed presets expand via resolve_preset)."""
     from mpreg.testing.distlab.registry import SUITE_PRESETS, resolve_preset
@@ -103,6 +108,7 @@ def list_presets(*, as_json: bool = False) -> int:
     for name, scenarios in resolved.items():
         print(f"{name:16s}  {', '.join(scenarios)}")
     return 0
+
 
 def run_suite(
     *,
@@ -162,6 +168,7 @@ def run_suite(
             )
     return 0 if report["ok"] else 1
 
+
 def main(argv: list[str] | None = None) -> int:
     """Argparse entry for tests / thin wrappers. Prefer ``uv run mpreg distlab``."""
     import argparse
@@ -182,9 +189,7 @@ def main(argv: list[str] | None = None) -> int:
     pl = sub.add_parser("list", help="List registered scenario names")
     pl.add_argument("--track", default="", help="Filter by track id (T1..T7)")
     pl.add_argument("--json", action="store_true")
-    pl.set_defaults(
-        func=lambda a: list_scenarios(track=a.track or "", as_json=a.json)
-    )
+    pl.set_defaults(func=lambda a: list_scenarios(track=a.track or "", as_json=a.json))
 
     pc = sub.add_parser("catalog", help="Show scenario catalog with metadata")
     pc.add_argument("--json", action="store_true")

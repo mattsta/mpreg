@@ -1,13 +1,13 @@
 # DistLab Seven-Track Master Plan (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** (T1–T7 gated 2026-08-06) |
-| **Date** | 2026-08-06 |
-| **Authority** | Official project planning file for residual honesty + DistLab |
-| **Product** | `mpreg.testing.distlab` |
-| **Related** | `docs/DISTLAB_AND_SEVEN_TRACKS.md`, `docs/SHARED_AUDIT_STRONG_HARDENING_PLAN.md`, `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`, `tests/invariants/claims.yaml` |
-| **Point budget** | 7 tracks × ~55–70 pts = **~420 implementation/validation items** |
+| Field            | Value                                                                                                                                                            |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Status**       | **Complete** (T1–T7 gated 2026-08-06)                                                                                                                            |
+| **Date**         | 2026-08-06                                                                                                                                                       |
+| **Authority**    | Official project planning file for residual honesty + DistLab                                                                                                    |
+| **Product**      | `mpreg.testing.distlab`                                                                                                                                          |
+| **Related**      | `docs/DISTLAB_AND_SEVEN_TRACKS.md`, `docs/SHARED_AUDIT_STRONG_HARDENING_PLAN.md`, `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`, `tests/invariants/claims.yaml` |
+| **Point budget** | 7 tracks × ~55–70 pts = **~420 implementation/validation items**                                                                                                 |
 
 ## Global rules
 
@@ -36,18 +36,19 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 
 ## Stages
 
-| Stage | Name | Exit |
-| --- | --- | --- |
-| T1-S0 | Catalog APIs | Modules listed in `__all__` |
-| T1-S1 | Generator + registry | `generator.py`, `registry.py` |
-| T1-S2 | CLI smoke | `uv run mpreg distlab` |
-| T1-S3 | Core unit matrix | `test_distlab_core.py` expanded |
-| T1-S4 | Harness exports | `tests/harness` complete |
-| T1-S5 | Gate | Core suite green |
+| Stage | Name                 | Exit                            |
+| ----- | -------------------- | ------------------------------- |
+| T1-S0 | Catalog APIs         | Modules listed in `__all__`     |
+| T1-S1 | Generator + registry | `generator.py`, `registry.py`   |
+| T1-S2 | CLI smoke            | `uv run mpreg distlab`          |
+| T1-S3 | Core unit matrix     | `test_distlab_core.py` expanded |
+| T1-S4 | Harness exports      | `tests/harness` complete        |
+| T1-S5 | Gate                 | Core suite green                |
 
 ## Points
 
 ### T1-S0 Catalog
+
 1. Document DistLab module map in this plan.
 2. Package docstring honesty banner.
 3. Lazy exports StrongSUT/AuditSUT.
@@ -55,6 +56,7 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 5. Version/meta field on ScenarioResult.
 
 ### T1-S1 Generator + registry
+
 6. `OpGenerator` protocol: yields client work items.
 7. `SequentialPutGenerator` for soak.
 8. `ConcurrentPutGenerator` for multi-client.
@@ -67,6 +69,7 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 15. Suite builder from registry subset.
 
 ### T1-S2 CLI
+
 16. `__main__.py` list scenarios.
 17. `__main__.py` run one in-process scenario by name.
 18. Exit code 0/1 on check fail.
@@ -74,6 +77,7 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 20. Help text cites non_claims.
 
 ### T1-S3 Core tests
+
 21. History thread-safety smoke (concurrent append).
 22. History pairs unmatched invoke.
 23. History by_key filter.
@@ -106,6 +110,7 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 50. Registry list non-empty after builtins register.
 
 ### T1-S4 Exports
+
 51. tests/harness exports registry + generators.
 52. tests/harness exports LiveMeshHelpers symbols when present.
 53. README DistLab pointer.
@@ -113,6 +118,7 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 55. DISTLAB_AND_SEVEN_TRACKS links to this master plan.
 
 ### T1-S5 Gate
+
 56. `tests/testing/test_distlab_core.py` green.
 57. `uv run mpreg distlab list` works.
 58. `uv run mpreg distlab run strong.happy_3` works.
@@ -125,18 +131,19 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 
 ## Stages
 
-| Stage | Name | Exit |
-| --- | --- | --- |
-| T2-S0 | SUT completeness | StrongSUT API |
-| T2-S1 | Happy / soak | scenarios |
-| T2-S2 | Fault inject | scenarios |
-| T2-S3 | Hypothesis | property tests |
-| T2-S4 | Nemesis soak | scenarios |
-| T2-S5 | Registry + gate | green |
+| Stage | Name             | Exit           |
+| ----- | ---------------- | -------------- |
+| T2-S0 | SUT completeness | StrongSUT API  |
+| T2-S1 | Happy / soak     | scenarios      |
+| T2-S2 | Fault inject     | scenarios      |
+| T2-S3 | Hypothesis       | property tests |
+| T2-S4 | Nemesis soak     | scenarios      |
+| T2-S5 | Registry + gate  | green          |
 
 ## Points
 
 ### T2-S0
+
 61. StrongSUT.create n=1..7.
 62. StrongSUT.put history INVOKE/OK/FAIL.
 63. StrongSUT.key auto-register.
@@ -151,6 +158,7 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 72. default_strong_checkers composition.
 
 ### T2-S1 Happy / soak
+
 73. happy_3 residual + LWW.
 74. happy_5 Q=3.
 75. happy_7 Q=4.
@@ -163,6 +171,7 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 82. error_code on fail in history.
 
 ### T2-S2 Faults
+
 83. partition majority fail residual.
 84. partition one peer still success possible.
 85. heal after partition success.
@@ -178,19 +187,22 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 95. interleaved fault/success cycles.
 
 ### T2-S3 Hypothesis
+
 96. random prepare drop sets residual-free.
 97. random commit drop sets residual-free.
 98. concurrent random ints LWW.
 99. concurrent random multi-key.
-100. random partition-one then heal put.
+100.  random partition-one then heal put.
 
 ### T2-S4 Nemesis
+
 101. nemesis during 8 concurrent puts checkers pass.
 102. nemesis during soak 15 sequential.
 103. nemesis actions recorded in history FAULT/HEAL.
 104. after nemesis.stop network healed for final put success.
 
 ### T2-S5 Gate
+
 105. All T2 scenarios in registry.
 106. `test_distlab_strong_scenarios.py` covers registry run subset.
 107. Prior chaos stress still green.
@@ -209,13 +221,13 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 
 ## Stages
 
-| Stage | Name | Exit |
-| --- | --- | --- |
-| T3-S0 | Handler matrix | unit |
-| T3-S1 | Transport malice | DistLab |
-| T3-S2 | not_bft docs | explicit |
-| T3-S3 | Fuzz | Hypothesis |
-| T3-S4 | Gate | green |
+| Stage | Name             | Exit       |
+| ----- | ---------------- | ---------- |
+| T3-S0 | Handler matrix   | unit       |
+| T3-S1 | Transport malice | DistLab    |
+| T3-S2 | not_bft docs     | explicit   |
+| T3-S3 | Fuzz             | Hypothesis |
+| T3-S4 | Gate             | green      |
 
 ## Points
 
@@ -244,8 +256,8 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 138. Prepare not_in_replica_set.
 139. Malice clear_faults restores happy path.
 140. Adversarial scenarios registered.
-141–165. Matrix expansion rows + gate + claims non_claim text + complete.
-    (141 handler metadata edge; 142 empty payload; 143 huge payload; 144 unicode key;
+     141–165. Matrix expansion rows + gate + claims non_claim text + complete.
+     (141 handler metadata edge; 142 empty payload; 143 huge payload; 144 unicode key;
      145 concurrent adversarial+honest; 146–155 reserved matrix; 156–160 claims;
      161–165 gate.)
 
@@ -255,13 +267,13 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 
 ## Stages
 
-| Stage | Name | Exit |
-| --- | --- | --- |
-| T4-S0 | AuditSUT API | complete |
-| T4-S1 | Converge paths | scenarios |
-| T4-S2 | Fault / watermark | scenarios |
-| T4-S3 | Hypothesis | properties |
-| T4-S4 | Gate | green |
+| Stage | Name              | Exit       |
+| ----- | ----------------- | ---------- |
+| T4-S0 | AuditSUT API      | complete   |
+| T4-S1 | Converge paths    | scenarios  |
+| T4-S2 | Fault / watermark | scenarios  |
+| T4-S3 | Hypothesis        | properties |
+| T4-S4 | Gate              | green      |
 
 ## Points
 
@@ -291,8 +303,8 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 189. Hypothesis random partition pairs heal.
 190. GSet checker min_ids.
 191. eligible=false not in expected set.
-192–210. Registry + gate + chaos compat + claims + complete.
-    (192–200 registry names; 201–205 prior chaos green; 206–210 status.)
+     192–210. Registry + gate + chaos compat + claims + complete.
+     (192–200 registry names; 201–205 prior chaos green; 206–210 status.)
 
 ---
 
@@ -300,13 +312,13 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 
 ## Stages
 
-| Stage | Name | Exit |
-| --- | --- | --- |
+| Stage | Name                    | Exit      |
+| ----- | ----------------------- | --------- |
 | T5-S0 | Live helpers in DistLab | `live.py` |
-| T5-S1 | STRONG live scenarios | tests |
-| T5-S2 | Audit live scenarios | tests |
-| T5-S3 | Coexistence | tests |
-| T5-S4 | Gate | green |
+| T5-S1 | STRONG live scenarios   | tests     |
+| T5-S2 | Audit live scenarios    | tests     |
+| T5-S3 | Coexistence             | tests     |
+| T5-S4 | Gate                    | green     |
 
 ## Points
 
@@ -334,8 +346,8 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 232. second strong put after audit churn.
 233. diagnostics on wait timeout.
 234. live tests use AsyncTestContext.
-235–255. Optional 4-node; docs; gate; claims; complete.
-    (235 4-node strong optional; 236–240 helpers unit; 241–250 integration files;
+     235–255. Optional 4-node; docs; gate; claims; complete.
+     (235 4-node strong optional; 236–240 helpers unit; 241–250 integration files;
      251–255 gate+status.)
 
 ---
@@ -344,12 +356,12 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 
 ## Stages
 
-| Stage | Name | Exit |
-| --- | --- | --- |
-| T6-S0 | Known fixes verified | regression scenarios |
-| T6-S1 | New bugs from T2–T5 | fix+regress |
-| T6-S2 | Metrics / observability hooks | optional cheap |
-| T6-S3 | Gate | green |
+| Stage | Name                          | Exit                 |
+| ----- | ----------------------------- | -------------------- |
+| T6-S0 | Known fixes verified          | regression scenarios |
+| T6-S1 | New bugs from T2–T5           | fix+regress          |
+| T6-S2 | Metrics / observability hooks | optional cheap       |
+| T6-S3 | Gate                          | green                |
 
 ## Points
 
@@ -368,8 +380,8 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 268. Prepare idempotent same op_id.
 269. Backup restore on abort after commit.
 270. get promote from strong backend on L1 miss.
-271–295. Reserved bug slots + verify suite + complete.
-    (271–285 filled as discovered; 286–290 docs; 291–295 gate.)
+     271–295. Reserved bug slots + verify suite + complete.
+     (271–285 filled as discovered; 286–290 docs; 291–295 gate.)
 
 ---
 
@@ -377,12 +389,12 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 
 ## Stages
 
-| Stage | Name | Exit |
-| --- | --- | --- |
-| T7-S0 | claims.yaml | updated |
-| T7-S1 | Docs cross-links | updated |
-| T7-S2 | Full gate | green |
-| T7-S3 | Commit | clean tree |
+| Stage | Name             | Exit       |
+| ----- | ---------------- | ---------- |
+| T7-S0 | claims.yaml      | updated    |
+| T7-S1 | Docs cross-links | updated    |
+| T7-S2 | Full gate        | green      |
+| T7-S3 | Commit           | clean tree |
 
 ## Points
 
@@ -399,41 +411,41 @@ uv run pytest tests/testing/ tests/chaos/test_strong_chaos_stress.py \
 306. README DistLab.
 307. ARCHITECTURE DistLab.
 308. CACHING_SYSTEM honesty if needed.
-309. Package __main__ help.
+309. Package **main** help.
 310. tests/harness complete exports.
 311. Full related pytest green.
 312. DistLab CLI list+run smoke.
 313. Prior unit/integration green.
 314. Commit with complete message.
 315. Working tree clean.
-316–345. Buffer: changelog note; curriculum pointer optional; support_only claims; double-check non_claims; final status table.
+     316–345. Buffer: changelog note; curriculum pointer optional; support_only claims; double-check non_claims; final status table.
 
 ---
 
 ## Status dashboard
 
-| Track | Pts | Stages | Status |
-| --- | --- | --- | --- |
-| T1 DistLab core | 60 | S0–S5 | **complete** — generator/registry/CLI/core tests |
-| T2 STRONG stress | 65 | S0–S5 | **complete** — registry builtins + scenario suite |
-| T3 Adversarial | 55 | S0–S4 | **complete** — lie/fail/wrong_cluster + not_bft demo |
-| T4 Audit epidemic | 60 | S0–S4 | **complete** — burst/partition/digest/nemesis registry |
-| T5 Live mesh | 60 | S0–S4 | **complete** — `live.py` + `test_distlab_live.py` |
-| T6 Architecture | 55 | S0–S3 | **complete** — prior residuals + live coex drain clear |
-| T7 Claims/gate | 50 | S0–S3 | **complete** — claims/docs + full related gate |
+| Track             | Pts | Stages | Status                                                 |
+| ----------------- | --- | ------ | ------------------------------------------------------ |
+| T1 DistLab core   | 60  | S0–S5  | **complete** — generator/registry/CLI/core tests       |
+| T2 STRONG stress  | 65  | S0–S5  | **complete** — registry builtins + scenario suite      |
+| T3 Adversarial    | 55  | S0–S4  | **complete** — lie/fail/wrong_cluster + not_bft demo   |
+| T4 Audit epidemic | 60  | S0–S4  | **complete** — burst/partition/digest/nemesis registry |
+| T5 Live mesh      | 60  | S0–S4  | **complete** — `live.py` + `test_distlab_live.py`      |
+| T6 Architecture   | 55  | S0–S3  | **complete** — prior residuals + live coex drain clear |
+| T7 Claims/gate    | 50  | S0–S3  | **complete** — claims/docs + full related gate         |
 
 **Total: ~405 core pts + buffers. All tracks complete.**
 
 ### Delivered surfaces (gate artifacts)
 
-| Artifact | Path |
-| --- | --- |
-| Generator | `mpreg/testing/distlab/generator.py` |
-| Registry | `mpreg/testing/distlab/registry.py` |
-| Builtins | `mpreg/testing/distlab/builtins.py` (~27 scenarios) |
-| Live helpers | `mpreg/testing/distlab/live.py` |
-| CLI | `uv run mpreg distlab` |
-| Tests | `tests/testing/test_distlab_*.py` |
+| Artifact     | Path                                                |
+| ------------ | --------------------------------------------------- |
+| Generator    | `mpreg/testing/distlab/generator.py`                |
+| Registry     | `mpreg/testing/distlab/registry.py`                 |
+| Builtins     | `mpreg/testing/distlab/builtins.py` (~27 scenarios) |
+| Live helpers | `mpreg/testing/distlab/live.py`                     |
+| CLI          | `uv run mpreg distlab`                              |
+| Tests        | `tests/testing/test_distlab_*.py`                   |
 
 ## Implementation order (mandatory)
 
@@ -458,4 +470,3 @@ Re-run full gate after T5 and after T7.
 After T7 complete, residual honesty continues as T17+ plans (see
 `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md` through Phase 127 / T139).
 Peer-count + doctor JSON typing closeout: T80–T139 (op_id + live/Hypothesis). Not Jepsen/WAN/BFT.
-

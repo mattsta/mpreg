@@ -1,6 +1,7 @@
 from mpreg.fabric.adapters.cache_federation import CacheFederationCatalogAdapter
 from mpreg.fabric.catalog import CacheRole
 
+
 def test_cache_federation_adapter_builds_delta() -> None:
     adapter = CacheFederationCatalogAdapter(
         node_id="node-1",

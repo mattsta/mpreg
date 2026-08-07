@@ -51,6 +51,7 @@ ConsistencyLevel = str
 CacheRegion = str
 Priority = float
 
+
 class _LazySt:
     """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
 
@@ -66,7 +67,9 @@ class _LazySt:
     def __getattr__(self, name: str) -> object:
         return getattr(self._load(), name)
 
+
 st = _LazySt()
+
 
 class CacheCoherenceState(Enum):
     """Cache coherence states following MSI/MESI/MOESI protocols."""
@@ -87,6 +90,7 @@ class CacheCoherenceState(Enum):
     PENDING = "pending"  # Cache line operation pending federation response
     DEGRADED = "degraded"  # Cache line available but with reduced guarantees
 
+
 class CoherenceProtocolType(Enum):
     """Types of cache coherence protocols supported."""
 
@@ -96,6 +100,7 @@ class CoherenceProtocolType(Enum):
     DIRECTORY_BASED = "directory"  # Directory-based coherence protocol
     WEAK_CONSISTENCY = "weak"  # Weak consistency for performance
     EVENTUAL_CONSISTENCY = "eventual"  # Eventual consistency across federation
+
 
 class InvalidationType(Enum):
     """Types of cache invalidation operations."""
@@ -107,6 +112,7 @@ class InvalidationType(Enum):
     CLUSTER_SYNC = "cluster_sync"  # Synchronize with other clusters
     DEPENDENCY_CASCADE = "cascade"  # Cascade invalidation through dependencies
 
+
 class ReplicationStrategy(Enum):
     """Cache replication strategies across federation."""
 
@@ -116,6 +122,7 @@ class ReplicationStrategy(Enum):
     QUORUM_REPLICATION = "quorum"  # Quorum-based replication
     CHAIN_REPLICATION = "chain"  # Chain replication across clusters
     RING_REPLICATION = "ring"  # Ring topology replication
+
 
 class CacheCoherenceTransition(Enum):
     """Valid cache coherence state transitions for state machine."""
@@ -153,6 +160,7 @@ class CacheCoherenceTransition(Enum):
     DEGRADED_TO_SHARED = "degraded_to_shared"  # Recover from degraded
     DEGRADED_TO_INVALID = "degraded_to_invalid"  # Give up on degraded
 
+
 class CacheOperationType(Enum):
     """Types of cache operations for structured metadata."""
 
@@ -188,6 +196,7 @@ class CacheOperationType(Enum):
     METRICS_COLLECTION = "metrics_collection"  # Performance metrics gathering
     STATISTICS_AGGREGATION = "statistics_aggregation"  # Statistics computation
 
+
 @dataclass(frozen=True, slots=True)
 class CacheOperationMetadata:
     """
@@ -208,6 +217,7 @@ class CacheOperationMetadata:
     def __post_init__(self) -> None:
         if self.priority_boost < 0:
             raise ValueError("Priority boost cannot be negative")
+
 
 @dataclass(frozen=True, slots=True)
 class CacheCoherenceStateMachine:
@@ -390,6 +400,7 @@ class CacheCoherenceStateMachine:
 
         return transition_map.get((from_state, to_state))
 
+
 @dataclass(frozen=True, slots=True)
 class FederatedCacheKey:
     """
@@ -453,6 +464,7 @@ class FederatedCacheKey:
             region=region,
             partition_id=self.partition_id,
         )
+
 
 @dataclass(frozen=True, slots=True)
 class CacheCoherenceMetadata:
@@ -574,6 +586,7 @@ class CacheCoherenceMetadata:
             )
         )
 
+
 @dataclass(frozen=True, slots=True)
 class CacheInvalidationMessage:
     """
@@ -672,6 +685,7 @@ class CacheInvalidationMessage:
         """Check if invalidation affects specified cluster."""
         return cluster_id in self.target_clusters or len(self.target_clusters) == 0
 
+
 @dataclass(frozen=True, slots=True)
 class CacheReplicationMessage:
     """
@@ -750,6 +764,7 @@ class CacheReplicationMessage:
             consistency_level="strong",
             priority=2.0,  # High priority for sync replication
         )
+
 
 @dataclass(frozen=True, slots=True)
 class FederatedCacheStatistics:
@@ -874,6 +889,7 @@ class FederatedCacheStatistics:
             cluster_synchronizations=self.cluster_synchronizations.copy(),
         )
 
+
 @runtime_checkable
 class FederatedCacheCoherenceProtocol(Protocol):
     """
@@ -924,7 +940,9 @@ class FederatedCacheCoherenceProtocol(Protocol):
         """Transition cache entry between coherence states."""
         ...
 
+
 # Hypothesis strategies for property-based testing
+
 
 def federated_cache_key_strategy() -> st.SearchStrategy[FederatedCacheKey]:
     """Generate valid FederatedCacheKey instances for testing."""
@@ -948,6 +966,7 @@ def federated_cache_key_strategy() -> st.SearchStrategy[FederatedCacheKey]:
         ),
         partition_id=st.text(min_size=1, max_size=10, alphabet="0123456789"),
     )
+
 
 def cache_coherence_metadata_strategy() -> st.SearchStrategy[CacheCoherenceMetadata]:
     """Generate valid CacheCoherenceMetadata instances for testing."""
@@ -974,6 +993,7 @@ def cache_coherence_metadata_strategy() -> st.SearchStrategy[CacheCoherenceMetad
         coherence_protocol=st.sampled_from(CoherenceProtocolType),
     )
 
+
 def cache_invalidation_message_strategy() -> st.SearchStrategy[
     CacheInvalidationMessage
 ]:
@@ -995,6 +1015,7 @@ def cache_invalidation_message_strategy() -> st.SearchStrategy[
         metadata=st.builds(CacheOperationMetadata),
         created_at=st.floats(min_value=0, max_value=time.time()),
     )
+
 
 def federated_cache_statistics_strategy() -> st.SearchStrategy[
     FederatedCacheStatistics

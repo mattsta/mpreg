@@ -16,6 +16,7 @@ from mpreg.fabric.route_control import (
     RouteWithdrawal,
 )
 
+
 @pytest.mark.asyncio
 async def test_route_gossip_propagates_routes() -> None:
     transport = InProcessGossipTransport()
@@ -62,6 +63,7 @@ async def test_route_gossip_propagates_routes() -> None:
     assert route is not None
     assert route.next_hop == "cluster-b"
     assert route.path.hops == ("cluster-a", "cluster-b")
+
 
 @pytest.mark.asyncio
 async def test_route_gossip_propagates_withdrawals() -> None:

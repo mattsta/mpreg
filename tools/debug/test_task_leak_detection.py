@@ -11,6 +11,7 @@ sys.path.insert(0, "/Users/matt/repos/mpreg")
 from mpreg.datastructures.raft_task_manager import RaftTaskManager, TaskState
 from tests.conftest import AsyncTestContext
 
+
 async def test_task_leak_detection():
     """Test the enhanced task management system."""
 
@@ -87,6 +88,7 @@ async def test_task_leak_detection():
         print("   Created intentional leak, context will clean up...")
 
     print("✅ All tests completed successfully!")
+
 
 if __name__ == "__main__":
     asyncio.run(test_task_leak_detection())

@@ -34,6 +34,7 @@ from tests.test_production_raft_integration import (
     TestableStateMachine,
 )
 
+
 # Hypothesis strategies for property-based testing
 @composite
 def cluster_configuration(draw) -> tuple[int, set[str]]:
@@ -41,6 +42,7 @@ def cluster_configuration(draw) -> tuple[int, set[str]]:
     cluster_size = draw(st.integers(min_value=3, max_value=7))
     node_ids = {f"node_{i}" for i in range(cluster_size)}
     return cluster_size, node_ids
+
 
 @composite
 def command_sequence(draw) -> list[str]:
@@ -68,6 +70,7 @@ def command_sequence(draw) -> list[str]:
         commands.append(f"{key}={value}")
     return commands
 
+
 @composite
 def network_partition_scenario(draw, cluster_size: int) -> tuple[set[str], set[str]]:
     """Generate network partition scenarios for testing."""
@@ -80,6 +83,7 @@ def network_partition_scenario(draw, cluster_size: int) -> tuple[set[str], set[s
     group2 = set(node_ids[partition_point:])
 
     return group1, group2
+
 
 @composite
 def failure_scenario(draw, cluster_size: int) -> tuple[set[str], float]:
@@ -104,6 +108,7 @@ def failure_scenario(draw, cluster_size: int) -> tuple[set[str], float]:
     failure_delay = draw(st.floats(min_value=0.1, max_value=2.0))
 
     return failed_nodes, failure_delay
+
 
 class TestRaftSafetyProperties:
     """Test suite for verifying Raft safety properties with real instances and property-based testing."""
@@ -1201,6 +1206,7 @@ class TestRaftSafetyProperties:
                     await node.stop()
 
         print("✓ All comprehensive Hypothesis integration tests passed")
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])

@@ -1,13 +1,13 @@
 # DistLab T73 — Prometheus abort_fail_peers gauge (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T36/T72 |
-| **Scope** | mpreg_strong_abort_fail_peers gauge = len(last_abort_fail_peers) |
-| **Point budget** | **~8 pts** |
-| **Entry points only** | Prometheus scrape / residual gates |
+| Field                 | Value                                                            |
+| --------------------- | ---------------------------------------------------------------- |
+| **Status**            | **Complete**                                                     |
+| **Date**              | 2026-08-06                                                       |
+| **Authority**         | Continuation after T36/T72                                       |
+| **Scope**             | mpreg_strong_abort_fail_peers gauge = len(last_abort_fail_peers) |
+| **Point budget**      | **~8 pts**                                                       |
+| **Entry points only** | Prometheus scrape / residual gates                               |
 
 ## Goals
 

@@ -22,12 +22,14 @@ from mpreg.core.enhanced_caching_factories import (
     create_memory_only_cache_manager,
 )
 
+
 @dataclass
 class LargeObject:
     """Test object with significant memory footprint."""
 
     data: bytes
     metadata: dict[str, str]
+
 
 class TestMemoryBasedEviction:
     """Test memory-based cache eviction."""
@@ -144,6 +146,7 @@ class TestMemoryBasedEviction:
 
         cache.shutdown_sync()
 
+
 class TestS4LRUMemoryLimits:
     """Test S4LRU with memory limits per segment."""
 
@@ -218,6 +221,7 @@ class TestS4LRUMemoryLimits:
 
         cache.shutdown_sync()
 
+
 class TestPymplerIntegration:
     """Test pympler integration for accurate memory measurement."""
 
@@ -288,6 +292,7 @@ class TestPymplerIntegration:
 
         cache.shutdown_sync()
 
+
 class TestCacheConfigurationValidation:
     """Test cache configuration validation and edge cases."""
 
@@ -341,6 +346,7 @@ class TestCacheConfigurationValidation:
         config_none = CacheConfiguration(limits=limits_none)
         assert config_none.max_memory_bytes == 100 * 1024 * 1024  # Default
         assert config_none.max_entries == 10000  # Default
+
 
 class TestSegmentStatsDataclass:
     """Test that segment stats use proper dataclasses."""
@@ -400,6 +406,7 @@ class TestSegmentStatsDataclass:
             assert hasattr(stat, "memory_utilization")
 
         cache.shutdown_sync()
+
 
 @pytest.mark.asyncio
 async def test_memory_based_async_operations():

@@ -23,6 +23,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
     from .cache_federation import CacheDigest, CacheOperationMessage
 
+
 class CacheMessageKind(StrEnum):
     OPERATION = "cache_operation"
     DIGEST_REQUEST = "cache_digest_request"
@@ -37,6 +38,7 @@ class CacheMessageKind(StrEnum):
     STRONG_ABORT = "cache_strong_abort"
     STRONG_ABORT_ACK = "cache_strong_abort_ack"
 
+
 class CacheReceiver(Protocol):
     node_id: NodeId
 
@@ -45,6 +47,7 @@ class CacheReceiver(Protocol):
     def create_cache_digest(self) -> CacheDigest: ...
 
     def get_cache_entry(self, key: GlobalCacheKey) -> GlobalCacheEntry | None: ...
+
 
 class CacheTransport(Protocol):
     def register(self, receiver: CacheReceiver) -> None: ...
@@ -70,6 +73,7 @@ class CacheTransport(Protocol):
     async def fetch_entry(
         self, peer_id: NodeId, key: GlobalCacheKey
     ) -> GlobalCacheEntry | None: ...
+
 
 @dataclass(slots=True)
 class InProcessCacheTransport:
@@ -120,6 +124,7 @@ class InProcessCacheTransport:
         if receiver is None:
             return None
         return receiver.get_cache_entry(key)
+
 
 @dataclass(slots=True)
 class ServerCacheTransport:

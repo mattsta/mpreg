@@ -26,6 +26,7 @@ WORKER_SCENARIOS = [
     ("gw19", "gw19"),  # Maximum unique worker before wrap
 ]
 
+
 def test_worker_scenario(worker_id: str, expected_id: str):
     """Test port allocation for a specific worker scenario."""
     print(f"\n🧪 Testing Worker: {worker_id}")
@@ -128,6 +129,7 @@ def test_worker_scenario(worker_id: str, expected_id: str):
         else:
             os.environ["PYTEST_XDIST_WORKER"] = old_worker
 
+
 def test_high_capacity_usage():
     """Test high-capacity concurrent usage simulation."""
     print("\n🚀 HIGH-CAPACITY CONCURRENT USAGE TEST")
@@ -187,6 +189,7 @@ def test_high_capacity_usage():
 
     return success_count >= len(WORKER_SCENARIOS) * 0.8  # 80% success rate
 
+
 def main():
     """Run comprehensive port allocation tests."""
     print("🔧 COMPREHENSIVE PORT ALLOCATION SYSTEM TEST")
@@ -215,6 +218,7 @@ def main():
         return 1
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

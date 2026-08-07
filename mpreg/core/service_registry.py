@@ -14,12 +14,14 @@ from mpreg.datastructures.type_aliases import (
     TransportProtocolName,
 )
 
+
 @dataclass(frozen=True, slots=True)
 class ServiceRegistryKey:
     namespace: NamespaceName
     name: ServiceName
     protocol: TransportProtocolName
     port: PortNumber
+
 
 @dataclass(frozen=True, slots=True)
 class ServiceRegistration:
@@ -52,6 +54,7 @@ class ServiceRegistration:
             registered_at=float(payload.get("registered_at", 0.0) or 0.0),
             registration_id=str(payload.get("registration_id", "")),
         )
+
 
 @dataclass(slots=True)
 class ServiceRegistry:

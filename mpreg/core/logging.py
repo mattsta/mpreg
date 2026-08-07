@@ -16,6 +16,7 @@ DEFAULT_LOG_FORMAT = (
     "{name}:{function}:{line} - {message}"
 )
 
+
 def _json_sink(message: Any) -> None:
     """Emit a single JSON line for structured logging sinks."""
     record = message.record
@@ -39,6 +40,7 @@ def _json_sink(message: Any) -> None:
         payload["exception"] = str(record["exception"])
     sys.stderr.write(dumps_text(payload) + "\n")
     sys.stderr.flush()
+
 
 def configure_logging(
     level: str,
@@ -137,6 +139,7 @@ def configure_logging(
 
     return tuple(handler_ids)
 
+
 def bind_trace_context(
     *,
     traceparent: str | None = None,
@@ -156,6 +159,7 @@ def bind_trace_context(
     if request_u:
         extra["request_u"] = str(request_u)
     return logger.bind(**extra) if extra else logger
+
 
 @contextmanager
 def trace_context(

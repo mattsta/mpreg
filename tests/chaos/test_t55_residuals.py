@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t55_ops_cli_tour_ops_loop() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -19,15 +20,13 @@ def test_t55_ops_cli_tour_ops_loop() -> None:
     assert "cache-strong-retry-abort" in text
     assert "not auto-heal" in text or "not automatic" in text.lower()
 
+
 def test_t55_caching_system_hint() -> None:
-    path = (
-        Path(__file__).resolve().parents[2]
-        / "docs"
-        / "CACHING_SYSTEM.md"
-    )
+    path = Path(__file__).resolve().parents[2] / "docs" / "CACHING_SYSTEM.md"
     text = path.read_text(encoding="utf-8")
     assert "residual_ops_hint" in text
     assert "abort_fail_op_id" in text
+
 
 def test_t55_design_doc_hint() -> None:
     path = (
@@ -39,6 +38,7 @@ def test_t55_design_doc_hint() -> None:
     assert "residual_ops_hint" in text
     assert "cft_gcm_retry_abort" in text or "gcm_retry" in text
 
+
 def test_t55_phase_43_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -47,6 +47,7 @@ def test_t55_phase_43_honesty() -> None:
     )
     text = path.read_text(encoding="utf-8")
     assert "Phase 43" in text
+
 
 def test_t55_plan_exists() -> None:
     path = (

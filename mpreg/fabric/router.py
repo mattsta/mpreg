@@ -45,6 +45,7 @@ type MessageCorrelationId = str
 
 router_log = logger
 
+
 class FabricRouteReason(Enum):
     LOCAL = "local"
     FEDERATED = "federated"
@@ -52,6 +53,7 @@ class FabricRouteReason(Enum):
     FALLBACK_LOCAL = "fallback_local"
     # Requested delivery guarantee is not implemented (fail closed, not silent).
     UNSUPPORTED_DELIVERY = "unsupported_delivery"
+
 
 @dataclass(frozen=True, slots=True)
 class FabricRouteTarget:
@@ -62,6 +64,7 @@ class FabricRouteTarget:
     node_id: NodeId | None = None
     cluster_id: ClusterId | None = None
     priority_weight: float = 1.0
+
 
 @dataclass(frozen=True, slots=True)
 class FabricRouteResult:
@@ -85,6 +88,7 @@ class FabricRouteResult:
     @property
     def is_multi_target(self) -> bool:
         return len(self.targets) > 1
+
 
 @dataclass(frozen=True, slots=True)
 class FabricRoutingPolicy:
@@ -122,6 +126,7 @@ class FabricRoutingPolicy:
                 return False
         return True
 
+
 @dataclass(slots=True)
 class FabricRoutingConfig:
     """Configuration for the fabric router."""
@@ -147,6 +152,7 @@ class FabricRoutingConfig:
             if policy.matches_message(message):
                 return policy
         return self.default_policy
+
 
 @dataclass(frozen=True, slots=True)
 class FabricRoutingStatisticsSnapshot:
@@ -179,12 +185,14 @@ class FabricRoutingStatisticsSnapshot:
     def local_efficiency(self) -> float:
         return self.cache_hit_ratio * (1.0 - self.federation_ratio)
 
+
 class RouteHandler(Protocol):
     async def handle_route(
         self, message: UnifiedMessage, route: FabricRouteResult
     ) -> bool: ...
 
     async def get_handler_statistics(self) -> dict[str, Any]: ...
+
 
 @dataclass(slots=True)
 class RouteHandlerRegistry:
@@ -225,6 +233,7 @@ class RouteHandlerRegistry:
 
     def _pattern_matches(self, pattern: TopicPattern, topic: str) -> bool:
         return TopicValidator.matches_pattern(topic, pattern)
+
 
 @dataclass(slots=True)
 class RoutingMetrics:
@@ -307,6 +316,7 @@ class RoutingMetrics:
             cache_routes=self.cache_routes,
             control_plane_routes=self.control_plane_routes,
         )
+
 
 class FabricRouter:
     """Fabric-native router that plans routes across all message systems."""
@@ -1019,10 +1029,12 @@ class FabricRouter:
             or message.topic.startswith("mpreg.fabric.")
         )
 
+
 def create_correlation_id() -> MessageCorrelationId:
     import uuid
 
     return f"corr_{uuid.uuid4().hex[:16]}"
+
 
 def create_route_id(message: UnifiedMessage) -> FabricRouteId:
     import hashlib
@@ -1032,8 +1044,10 @@ def create_route_id(message: UnifiedMessage) -> FabricRouteId:
     )
     return f"route_{hashlib.sha256(route_key.encode()).hexdigest()[:16]}"
 
+
 def is_internal_topic(topic: TopicPattern) -> bool:
     return topic.startswith("mpreg.")
+
 
 def extract_system_from_topic(topic: TopicPattern) -> MessageType | None:
     if topic.startswith("mpreg.rpc."):
@@ -1048,6 +1062,7 @@ def extract_system_from_topic(topic: TopicPattern) -> MessageType | None:
         return MessageType.CONTROL
     return MessageType.DATA
 
+
 def is_federation_message(message: UnifiedMessage) -> bool:
     return bool(
         message.headers.target_cluster
@@ -1055,11 +1070,13 @@ def is_federation_message(message: UnifiedMessage) -> bool:
         or message.topic.startswith("mpreg.fabric.")
     )
 
+
 def is_control_plane_message(message: UnifiedMessage) -> bool:
     return (
         message.topic.startswith("mpreg.")
         and message.message_type == MessageType.CONTROL
     )
+
 
 def _cache_role_from_topic(topic: str) -> CacheRole:
     if topic.startswith("mpreg.cache.invalidation."):
@@ -1073,6 +1090,7 @@ def _cache_role_from_topic(topic: str) -> CacheRole:
     if topic.startswith(("mpreg.cache.events.", "mpreg.cache.analytics.")):
         return CacheRole.MONITOR
     return CacheRole.COORDINATOR
+
 
 def create_fabric_router(
     config: FabricRoutingConfig,

@@ -28,6 +28,7 @@ from mpreg.fabric.performance_metrics import (
     create_production_thresholds,
 )
 
+
 class TestPerformanceThresholds:
     """Test performance threshold configurations."""
 
@@ -73,6 +74,7 @@ class TestPerformanceThresholds:
         assert thresholds.latency_critical == 2000.0
         assert thresholds.error_rate_warning == 5.0
         assert thresholds.health_score_warning == 70.0
+
 
 class TestClusterMetrics:
     """Test cluster metrics data structures."""
@@ -125,6 +127,7 @@ class TestClusterMetrics:
         assert metrics.active_connections == 0
         assert metrics.messages_sent == 0
 
+
 class TestPerformanceAlert:
     """Test performance alert data structures."""
 
@@ -174,6 +177,7 @@ class TestPerformanceAlert:
                 message=f"Test {severity.value} alert",
             )
             assert alert.severity == severity
+
 
 class TestPerformanceMetricsService:
     """Test the main performance metrics service."""
@@ -600,6 +604,7 @@ class TestPerformanceMetricsService:
         no_history = service.get_cluster_history("non-existent", hours=1)
         assert len(no_history) == 0
 
+
 class MockMetricsCollector:
     """Mock metrics collector for testing."""
 
@@ -615,6 +620,7 @@ class MockMetricsCollector:
     async def health_check(self) -> bool:
         """Mock health check."""
         return True
+
 
 class TestMetricsCollectorIntegration:
     """Test integration with metrics collectors."""
@@ -651,6 +657,7 @@ class TestMetricsCollectorIntegration:
         assert stored_metrics.avg_latency_ms == 65.0
         assert stored_metrics.throughput_rps == 120.0
         assert stored_metrics.health_score == 88.0
+
 
 # Integration test that demonstrates the complete workflow
 @pytest.mark.asyncio

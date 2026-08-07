@@ -20,6 +20,7 @@ QueuePriority = int
 MessageSize = int
 ProcessingFee = int
 
+
 class MessagePriority(Enum):
     """Message priority levels with democratic governance."""
 
@@ -29,6 +30,7 @@ class MessagePriority(Enum):
     LOW = "low"  # Background tasks
     BULK = "bulk"  # Batch operations
 
+
 class DeliveryGuarantee(Enum):
     """Delivery guarantee levels."""
 
@@ -37,6 +39,7 @@ class DeliveryGuarantee(Enum):
     EXACTLY_ONCE = "exactly_once"  # Reserved: unsupported (fail closed)
     ORDERED = "ordered"  # Maintain message order
 
+
 class RouteStatus(Enum):
     """Route health status."""
 
@@ -44,6 +47,7 @@ class RouteStatus(Enum):
     DEGRADED = "degraded"
     MAINTENANCE = "maintenance"
     FAILED = "failed"
+
 
 @dataclass(frozen=True, slots=True)
 class MessageRoute:
@@ -72,6 +76,7 @@ class MessageRoute:
             raise ValueError("Latency cannot be negative")
         if not (0.0 <= self.reliability_score <= 1.0):
             raise ValueError("Reliability score must be between 0 and 1")
+
 
 @dataclass(frozen=True, slots=True)
 class BlockchainMessage:
@@ -104,6 +109,7 @@ class BlockchainMessage:
         if self.retry_count < 0 or self.max_retries < 0:
             raise ValueError("Retry counts cannot be negative")
 
+
 @dataclass(frozen=True, slots=True)
 class QueueGovernancePolicy:
     """DAO-governed queue management policy using type-safe dataclasses."""
@@ -132,6 +138,7 @@ class QueueGovernancePolicy:
             return False
 
         return not (self.effective_until and current_time > self.effective_until)
+
 
 @dataclass(frozen=True, slots=True)
 class PolicyParameters:
@@ -187,6 +194,7 @@ class PolicyParameters:
                 # Custom parameters
                 return self.custom_parameters.get(name, "")
 
+
 @dataclass(frozen=True, slots=True)
 class PolicyMetadata:
     """Type-safe policy metadata dataclass."""
@@ -224,6 +232,7 @@ class PolicyMetadata:
                 # Custom metadata
                 return self.custom_metadata.get(key, "")
 
+
 @dataclass(frozen=True, slots=True)
 class RoutingCriteria:
     """Type-safe routing criteria for democratic route selection."""
@@ -254,6 +263,7 @@ class RoutingCriteria:
             + self.cost_weight * cost_score
             + self.reliability_weight * reliability_score
         )
+
 
 @dataclass(frozen=True, slots=True)
 class QueueMetrics:

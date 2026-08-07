@@ -2,25 +2,25 @@
 
 ## Supported versions
 
-| Version | Supported |
-| --- | --- |
-| 0.3.x | Yes — current Production Snapshot |
-| 0.2.x | Best-effort until 0.3.x is widely adopted |
-| < 0.2 | No |
+| Version | Supported                                 |
+| ------- | ----------------------------------------- |
+| 0.3.x   | Yes — current Production Snapshot         |
+| 0.2.x   | Best-effort until 0.3.x is widely adopted |
+| < 0.2   | No                                        |
 
 ## Threat model (honest)
 
 MPREG 0.3.0 targets **crash-fault tolerant (CFT)** clusters operated by
 **trusted operators** who control peer membership and secrets.
 
-| In scope | Out of scope (non-claims) |
-| --- | --- |
-| Accidental misconfig footguns (open metrics, placeholder secrets) | Byzantine / malicious peers (BFT) |
-| Optional TLS on data plane (wss/tcps) | Guaranteed residual-free cache after lost ABORT |
-| Monitoring bearer token when mon is exposed | WAN multi-region linearizability / Jepsen-class proof |
-| Federated route signatures + gossip HMAC | OAuth2/OIDC IdP product (roadmap) |
-| Dependency vulnerability scanning in CI | Formal pen-test certification |
-| `mpreg config-check --strict` production gate | SIEM / infinite audit retention |
+| In scope                                                          | Out of scope (non-claims)                             |
+| ----------------------------------------------------------------- | ----------------------------------------------------- |
+| Accidental misconfig footguns (open metrics, placeholder secrets) | Byzantine / malicious peers (BFT)                     |
+| Optional TLS on data plane (wss/tcps)                             | Guaranteed residual-free cache after lost ABORT       |
+| Monitoring bearer token when mon is exposed                       | WAN multi-region linearizability / Jepsen-class proof |
+| Federated route signatures + gossip HMAC                          | OAuth2/OIDC IdP product (roadmap)                     |
+| Dependency vulnerability scanning in CI                           | Formal pen-test certification                         |
+| `mpreg config-check --strict` production gate                     | SIEM / infinite audit retention                       |
 
 Raft is **CFT, not BFT**. Cache `STRONG` put is flag-gated majority-commit;
 get/delete stay refuse (`1012`). Shared audit is a bounded G-Set epidemic, not SIEM.

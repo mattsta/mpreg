@@ -24,6 +24,7 @@ from mpreg.examples.apps._shared.runtime import (
     step,
 )
 
+
 async def main() -> None:
     with app_run(
         "topic_queue_router_lab",
@@ -223,6 +224,7 @@ async def main() -> None:
                 result = close()
                 if asyncio.iscoroutine(result):
                     await result
+
 
 if __name__ == "__main__":
     asyncio.run(main())

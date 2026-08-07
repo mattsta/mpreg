@@ -4,6 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
+
 def test_r5_perf_baseline_doc() -> None:
     path = ROOT / "docs/ops/PERF_BASELINE.md"
     text = path.read_text()

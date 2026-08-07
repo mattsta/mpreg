@@ -38,6 +38,7 @@ _SAFE_TEXT = st.text(
     max_size=12,
 )
 
+
 @st.composite
 def audit_records(draw: st.DrawFn, *, entry_id: str | None = None) -> SharedAuditRecord:
     eid = entry_id or draw(_SAFE_TEXT.map(lambda s: f"e-{s}"))
@@ -65,6 +66,7 @@ def audit_records(draw: st.DrawFn, *, entry_id: str | None = None) -> SharedAudi
         gossip_eligible=True,
     )
 
+
 def _same_id_variants(base: SharedAuditRecord, n: int = 3) -> list[SharedAuditRecord]:
     """Build n same-identity records with differing detail for conflict merge."""
     out = []
@@ -86,9 +88,11 @@ def _same_id_variants(base: SharedAuditRecord, n: int = 3) -> list[SharedAuditRe
         )
     return out
 
+
 # ---------------------------------------------------------------------------
 # H1 — merge lattice
 # ---------------------------------------------------------------------------
+
 
 @given(base=audit_records())
 @settings(max_examples=80, deadline=None)
@@ -98,6 +102,7 @@ def test_merge_idempotent(base: SharedAuditRecord) -> None:
     assert stable_canonical_json(w.payload_for_merge()) == stable_canonical_json(
         base.payload_for_merge()
     )
+
 
 @given(base=audit_records())
 @settings(max_examples=60, deadline=None)
@@ -109,6 +114,7 @@ def test_merge_commutative_on_conflicts(base: SharedAuditRecord) -> None:
     assert stable_canonical_json(w1.payload_for_merge()) == stable_canonical_json(
         w2.payload_for_merge()
     )
+
 
 @given(base=audit_records())
 @settings(max_examples=40, deadline=None)
@@ -122,6 +128,7 @@ def test_merge_associative_fold(base: SharedAuditRecord) -> None:
         winners.append(stable_canonical_json(acc.payload_for_merge()))
     assert len(set(winners)) == 1
 
+
 @given(a=audit_records(), b=audit_records())
 @settings(max_examples=40, deadline=None)
 def test_merge_rejects_distinct_identity(
@@ -131,9 +138,11 @@ def test_merge_rejects_distinct_identity(
     with pytest.raises(ValueError, match="distinct identities"):
         merge_records(a, b)
 
+
 # ---------------------------------------------------------------------------
 # H2 / H3 — store monotonicity + watermark anti-resurrection
 # ---------------------------------------------------------------------------
+
 
 @given(
     records=st.lists(audit_records(), min_size=1, max_size=25),
@@ -159,6 +168,7 @@ def test_store_size_bounded_and_watermarks_monotonic(
         for origin, wm in store.watermarks_snapshot().items():
             for kept in store.snapshot(origin_node=origin):
                 assert wm.covers(kept.timestamp, kept.entry_id)
+
 
 @given(
     seed=st.lists(audit_records(), min_size=5, max_size=20),
@@ -198,6 +208,7 @@ def test_no_resurrection_below_watermark(
         if not wm.covers(r.timestamp, r.entry_id):
             assert store.get("c1", r.entry_id) is None
 
+
 @given(r=audit_records())
 @settings(max_examples=30, deadline=None)
 def test_cross_cluster_rejected(r: SharedAuditRecord) -> None:
@@ -219,9 +230,11 @@ def test_cross_cluster_rejected(r: SharedAuditRecord) -> None:
     assert store.size() == 0
     assert store.rejected_cross_cluster >= 1
 
+
 # ---------------------------------------------------------------------------
 # H4 / H6 — anti-entropy convergence (async property)
 # ---------------------------------------------------------------------------
+
 
 def _mesh(
     n: int,
@@ -251,6 +264,7 @@ def _mesh(
         stores.append(store)
         reps.append(rep)
     return transport, stores, reps
+
 
 @pytest.mark.asyncio
 @given(
@@ -314,6 +328,7 @@ async def test_property_mesh_converges_eligible(
         missing = expected_ids - have
         assert not missing, f"node {store.local_node} missing {missing}"
 
+
 @pytest.mark.asyncio
 async def test_property_legacy_never_gossips() -> None:
     _transport, stores, reps = _mesh(2)
@@ -340,6 +355,7 @@ async def test_property_legacy_never_gossips() -> None:
     assert all(r.gossip_eligible for r in pulled)
     assert all(r.entry_id != "legacy:deadbeef" for r in pulled)
 
+
 @pytest.mark.asyncio
 async def test_reorder_epidemic_still_converges() -> None:
     transport, stores, reps = _mesh(3)
@@ -365,9 +381,11 @@ async def test_reorder_epidemic_still_converges() -> None:
         for eid in ids:
             assert store.get("c1", eid) is not None
 
+
 # ---------------------------------------------------------------------------
 # Response contract
 # ---------------------------------------------------------------------------
+
 
 @given(limit=st.integers(min_value=0, max_value=20))
 @settings(max_examples=20, deadline=None)
@@ -383,6 +401,7 @@ def test_cluster_scope_requires_shared(limit: int) -> None:
     )
     assert out.get("error") == "shared_audit_disabled"
     assert out["mutations"] == []
+
 
 @given(
     n=st.integers(min_value=0, max_value=30),
@@ -405,9 +424,11 @@ def test_local_scope_respects_limit(n: int, limit: int) -> None:
         assert len(out["mutations"]) <= limit
         assert out["mutation_count"] == len(out["mutations"])
 
+
 # ---------------------------------------------------------------------------
 # T15 — partition isolate + heal converges (DistLab Hypothesis expand)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 @given(n_events=st.integers(min_value=1, max_value=8))

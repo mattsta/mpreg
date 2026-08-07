@@ -40,8 +40,10 @@ CONTROL_PLANE_ROLES: frozenset[str] = frozenset(
     }
 )
 
+
 def is_data_plane_role(role: str | None) -> bool:
     return bool(role) and str(role) in DATA_PLANE_ROLES
+
 
 def is_control_plane_role(role: str | None) -> bool:
     if not role:
@@ -51,6 +53,7 @@ def is_control_plane_role(role: str | None) -> bool:
         return True
     # Case-insensitive match for STATUS/GOODBYE style roles
     return r.lower() in {c.lower() for c in CONTROL_PLANE_ROLES}
+
 
 def is_fabric_control_plane(
     *,
@@ -99,6 +102,7 @@ def is_fabric_control_plane(
         return True
     return role == "fabric-control"
 
+
 def should_refuse_for_drain(
     *,
     draining: bool,
@@ -125,6 +129,7 @@ def should_refuse_for_drain(
         return False
     # Known data-plane or unknown / empty role → refuse
     return True
+
 
 def drain_unavailable_response(u: str | None = None) -> Any:
     """Build the canonical RPC unavailable response for drain refusal."""

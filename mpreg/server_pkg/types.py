@@ -12,6 +12,7 @@ from mpreg.core.connection_events import ConnectionEvent
 from mpreg.core.model import GoodbyeReason
 from mpreg.fabric.catalog_delta import RoutingCatalogDelta
 
+
 @dataclass(frozen=True, slots=True)
 class InternalDiscoverySubscriptionAnnouncer:
     schedule: Callable[[Any], None]
@@ -23,12 +24,14 @@ class InternalDiscoverySubscriptionAnnouncer:
     def on_connection_lost(self, event: ConnectionEvent) -> None:
         return
 
+
 @dataclass(slots=True)
 class MessageStats:
     total_processed: int = 0
     rpc_responses_skipped: int = 0
     server_messages: int = 0
     other_messages: int = 0
+
 
 @dataclass(slots=True)
 class RemoteCommandStats:
@@ -38,6 +41,7 @@ class RemoteCommandStats:
     def record(self, command: str) -> None:
         self.total += 1
         self.last_command = command
+
 
 @dataclass(frozen=True, slots=True)
 class DepartedPeer:
@@ -52,6 +56,7 @@ class DepartedPeer:
         timestamp = now if now is not None else time.time()
         return timestamp > (self.departed_at + self.ttl_seconds)
 
+
 @dataclass(slots=True)
 class CatalogSnapshotDispatchState:
     """Track coalesced catalog snapshot dispatch across rapid update bursts."""
@@ -62,10 +67,12 @@ class CatalogSnapshotDispatchState:
     flush_batches: int = 0
     peers_flushed: int = 0
 
+
 @dataclass(frozen=True, slots=True)
 class CommandExecutionResult:
     name: str
     value: Any
+
 
 @dataclass(slots=True)
 class CatalogDeltaObserverAdapter:

@@ -43,6 +43,7 @@ from .interfaces import TransportInterface, TransportProtocol
 type EndpointUrl = str
 type ConnectionId = str
 
+
 @dataclass(frozen=True, slots=True)
 class EnhancedConnectionStats(ConnectionStats):
     """Enhanced connection statistics with health and performance metrics."""
@@ -53,6 +54,7 @@ class EnhancedConnectionStats(ConnectionStats):
     success_rate_percent: float
     correlation_count: int
 
+
 @dataclass(frozen=True, slots=True)
 class EnhancedAdapterStatus(AdapterStatus):
     """Enhanced adapter status with reliability metrics."""
@@ -62,6 +64,7 @@ class EnhancedAdapterStatus(AdapterStatus):
     total_correlations_tracked: int
     average_response_time_ms: float
     enhanced_stats: list[EnhancedConnectionStats]
+
 
 @dataclass(slots=True)
 class EnhancedMultiProtocolAdapterConfig(MultiProtocolAdapterConfig):
@@ -82,6 +85,7 @@ class EnhancedMultiProtocolAdapterConfig(MultiProtocolAdapterConfig):
     enable_health_monitoring: bool = True
     health_calculation_interval_ms: float = 5000.0
     max_recent_operations_tracked: int = 100
+
 
 class EnhancedMultiProtocolAdapter:
     """
@@ -496,6 +500,7 @@ class EnhancedMultiProtocolAdapter:
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         """Async context manager exit."""
         await self.stop()
+
 
 # Factory function for creating enhanced adapters
 def create_enhanced_multi_protocol_adapter(

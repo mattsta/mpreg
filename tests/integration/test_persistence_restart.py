@@ -13,6 +13,7 @@ from mpreg.core.persistence.config import PersistenceConfig, PersistenceMode
 from mpreg.server import MPREGServer
 from tests.test_helpers import TestPortManager, wait_for_condition
 
+
 async def _start_server(
     port: int,
     data_dir,
@@ -40,6 +41,7 @@ async def _start_server(
     await asyncio.sleep(1.0)
     return server, task
 
+
 async def _stop_server(server: MPREGServer, task: asyncio.Task[None]) -> None:
     await server.shutdown_async()
     try:
@@ -47,6 +49,7 @@ async def _stop_server(server: MPREGServer, task: asyncio.Task[None]) -> None:
     except TimeoutError:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
+
 
 @pytest.mark.asyncio
 async def test_persistent_queue_restores_after_restart(tmp_path) -> None:
@@ -79,6 +82,7 @@ async def test_persistent_queue_restores_after_restart(tmp_path) -> None:
             error_message="Persisted queue not restored after restart",
         )
         await _stop_server(server_b, task_b)
+
 
 @pytest.mark.asyncio
 async def test_persistent_cache_l2_restore_after_restart(tmp_path) -> None:

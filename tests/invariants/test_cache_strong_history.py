@@ -25,8 +25,8 @@ from mpreg.core.cache_strong import (
     StrongLocalBackend,
     StrongPutCoordinator,
     _entry_op_id,
-    _entry_strong_version,
 )
+
 
 @dataclass
 class PutOutcome:
@@ -35,6 +35,7 @@ class PutOutcome:
     success: bool
     op_id: str | None
     error_code: int | None
+
 
 def _build_mesh(n: int = 3):
     transport = InProcessStrongTransport()
@@ -55,6 +56,7 @@ def _build_mesh(n: int = 3):
             commit_timeout_s=0.8,
         )
     return coords, backends, transport
+
 
 async def _run_concurrent_puts(
     values: list[object],
@@ -82,10 +84,9 @@ async def _run_concurrent_puts(
             error_code=res.error_code,
         )
 
-    outcomes = list(
-        await asyncio.gather(*[one(i, v) for i, v in enumerate(values)])
-    )
+    outcomes = list(await asyncio.gather(*[one(i, v) for i, v in enumerate(values)]))
     return outcomes, backends
+
 
 def check_history(
     outcomes: list[PutOutcome],
@@ -128,7 +129,6 @@ def check_history(
     assert final_op in ok_ops, f"final op {final_op} not in successes {ok_ops}"
 
     # LWW: final version should be max among successful applied versions present
-    versions = []
     for o in success:
         # find if any backend has this op (winner or overwritten)
         pass
@@ -139,6 +139,7 @@ def check_history(
     for be in backends.values():
         assert be.pending_count() == 0
 
+
 @pytest.mark.asyncio
 async def test_history_three_concurrent_puts_converge() -> None:
     outcomes, backends = await _run_concurrent_puts(["a", "b", "c"])
@@ -146,6 +147,7 @@ async def test_history_three_concurrent_puts_converge() -> None:
     check_history(outcomes, backends, key)
     # At least one success expected on healthy mesh
     assert any(o.success for o in outcomes)
+
 
 @pytest.mark.asyncio
 async def test_history_all_fail_no_residual() -> None:
@@ -160,6 +162,7 @@ async def test_history_all_fail_no_residual() -> None:
     ]
     check_history(outcomes, backends, key)
     assert not res.success
+
 
 @given(
     values=st.lists(

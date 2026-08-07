@@ -1,11 +1,11 @@
 # MPREG 0.3.0 — Unified Sequential Burndown
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Master** | `docs/plans/RELEASE_0_3_PRODUCTION_SNAPSHOT_MASTER_PLAN.md` |
-| **Architecture** | `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md` |
-| **Ledger** | `docs/plans/RELEASE_0_3_PROOF_LEDGER.md` |
+| Field            | Value                                                       |
+| ---------------- | ----------------------------------------------------------- |
+| **Status**       | **Complete**                                                |
+| **Master**       | `docs/plans/RELEASE_0_3_PRODUCTION_SNAPSHOT_MASTER_PLAN.md` |
+| **Architecture** | `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md`      |
+| **Ledger**       | `docs/plans/RELEASE_0_3_PROOF_LEDGER.md`                    |
 
 Linear order. Check off only when validated (test or script green).
 
@@ -90,7 +90,7 @@ Linear order. Check off only when validated (test or script green).
 
 ## Progress log
 
-| Date | Note |
-| --- | --- |
-| 2026-08-07 | Burndown created; execution started |
+| Date       | Note                                                         |
+| ---------- | ------------------------------------------------------------ |
+| 2026-08-07 | Burndown created; execution started                          |
 | 2026-08-07 | All tracks R1–R7 validated; `scripts/release_gate.sh` exit 0 |

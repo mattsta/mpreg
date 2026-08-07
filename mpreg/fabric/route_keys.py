@@ -18,10 +18,12 @@ from mpreg.datastructures.type_aliases import (
     Timestamp,
 )
 
+
 def derive_route_key_id(public_key: PublicKey) -> RouteKeyId:
     """Derive a stable key id for a public key."""
     digest = hashlib.sha256(public_key).hexdigest()
     return f"route_key_{digest[:16]}"
+
 
 def _as_float(value: object, default: float) -> float:
     if value is None:
@@ -33,10 +35,12 @@ def _as_float(value: object, default: float) -> float:
             return default
     return default
 
+
 def _as_key_records(value: object) -> list[JsonDict]:
     if not isinstance(value, list):
         return []
     return [item for item in value if isinstance(item, dict)]
+
 
 @dataclass(frozen=True, slots=True)
 class RouteKeyRecord:
@@ -78,6 +82,7 @@ class RouteKeyRecord:
             else None,
         )
 
+
 @dataclass(frozen=True, slots=True)
 class RouteKeyAnnouncement:
     """Gossip payload for distributing route verification keys."""
@@ -115,6 +120,7 @@ class RouteKeyAnnouncement:
             advertised_at=_as_float(payload.get("advertised_at"), time.time()),
             ttl_seconds=_as_float(payload.get("ttl_seconds"), 120.0),
         )
+
 
 @dataclass(slots=True)
 class RouteKeySet:
@@ -190,6 +196,7 @@ class RouteKeySet:
 
     def resolve_keys(self, *, now: Timestamp | None = None) -> tuple[PublicKey, ...]:
         return tuple(record.public_key for record in self.active_records(now=now))
+
 
 @dataclass(slots=True)
 class RouteKeyRegistry:
@@ -319,10 +326,12 @@ class RouteKeyRegistry:
         registry.load_from_dict(payload)
         return registry
 
+
 class RouteKeyProvider(Protocol):
     """Provider for refreshing route key registries."""
 
     def refresh(self, registry: RouteKeyRegistry) -> Awaitable[None] | None: ...
+
 
 async def refresh_route_keys(
     provider: RouteKeyProvider, registry: RouteKeyRegistry
@@ -331,6 +340,7 @@ async def refresh_route_keys(
     result = provider.refresh(registry)
     if inspect.isawaitable(result):
         await result
+
 
 def normalize_public_keys(
     keys: PublicKey | Iterable[PublicKey] | None,

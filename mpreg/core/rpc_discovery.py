@@ -27,6 +27,7 @@ from mpreg.datastructures.type_aliases import (
     Timestamp,
 )
 
+
 def _normalize_tuple(value: object) -> tuple[str, ...]:
     if value is None:
         return ()
@@ -35,6 +36,7 @@ def _normalize_tuple(value: object) -> tuple[str, ...]:
     if isinstance(value, (list, tuple, set, frozenset)):
         return tuple(str(item) for item in value)
     return (str(value),)
+
 
 @dataclass(frozen=True, slots=True)
 class RpcListRequest:
@@ -102,6 +104,7 @@ class RpcListRequest:
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
 
+
 @dataclass(frozen=True, slots=True)
 class RpcListItem:
     identity: FunctionIdentity
@@ -143,6 +146,7 @@ class RpcListItem:
             else None,
         )
 
+
 @dataclass(frozen=True, slots=True)
 class RpcListResponse:
     generated_at: Timestamp = field(metadata={PAYLOAD_FLOAT: True})
@@ -166,6 +170,7 @@ class RpcListResponse:
             if payload.get("next_page_token") is not None
             else None,
         )
+
 
 @dataclass(frozen=True, slots=True)
 class RpcDescribeRequest:
@@ -257,6 +262,7 @@ class RpcDescribeRequest:
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
 
+
 @dataclass(frozen=True, slots=True)
 class RpcDescribeItem:
     identity: FunctionIdentity
@@ -302,6 +308,7 @@ class RpcDescribeItem:
             else None,
         )
 
+
 @dataclass(frozen=True, slots=True)
 class RpcDescribeError:
     node_id: NodeId
@@ -310,6 +317,7 @@ class RpcDescribeError:
 
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
+
 
 @dataclass(frozen=True, slots=True)
 class RpcDescribeResponse:
@@ -347,6 +355,7 @@ class RpcDescribeResponse:
             else None,
         )
 
+
 @dataclass(frozen=True, slots=True)
 class RpcReportRequest:
     namespace: NamespaceName | None = None
@@ -375,6 +384,7 @@ class RpcReportRequest:
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
 
+
 @dataclass(frozen=True, slots=True)
 class RpcReportCount:
     key: str
@@ -389,6 +399,7 @@ class RpcReportCount:
             key=str(payload.get("key", "")),
             count=int(payload.get("count", 0) or 0),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class RpcReportResponse:

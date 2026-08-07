@@ -5,6 +5,7 @@ from __future__ import annotations
 from mpreg.fabric.route_decision_log import RouteDecisionLog, make_record_from_route
 from mpreg.server_pkg.routing_handlers import RoutingPlane
 
+
 def test_blackhole_count_increments() -> None:
     log = RouteDecisionLog()
     log.record(
@@ -37,6 +38,7 @@ def test_blackhole_count_increments() -> None:
     assert stats["blackhole_count"] == 1
     assert stats["total_recorded"] == 2
     assert 0.0 < stats["reachable_ratio"] < 1.0
+
 
 def test_routing_plane_records_unreachable() -> None:
     plane = RoutingPlane()

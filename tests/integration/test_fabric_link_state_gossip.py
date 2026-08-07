@@ -13,6 +13,7 @@ from mpreg.fabric.link_state import (
     LinkStateUpdate,
 )
 
+
 @pytest.mark.asyncio
 async def test_link_state_gossip_builds_multi_hop_path() -> None:
     transport = InProcessGossipTransport()

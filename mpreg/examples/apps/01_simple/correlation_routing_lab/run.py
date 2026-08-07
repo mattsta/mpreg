@@ -12,6 +12,7 @@ from mpreg.core.transport.correlation import (
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 from mpreg.testing.faults import FaultInjector, assert_no_routing_loop
 
+
 async def main() -> None:
     with app_run(
         "correlation_routing_lab",
@@ -89,6 +90,7 @@ async def main() -> None:
             ok("20 unique ids")
 
         await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

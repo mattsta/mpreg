@@ -5,6 +5,7 @@ import pytest
 from mpreg.fabric.gossip import GossipMessage, GossipMessageType, GossipProtocol
 from mpreg.fabric.gossip_transport import InProcessGossipTransport
 
+
 @pytest.mark.asyncio
 async def test_inprocess_gossip_transport_delivers_message() -> None:
     transport = InProcessGossipTransport()
@@ -24,6 +25,7 @@ async def test_inprocess_gossip_transport_delivers_message() -> None:
     assert "msg-1" in protocol.recent_messages
 
     await protocol.stop()
+
 
 def test_gossip_message_round_trip() -> None:
     message = GossipMessage(

@@ -1,6 +1,7 @@
 from mpreg.core.service_registry import ServiceRegistry
 from mpreg.datastructures.service_spec import ServiceSpec
 
+
 def test_service_registry_register_and_find() -> None:
     registry = ServiceRegistry()
     spec = ServiceSpec(

@@ -16,6 +16,7 @@ from mpreg.datastructures.raft_task_manager import (
     TaskState,
 )
 
+
 class TestManagedTask:
     """Test ManagedTask dataclass functionality."""
 
@@ -56,6 +57,7 @@ class TestManagedTask:
         await asyncio.sleep(0.01)  # Give time for cancellation
         task.state = TaskState.RUNNING
         assert not task.is_active()  # Should be inactive because task is done
+
 
 class TestTaskGroup:
     """Test TaskGroup functionality."""
@@ -135,6 +137,7 @@ class TestTaskGroup:
         assert counts.stopping == 1
         assert counts.stopped == 1
         assert counts.failed == 1
+
 
 class TestRaftTaskManager:
     """Test RaftTaskManager core functionality."""
@@ -365,6 +368,7 @@ class TestRaftTaskManager:
 
         # Cleanup
         real_task.cancel()
+
 
 class TestTaskManagerErrorHandling:
     """Test error handling in task manager."""

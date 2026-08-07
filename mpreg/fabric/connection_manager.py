@@ -27,6 +27,7 @@ from mpreg.fabric.federation_config import (
     FederationManager,
 )
 
+
 @dataclass(frozen=True, slots=True)
 class FederationConnectionAttempt:
     """Information about a federation connection attempt."""
@@ -40,6 +41,7 @@ class FederationConnectionAttempt:
     authorization_result: ConnectionAuthorizationResult
     bridge_config: FederationBridgeConfig | None = None
     error_message: str = ""
+
 
 @dataclass(frozen=True, slots=True)
 class FederationConnectionDecision:
@@ -59,6 +61,7 @@ class FederationConnectionDecision:
             self.authorization_result
             == ConnectionAuthorizationResult.AUTHORIZED_WITH_WARNING
         )
+
 
 class FederationConnectionManager:
     """Manager for federation connections with policy enforcement."""
@@ -352,13 +355,16 @@ class FederationConnectionManager:
             "connections_by_cluster": connections_by_cluster,
         }
 
+
 # Integration helper functions
+
 
 def create_federation_connection_manager(
     federation_config: FederationConfig,
 ) -> FederationConnectionManager:
     """Create a federation connection manager with the given configuration."""
     return FederationConnectionManager(federation_config)
+
 
 def should_allow_cross_federation_connection(
     connection_manager: FederationConnectionManager,

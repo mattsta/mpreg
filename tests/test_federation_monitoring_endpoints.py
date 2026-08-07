@@ -35,6 +35,7 @@ from mpreg.fabric.performance_metrics import (
 )
 from tests.conftest import AsyncTestContext
 
+
 class TestFederationMonitoringEndpoints:
     """Test federation monitoring HTTP endpoints."""
 
@@ -1120,6 +1121,7 @@ class TestFederationMonitoringEndpoints:
             await monitoring_system.stop()
 
         print("✅ Federation middleware and CORS test passed")
+
 
 class TestFederationMonitoringIntegration:
     """Test integration between federation monitoring and unified monitoring system."""

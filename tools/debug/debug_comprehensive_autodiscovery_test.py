@@ -12,6 +12,7 @@ import contextlib
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 class AutoDiscoveryTestResult:
     """Results from an auto-discovery test."""
 
@@ -22,6 +23,7 @@ class AutoDiscoveryTestResult:
         self.functions_propagated: dict[int, bool] = {}  # node_id -> has_test_function
         self.success = False
         self.details: list[str] = []
+
 
 async def test_autodiscovery_cluster(
     cluster_size: int, topology: str, base_port: int = 20000
@@ -153,6 +155,7 @@ async def test_autodiscovery_cluster(
 
     return result
 
+
 def create_node_settings(
     node_id: int, port: int, connect_to: str | None, cluster_size: int
 ) -> MPREGSettings:
@@ -168,6 +171,7 @@ def create_node_settings(
         advertised_urls=None,  # Use default advertised URL
         gossip_interval=0.5,  # Fast gossip
     )
+
 
 async def run_comprehensive_autodiscovery_tests():
     """Run comprehensive auto-discovery tests across different sizes and topologies."""
@@ -251,6 +255,7 @@ async def run_comprehensive_autodiscovery_tests():
         print("   2. Fix gossip protocol to forward peer information")
         print("   3. Add auto-connection to discovered peers")
         print("   4. Test function announcement propagation")
+
 
 if __name__ == "__main__":
     asyncio.run(run_comprehensive_autodiscovery_tests())

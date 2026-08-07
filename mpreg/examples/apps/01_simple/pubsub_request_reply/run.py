@@ -20,6 +20,7 @@ from mpreg.examples.apps._shared.runtime import (
 )
 from mpreg.server import MPREGServer
 
+
 def _reply_to_from_message(msg: PubSubMessage) -> str | None:
     headers = getattr(msg, "headers", None)
     if headers is None:
@@ -34,6 +35,7 @@ def _reply_to_from_message(msg: PubSubMessage) -> str | None:
         raw = headers.get("reply_to")
         return str(raw) if raw else None
     return None
+
 
 async def main() -> None:
     with app_run(
@@ -184,6 +186,7 @@ async def main() -> None:
                             await svc.stop()
 
             await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,13 +1,13 @@
 # DistLab T60 — Live enriched residual_ops_hint e2e (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T57/T59 |
-| **Scope** | Live mesh: seed CFT residual + abort-fail diagnostics → non-empty enriched hint on scrape |
-| **Point budget** | **~15 pts** |
-| **Entry points only** | `uv run pytest …` |
+| Field                 | Value                                                                                     |
+| --------------------- | ----------------------------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                                              |
+| **Date**              | 2026-08-06                                                                                |
+| **Authority**         | Continuation after T57/T59                                                                |
+| **Scope**             | Live mesh: seed CFT residual + abort-fail diagnostics → non-empty enriched hint on scrape |
+| **Point budget**      | **~15 pts**                                                                               |
+| **Entry points only** | `uv run pytest …`                                                                         |
 
 ## Goals
 

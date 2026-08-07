@@ -1,13 +1,13 @@
 # DistLab T50 — Hypothesis self-target + residual gate (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T49 |
-| **Scope** | Property test peers=[self] clears residual; residual honesty Phase 38; full residual gate |
-| **Point budget** | **~15 pts** |
-| **Entry points only** | `uv run pytest …` |
+| Field                 | Value                                                                                     |
+| --------------------- | ----------------------------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                                              |
+| **Date**              | 2026-08-06                                                                                |
+| **Authority**         | Continuation after T49                                                                    |
+| **Scope**             | Property test peers=[self] clears residual; residual honesty Phase 38; full residual gate |
+| **Point budget**      | **~15 pts**                                                                               |
+| **Entry points only** | `uv run pytest …`                                                                         |
 
 ## Goals
 

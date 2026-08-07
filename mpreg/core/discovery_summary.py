@@ -31,8 +31,10 @@ from .namespace_policy import NamespacePolicyEngine
 
 DISCOVERY_SUMMARY_TOPIC = "mpreg.discovery.summary"
 
+
 def _ingress_payload(value: object) -> dict[object, object]:
     return payload_mapping(value, key_converter=str, value_converter=payload_list)
+
 
 @dataclass(frozen=True, slots=True)
 class ServiceSummary:
@@ -88,6 +90,7 @@ class ServiceSummary:
                 else None
             ),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class SummaryQueryRequest:
@@ -155,6 +158,7 @@ class SummaryQueryRequest:
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
 
+
 @dataclass(frozen=True, slots=True)
 class SummaryQueryResponse:
     generated_at: Timestamp = field(metadata={PAYLOAD_FLOAT: True})
@@ -197,6 +201,7 @@ class SummaryQueryResponse:
             ),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class SummaryWatchRequest:
     scope: EndpointScope | None = None
@@ -231,6 +236,7 @@ class SummaryWatchRequest:
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
 
+
 @dataclass(frozen=True, slots=True)
 class SummaryWatchResponse:
     topic: str
@@ -261,6 +267,7 @@ class SummaryWatchResponse:
                 else None
             ),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class DiscoverySummaryMessage:
@@ -300,6 +307,7 @@ class DiscoverySummaryMessage:
                 else None
             ),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class SummaryExportTemplate:
@@ -344,16 +352,19 @@ class SummaryExportTemplate:
             source_cluster=self.source_cluster,
         )
 
+
 @dataclass(slots=True)
 class SummaryExportNamespaceState:
     templates: tuple[SummaryExportTemplate, ...]
     fingerprint: str
     last_change_at: Timestamp
 
+
 @dataclass(frozen=True, slots=True)
 class SummaryStoreForwardEntry:
     message: PubSubMessage
     stored_at: Timestamp
+
 
 @dataclass(slots=True)
 class NamespaceSummaryExportStats:
@@ -374,6 +385,7 @@ class NamespaceSummaryExportStats:
 
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
+
 
 @dataclass(slots=True)
 class SummaryExportState:
@@ -579,6 +591,7 @@ class SummaryExportState:
             ),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class SummaryExportSnapshot:
     enabled: bool
@@ -608,6 +621,7 @@ class SummaryExportSnapshot:
 
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
+
 
 def summarize_functions(
     catalog: RoutingCatalog,
@@ -671,6 +685,7 @@ def summarize_functions(
             )
         )
     return summaries
+
 
 def _namespace_from_service_id(service_id: str) -> NamespaceName:
     if "." not in service_id:

@@ -20,6 +20,7 @@ from mpreg.examples.apps._shared.runtime import (
 )
 from mpreg.server import MPREGServer
 
+
 def _client_ctx(material, *, with_client_cert: bool) -> ssl.SSLContext:
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.load_verify_locations(str(material.ca_cert))
@@ -28,6 +29,7 @@ def _client_ctx(material, *, with_client_cert: bool) -> ssl.SSLContext:
     if with_client_cert:
         ctx.load_cert_chain(str(material.client_cert), str(material.client_key))
     return ctx
+
 
 async def main() -> None:
     with app_run(
@@ -175,6 +177,7 @@ async def main() -> None:
                 await run_with_servers(settings, _run)
         finally:
             material.cleanup()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

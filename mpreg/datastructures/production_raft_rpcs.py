@@ -28,6 +28,7 @@ from .production_raft import (
 
 rpc_log = logger
 
+
 # Extension of ProductionRaft class with RPC handlers
 class ProductionRaftRPCs:
     """Mixin class containing Raft RPC handlers and state transition logic."""

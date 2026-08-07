@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+
 def build_persistence_snapshot_metrics(server: Any) -> dict[str, Any]:
     from mpreg.core.persistence.config import PersistenceMode
 
@@ -68,6 +69,7 @@ def build_persistence_snapshot_metrics(server: Any) -> dict[str, Any]:
         ),
     }
     return payload
+
 
 def build_strong_metrics(server: Any) -> dict[str, Any]:
     """Process-local STRONG put metrics for operators (not WAN SLA)."""
@@ -221,7 +223,9 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
         from mpreg.core.cache_strong import format_residual_ops_hint
 
         peers = list(base.get("last_abort_fail_peers") or [])
-        coord = base.get("coordinator") if isinstance(base.get("coordinator"), dict) else {}
+        coord = (
+            base.get("coordinator") if isinstance(base.get("coordinator"), dict) else {}
+        )
         if not peers and isinstance(coord, dict):
             peers = list(coord.get("last_abort_fail_peers") or [])
         oid = str(base.get("last_abort_fail_op_id") or "")
@@ -237,9 +241,7 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
                 peers, oid, recent_abort_fails=recent
             )
         elif "<ns>" in existing or "<id>" in existing:
-            enriched = format_residual_ops_hint(
-                peers, oid, recent_abort_fails=recent
-            )
+            enriched = format_residual_ops_hint(peers, oid, recent_abort_fails=recent)
             if enriched and "<ns>" not in enriched:
                 base["residual_ops_hint"] = enriched
     except Exception:  # noqa: BLE001
@@ -252,6 +254,7 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
     except Exception:  # noqa: BLE001
         base.setdefault("abort_fail_peer_count", 0)
     return base
+
 
 def build_shared_audit_metrics(server: Any) -> dict[str, Any]:
     """Shared-audit epidemic metrics + health for operators."""
@@ -315,6 +318,7 @@ def build_shared_audit_metrics(server: Any) -> dict[str, Any]:
             ),
         },
     }
+
 
 def build_dns_metrics(server: Any) -> dict[str, Any]:
     if not server.settings.dns_gateway_enabled:

@@ -1,13 +1,13 @@
 # DistLab T45 — Residual honesty scan + CLI curriculum (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T44 (`e92f972`) |
-| **Scope** | Product-doc residual-free scanner; ops_cli teaches retry-abort CLI |
-| **Point budget** | **~20 pts** |
-| **Entry points only** | `uv run pytest …` / `uv run mpreg-example …` |
+| Field                 | Value                                                              |
+| --------------------- | ------------------------------------------------------------------ |
+| **Status**            | **Complete**                                                       |
+| **Date**              | 2026-08-06                                                         |
+| **Authority**         | Continuation after T44 (`e92f972`)                                 |
+| **Scope**             | Product-doc residual-free scanner; ops_cli teaches retry-abort CLI |
+| **Point budget**      | **~20 pts**                                                        |
+| **Entry points only** | `uv run pytest …` / `uv run mpreg-example …`                       |
 
 ## Goals
 

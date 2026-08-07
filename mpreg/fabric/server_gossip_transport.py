@@ -15,6 +15,7 @@ from .gossip_transport import GossipTransport
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .gossip import GossipMessage, GossipProtocol
 
+
 @dataclass(slots=True)
 class ServerGossipTransport(ServerEnvelopeTransport, GossipTransport):
     """Transport that delivers gossip messages over MPREG server connections."""

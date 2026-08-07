@@ -25,6 +25,7 @@ from mpreg.fabric.gossip import (
 from mpreg.fabric.gossip_transport import InProcessGossipTransport
 from mpreg.fabric.hub_registry import HubRegistry
 
+
 class TestConsensusGossipIntegration:
     """Test consensus integration with gossip protocol."""
 

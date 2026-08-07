@@ -36,6 +36,7 @@ type HeuristicFunction = Callable[[NodeId, NodeId], float]
 NodeData = TypeVar("NodeData")
 EdgeData = TypeVar("EdgeData")
 
+
 @dataclass(frozen=True, slots=True)
 class Coordinate:
     """2D coordinate for geographic positioning."""
@@ -50,6 +51,7 @@ class Coordinate:
     def manhattan_distance_to(self, other: Coordinate) -> float:
         """Calculate Manhattan distance to another coordinate."""
         return abs(self.x - other.x) + abs(self.y - other.y)
+
 
 @dataclass(slots=True)
 class CoordinateMap:
@@ -79,6 +81,7 @@ class CoordinateMap:
         }
         return cls(coordinates)
 
+
 class GraphNode(Protocol):
     """Protocol defining the interface for graph nodes."""
 
@@ -94,6 +97,7 @@ class GraphNode(Protocol):
         """Check if node is available for routing."""
         ...
 
+
 class GraphEdge(Protocol):
     """Protocol defining the interface for graph edges."""
 
@@ -104,6 +108,7 @@ class GraphEdge(Protocol):
     def is_usable(self) -> bool:
         """Check if edge is available for routing."""
         ...
+
 
 class Graph(Protocol):
     """Protocol defining the interface for pathfinding graphs."""
@@ -123,6 +128,7 @@ class Graph(Protocol):
     def get_all_nodes(self) -> list[NodeId]:
         """Get all node IDs in the graph."""
         ...
+
 
 @dataclass(frozen=True, slots=True)
 class PathfindingResult:
@@ -145,6 +151,7 @@ class PathfindingResult:
         """Get number of hops in the path."""
         return max(0, len(self.path) - 1)
 
+
 @dataclass(frozen=True, slots=True)
 class DijkstraConfig:
     """Configuration for Dijkstra's algorithm."""
@@ -157,6 +164,7 @@ class DijkstraConfig:
     def __post_init__(self) -> None:
         if self.max_hops <= 0:
             raise ValueError("max_hops must be positive")
+
 
 @dataclass(frozen=True, slots=True)
 class AStarConfig:
@@ -172,6 +180,7 @@ class AStarConfig:
             raise ValueError("max_hops must be positive")
         if self.heuristic_weight < 0.0:
             raise ValueError("heuristic_weight must be non-negative")
+
 
 class DijkstraAlgorithm:
     """
@@ -460,6 +469,7 @@ class DijkstraAlgorithm:
         """Reset internal statistics counters."""
         self._nodes_explored = 0
 
+
 class AStarAlgorithm:
     """
     Optimized implementation of A* pathfinding algorithm.
@@ -644,7 +654,9 @@ class AStarAlgorithm:
         """Reset internal statistics counters."""
         self._nodes_explored = 0
 
+
 # Predefined heuristic functions for common use cases
+
 
 def euclidean_distance_heuristic(coord_map: CoordinateMap) -> HeuristicFunction:
     """
@@ -668,6 +680,7 @@ def euclidean_distance_heuristic(coord_map: CoordinateMap) -> HeuristicFunction:
 
     return heuristic
 
+
 def manhattan_distance_heuristic(coord_map: CoordinateMap) -> HeuristicFunction:
     """
     Create Manhattan distance heuristic function.
@@ -689,6 +702,7 @@ def manhattan_distance_heuristic(coord_map: CoordinateMap) -> HeuristicFunction:
         return node_coord.manhattan_distance_to(target_coord)
 
     return heuristic
+
 
 def zero_heuristic() -> HeuristicFunction:
     """

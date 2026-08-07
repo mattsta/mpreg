@@ -36,6 +36,7 @@ from mpreg.datastructures import (
     VoteType,
 )
 
+
 class TestMessageQueueGovernance:
     """Test DAO governance for message queue operations."""
 
@@ -259,6 +260,7 @@ class TestMessageQueueGovernance:
 
         bulk_fee = self.governance.calculate_message_fee(bulk_message)
         assert bulk_fee <= fee  # Bulk should be at most as much, often less
+
 
 class TestEquitablePriorityQueue:
     """Test equitable priority queue with fairness guarantees."""
@@ -511,6 +513,7 @@ class TestEquitablePriorityQueue:
         result = self.queue.dequeue()
         assert result is None
 
+
 class TestBlockchainMessageRouter:
     """Test blockchain message router with audit trails."""
 
@@ -691,6 +694,7 @@ class TestBlockchainMessageRouter:
             selected_route.route_id in self.router.message_history[message.message_id]
         )
 
+
 class TestBlockchainMessageQueue:
     """Test complete blockchain message queue integration."""
 
@@ -772,7 +776,9 @@ class TestBlockchainMessageQueue:
         assert other_router.blockchain.chain_id == "secondary"
         assert self.queue.blockchain.chain_id != other_router.blockchain.chain_id
 
+
 # Property-based testing strategies
+
 
 @st.composite
 def message_route_strategy(draw):
@@ -789,6 +795,7 @@ def message_route_strategy(draw):
         status=draw(st.sampled_from(RouteStatus)),
     )
 
+
 @st.composite
 def blockchain_message_strategy(draw):
     """Generate valid BlockchainMessage instances."""
@@ -802,6 +809,7 @@ def blockchain_message_strategy(draw):
         processing_fee=draw(st.integers(min_value=0, max_value=10000)),
     )
 
+
 @given(message_route_strategy())
 @settings(max_examples=50, deadline=None)
 def test_message_route_properties(route):
@@ -814,6 +822,7 @@ def test_message_route_properties(route):
     assert 0.0 <= route.reliability_score <= 1.0
     assert route.cost_per_mb >= 0
 
+
 @given(blockchain_message_strategy())
 @settings(max_examples=50, deadline=None)
 def test_blockchain_message_properties(message):
@@ -825,6 +834,7 @@ def test_blockchain_message_properties(message):
     assert message.processing_fee >= 0
     assert message.retry_count >= 0
     assert message.max_retries >= 0
+
 
 def test_governance_policy_lifecycle():
     """Test complete governance policy lifecycle."""
@@ -870,6 +880,7 @@ def test_governance_policy_lifecycle():
     assert len(active_policies) == 1
     assert active_policies[0].policy_name == "Test Lifecycle Policy"
     assert active_policies[0].parameters.get_parameter("test_parameter") == 123
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

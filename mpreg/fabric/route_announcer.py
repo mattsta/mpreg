@@ -39,6 +39,7 @@ from .route_security import (
     verify_route_withdrawal,
 )
 
+
 @dataclass(frozen=True, slots=True)
 class RouteLinkMetrics:
     """Point-to-point link metrics applied when extending a route."""
@@ -47,6 +48,7 @@ class RouteLinkMetrics:
     bandwidth_mbps: BandwidthMbps | None = None
     reliability_score: ReliabilityScore = 1.0
     cost_score: RouteCostScore = 0.0
+
 
 @dataclass(slots=True)
 class RouteAnnouncementPublisher:
@@ -107,6 +109,7 @@ class RouteAnnouncementPublisher:
         )
         await self.gossip.add_message(message)
         return message
+
 
 @dataclass(slots=True)
 class RouteAnnouncementProcessor:
@@ -333,6 +336,7 @@ class RouteAnnouncementProcessor:
         if not self.link_metrics_resolver:
             return RouteLinkMetrics()
         return self.link_metrics_resolver(sender_cluster)
+
 
 @dataclass(slots=True)
 class RouteAnnouncer:

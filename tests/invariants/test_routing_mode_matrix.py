@@ -25,6 +25,7 @@ from mpreg.fabric.route_control import (
 )
 from mpreg.testing.oracles import RoutingOracle
 
+
 def _node(cid: str, lat: float = 0.0) -> FederationGraphNode:
     return FederationGraphNode(
         node_id=cid,
@@ -33,6 +34,7 @@ def _node(cid: str, lat: float = 0.0) -> FederationGraphNode:
         coordinates=GeographicCoordinate(lat, lat),
         max_capacity=1000,
     )
+
 
 def _graph_abc() -> GraphBasedFederationRouter:
     r = GraphBasedFederationRouter()
@@ -50,8 +52,10 @@ def _graph_abc() -> GraphBasedFederationRouter:
     )
     return r
 
+
 def _peers(cluster: str) -> list[str]:
     return [f"ws://{cluster}:1"]
+
 
 def test_disabled_uses_graph_not_missing_ls() -> None:
     graph = _graph_abc()
@@ -76,6 +80,7 @@ def test_disabled_uses_graph_not_missing_ls() -> None:
         expectation=oracle.expect("a", "c"),
     )
 
+
 def test_prefer_uses_link_state_when_available() -> None:
     graph = _graph_abc()
     ls = _graph_abc()
@@ -95,6 +100,7 @@ def test_prefer_uses_link_state_when_available() -> None:
     plan = planner.plan_next_hop(target_cluster="c")
     assert plan.can_forward
     assert plan.next_cluster == "c"
+
 
 def test_only_does_not_use_path_vector() -> None:
     graph = _graph_abc()
@@ -150,6 +156,7 @@ def test_only_does_not_use_path_vector() -> None:
         expectation=exp,
     )
 
+
 def test_prefer_falls_back_to_pv() -> None:
     graph = GraphBasedFederationRouter()
     graph.add_node(_node("a"))
@@ -185,6 +192,7 @@ def test_prefer_falls_back_to_pv() -> None:
     plan = planner.plan_next_hop(target_cluster="c")
     assert plan.can_forward, plan
     assert plan.next_cluster == "b"
+
 
 def test_ecmp_selection_deterministic_for_counter() -> None:
     """INV-R7: ECMP rotates by counter; same counter + candidates ⇒ same path."""
@@ -259,6 +267,7 @@ def test_ecmp_selection_deterministic_for_counter() -> None:
         assert planner4._select_ecmp_path(paths) == p0
         assert planner4._select_ecmp_path(paths) == p1
         assert planner4._select_ecmp_path(paths) == p2
+
 
 def test_partition_no_path_is_observable_not_silent() -> None:
     """INV-R12: partitioned planner yields NO_PATH; decision log records blackhole."""

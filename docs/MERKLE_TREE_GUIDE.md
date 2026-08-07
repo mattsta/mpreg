@@ -201,6 +201,7 @@ Level 3: [H(ABCD, E+PADS)]  <- Root
 def _compute_leaf_hash(data: MerkleLeafData) -> MerkleHash:
     return hashlib.sha256(b"leaf:" + data).hexdigest()
 
+
 def _compute_internal_hash(left_hash: MerkleHash, right_hash: MerkleHash) -> MerkleHash:
     combined = f"internal:{left_hash}:{right_hash}".encode()
     return hashlib.sha256(combined).hexdigest()
@@ -217,14 +218,17 @@ def _compute_internal_hash(left_hash: MerkleHash, right_hash: MerkleHash) -> Mer
 # Our actual implementation
 import hashlib
 
+
 def our_compute_internal_node(left_hash: str, right_hash: str) -> str:
     """Our actual internal node computation."""
     combined = f"internal:{left_hash}:{right_hash}".encode()
     return hashlib.sha256(combined).hexdigest()
 
+
 def our_compute_leaf_node(data: bytes) -> str:
     """Our actual leaf node computation."""
     return hashlib.sha256(b"leaf:" + data).hexdigest()
+
 
 # Example with our prefixed approach
 data = b"alice"
@@ -248,6 +252,7 @@ print(f"Internal hash: {internal}")
 ```python
 from mpreg.datastructures import MerkleTree
 import hashlib
+
 
 def detailed_tree_construction_example():
     """Step-by-step tree construction with full explanation."""
@@ -323,6 +328,7 @@ def detailed_tree_construction_example():
     print(f"Total nodes in tree: {2 * len(data) - 1}")
 
     return library_tree
+
 
 # Execute the detailed walkthrough
 tree = detailed_tree_construction_example()
@@ -418,6 +424,7 @@ To prove leaf at index 1 ("bob") exists in our 4-item tree:
 from mpreg.datastructures import MerkleTree
 import hashlib
 
+
 def detailed_proof_explanation():
     """Complete walkthrough of proof generation and verification."""
 
@@ -487,6 +494,7 @@ def detailed_proof_explanation():
     print(f"Library check: {'✅ VALID' if library_valid else '❌ INVALID'}")
 
     return proof
+
 
 # Execute detailed proof explanation
 proof = detailed_proof_explanation()
@@ -563,6 +571,7 @@ def proof_efficiency_demo():
 
         print(f"{n:>11,} | {full_size:>12,} B | {proof_size:>9} B | {savings:>7.0f}x")
 
+
 # Output:
 # Dataset Size | Full Transfer | Proof Size | Savings
 # --------------------------------------------------
@@ -629,6 +638,7 @@ def demonstrate_structural_properties():
     print(f"New tree root: {new_tree.root_hash()[:16]}...")
     print(f"Original unchanged: {tree1.root_hash() == original_root}")
     print(f"New tree different: {new_tree.root_hash() != original_root}")
+
 
 demonstrate_structural_properties()
 ```
@@ -700,6 +710,7 @@ def demonstrate_cryptographic_properties():
     for i, (sibling, _) in enumerate(proof.proof_path):
         print(f"    Level {i}: {sibling[:20]}... (no data recoverable)")
 
+
 demonstrate_cryptographic_properties()
 ```
 
@@ -762,6 +773,7 @@ def analyze_computational_complexity():
         actual_depth = tree.depth()
         print(f"         | Expected depth: {expected_depth}, Actual: {actual_depth}")
 
+
 analyze_computational_complexity()
 ```
 
@@ -798,6 +810,7 @@ def scalability_analysis():
         "\nKey insight: Verification time stays logarithmic even for trillion-item datasets!"
     )
 
+
 scalability_analysis()
 ```
 
@@ -832,6 +845,7 @@ Our implementation ensures **balanced trees** for optimal performance, but there
 # / |  | |
 # L1 L2 L3 L4 L5
 
+
 def analyze_tree_balance():
     """Analyze tree balance for different input sizes."""
 
@@ -849,6 +863,7 @@ def analyze_tree_balance():
         balance_quality = "Optimal" if actual_depth == perfect_depth else "Good"
 
         print(f"{n:>4} | {actual_depth:>5} | {perfect_depth:>13} | {balance_quality}")
+
 
 analyze_tree_balance()
 ```
@@ -898,6 +913,7 @@ def compare_balancing_strategies():
     print(f"  Proof size: {tree.depth()} hashes")
     print(f"  Optimal: {'Yes' if tree.depth() == math.ceil(math.log2(7)) else 'No'}")
 
+
 compare_balancing_strategies()
 ```
 
@@ -940,6 +956,7 @@ def streaming_merkle_construction():
     print(f"  Final tree depth: {final_tree.depth()}")
     print(f"  Memory savings: ~{chunk_size}x (streaming vs loading all)")
     print(f"  Final root: {final_tree.root_hash()[:32]}...")
+
 
 streaming_merkle_construction()
 ```
@@ -1008,6 +1025,7 @@ def hierarchical_construction_demo():
     print(f"    vs {total_items:,} total items")
     print(f"    Compression: {total_items / total_proof_size:.0f}:1")
 
+
 hierarchical_construction_demo()
 ```
 
@@ -1059,6 +1077,7 @@ def incremental_construction_demo():
         f"\nResults identical: {rebuilt_tree.root_hash() == incremental_tree.root_hash()}"
     )
     print(f"Performance improvement: {rebuild_time / append_time:.1f}x faster")
+
 
 incremental_construction_demo()
 ```
@@ -1230,6 +1249,7 @@ block_header = {"merkle_root": block_tree.root_hash(), "timestamp": "2024-01-15"
 # Prove a specific transaction exists
 tx_proof = block_tree.generate_proof(0)  # alice->bob transaction
 
+
 # Anyone can verify without downloading the full block
 def verify_transaction_in_block(transaction: bytes, proof, block_header: dict) -> bool:
     return (
@@ -1237,6 +1257,7 @@ def verify_transaction_in_block(transaction: bytes, proof, block_header: dict) -
         and proof.root_hash == block_header["merkle_root"]
         and proof.verify()
     )
+
 
 result = verify_transaction_in_block(b"alice->bob:$10", tx_proof, block_header)
 print(f"Transaction verified in block: {result}")
@@ -1253,6 +1274,7 @@ from mpreg.datastructures import MerkleTree
 import os
 import json
 from pathlib import Path
+
 
 class DistributedFileSystem:
     """Real-world distributed file system using Merkle trees for integrity."""
@@ -1393,6 +1415,7 @@ class DistributedFileSystem:
 
         return sync_stats
 
+
 # Real-world usage example
 def demonstrate_distributed_sync():
     """Demonstrate large-scale distributed file system synchronization."""
@@ -1432,6 +1455,7 @@ def demonstrate_distributed_sync():
         )
         print(f"Remote file verification: {'✅ Valid' if is_valid else '❌ Invalid'}")
 
+
 # Run the demonstration
 demonstrate_distributed_sync()
 ```
@@ -1446,6 +1470,7 @@ import json
 import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
+
 
 class DatabaseAuditSystem:
     """Enterprise database audit system using Merkle trees for tamper-proof logs."""
@@ -1707,6 +1732,7 @@ class DatabaseAuditSystem:
 
         return json.dumps(export_data, indent=2).encode()
 
+
 # Real-world usage demonstration
 def demonstrate_database_audit():
     """Demonstrate enterprise database audit system."""
@@ -1785,6 +1811,7 @@ def demonstrate_database_audit():
     print(f"  Exported {len(json.loads(proof_export.decode())['proofs'])} proofs")
     print(f"  Export size: {len(proof_export):,} bytes")
 
+
 # Run the demonstration
 demonstrate_database_audit()
 ```
@@ -1802,6 +1829,7 @@ import tempfile
 from pathlib import Path
 from typing import Dict, List, Set, Optional
 import semver
+
 
 class SoftwarePackageRegistry:
     """Software package distribution system using Merkle trees for integrity."""
@@ -2113,6 +2141,7 @@ class SoftwarePackageRegistry:
             f"🚨 Security advisory added for {package_name}: {vulnerability.get('severity', 'medium')} severity"
         )
 
+
 # Real-world demonstration
 def demonstrate_package_registry():
     """Demonstrate software package distribution with integrity verification."""
@@ -2222,6 +2251,7 @@ def demonstrate_package_registry():
     )
     print(f"  Express content hash: {content_status}")
 
+
 # Run the demonstration
 demonstrate_package_registry()
 ```
@@ -2254,6 +2284,7 @@ class DataStore:
             and proof.root_hash == trusted_root
             and proof.verify()
         )
+
 
 # Example usage
 store = DataStore([b"genesis_data"])
@@ -2301,6 +2332,7 @@ class SimpleBlock:
             and proof.verify()
         )
 
+
 # Example blockchain usage
 import hashlib
 import time
@@ -2332,6 +2364,7 @@ print(
 
 ```python
 from mpreg.datastructures import MerkleTree, VectorClock
+
 
 class FederationState:
     """Federation node state with Merkle tree verification."""
@@ -2371,6 +2404,7 @@ class FederationState:
 
 ```python
 from mpreg.datastructures import MerkleTree, CacheKey
+
 
 class VerifiableCache:
     """Cache with Merkle tree integrity verification."""
@@ -2548,6 +2582,7 @@ def information_theory_analysis():
             f"{proof_bits // 8:>9} B | {compression_ratio:>10.0f}x | {info_density * 1e6:>10.2f} μ"
         )
 
+
 information_theory_analysis()
 ```
 
@@ -2686,6 +2721,7 @@ def security_analysis_demo():
 
     print(f"\nPrivacy preserved: ✅ YES")
 
+
 security_analysis_demo()
 ```
 
@@ -2749,6 +2785,7 @@ def existential_forgery_test():
 
     print(f"\n✅ Existential forgery resistance: CONFIRMED")
 
+
 existential_forgery_test()
 ```
 
@@ -2804,6 +2841,7 @@ def adaptive_attack_resistance():
     print(f"  Probability: ~2^-256 = {2**-256:.2e}")
 
     print(f"\n✅ Adaptive attack resistance: CONFIRMED")
+
 
 adaptive_attack_resistance()
 ```
@@ -2911,6 +2949,7 @@ def comprehensive_performance_analysis():
             print(f"  Proof efficiency: {n / tree.depth():,.0f}:1 compression")
             print(f"  Memory per item: {tree_memory_mb * 1024 / n:.2f} KB")
 
+
 comprehensive_performance_analysis()
 ```
 
@@ -2967,6 +3006,7 @@ def hash_function_benchmarks():
         )
 
     print("\n📝 Recommendation: SHA-256 provides optimal security/performance balance")
+
 
 hash_function_benchmarks()
 ```
@@ -3052,6 +3092,7 @@ def deployment_analysis():
     print("  • Network constraints: Prioritize proof size optimization")
     print("  • Large datasets: Consider hierarchical trees")
     print("  • Real-time systems: Pre-compute proofs for hot data")
+
 
 deployment_analysis()
 ```

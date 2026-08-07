@@ -15,6 +15,7 @@ from mpreg.client.pubsub_client import MPREGPubSubExtendedClient
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 class TestPubSubNotificationDelivery:
     """Test end-to-end notification delivery."""
 

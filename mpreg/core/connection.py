@@ -27,6 +27,7 @@ PEER_DIAL_DIAG_ENABLED = (
     os.environ.get("MPREG_DEBUG_PEER_DIAL", "").strip().lower() in _DIAG_TRUE_VALUES
 )
 
+
 @dataclass(eq=True, slots=True)
 class Connection:
     """Encapsulate a transport-backed connection to a remote peer."""

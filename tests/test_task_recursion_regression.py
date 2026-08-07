@@ -22,6 +22,7 @@ from tests.test_production_raft_integration import (
     TestProductionRaftIntegration as RaftIntegrationHarness,
 )
 
+
 class TestTaskRecursionRegression:
     """Test suite to prevent regression of task recursion bug."""
 
@@ -268,6 +269,7 @@ class TestTaskRecursionRegression:
 
             finally:
                 await asyncio.wait_for(node.stop(), timeout=2.0)
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])

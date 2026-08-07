@@ -6,9 +6,11 @@ from pathlib import Path
 
 from mpreg.core.cache_strong import count_abort_fail_peers
 
+
 def test_t80_helper_behavior() -> None:
     assert count_abort_fail_peers(["n1", "n1"]) == 1
     assert count_abort_fail_peers(body={"last_abort_fail_peers": ["a"]}) == 1
+
 
 def test_t80_source_wires() -> None:
     root = Path(__file__).resolve().parents[2]
@@ -28,6 +30,7 @@ def test_t80_source_wires() -> None:
         root / "mpreg" / "fabric" / "monitoring_endpoints.py"
     ).read_text(encoding="utf-8")
 
+
 def test_t80_phase_68_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -35,6 +38,7 @@ def test_t80_phase_68_honesty() -> None:
         / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md"
     )
     assert "Phase 68" in path.read_text(encoding="utf-8")
+
 
 def test_t80_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]

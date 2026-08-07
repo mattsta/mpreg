@@ -56,6 +56,7 @@ from mpreg.datastructures.production_raft import (
     RequestVoteResponse,
 )
 
+
 # Test Strategies for Hypothesis
 def node_ids(min_size: int = 3, max_size: int = 13) -> st.SearchStrategy[set[str]]:
     """Generate sets of node IDs for testing different cluster sizes."""
@@ -65,13 +66,16 @@ def node_ids(min_size: int = 3, max_size: int = 13) -> st.SearchStrategy[set[str
         max_size=max_size,
     ).map(lambda s: {f"node_{node}" for node in s})
 
+
 def terms() -> st.SearchStrategy[int]:
     """Generate Raft terms."""
     return st.integers(min_value=0, max_value=100)
 
+
 def log_indices() -> st.SearchStrategy[int]:
     """Generate log indices."""
     return st.integers(min_value=0, max_value=1000)
+
 
 def commands() -> st.SearchStrategy[Any]:
     """Generate commands for log entries."""
@@ -81,6 +85,7 @@ def commands() -> st.SearchStrategy[Any]:
         st.lists(st.integers(), max_size=10),
         st.dictionaries(st.text(max_size=10), st.integers(), max_size=5),
     )
+
 
 def log_entries(max_index: int = 100) -> st.SearchStrategy[LogEntry]:
     """Generate valid log entries."""
@@ -92,6 +97,7 @@ def log_entries(max_index: int = 100) -> st.SearchStrategy[LogEntry]:
         command=commands(),
         client_id=st.text(max_size=20),
     )
+
 
 def log_sequences(max_length: int = 50) -> st.SearchStrategy[list[LogEntry]]:
     """Generate sequences of log entries with consistent indices."""
@@ -118,6 +124,7 @@ def log_sequences(max_length: int = 50) -> st.SearchStrategy[list[LogEntry]]:
 
     return _log_sequence()
 
+
 # Mock Implementations for Testing
 @dataclass(slots=True)
 class MockRaftStorage:
@@ -142,6 +149,7 @@ class MockRaftStorage:
         if len(self.snapshots) > keep_count:
             self.snapshots = self.snapshots[-keep_count:]
 
+
 @dataclass(slots=True)
 class MockStateMachine:
     """Mock state machine for testing."""
@@ -165,6 +173,7 @@ class MockStateMachine:
 
         self.state = pickle.loads(snapshot_data)
 
+
 @dataclass(slots=True)
 class NetworkMessage:
     """Represents a message in flight in the network."""
@@ -176,6 +185,7 @@ class NetworkMessage:
     send_time: float
     deliver_time: float
     dropped: bool = False
+
 
 @dataclass(slots=True)
 class MockRaftTransport:
@@ -202,6 +212,7 @@ class MockRaftTransport:
         return await self.network.send_message(
             self.node_id, target, "install_snapshot", request
         )
+
 
 @dataclass(slots=True)
 class MockNetwork:
@@ -323,6 +334,7 @@ class MockNetwork:
         for msg in ready_messages:
             self.pending_messages.remove(msg)
             self.delivered_messages.append(msg)
+
 
 # Property-Based Test Classes
 class RaftClusterTestMachine(RuleBasedStateMachine):
@@ -499,6 +511,7 @@ class RaftClusterTestMachine(RuleBasedStateMachine):
         ]
         return leaders[0] if len(leaders) == 1 else None
 
+
 # Individual Property Tests
 @given(cluster_size=st.integers(min_value=3, max_value=13))
 def test_cluster_initialization(cluster_size):
@@ -524,6 +537,7 @@ def test_cluster_initialization(cluster_size):
         assert node.persistent_state.voted_for is None
         assert len(node.persistent_state.log_entries) == 0
 
+
 @given(
     log_entries=log_sequences(max_length=20),
     commit_index=st.integers(min_value=0, max_value=20),
@@ -545,6 +559,7 @@ def test_log_consistency_properties(log_entries, commit_index):
     # Verify entry integrity
     for entry in log_entries:
         assert entry.verify_integrity(), f"Entry failed integrity check: {entry}"
+
 
 @given(
     request=st.builds(
@@ -601,6 +616,7 @@ def test_request_vote_properties(
     # This test verifies the logic rather than actual RPC handling
     # In a full test, we would call the actual handle_request_vote method
 
+
 # Test Runner Configuration
 RaftClusterTest = RaftClusterTestMachine.TestCase
 
@@ -614,6 +630,7 @@ RaftClusterTest.settings = settings(
         # since we're doing comprehensive property testing
     ],
 )
+
 
 # Integration Tests
 class TestRaftPropertyIntegration:
@@ -696,6 +713,7 @@ class TestRaftPropertyIntegration:
 
             # Verify log matching property holds
             # (Implementation would check actual log consistency)
+
 
 if __name__ == "__main__":
     # Run property-based tests

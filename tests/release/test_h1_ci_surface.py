@@ -4,6 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
+
 def test_h1_unit_fast_includes_expanded_paths() -> None:
     text = (ROOT / "scripts/ci_unit_fast.sh").read_text()
     for needle in (
@@ -12,6 +13,7 @@ def test_h1_unit_fast_includes_expanded_paths() -> None:
         "tests/release/",
     ):
         assert needle in text, needle
+
 
 def test_h1_typecheck_import_smoke_broader() -> None:
     text = (ROOT / "scripts/ci_typecheck.sh").read_text()

@@ -6,6 +6,7 @@ from mpreg.fabric.adapters.function_registry import LocalFunctionCatalogAdapter
 from mpreg.server import MPREGServer
 from tests.test_helpers import TestPortManager
 
+
 def test_rpc_command_function_metadata_fields() -> None:
     cmd = RPCCommand(
         name="update",
@@ -18,6 +19,7 @@ def test_rpc_command_function_metadata_fields() -> None:
     payload = cmd.model_dump()
     assert payload["function_id"] == "func-update"
     assert payload["version_constraint"] == ">=1.0,<2.0"
+
 
 def test_function_catalog_adapter_emits_identity() -> None:
     registry = RpcRegistry()
@@ -47,6 +49,7 @@ def test_function_catalog_adapter_emits_identity() -> None:
     assert str(endpoint.identity.version) == "1.2.3"
     assert endpoint.rpc_summary is not None
     assert endpoint.spec_digest == implementation.spec.spec_digest
+
 
 def test_register_command_conflicting_function_id() -> None:
     with TestPortManager() as port_manager:

@@ -15,6 +15,7 @@ from mpreg.datastructures.type_aliases import ClusterId, NodeURL, Timestamp
 from .route_announcer import RouteAnnouncementPublisher
 from .route_control import RouteTable, RouteWithdrawal
 
+
 @dataclass(eq=False, slots=True)
 class RouteWithdrawalCoordinator(ConnectionAwareComponent):
     """Withdraw routes learned from a lost neighbor and publish withdrawals."""

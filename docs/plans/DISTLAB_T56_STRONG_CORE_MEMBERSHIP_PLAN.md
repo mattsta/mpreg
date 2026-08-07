@@ -1,13 +1,13 @@
 # DistLab T56 — strong-core membership gate (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T52 |
-| **Scope** | Registry test that strong-core/ci-core include full CFT retry_abort surface |
-| **Point budget** | **~10 pts** |
-| **Entry points only** | `uv run pytest …` |
+| Field                 | Value                                                                       |
+| --------------------- | --------------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                                |
+| **Date**              | 2026-08-06                                                                  |
+| **Authority**         | Continuation after T52                                                      |
+| **Scope**             | Registry test that strong-core/ci-core include full CFT retry_abort surface |
+| **Point budget**      | **~10 pts**                                                                 |
+| **Entry points only** | `uv run pytest …`                                                           |
 
 ## Goals
 

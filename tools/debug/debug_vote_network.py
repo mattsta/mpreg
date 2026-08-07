@@ -22,6 +22,7 @@ from tests.test_production_raft_integration import (
     TestProductionRaftIntegration,
 )
 
+
 @dataclass
 class NetworkDebugMessage:
     """Track network messages for debugging."""
@@ -34,6 +35,7 @@ class NetworkDebugMessage:
     processed: bool = False
     error: str = ""
 
+
 @dataclass
 class VoteFlowTracker:
     """Track vote request/response flow for debugging."""
@@ -42,6 +44,7 @@ class VoteFlowTracker:
     vote_responses_received: list[NetworkDebugMessage] = field(default_factory=list)
     transport_errors: list[str] = field(default_factory=list)
     rpc_call_log: list[tuple[str, str, float]] = field(default_factory=list)
+
 
 class DeepDebugTransport(NetworkAwareTransport):
     """Enhanced transport with detailed debugging."""
@@ -138,6 +141,7 @@ class DeepDebugTransport(NetworkAwareTransport):
 
             print(f"Traceback: {traceback.format_exc()}")
             return None
+
 
 async def deep_debug_vote_network():
     """Perform deep debugging of vote request network flow."""
@@ -291,6 +295,7 @@ async def deep_debug_vote_network():
             print("\n🛑 STOPPING NODES...")
             for node in nodes.values():
                 await node.stop()
+
 
 if __name__ == "__main__":
     asyncio.run(deep_debug_vote_network())

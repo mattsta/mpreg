@@ -19,6 +19,7 @@ from mpreg.examples.apps._shared.runtime import (
 )
 from mpreg.server import MPREGServer
 
+
 async def main() -> None:
     with app_run("ml_inference_mesh", "ML Inference Mesh — locs workers", level="L2"):
         with port_range_context(3, "servers") as ports:
@@ -175,6 +176,7 @@ async def main() -> None:
                     step("non-claim: not model serving platform; routing demo only")
 
             await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

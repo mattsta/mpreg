@@ -33,6 +33,7 @@ from mpreg.examples.apps._shared.runtime import (
 )
 from mpreg.server import MPREGServer
 
+
 def _invoke_sync(args: list[str], *, env: dict[str, str] | None = None):
     """Run click CLI in a fresh thread (CLI uses asyncio.run internally)."""
     runner = CliRunner()
@@ -41,8 +42,10 @@ def _invoke_sync(args: list[str], *, env: dict[str, str] | None = None):
         merged.update(env)
     return runner.invoke(cli, args, env=merged, catch_exceptions=False)
 
+
 async def _invoke(args: list[str], *, env: dict[str, str] | None = None):
     return await asyncio.to_thread(_invoke_sync, args, env=env)
+
 
 async def main() -> None:
     with app_run(
@@ -94,8 +97,12 @@ async def main() -> None:
             )
             ensure(
                 "not" in out.lower()
-                and ("auto-heal" in out.lower() or "auto heal" in out.lower()
-                     or "ops-driven" in out.lower() or "best-effort" in out.lower()),
+                and (
+                    "auto-heal" in out.lower()
+                    or "auto heal" in out.lower()
+                    or "ops-driven" in out.lower()
+                    or "best-effort" in out.lower()
+                ),
                 f"explain missing CFT honesty on strong_cache: {out[:500]}",
             )
             step(
@@ -589,7 +596,9 @@ async def main() -> None:
                         f"strong table missing caps: {strong_m.output[:300]}",
                     )
                     ensure(
-                        "v1.1" in sout or "not wan" in sout or "get_quorum=false" in sout,
+                        "v1.1" in sout
+                        or "not wan" in sout
+                        or "get_quorum=false" in sout,
                         f"strong honesty missing: {strong_m.output[:300]}",
                     )
                     # T28/T31/T36: CFT / abort / TTL honesty on monitor table
@@ -787,9 +796,7 @@ async def main() -> None:
                         "last_abort_fail_op_id (str) on metrics_strong/mgmt_strong "
                         "(empty/0/[]/'' when clean; not auto-heal)"
                     )
-                    ok(
-                        f"monitor strong/audit table + doctor exit={doc.exit_code}"
-                    )
+                    ok(f"monitor strong/audit table + doctor exit={doc.exit_code}")
 
                 with scenario(
                     "ops CLI latency probe annotations",
@@ -823,6 +830,7 @@ async def main() -> None:
                     )
 
             await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

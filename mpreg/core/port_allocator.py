@@ -16,6 +16,7 @@ from loguru import logger
 
 from mpreg.datastructures.type_aliases import PortNumber
 
+
 @dataclass(frozen=True, slots=True)
 class PortRange:
     """Port range configuration for different usage categories."""
@@ -23,6 +24,7 @@ class PortRange:
     start: int
     end: int
     description: str = ""
+
 
 class PortAllocator:
     """File-lock-based port allocator with worker-aware ranges."""
@@ -319,15 +321,18 @@ class PortAllocator:
             for port in ports:
                 self.release_port(port)
 
+
 port_log = logger
 
 _port_allocator: PortAllocator | None = None
+
 
 def get_port_allocator() -> PortAllocator:
     global _port_allocator
     if _port_allocator is None:
         _port_allocator = PortAllocator()
     return _port_allocator
+
 
 def list_port_categories() -> tuple[str, ...]:
     """Return the fixed port-category keys (Phase I F16 discoverability).
@@ -337,6 +342,7 @@ def list_port_categories() -> tuple[str, ...]:
     """
     return tuple(PortAllocator.RANGES.keys())
 
+
 def allocate_port(category: str = "testing", preferred_port: int | None = None) -> int:
     try:
         return get_port_allocator().allocate_port(category, preferred_port)
@@ -345,8 +351,10 @@ def allocate_port(category: str = "testing", preferred_port: int | None = None) 
             return get_port_allocator().allocate_port("research", preferred_port)
         raise
 
+
 def release_port(port: int) -> None:
     get_port_allocator().release_port(port)
+
 
 @contextmanager
 def port_context(
@@ -362,6 +370,7 @@ def port_context(
         else:
             raise
 
+
 def allocate_port_range(count: int, category: str = "testing") -> list[int]:
     try:
         return get_port_allocator().allocate_port_range(count, category)
@@ -369,6 +378,7 @@ def allocate_port_range(count: int, category: str = "testing") -> list[int]:
         if category == "testing":
             return get_port_allocator().allocate_port_range(count, "research")
         raise
+
 
 @contextmanager
 def port_range_context(count: int, category: str = "testing") -> Iterator[list[int]]:

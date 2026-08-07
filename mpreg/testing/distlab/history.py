@@ -14,6 +14,7 @@ from mpreg.testing.distlab.models import (
     wall_now,
 )
 
+
 @dataclass(slots=True)
 class History:
     """Thread-safe append-only event log.
@@ -173,7 +174,7 @@ class History:
                 continue
             inv = q.pop(0)
             out.append((inv, ev))
-        for proc, q in pending.items():
+        for q in pending.values():
             for inv in q:
                 out.append((inv, None))
         return out
@@ -183,22 +184,14 @@ class History:
 
     def successful_puts(self, key: str | None = None) -> list[HistoryEvent]:
         evs = self.snapshot()
-        out = [
-            e
-            for e in evs
-            if e.kind is OpKind.PUT and e.status is OpStatus.OK
-        ]
+        out = [e for e in evs if e.kind is OpKind.PUT and e.status is OpStatus.OK]
         if key is not None:
             out = [e for e in out if e.key == key]
         return out
 
     def failed_puts(self, key: str | None = None) -> list[HistoryEvent]:
         evs = self.snapshot()
-        out = [
-            e
-            for e in evs
-            if e.kind is OpKind.PUT and e.status is OpStatus.FAIL
-        ]
+        out = [e for e in evs if e.kind is OpKind.PUT and e.status is OpStatus.FAIL]
         if key is not None:
             out = [e for e in out if e.key == key]
         return out

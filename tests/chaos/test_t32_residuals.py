@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 from click.testing import CliRunner
@@ -20,6 +19,7 @@ from mpreg.server_pkg.monitoring_metrics import build_strong_metrics
 from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
 from mpreg.testing.distlab.builtins import ensure_builtins
 from mpreg.testing.distlab.registry import get_registry
+
 
 @pytest.mark.asyncio
 async def test_t32_backups_pruned_total_increments_on_cft_residual() -> None:
@@ -57,6 +57,7 @@ async def test_t32_backups_pruned_total_increments_on_cft_residual() -> None:
     assert n1.backups_pruned_total > before
     assert n1.backups_count() <= 1
 
+
 @pytest.mark.asyncio
 async def test_t32_gcm_snapshot_includes_prune_and_counts() -> None:
     gcm = GlobalCacheManager(
@@ -88,6 +89,7 @@ async def test_t32_gcm_snapshot_includes_prune_and_counts() -> None:
     st = gcm.strong_status()
     assert "backups_pruned_total" in st
     await gcm.shutdown()
+
 
 def test_t32_build_strong_metrics_includes_prune() -> None:
     from types import SimpleNamespace
@@ -135,6 +137,7 @@ def test_t32_build_strong_metrics_includes_prune() -> None:
     assert m["backups_pruned_total"] == 7
     assert m["counters"]["backups_pruned"] == 7
 
+
 def test_t32_openapi_backups_pruned_field() -> None:
     doc = build_monitoring_openapi()
     schemas = (doc.get("components") or {}).get("schemas") or {}
@@ -144,6 +147,7 @@ def test_t32_openapi_backups_pruned_field() -> None:
     assert "backups_pruned_total" in props
     assert "visible_count" in props
     assert "backups_count" in props
+
 
 def test_t32_config_check_cft_caps_on_dev_profile() -> None:
     runner = CliRunner()
@@ -156,6 +160,7 @@ def test_t32_config_check_cft_caps_on_dev_profile() -> None:
     assert caps.get("cft_only") is True
     assert caps.get("abort_best_effort") is True
     assert caps.get("pending_ttl_clears_residual_l1") is False
+
 
 @pytest.mark.asyncio
 async def test_t32_distlab_orphan_gc_reports_pruned() -> None:

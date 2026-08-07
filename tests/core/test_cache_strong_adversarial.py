@@ -12,10 +12,9 @@ from typing import Any
 
 import pytest
 
-from mpreg.core.cache_models import CacheMetadata, GlobalCacheKey
+from mpreg.core.cache_models import GlobalCacheKey
 from mpreg.core.cache_strong import (
     CommitAck,
-    InProcessStrongTransport,
     PrepareAck,
     StrongErrorCode,
     StrongLocalBackend,
@@ -23,6 +22,7 @@ from mpreg.core.cache_strong import (
     StrongVersion,
 )
 from mpreg.core.cache_strong_handlers import StrongPeerHandler
+
 
 @dataclass
 class AdversarialTransport:
@@ -104,6 +104,7 @@ class AdversarialTransport:
             return False
         return await be.abort(op_id=op_id, key=key)
 
+
 def _mesh_adv():
     tr = AdversarialTransport()
     backends = {f"n{i}": StrongLocalBackend(node_id=f"n{i}") for i in range(3)}
@@ -121,18 +122,18 @@ def _mesh_adv():
     )
     return coord, tr, backends
 
+
 @pytest.mark.asyncio
 async def test_cluster_mismatch_prepare_fails_residual_free() -> None:
     coord, tr, backends = _mesh_adv()
     tr.wrong_cluster |= {"n1", "n2"}
     key = GlobalCacheKey(namespace="adv", identifier="cm", version="v1")
-    res = await coord.strong_put(
-        key, 1, eligible_peers=["n0", "n1", "n2"]
-    )
+    res = await coord.strong_put(key, 1, eligible_peers=["n0", "n1", "n2"])
     assert res.success is False
     for be in backends.values():
         assert be.get_visible(key) is None
         assert be.pending_count() == 0
+
 
 @pytest.mark.asyncio
 async def test_lying_prepare_ack_without_pending_fails_commit() -> None:
@@ -141,9 +142,7 @@ async def test_lying_prepare_ack_without_pending_fails_commit() -> None:
     tr.lie_prepare_ok.add("n1")
     tr.lie_prepare_ok.add("n2")
     key = GlobalCacheKey(namespace="adv", identifier="lie-p", version="v1")
-    res = await coord.strong_put(
-        key, {"v": 1}, eligible_peers=["n0", "n1", "n2"]
-    )
+    res = await coord.strong_put(key, {"v": 1}, eligible_peers=["n0", "n1", "n2"])
     assert res.success is False
     assert res.error_code in (
         int(StrongErrorCode.QUORUM_TIMEOUT),
@@ -153,6 +152,7 @@ async def test_lying_prepare_ack_without_pending_fails_commit() -> None:
     for be in backends.values():
         assert be.get_visible(key) is None
         assert be.pending_count() == 0
+
 
 @pytest.mark.asyncio
 async def test_handler_rejects_wrong_cluster_id() -> None:
@@ -175,6 +175,7 @@ async def test_handler_rejects_wrong_cluster_id() -> None:
     assert resp["reason"] == "cluster_mismatch"
     assert be.pending_count() == 0
 
+
 @pytest.mark.asyncio
 async def test_drop_majority_peers_residual_free() -> None:
     coord, tr, backends = _mesh_adv()
@@ -186,13 +187,12 @@ async def test_drop_majority_peers_residual_free() -> None:
         assert be.get_visible(key) is None
         assert be.pending_count() == 0
 
+
 @pytest.mark.asyncio
 async def test_honest_path_still_works_with_adv_transport() -> None:
     coord, _tr, backends = _mesh_adv()
     key = GlobalCacheKey(namespace="adv", identifier="ok", version="v1")
-    res = await coord.strong_put(
-        key, "good", eligible_peers=["n0", "n1", "n2"]
-    )
+    res = await coord.strong_put(key, "good", eligible_peers=["n0", "n1", "n2"])
     assert res.success is True
     for nid in res.quorum_info["commit_acks"]:  # type: ignore[index]
         assert backends[nid].get_visible(key) is not None

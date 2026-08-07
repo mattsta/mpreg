@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from mpreg.datastructures.rpc_spec import RpcSpec
 from mpreg.datastructures.type_aliases import NamespaceName
 
+
 @dataclass(frozen=True, slots=True)
 class RpcSpecSharePolicy:
     """Policy for attaching full RPC specs to catalog gossip entries."""
@@ -31,6 +32,7 @@ class RpcSpecSharePolicy:
             if len(canonical_dumps(payload)) > self.max_bytes:
                 return False
         return True
+
 
 def _namespace_filter_matches(namespace_filter: str, value: str) -> bool:
     if not namespace_filter:

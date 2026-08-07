@@ -25,6 +25,7 @@ from mpreg.fabric.route_policy_directory import (
 from mpreg.fabric.route_security import RouteAnnouncementSigner, RouteSecurityConfig
 from mpreg.server import MPREGServer
 
+
 async def _wait_for_route(
     route_table: RouteTable,
     destination: RouteDestination,
@@ -37,6 +38,7 @@ async def _wait_for_route(
             return
         await asyncio.sleep(0.2)
     raise RuntimeError(f"Timed out waiting for route to {destination.cluster_id}")
+
 
 async def main() -> None:
     with (
@@ -201,6 +203,7 @@ async def main() -> None:
             step("non-claim: not Byzantine multi-signer consensus")
 
         await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -14,6 +14,7 @@ from mpreg.client.call_policy import (
 from mpreg.core.errors import MpregError, MpregErrorCode
 from mpreg.testing.oracles import RpcOracle, RpcStreamEvent
 
+
 def test_for_mode_defaults() -> None:
     m1 = ClientCallPolicy.for_mode(RpcExecutionMode.M1_ASYNC)
     assert m1.mode is RpcExecutionMode.M1_ASYNC
@@ -23,6 +24,7 @@ def test_for_mode_defaults() -> None:
     assert m2.deadline_seconds == 0.5
     m3 = ClientCallPolicy.for_mode(RpcExecutionMode.M3_STREAMING)
     assert m3.retry_on_timeout is False
+
 
 @pytest.mark.asyncio
 async def test_soft_rt_deadline_fail_closed() -> None:
@@ -37,6 +39,7 @@ async def test_soft_rt_deadline_fail_closed() -> None:
     with pytest.raises(MpregError) as ei:
         await call_with_policy(slow, policy)
     assert ei.value.code == int(MpregErrorCode.TIMEOUT)
+
 
 @pytest.mark.asyncio
 async def test_shared_deadline_prevents_late_success() -> None:
@@ -64,6 +67,7 @@ async def test_shared_deadline_prevents_late_success() -> None:
     assert ei.value.code == int(MpregErrorCode.TIMEOUT)
     assert calls["n"] < 20  # never reached late success path
 
+
 @pytest.mark.asyncio
 async def test_async_mode_can_retry_to_success() -> None:
     policy = ClientCallPolicy.for_mode(RpcExecutionMode.M1_ASYNC)
@@ -82,6 +86,7 @@ async def test_async_mode_can_retry_to_success() -> None:
         return "ok"
 
     assert await call_with_policy(flaky, policy) == "ok"
+
 
 def test_stream_oracle_contracts() -> None:
     o = RpcOracle()

@@ -45,9 +45,11 @@ server_port = allocate_port("servers")
 server_url = f"ws://127.0.0.1:{server_port}"
 server = MPREGServer(MPREGSettings(port=server_port, resources={"compute"}))
 
+
 # Register a function (name + unique function_id + version)
 def add_numbers(a: int, b: int) -> int:
     return a + b
+
 
 server.register_command(
     "add",
@@ -241,8 +243,10 @@ from mpreg.core.message_queue_manager import create_reliable_queue_manager
 manager = create_reliable_queue_manager()
 await manager.create_queue("notifications")
 
+
 def handler(message):
     print("Queue payload:", message.payload)
+
 
 manager.subscribe_to_queue("notifications", "worker-1", "notifications.*", handler)
 
@@ -533,11 +537,13 @@ from mpreg.server import MPREGServer
 
 assigned = {}
 
+
 def _capture(name):
     def _cb(port):
         assigned[name] = port
 
     return _cb
+
 
 server_a = MPREGServer(
     MPREGSettings(name="node-a", port=None, on_port_assigned=_capture("a"))
@@ -810,6 +816,7 @@ def get_resources():
     else:
         return ["compute", "cpu"]
 
+
 server.register_command("adaptive_compute", compute_func, get_resources())
 ```
 
@@ -854,6 +861,7 @@ def analytics_process(dataset: str, metrics: list) -> dict:
         # FAILS if metrics contains dict objects from dependency resolution
     }
 
+
 # ✅ GOOD: Handles both strings and resolved objects
 def analytics_process(dataset: str, metrics: list) -> dict:
     return {
@@ -870,6 +878,7 @@ def analytics_process(dataset: str, metrics: list) -> dict:
 
 ```python
 from typing import Union, Dict, List, Any
+
 
 # ✅ GOOD: Explicit type handling for dependency resolution
 def process_results(data: str, dependencies: List[Union[str, Dict[str, Any]]]) -> dict:
@@ -937,12 +946,14 @@ def secure_function(user_id: str, permissions: list) -> dict:
 ```python
 import pytest
 
+
 def test_analytics_function_direct_call():
     """Test function with simple string arguments"""
     result = analytics_process("test_dataset", ["metric1", "metric2", "metric3"])
     assert result["dataset"] == "test_dataset"
     assert len(result["metrics"]) == 3
     assert "metric_0" in result["results"]
+
 
 def test_analytics_function_resolved_dependencies():
     """Test function with complex resolved dependency objects"""
@@ -958,6 +969,7 @@ def test_analytics_function_resolved_dependencies():
     assert "metric_0" in result["results"]
     assert "metric_1" in result["results"]
     assert "metric_2" in result["results"]
+
 
 def test_analytics_function_mixed_arguments():
     """Test function with mixed string and object arguments"""
@@ -983,6 +995,7 @@ This is the most common function design error in MPREG:
 def bad_function(items: list) -> dict:
     return {item: f"{item}_processed" for item in items}
     # Crashes with "TypeError: unhashable type: 'dict'" when items contains resolved objects
+
 
 # ✅ FIXED: Safe key generation
 def good_function(items: list) -> dict:
@@ -1047,6 +1060,7 @@ commands = [
     RPCCommand(name="final", fun="combine", args=("large1", "large2")),
 ]
 
+
 # ✅ Consider streaming or chunking for very large datasets
 async def process_large_dataset(client, data_size):
     chunk_size = 10000
@@ -1099,10 +1113,12 @@ server = MPREGServer(
     )
 )
 
+
 # Function-level authorization
 @requires_role("admin")
 def admin_function():
     pass
+
 
 server.register_command("admin_func", admin_function, ["admin"])
 ```
@@ -1121,6 +1137,7 @@ async def process_stream(client):
     async for event in event_stream:
         # Non-blocking stream processing
         asyncio.create_task(client.call("process_event", event, locs={"stream"}))
+
 
 # Windowed aggregations
 commands = [
@@ -1229,6 +1246,7 @@ from mpreg.integrations.fastapi import MPREGMiddleware
 app = FastAPI()
 cluster_url = "ws://localhost:<port>"
 app.add_middleware(MPREGMiddleware, cluster_url=cluster_url)
+
 
 @app.get("/process")
 async def process_endpoint(data: dict, mpreg: MPREGClient):

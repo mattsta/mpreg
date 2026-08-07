@@ -10,11 +10,13 @@ from mpreg.datastructures.type_aliases import ClusterId, NodeId, Timestamp
 from .catalog import TopicSubscription
 from .index import RoutingIndex, TopicQuery
 
+
 class PubSubRouteReason(Enum):
     NO_SUBSCRIBERS = "no_subscribers"
     LOCAL_ONLY = "local_only"
     REMOTE_ONLY = "remote_only"
     LOCAL_AND_REMOTE = "local_and_remote"
+
 
 @dataclass(frozen=True, slots=True)
 class PubSubRoutingPlan:
@@ -23,6 +25,7 @@ class PubSubRoutingPlan:
     remote_subscriptions: tuple[TopicSubscription, ...]
     target_nodes: tuple[NodeId, ...]
     reason: PubSubRouteReason
+
 
 @dataclass(slots=True)
 class PubSubRoutingPlanner:

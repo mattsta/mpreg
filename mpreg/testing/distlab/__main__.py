@@ -18,9 +18,11 @@ _MSG = (
     "  uv run mpreg distlab run strong.happy_3\n"
 )
 
+
 def main() -> int:
     sys.stderr.write(_MSG)
     return 2
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

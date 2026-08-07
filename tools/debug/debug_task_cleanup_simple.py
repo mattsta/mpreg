@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from mpreg.server import MPREGServer, MPREGSettings
 
+
 async def test_peer_connection_task_management():
     """Test that peer connection tasks are properly managed."""
 
@@ -88,6 +89,7 @@ async def test_peer_connection_task_management():
     print("✅ PEER CONNECTION TASK MANAGEMENT TEST COMPLETED")
 
     return len(server._background_tasks) == 0
+
 
 if __name__ == "__main__":
     try:

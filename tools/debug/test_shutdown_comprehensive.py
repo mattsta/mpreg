@@ -10,6 +10,7 @@ sys.path.insert(0, "/Users/matt/repos/mpreg")
 
 from mpreg.datastructures.raft_task_manager import RaftTaskManager
 
+
 async def test_comprehensive_shutdown():
     """Test comprehensive shutdown behavior."""
 
@@ -94,6 +95,7 @@ async def test_comprehensive_shutdown():
         assert final_status.active_tasks == 0
 
     print("\n✅ All comprehensive shutdown tests passed!")
+
 
 if __name__ == "__main__":
     asyncio.run(test_comprehensive_shutdown())

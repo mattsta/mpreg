@@ -22,11 +22,13 @@ from mpreg.fabric.federation_config import create_permissive_bridging_config
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 def _make_named_handler(node_name: str, prefix: str):
     def handler(payload: str) -> str:
         return f"{prefix}:{node_name}:{payload}"
 
     return handler
+
 
 async def _start_server(
     ctx: AsyncTestContext,
@@ -143,6 +145,7 @@ async def _start_server(
     await asyncio.sleep(0.05)
     return server
 
+
 async def _wait_for_cluster_map_v2(
     client: MPREGClientAPI, expected_count: int, *, timeout: float = 6.0
 ) -> ClusterMapResponse:
@@ -159,6 +162,7 @@ async def _wait_for_cluster_map_v2(
         f"Expected at least {expected_count} nodes in cluster map v2, got {last_count}"
     )
 
+
 async def _wait_for_summary_exports(
     server: MPREGServer, namespace: str, *, timeout: float = 6.0
 ) -> None:
@@ -169,6 +173,7 @@ async def _wait_for_summary_exports(
             return
         await asyncio.sleep(0.1)
     raise AssertionError(f"Expected summary exports for namespace {namespace}")
+
 
 async def _wait_for_catalog_functions(
     client: MPREGClientAPI,
@@ -202,6 +207,7 @@ async def _wait_for_catalog_functions(
         f"Expected at least {expected_count} functions, got {last_count}"
     )
 
+
 async def _wait_for_peers(
     client: MPREGClientAPI, expected_count: int, *, timeout: float = 6.0
 ) -> tuple[PeerSnapshot, ...]:
@@ -214,6 +220,7 @@ async def _wait_for_peers(
             return peers
         await asyncio.sleep(0.1)
     raise AssertionError(f"Expected at least {expected_count} peers, got {last_count}")
+
 
 async def _wait_for_targeted_peers(
     client: MPREGClientAPI,
@@ -233,6 +240,7 @@ async def _wait_for_targeted_peers(
     raise AssertionError(
         f"Expected at least {expected_count} peers for {target_cluster}, got {last_count}"
     )
+
 
 @pytest.mark.asyncio
 async def test_cluster_map_v2_paginates_and_scopes(
@@ -291,6 +299,7 @@ async def test_cluster_map_v2_paginates_and_scopes(
             assert len(local_nodes) == 1
             assert local_nodes[0].node_id in known_ids
 
+
 @pytest.mark.asyncio
 async def test_cluster_map_v2_resource_filter(
     test_context: AsyncTestContext,
@@ -326,6 +335,7 @@ async def test_cluster_map_v2_resource_filter(
             nodes = response.nodes
             assert nodes
             assert len(nodes) < len(total_nodes)
+
 
 @pytest.mark.asyncio
 async def test_list_peers_scope_filters(
@@ -368,6 +378,7 @@ async def test_list_peers_scope_filters(
 
             local_peers = await client.list_peers(scope="local")
             assert not local_peers
+
 
 @pytest.mark.asyncio
 async def test_list_peers_classifies_region_and_global(
@@ -426,6 +437,7 @@ async def test_list_peers_classifies_region_and_global(
             regions = {peer.region for peer in peers}
             assert "us-east" in regions
             assert "eu-west" in regions
+
 
 @pytest.mark.asyncio
 async def test_catalog_query_functions_and_nodes(
@@ -493,6 +505,7 @@ async def test_catalog_query_functions_and_nodes(
             node_items = node_page.items
             assert len(node_items) == 1
             assert node_items[0].get("node_id") in known_node_ids
+
 
 @pytest.mark.asyncio
 async def test_catalog_watch_emits_deltas(
@@ -562,6 +575,7 @@ async def test_catalog_watch_emits_deltas(
             assert found
             await pubsub.stop()
 
+
 @pytest.mark.asyncio
 async def test_resolver_mode_serves_discovery_from_cache(
     test_context: AsyncTestContext,
@@ -604,6 +618,7 @@ async def test_resolver_mode_serves_discovery_from_cache(
 
         assert resolver._discovery_resolver is not None
         assert resolver._discovery_resolver.stats.deltas_applied > 0
+
 
 @pytest.mark.asyncio
 async def test_resolver_cache_stats_and_resync(
@@ -654,6 +669,7 @@ async def test_resolver_cache_stats_and_resync(
             assert resync.resynced is True
             assert resync.entry_counts is not None
             assert resync.entry_counts.functions >= 2
+
 
 @pytest.mark.asyncio
 async def test_resolver_query_cache_stale_and_negative(
@@ -721,6 +737,7 @@ async def test_resolver_query_cache_stale_and_negative(
         stats_dict = query_stats.to_dict()
         assert stats_dict.get("catalog_negative_hits", 0) >= 1
         assert stats_dict.get("catalog_stale_serves", 0) >= 1
+
 
 @pytest.mark.asyncio
 async def test_namespace_policy_filters_catalog_query(
@@ -810,6 +827,7 @@ async def test_namespace_policy_filters_catalog_query(
             secure_status = await secure_client.namespace_status(namespace="svc.secret")
             assert secure_status.allowed is True
 
+
 @pytest.mark.asyncio
 async def test_catalog_query_scope_and_tags_filters(
     test_context: AsyncTestContext,
@@ -870,6 +888,7 @@ async def test_catalog_query_scope_and_tags_filters(
             }
             assert tagged_names == {"svc.market.region"}
 
+
 @pytest.mark.asyncio
 async def test_namespace_policy_apply_and_audit(
     test_context: AsyncTestContext,
@@ -917,6 +936,7 @@ async def test_namespace_policy_apply_and_audit(
             audit = await client.namespace_policy_audit(limit=5)
             entries = audit.entries
             assert entries
+
 
 @pytest.mark.asyncio
 async def test_namespace_policy_tenant_visibility_and_audit(
@@ -967,6 +987,7 @@ async def test_namespace_policy_tenant_visibility_and_audit(
                 entry.event == "catalog_query" and entry.reason == "viewer_denied"
                 for entry in entries
             )
+
 
 @pytest.mark.asyncio
 async def test_namespace_policy_tenant_auth_binding(
@@ -1024,6 +1045,7 @@ async def test_namespace_policy_tenant_auth_binding(
             denied_items = denied.items
             assert not denied_items
 
+
 @pytest.mark.asyncio
 async def test_namespace_policy_export_returns_current_rules(
     test_context: AsyncTestContext,
@@ -1055,6 +1077,7 @@ async def test_namespace_policy_export_returns_current_rules(
             assert export.rules[0].namespace == "svc.secret"
             assert export.rules[0].policy_version == "v2"
 
+
 @pytest.mark.asyncio
 async def test_discovery_rate_limit_blocks_excess_queries(
     test_context: AsyncTestContext,
@@ -1082,6 +1105,7 @@ async def test_discovery_rate_limit_blocks_excess_queries(
                 429,
                 1102,
             )  # 1102 = DISCOVERY_RATE_LIMITED
+
 
 @pytest.mark.asyncio
 async def test_summary_query_returns_service_summaries(
@@ -1114,6 +1138,7 @@ async def test_summary_query_returns_service_summaries(
             assert "svc.market.quote" in service_ids
             assert "svc.market.indicator" in service_ids
 
+
 @pytest.mark.asyncio
 async def test_summary_watch_scope_topics(test_context: AsyncTestContext) -> None:
     with port_range_context(1, "servers") as ports:
@@ -1134,6 +1159,7 @@ async def test_summary_watch_scope_topics(test_context: AsyncTestContext) -> Non
             assert scoped_root.topic == "mpreg.discovery.summary.global"
             unscoped = await client.summary_watch(namespace="svc.market")
             assert unscoped.topic == "mpreg.discovery.summary.svc.market"
+
 
 @pytest.mark.asyncio
 async def test_summary_scope_cache_filters(test_context: AsyncTestContext) -> None:
@@ -1173,6 +1199,7 @@ async def test_summary_scope_cache_filters(test_context: AsyncTestContext) -> No
             )
             assert not regional.items
 
+
 @pytest.mark.asyncio
 async def test_summary_query_global_uses_summary_cache(
     test_context: AsyncTestContext,
@@ -1209,6 +1236,7 @@ async def test_summary_query_global_uses_summary_cache(
                 await asyncio.sleep(0.1)
 
             assert found
+
 
 @pytest.mark.asyncio
 async def test_summary_query_ingress_hints(
@@ -1252,6 +1280,7 @@ async def test_summary_query_ingress_hints(
             assert found
             assert ingress.get("market")
             assert server_url in ingress.get("market", [])
+
 
 @pytest.mark.asyncio
 async def test_summary_query_ingress_filters(
@@ -1304,6 +1333,7 @@ async def test_summary_query_ingress_filters(
                 ingress_tags=["edge"],
             )
             assert not response.ingress
+
 
 @pytest.mark.asyncio
 async def test_summary_query_multi_region_delegation(
@@ -1433,6 +1463,7 @@ async def test_summary_query_multi_region_delegation(
         assert "region-eu" in str(result_eu)
         await cluster_client.disconnect()
 
+
 @pytest.mark.asyncio
 async def test_summary_cutover_window_propagation(
     test_context: AsyncTestContext,
@@ -1519,6 +1550,7 @@ async def test_summary_cutover_window_propagation(
 
             assert gone
 
+
 @pytest.mark.asyncio
 async def test_summary_watch_emits_summaries(
     test_context: AsyncTestContext,
@@ -1586,6 +1618,7 @@ async def test_summary_watch_emits_summaries(
 
             assert found
             await pubsub.stop()
+
 
 @pytest.mark.asyncio
 async def test_summary_watch_respects_policy_owners(
@@ -1679,6 +1712,7 @@ async def test_summary_watch_respects_policy_owners(
             assert not found_denied
             await pubsub.stop()
 
+
 @pytest.mark.asyncio
 async def test_summary_export_cutover_windows(
     test_context: AsyncTestContext,
@@ -1760,6 +1794,7 @@ async def test_summary_export_cutover_windows(
             await asyncio.sleep(0.1)
 
         assert exported is not None
+
 
 @pytest.mark.asyncio
 async def test_summary_watch_hold_down_delays_changes(
@@ -1882,6 +1917,7 @@ async def test_summary_watch_hold_down_delays_changes(
             assert found_indicator
             await pubsub.stop()
 
+
 @pytest.mark.asyncio
 async def test_summary_watch_store_forward_backlog(
     test_context: AsyncTestContext,
@@ -1944,6 +1980,7 @@ async def test_summary_watch_store_forward_backlog(
             assert "svc.market.quote" in service_ids
             await pubsub.stop()
 
+
 @pytest.mark.asyncio
 async def test_summary_watch_namespace_topic_filters(
     test_context: AsyncTestContext,
@@ -1989,6 +2026,7 @@ async def test_summary_watch_namespace_topic_filters(
             }
             assert namespaces == {"svc.market"}
             await pubsub.stop()
+
 
 @pytest.mark.asyncio
 async def test_rpc_discovery_endpoints(
@@ -2043,6 +2081,7 @@ async def test_rpc_discovery_endpoints(
             report = await client.rpc_report(namespace="svc.market", scope="zone")
             assert report.total_functions >= 2
 
+
 @pytest.mark.asyncio
 async def test_rpc_describe_auto_uses_gossiped_specs(
     test_context: AsyncTestContext,
@@ -2092,6 +2131,7 @@ async def test_rpc_describe_auto_uses_gossiped_specs(
             assert len(summary_only.items) >= 2
             assert all(item.spec is None for item in summary_only.items)
 
+
 @pytest.mark.asyncio
 async def test_rpc_describe_auto_scatter_fills_missing_specs(
     test_context: AsyncTestContext,
@@ -2131,6 +2171,7 @@ async def test_rpc_describe_auto_scatter_fills_missing_specs(
             assert len(details.items) >= 2
             assert not details.errors
             assert all(item.spec for item in details.items)
+
 
 @pytest.mark.asyncio
 async def test_rpc_describe_catalog_filters_by_identity_and_digest(
@@ -2183,6 +2224,7 @@ async def test_rpc_describe_catalog_filters_by_identity_and_digest(
             assert len(by_digest.items) == 1
             assert by_digest.items[0].spec_digest == alpha_digest
 
+
 @pytest.mark.asyncio
 async def test_namespace_filter_boundary_in_discovery(
     test_context: AsyncTestContext,
@@ -2213,6 +2255,7 @@ async def test_namespace_filter_boundary_in_discovery(
             namespaces = {item.namespace for item in summary.items}
             assert "svc.alpha" in namespaces
             assert not any(value.startswith("svc2") for value in namespaces)
+
 
 @pytest.mark.asyncio
 async def test_rpc_discovery_federation_auto_scatter(
@@ -2260,6 +2303,7 @@ async def test_rpc_discovery_federation_auto_scatter(
             assert not details.errors
             assert all(item.spec for item in details.items)
             assert any(item.cluster_id == "beta" for item in details.items)
+
 
 @pytest.mark.asyncio
 async def test_local_only_control_plane_commands_execute_locally(
@@ -2349,6 +2393,7 @@ async def test_local_only_control_plane_commands_execute_locally(
 
             await client.call("svc.remote.beta", "ping")
             assert hub.cluster._remote_command_stats.total > baseline
+
 
 @pytest.mark.asyncio
 async def test_target_cluster_routes_remote_command(

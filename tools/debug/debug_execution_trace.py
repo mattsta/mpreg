@@ -9,6 +9,7 @@ from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.model import RPCCommand
 from mpreg.server import MPREGServer, MPREGSettings
 
+
 async def debug_execution_trace():
     print("=== DEBUG: Execution Trace for Parallel Convergence ===")
 
@@ -138,6 +139,7 @@ async def debug_execution_trace():
         print("🛑 Stopping server...")
         await server.stop()
         server_task.cancel()
+
 
 if __name__ == "__main__":
     asyncio.run(debug_execution_trace())

@@ -32,6 +32,7 @@ _DEFAULT_TIMEOUT = {
     "demo": 600.0,
 }
 
+
 async def run_one(app: ExampleApp, *, timeout_s: float | None = 180.0) -> RunReport:
     banner(app.title, level=app.level.value, app_id=app.id)
     step(app.summary)
@@ -46,6 +47,7 @@ async def run_one(app: ExampleApp, *, timeout_s: float | None = 180.0) -> RunRep
             print(report.error)
     return report
 
+
 async def run_many(
     apps: Sequence[ExampleApp],
     *,
@@ -59,6 +61,7 @@ async def run_many(
         if not report.ok and fail_fast:
             break
     return reports
+
 
 def print_list(apps: Sequence[ExampleApp], *, fmt: str = "table") -> None:
     if fmt == "json":
@@ -79,6 +82,7 @@ def print_list(apps: Sequence[ExampleApp], *, fmt: str = "table") -> None:
     print(f"Total: {len(apps)} apps")
     print("Bundles: " + ", ".join(sorted(DEMO_BUNDLES)))
 
+
 def print_describe(app: ExampleApp) -> None:
     data = app_to_dict(app)
     print(json.dumps(data, indent=2))
@@ -86,6 +90,7 @@ def print_describe(app: ExampleApp) -> None:
     print(f"README: {app.path}README.md")
     print(f"Run:    uv run mpreg-example run {app.id}")
     print(f"Also:   uv run mpreg examples run {app.id}")
+
 
 async def _run_bundle(
     title: str,
@@ -106,6 +111,7 @@ async def _run_bundle(
         return 1
     ok("all selected apps passed")
     return 0
+
 
 def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -169,6 +175,7 @@ def _parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     )
 
     return parser.parse_args(list(argv) if argv is not None else None)
+
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = _parse_args(argv)
@@ -249,6 +256,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         )
 
     raise SystemExit(2)
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

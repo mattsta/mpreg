@@ -44,6 +44,7 @@ _SIZE_FALLBACK_BYTES = 256
 _FP_MAX_DEPTH = 4
 _FP_MAX_ITEMS = 64
 
+
 @runtime_checkable
 class CodecBackend(Protocol):
     """Minimal native codec surface (orjson today; msgpack/simdjson later)."""
@@ -62,12 +63,14 @@ class CodecBackend(Protocol):
         """Stable key-sorted encoding for HMAC / content digests."""
         ...
 
+
 def _stable_sequence(items: Any) -> list[Any]:
     """Deterministic list for set/frozenset (canonical digests)."""
     try:
         return sorted(items, key=lambda item: (type(item).__name__, repr(item)))
     except Exception:
         return list(items)
+
 
 # orjson encodes the full unsigned 64-bit integer range as JSON numbers
 # (i64 min .. u64 max). Values outside that raise TypeError and do *not*
@@ -79,11 +82,13 @@ _ORJSON_INT_MAX = (1 << 64) - 1  # u64 max
 # Fast-path options: non-str keys handled in Rust; no Python pre-walk.
 _ORJSON_BASE_OPTS = orjson.OPT_NON_STR_KEYS
 
+
 def _json_safe_int(n: int) -> int | str:
     """Pass through ints orjson can emit; decimal-string the rest."""
     if _ORJSON_INT_MIN <= n <= _ORJSON_INT_MAX:
         return n
     return str(n)
+
 
 def _coerce_orjson_tree(data: Any, *, _depth: int = 0) -> Any:
     """Slow path only: rewrite a tree after orjson TypeError.
@@ -114,6 +119,7 @@ def _coerce_orjson_tree(data: Any, *, _depth: int = 0) -> Any:
         ]
     return data
 
+
 def _orjson_default(obj: Any) -> Any:
     """Adapter for types orjson does not natively encode.
 
@@ -140,6 +146,7 @@ def _orjson_default(obj: Any) -> Any:
     # Last resort for signature/digest paths: type name only — never nested repr.
     return f"<{type(obj).__name__}>"
 
+
 def _orjson_dumps(data: Any, *, option: int = 0) -> bytes:
     """Encode with orjson; no pre-walk on the common path.
 
@@ -161,6 +168,7 @@ def _orjson_dumps(data: Any, *, option: int = 0) -> bytes:
             _coerce_orjson_tree(data), option=opts, default=_orjson_default
         )
 
+
 @dataclass(slots=True, frozen=True)
 class OrjsonBackend:
     """Default backend: orjson (Rust, SIMD where available)."""
@@ -176,14 +184,17 @@ class OrjsonBackend:
     def canonical_dumps(self, data: Any) -> bytes:
         return _orjson_dumps(data, option=orjson.OPT_SORT_KEYS)
 
+
 _BACKEND: CodecBackend = OrjsonBackend()
 _BACKEND_FACTORIES: dict[str, Callable[[], CodecBackend]] = {
     "orjson": OrjsonBackend,
 }
 
+
 def register_codec_backend(name: str, factory: Callable[[], CodecBackend]) -> None:
     """Register a named codec backend factory (native plugins / tests)."""
     _BACKEND_FACTORIES[name] = factory
+
 
 def set_codec_backend(backend: CodecBackend | str) -> CodecBackend:
     """Install the process-wide codec backend. Returns the active backend."""
@@ -197,20 +208,25 @@ def set_codec_backend(backend: CodecBackend | str) -> CodecBackend:
         _BACKEND = backend
     return _BACKEND
 
+
 def get_codec_backend() -> CodecBackend:
     return _BACKEND
+
 
 def dumps(data: Any) -> bytes:
     """Wire encode via the active native backend."""
     return _BACKEND.dumps(data)
 
+
 def loads(data: bytes) -> Any:
     """Wire decode via the active native backend."""
     return _BACKEND.loads(data)
 
+
 def canonical_dumps(data: Any) -> bytes:
     """Key-sorted stable encode for HMAC and content digests."""
     return _BACKEND.canonical_dumps(data)
+
 
 def canonical_hash_hex(
     data: Any,
@@ -224,19 +240,23 @@ def canonical_hash_hex(
         return digest[:truncate]
     return digest
 
+
 # orjson.JSONDecodeError is a ValueError subclass (not json.JSONDecodeError).
 # Export one name so call sites can catch decode failures without stdlib json.
 JSONDecodeError = orjson.JSONDecodeError
 
+
 def dumps_text(data: Any) -> str:
     """UTF-8 text form of :func:`dumps` (compact wire JSON as str)."""
     return dumps(data).decode("utf-8")
+
 
 def loads_text(data: str | bytes | bytearray | memoryview) -> Any:
     """Decode from ``str`` or bytes via the active backend."""
     if isinstance(data, str):
         return loads(data.encode("utf-8"))
     return loads(bytes(data))
+
 
 def dumps_pretty(data: Any) -> bytes:
     """Human-indented JSON bytes (operator files, CLI, debug snapshots)."""
@@ -246,9 +266,11 @@ def dumps_pretty(data: Any) -> bytes:
         default=_orjson_default,
     )
 
+
 def dumps_pretty_text(data: Any) -> str:
     """Human-indented JSON as UTF-8 text."""
     return dumps_pretty(data).decode("utf-8")
+
 
 def dump_path(path: str | Any, data: Any, *, pretty: bool = True) -> None:
     """Write JSON bytes to a filesystem path (creates parent dirs).
@@ -263,11 +285,13 @@ def dump_path(path: str | Any, data: Any, *, pretty: bool = True) -> None:
     blob = dumps_pretty(data) if pretty else dumps(data)
     p.write_bytes(blob)
 
+
 def load_path(path: str | Any) -> Any:
     """Read and decode JSON from a filesystem path."""
     from pathlib import Path as _Path
 
     return loads(_Path(path).read_bytes())
+
 
 def estimate_size_bytes(value: Any) -> int:
     """Bounded O(items) memory estimate; never calls nested str/repr.
@@ -374,6 +398,7 @@ def estimate_size_bytes(value: Any) -> int:
         return _SIZE_FALLBACK_BYTES
     return int(total)
 
+
 def payload_fingerprint_hex(
     payload: Any,
     *,
@@ -390,6 +415,7 @@ def payload_fingerprint_hex(
     hasher = hashlib.sha256()
     _feed_fingerprint(hasher, payload)
     return hasher.hexdigest()[:truncate]
+
 
 def _feed_fingerprint(hasher: Any, payload: Any) -> None:
     if payload is None:
@@ -500,6 +526,7 @@ def _feed_fingerprint(hasher: Any, payload: Any) -> None:
 
     hasher.update(b"o")
     hasher.update(type(payload).__name__.encode("ascii", errors="ignore"))
+
 
 def _feed_fingerprint_bounded(hasher: Any, value: Any, *, depth: int) -> None:
     if depth >= _FP_MAX_DEPTH:

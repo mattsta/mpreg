@@ -33,6 +33,7 @@ from mpreg.fabric.router import (
     is_federation_message,
 )
 
+
 # Well-encapsulated basic test case dataclass
 @dataclass(frozen=True, slots=True)
 class BasicTestCase:
@@ -43,6 +44,7 @@ class BasicTestCase:
     expected_control_plane: bool
     description: str = ""
 
+
 # Core MPREG server and client imports (ACTUAL SYSTEM)
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
@@ -50,6 +52,7 @@ from mpreg.server import MPREGServer
 
 # Test infrastructure imports
 from tests.conftest import AsyncTestContext
+
 
 class TestBasicUnifiedSystemIntegration:
     """
@@ -429,6 +432,7 @@ class TestBasicUnifiedSystemIntegration:
         print(
             f"✓ Routing statistics: {stats.total_routes_computed} routes, {stats.average_route_computation_ms:.2f}ms avg"
         )
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])

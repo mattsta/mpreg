@@ -22,6 +22,7 @@ from mpreg.datastructures.type_aliases import (
     TransportProtocolName,
 )
 
+
 def _normalize_tuple(value: object) -> tuple[str, ...]:
     if value is None:
         return ()
@@ -30,6 +31,7 @@ def _normalize_tuple(value: object) -> tuple[str, ...]:
     if isinstance(value, (list, tuple, set, frozenset)):
         return tuple(str(item) for item in value)
     return (str(value),)
+
 
 @dataclass(frozen=True, slots=True)
 class DnsRegisterRequest:
@@ -89,6 +91,7 @@ class DnsRegisterRequest:
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
 
+
 @dataclass(frozen=True, slots=True)
 class DnsRegisterResponse:
     registration_id: str
@@ -112,6 +115,7 @@ class DnsRegisterResponse:
             registered_at=float(payload.get("registered_at", 0.0) or 0.0),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class DnsUnregisterRequest:
     name: ServiceName
@@ -132,6 +136,7 @@ class DnsUnregisterRequest:
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
 
+
 @dataclass(frozen=True, slots=True)
 class DnsUnregisterResponse:
     removed: bool
@@ -146,6 +151,7 @@ class DnsUnregisterResponse:
             removed=bool(payload.get("removed", False)),
             generated_at=float(payload.get("generated_at", 0.0) or 0.0),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class DnsListRequest:
@@ -193,6 +199,7 @@ class DnsListRequest:
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
 
+
 @dataclass(frozen=True, slots=True)
 class DnsListResponse:
     generated_at: Timestamp = field(metadata={PAYLOAD_FLOAT: True})
@@ -217,6 +224,7 @@ class DnsListResponse:
                 else None
             ),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class DnsDescribeRequest:
@@ -263,6 +271,7 @@ class DnsDescribeRequest:
 
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
+
 
 @dataclass(frozen=True, slots=True)
 class DnsDescribeResponse:

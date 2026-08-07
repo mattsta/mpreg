@@ -29,6 +29,7 @@ from mpreg.fabric.consensus import StateType, StateValue
 # Back-compat alias (documented as non-Raft).
 ConsensusManager = LightweightConsensusManager
 
+
 class MembershipChangeNotSupported(RuntimeError):
     """Raised when dynamic Raft membership is requested.
 
@@ -36,6 +37,7 @@ class MembershipChangeNotSupported(RuntimeError):
     Keep cluster membership fixed at ``ProductionRaft`` construction time, or
     rebuild the group offline. See INV-C6.
     """
+
 
 def raft_based_leader_election(*args: Any, **kwargs: Any) -> Any:
     """Deprecated wrapper — prefer :class:`ProductionRaft` directly."""
@@ -48,6 +50,7 @@ def raft_based_leader_election(*args: Any, **kwargs: Any) -> Any:
     from mpreg.datastructures.leader_election import RaftBasedLeaderElection
 
     return RaftBasedLeaderElection(*args, **kwargs)
+
 
 def status_dict(node: ProductionRaft) -> dict[str, Any]:
     """Operator-facing snapshot of a Raft node (mgmt / doctor)."""
@@ -109,6 +112,7 @@ def status_dict(node: ProductionRaft) -> dict[str, Any]:
         "metrics": metrics,
         "log_size": int(metrics.get("log_size") or last_log_index or 0),
     }
+
 
 __all__ = [
     "ConsensusManager",

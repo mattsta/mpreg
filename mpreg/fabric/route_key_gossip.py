@@ -16,6 +16,7 @@ from mpreg.datastructures.type_aliases import ClusterId, DurationSeconds, Timest
 from .gossip import GossipMessage, GossipMessageType, GossipProtocol
 from .route_keys import RouteKeyAnnouncement, RouteKeyRegistry
 
+
 @dataclass(slots=True)
 class RouteKeyAnnouncer:
     """Periodically announce local route keys through gossip."""
@@ -79,6 +80,7 @@ class RouteKeyAnnouncer:
         )
         await self.gossip.add_message(message)
         return message
+
 
 @dataclass(slots=True)
 class RouteKeyProcessor:

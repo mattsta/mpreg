@@ -12,6 +12,7 @@ from mpreg.core.message_queue import (
 )
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run(
         "job_queue_dlq",
@@ -143,6 +144,7 @@ async def main() -> None:
                 ok(f"healthy delivered={good}")
         finally:
             await queue.shutdown()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

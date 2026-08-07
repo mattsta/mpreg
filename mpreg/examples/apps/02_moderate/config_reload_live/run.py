@@ -18,6 +18,7 @@ from mpreg.core.port_allocator import port_context
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 from mpreg.server import MPREGServer
 
+
 async def _start(
     port: int, data_dir: Path, name: str
 ) -> tuple[MPREGServer, asyncio.Task[None]]:
@@ -41,6 +42,7 @@ async def _start(
     await asyncio.sleep(1.0)
     return server, task
 
+
 async def _stop(server: MPREGServer, task: asyncio.Task[None]) -> None:
     await server.shutdown_async()
     try:
@@ -48,6 +50,7 @@ async def _stop(server: MPREGServer, task: asyncio.Task[None]) -> None:
     except TimeoutError:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
+
 
 async def main() -> None:
     with (
@@ -136,6 +139,7 @@ async def main() -> None:
                 step("non-claim: not multi-node shared storage; single data_dir demo")
             finally:
                 await _stop(server, task)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

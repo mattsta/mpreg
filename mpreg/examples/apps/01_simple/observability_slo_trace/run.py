@@ -30,6 +30,7 @@ from mpreg.examples.apps._shared.runtime import (
 
 _TP_RE = re.compile(r"^00-[0-9a-f]{32}-[0-9a-f]{16}-0[01]$")
 
+
 async def main() -> None:
     with app_run(
         "observability_slo_trace",
@@ -151,6 +152,7 @@ async def main() -> None:
             )
 
         await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

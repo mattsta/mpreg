@@ -297,14 +297,14 @@ OpenAPI: `GET $MPREG_MONITORING_URL/openapi.json` → `StrongMetricsResponse` /
 
 ## 5. Operate under failure (teaching stance)
 
-| Scenario           | What to run                     | What to expect                       |
-| ------------------ | ------------------------------- | ------------------------------------ |
-| Seed down          | `ha_client_failover`            | Other seed serves call               |
-| Cross-cluster path | `multi_region_shop`             | Federated RPC with bridging config   |
-| Slow mesh          | raise timeouts in client policy | Structured timeout errors, not hangs |
-| Shared audit lag   | `shared_audit_mesh`             | Eventual G-Set visibility, not SIEM  |
+| Scenario           | What to run                     | What to expect                                                  |
+| ------------------ | ------------------------------- | --------------------------------------------------------------- |
+| Seed down          | `ha_client_failover`            | Other seed serves call                                          |
+| Cross-cluster path | `multi_region_shop`             | Federated RPC with bridging config                              |
+| Slow mesh          | raise timeouts in client policy | Structured timeout errors, not hangs                            |
+| Shared audit lag   | `shared_audit_mesh`             | Eventual G-Set visibility, not SIEM                             |
 | STRONG quorum loss | `cache_strong_quorum`           | `1015` when ABORT delivered; CFT residual possible; not WAN SLA |
-| Full test pressure | concurrent runner + `ulimit`    | See testing docs                     |
+| Full test pressure | concurrent runner + `ulimit`    | See testing docs                                                |
 
 For chaos injection, prefer `mpreg.testing.faults.FaultInjector` in curriculum
 apps (`chaos_checkout`, `packet_loss_chaos`, `chaos_crash_recover`,

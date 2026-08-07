@@ -61,6 +61,7 @@ type FanoutLimit = int
 type CacheTtlMs = float
 type RoutingPriorityScore = int
 
+
 class RoutingStrategy(Enum):
     """Strategy for routing messages to multiple matching queues."""
 
@@ -70,6 +71,7 @@ class RoutingStrategy(Enum):
     LOAD_BALANCED = "load_balanced"  # Route to least loaded queue
     RANDOM_SELECTION = "random_selection"  # Random selection from matches
 
+
 class RoutingFailureAction(Enum):
     """Action to take when topic routing fails."""
 
@@ -77,6 +79,7 @@ class RoutingFailureAction(Enum):
     RETRY_WITH_BACKOFF = "retry_backoff"  # Retry with exponential backoff
     DROP_MESSAGE = "drop_message"  # Drop the message
     DEAD_LETTER_QUEUE = "dead_letter"  # Send to dead letter queue
+
 
 @dataclass(frozen=True, slots=True)
 class TopicRoutingMetadata:
@@ -89,6 +92,7 @@ class TopicRoutingMetadata:
     routing_latency_ms: LatencyMetric
     pattern_match_count: int
     timestamp: TimestampNanoseconds
+
 
 @dataclass(frozen=True, slots=True)
 class TopicRoutedQueue:
@@ -103,6 +107,7 @@ class TopicRoutedQueue:
     max_queue_depth: int = 10000
     enabled: bool = True
 
+
 @dataclass(frozen=True, slots=True)
 class TopicQueueMessage:
     """A message that has been routed via topic patterns to queues."""
@@ -112,6 +117,7 @@ class TopicQueueMessage:
     routed_queues: list[QueueName]
     routing_metadata: TopicRoutingMetadata
     message: QueuedMessage
+
 
 @dataclass(slots=True)
 class TopicQueueRoutingConfig:
@@ -126,6 +132,7 @@ class TopicQueueRoutingConfig:
     enable_routing_metrics: bool = True
     enable_load_balancing: bool = True
     consumer_group_sticky_routing: bool = True
+
 
 @dataclass(frozen=True, slots=True)
 class TopicQueueRoutingStats:
@@ -144,6 +151,7 @@ class TopicQueueRoutingStats:
     queue_fanout_distribution: dict[int, int]  # fanout_count -> frequency
     routing_strategy_usage: dict[RoutingStrategy, int]
 
+
 @dataclass(slots=True)
 class ConsumerGroupState:
     """State tracking for consumer groups in topic routing."""
@@ -154,6 +162,7 @@ class ConsumerGroupState:
     message_count: int = 0
     total_latency_ms: LatencyMetric = 0.0
     last_activity: float = field(default_factory=time.time)
+
 
 @runtime_checkable
 class TopicQueueRoutingProtocol(Protocol):
@@ -186,6 +195,7 @@ class TopicQueueRoutingProtocol(Protocol):
     async def get_routing_statistics(self) -> TopicQueueRoutingStats:
         """Get comprehensive routing performance statistics."""
         ...
+
 
 class TopicQueueRouter:
     """
@@ -626,6 +636,7 @@ class TopicQueueRouter:
             self.stats, routing_strategy_usage=strategy_usage
         )
 
+
 # Helper function for dataclass replacement (Python < 3.13 compatibility)
 def dataclass_replace(obj, **changes):
     """Replace fields in a dataclass instance."""
@@ -633,7 +644,9 @@ def dataclass_replace(obj, **changes):
 
     return replace(obj, **changes)
 
+
 # Factory functions for common configurations
+
 
 def create_topic_queue_router(
     message_queue_manager: MessageQueueManager,
@@ -650,6 +663,7 @@ def create_topic_queue_router(
         enable_routing_metrics=True,
     )
     return TopicQueueRouter(config, message_queue_manager)
+
 
 def create_high_performance_topic_router(
     message_queue_manager: MessageQueueManager,

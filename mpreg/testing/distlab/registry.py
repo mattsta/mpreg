@@ -11,6 +11,7 @@ from mpreg.testing.distlab.scenario import Scenario
 
 ScenarioFactory = Callable[[], Scenario | Awaitable[Scenario]]
 
+
 @dataclass(slots=True)
 class ScenarioRegistry:
     """Map scenario name → factory. Self-describing catalog for CLI and suites."""
@@ -89,8 +90,7 @@ class ScenarioRegistry:
             preset_names = resolve_preset(preset)
             if not preset_names:
                 raise KeyError(
-                    f"unknown suite preset {preset!r}; "
-                    f"known={sorted(SUITE_PRESETS)}"
+                    f"unknown suite preset {preset!r}; known={sorted(SUITE_PRESETS)}"
                 )
             names = list(preset_names) + list(names or [])
         if names:
@@ -182,6 +182,7 @@ class ScenarioRegistry:
             "total_duration_s": sum(r.duration_s for r in results),
         }
 
+
 # Process-global default registry (builtins register on import of builtins module).
 DEFAULT_REGISTRY = ScenarioRegistry(name="mpreg-distlab")
 
@@ -228,6 +229,7 @@ SUITE_PRESETS: dict[str, tuple[str, ...]] = {
     "ci-core": (),
 }
 
+
 def resolve_preset(name: str) -> list[str]:
     """Return scenario names for a suite preset (empty if unknown).
 
@@ -247,6 +249,7 @@ def resolve_preset(name: str) -> list[str]:
     if key not in SUITE_PRESETS:
         return []
     return list(SUITE_PRESETS[key])
+
 
 def get_registry() -> ScenarioRegistry:
     return DEFAULT_REGISTRY

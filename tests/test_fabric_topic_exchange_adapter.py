@@ -1,6 +1,7 @@
 from mpreg.core.model import PubSubSubscription, TopicPattern
 from mpreg.fabric.adapters.topic_exchange import TopicExchangeCatalogAdapter
 
+
 def test_topic_exchange_adapter_builds_delta() -> None:
     subscription = PubSubSubscription(
         subscription_id="sub-1",
@@ -26,6 +27,7 @@ def test_topic_exchange_adapter_builds_delta() -> None:
     assert entry.node_id == "node-a"
     assert entry.patterns == ("sensor.*",)
     assert entry.ttl_seconds == 45.0
+
 
 def test_topic_exchange_adapter_builds_removal() -> None:
     adapter = TopicExchangeCatalogAdapter(

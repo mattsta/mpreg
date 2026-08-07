@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t74_hypothesis_tests_present() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -15,6 +16,7 @@ def test_t74_hypothesis_tests_present() -> None:
     assert "test_doctor_dishonest_caps_hypothesis" in text
     assert "cache-strong-retry-abort" in text
 
+
 def test_t74_phase_62_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -23,6 +25,7 @@ def test_t74_phase_62_honesty() -> None:
     )
     text = path.read_text(encoding="utf-8")
     assert "Phase 62" in text
+
 
 def test_t74_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]

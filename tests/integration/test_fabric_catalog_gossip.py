@@ -14,6 +14,7 @@ from mpreg.fabric.gossip import GossipProtocol
 from mpreg.fabric.gossip_transport import InProcessGossipTransport
 from mpreg.fabric.message import DeliveryGuarantee
 
+
 @pytest.mark.asyncio
 async def test_function_registry_delta_gossips_to_remote_catalog() -> None:
     registry = RpcRegistry()
@@ -61,6 +62,7 @@ async def test_function_registry_delta_gossips_to_remote_catalog() -> None:
     assert catalog_b.functions.entry_count() == 1
     assert catalog_b.nodes.entry_count() == 1
 
+
 @pytest.mark.asyncio
 async def test_queue_advertisement_gossips_to_remote_catalog() -> None:
     catalog_a = RoutingCatalog()
@@ -96,6 +98,7 @@ async def test_queue_advertisement_gossips_to_remote_catalog() -> None:
     await gossip_b.handle_received_message(result.message)
 
     assert catalog_b.queues.entry_count() == 1
+
 
 @pytest.mark.asyncio
 async def test_topic_subscription_gossips_to_remote_catalog() -> None:

@@ -10,6 +10,7 @@ from mpreg.core.caching import CacheConfiguration
 from mpreg.core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
 from mpreg.core.topic_exchange import TopicExchange
 
+
 async def debug_cache_setup():
     """Debug the cache setup to see where it hangs."""
     print("🔍 Starting cache debug...")
@@ -66,6 +67,7 @@ async def debug_cache_setup():
         import traceback
 
         traceback.print_exc()
+
 
 if __name__ == "__main__":
     try:

@@ -16,6 +16,7 @@ from tests.test_production_raft_integration import (
     TestProductionRaftIntegration,
 )
 
+
 async def debug_state_machine_application():
     """Debug state machine application under concurrency."""
 
@@ -119,6 +120,7 @@ async def debug_state_machine_application():
             print("\n--- CLEANUP ---")
             for node in nodes.values():
                 await node.stop()
+
 
 if __name__ == "__main__":
     asyncio.run(debug_state_machine_application())

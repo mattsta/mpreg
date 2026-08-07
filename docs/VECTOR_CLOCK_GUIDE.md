@@ -143,6 +143,7 @@ class DistributedMessage:
         self.content = content
         self.vector_clock = vector_clock
 
+
 def send_message(
     sender_clock: VectorClock, sender: str, content: str
 ) -> tuple[VectorClock, DistributedMessage]:
@@ -151,11 +152,13 @@ def send_message(
     message = DistributedMessage(sender, content, new_clock)
     return new_clock, message
 
+
 def receive_message(
     receiver_clock: VectorClock, receiver: str, message: DistributedMessage
 ) -> VectorClock:
     # Update with message clock, then increment receiver
     return receiver_clock.update(message.vector_clock).increment(receiver)
+
 
 # Example usage
 alice_clock = VectorClock()
@@ -181,6 +184,7 @@ def merge_federation_state(
     for remote_clock in remote_clocks:
         result = result.update(remote_clock)
     return result
+
 
 # Federation nodes sync their vector clocks
 node1_clock = VectorClock.from_dict({"node1": 5, "node2": 3})
@@ -230,6 +234,7 @@ assert old_clock.happens_before(new_clock)
 ```python
 from mpreg.datastructures import VectorClock
 from mpreg.core.message_queue import QueuedMessage, MessageId
+
 
 class CausalMessage:
     """Message with vector clock for causal ordering."""

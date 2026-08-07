@@ -15,20 +15,24 @@ from typing import Protocol
 
 from mpreg.core.port_allocator import allocate_port, port_context, port_range_context
 
+
 class Shutdownable(Protocol):
     """Protocol for objects that can be shutdown."""
 
     async def shutdown(self) -> None: ...
+
 
 class Stoppable(Protocol):
     """Protocol for objects that can be stopped."""
 
     async def stop(self) -> None: ...
 
+
 class Closeable(Protocol):
     """Protocol for objects that can be closed."""
 
     async def close(self) -> None: ...
+
 
 @dataclass(frozen=True, slots=True)
 class ServerClientUrls:
@@ -37,13 +41,16 @@ class ServerClientUrls:
     server_url: str
     client_url: str
 
+
 def make_server_url(port: int, host: str = "127.0.0.1", protocol: str = "ws") -> str:
     """Create a server URL from a port number."""
     return f"{protocol}://{host}:{port}"
 
+
 def make_client_url(port: int, host: str = "127.0.0.1", protocol: str = "ws") -> str:
     """Create a client connection URL from a port number."""
     return f"{protocol}://{host}:{port}"
+
 
 async def wait_for_condition(
     predicate: Callable[[], bool],
@@ -61,11 +68,13 @@ async def wait_for_condition(
     message = error_message or f"Condition not met within {timeout:.1f}s"
     raise AssertionError(message)
 
+
 @contextmanager
 def test_server_url(category: str = "servers") -> Iterator[str]:
     """Context manager that provides a server URL with automatic port cleanup."""
     with port_context(category) as port:
         yield make_server_url(port)
+
 
 @contextmanager
 def test_client_url(category: str = "clients") -> Iterator[str]:
@@ -73,14 +82,17 @@ def test_client_url(category: str = "clients") -> Iterator[str]:
     with port_context(category) as port:
         yield make_client_url(port)
 
+
 test_server_url.__test__ = False
 test_client_url.__test__ = False
+
 
 @contextmanager
 def server_cluster_urls(count: int, category: str = "servers") -> Iterator[list[str]]:
     """Context manager that provides multiple server URLs."""
     with port_range_context(count, category) as ports:
         yield [make_server_url(port) for port in ports]
+
 
 @contextmanager
 def server_client_pair() -> Iterator[ServerClientUrls]:
@@ -89,6 +101,7 @@ def server_client_pair() -> Iterator[ServerClientUrls]:
         server_url = make_server_url(ports[0])
         client_url = make_client_url(ports[0])  # Client connects to server
         yield ServerClientUrls(server_url=server_url, client_url=client_url)
+
 
 class TestPortManager:
     """
@@ -152,16 +165,19 @@ class TestPortManager:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cleanup()
 
+
 # Convenience functions for quick URL generation
 def quick_server_url(category: str = "servers") -> str:
     """Quickly allocate a server URL (manual cleanup required)."""
     port = allocate_port(category)
     return make_server_url(port)
 
+
 def quick_client_url(category: str = "clients") -> str:
     """Quickly allocate a client URL (manual cleanup required)."""
     port = allocate_port(category)
     return make_client_url(port)
+
 
 def quick_server_cluster(count: int, category: str = "servers") -> list[str]:
     """Quickly allocate multiple server URLs (manual cleanup required)."""
@@ -169,6 +185,7 @@ def quick_server_cluster(count: int, category: str = "servers") -> list[str]:
 
     ports = allocate_port_range(count, category)
     return [make_server_url(port) for port in ports]
+
 
 def create_test_ssl_context() -> ssl.SSLContext:
     """Create a test SSL context for secure transport testing.
@@ -282,6 +299,7 @@ def create_test_ssl_context() -> ssl.SSLContext:
         pass
 
     return context
+
 
 class AsyncObjectManager:
     """

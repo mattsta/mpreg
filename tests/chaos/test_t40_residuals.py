@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t40_live_e2e_source_asserts_retry_prom() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -17,6 +18,7 @@ def test_t40_live_e2e_source_asserts_retry_prom() -> None:
     assert "retry_abort_calls" in text
     assert "last_abort_fail_peers" in text
 
+
 def test_t40_operate_retry_prom() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -28,6 +30,7 @@ def test_t40_operate_retry_prom() -> None:
     assert "retry_abort" in text
     assert "mpreg_strong_retry_abort" in text
     assert "not auto-heal" in text.lower() or "ops-driven" in text.lower()
+
 
 def test_t40_residual_honesty_phase_28() -> None:
     path = (

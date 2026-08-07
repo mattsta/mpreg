@@ -21,11 +21,13 @@ sys.path.insert(0, "/Users/matt/repos/mpreg")
 
 from tests.test_production_raft_integration import TestProductionRaftIntegration
 
+
 @dataclass
 class TestResult:
     run: int
     elapsed: float
     status: str
+
 
 @dataclass
 class FailureResult(TestResult):
@@ -33,9 +35,11 @@ class FailureResult(TestResult):
     error_type: str
     traceback: str
 
+
 @dataclass
 class SuccessResult(TestResult):
     pass
+
 
 async def debug_split_brain_test():
     """Run split brain test with detailed debugging."""
@@ -117,6 +121,7 @@ async def debug_split_brain_test():
         elapsed_times = [f.elapsed for f in failures]
         avg_failure_time = sum(elapsed_times) / len(elapsed_times)
         print(f"Average failure time: {avg_failure_time:.2f}s")
+
 
 if __name__ == "__main__":
     asyncio.run(debug_split_brain_test())

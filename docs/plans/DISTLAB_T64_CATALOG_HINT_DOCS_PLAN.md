@@ -1,13 +1,13 @@
 # DistLab T64 — Catalog + product docs residual_ops_hint (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T55/T59 |
-| **Scope** | FEATURE_CATALOG, client guide, CACHING_SYSTEM document residual_ops_hint |
-| **Point budget** | **~8 pts** |
-| **Entry points only** | docs + residual gates |
+| Field                 | Value                                                                    |
+| --------------------- | ------------------------------------------------------------------------ |
+| **Status**            | **Complete**                                                             |
+| **Date**              | 2026-08-06                                                               |
+| **Authority**         | Continuation after T55/T59                                               |
+| **Scope**             | FEATURE_CATALOG, client guide, CACHING_SYSTEM document residual_ops_hint |
+| **Point budget**      | **~8 pts**                                                               |
+| **Entry points only** | docs + residual gates                                                    |
 
 ## Goals
 

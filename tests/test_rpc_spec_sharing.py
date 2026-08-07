@@ -1,6 +1,7 @@
 from mpreg.core.rpc_spec_sharing import RpcSpecSharePolicy
 from mpreg.datastructures.rpc_spec import RpcSpec
 
+
 def test_rpc_spec_share_policy_namespace_boundary() -> None:
     def echo(payload: str) -> str:
         return payload

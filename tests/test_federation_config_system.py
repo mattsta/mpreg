@@ -25,6 +25,7 @@ from mpreg.fabric.federation_config import (
 )
 from tests.test_helpers import TestPortManager
 
+
 class TestFederationConfig:
     """Test federation configuration data structures."""
 
@@ -118,6 +119,7 @@ class TestFederationConfig:
         )
         assert not policy.is_function_allowed_cross_federation("dangerous_function")
         assert policy.is_function_allowed_cross_federation("safe_function")
+
 
 class TestFederationConnectionManager:
     """Test federation connection management."""
@@ -278,6 +280,7 @@ class TestFederationConnectionManager:
         assert not config.security_policy.require_encrypted_connections
         assert config.security_policy.max_cross_federation_requests_per_minute == 1000
 
+
 class TestFederationIntegrationHelpers:
     """Test federation integration helper functions."""
 
@@ -312,6 +315,7 @@ class TestFederationIntegrationHelpers:
             )
             assert not allowed
             assert "not in allowed foreign clusters" in error
+
 
 class TestFederationConfigIntegration:
     """Test integration with MPREG settings."""

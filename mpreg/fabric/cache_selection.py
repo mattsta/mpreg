@@ -10,12 +10,14 @@ from mpreg.datastructures.type_aliases import NodeId, RegionName
 from .catalog import CacheNodeProfile
 from .federation_graph import GeographicCoordinate
 
+
 @dataclass(frozen=True, slots=True)
 class CacheSelectionWeights:
     geographic: float = 0.4
     latency: float = 0.2
     reliability: float = 0.2
     capacity: float = 0.2
+
 
 @dataclass(slots=True)
 class CachePeerSelector:

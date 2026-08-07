@@ -9,20 +9,25 @@ from mpreg.datastructures.rpc_spec import (
     RpcSpec,
 )
 
+
 def sample_func_1() -> str:
     return "func1_result"
+
 
 def sample_func_2(arg1: str, arg2: str) -> str:
     return f"func2_result_{arg1}_{arg2}"
 
+
 async def sample_async() -> str:
     return "async_result"
+
 
 def test_rpc_implementation_call() -> None:
     impl = RpcRegistration.from_callable(
         sample_func_1, name="test_cmd", function_id="func-1", version="1.0.0"
     )
     assert impl() == "func1_result"
+
 
 @pytest.mark.asyncio
 async def test_rpc_implementation_call_async_handles_sync() -> None:
@@ -31,12 +36,14 @@ async def test_rpc_implementation_call_async_handles_sync() -> None:
     )
     assert await impl.call_async("a", "b") == "func2_result_a_b"
 
+
 @pytest.mark.asyncio
 async def test_rpc_implementation_call_async_handles_coroutine() -> None:
     impl = RpcRegistration.from_callable(
         sample_async, name="test_cmd_async", function_id="func-3", version="1.0.0"
     )
     assert await impl.call_async() == "async_result"
+
 
 def test_rpc_registry_register_and_resolve() -> None:
     registry = RpcRegistry()
@@ -49,6 +56,7 @@ def test_rpc_registry_register_and_resolve() -> None:
     resolved = registry.resolve(selector)
 
     assert resolved is impl
+
 
 def test_rpc_registry_selects_latest_matching_version() -> None:
     registry = RpcRegistry()
@@ -71,6 +79,7 @@ def test_rpc_registry_selects_latest_matching_version() -> None:
     assert resolved is not None
     assert str(resolved.spec.identity.version) == "1.2.0"
 
+
 def test_rpc_registry_register_duplicate_version_raises() -> None:
     registry = RpcRegistry()
     impl = RpcRegistration.from_callable(
@@ -81,10 +90,12 @@ def test_rpc_registry_register_duplicate_version_raises() -> None:
     with pytest.raises(ValueError, match="already registered"):
         registry.register(impl)
 
+
 def test_rpc_registry_resolve_missing_returns_none() -> None:
     registry = RpcRegistry()
     selector = FunctionSelector(name="missing")
     assert registry.resolve(selector) is None
+
 
 def test_rpc_registry_register_callable_accepts_metadata() -> None:
     registry = RpcRegistry()
@@ -124,6 +135,7 @@ def test_rpc_registry_register_callable_accepts_metadata() -> None:
     assert "rpc" in spec.capabilities
     assert spec.doc.summary == "meta summary"
     assert spec.examples and spec.examples[0].name == "basic"
+
 
 def test_rpc_spec_digest_stable_for_set_defaults() -> None:
     def with_set(items: set[int] | None = None) -> int:

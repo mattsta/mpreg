@@ -13,6 +13,7 @@ from mpreg.fabric.message import MessageHeaders, MessageType, UnifiedMessage
 from mpreg.fabric.queue_federation import FabricQueueFederationManager
 from mpreg.fabric.queue_messages import QueueFederationAck
 
+
 class DummyTransport:
     def __init__(self) -> None:
         self.sent: list[tuple[str, UnifiedMessage]] = []
@@ -20,6 +21,7 @@ class DummyTransport:
     async def send_message(self, peer_id: str, message: UnifiedMessage) -> bool:
         self.sent.append((peer_id, message))
         return True
+
 
 class DummyAnnouncer:
     def __init__(self, index: RoutingIndex) -> None:
@@ -29,6 +31,7 @@ class DummyAnnouncer:
         self, endpoint: QueueEndpoint, *, now: float | None = None
     ) -> None:
         self.index.catalog.queues.register(endpoint, now=now or endpoint.advertised_at)
+
 
 def build_manager() -> tuple[FabricQueueFederationManager, DummyTransport]:
     index = RoutingIndex()
@@ -52,6 +55,7 @@ def build_manager() -> tuple[FabricQueueFederationManager, DummyTransport]:
     )
     return manager, transport
 
+
 @pytest.fixture
 async def queue_federation_manager() -> tuple[
     FabricQueueFederationManager, DummyTransport
@@ -59,6 +63,7 @@ async def queue_federation_manager() -> tuple[
     manager, transport = build_manager()
     yield manager, transport
     await manager.queue_manager.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_create_queue_advertises(
@@ -71,6 +76,7 @@ async def test_create_queue_advertises(
     assert created is True
     assert "test-queue" in manager.queue_manager.list_queues()
     assert manager.routing_index.catalog.queues.entry_count() > 0
+
 
 @pytest.mark.asyncio
 async def test_subscribe_globally_registers_subscription(
@@ -88,6 +94,7 @@ async def test_subscribe_globally_registers_subscription(
 
     assert subscription_id in manager.subscriptions
     assert manager.subscriptions[subscription_id].subscriber_id == "subscriber-1"
+
 
 @pytest.mark.asyncio
 async def test_discover_queues(
@@ -112,6 +119,7 @@ async def test_discover_queues(
     assert any(entry.queue_name == "local-queue" for entry in discovered["cluster-a"])
     assert any(entry.queue_name == "remote-queue" for entry in discovered["cluster-b"])
 
+
 @pytest.mark.asyncio
 async def test_send_message_globally_local(
     queue_federation_manager: tuple[FabricQueueFederationManager, DummyTransport],
@@ -129,6 +137,7 @@ async def test_send_message_globally_local(
     assert result.success is True
     assert result.message_id is not None
     assert transport.sent == []
+
 
 @pytest.mark.asyncio
 async def test_send_message_globally_remote(
@@ -157,6 +166,7 @@ async def test_send_message_globally_remote(
     assert result.success is True
     assert result.message_id is not None
     assert transport.sent
+
 
 @pytest.mark.asyncio
 async def test_remote_ack_clears_in_flight(

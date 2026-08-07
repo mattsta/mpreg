@@ -1,13 +1,13 @@
 # DistLab T49 — GCM curriculum + DistLab self-target (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T48 |
-| **Scope** | Curriculum GCM.strong_retry_abort residual→clear; DistLab self-target scenario; ops_surfaces meta |
-| **Point budget** | **~20 pts** |
-| **Entry points only** | `uv run mpreg-example …` / `uv run pytest …` |
+| Field                 | Value                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                                                      |
+| **Date**              | 2026-08-06                                                                                        |
+| **Authority**         | Continuation after T48                                                                            |
+| **Scope**             | Curriculum GCM.strong_retry_abort residual→clear; DistLab self-target scenario; ops_surfaces meta |
+| **Point budget**      | **~20 pts**                                                                                       |
+| **Entry points only** | `uv run mpreg-example …` / `uv run pytest …`                                                      |
 
 ## Goals
 

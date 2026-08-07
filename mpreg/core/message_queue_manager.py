@@ -42,6 +42,7 @@ type QueueName = str
 type TopicPattern = str
 type SubscriberId = str
 
+
 @dataclass(frozen=True, slots=True)
 class TopicRouting:
     """Topic to queue routing configuration."""
@@ -50,6 +51,7 @@ class TopicRouting:
     queue_name: QueueName
     delivery_guarantee: DeliveryGuarantee = DeliveryGuarantee.AT_LEAST_ONCE
     created_at: float = field(default_factory=time.time)
+
 
 @dataclass(slots=True)
 class QueueManagerStatistics:
@@ -67,6 +69,7 @@ class QueueManagerStatistics:
         total = self.total_messages_acknowledged + self.total_messages_failed
         return self.total_messages_acknowledged / total if total > 0 else 0.0
 
+
 @dataclass(frozen=True, slots=True)
 class QueueManagerConfiguration:
     """Configuration for the message queue manager."""
@@ -80,6 +83,7 @@ class QueueManagerConfiguration:
     max_queues: int = 1000
     integration_topic_prefix: str = "mpreg.queue"
     enable_topic_exchange_integration: bool = True
+
 
 class MessageQueueManager(ManagedObject):
     """
@@ -604,7 +608,9 @@ class MessageQueueManager(ManagedObject):
 
         queue_mgr_log.info("Message Queue Manager shutdown complete")
 
+
 # Factory functions for common configurations
+
 
 def create_standard_queue_manager(
     topic_exchange: TopicExchange | None = None,
@@ -616,6 +622,7 @@ def create_standard_queue_manager(
     return MessageQueueManager(
         config, topic_exchange, persistence_registry=persistence_registry
     )
+
 
 def create_high_throughput_queue_manager(
     topic_exchange: TopicExchange | None = None,
@@ -632,6 +639,7 @@ def create_high_throughput_queue_manager(
     return MessageQueueManager(
         config, topic_exchange, persistence_registry=persistence_registry
     )
+
 
 def create_reliable_queue_manager(
     topic_exchange: TopicExchange | None = None,

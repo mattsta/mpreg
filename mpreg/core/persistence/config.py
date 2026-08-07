@@ -4,11 +4,13 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 
+
 class PersistenceMode(StrEnum):
     """Supported persistence backends."""
 
     MEMORY = "memory"
     SQLITE = "sqlite"
+
 
 @dataclass(slots=True)
 class PersistenceConfig:

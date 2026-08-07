@@ -19,6 +19,7 @@ from mpreg.datastructures.type_aliases import (
 FABRIC_RPC_REQUEST_KIND = "rpc-request"
 FABRIC_RPC_RESPONSE_KIND = "rpc-response"
 
+
 def _as_tuple(value: object) -> tuple[Any, ...]:
     if isinstance(value, tuple):
         return value
@@ -26,20 +27,24 @@ def _as_tuple(value: object) -> tuple[Any, ...]:
         return tuple(value)
     return ()
 
+
 def _as_str_tuple(value: object) -> tuple[str, ...]:
     if isinstance(value, (list, tuple)):
         return tuple(str(item) for item in value)
     return ()
+
 
 def _as_kwargs(value: object) -> dict[str, Any]:
     if isinstance(value, dict):
         return {str(key): val for key, val in value.items()}
     return {}
 
+
 def _as_optional_str(value: object) -> str | None:
     if isinstance(value, str) and value:
         return value
     return None
+
 
 def _as_optional_int(value: object) -> int | None:
     if value is None:
@@ -50,6 +55,7 @@ def _as_optional_int(value: object) -> int | None:
         except TypeError, ValueError:
             return None
     return None
+
 
 @dataclass(frozen=True, slots=True)
 class FabricRPCRequest:
@@ -101,6 +107,7 @@ class FabricRPCRequest:
                 payload.get("federation_remaining_hops")
             ),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class FabricRPCResponse:

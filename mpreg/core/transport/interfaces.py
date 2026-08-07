@@ -17,12 +17,14 @@ from types import TracebackType
 from typing import Any, Protocol, Self, runtime_checkable
 from urllib.parse import ParseResult
 
+
 @runtime_checkable
 class FileReader(Protocol):
     """Protocol for file-like objects with read method."""
 
     def read(self, size: int = -1) -> bytes: ...
     def seek(self, offset: int, whence: int = 0) -> int: ...
+
 
 # Type alias for stream data
 StreamData = bytes | FileReader | AsyncIterable[bytes]
@@ -41,6 +43,7 @@ from .defaults import (
     DEFAULT_WRITE_TIMEOUT,
 )
 
+
 class TransportProtocol(Enum):
     """Supported transport protocols."""
 
@@ -49,14 +52,18 @@ class TransportProtocol(Enum):
     TCP = "tcp"
     TCP_SECURE = "tcps"
 
+
 class TransportError(Exception):
     """Base exception for transport-related errors."""
+
 
 class TransportConnectionError(TransportError):
     """Raised when transport connection fails."""
 
+
 class TransportTimeoutError(TransportError):
     """Raised when transport operation times out."""
+
 
 @dataclass(frozen=True, slots=True)
 class SecurityConfig:
@@ -119,6 +126,7 @@ class SecurityConfig:
             context.verify_mode = ssl.CERT_REQUIRED
         return context
 
+
 @dataclass(slots=True)
 class TransportConfig:
     """Configuration for transport connections."""
@@ -156,6 +164,7 @@ class TransportConfig:
         """Get maximum stream size for this transport configuration."""
         value = self.protocol_options.get("max_stream_size", DEFAULT_MAX_STREAM_SIZE)
         return value if isinstance(value, int) else DEFAULT_MAX_STREAM_SIZE
+
 
 class TransportInterface(ABC):
     """Abstract interface for all transport implementations.
@@ -335,6 +344,7 @@ class TransportInterface(ABC):
     ) -> None:
         """Async context manager exit."""
         await self.disconnect()
+
 
 class TransportListener(ABC):
     """Abstract interface for transport listeners (servers).

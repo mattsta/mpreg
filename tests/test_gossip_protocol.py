@@ -36,6 +36,7 @@ from mpreg.fabric.gossip import (
 from mpreg.fabric.gossip_transport import InProcessGossipTransport
 from mpreg.fabric.hub_registry import HubRegistry
 
+
 @pytest.fixture
 def sample_vector_clock():
     """Create a sample vector clock for testing."""
@@ -44,6 +45,7 @@ def sample_vector_clock():
     clock.increment("node_2")
     clock.increment("node_1")  # node_1 should be at 2, node_2 at 1
     return clock
+
 
 @pytest.fixture
 def sample_gossip_message():
@@ -62,6 +64,7 @@ def sample_gossip_message():
         max_hops=5,
     )
 
+
 @pytest.fixture
 def sample_gossip_filter():
     """Create a sample gossip filter for testing."""
@@ -69,12 +72,14 @@ def sample_gossip_filter():
         max_seen_messages=100, digest_cache_size=50, duplicate_threshold=3
     )
 
+
 @pytest.fixture
 def sample_gossip_scheduler():
     """Create a sample gossip scheduler for testing."""
     return GossipScheduler(
         gossip_interval=1.0, fanout=3, strategy=GossipStrategy.RANDOM
     )
+
 
 @pytest.fixture
 def sample_hub_registry():
@@ -85,6 +90,7 @@ def sample_hub_registry():
         heartbeat_interval=10.0,
         cleanup_interval=30.0,
     )
+
 
 @pytest.fixture
 def sample_gossip_protocol(sample_hub_registry, gossip_transport):
@@ -97,6 +103,7 @@ def sample_gossip_protocol(sample_hub_registry, gossip_transport):
         fanout=2,
         strategy=GossipStrategy.RANDOM,
     )
+
 
 class TestVectorClock:
     """Test suite for vector clock implementation."""
@@ -177,6 +184,7 @@ class TestVectorClock:
         modified_copy = clock_copy.increment("node_3")
         assert "node_3" not in sample_vector_clock.to_dict()
         assert "node_3" in modified_copy.to_dict()
+
 
 class TestGossipMessage:
     """Test suite for gossip message implementation."""
@@ -297,6 +305,7 @@ class TestGossipMessage:
         time.sleep(0.1)
         new_age = message.get_message_age()
         assert new_age > age
+
 
 class TestGossipFilter:
     """Test suite for gossip filter implementation."""
@@ -434,6 +443,7 @@ class TestGossipFilter:
 
         assert stats.duplicate_count == 1
         assert stats.seen_messages == 1
+
 
 class TestGossipScheduler:
     """Test suite for gossip scheduler implementation."""
@@ -596,6 +606,7 @@ class TestGossipScheduler:
         assert stats.strategy == GossipStrategy.RANDOM.value
         assert stats.gossip_cycles == 1
         assert stats.pending_messages == 2  # 5 - 3
+
 
 class TestGossipProtocol:
     """Test suite for gossip protocol implementation."""
@@ -819,6 +830,7 @@ class TestGossipProtocol:
         assert protocol_info.gossip_interval == 0.1
         assert protocol_info.fanout == 2
 
+
 class TestEndToEndGossipScenarios:
     """Test suite for end-to-end gossip scenarios."""
 
@@ -948,6 +960,7 @@ class TestEndToEndGossipScenarios:
         # Check that loop was detected
         assert protocols["node_a"].filter.duplicate_count > 0
 
+
 class TestGossipPerformanceAndScalability:
     """Test suite for gossip performance and scalability."""
 
@@ -1067,6 +1080,7 @@ class TestGossipPerformanceAndScalability:
 
         # Should select targets quickly even with many nodes
         assert selection_time < 1.0  # Should complete within 1 second
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -12,6 +12,7 @@ from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 async def test_federated_rpc_system():
     """Test the federated RPC system with 3 nodes."""
 
@@ -199,6 +200,7 @@ async def test_federated_rpc_system():
         pass
 
     print("✅ Test complete!")
+
 
 if __name__ == "__main__":
     asyncio.run(test_federated_rpc_system())

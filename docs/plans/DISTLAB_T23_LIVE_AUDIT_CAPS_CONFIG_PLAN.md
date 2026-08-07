@@ -1,13 +1,13 @@
 # DistLab T23 — Live Audit Caps E2E + Config-Check Parity (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete (gated 242)** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T22 complete (`8e78d90`) |
-| **Scope** | Close the loop: live HTTP + config-check advertise same audit honesty |
-| **Point budget** | **~70 pts** |
-| **Entry points only** | `uv run mpreg …` / `uv run mpreg-example …` / `uv run pytest …` |
+| Field                 | Value                                                                 |
+| --------------------- | --------------------------------------------------------------------- |
+| **Status**            | **Complete (gated 242)**                                              |
+| **Date**              | 2026-08-06                                                            |
+| **Authority**         | Continuation after T22 complete (`8e78d90`)                           |
+| **Scope**             | Close the loop: live HTTP + config-check advertise same audit honesty |
+| **Point budget**      | **~70 pts**                                                           |
+| **Entry points only** | `uv run mpreg …` / `uv run mpreg-example …` / `uv run pytest …`       |
 
 ## Global rules
 
@@ -19,13 +19,13 @@
 
 ## Stages
 
-| Stage | Exit |
-| --- | --- |
-| T23-S0 | Official plan |
-| T23-S1 | `config-check` `shared_audit.capabilities` parity with metrics |
+| Stage  | Exit                                                                      |
+| ------ | ------------------------------------------------------------------------- |
+| T23-S0 | Official plan                                                             |
+| T23-S1 | `config-check` `shared_audit.capabilities` parity with metrics            |
 | T23-S2 | Live `/metrics/shared-audit` + doctor e2e assert capabilities + evaluator |
-| T23-S3 | `claims.yaml` INV-SHARED-AUDIT-01 capability honesty note |
-| T23-S4 | Tests + full related gate + docs Phase 11 + commit |
+| T23-S3 | `claims.yaml` INV-SHARED-AUDIT-01 capability honesty note                 |
+| T23-S4 | Tests + full related gate + docs Phase 11 + commit                        |
 
 ## Non-claims
 

@@ -40,6 +40,7 @@ from mpreg.server_pkg.drain_admission import (
 )
 from tests.test_production_raft_integration import TestableStateMachine
 
+
 class _NullTransport:
     async def send_request_vote(self, target, request):  # type: ignore[no-untyped-def]
         return None
@@ -49,6 +50,7 @@ class _NullTransport:
 
     async def send_install_snapshot(self, target, request):  # type: ignore[no-untyped-def]
         return None
+
 
 def _make_node(node_id: str = "n1", members: set[str] | None = None) -> ProductionRaft:
     members = members or {node_id, "n2"}
@@ -66,7 +68,9 @@ def _make_node(node_id: str = "n1", members: set[str] | None = None) -> Producti
         ),
     )
 
+
 # --- COR-T13-01: AE/RV codec fail-closed ---
+
 
 def test_cor_t13_01_ae_missing_success_fail_closed() -> None:
     resp = deserialize_append_entries_response(
@@ -75,10 +79,12 @@ def test_cor_t13_01_ae_missing_success_fail_closed() -> None:
     assert resp.success is False
     assert resp.term == 3
 
+
 def test_cor_t13_01_rv_missing_vote_granted_fail_closed() -> None:
     resp = deserialize_request_vote_response({"term": 2, "voter_id": "v1"})
     assert resp.vote_granted is False
     assert resp.term == 2
+
 
 def test_cor_t13_01_explicit_true_still_works() -> None:
     ae = deserialize_append_entries_response(
@@ -90,7 +96,9 @@ def test_cor_t13_01_explicit_true_still_works() -> None:
     )
     assert rv.vote_granted is True
 
+
 # --- COR-T13-02: snapshot_chunks bound/TTL ---
+
 
 @pytest.mark.asyncio
 async def test_cor_t13_02_snapshot_chunk_max_ids_evicts() -> None:
@@ -122,6 +130,7 @@ async def test_cor_t13_02_snapshot_chunk_max_ids_evicts() -> None:
     assert len(node.snapshot_chunks) <= 2
     assert node.snapshot_chunk_aborts >= 1
 
+
 @pytest.mark.asyncio
 async def test_cor_t13_02_snapshot_chunk_max_bytes_refuses() -> None:
     node = _make_node("f1")
@@ -142,6 +151,7 @@ async def test_cor_t13_02_snapshot_chunk_max_bytes_refuses() -> None:
     resp = await node.handle_install_snapshot(req)
     assert resp.success is False
     assert len(node.snapshot_chunks) == 0
+
 
 @pytest.mark.asyncio
 async def test_cor_t13_02_snapshot_chunk_ttl_prune() -> None:
@@ -167,12 +177,15 @@ async def test_cor_t13_02_snapshot_chunk_ttl_prune() -> None:
     assert len(node.snapshot_chunks) == 0
     assert node.snapshot_chunk_aborts >= 1
 
+
 # --- COR-T13-04 / ERG-T13-03: client façade ---
+
 
 def test_cor_t13_04_cache_op_missing_success_fail_closed() -> None:
     r = CacheOpResult.from_raw({"entry": {"k": 1}, "value": 1})
     assert r.success is False
     assert r.error_code is None
+
 
 def test_erg_t13_03_cache_op_promotes_error_code() -> None:
     r = CacheOpResult.from_raw(
@@ -181,36 +194,45 @@ def test_erg_t13_03_cache_op_promotes_error_code() -> None:
     assert r.success is False
     assert r.error_code == 1012
 
+
 def test_erg_t13_03_queue_send_promotes_error_code() -> None:
     r = QueueSendResult.from_raw({"success": False, "error": "eo", "error_code": 1011})
     assert r.success is False
     assert r.error_code == 1011
 
+
 def test_cor_t13_04_queue_send_non_dict_fail_closed() -> None:
     r = QueueSendResult.from_raw("not-a-result")
     assert r.success is False
 
+
 # --- COR-T13-05: drain unknown fail-closed ---
+
 
 def test_cor_t13_05_drain_unknown_role_refused() -> None:
     assert should_refuse_for_drain(draining=True, role="brand-new-data-plane") is True
     assert should_refuse_for_drain(draining=True, role=None) is True
     assert should_refuse_for_drain(draining=True, role="") is True
 
+
 def test_cor_t13_05_drain_control_roles_admitted() -> None:
     for role in ("server", "gossip", "STATUS", "hello", "consensus-vote"):
         assert should_refuse_for_drain(draining=True, role=role) is False, role
         assert is_control_plane_role(role) is True
 
+
 def test_cor_t13_05_drain_data_plane_still_refused() -> None:
     assert should_refuse_for_drain(draining=True, role="rpc") is True
     assert should_refuse_for_drain(draining=True, role="queue") is True
+
 
 def test_cor_t13_05_control_plane_roles_nonempty() -> None:
     assert "server" in CONTROL_PLANE_ROLES
     assert "fabric-control" in CONTROL_PLANE_ROLES
 
+
 # --- COR-T13-03 / PERF-T13-03: STATUS tracker in-place ---
+
 
 def test_cor_t13_03_mark_seen_in_place() -> None:
     tr = FederatedAnnouncementTracker()
@@ -225,7 +247,9 @@ def test_cor_t13_03_mark_seen_in_place() -> None:
     assert id(tr.seen_announcements) == before
     assert isinstance(n, int)
 
+
 # --- COR-T13-06: peer cap helpers ---
+
 
 def test_cor_t13_06_peer_cap_helpers() -> None:
     from mpreg.core.config import MPREGSettings
@@ -260,7 +284,9 @@ def test_cor_t13_06_peer_cap_helpers() -> None:
     s._note_peer_accept_reject(1)
     assert s._metrics_tracker.peer_accept_rejects == 1
 
+
 # --- OBS-T13 ---
+
 
 def test_obs_t13_01_drain_clears_ready_gauge() -> None:
     t = ServerMetricsTracker()
@@ -269,6 +295,7 @@ def test_obs_t13_01_drain_clears_ready_gauge() -> None:
     t.set_draining(True)
     assert t.node_draining == 1
     assert t.node_ready == 0
+
 
 def test_obs_t13_02_03_prom_series() -> None:
     t = ServerMetricsTracker()
@@ -283,7 +310,9 @@ def test_obs_t13_02_03_prom_series() -> None:
     assert t.raft_snapshot_chunk_aborts == 3
     assert t.raft_snapshot_chunk_bytes == 99
 
+
 # --- PERF-T13-05: priority O(1) path ---
+
 
 @pytest.mark.asyncio
 async def test_perf_t13_05_priority_uses_id_map() -> None:
@@ -329,7 +358,9 @@ async def test_perf_t13_05_priority_uses_id_map() -> None:
     assert message.priority == 10
     assert q._pending_count() == 1
 
+
 # --- PERF-T13-02: log append in place ---
+
 
 @pytest.mark.asyncio
 async def test_perf_t13_02_log_append_reuses_list_object() -> None:
@@ -354,7 +385,9 @@ async def test_perf_t13_02_log_append_reuses_list_object() -> None:
     assert node.persistent_state.log_entries is log_before
     assert len(log_before) == 1
 
+
 # --- ERG-T13-01: config-check tiers ---
+
 
 def test_erg_t13_01_config_check_lab_ok_exit_0() -> None:
     runner = CliRunner()
@@ -363,6 +396,7 @@ def test_erg_t13_01_config_check_lab_ok_exit_0() -> None:
     )
     assert result.exit_code == 0, result.output
     assert "lab_ok" in result.output or "ok" in result.output
+
 
 def test_erg_t13_01_config_check_strict_exit_2_on_warnings() -> None:
     runner = CliRunner()
@@ -373,13 +407,16 @@ def test_erg_t13_01_config_check_strict_exit_2_on_warnings() -> None:
     # dev typically has warnings → 2 under strict; if none, 0 is also ok
     assert result.exit_code in (0, 2)
 
+
 def test_erg_t13_02_cluster_profile_mon_loopback() -> None:
     from mpreg.core.config import MPREGSettings
 
     s = MPREGSettings.from_path("mpreg/profiles/cluster.toml")
     assert s.monitoring_host in ("127.0.0.1", "localhost")
 
+
 # --- OBS raft hook callable ---
+
 
 def test_obs_t13_02_raft_chunk_abort_hook() -> None:
     node = _make_node("f1")

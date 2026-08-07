@@ -34,12 +34,14 @@ from .cache_models import (
     ReplicationStrategy,
 )
 
+
 class CacheMessageRole(Enum):
     """Message roles for cache protocol."""
 
     CACHE_REQUEST = "cache-request"
     CACHE_RESPONSE = "cache-response"
     CACHE_ANALYTICS = "cache-analytics"
+
 
 class CacheOperation(Enum):
     """Cache operations supported by the protocol."""
@@ -60,6 +62,7 @@ class CacheOperation(Enum):
     # Namespace operations
     NAMESPACE = "namespace"
 
+
 class CacheResponseStatus(Enum):
     """Status codes for cache responses."""
 
@@ -69,6 +72,7 @@ class CacheResponseStatus(Enum):
     PARTIAL = "partial"
     TIMEOUT = "timeout"
     CONFLICT = "conflict"
+
 
 @dataclass(frozen=True, slots=True)
 class CacheKeyMessage:
@@ -117,6 +121,7 @@ class CacheKeyMessage:
             tags=frozenset(self.tags),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class AtomicOperationMessage:
     """Serializable atomic operation for protocol messages."""
@@ -146,6 +151,7 @@ class AtomicOperationMessage:
             initial_value=request.data,
         )
 
+
 @dataclass(frozen=True, slots=True)
 class DataStructureOperationMessage:
     """Serializable data structure operation for protocol messages."""
@@ -172,6 +178,7 @@ class DataStructureOperationMessage:
             values=[operation.member] if operation.member is not None else [],
             index=operation.index,
         )
+
 
 @dataclass(frozen=True, slots=True)
 class NamespaceOperationMessage:
@@ -202,6 +209,7 @@ class NamespaceOperationMessage:
             max_entries=operation.limit,
             include_detailed_breakdown=operation.include_metadata,
         )
+
 
 @dataclass(frozen=True, slots=True)
 class CacheOptionsMessage:
@@ -239,6 +247,7 @@ class CacheOptionsMessage:
             prefer_local=self.prefer_local,
             max_staleness_seconds=self.max_staleness_seconds,
         )
+
 
 @dataclass(frozen=True, slots=True)
 class CacheMetadataMessage:
@@ -323,6 +332,7 @@ class CacheMetadataMessage:
             size_estimate_bytes=self.size_estimate_bytes,
         )
 
+
 @dataclass(frozen=True, slots=True)
 class CacheEntryMessage:
     """Serializable cache entry for protocol messages."""
@@ -397,6 +407,7 @@ class CacheEntryMessage:
             checksum=self.checksum,
         )
 
+
 @dataclass(frozen=True, slots=True)
 class CachePerformanceMessage:
     """Serializable cache performance metrics for protocol messages."""
@@ -419,6 +430,7 @@ class CachePerformanceMessage:
             replication_latency_ms=perf.replication_latency_ms,
             conflict_resolution_time_ms=perf.conflict_resolution_time_ms,
         )
+
 
 @dataclass(frozen=True, slots=True)
 class CacheRequestMessage:
@@ -562,6 +574,7 @@ class CacheRequestMessage:
             invalidation_pattern=data.get("invalidation_pattern", ""),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class CacheResponseMessage:
     """Cache response message following MPREG protocol specification."""
@@ -681,6 +694,7 @@ class CacheResponseMessage:
             operation_id=data.get("operation_id", str(uuid.uuid4())),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class CacheAnalyticsMessage:
     """Cache analytics message for performance monitoring."""
@@ -723,6 +737,7 @@ class CacheAnalyticsMessage:
                 "cost_savings": self.cost_savings,
             },
         }
+
 
 class CacheProtocolHandler:
     """Handler for cache protocol messages."""

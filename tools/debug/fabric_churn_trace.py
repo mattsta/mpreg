@@ -15,6 +15,7 @@ from mpreg.server import MPREGServer
 type Port = int
 type Seconds = float
 
+
 @dataclass(frozen=True, slots=True)
 class ChurnSnapshot:
     elapsed_seconds: Seconds
@@ -24,6 +25,7 @@ class ChurnSnapshot:
     departed_in_directory: tuple[str, ...]
     peer_urls_sample: tuple[str, ...]
 
+
 @dataclass(frozen=True, slots=True)
 class ChurnResult:
     success: bool
@@ -31,6 +33,7 @@ class ChurnResult:
     last_peer_count: int
     departed_urls: tuple[str, ...]
     snapshots: tuple[ChurnSnapshot, ...]
+
 
 async def _start_cluster(
     *,
@@ -69,6 +72,7 @@ async def _start_cluster(
     await asyncio.sleep(1.0)
     return created
 
+
 def _directory_urls(server: MPREGServer) -> set[str]:
     if server._peer_directory is None:
         return set()
@@ -77,6 +81,7 @@ def _directory_urls(server: MPREGServer) -> set[str]:
         for node in server._peer_directory.nodes()
         if node.node_id != server.cluster.local_url
     }
+
 
 async def _run_trace(
     *,
@@ -202,6 +207,7 @@ async def _run_trace(
         for port in ports:
             allocator.release_port(port)
 
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Trace peer-directory behavior during churn recovery."
@@ -218,6 +224,7 @@ def _parse_args() -> argparse.Namespace:
     )
     return parser.parse_args()
 
+
 def main() -> int:
     args = _parse_args()
     output_json = (
@@ -232,6 +239,7 @@ def main() -> int:
             output_json=output_json,
         )
     )
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

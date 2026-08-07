@@ -12,6 +12,7 @@ from mpreg.fabric.queue_messages import (
     queue_message_from_dict,
 )
 
+
 def test_queue_message_options_round_trip() -> None:
     options = QueueMessageOptions(
         priority=2,
@@ -28,6 +29,7 @@ def test_queue_message_options_round_trip() -> None:
 
     assert restored == options
     assert restored.headers["trace_id"] == "abc"
+
 
 def test_queue_federation_request_round_trip() -> None:
     now = time.time()
@@ -65,6 +67,7 @@ def test_queue_federation_request_round_trip() -> None:
     assert restored.options.headers["x"] == "y"
     assert restored.created_at == now
 
+
 def test_queue_federation_ack_round_trip() -> None:
     now = time.time()
     ack = QueueFederationAck(
@@ -87,6 +90,7 @@ def test_queue_federation_ack_round_trip() -> None:
     assert restored.success is False
     assert restored.error_message == "boom"
     assert restored.ack_timestamp == now
+
 
 def test_queue_federation_subscription_round_trip() -> None:
     now = time.time()
@@ -114,6 +118,7 @@ def test_queue_federation_subscription_round_trip() -> None:
     assert restored.source_cluster == "cluster-a"
     assert restored.target_cluster == "cluster-b"
     assert restored.created_at == now
+
 
 def test_queue_message_from_dict() -> None:
     request = QueueFederationRequest(

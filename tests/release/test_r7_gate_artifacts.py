@@ -16,15 +16,18 @@ REQUIRED_DOCS = [
     "docs/RELEASE_0_3_1_PRODUCTION_HARDENING_ARCHITECTURE.md",
 ]
 
+
 def test_r7_required_docs_exist() -> None:
     for rel in REQUIRED_DOCS:
         assert (ROOT / rel).is_file(), rel
+
 
 def test_r7_claims_release_section() -> None:
     text = (ROOT / "tests/invariants/claims.yaml").read_text()
     assert "release_0_3:" in text
     assert "REL-0.3.0-CI-MATRIX" in text
     assert "0.3.0 Production Snapshot CI green" in text
+
 
 def test_r7_architecture_defines_done() -> None:
     text = (ROOT / "docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md").read_text()

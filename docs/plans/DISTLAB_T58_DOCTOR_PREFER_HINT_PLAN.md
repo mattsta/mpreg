@@ -1,13 +1,13 @@
 # DistLab T58 — Doctor prefers server residual_ops_hint (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T51/T53 |
-| **Scope** | `strong_residual_ops_hint` uses metrics-provided string when non-empty |
-| **Point budget** | **~8 pts** |
-| **Entry points only** | `uv run pytest …` |
+| Field                 | Value                                                                  |
+| --------------------- | ---------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                           |
+| **Date**              | 2026-08-06                                                             |
+| **Authority**         | Continuation after T51/T53                                             |
+| **Scope**             | `strong_residual_ops_hint` uses metrics-provided string when non-empty |
+| **Point budget**      | **~8 pts**                                                             |
+| **Entry points only** | `uv run pytest …`                                                      |
 
 ## Goals
 

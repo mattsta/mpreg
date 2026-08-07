@@ -39,6 +39,7 @@ type ThroughputRPS = float
 type ResourceUsagePercent = float
 type PerformanceScore = float  # 0.0 to 1.0
 
+
 class PerformanceTestType(Enum):
     """Types of performance tests."""
 
@@ -47,6 +48,7 @@ class PerformanceTestType(Enum):
     CONCURRENCY = "concurrency"
     SCALABILITY = "scalability"
     RESOURCE_USAGE = "resource_usage"
+
 
 @dataclass(frozen=True, slots=True)
 class PerformanceBaseline:
@@ -60,6 +62,7 @@ class PerformanceBaseline:
     max_acceptable_latency_ms: LatencyMs
     min_acceptable_throughput_rps: ThroughputRPS
     max_acceptable_resource_usage_percent: ResourceUsagePercent
+
 
 @dataclass(frozen=True, slots=True)
 class PerformanceMeasurement:
@@ -106,6 +109,7 @@ class PerformanceMeasurement:
         # Combined score
         return (latency_score + throughput_score + resource_score) / 3.0
 
+
 # Performance baselines for MPREG systems
 MPREG_PERFORMANCE_BASELINES = {
     "rpc_simple": PerformanceBaseline(
@@ -149,6 +153,7 @@ MPREG_PERFORMANCE_BASELINES = {
         max_acceptable_resource_usage_percent=70.0,
     ),
 }
+
 
 class TestPerformanceBaselines:
     """Performance baseline testing for MPREG systems."""
@@ -563,6 +568,7 @@ class TestPerformanceBaselines:
         test_measurement_properties()
         print("✅ Performance baseline properties verified")
 
+
 class TestPerformanceRegression:
     """Performance regression detection tests."""
 
@@ -629,6 +635,7 @@ class TestPerformanceRegression:
 
         test_trend_detection_invariants()
         print("✅ Performance regression detection properties verified")
+
 
 # Factory function for performance testing
 def create_performance_test_environment(

@@ -17,6 +17,7 @@ from tests.test_production_raft_integration import (
     TestProductionRaftIntegration,
 )
 
+
 async def run_single_test(test_id: str, delay: float = 0.0):
     """Run a single RAFT test instance."""
     print(f"[{test_id}] Starting test (delay={delay:.2f}s)")
@@ -108,6 +109,7 @@ async def run_single_test(test_id: str, delay: float = 0.0):
             for node in nodes.values():
                 await node.stop()
 
+
 async def debug_concurrent_conditions():
     """Simulate concurrent test conditions to identify race conditions."""
 
@@ -185,6 +187,7 @@ async def debug_concurrent_conditions():
         print("❌ Race condition detected under high concurrency!")
     else:
         print("✅ No race conditions detected")
+
 
 if __name__ == "__main__":
     asyncio.run(debug_concurrent_conditions())

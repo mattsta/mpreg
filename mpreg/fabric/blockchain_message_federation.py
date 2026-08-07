@@ -48,6 +48,7 @@ from .federation_types import (
 )
 from .hubs import FederationHub, HubTier
 
+
 class HubMessageQueue:
     """Hub-specific blockchain message queue with federation integration."""
 
@@ -278,6 +279,7 @@ class HubMessageQueue:
             total_fees_collected=sum(m.total_fees_collected for m in recent),
         )
 
+
 class FederationRouteManager:
     """Manages routing policies across the federation using DAO governance."""
 
@@ -426,6 +428,7 @@ class FederationRouteManager:
         logger.info(
             f"Synced {len(self.global_governance.active_policies)} policies to hub {hub_queue.hub_id}"
         )
+
 
 class CrossRegionCoordinator:
     """Coordinates message delivery across geographic regions."""
@@ -592,6 +595,7 @@ class CrossRegionCoordinator:
                 "average_hops": metrics.average_hops,
             }
         return performance
+
 
 @dataclass(slots=True)
 class BlockchainFederationBridge:

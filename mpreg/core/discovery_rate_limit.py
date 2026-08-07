@@ -11,11 +11,13 @@ from mpreg.datastructures.type_aliases import (
     ViewerId,
 )
 
+
 @dataclass(frozen=True, slots=True)
 class DiscoveryRateLimitKey:
     viewer_id: ViewerId
     command: str
     namespace: NamespaceName | None = None
+
 
 @dataclass(frozen=True, slots=True)
 class DiscoveryRateLimitConfig:
@@ -23,6 +25,7 @@ class DiscoveryRateLimitConfig:
     max_requests: int
     window_seconds: DurationSeconds
     max_keys: int = 1000
+
 
 @dataclass(slots=True)
 class DiscoveryRateLimiter:

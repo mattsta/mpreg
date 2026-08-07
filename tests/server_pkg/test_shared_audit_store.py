@@ -17,6 +17,7 @@ from mpreg.server_pkg.shared_audit import (
 )
 from mpreg.server_pkg.shared_audit.models import legacy_synthetic_id
 
+
 def _rec(
     entry_id: str,
     *,
@@ -41,12 +42,14 @@ def _rec(
         gossip_eligible=gossip,
     )
 
+
 def test_merge_identical_no_conflict() -> None:
     a = _rec("e1")
     b = SharedAuditRecord.from_dict(a.to_dict())
     winner, conflict = merge_records(a, b)
     assert conflict is False
     assert winner.entry_id == "e1"
+
 
 def test_merge_conflict_bytewise_min() -> None:
     a = _rec("e1", detail={"a": 1})
@@ -57,6 +60,7 @@ def test_merge_conflict_bytewise_min() -> None:
     assert conflict is True
     expected = a if ca < cb else b
     assert winner.detail == expected.detail
+
 
 def test_merge_commutative_and_idempotent() -> None:
     base = {
@@ -90,9 +94,11 @@ def test_merge_commutative_and_idempotent() -> None:
     assert c is False
     assert again.detail == w.detail
 
+
 def test_cross_identity_merge_raises() -> None:
     with pytest.raises(ValueError, match="distinct identities"):
         merge_records(_rec("a"), _rec("b"))
+
 
 def test_insert_and_snapshot_order() -> None:
     store = SharedAuditStore(max_entries=100, cluster_id="c1", local_node="n1")
@@ -103,11 +109,13 @@ def test_insert_and_snapshot_order() -> None:
     assert [r.entry_id for r in snap] == ["e1", "e2", "e3"]
     assert store.size() == 3
 
+
 def test_reject_cross_cluster() -> None:
     store = SharedAuditStore(cluster_id="c1")
     assert store.insert(_rec("e1", cluster="other")) is None
     assert store.rejected_cross_cluster == 1
     assert store.size() == 0
+
 
 def test_watermark_no_resurrection() -> None:
     store = SharedAuditStore(max_entries=100, cluster_id="c1")
@@ -120,6 +128,7 @@ def test_watermark_no_resurrection() -> None:
     assert store.insert(_rec("e1", ts=1.0, origin="n1")) is None
     assert store.rejected_below_watermark >= 1
     assert store.get("c1", "e1") is None
+
 
 def test_compaction_advances_watermark() -> None:
     store = SharedAuditStore(max_entries=3, cluster_id="c1")
@@ -134,6 +143,7 @@ def test_compaction_advances_watermark() -> None:
     # Dropped ids stay dead
     assert store.insert(_rec("e0", ts=0.0, origin="n1")) is None
 
+
 def test_records_for_pull_respects_requester_wm() -> None:
     store = SharedAuditStore(cluster_id="c1")
     store.insert(_rec("e1", ts=1.0, origin="n1"))
@@ -147,6 +157,7 @@ def test_records_for_pull_respects_requester_wm() -> None:
     assert "e1" not in ids
     assert "e2" in ids
     assert "e3" not in ids  # not gossip_eligible
+
 
 def test_legacy_jsonl_non_gossip(tmp_path: Path) -> None:
     path = tmp_path / "audit.jsonl"
@@ -180,6 +191,7 @@ def test_legacy_jsonl_non_gossip(tmp_path: Path) -> None:
     # Pull excludes legacy
     assert store.records_for_pull(requester_watermarks={}, limit=10) == []
 
+
 def test_jsonl_roundtrip_schema_v1(tmp_path: Path) -> None:
     path = tmp_path / "shared.jsonl"
     store = SharedAuditStore(cluster_id="c1", local_node="n1", persist_path=str(path))
@@ -200,6 +212,7 @@ def test_jsonl_roundtrip_schema_v1(tmp_path: Path) -> None:
     assert got is not None
     assert got.event == "detach"
     assert got.gossip_eligible is True
+
 
 def test_mint_ulid_unique() -> None:
     from mpreg.server_pkg.shared_audit import mint_entry_id

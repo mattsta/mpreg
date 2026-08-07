@@ -1,13 +1,13 @@
 # DistLab T35 — Design Doc CFT Residual Honesty (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T34 (`5a375e9`) |
-| **Scope** | Correct overclaimed residual-free invariant in design doc for CFT ABORT limit |
-| **Point budget** | **~25 pts** |
-| **Entry points only** | `uv run pytest …` |
+| Field                 | Value                                                                         |
+| --------------------- | ----------------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                                  |
+| **Date**              | 2026-08-06                                                                    |
+| **Authority**         | Continuation after T34 (`5a375e9`)                                            |
+| **Scope**             | Correct overclaimed residual-free invariant in design doc for CFT ABORT limit |
+| **Point budget**      | **~25 pts**                                                                   |
+| **Entry points only** | `uv run pytest …`                                                             |
 
 ## Problem
 

@@ -12,6 +12,7 @@ from mpreg.fabric.raft_transport import (
     FabricRaftTransportHooks,
 )
 
+
 class StubRaftNode:
     def __init__(self, node_id: str) -> None:
         self.node_id = node_id
@@ -43,6 +44,7 @@ class StubRaftNode:
             success=True,
             follower_id=self.node_id,
         )
+
 
 class LoopbackRaftNetwork:
     def __init__(self) -> None:
@@ -89,6 +91,7 @@ class LoopbackRaftNetwork:
     def resolve_cluster(self, node_id: str) -> str | None:
         return self.node_clusters.get(node_id)
 
+
 @pytest.mark.asyncio
 async def test_fabric_raft_transport_direct_request_vote() -> None:
     network = LoopbackRaftNetwork()
@@ -132,6 +135,7 @@ async def test_fabric_raft_transport_direct_request_vote() -> None:
     assert response is not None
     assert response.vote_granted is True
     assert raft_b.vote_requests
+
 
 @pytest.mark.asyncio
 async def test_fabric_raft_transport_forwards_to_target() -> None:

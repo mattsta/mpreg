@@ -18,6 +18,7 @@ from mpreg.server import MPREGServer
 logging.basicConfig(level=logging.DEBUG)
 logging.getLogger("mpreg.fabric").setLevel(logging.DEBUG)
 
+
 async def test_simple_forward():
     """Test simple federation message forwarding."""
     print("🧪 Testing simple federation message forwarding...")
@@ -171,6 +172,7 @@ async def test_simple_forward():
             await bridge2.stop()
         except AttributeError, asyncio.CancelledError, ConnectionError:
             pass  # Bridge cleanup errors during teardown are expected
+
 
 if __name__ == "__main__":
     asyncio.run(test_simple_forward())

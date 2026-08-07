@@ -1,13 +1,13 @@
 # DistLab T11+ — Ops, Observability, Perf, Live, Capability, Proof (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete (T11–T16 gated)** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T1–T10 residual honesty + DistLab |
-| **Scope** | STRONG cache put + shared audit + DistLab — **not** whole-platform rewrite |
-| **Point budget** | 6 tracks × ~45–70 = **~340 pts** |
-| **Entry points only** | `uv run mpreg …` / `uv run pytest …` — never `python -m` |
+| Field                 | Value                                                                      |
+| --------------------- | -------------------------------------------------------------------------- |
+| **Status**            | **Complete (T11–T16 gated)**                                               |
+| **Date**              | 2026-08-06                                                                 |
+| **Authority**         | Continuation after T1–T10 residual honesty + DistLab                       |
+| **Scope**             | STRONG cache put + shared audit + DistLab — **not** whole-platform rewrite |
+| **Point budget**      | 6 tracks × ~45–70 = **~340 pts**                                           |
+| **Entry points only** | `uv run mpreg …` / `uv run pytest …` — never `python -m`                   |
 
 ## Global rules
 
@@ -31,21 +31,21 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
 
 ## Stages
 
-| Stage | Exit |
-| --- | --- |
-| T11-S0 | Strong metrics on GCM |
+| Stage  | Exit                                 |
+| ------ | ------------------------------------ |
+| T11-S0 | Strong metrics on GCM                |
 | T11-S1 | `/metrics/strong` + prometheus lines |
 | T11-S2 | `/metrics/shared-audit` + prometheus |
-| T11-S3 | `/mgmt/v1/strong` health snapshot |
-| T11-S4 | Unit + integration tests |
-| T11-S5 | Docs + gate |
+| T11-S3 | `/mgmt/v1/strong` health snapshot    |
+| T11-S4 | Unit + integration tests             |
+| T11-S5 | Docs + gate                          |
 
 ## Points (summary)
 
-1–12. `GlobalCacheManager.strong_metrics_snapshot()` — puts_ok/fail, refused_disabled, pending, enabled, replica settings, latency samples.
+1–12. `GlobalCacheManager.strong_metrics_snapshot()` — puts*ok/fail, refused_disabled, pending, enabled, replica settings, latency samples.
 13–20. `build_strong_metrics(server)` + `build_shared_audit_metrics(server)` in monitoring_metrics.
 21–28. Routes `/metrics/strong`, `/metrics/shared-audit`, `/mgmt/v1/strong`.
-29–36. Prometheus: `mpreg_strong_*`, `mpreg_shared_audit_*`.
+29–36. Prometheus: `mpreg_strong*_`, `mpreg*shared_audit*_`.
 37–45. Wire providers from MPREGServer; openapi surface.
 46–55. Tests scrape JSON + prom text.
 56–60. OBSERVABILITY doc + claims support_only or proof list.
@@ -56,14 +56,14 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
 
 ## Stages
 
-| Stage | Exit |
-| --- | --- |
-| T12-S0 | `mpreg monitor strong` |
-| T12-S1 | `mpreg monitor audit` |
+| Stage  | Exit                            |
+| ------ | ------------------------------- |
+| T12-S0 | `mpreg monitor strong`          |
+| T12-S1 | `mpreg monitor audit`           |
 | T12-S2 | `mpreg doctor --strong/--audit` |
-| T12-S3 | Runbook section |
-| T12-S4 | CLI tests |
-| T12-S5 | Gate |
+| T12-S3 | Runbook section                 |
+| T12-S4 | CLI tests                       |
+| T12-S5 | Gate                            |
 
 ## Points
 
@@ -79,14 +79,14 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
 
 ## Stages
 
-| Stage | Exit |
-| --- | --- |
-| T13-S0 | 4-node strong live |
-| T13-S1 | Mid-put peer kill residual |
-| T13-S2 | Audit late joiner live |
+| Stage  | Exit                           |
+| ------ | ------------------------------ |
+| T13-S0 | 4-node strong live             |
+| T13-S1 | Mid-put peer kill residual     |
+| T13-S2 | Audit late joiner live         |
 | T13-S3 | drop_abort in-process scenario |
-| T13-S4 | Registry + tests |
-| T13-S5 | Gate |
+| T13-S4 | Registry + tests               |
+| T13-S5 | Gate                           |
 
 ## Points
 
@@ -100,14 +100,14 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
 
 ## Stages
 
-| Stage | Exit |
-| --- | --- |
-| T14-S0 | DistLab timing helper |
-| T14-S1 | In-process soak SLI bounds |
+| Stage  | Exit                              |
+| ------ | --------------------------------- |
+| T14-S0 | DistLab timing helper             |
+| T14-S1 | In-process soak SLI bounds        |
 | T14-S2 | Latency samples in strong metrics |
-| T14-S3 | Tests |
-| T14-S4 | Docs honesty (not WAN SLA) |
-| T14-S5 | Gate |
+| T14-S3 | Tests                             |
+| T14-S4 | Docs honesty (not WAN SLA)        |
+| T14-S5 | Gate                              |
 
 ## Points
 
@@ -122,14 +122,14 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
 
 ## Stages
 
-| Stage | Exit |
-| --- | --- |
-| T15-S0 | Audit Hypothesis |
-| T15-S1 | Strong commit-drop Hypothesis |
+| Stage  | Exit                                |
+| ------ | ----------------------------------- |
+| T15-S0 | Audit Hypothesis                    |
+| T15-S1 | Strong commit-drop Hypothesis       |
 | T15-S2 | Error-code taxonomy in history meta |
-| T15-S3 | Useful GCM strong status API |
-| T15-S4 | Tests |
-| T15-S5 | Gate |
+| T15-S3 | Useful GCM strong status API        |
+| T15-S4 | Tests                               |
+| T15-S5 | Gate                                |
 
 ## Points
 
@@ -144,14 +144,14 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
 
 ## Stages
 
-| Stage | Exit |
-| --- | --- |
-| T16-S0 | Proof ledger markdown |
-| T16-S1 | claims.yaml updates |
+| Stage  | Exit                    |
+| ------ | ----------------------- |
+| T16-S0 | Proof ledger markdown   |
+| T16-S1 | claims.yaml updates     |
 | T16-S2 | Master plan cross-links |
-| T16-S3 | Full related gate |
-| T16-S4 | Commit |
-| T16-S5 | Clean tree |
+| T16-S3 | Full related gate       |
+| T16-S4 | Commit                  |
+| T16-S5 | Clean tree              |
 
 ## Points
 
@@ -163,14 +163,14 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
 
 ## Status dashboard
 
-| Track | Pts | Status |
-| --- | --- | --- |
-| T11 Observability | 60 | complete |
-| T12 Operator CLI | 55 | complete |
-| T13 Live expand | 55 | complete |
-| T14 Perf SLIs | 50 | complete |
-| T15 Capability | 55 | complete |
-| T16 Proof/gate | 50 | complete |
+| Track             | Pts | Status   |
+| ----------------- | --- | -------- |
+| T11 Observability | 60  | complete |
+| T12 Operator CLI  | 55  | complete |
+| T13 Live expand   | 55  | complete |
+| T14 Perf SLIs     | 50  | complete |
+| T15 Capability    | 55  | complete |
+| T16 Proof/gate    | 50  | complete |
 
 ## Implementation order
 

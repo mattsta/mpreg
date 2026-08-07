@@ -41,6 +41,7 @@ from .client_api import MPREGClientAPI
 
 pubsub_log = logger
 
+
 @dataclass(slots=True)
 class SubscriptionCallback:
     """Callback function for topic subscriptions."""
@@ -49,6 +50,7 @@ class SubscriptionCallback:
     patterns: list[str]
     subscription_id: str
     created_at: float
+
 
 @dataclass(slots=True)
 class MPREGPubSubClient:
@@ -464,6 +466,7 @@ class MPREGPubSubClient:
             ),
         )
 
+
 @dataclass(slots=True)
 class MPREGPubSubExtendedClient(MPREGClientAPI):
     """RPC + pub/sub client (legacy combined type).
@@ -532,6 +535,7 @@ class MPREGPubSubExtendedClient(MPREGClientAPI):
         """Publish a message to a topic and wait for a reply."""
         return await self.pubsub.publish_with_reply(topic, payload, headers, timeout)
 
+
 # Utility functions for common pub/sub patterns
 async def create_topic_logger(
     client: MPREGPubSubExtendedClient,
@@ -546,6 +550,7 @@ async def create_topic_logger(
         )
 
     return await client.subscribe([log_pattern], log_callback)
+
 
 async def create_topic_metrics_collector(
     client: MPREGPubSubExtendedClient, metrics_pattern: str = "metrics.#"
@@ -573,6 +578,7 @@ async def create_topic_metrics_collector(
     metrics.subscription_id = actual_subscription_id
 
     return metrics
+
 
 async def create_topic_forwarder(
     source_client: MPREGPubSubExtendedClient,
@@ -617,6 +623,7 @@ async def create_topic_forwarder(
 
     return await source_client.subscribe([source_pattern], forward_callback)
 
+
 # Example usage patterns
 async def example_basic_pubsub():
     """Example of basic pub/sub operations."""
@@ -642,6 +649,7 @@ async def example_basic_pubsub():
 
         # Unsubscribe
         await client.unsubscribe(subscription_id)
+
 
 async def example_advanced_topic_routing():
     """Example of advanced topic routing patterns."""

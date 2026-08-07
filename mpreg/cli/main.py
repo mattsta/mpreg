@@ -58,6 +58,7 @@ from .output import add_format_option, emit
 
 console = Console()
 
+
 def _strong_abort_fail_peers(body: dict[str, Any]) -> list[str]:
     """Extract last_abort_fail_peers from metrics body or nested coordinator."""
     peers = body.get("last_abort_fail_peers")
@@ -65,12 +66,14 @@ def _strong_abort_fail_peers(body: dict[str, Any]) -> list[str]:
         peers = (body.get("coordinator") or {}).get("last_abort_fail_peers")
     return list(peers or [])
 
+
 def _strong_abort_fail_op_id(body: dict[str, Any]) -> str:
     """Extract last_abort_fail_op_id from metrics body or nested coordinator."""
     oid = body.get("last_abort_fail_op_id")
     if oid is None or oid == "":
         oid = (body.get("coordinator") or {}).get("last_abort_fail_op_id")
     return str(oid or "")
+
 
 def _strong_abort_fail_peer_count(body: dict[str, Any]) -> int:
     """CFT residual candidate peer count (mirrors abort_fail_peer_count / prom).
@@ -93,9 +96,10 @@ def _strong_abort_fail_peer_count(body: dict[str, Any]) -> int:
             n = int(raw)
             # Prefer max of reported vs computed so stale 0 never hides peers
             return max(n, computed) if peers else max(n, 0)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             pass
     return computed
+
 
 def strong_residual_ops_hint(body: dict[str, Any]) -> str:
     """Ops remediation hint when CFT residual candidates are present.
@@ -119,12 +123,15 @@ def strong_residual_ops_hint(body: dict[str, Any]) -> str:
     built = format_residual_ops_hint(peers, oid, recent_abort_fails=recent)
     if isinstance(existing, str) and existing.strip():
         # Prefer server string unless it still has placeholders and we enriched
-        if ("<ns>" in existing or "<id>" in existing) and built and (
-            "<ns>" not in built
+        if (
+            ("<ns>" in existing or "<id>" in existing)
+            and built
+            and ("<ns>" not in built)
         ):
             return built
         return existing.strip()
     return built
+
 
 def strong_doctor_json_residual_fields(body: dict[str, Any]) -> dict[str, Any]:
     """Machine-readable residual fields for doctor JSON strong check rows.
@@ -143,6 +150,7 @@ def strong_doctor_json_residual_fields(body: dict[str, Any]) -> dict[str, Any]:
         "last_abort_fail_op_id": _strong_abort_fail_op_id(body),
     }
 
+
 def evaluate_strong_doctor_payload(
     payload: dict[str, Any],
 ) -> tuple[bool, str]:
@@ -151,11 +159,7 @@ def evaluate_strong_doctor_payload(
     Returns ``(ok, detail)``. Fails closed if capabilities claim quorum get/delete
     (v1 put-only MVP honesty). Does not claim WAN SLA.
     """
-    body = (
-        payload.get("strong")
-        if isinstance(payload.get("strong"), dict)
-        else payload
-    )
+    body = payload.get("strong") if isinstance(payload.get("strong"), dict) else payload
     if not isinstance(body, dict):
         return False, "strong body missing"
     health = str(body.get("health", "")).lower()
@@ -176,22 +180,28 @@ def evaluate_strong_doctor_payload(
     if caps and caps.get("abort_best_effort") is False:
         return (
             False,
-            "strong dishonest capabilities "
-            "(abort_best_effort=false; lost ABORT is a CFT limit)",
+            (
+                "strong dishonest capabilities "
+                "(abort_best_effort=false; lost ABORT is a CFT limit)"
+            ),
         )
     # T29: pending TTL must never be advertised as residual L1 GC
     if caps and caps.get("pending_ttl_clears_residual_l1") is True:
         return (
             False,
-            "strong dishonest capabilities "
-            "(pending_ttl_clears_residual_l1=true; purge is not residual GC)",
+            (
+                "strong dishonest capabilities "
+                "(pending_ttl_clears_residual_l1=true; purge is not residual GC)"
+            ),
         )
     # T41: retry_abort must stay ops-driven (never claim automatic background heal)
     if caps and caps.get("retry_abort_ops_driven") is False:
         return (
             False,
-            "strong dishonest capabilities "
-            "(retry_abort_ops_driven=false; retry is ops-driven CFT, not auto-heal)",
+            (
+                "strong dishonest capabilities "
+                "(retry_abort_ops_driven=false; retry is ops-driven CFT, not auto-heal)"
+            ),
         )
     if health in {"misconfigured", "critical"}:
         return False, f"strong health={health}"
@@ -237,6 +247,7 @@ def evaluate_strong_doctor_payload(
         detail = f"{detail} | {hint}"
     return True, detail
 
+
 # Capability keys that must never be true in v1 shared-audit metrics.
 _AUDIT_DISHONEST_CAPS = (
     "siem",
@@ -245,6 +256,7 @@ _AUDIT_DISHONEST_CAPS = (
     "linearizable_cluster_ops",
     "multi_tenant_beyond_cluster_id",
 )
+
 
 def evaluate_shared_audit_doctor_payload(
     payload: dict[str, Any],
@@ -299,10 +311,12 @@ def evaluate_shared_audit_doctor_payload(
         ),
     )
 
+
 def setup_logging(verbose: bool = False, *, json_logs: bool = False) -> None:
     """Setup logging configuration."""
     level = "DEBUG" if verbose else "INFO"
     configure_logging(level, colorize=not json_logs, json_logs=json_logs)
+
 
 @click.group()
 @click.version_option(__version__, prog_name="mpreg")
@@ -335,9 +349,11 @@ def cli(ctx, verbose: bool, json_logs: bool):
     ctx.obj["verbose"] = verbose
     ctx.obj["json_logs"] = json_logs
 
+
 @cli.group()
 def client():
     """Client commands for interacting with MPREG servers."""
+
 
 @client.command("call")
 @click.argument("fun")
@@ -386,6 +402,7 @@ def call(
 
     run_coro(_call())
 
+
 @client.command("queue-send")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
 @click.option("--queue", "queue_name", required=True, help="Queue name")
@@ -415,6 +432,7 @@ def client_queue_send(
 
     run_coro(_run())
 
+
 @client.command("cache-get")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
 @click.option("--namespace", required=True)
@@ -432,6 +450,7 @@ def client_cache_get(url: str | None, namespace: str, identifier: str) -> None:
             console.print(result)
 
     run_coro(_run())
+
 
 @client.command("cache-put")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
@@ -460,6 +479,7 @@ def client_cache_put(
 
     run_coro(_run())
 
+
 @client.command("queue-receive")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
 @click.option("--queue", "queue_name", required=True, help="Queue name")
@@ -485,6 +505,7 @@ def client_queue_receive(
 
     run_coro(_run())
 
+
 @client.command("queue-ack")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
 @click.option("--queue", "queue_name", required=True, help="Queue name")
@@ -506,6 +527,7 @@ def client_queue_ack(
 
     run_coro(_run())
 
+
 @client.command("cache-invalidate")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
 @click.option("--pattern", required=True, help="Invalidation pattern")
@@ -522,6 +544,7 @@ def client_cache_invalidate(url: str | None, pattern: str) -> None:
             console.print(result)
 
     run_coro(_run())
+
 
 @client.command("cache-strong-retry-abort")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
@@ -635,6 +658,7 @@ def client_cache_strong_retry_abort(
 
     run_coro(_run())
 
+
 @client.command("publish")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
 @click.option("--topic", required=True)
@@ -658,6 +682,7 @@ def client_publish(url: str | None, topic: str, payload: str) -> None:
             console.print(result)
 
     run_coro(_run())
+
 
 @client.command("list-peers")
 @click.option(
@@ -691,6 +716,7 @@ def list_peers(
 
     run_coro(_list())
 
+
 @client.command("resolver-cache-stats")
 @click.option(
     "--url",
@@ -709,6 +735,7 @@ def resolver_cache_stats(url: str | None) -> None:
             console.print(result.to_dict())
 
     run_coro(_stats())
+
 
 @client.command("resolver-resync")
 @click.option(
@@ -729,6 +756,7 @@ def resolver_resync(url: str | None) -> None:
 
     run_coro(_resync())
 
+
 def _parse_metadata_items(items: tuple[str, ...]) -> dict[str, MetadataValue]:
     metadata: dict[str, MetadataValue] = {}
     for item in items:
@@ -748,6 +776,7 @@ def _parse_metadata_items(items: tuple[str, ...]) -> dict[str, MetadataValue]:
         else:
             metadata[item] = True
     return metadata
+
 
 @client.command("dns-register")
 @click.option(
@@ -813,6 +842,7 @@ def dns_register(
 
     run_coro(_register())
 
+
 @client.command("dns-unregister")
 @click.option(
     "--url",
@@ -848,6 +878,7 @@ def dns_unregister(
             console.print(response.to_dict())
 
     run_coro(_unregister())
+
 
 @client.command("dns-list")
 @click.option(
@@ -900,6 +931,7 @@ def dns_list(
 
     run_coro(_list())
 
+
 @client.command("dns-describe")
 @click.option(
     "--url",
@@ -951,6 +983,7 @@ def dns_describe(
 
     run_coro(_describe())
 
+
 @client.command("dns-node-encode")
 @click.argument("node_id")
 def dns_node_encode(node_id: str) -> None:
@@ -960,6 +993,7 @@ def dns_node_encode(node_id: str) -> None:
         raise click.ClickException("Failed to encode node_id")
     console.print(label)
 
+
 @client.command("dns-node-decode")
 @click.argument("label")
 def dns_node_decode(label: str) -> None:
@@ -968,6 +1002,7 @@ def dns_node_decode(label: str) -> None:
     if decoded is None:
         raise click.ClickException("Invalid DNS node label")
     console.print(decoded)
+
 
 @client.command("dns-resolve")
 @click.option(
@@ -1022,9 +1057,11 @@ def dns_resolve(
 
     run_coro(_resolve())
 
+
 @client.group("namespace-policy")
 def namespace_policy():
     """Namespace policy management commands."""
+
 
 @namespace_policy.command("validate")
 @click.option(
@@ -1063,6 +1100,7 @@ def namespace_policy_validate(url: str | None, rules_file: str, actor: str | Non
             console.print(result.to_dict())
 
     run_coro(_validate())
+
 
 @namespace_policy.command("apply")
 @click.option(
@@ -1123,6 +1161,7 @@ def namespace_policy_apply(
 
     run_coro(_apply())
 
+
 @namespace_policy.command("export")
 @click.option(
     "--url",
@@ -1141,6 +1180,7 @@ def namespace_policy_export(url: str | None):
             console.print(result.to_dict())
 
     run_coro(_export())
+
 
 @namespace_policy.command("audit")
 @click.option(
@@ -1163,13 +1203,16 @@ def namespace_policy_audit(url: str | None, limit: int | None):
 
     run_coro(_audit())
 
+
 @cli.group()
 def discovery():
     """Discovery plane commands."""
 
+
 @cli.group()
 def report():
     """Reporting commands."""
+
 
 @discovery.command("query")
 @click.option(
@@ -1258,6 +1301,7 @@ def discovery_query(
             console.print(result.to_dict())
 
     run_coro(_query())
+
 
 @discovery.command("summary")
 @click.option(
@@ -1351,6 +1395,7 @@ def discovery_summary(
             console.print(result.to_dict())
 
     run_coro(_summary())
+
 
 @discovery.command("watch")
 @click.option(
@@ -1452,6 +1497,7 @@ def discovery_watch(
 
     run_coro(_watch())
 
+
 @discovery.command("status")
 @click.option(
     "--url",
@@ -1481,6 +1527,7 @@ def discovery_status(url: str | None) -> None:
 
     run_coro(_status())
 
+
 @discovery.command("access-audit")
 @click.option(
     "--url",
@@ -1501,6 +1548,7 @@ def discovery_access_audit(url: str | None, limit: int | None) -> None:
             console.print(result.to_dict())
 
     run_coro(_audit())
+
 
 @report.command("namespace-health")
 @click.option(
@@ -1593,6 +1641,7 @@ def report_namespace_health(
 
     run_coro(_report())
 
+
 @report.command("export-lag")
 @click.option(
     "--url",
@@ -1654,9 +1703,11 @@ def report_export_lag(url: str | None, output: str) -> None:
 
     run_coro(_report())
 
+
 @cli.group()
 def server():
     """Server management commands."""
+
 
 @server.command("start")
 @click.option("--host", default="127.0.0.1", help="Host to bind")
@@ -1823,6 +1874,7 @@ def start_server(
 
     run_coro(_start())
 
+
 @server.command("start-config")
 @click.argument("settings_path", type=click.Path(exists=True))
 def start_config(settings_path: str) -> None:
@@ -1858,6 +1910,7 @@ def start_config(settings_path: str) -> None:
         await server_instance.server()
 
     run_coro(_start())
+
 
 @cli.command("doctor")
 @click.option(
@@ -2064,9 +2117,7 @@ def doctor(
                             and name == "metrics_shared_audit"
                             and isinstance(payload, dict)
                         ):
-                            aok, adetail = evaluate_shared_audit_doctor_payload(
-                                payload
-                            )
+                            aok, adetail = evaluate_shared_audit_doctor_payload(payload)
                             if not aok:
                                 ok = False
                             body_preview = adetail
@@ -2093,8 +2144,9 @@ def doctor(
                         # T71/T87/T100/T101/T110: always keys on strong checks
                         # (empty/0/[]/"" when clean; JSON-native types)
                         if name in ("metrics_strong", "mgmt_strong"):
-                            fields = residual_fields or strong_doctor_json_residual_fields(
-                                {}
+                            fields = (
+                                residual_fields
+                                or strong_doctor_json_residual_fields({})
                             )
                             row["residual_ops_hint"] = fields["residual_ops_hint"]
                             row["abort_fail_peer_count"] = fields[
@@ -2211,6 +2263,7 @@ def doctor(
         return 1 if failures else 0
 
     raise SystemExit(run_coro(_doctor()))
+
 
 @cli.command("config-check")
 @click.argument("settings_path", type=click.Path(exists=True))
@@ -2596,20 +2649,24 @@ def config_check(
     if warnings and strict:
         raise SystemExit(2)
 
+
 @cli.group("admin")
 def admin_group():
     """Management mutations: drain, detach, policy, audit (monitoring HTTP)."""
+
 
 def _admin_base_url(url: str | None) -> str:
     if not url:
         raise click.UsageError("Provide --url or set MPREG_MONITORING_URL.")
     return url.rstrip("/")
 
+
 def _admin_headers(token: str | None) -> dict[str, str]:
     headers: dict[str, str] = {}
     if token:
         headers["Authorization"] = f"Bearer {token}"
     return headers
+
 
 @admin_group.command("drain")
 @click.option(
@@ -2667,6 +2724,7 @@ def admin_drain(
 
     run_coro(_run())
 
+
 @admin_group.command("detach")
 @click.option(
     "--url",
@@ -2716,6 +2774,7 @@ def admin_detach(
                     raise SystemExit(1)
 
     run_coro(_run())
+
 
 @admin_group.command("audit")
 @click.option(
@@ -2767,6 +2826,7 @@ def admin_audit(url: str | None, token: str | None, limit: int, as_json: bool) -
                 raise SystemExit(1)
 
     run_coro(_run())
+
 
 @admin_group.command("policy")
 @click.option(
@@ -2848,12 +2908,15 @@ def admin_policy(
 
     run_coro(_run())
 
+
 @cli.group("profile")
 def profile_group():
     """List and show built-in settings profiles."""
 
+
 def _profiles_dir() -> Path:
     return Path(__file__).resolve().parent.parent / "profiles"
+
 
 # ERG-T14-02 / ERG-T13-09: operator risk tags for packaged profiles
 _PROFILE_RISK_TAGS: dict[str, str] = {
@@ -2865,6 +2928,7 @@ _PROFILE_RISK_TAGS: dict[str, str] = {
     "federated-lab": "lab federated (open CP intentional)",
     "discovery-resolver": "lab/ops (discovery CP; mon loopback)",
 }
+
 
 @profile_group.command("list")
 def profile_list() -> None:
@@ -2883,6 +2947,7 @@ def profile_list() -> None:
     console.print(table)
     console.print(f"Start with: [bold]mpreg server start-config {root}/dev.toml[/bold]")
 
+
 @profile_group.command("show")
 @click.argument("name")
 def profile_show(name: str) -> None:
@@ -2897,6 +2962,7 @@ def profile_show(name: str) -> None:
         raise click.UsageError(f"Unknown profile {name!r}. Try: mpreg profile list")
     console.print(path.read_text())
 
+
 @profile_group.command("path")
 @click.argument("name")
 def profile_path(name: str) -> None:
@@ -2906,6 +2972,7 @@ def profile_path(name: str) -> None:
     if not path.exists():
         raise click.UsageError(f"Unknown profile {name!r}")
     console.print(str(path))
+
 
 @cli.group()
 def demo():
@@ -2918,11 +2985,13 @@ def demo():
         uv run mpreg-example smoke
     """
 
+
 def _demo_via_example(argv: list[str]) -> None:
     """Delegate demo CLI to the unified curriculum runner (entrypoints only)."""
     from mpreg.examples.apps._shared.runner import main as examples_main
 
     examples_main(argv)
+
 
 @demo.command("tier1")
 @click.argument(
@@ -2942,15 +3011,18 @@ def demo_tier1(system: str) -> None:
     plane = "fabric" if system in ("federation", "fabric") else system
     _demo_via_example(["run", f"plane_{plane}"])
 
+
 @demo.command("tier2")
 def demo_tier2() -> None:
     """Run tier-2 integration tours via mpreg-example."""
     _demo_via_example(["demo", "tier2"])
 
+
 @demo.command("tier3")
 def demo_tier3() -> None:
     """Run tier-3 expansion via mpreg-example."""
     _demo_via_example(["demo", "tier3"])
+
 
 @demo.command("all")
 def demo_all() -> None:
@@ -2961,15 +3033,18 @@ def demo_all() -> None:
     examples_main(["demo", "tier2"])
     examples_main(["demo", "tier3"])
 
+
 @demo.command("quick")
 def demo_quick() -> None:
     """Fast demo bundle (hello_rpc + plane_rpc)."""
     _demo_via_example(["demo", "quick"])
 
+
 @demo.command("list")
 def demo_list() -> None:
     """List demo bundles."""
     _demo_via_example(["bundles"])
+
 
 @cli.group("examples")
 def examples_group() -> None:
@@ -2977,6 +3052,7 @@ def examples_group() -> None:
 
     See docs/examples-curriculum/ and ``mpreg examples list``.
     """
+
 
 @examples_group.command("list")
 @click.option(
@@ -3015,6 +3091,7 @@ def examples_list(
     argv.extend(["--format", fmt])
     examples_main(argv)
 
+
 @examples_group.command("describe")
 @click.argument("app_id")
 def examples_describe(app_id: str) -> None:
@@ -3022,6 +3099,7 @@ def examples_describe(app_id: str) -> None:
     from mpreg.examples.apps._shared.runner import main as examples_main
 
     examples_main(["describe", app_id])
+
 
 @examples_group.command("path")
 @click.argument("app_id")
@@ -3031,6 +3109,7 @@ def examples_path(app_id: str) -> None:
 
     examples_main(["path", app_id])
 
+
 @examples_group.command("run")
 @click.argument("app_id")
 @click.option("--timeout", type=float, default=120.0, show_default=True)
@@ -3039,6 +3118,7 @@ def examples_run(app_id: str, timeout: float) -> None:
     from mpreg.examples.apps._shared.runner import main as examples_main
 
     examples_main(["run", app_id, "--timeout", str(timeout)])
+
 
 @examples_group.command("smoke")
 @click.option("--timeout", type=float, default=120.0, show_default=True)
@@ -3052,6 +3132,7 @@ def examples_smoke(timeout: float, no_fail_fast: bool) -> None:
         argv.append("--no-fail-fast")
     examples_main(argv)
 
+
 @examples_group.command("suite")
 @click.option("--timeout", type=float, default=180.0, show_default=True)
 @click.option("--no-fail-fast", is_flag=True)
@@ -3063,6 +3144,7 @@ def examples_suite(timeout: float, no_fail_fast: bool) -> None:
     if no_fail_fast:
         argv.append("--no-fail-fast")
     examples_main(argv)
+
 
 @cli.group("distlab")
 def distlab_group() -> None:
@@ -3079,6 +3161,7 @@ def distlab_group() -> None:
       uv run mpreg distlab presets
     """
 
+
 @distlab_group.command("list")
 @click.option("--track", default="", help="Filter by track id (T1..T7)")
 @click.option("--json", "as_json", is_flag=True, help="Emit JSON catalog rows")
@@ -3090,6 +3173,7 @@ def distlab_list(track: str, as_json: bool) -> None:
     if code:
         raise SystemExit(code)
 
+
 @distlab_group.command("catalog")
 @click.option("--json", "as_json", is_flag=True, help="Emit JSON")
 def distlab_catalog(as_json: bool) -> None:
@@ -3099,6 +3183,7 @@ def distlab_catalog(as_json: bool) -> None:
     code = catalog(as_json=as_json)
     if code:
         raise SystemExit(code)
+
 
 @distlab_group.command("run")
 @click.argument("name")
@@ -3110,6 +3195,7 @@ def distlab_run(name: str, as_json: bool) -> None:
     code = run_scenario(name, as_json=as_json)
     if code:
         raise SystemExit(code)
+
 
 @distlab_group.command("suite")
 @click.option("--track", default="", help="Filter by track id (T2, T4, T13, …)")
@@ -3162,6 +3248,7 @@ def distlab_suite(
     if code:
         raise SystemExit(code)
 
+
 @distlab_group.command("presets")
 @click.option("--json", "as_json", is_flag=True, help="Emit JSON")
 def distlab_presets(as_json: bool) -> None:
@@ -3172,9 +3259,11 @@ def distlab_presets(as_json: bool) -> None:
     if code:
         raise SystemExit(code)
 
+
 @cli.group("test")
 def test_group() -> None:
     """Developer test runners (entry points only — never python -m)."""
+
 
 @test_group.command("concurrent")
 @click.option("-n", "--workers", type=int, default=16, show_default=True)
@@ -3225,6 +3314,7 @@ def test_concurrent(
         console.print(f"stall dump: {dump}")
     raise SystemExit(result.exit_code)
 
+
 @cli.command()
 @click.option(
     "--config", "-c", type=click.Path(exists=True), help="Configuration file path"
@@ -3265,6 +3355,7 @@ def discover(config: str | None, output: str):
 
     run_coro(_discover())
 
+
 @cli.command()
 @click.argument("cluster_id")
 @click.argument("cluster_name")
@@ -3298,6 +3389,7 @@ def register(
 
     run_coro(_register())
 
+
 @cli.command()
 @click.argument("cluster_id")
 def unregister(cluster_id: str):
@@ -3311,6 +3403,7 @@ def unregister(cluster_id: str):
             sys.exit(1)
 
     run_coro(_unregister())
+
 
 @cli.command()
 @click.option("--cluster", "-c", help="Specific cluster ID to check")
@@ -3345,6 +3438,7 @@ def health(cluster: str | None, output: str):
 
     run_coro(_health())
 
+
 @cli.command("federation-metrics")
 @click.option("--cluster", "-c", help="Specific cluster ID to show metrics for")
 def federation_metrics(cluster: str | None):
@@ -3356,12 +3450,14 @@ def federation_metrics(cluster: str | None):
 
     run_coro(_metrics())
 
+
 @cli.command()
 @click.argument("output_path", type=click.Path())
 def generate_config(output_path: str):
     """Generate a federation configuration template."""
     federation_cli = FederationCLI()
     federation_cli.generate_config_template(output_path)
+
 
 @cli.command()
 @click.argument("config_path", type=click.Path(exists=True))
@@ -3376,6 +3472,7 @@ def validate_config(config_path: str):
             sys.exit(1)
 
     run_coro(_validate())
+
 
 @cli.command()
 @click.argument("config_path", type=click.Path(exists=True))
@@ -3407,11 +3504,13 @@ def deploy(config_path: str, dry_run: bool):
 
     run_coro(_deploy())
 
+
 @cli.command()
 def topology():
     """Display federation topology."""
     federation_cli = FederationCLI()
     federation_cli.display_topology()
+
 
 @cli.command()
 @click.option("--force", is_flag=True, help="Force cleanup without confirmation")
@@ -3432,9 +3531,11 @@ def cleanup(force: bool):
 
     run_coro(_cleanup())
 
+
 @cli.group()
 def monitor():
     """Fabric federation monitoring commands."""
+
 
 @monitor.command()
 @click.option(
@@ -3533,6 +3634,7 @@ def health_watch(
 
     run_coro(_health_watch())
 
+
 @monitor.command("health")
 @click.option(
     "--cluster",
@@ -3578,6 +3680,7 @@ def health_endpoint(
                 emit(payload, output_format=output_format, table_title="Health")
 
     run_coro(_health_endpoint())
+
 
 @monitor.command()
 @click.option(
@@ -3668,6 +3771,7 @@ def metrics_watch(
             console.print("\n[yellow]⚠️ Metrics monitoring stopped[/yellow]")
 
     run_coro(_metrics_watch())
+
 
 @monitor.command("status")
 @click.option(
@@ -3817,6 +3921,7 @@ def status(
 
     run_coro(_status())
 
+
 @monitor.command("decisions")
 @click.option(
     "--url",
@@ -3861,6 +3966,7 @@ def monitor_decisions(
                 )
 
     run_coro(_run())
+
 
 @monitor.command("route-trace")
 @click.option(
@@ -3910,6 +4016,7 @@ def route_trace(
 
     run_coro(_route_trace())
 
+
 @monitor.command("link-state")
 @click.option(
     "--url",
@@ -3938,6 +4045,7 @@ def link_state(url: str | None, output_format: str) -> None:
                 emit(payload, output_format=output_format, table_title="Link state")
 
     run_coro(_link_state())
+
 
 @monitor.command("transport-endpoints")
 @click.option(
@@ -3975,6 +4083,7 @@ def transport_endpoints(url: str | None, output_format: str) -> None:
                 )
 
     run_coro(_transport_endpoints())
+
 
 @monitor.command("metrics")
 @click.option(
@@ -4023,6 +4132,7 @@ def monitor_metrics(system: str, url: str | None, output_format: str) -> None:
 
     run_coro(_metrics())
 
+
 @monitor.command("prometheus")
 @click.option(
     "--url",
@@ -4059,6 +4169,7 @@ def monitor_prometheus(url: str | None, token: str | None) -> None:
 
     run_coro(_prom())
 
+
 @monitor.command("persistence")
 @click.option(
     "--url",
@@ -4089,6 +4200,7 @@ def persistence(url: str | None, output_format: str) -> None:
                 emit(payload, output_format=output_format, table_title="Persistence")
 
     run_coro(_persistence())
+
 
 @monitor.command("strong")
 @click.option(
@@ -4187,6 +4299,7 @@ def monitor_strong(url: str | None, use_mgmt: bool, output_format: str) -> None:
 
     run_coro(_strong())
 
+
 @monitor.command("audit")
 @click.option(
     "--url",
@@ -4238,6 +4351,7 @@ def monitor_audit(url: str | None, output_format: str) -> None:
 
     run_coro(_audit())
 
+
 @monitor.command("dns")
 @click.option(
     "--url",
@@ -4268,6 +4382,7 @@ def dns_metrics(url: str | None, output_format: str) -> None:
                 emit(payload, output_format=output_format, table_title="DNS metrics")
 
     run_coro(_dns_metrics())
+
 
 @monitor.command("dns-watch")
 @click.option("--interval", default=5.0, help="Polling interval in seconds")
@@ -4307,6 +4422,7 @@ def dns_watch(interval: float, url: str | None, output_format: str) -> None:
                 console.print("\n[yellow]⚠️ DNS metrics watch stopped[/yellow]")
 
     run_coro(_dns_watch())
+
 
 @monitor.command("persistence-watch")
 @click.option(
@@ -4350,6 +4466,7 @@ def persistence_watch(interval: int, url: str | None, output_format: str) -> Non
 
     run_coro(_persistence_watch())
 
+
 @monitor.command("endpoints")
 @click.option(
     "--url",
@@ -4379,9 +4496,11 @@ def endpoints(url: str | None, output_format: str) -> None:
 
     run_coro(_endpoints())
 
+
 @cli.group()
 def auto_discovery():
     """Auto-discovery management commands."""
+
 
 @auto_discovery.command()
 @click.option(
@@ -4421,6 +4540,7 @@ def run(config: str | None, output: str):
             console.print(dumps_pretty_text(clusters_dict))
 
     run_coro(_auto_discover())
+
 
 @auto_discovery.command()
 @click.argument("output_path", type=click.Path())
@@ -4473,9 +4593,11 @@ def generate(output_path: str):
         f"[green]✅ Auto-discovery configuration generated: {output_path}[/green]"
     )
 
+
 @cli.group()
 def config():
     """Configuration management commands."""
+
 
 @config.command()
 @click.argument(
@@ -4491,6 +4613,7 @@ def template(template_name: str, output_path: str):
     console.print(
         f"[green]✅ Generated {template_name} template: {output_path}[/green]"
     )
+
 
 @config.command()
 @click.argument("config_path", type=click.Path(exists=True))
@@ -4530,14 +4653,17 @@ def show(config_path: str, key: str | None):
     except Exception as e:
         console.print(f"[red]❌ Error reading configuration: {e}[/red]")
 
+
 # ---------------------------------------------------------------------------
 # Phase H F2: top-level aliases operators guess first (call / dns).
 # ---------------------------------------------------------------------------
 cli.add_command(call, "call")
 
+
 @cli.group("dns")
 def dns_group() -> None:
     """DNS plane commands (aliases for ``mpreg client dns-*``)."""
+
 
 for _src, _dest in (
     ("dns-register", "register"),
@@ -4551,6 +4677,7 @@ for _src, _dest in (
     _cmd = client.commands.get(_src)
     if _cmd is not None:
         dns_group.add_command(_cmd, _dest)
+
 
 def main():
     """Main CLI entry point."""
@@ -4566,6 +4693,7 @@ def main():
 
             traceback.print_exc()
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

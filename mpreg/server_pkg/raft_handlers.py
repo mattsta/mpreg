@@ -10,6 +10,7 @@ from typing import Any
 
 from mpreg.consensus import status_dict
 
+
 class RaftPlane:
     """Owns registered Raft nodes and fabric transport hooks for one server."""
 

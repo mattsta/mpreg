@@ -1,11 +1,11 @@
 # MPREG 0.3.1 — Unified Sequential Burndown
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Master** | `docs/plans/RELEASE_0_3_1_PRODUCTION_HARDENING_MASTER_PLAN.md` |
-| **Architecture** | `docs/RELEASE_0_3_1_PRODUCTION_HARDENING_ARCHITECTURE.md` |
-| **Ledger** | `docs/plans/RELEASE_0_3_1_PROOF_LEDGER.md` |
+| Field            | Value                                                          |
+| ---------------- | -------------------------------------------------------------- |
+| **Status**       | **Complete**                                                   |
+| **Master**       | `docs/plans/RELEASE_0_3_1_PRODUCTION_HARDENING_MASTER_PLAN.md` |
+| **Architecture** | `docs/RELEASE_0_3_1_PRODUCTION_HARDENING_ARCHITECTURE.md`      |
+| **Ledger**       | `docs/plans/RELEASE_0_3_1_PROOF_LEDGER.md`                     |
 
 ## H0 — Planning
 
@@ -54,7 +54,7 @@
 
 ## Progress log
 
-| Date | Note |
-| --- | --- |
+| Date       | Note                                                |
+| ---------- | --------------------------------------------------- |
 | 2026-08-07 | 0.3.1 hardening track opened after 0.3.0 gate green |
-| 2026-08-07 | All H0–H5 validated; release_gate exit 0 |
+| 2026-08-07 | All H0–H5 validated; release_gate exit 0            |

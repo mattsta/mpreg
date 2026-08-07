@@ -42,20 +42,24 @@ type EnvValue = str
 type ManifestPath = str
 type RunMode = str
 
+
 @dataclass(frozen=True, slots=True)
 class FailurePattern:
     label: str
     regex: str
+
 
 @dataclass(slots=True)
 class PatternHit:
     label: str
     count: int
 
+
 @dataclass(frozen=True, slots=True)
 class EnvOverride:
     key: EnvKey
     value: EnvValue
+
 
 @dataclass(frozen=True, slots=True)
 class HarnessConfigSnapshot:
@@ -68,6 +72,7 @@ class HarnessConfigSnapshot:
     env_overrides: tuple[EnvOverride, ...]
     stop_on_failure: bool
     preset: str | None
+
 
 @dataclass(slots=True)
 class HarnessConfig:
@@ -94,6 +99,7 @@ class HarnessConfig:
             preset=self.preset,
         )
 
+
 @dataclass(frozen=True, slots=True)
 class HarnessManifest:
     tests: tuple[NodeId, ...]
@@ -106,6 +112,7 @@ class HarnessManifest:
     env_overrides: tuple[EnvOverride, ...]
     stop_on_failure: bool
 
+
 @dataclass(frozen=True, slots=True)
 class RunSpec:
     run_index: RunOrdinal
@@ -113,6 +120,7 @@ class RunSpec:
     label: str
     targets: tuple[NodeId, ...]
     timeout_seconds: Seconds
+
 
 @dataclass(slots=True)
 class RunResult:
@@ -134,6 +142,7 @@ class RunResult:
     def passed(self) -> bool:
         return not self.timed_out and self.exit_code == 0
 
+
 @dataclass(slots=True)
 class AggregateTotals:
     total_runs: int
@@ -141,10 +150,12 @@ class AggregateTotals:
     failed_runs: int
     timed_out_runs: int
 
+
 @dataclass(slots=True)
 class PatternAggregate:
     label: str
     total_count: int
+
 
 @dataclass(slots=True)
 class EvidenceReport:
@@ -154,6 +165,7 @@ class EvidenceReport:
     pattern_totals: tuple[PatternAggregate, ...]
     failed_nodeids: tuple[NodeId, ...]
     runs: tuple[RunResult, ...]
+
 
 PATTERNS: tuple[FailurePattern, ...] = (
     FailurePattern("assertion_error", r"AssertionError"),
@@ -187,11 +199,14 @@ DEFAULT_OUTPUT_DIR = "artifacts/debug/pytest_evidence"
 DEFAULT_RUN_MODE = "single"
 RUN_MODES: tuple[RunMode, ...] = ("single", "batch")
 
+
 def _utc_now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
+
 
 def _parse_env_entry(entry: str) -> EnvOverride:
     clean_entry = entry.strip()
@@ -203,6 +218,7 @@ def _parse_env_entry(entry: str) -> EnvOverride:
         raise ValueError(f"--env key cannot be empty: {clean_entry}")
     return EnvOverride(key=clean_key, value=value)
 
+
 def _parse_env_entries(entries: tuple[str, ...]) -> tuple[EnvOverride, ...]:
     env_overrides: list[EnvOverride] = []
     for raw_entry in entries:
@@ -211,6 +227,7 @@ def _parse_env_entries(entries: tuple[str, ...]) -> tuple[EnvOverride, ...]:
             continue
         env_overrides.append(_parse_env_entry(entry))
     return tuple(env_overrides)
+
 
 def _resolve_tests(
     *, preset: str | None, tests: tuple[str, ...], source_label: str
@@ -224,6 +241,7 @@ def _resolve_tests(
             f"At least one test is required from {source_label} (--test/--preset or manifest)"
         )
     return tuple(selected_tests)
+
 
 def _load_manifest(path: Path) -> HarnessManifest:
     if not path.exists():
@@ -293,6 +311,7 @@ def _load_manifest(path: Path) -> HarnessManifest:
         stop_on_failure=stop_on_failure,
     )
 
+
 def _config_from_manifest(manifest_path: Path) -> HarnessConfig:
     manifest = _load_manifest(manifest_path)
     tests = _resolve_tests(
@@ -317,6 +336,7 @@ def _config_from_manifest(manifest_path: Path) -> HarnessConfig:
         preset=manifest.preset,
     )
 
+
 def _sanitize_nodeid(nodeid: str) -> str:
     safe = re.sub(r"[^A-Za-z0-9._-]+", "_", nodeid).strip("._")
     if not safe:
@@ -325,6 +345,7 @@ def _sanitize_nodeid(nodeid: str) -> str:
         return safe[:110]
     return safe
 
+
 def _parse_failed_lines(log_text: str) -> tuple[str, ...]:
     lines: list[str] = []
     for raw_line in log_text.splitlines():
@@ -332,6 +353,7 @@ def _parse_failed_lines(log_text: str) -> tuple[str, ...]:
         if line.startswith("FAILED "):
             lines.append(line)
     return tuple(lines)
+
 
 def _extract_short_failure_line(
     log_text: str, failed_lines: tuple[str, ...]
@@ -352,12 +374,14 @@ def _extract_short_failure_line(
         return failed_lines[0]
     return None
 
+
 def _collect_pattern_hits(log_text: str) -> tuple[PatternHit, ...]:
     hits: list[PatternHit] = []
     for pattern in PATTERNS:
         count = len(re.findall(pattern.regex, log_text))
         hits.append(PatternHit(label=pattern.label, count=count))
     return tuple(hits)
+
 
 def _terminate_process_group(
     process: subprocess.Popen[str],
@@ -391,6 +415,7 @@ def _terminate_process_group(
         return
     except Exception:
         pass
+
 
 def _run_single(spec: RunSpec, config: HarnessConfig, artifact_dir: Path) -> RunResult:
     started_at_utc = _utc_now_iso()
@@ -475,6 +500,7 @@ def _run_single(spec: RunSpec, config: HarnessConfig, artifact_dir: Path) -> Run
         pattern_hits=pattern_hits,
     )
 
+
 def _aggregate_results(
     config: HarnessConfig, run_results: tuple[RunResult, ...]
 ) -> EvidenceReport:
@@ -516,6 +542,7 @@ def _aggregate_results(
         failed_nodeids=tuple(failed_nodeids),
         runs=run_results,
     )
+
 
 def _write_report_files(report: EvidenceReport, artifact_dir: Path) -> None:
     json_path = artifact_dir / "evidence_report.json"
@@ -564,6 +591,7 @@ def _write_report_files(report: EvidenceReport, artifact_dir: Path) -> None:
             lines.append(f"    pytest_failed={run.pytest_failed_lines[0]}")
     text_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
+
 def _build_run_specs(config: HarnessConfig) -> tuple[RunSpec, ...]:
     specs: list[RunSpec] = []
     run_index: RunOrdinal = 1
@@ -597,6 +625,7 @@ def _build_run_specs(config: HarnessConfig) -> tuple[RunSpec, ...]:
 
         raise ValueError(f"Unsupported run_mode: {config.run_mode}")
     return tuple(specs)
+
 
 def _parse_args() -> HarnessConfig:
     parser = argparse.ArgumentParser(
@@ -711,6 +740,7 @@ def _parse_args() -> HarnessConfig:
         preset=args.preset,
     )
 
+
 def main() -> int:
     try:
         config = _parse_args()
@@ -770,6 +800,7 @@ def main() -> int:
         f"timed_out={report.totals.timed_out_runs}"
     )
     return 0 if report.totals.failed_runs == 0 else 1
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

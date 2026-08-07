@@ -3,6 +3,7 @@ import pytest
 from mpreg.fabric.route_keys import RouteKeyRegistry, refresh_route_keys
 from mpreg.fabric.route_security import RouteAnnouncementSigner
 
+
 class SyncKeyProvider:
     def __init__(self, signer: RouteAnnouncementSigner) -> None:
         self.signer = signer
@@ -16,6 +17,7 @@ class SyncKeyProvider:
             now=100.0,
         )
 
+
 class AsyncKeyProvider:
     def __init__(self, signer: RouteAnnouncementSigner) -> None:
         self.signer = signer
@@ -28,6 +30,7 @@ class AsyncKeyProvider:
             public_key=self.signer.public_key,
             now=200.0,
         )
+
 
 @pytest.mark.asyncio
 async def test_refresh_route_keys_supports_sync_and_async() -> None:

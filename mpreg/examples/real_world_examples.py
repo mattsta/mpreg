@@ -15,6 +15,7 @@ from mpreg.core.model import RPCCommand
 from mpreg.core.port_allocator import port_range_context
 from mpreg.server import MPREGServer
 
+
 class DataPipelineExample:
     """Real-time data processing pipeline across specialized nodes."""
 
@@ -391,6 +392,7 @@ class DataPipelineExample:
                         server._shutdown_event.set()
                 await asyncio.sleep(0.5)
 
+
 class MLInferenceExample:
     """Distributed ML inference pipeline with model routing."""
 
@@ -764,11 +766,13 @@ class MLInferenceExample:
                         server._shutdown_event.set()
                 await asyncio.sleep(0.5)
 
+
 async def full_system_expansion_example() -> None:
     """Run the full-system expansion workflow (Tier 3)."""
     from mpreg.examples.tier3_full_system_expansion import main as tier3_main
 
     await tier3_main()
+
 
 async def main():
     """Run all real-world examples."""
@@ -802,6 +806,7 @@ async def main():
     print("   ✅ Transparent distributed computing")
     print("   ✅ Self-managing component architecture")
     print("\n💡 Ready to build your own distributed applications with MPREG!")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

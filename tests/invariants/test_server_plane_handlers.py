@@ -6,11 +6,13 @@ from mpreg.server_pkg.raft_handlers import RaftPlane
 from mpreg.server_pkg.routing_handlers import RoutingPlane
 from mpreg.server_pkg.rpc_handlers import RpcPlane
 
+
 def test_raft_plane_status_unconfigured() -> None:
     plane = RaftPlane()
     st = plane.status()
     assert st["configured"] is False
     assert st["membership_change_supported"] is False
+
 
 def test_raft_plane_register_requires_transport() -> None:
     plane = RaftPlane()
@@ -19,6 +21,7 @@ def test_raft_plane_register_requires_transport() -> None:
         raise AssertionError("expected RuntimeError")
     except RuntimeError:
         pass
+
 
 def test_routing_and_rpc_planes_smoke() -> None:
     rp = RoutingPlane()

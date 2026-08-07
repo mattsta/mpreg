@@ -21,6 +21,7 @@ from mpreg.core.transport.enhanced_adapter import (
 from mpreg.core.transport.factory import TransportFactory
 from mpreg.core.transport.interfaces import TransportProtocol
 
+
 class TestEnhancedMultiProtocolAdapterIntegration:
     """Integration tests for enhanced multi-protocol adapter using live servers."""
 
@@ -560,6 +561,7 @@ class TestEnhancedMultiProtocolAdapterIntegration:
                 echo_task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await echo_task
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

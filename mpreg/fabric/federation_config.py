@@ -26,6 +26,7 @@ from mpreg.datastructures.type_aliases import (
     UrlString,
 )
 
+
 class FederationMode(Enum):
     """Federation policy modes for cluster boundary management."""
 
@@ -37,6 +38,7 @@ class FederationMode(Enum):
 
     PERMISSIVE_BRIDGING = "permissive_bridging"
     """Allow cross-federation connections with optional warning logs."""
+
 
 class ConnectionAuthorizationResult(Enum):
     """Result of federation connection authorization check."""
@@ -52,6 +54,7 @@ class ConnectionAuthorizationResult(Enum):
 
     AUTHORIZED_WITH_WARNING = "authorized_with_warning"
     """Connection authorized with optional warning-level logging."""
+
 
 @dataclass(frozen=True, slots=True)
 class FederationBridgeConfig:
@@ -77,6 +80,7 @@ class FederationBridgeConfig:
                 "bridge_name",
                 f"bridge_{self.local_cluster_id}_to_{self.remote_cluster_id}",
             )
+
 
 @dataclass(frozen=True, slots=True)
 class FederationSecurityPolicy:
@@ -104,6 +108,7 @@ class FederationSecurityPolicy:
 
         # If neither list is specified, allow all functions
         return True
+
 
 @dataclass(frozen=True, slots=True)
 class FederationConfig:
@@ -185,6 +190,7 @@ class FederationConfig:
         """Check if explicit bridge is configured for remote cluster."""
         return self.get_bridge_config_for_cluster(remote_cluster_id) is not None
 
+
 @dataclass(slots=True)
 class FederationConnectionState:
     """Runtime state tracking for federation connections."""
@@ -232,6 +238,7 @@ class FederationConnectionState:
         if total_requests == 0:
             return 1.0
         return self.successful_requests / total_requests
+
 
 @dataclass(slots=True)
 class FederationManager:
@@ -342,7 +349,9 @@ class FederationManager:
 
         return time.time()
 
+
 # Factory functions for common federation configurations
+
 
 def create_strict_isolation_config(cluster_id: ClusterId) -> FederationConfig:
     """Create configuration for strict federation isolation."""
@@ -352,6 +361,7 @@ def create_strict_isolation_config(cluster_id: ClusterId) -> FederationConfig:
         log_cross_federation_attempts=True,
         log_connection_rejections=True,
     )
+
 
 def create_explicit_bridging_config(
     cluster_id: ClusterId,
@@ -368,6 +378,7 @@ def create_explicit_bridging_config(
         emit_federation_metrics=True,
     )
 
+
 def create_permissive_bridging_config(cluster_id: ClusterId) -> FederationConfig:
     """Create configuration for permissive federation bridging (warnings optional)."""
     return FederationConfig(
@@ -381,6 +392,7 @@ def create_permissive_bridging_config(cluster_id: ClusterId) -> FederationConfig
             max_cross_federation_requests_per_minute=200,
         ),
     )
+
 
 def create_development_config(cluster_id: ClusterId) -> FederationConfig:
     """Create development-friendly federation configuration."""

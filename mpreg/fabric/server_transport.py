@@ -11,6 +11,7 @@ from mpreg.datastructures.type_aliases import NodeId
 from .message import UnifiedMessage
 from .message_codec import unified_message_to_dict
 
+
 @dataclass(slots=True)
 class ServerFabricTransport(ServerEnvelopeTransport):
     """Transport that delivers unified fabric messages over MPREG connections."""

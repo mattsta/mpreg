@@ -28,6 +28,7 @@ from mpreg.server import MPREGServer
 
 from .conftest import AsyncTestContext
 
+
 @pytest.fixture
 async def live_server_consensus_cluster(
     test_context: AsyncTestContext,
@@ -101,6 +102,7 @@ async def live_server_consensus_cluster(
     finally:
         # Servers will be cleaned up by test context
         pass
+
 
 @pytest.fixture
 async def live_consensus_cluster(
@@ -243,6 +245,7 @@ async def live_consensus_cluster(
                 await gossip_protocol.stop()
             except Exception as e:
                 logger.warning(f"Error stopping gossip protocol: {e}")
+
 
 class TestConsensusGossipLiveIntegration:
     """Test consensus integration with gossip protocol using live servers."""

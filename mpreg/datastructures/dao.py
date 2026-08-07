@@ -46,6 +46,7 @@ from .dao_types import (
 )
 from .transaction import Transaction
 
+
 class _LazySt:
     """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
 
@@ -61,7 +62,9 @@ class _LazySt:
     def __getattr__(self, name: str) -> object:
         return getattr(self._load(), name)
 
+
 st = _LazySt()
+
 
 @dataclass(frozen=True, slots=True)
 class DecentralizedAutonomousOrganization:
@@ -822,7 +825,9 @@ class DecentralizedAutonomousOrganization:
             f"proposals={len(self.proposals)})"
         )
 
+
 # Hypothesis strategies for property-based testing
+
 
 def dao_member_strategy() -> st.SearchStrategy[DaoMember]:
     """Generate valid DaoMember instances for testing."""
@@ -837,6 +842,7 @@ def dao_member_strategy() -> st.SearchStrategy[DaoMember]:
         is_active=st.booleans(),
         metadata=st.dictionaries(st.text(), st.one_of(st.text(), st.integers())),
     )
+
 
 def dao_proposal_strategy() -> st.SearchStrategy[DaoProposal]:
     """Generate valid DaoProposal instances for testing."""
@@ -875,6 +881,7 @@ def dao_proposal_strategy() -> st.SearchStrategy[DaoProposal]:
 
     return generate_valid_proposal()
 
+
 def dao_config_strategy() -> st.SearchStrategy[DaoConfig]:
     """Generate valid DaoConfig instances for testing."""
     return st.builds(
@@ -894,6 +901,7 @@ def dao_config_strategy() -> st.SearchStrategy[DaoConfig]:
         max_proposals_per_member=st.integers(min_value=1, max_value=10),
         proposal_cooldown_seconds=st.integers(min_value=0, max_value=86400),
     )
+
 
 def dao_strategy() -> st.SearchStrategy[DecentralizedAutonomousOrganization]:
     """Generate valid DAO instances for testing."""

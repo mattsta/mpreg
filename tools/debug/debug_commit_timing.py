@@ -20,6 +20,7 @@ from tests.test_production_raft_integration import (
 # Enable debug logging
 logging.basicConfig(level=logging.DEBUG)
 
+
 async def debug_commit_timing():
     """Debug the timing of commit_index propagation."""
 
@@ -91,6 +92,7 @@ async def debug_commit_timing():
         finally:
             for node in nodes.values():
                 await node.stop()
+
 
 if __name__ == "__main__":
     asyncio.run(debug_commit_timing())

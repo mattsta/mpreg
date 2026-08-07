@@ -12,6 +12,7 @@ from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 from tests.test_helpers import TestPortManager, wait_for_condition
 
+
 def _function_visible(server: MPREGServer, name: str, cluster_id: str) -> bool:
     if not server._fabric_control_plane:
         return False
@@ -19,6 +20,7 @@ def _function_visible(server: MPREGServer, name: str, cluster_id: str) -> bool:
     return bool(
         server._fabric_control_plane.index.find_functions(query, now=time.time())
     )
+
 
 @pytest.mark.asyncio
 async def test_fabric_live_rpc_and_pubsub_workflow() -> None:

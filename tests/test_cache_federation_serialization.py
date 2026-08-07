@@ -15,6 +15,7 @@ from mpreg.fabric.cache_federation import (
     CacheOperationType,
 )
 
+
 def test_cache_operation_message_roundtrip() -> None:
     key = GlobalCacheKey(namespace="cache", identifier="alpha", version="v1.2.3")
     dependency = GlobalCacheKey(namespace="cache", identifier="dep", version="v1.0.0")
@@ -55,6 +56,7 @@ def test_cache_operation_message_roundtrip() -> None:
     assert restored.consistency_level == message.consistency_level
     assert restored.value_hash == message.value_hash
 
+
 def test_cache_digest_roundtrip() -> None:
     key = GlobalCacheKey(namespace="cache", identifier="beta", version="v2.0.0")
     entry = CacheDigestEntry(
@@ -80,6 +82,7 @@ def test_cache_digest_roundtrip() -> None:
     assert restored.total_entries == digest.total_entries
     assert restored.entries[str(key)].key == entry.key
     assert restored.entries[str(key)].value_hash == entry.value_hash
+
 
 def test_cache_entry_message_roundtrip() -> None:
     key = GlobalCacheKey(namespace="cache", identifier="gamma", version="v3.1.0")

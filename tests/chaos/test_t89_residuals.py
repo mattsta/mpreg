@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t89_explain_guide_mentions_count() -> None:
     text = (
         Path(__file__).resolve().parents[2] / "mpreg" / "cli" / "main.py"
@@ -12,13 +13,13 @@ def test_t89_explain_guide_mentions_count() -> None:
     assert "abort_fail_peer_count" in text
     assert "mpreg_strong_abort_fail_peers" in text
 
+
 def test_t89_config_check_test() -> None:
     text = (
-        Path(__file__).resolve().parents[2]
-        / "tests"
-        / "test_config_check_cli.py"
+        Path(__file__).resolve().parents[2] / "tests" / "test_config_check_cli.py"
     ).read_text(encoding="utf-8")
     assert "abort_fail_peer_count" in text or "mpreg_strong_abort_fail_peers" in text
+
 
 def test_t89_phase_77_honesty() -> None:
     path = (
@@ -27,6 +28,7 @@ def test_t89_phase_77_honesty() -> None:
         / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md"
     )
     assert "Phase 77" in path.read_text(encoding="utf-8")
+
 
 def test_t89_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]

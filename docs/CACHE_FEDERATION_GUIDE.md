@@ -24,6 +24,7 @@ from mpreg.core.global_cache import (
     GlobalCacheManager,
 )
 
+
 async def demo_cache() -> None:
     transport = InProcessCacheTransport()
     protocol_a = FabricCacheProtocol("node-a", transport=transport)

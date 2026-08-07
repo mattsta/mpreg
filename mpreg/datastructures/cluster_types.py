@@ -27,6 +27,7 @@ ResourceServerMapping = dict[frozenset[ResourceName], ServerSet]
 FunctionResourceMapping = dict[FunctionName, ResourceServerMapping]
 """Maps function names to their resource requirements and available servers."""
 
+
 @dataclass(frozen=True, slots=True)
 class ClusterConfiguration:
     """
@@ -55,6 +56,7 @@ class ClusterConfiguration:
             local_url=local_url,
             dead_peer_timeout_seconds=dead_peer_timeout_seconds,
         )
+
 
 @dataclass(slots=True)
 class ClusterFunctionRegistry:
@@ -150,6 +152,7 @@ class ClusterFunctionRegistry:
     def server_count(self) -> int:
         """Total number of known servers in the cluster."""
         return len(self.known_servers)
+
 
 @dataclass(slots=True)
 class ClusterState:

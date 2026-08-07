@@ -26,6 +26,7 @@ from mpreg.fabric.federation_resilience import (
 )
 from tests.test_helpers import TestPortManager
 
+
 @pytest.fixture
 def cluster_identity():
     """Create a test cluster identity."""
@@ -42,6 +43,7 @@ def cluster_identity():
             created_at=time.time(),
         )
 
+
 @pytest.fixture
 def health_config():
     """Create test health check configuration."""
@@ -55,6 +57,7 @@ def health_config():
         max_interval_seconds=5.0,
     )
 
+
 @pytest.fixture
 def retry_config():
     """Create test retry configuration."""
@@ -65,6 +68,7 @@ def retry_config():
         backoff_multiplier=2.0,
         jitter_factor=0.1,
     )
+
 
 class TestAdaptiveCircuitBreaker:
     """Test adaptive circuit breaker functionality."""
@@ -135,6 +139,7 @@ class TestAdaptiveCircuitBreaker:
         unhealthy_metrics = ClusterHealthMetrics(cluster_id="test", health_score=30.0)
         cb.update_adaptive_thresholds(unhealthy_metrics)
         assert cb.failure_threshold < 4  # Should be lowered
+
 
 class TestFederationHealthMonitor:
     """Test federation health monitoring."""
@@ -259,6 +264,7 @@ class TestFederationHealthMonitor:
         # Check if alerts were triggered
         assert len(alerts_received) > 0
 
+
 class TestFederationAutoRecovery:
     """Test auto-recovery functionality."""
 
@@ -378,6 +384,7 @@ class TestFederationAutoRecovery:
 
         # Should work (simulated)
         assert isinstance(success, bool)
+
 
 class TestEnhancedFederationResilience:
     """Test integrated resilience system."""
@@ -507,6 +514,7 @@ class TestEnhancedFederationResilience:
         finally:
             # Always disable resilience
             await resilience.disable_resilience()
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -16,6 +16,7 @@ from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, s
 from mpreg.fabric.cache_federation import FabricCacheProtocol
 from mpreg.fabric.cache_transport import InProcessCacheTransport
 
+
 async def main() -> None:
     with app_run("plane_cache", "Plane Cache — L1/L3/L4 federation tour", level="L1"):
         transport = InProcessCacheTransport()
@@ -113,6 +114,7 @@ async def main() -> None:
             await protocol_a.shutdown()
             await protocol_b.shutdown()
         step("plane_cache tour complete")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

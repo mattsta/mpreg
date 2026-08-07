@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
+
 class OpKind(StrEnum):
     """Client-visible operation kinds recorded in a history."""
 
@@ -29,6 +30,7 @@ class OpKind(StrEnum):
     BARRIER = "barrier"
     CUSTOM = "custom"
 
+
 class OpStatus(StrEnum):
     """Terminal status of a history event (Jepsen-style invoke/ok/fail/info)."""
 
@@ -37,6 +39,7 @@ class OpStatus(StrEnum):
     FAIL = "fail"
     # Indeterminate (timeout / crash mid-op) — checker must not treat as success
     INFO = "info"
+
 
 @dataclass(frozen=True, slots=True)
 class HistoryEvent:
@@ -69,6 +72,7 @@ class HistoryEvent:
             "meta": dict(self.meta),
         }
 
+
 @dataclass(frozen=True, slots=True)
 class CheckViolation:
     """A single checker finding."""
@@ -86,6 +90,7 @@ class CheckViolation:
             "evidence": dict(self.evidence),
         }
 
+
 @dataclass(slots=True)
 class CheckResult:
     """Aggregate result of one or more checkers."""
@@ -100,7 +105,10 @@ class CheckResult:
             name=f"{self.name}+{other.name}",
             ok=self.ok and other.ok,
             violations=[*self.violations, *other.violations],
-            stats={**self.stats, **{f"{other.name}.{k}": v for k, v in other.stats.items()}},
+            stats={
+                **self.stats,
+                **{f"{other.name}.{k}": v for k, v in other.stats.items()},
+            },
         )
 
     def raise_if_failed(self) -> None:
@@ -116,6 +124,7 @@ class CheckResult:
             "violations": [v.to_dict() for v in self.violations],
             "stats": dict(self.stats),
         }
+
 
 @dataclass(slots=True)
 class ScenarioResult:
@@ -146,6 +155,7 @@ class ScenarioResult:
             "meta": dict(self.meta),
             "run_id": self.run_id,
         }
+
 
 def wall_now() -> float:
     return time.time()

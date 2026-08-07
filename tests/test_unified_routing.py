@@ -47,6 +47,7 @@ from mpreg.fabric.router import (
 
 # Hypothesis strategies for generating test data
 
+
 @st.composite
 def correlation_ids(draw):
     """Generate valid correlation IDs."""
@@ -57,6 +58,7 @@ def correlation_ids(draw):
             alphabet=st.characters(min_codepoint=32, max_codepoint=126),
         )
     )
+
 
 @st.composite
 def node_ids(draw):
@@ -69,6 +71,7 @@ def node_ids(draw):
         )
     )
 
+
 @st.composite
 def cluster_ids(draw):
     """Generate valid cluster IDs."""
@@ -79,6 +82,7 @@ def cluster_ids(draw):
             alphabet=st.characters(min_codepoint=ord("a"), max_codepoint=ord("z")),
         )
     )
+
 
 @st.composite
 def topic_patterns(draw):
@@ -107,6 +111,7 @@ def topic_patterns(draw):
                 segments[i] = "#"
 
     return ".".join(segments)
+
 
 @st.composite
 def internal_topic_patterns(draw):
@@ -143,6 +148,7 @@ def internal_topic_patterns(draw):
 
     return base
 
+
 @st.composite
 def message_headers(draw):
     """Generate valid message headers."""
@@ -156,6 +162,7 @@ def message_headers(draw):
         federation_path=tuple(draw(st.lists(cluster_ids(), min_size=0, max_size=3))),
         metadata=draw(st.dictionaries(st.text(min_size=1, max_size=10), st.integers())),
     )
+
 
 @st.composite
 def unified_messages(draw):
@@ -180,6 +187,7 @@ def unified_messages(draw):
         timestamp=time.time(),  # Use fixed timestamp to avoid flaky tests
     )
 
+
 @st.composite
 def internal_unified_messages(draw):
     """Generate unified messages with internal topics."""
@@ -195,6 +203,7 @@ def internal_unified_messages(draw):
         timestamp=time.time(),
     )
 
+
 @st.composite
 def route_targets(draw):
     """Generate valid route targets."""
@@ -205,6 +214,7 @@ def route_targets(draw):
         cluster_id=draw(st.one_of(st.none(), cluster_ids())),
         priority_weight=draw(st.floats(min_value=0.1, max_value=10.0)),
     )
+
 
 @st.composite
 def route_results(draw):
@@ -224,6 +234,7 @@ def route_results(draw):
         hops_required=len(routing_path),
         reason=draw(st.sampled_from(FabricRouteReason)),
     )
+
 
 @st.composite
 def routing_policies(draw):
@@ -251,6 +262,7 @@ def routing_policies(draw):
         min_reliability_threshold=draw(st.floats(min_value=0.5, max_value=1.0)),
     )
 
+
 @st.composite
 def routing_configs(draw):
     """Generate valid routing configurations."""
@@ -266,7 +278,9 @@ def routing_configs(draw):
         policies=policies,
     )
 
+
 # Core property tests for unified routing
+
 
 class TestUnifiedRoutingProperties:
     """Property-based tests for unified routing correctness."""
@@ -488,7 +502,9 @@ class TestUnifiedRoutingProperties:
                 TopicAccessLevel.DATA_PLANE,
             ]
 
+
 # Integration tests for unified routing
+
 
 class TestUnifiedRoutingIntegration:
     """Integration tests for unified routing system components."""
@@ -625,6 +641,7 @@ class TestUnifiedRoutingIntegration:
         )
 
         assert not rpc_policy.matches_message(non_matching_priority)
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

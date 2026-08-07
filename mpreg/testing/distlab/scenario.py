@@ -13,6 +13,7 @@ from mpreg.testing.distlab.history import History
 from mpreg.testing.distlab.models import CheckResult, ScenarioResult
 from mpreg.testing.distlab.nemesis import Nemesis
 
+
 class SystemUnderTest(Protocol):
     """Minimal SUT surface for scenarios."""
 
@@ -20,9 +21,11 @@ class SystemUnderTest(Protocol):
         """State object consumed by checkers."""
         ...
 
+
 ClientFn = Callable[[History, int], Awaitable[None]]
 SetupFn = Callable[[], Awaitable[Any] | Any]
 TeardownFn = Callable[[Any], Awaitable[None] | None]
+
 
 @dataclass(slots=True)
 class Scenario:
@@ -114,6 +117,7 @@ class Scenario:
         if self.strict and not result.ok:
             result.raise_if_failed()
         return result
+
 
 @dataclass(slots=True)
 class ScenarioSuite:

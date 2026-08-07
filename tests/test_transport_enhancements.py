@@ -30,11 +30,13 @@ from mpreg.core.transport.enhanced_health import (
     create_transport_health_aggregator,
 )
 
+
 @pytest.fixture
 def endpoint_url():
     """Provide a dynamic endpoint URL for transport tests."""
     with port_context("testing") as port:
         yield f"ws://test:{port}"
+
 
 class TestCircuitBreaker:
     """Test circuit breaker functionality."""
@@ -131,6 +133,7 @@ class TestCircuitBreaker:
         for _ in range(failure_threshold):
             breaker.record_failure()
         assert breaker.state == CircuitBreakerState.OPEN
+
 
 class TestCorrelationTracker:
     """Test correlation tracking functionality."""
@@ -245,6 +248,7 @@ class TestCorrelationTracker:
         assert stats["total_correlation_history"] == num_correlations
         assert 0.0 <= stats["success_rate_percent"] <= 100.0
 
+
 class TestConnectionHealthMonitor:
     """Test connection health monitoring functionality."""
 
@@ -339,6 +343,7 @@ class TestConnectionHealthMonitor:
             assert 0.0 <= metrics.success_rate_percent <= 100.0
             assert metrics.average_latency_ms >= 0.0
 
+
 class TestTransportHealthAggregator:
     """Test transport health aggregation functionality."""
 
@@ -396,6 +401,7 @@ class TestTransportHealthAggregator:
         aggregator.remove_connection_monitor("conn_123")
 
         assert len(aggregator.connection_monitors) == 0
+
 
 class TestTransportEnhancementIntegration:
     """Test integration scenarios with existing transport infrastructure."""
@@ -510,6 +516,7 @@ class TestTransportEnhancementIntegration:
         assert (
             breaker.state == CircuitBreakerState.CLOSED
         )  # Should remain closed with 80% success
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

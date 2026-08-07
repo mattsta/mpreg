@@ -331,6 +331,7 @@ except RuntimeError:
 # PERF-T11-09: profile/settings may override (default 32 MiB).
 MPREG_DATA_MAX = 32 * 1024 * 1024
 
+
 ############################################
 #
 # Default commands for all servers
@@ -342,11 +343,13 @@ def echo(arg: Any) -> Any:
     Single-argument echo demo."""
     return arg
 
+
 def echos(*args: Any) -> tuple[Any, ...]:
     """Default echos handler for all servers.
 
     Multi-argument echo demo."""
     return args
+
 
 ############################################
 #
@@ -418,11 +421,13 @@ class RPC:
     def tasks(self) -> Any:
         yield from self.levels
 
+
 ############################################
 #
 # MPREG Server Instance
 #
 ############################################
+
 
 ############################################
 #
@@ -1571,6 +1576,7 @@ class Cluster:
         )
 
         return result, tuple(intermediate_results), execution_summary
+
 
 ############################################
 #
@@ -11998,9 +12004,7 @@ class MPREGServer:
         backend = getattr(self, "_strong_local_backend", None)
         if backend is None or not hasattr(backend, "purge_expired_pending"):
             return
-        ttl = float(
-            getattr(self.settings, "cache_strong_pending_ttl_s", 30.0) or 30.0
-        )
+        ttl = float(getattr(self.settings, "cache_strong_pending_ttl_s", 30.0) or 30.0)
         interval = max(0.5, min(ttl / 3.0, 5.0))
 
         async def _purge_loop() -> None:
@@ -12841,6 +12845,7 @@ class MPREGServer:
                 await asyncio.sleep(0.05)
                 continue
             self._track_background_task(asyncio.create_task(self.opened(transport)))
+
 
 @logger.catch
 def cmd() -> None:

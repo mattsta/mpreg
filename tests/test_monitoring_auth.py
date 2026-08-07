@@ -16,6 +16,7 @@ from mpreg.fabric.connection_manager import FederationConnectionManager
 from mpreg.fabric.federation_config import FederationConfig, FederationMode
 from mpreg.fabric.monitoring_endpoints import create_federation_monitoring_system
 
+
 async def test_monitoring_requires_bearer_token(
     server_cluster_ports: list[int],
 ) -> None:

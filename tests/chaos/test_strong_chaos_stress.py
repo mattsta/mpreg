@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import time
 
 import pytest
 from hypothesis import given, settings
@@ -22,6 +21,7 @@ from tests.chaos.harness_strong_audit import (
     strong_put_on,
 )
 
+
 @pytest.mark.asyncio
 async def test_five_node_happy_majority() -> None:
     mesh = build_strong_mesh(5, prepare_timeout_s=0.6, commit_timeout_s=0.6)
@@ -38,6 +38,7 @@ async def test_five_node_happy_majority() -> None:
     for nid in committers:
         assert mesh.backends[nid].get_visible(k) is not None
 
+
 @pytest.mark.asyncio
 async def test_partition_majority_peers_fail_residual_free() -> None:
     mesh = build_strong_mesh(3)
@@ -49,6 +50,7 @@ async def test_partition_majority_peers_fail_residual_free() -> None:
     assert res.success is False
     assert_residual_free(mesh.backends, k, op_id=res.operation_id)
     assert_no_pending(mesh.backends)
+
 
 @pytest.mark.asyncio
 async def test_partition_one_peer_still_majority() -> None:
@@ -62,6 +64,7 @@ async def test_partition_one_peer_still_majority() -> None:
     assert mesh.backends["n1"].get_visible(k) is not None
     # n2 may miss — not required for Q=2
     assert_no_pending(mesh.backends)
+
 
 @pytest.mark.asyncio
 async def test_heal_after_partition_allows_put() -> None:
@@ -77,6 +80,7 @@ async def test_heal_after_partition_allows_put() -> None:
     assert_backends_agree(mesh.backends, k) == "yes"
     assert_no_pending(mesh.backends)
 
+
 @pytest.mark.asyncio
 async def test_drop_commit_after_prepare_uncommits() -> None:
     mesh = build_strong_mesh(3)
@@ -85,6 +89,7 @@ async def test_drop_commit_after_prepare_uncommits() -> None:
     res = await strong_put_on(mesh, "n0", k, 1)
     assert res.success is False
     assert_residual_free(mesh.backends, k, op_id=res.operation_id)
+
 
 @pytest.mark.asyncio
 async def test_delay_prepare_within_timeout_succeeds() -> None:
@@ -95,6 +100,7 @@ async def test_delay_prepare_within_timeout_succeeds() -> None:
     assert res.success is True
     assert_no_pending(mesh.backends)
 
+
 @pytest.mark.asyncio
 async def test_duplicate_commit_idempotent() -> None:
     mesh = build_strong_mesh(3)
@@ -104,6 +110,7 @@ async def test_duplicate_commit_idempotent() -> None:
     assert res.success is True
     assert_backends_agree(mesh.backends, k) == "dup"
     assert_no_pending(mesh.backends)
+
 
 @pytest.mark.asyncio
 async def test_expired_pending_rejects_commit() -> None:
@@ -130,6 +137,7 @@ async def test_expired_pending_rejects_commit() -> None:
     assert ack.reason == "expired"
     assert be.get_visible(k) is None
     assert be.pending_count() == 0
+
 
 @pytest.mark.asyncio
 async def test_purge_then_put_after_pending_full() -> None:
@@ -161,6 +169,7 @@ async def test_purge_then_put_after_pending_full() -> None:
     res = await strong_put_on(mesh, "n0", key("stress", "after"), "y")
     assert res.success is True
 
+
 @pytest.mark.asyncio
 async def test_multi_key_concurrent_no_cross_residual() -> None:
     mesh = build_strong_mesh(3)
@@ -182,6 +191,7 @@ async def test_multi_key_concurrent_no_cross_residual() -> None:
         # Either all empty or agree
         assert_backends_agree(mesh.backends, k)
 
+
 @pytest.mark.asyncio
 async def test_soak_sequential_puts_clean() -> None:
     mesh = build_strong_mesh(3)
@@ -193,6 +203,7 @@ async def test_soak_sequential_puts_clean() -> None:
         last = i
         assert_no_pending(mesh.backends)
     assert assert_backends_agree(mesh.backends, k) == last
+
 
 @pytest.mark.asyncio
 async def test_interleaved_fault_and_success() -> None:
@@ -208,6 +219,7 @@ async def test_interleaved_fault_and_success() -> None:
     assert good.success is True
     assert assert_backends_agree(mesh.backends, k) == "good"
 
+
 @pytest.mark.asyncio
 async def test_concurrent_same_key_history() -> None:
     mesh = build_strong_mesh(3)
@@ -215,6 +227,7 @@ async def test_concurrent_same_key_history() -> None:
     outcomes = await run_concurrent_puts(mesh, k, ["a", "b", "c", "d"])
     check_single_key_history(outcomes, mesh.backends, k)
     assert any(o.success for o in outcomes)
+
 
 @given(
     drops=st.lists(st.sampled_from(["n1", "n2"]), min_size=0, max_size=2, unique=True)
@@ -238,6 +251,7 @@ def test_hypothesis_random_prepare_drops_residual_free(drops: list[str]) -> None
 
     asyncio.run(_run())
 
+
 @given(
     values=st.lists(st.integers(0, 500), min_size=2, max_size=6),
 )
@@ -251,6 +265,7 @@ def test_hypothesis_concurrent_history(values: list[int]) -> None:
 
     asyncio.run(_run())
 
+
 @pytest.mark.asyncio
 async def test_lww_uncommit_does_not_clobber_winner() -> None:
     """Winner commits; losing op abort must not remove winner."""
@@ -261,12 +276,13 @@ async def test_lww_uncommit_does_not_clobber_winner() -> None:
     assert w.success is True
     # Manually commit a lower version then abort it — should not remove winner
     be = mesh.backends["n1"]
-    low = StrongVersion(logical_ts=1, origin_node="n9", op_id="lose-op")
+    StrongVersion(logical_ts=1, origin_node="n9", op_id="lose-op")
     # Force a lower pending and try abort path
     await be.abort(op_id="lose-op", key=k)
     ent = be.get_visible(k)
     assert ent is not None
     assert ent.value == "winner"
+
 
 @pytest.mark.asyncio
 async def test_replica_set_origin_first() -> None:

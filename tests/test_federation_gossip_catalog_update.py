@@ -13,6 +13,7 @@ from mpreg.fabric.gossip import (
 )
 from mpreg.fabric.gossip_transport import InProcessGossipTransport
 
+
 @pytest.mark.asyncio
 async def test_gossip_catalog_update_applies_delta() -> None:
     catalog = RoutingCatalog()
@@ -51,6 +52,7 @@ async def test_gossip_catalog_update_applies_delta() -> None:
     assert catalog.functions.entry_count() == 1
     assert "msg-1" in protocol.recent_messages
 
+
 @pytest.mark.asyncio
 async def test_gossip_catalog_update_applies_dict_payload() -> None:
     catalog = RoutingCatalog()
@@ -88,6 +90,7 @@ async def test_gossip_catalog_update_applies_dict_payload() -> None:
 
     assert catalog.functions.entry_count() == 1
     assert "msg-2" in protocol.recent_messages
+
 
 @pytest.mark.asyncio
 async def test_gossip_catalog_update_converges_two_nodes() -> None:

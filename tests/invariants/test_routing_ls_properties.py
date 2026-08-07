@@ -18,6 +18,7 @@ from mpreg.fabric.link_state import (
 )
 from mpreg.fabric.peer_directory import PeerNeighbor
 
+
 def test_expired_update_rejected() -> None:
     table = LinkStateTable(local_cluster="a")
     now = 1000.0
@@ -29,6 +30,7 @@ def test_expired_update_rejected() -> None:
         sequence=1,
     )
     assert table.apply_update(upd, now=now) is False
+
 
 def test_stale_sequence_rejected() -> None:
     table = LinkStateTable(local_cluster="a")
@@ -45,6 +47,7 @@ def test_stale_sequence_rejected() -> None:
         )
         is False
     )
+
 
 def test_purge_expired_removes_spf_inputs() -> None:
     table = LinkStateTable(local_cluster="a")
@@ -64,6 +67,7 @@ def test_purge_expired_removes_spf_inputs() -> None:
     assert purged
     assert not table.has_origin("b")
 
+
 def test_newer_sequence_accepted() -> None:
     table = LinkStateTable(local_cluster="a")
     now = time.time()
@@ -79,6 +83,7 @@ def test_newer_sequence_accepted() -> None:
     )
     assert table.neighbor_clusters("b") == frozenset({"d"})
 
+
 def test_area_policy_local_and_allowed_areas() -> None:
     policy = LinkStateAreaPolicy(
         local_areas=("area-1", "backbone"),
@@ -89,6 +94,7 @@ def test_area_policy_local_and_allowed_areas() -> None:
     assert policy.is_local_area("backbone")
     assert not policy.is_local_area("area-2")
     assert not policy.is_local_area(None)
+
 
 def test_area_policy_group_neighbors_drops_foreign_areas() -> None:
     policy = LinkStateAreaPolicy(
@@ -108,6 +114,7 @@ def test_area_policy_group_neighbors_drops_foreign_areas() -> None:
     assert set(grouped.keys()) == {"area-1"}
     assert [p.cluster_id for p in grouped["area-1"]] == ["peer-local"]
 
+
 def test_area_policy_summary_export_filter() -> None:
     policy = LinkStateAreaPolicy(
         local_areas=("area-1", "backbone"),
@@ -126,6 +133,7 @@ def test_area_policy_summary_export_filter() -> None:
     summary = policy.summarize_neighbors("area-1", neighbors)
     assert "backbone" in summary
     assert {p.cluster_id for p in summary["backbone"]} == {"n1", "n2"}
+
 
 @pytest.mark.asyncio
 async def test_processor_denies_cross_area_installation() -> None:
@@ -164,6 +172,7 @@ async def test_processor_denies_cross_area_installation() -> None:
     assert table.has_origin("b")
     assert router.graph.get_node("b") is not None
     assert router.graph.get_node("c") is not None
+
 
 @pytest.mark.asyncio
 async def test_processor_rejects_unscoped_when_areas_configured() -> None:

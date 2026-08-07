@@ -18,6 +18,7 @@ from loguru import logger
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 @dataclass
 class ConnectionTracker:
     """Tracks connection events for analysis."""
@@ -41,6 +42,7 @@ class ConnectionTracker:
     def get_events_after(self, start_time: float) -> list[dict[str, Any]]:
         """Get events after a specific timestamp."""
         return [e for e in self.events if e["timestamp"] >= start_time]
+
 
 @dataclass
 class DebugNode:
@@ -111,6 +113,7 @@ class DebugNode:
             peer_url,
             f"Configured to connect to {other_node.name}",
         )
+
 
 class ShutdownDebugger:
     """Debug cluster shutdown behavior."""
@@ -208,6 +211,7 @@ class ShutdownDebugger:
                 for peer_url, peer_info in peers_info.items():
                     logger.info(f"  {peer_url} -> cluster_id: {peer_info.cluster_id}")
 
+
 async def main() -> None:
     """Main debug function."""
     logger.info("Starting shutdown reconnection debugging")
@@ -256,6 +260,7 @@ async def main() -> None:
         for node in debugger.nodes.values():
             if node.is_running:
                 await node.stop()
+
 
 if __name__ == "__main__":
     # Set up logging for easier debugging

@@ -11,6 +11,7 @@ sys.path.insert(0, "/Users/matt/repos/mpreg")
 from mpreg.datastructures.production_raft_implementation import ElectionCoordinator
 from mpreg.datastructures.raft_task_manager import RaftTaskManager
 
+
 async def test_coordinator_shutdown():
     """Test the enhanced coordinator shutdown system."""
 
@@ -56,6 +57,7 @@ async def test_coordinator_shutdown():
     print(f"   Final active tasks: {final_status.active_tasks}")
 
     print("\n✅ All coordinator shutdown tests completed!")
+
 
 if __name__ == "__main__":
     asyncio.run(test_coordinator_shutdown())

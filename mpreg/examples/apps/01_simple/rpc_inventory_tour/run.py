@@ -18,6 +18,7 @@ from mpreg.examples.apps._shared.runtime import (
 )
 from mpreg.server import MPREGServer
 
+
 async def main() -> None:
     with (
         app_run(
@@ -144,6 +145,7 @@ async def main() -> None:
                         ok("filter path exercised")
 
         await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

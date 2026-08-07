@@ -11,10 +11,12 @@ from typing import Any
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 @dataclass(frozen=True, slots=True)
 class ServerHandle:
     server: MPREGServer
     task: asyncio.Task[Any]
+
 
 async def start_servers(settings_list: list[MPREGSettings]) -> list[ServerHandle]:
     """Start multiple MPREG servers with a brief stagger."""
@@ -27,11 +29,13 @@ async def start_servers(settings_list: list[MPREGSettings]) -> list[ServerHandle
     await asyncio.sleep(1.0)
     return handles
 
+
 async def stop_servers(handles: list[ServerHandle]) -> None:
     """Stop servers and wait a brief moment for cleanup."""
     for handle in handles:
         handle.server._shutdown_event.set()
     await asyncio.sleep(0.2)
+
 
 async def run_with_servers(
     settings_list: list[MPREGSettings],

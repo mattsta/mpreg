@@ -3,6 +3,7 @@ from mpreg.fabric.cache_selection import CachePeerSelector
 from mpreg.fabric.catalog import CacheNodeProfile
 from mpreg.fabric.federation_graph import GeographicCoordinate
 
+
 def _profile(
     node_id: str,
     *,
@@ -25,6 +26,7 @@ def _profile(
         advertised_at=100.0,
         ttl_seconds=30.0,
     )
+
 
 def test_cache_peer_selector_prefers_geographic_hints() -> None:
     selector = CachePeerSelector(
@@ -58,6 +60,7 @@ def test_cache_peer_selector_prefers_geographic_hints() -> None:
     peers = selector.select_peers(profiles, metadata=metadata, max_peers=1)
     assert peers == ("node-eu",)
 
+
 def test_cache_peer_selector_prefers_low_utilization_for_load_based() -> None:
     selector = CachePeerSelector(
         local_region="us-west",
@@ -86,6 +89,7 @@ def test_cache_peer_selector_prefers_low_utilization_for_load_based() -> None:
     metadata = CacheMetadata(replication_policy=ReplicationStrategy.LOAD_BASED)
     peers = selector.select_peers(profiles, metadata=metadata, max_peers=1)
     assert peers == ("node-cool",)
+
 
 def test_cache_peer_selector_respects_replication_none() -> None:
     selector = CachePeerSelector(

@@ -15,14 +15,17 @@ from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 from tests.test_helpers import wait_for_condition
 
+
 def _peer_node_ids(server: MPREGServer) -> set[str]:
     directory = server._peer_directory
     if not directory:
         return set()
     return {node.node_id for node in directory.nodes()}
 
+
 def _concurrency_factor() -> float:
     return 2.0 if os.environ.get("PYTEST_XDIST_WORKER") else 1.0
+
 
 class TestCatalogAutoDiscovery:
     async def test_two_node_catalog_discovery(

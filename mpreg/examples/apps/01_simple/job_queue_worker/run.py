@@ -9,6 +9,7 @@ from mpreg.core.message_queue import DeliveryGuarantee
 from mpreg.core.message_queue_manager import create_reliable_queue_manager
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run(
         "job_queue_worker",
@@ -115,6 +116,7 @@ async def main() -> None:
             ok(f"final received={received}")
         finally:
             await manager.shutdown()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

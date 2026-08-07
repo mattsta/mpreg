@@ -8,6 +8,7 @@ import asyncio
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 async def test_duplicate_registration():
     """Test that duplicate registration detection works."""
 
@@ -54,6 +55,7 @@ async def test_duplicate_registration():
     print(
         "\n✅ SUCCESS: Infinite loop bug fixed and duplicate registration detection working!"
     )
+
 
 if __name__ == "__main__":
     asyncio.run(test_duplicate_registration())

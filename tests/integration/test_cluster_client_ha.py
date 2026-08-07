@@ -16,11 +16,13 @@ from tests.conftest import AsyncTestContext
 FUNCTION_ID = "market.quote"
 INDICATOR_ID = "market.indicator"
 
+
 def _make_named_handler(node_name: str, prefix: str):
     def handler(payload: str) -> str:
         return f"{prefix}:{node_name}:{payload}"
 
     return handler
+
 
 async def _start_server(
     ctx: AsyncTestContext,
@@ -76,6 +78,7 @@ async def _start_server(
     await asyncio.sleep(0.05)
     return server
 
+
 async def _wait_for_cluster_nodes(
     client: MPREGClientAPI, expected_count: int, *, timeout: float = 6.0
 ) -> ClusterMapSnapshot:
@@ -91,6 +94,7 @@ async def _wait_for_cluster_nodes(
         f"Expected at least {expected_count} nodes in cluster map, got {last_count}"
     )
 
+
 def _load_score_for(snapshot: ClusterMapSnapshot, node_id: str) -> float | None:
     for node in snapshot.nodes:
         if node.node_id == node_id:
@@ -98,6 +102,7 @@ def _load_score_for(snapshot: ClusterMapSnapshot, node_id: str) -> float | None:
             if load is not None:
                 return float(load.load_score)
     return None
+
 
 async def _wait_for_load_preference(
     client: MPREGClientAPI,
@@ -115,6 +120,7 @@ async def _wait_for_load_preference(
             return
         await asyncio.sleep(0.1)
     raise AssertionError("Load metrics did not converge for providers")
+
 
 @pytest.mark.asyncio
 async def test_cluster_map_and_client_pool_failover(
@@ -191,6 +197,7 @@ async def test_cluster_map_and_client_pool_failover(
         assert "provider-1" in str(result_after)
         await cluster_client.disconnect()
 
+
 @pytest.mark.asyncio
 async def test_load_aware_routing_prefers_less_busy_provider(
     test_context: AsyncTestContext,
@@ -251,6 +258,7 @@ async def test_load_aware_routing_prefers_less_busy_provider(
 
             assert all("provider-b" in str(result) for result in results)
 
+
 @pytest.mark.asyncio
 async def test_cluster_client_prefers_region(
     test_context: AsyncTestContext,
@@ -299,6 +307,7 @@ async def test_cluster_client_prefers_region(
         candidates = cluster_client._candidate_urls()
         assert provider_b_url not in candidates
         await cluster_client.disconnect()
+
 
 @pytest.mark.asyncio
 async def test_cluster_client_uses_summary_ingress_hints(
@@ -407,6 +416,7 @@ async def test_cluster_client_uses_summary_ingress_hints(
         )
         assert "region-provider" in str(direct_result)
         await cluster_client.disconnect()
+
 
 @pytest.mark.asyncio
 async def test_cluster_client_auto_summary_redirect(

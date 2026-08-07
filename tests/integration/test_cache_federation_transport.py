@@ -12,6 +12,7 @@ from mpreg.fabric.route_control import RouteDestination
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 @pytest.mark.asyncio
 async def test_cache_federation_transport_roundtrip(
     test_context: AsyncTestContext,
@@ -92,6 +93,7 @@ async def test_cache_federation_transport_roundtrip(
     await asyncio.sleep(0.5)
 
     assert str(put_key) in server_b._cache_fabric_protocol.cache_entries
+
 
 @pytest.mark.asyncio
 async def test_cache_federation_multi_hop_fetch(

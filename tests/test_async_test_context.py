@@ -13,6 +13,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 class TestAsyncTestContextLeakDetection:
     """Test AsyncTestContext leak detection functionality."""
 
@@ -94,6 +95,7 @@ class TestAsyncTestContextLeakDetection:
         # All tasks should have been cancelled
         for task in leaked_tasks:
             assert task.cancelled() or task.done()
+
 
 class TestAsyncTestContextBasicFunctionality:
     """Test basic AsyncTestContext functionality remains intact."""
@@ -181,6 +183,7 @@ class TestAsyncTestContextBasicFunctionality:
         assert len(context.servers) == 0
         assert len(context.clients) == 0
         assert len(context.tasks) == 0
+
 
 class TestAsyncTestContextErrorHandling:
     """Test error handling in AsyncTestContext."""

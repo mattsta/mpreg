@@ -53,6 +53,7 @@ T = TypeVar("T")
 
 cache_log = logger
 
+
 @dataclass(slots=True)
 class CacheReplicationPolicy:
     """Policy for cache replication across nodes."""
@@ -66,6 +67,7 @@ class CacheReplicationPolicy:
         "last_writer_wins"  # "vector_clock", "timestamp", "custom"
     )
     replication_timeout_ms: int = 10000
+
 
 @dataclass(slots=True)
 class GlobalCacheConfiguration:
@@ -107,6 +109,7 @@ class GlobalCacheConfiguration:
 
     # Bound L3/L4 replication work queue (drop-oldest under pressure).
     pending_replications_maxsize: int = 4096
+
 
 class GlobalCacheManager(ManagedObject):
     """
@@ -459,9 +462,7 @@ class GlobalCacheManager(ManagedObject):
                 (snap.get("coordinator") or {}).get("last_abort_fail_op_id") or ""
             ),
             "abort_fail_peer_count": count_abort_fail_peers(
-                list(
-                    (snap.get("coordinator") or {}).get("last_abort_fail_peers") or []
-                )
+                list((snap.get("coordinator") or {}).get("last_abort_fail_peers") or [])
             ),
             "recent_abort_fails": list(
                 (snap.get("coordinator") or {}).get("recent_abort_fails") or []
@@ -476,9 +477,7 @@ class GlobalCacheManager(ManagedObject):
                 list(
                     (snap.get("coordinator") or {}).get("last_abort_fail_peers") or []
                 ),
-                str(
-                    (snap.get("coordinator") or {}).get("last_abort_fail_op_id") or ""
-                ),
+                str((snap.get("coordinator") or {}).get("last_abort_fail_op_id") or ""),
                 recent_abort_fails=list(
                     (snap.get("coordinator") or {}).get("recent_abort_fails") or []
                 ),

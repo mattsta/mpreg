@@ -15,6 +15,7 @@ from mpreg.server import MPREGServer
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
+
 async def test_minimal_intermediate_results():
     """Test minimal intermediate results to isolate timeout issue."""
     port = 29500
@@ -97,6 +98,7 @@ async def test_minimal_intermediate_results():
         server_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await server_task
+
 
 if __name__ == "__main__":
     asyncio.run(test_minimal_intermediate_results())

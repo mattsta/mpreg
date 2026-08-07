@@ -16,6 +16,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 from tests.test_helpers import TestPortManager
 
+
 async def debug_peer_discovery_mechanism():
     """Debug the peer discovery mechanism step by step."""
 
@@ -196,6 +197,7 @@ async def debug_peer_discovery_mechanism():
             task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await task
+
 
 if __name__ == "__main__":
     asyncio.run(debug_peer_discovery_mechanism())

@@ -1,31 +1,31 @@
 # DistLab + Seven-Track Implementation Plans (25 pts each)
 
-| Field | Value |
-| --- | --- |
-| **Status** | Complete — expanded in official master plan |
-| **Date** | 2026-08-06 |
-| **Product** | `mpreg.testing.distlab` |
-| **Honesty** | Jepsen-inspired, **not** Elle/WAN/BFT/kernel partitions |
-| **Master plan** | `docs/plans/DISTLAB_SEVEN_TRACK_MASTER_PLAN.md` (~420 pts, T1–T7) |
+| Field             | Value                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------------- |
+| **Status**        | Complete — expanded in official master plan                                                    |
+| **Date**          | 2026-08-06                                                                                     |
+| **Product**       | `mpreg.testing.distlab`                                                                        |
+| **Honesty**       | Jepsen-inspired, **not** Elle/WAN/BFT/kernel partitions                                        |
+| **Master plan**   | `docs/plans/DISTLAB_SEVEN_TRACK_MASTER_PLAN.md` (~420 pts, T1–T7)                              |
 | **Release 0.3.0** | `docs/plans/RELEASE_0_3_PRODUCTION_SNAPSHOT_MASTER_PLAN.md` (CI/honesty/security/package gate) |
 
 ## DistLab product (platform tests the platform)
 
 DistLab is a **first-party** distributed testing lab inside MPREG:
 
-| Component | Module | Role |
-| --- | --- | --- |
-| History | `distlab/history.py` | Append-only invoke/ok/fail/info log |
-| Checkers | `distlab/checker.py` | Residual-free, LWW register, G-Set, agreement, composite |
-| Nemesis | `distlab/nemesis.py` | Scheduled faults via FaultInjector hooks |
-| Scenario | `distlab/scenario.py` | Setup → clients → nemesis → check → teardown |
-| Generator | `distlab/generator.py` | Sequential/concurrent puts, audit burst, fault plans |
-| Registry | `distlab/registry.py` + `builtins.py` | Named scenario catalog |
-| Live | `distlab/live.py` | Same-host MPREGServer helpers + LiveStrongSUT |
-| CLI | `uv run mpreg distlab` | list / catalog / run |
-| STRONG SUT | `distlab/adapters/strong.py` | In-process majority-commit mesh |
-| Audit SUT | `distlab/adapters/audit.py` | In-process G-Set epidemic mesh |
-| Re-export | `tests/harness` | Single import surface for suites |
+| Component  | Module                                | Role                                                     |
+| ---------- | ------------------------------------- | -------------------------------------------------------- |
+| History    | `distlab/history.py`                  | Append-only invoke/ok/fail/info log                      |
+| Checkers   | `distlab/checker.py`                  | Residual-free, LWW register, G-Set, agreement, composite |
+| Nemesis    | `distlab/nemesis.py`                  | Scheduled faults via FaultInjector hooks                 |
+| Scenario   | `distlab/scenario.py`                 | Setup → clients → nemesis → check → teardown             |
+| Generator  | `distlab/generator.py`                | Sequential/concurrent puts, audit burst, fault plans     |
+| Registry   | `distlab/registry.py` + `builtins.py` | Named scenario catalog                                   |
+| Live       | `distlab/live.py`                     | Same-host MPREGServer helpers + LiveStrongSUT            |
+| CLI        | `uv run mpreg distlab`                | list / catalog / run                                     |
+| STRONG SUT | `distlab/adapters/strong.py`          | In-process majority-commit mesh                          |
+| Audit SUT  | `distlab/adapters/audit.py`           | In-process G-Set epidemic mesh                           |
+| Re-export  | `tests/harness`                       | Single import surface for suites                         |
 
 **Uses** existing `mpreg.testing.faults.FaultInjector` / `NetworkView`.
 
@@ -106,7 +106,7 @@ DistLab is a **first-party** distributed testing lab inside MPREG:
 63. Explicit non_claim test name contains `not_bft`.
 64. Composite checker still residual-free on adversarial fail.
 65. No pending after adversarial suite.
-66–75. Expand matrix rows (prepare fail, commit lie single peer, etc.).
+    66–75. Expand matrix rows (prepare fail, commit lie single peer, etc.).
 
 ## T4 — Shared audit epidemic via DistLab (25)
 
@@ -125,7 +125,7 @@ DistLab is a **first-party** distributed testing lab inside MPREG:
 88. min_ids enforced.
 89. Burst 30 events converge.
 90. Late node: create 2-node history, add via reconcile (in-process).
-91–100. Hypothesis merge orders / random partition pairs.
+    91–100. Hypothesis merge orders / random partition pairs.
 
 ## T5 — Live multi-process mesh (25)
 
@@ -143,7 +143,7 @@ DistLab is a **first-party** distributed testing lab inside MPREG:
 112. Committer GCM get after put.
 113. Backend pending 0 after ops.
 114. Coexistence second put after audit churn.
-115–125. Optional 5-node skip/slow markers; docs.
+     115–125. Optional 5-node skip/slow markers; docs.
 
 ## T6 — Architecture fixes from DistLab (25)
 
@@ -157,7 +157,7 @@ DistLab is a **first-party** distributed testing lab inside MPREG:
 133. Agreement checker majority-aware (this track).
 134. DistLab transport uses FaultInjector.can_deliver.
 135. Any new invariant fail → product fix + regression scenario.
-136–150. Reserved for bugs found while running T2–T5.
+     136–150. Reserved for bugs found while running T2–T5.
 
 ## T7 — Claims / docs / gate (25)
 
@@ -179,7 +179,7 @@ DistLab is a **first-party** distributed testing lab inside MPREG:
 166. Live suites green.
 167. Commit message complete.
 168. Working tree clean.
-169–175. CLI `uv run mpreg distlab` list/catalog/run (shipped; never python -m).
+     169–175. CLI `uv run mpreg distlab` list/catalog/run (shipped; never python -m).
 
 ---
 
@@ -197,15 +197,14 @@ numbered T-plans under `docs/plans/DISTLAB_T*_PLAN.md` with phases in
 Notable residual surfaces (ops guidance — **not** auto-heal / WAN / BFT /
 Jepsen):
 
-| Band | Focus |
-| --- | --- |
-| T17–T35 | refuse 1012, caps, CFT residual, TTL honesty, orphan backup GC |
-| T36–T65 | abort_fail peers, retry_abort, residual_ops_hint enrich |
-| T66–T99 | abort_fail_peer_count across doctor/monitor/metrics/docs |
+| Band      | Focus                                                                                     |
+| --------- | ----------------------------------------------------------------------------------------- |
+| T17–T35   | refuse 1012, caps, CFT residual, TTL honesty, orphan backup GC                            |
+| T36–T65   | abort_fail peers, retry_abort, residual_ops_hint enrich                                   |
+| T66–T99   | abort_fail_peer_count across doctor/monitor/metrics/docs                                  |
 | T100–T109 | doctor JSON **int** count + **list** peers; OpenAPI example; OBS/SLO; claims/master index |
-| T110–T119 | doctor JSON **op_id** str; live/Hypothesis typing; design/ARCHITECTURE polish |
-| T120–T129 | config-check/OpenAPI residual examples; PRODUCTION residual pointer; claims/gate |
-| T130–T139 | monitor JSON residual ensure; GETTING_STARTED/README; doctor help residual types |
+| T110–T119 | doctor JSON **op_id** str; live/Hypothesis typing; design/ARCHITECTURE polish             |
+| T120–T129 | config-check/OpenAPI residual examples; PRODUCTION residual pointer; claims/gate          |
+| T130–T139 | monitor JSON residual ensure; GETTING_STARTED/README; doctor help residual types          |
 
 Entry: `uv run mpreg distlab list` / `suite --preset smoke` (never `python -m`).
-

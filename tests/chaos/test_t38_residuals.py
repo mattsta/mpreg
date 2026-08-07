@@ -15,6 +15,7 @@ from mpreg.core.cache_strong import (
 )
 from mpreg.core.global_cache import GlobalCacheManager
 
+
 def _wire_gcm() -> tuple[
     GlobalCacheManager,
     StrongPutCoordinator,
@@ -45,6 +46,7 @@ def _wire_gcm() -> tuple[
     gcm._strong_latency_max = 256
     return gcm, coord, tr, backends
 
+
 @pytest.mark.asyncio
 async def test_t38_gcm_strong_retry_abort_clears() -> None:
     gcm, coord, tr, backends = _wire_gcm()
@@ -64,6 +66,7 @@ async def test_t38_gcm_strong_retry_abort_clears() -> None:
     assert int(st.get("retry_abort_cleared") or 0) >= 1
     assert coord.last_abort_fail_peers == []
 
+
 @pytest.mark.asyncio
 async def test_t38_gcm_retry_abort_unbound() -> None:
     gcm = GlobalCacheManager.__new__(GlobalCacheManager)
@@ -77,6 +80,7 @@ async def test_t38_gcm_retry_abort_unbound() -> None:
     assert out.get("cleared") is False
     assert int(gcm._strong_metrics.get("retry_abort_unbound") or 0) >= 1
 
+
 def test_t38_caching_system_documents_retry_abort() -> None:
     path = Path(__file__).resolve().parents[2] / "docs" / "CACHING_SYSTEM.md"
     text = path.read_text(encoding="utf-8").lower()
@@ -84,11 +88,13 @@ def test_t38_caching_system_documents_retry_abort() -> None:
     assert "abort_fail_peers" in text
     assert "not" in text and ("automatic" in text or "background heal" in text)
 
+
 def test_t38_client_guide_retry_abort() -> None:
     path = Path(__file__).resolve().parents[2] / "docs" / "MPREG_CLIENT_GUIDE.md"
     text = path.read_text(encoding="utf-8")
     assert "strong_retry_abort" in text
     assert "retry_abort" in text.lower()
+
 
 def test_t38_curriculum_readme_retry() -> None:
     path = (
@@ -103,6 +109,7 @@ def test_t38_curriculum_readme_retry() -> None:
     text = path.read_text(encoding="utf-8").lower()
     assert "retry_abort" in text
     assert "abort_fail_peers" in text
+
 
 def test_t38_residual_honesty_phase() -> None:
     path = (

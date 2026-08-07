@@ -10,6 +10,7 @@ from mpreg.fabric.pubsub_forwarding import (
     PubSubForwardingMetadata,
 )
 
+
 async def main() -> None:
     with app_run(
         "pubsub_fabric_forward_lab",
@@ -109,6 +110,7 @@ async def main() -> None:
 
         await asyncio.sleep(0)
         ok("pubsub_fabric_forward_lab complete")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

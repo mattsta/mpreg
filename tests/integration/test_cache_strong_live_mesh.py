@@ -22,6 +22,7 @@ from mpreg.core.port_allocator import port_range_context
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 def _strong_settings(
     port: int,
     name: str,
@@ -48,6 +49,7 @@ def _strong_settings(
         cache_strong_commit_timeout_s=1.5,
     )
 
+
 async def _wait_peers(servers: list[MPREGServer], *, timeout: float = 8.0) -> None:
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -70,6 +72,7 @@ async def _wait_peers(servers: list[MPREGServer], *, timeout: float = 8.0) -> No
         tr = getattr(s, "_cache_fabric_transport", None)
         detail.append((s.settings.name, list(tr.peer_ids()) if tr else None))
     raise AssertionError(f"cache peers not ready: {detail}")
+
 
 @pytest.mark.asyncio
 async def test_live_three_node_strong_put_visible_on_committers(
@@ -95,9 +98,7 @@ async def test_live_three_node_strong_put_visible_on_committers(
 
         await _wait_peers(servers)
 
-        key = GlobalCacheKey(
-            namespace="strong-live", identifier="k1", version="v1"
-        )
+        key = GlobalCacheKey(namespace="strong-live", identifier="k1", version="v1")
         origin = servers[0]
         res = await origin._cache_manager.put(
             key,
@@ -129,6 +130,7 @@ async def test_live_three_node_strong_put_visible_on_committers(
                 ent = be.get_visible(key)
                 assert ent is not None and ent.value["payload"] == "live-strong"
 
+
 @pytest.mark.asyncio
 async def test_live_strong_peer_shutdown_residual_free(
     test_context: AsyncTestContext,
@@ -153,9 +155,7 @@ async def test_live_strong_peer_shutdown_residual_free(
             await s.shutdown_async()
         await asyncio.sleep(0.5)
 
-        key = GlobalCacheKey(
-            namespace="strong-live", identifier="kill", version="v1"
-        )
+        key = GlobalCacheKey(namespace="strong-live", identifier="kill", version="v1")
         origin = servers[0]
         res = await origin._cache_manager.put(
             key,
@@ -175,6 +175,7 @@ async def test_live_strong_peer_shutdown_residual_free(
         assert be.pending_count() == 0
         got = await origin._cache_manager.get(key)
         assert got.success is False
+
 
 @pytest.mark.asyncio
 async def test_live_strong_mid_put_peer_kill_no_dirty_pending(
@@ -231,6 +232,7 @@ async def test_live_strong_mid_put_peer_kill_no_dirty_pending(
             assert got.success and got.entry is not None
             assert got.entry.value == {"mid": True}
 
+
 @pytest.mark.asyncio
 async def test_live_concurrent_multi_origin_different_keys(
     test_context: AsyncTestContext,
@@ -286,6 +288,7 @@ async def test_live_concurrent_multi_origin_different_keys(
                         assert _entry_op_id(be.get_visible(k)) != res.operation_id
         assert successes >= 1
 
+
 @pytest.mark.asyncio
 async def test_live_strong_disabled_still_1012(
     test_context: AsyncTestContext,
@@ -314,6 +317,7 @@ async def test_live_strong_disabled_still_1012(
         )
         assert res.success is False
         assert res.error_code == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY)
+
 
 @pytest.mark.asyncio
 async def test_live_client_rpc_strong_retry_abort_clears_residual(

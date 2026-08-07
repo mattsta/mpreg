@@ -10,6 +10,7 @@ import contextlib
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 async def test_auto_discovery_linear_chain():
     """Test auto-discovery in the ORIGINAL linear chain setup (connect only, no peers)."""
 
@@ -124,6 +125,7 @@ async def test_auto_discovery_linear_chain():
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await task
+
 
 if __name__ == "__main__":
     asyncio.run(test_auto_discovery_linear_chain())

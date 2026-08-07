@@ -37,6 +37,7 @@ from mpreg.core.topic_dependency_resolver import (
 from mpreg.fabric.message import RoutingPriority
 from mpreg.server import MPREGServer
 
+
 class TestRPCTopicIntegrationBasics:
     """Test basic RPC-Topic integration functionality."""
 
@@ -241,6 +242,7 @@ class TestRPCTopicIntegrationBasics:
         # Verify cross-system count
         assert dependency_graph.cross_system_dependencies > 0
 
+
 class TestRPCTopicPerformanceIntegration:
     """Test performance characteristics of RPC-Topic integration."""
 
@@ -340,6 +342,7 @@ class TestRPCTopicPerformanceIntegration:
         assert stats["active_dependency_graphs"] == 1
         assert stats["active_subscriptions"] == subscriptions_created
 
+
 class TestRPCTopicErrorHandling:
     """Test error handling and recovery in RPC-Topic integration."""
 
@@ -420,6 +423,7 @@ class TestRPCTopicErrorHandling:
         # Test cleanup after timeout scenario
         cleanup_success = await resolver.cleanup_request_dependencies("timeout_test")
         assert cleanup_success is True
+
 
 class TestComplexRPCTopicWorkflows:
     """Test complex, real-world RPC-Topic integration workflows."""
@@ -622,6 +626,7 @@ class TestComplexRPCTopicWorkflows:
             assert original.kwargs == converted.kwargs
             assert original.locs == converted.locs
 
+
 # Property-based integration testing with Hypothesis
 @given(
     num_commands=st.integers(min_value=1, max_value=8),
@@ -696,6 +701,7 @@ def test_rpc_topic_integration_properties(
         assert original_cmd.args == base_cmd.args
         assert original_cmd.kwargs == base_cmd.kwargs
         assert original_cmd.locs == base_cmd.locs
+
 
 @given(
     dependency_complexity=st.integers(min_value=0, max_value=5),
@@ -773,6 +779,7 @@ async def test_dependency_graph_integration_properties(
                 assert dependency_graph.all_dependencies_resolved is True
 
         await test_dependency_analysis()
+
 
 @pytest.mark.asyncio
 async def test_end_to_end_rpc_topic_workflow(

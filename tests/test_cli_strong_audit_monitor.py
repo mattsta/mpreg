@@ -6,15 +6,18 @@ from click.testing import CliRunner
 
 from mpreg.cli.main import cli
 
+
 def test_monitor_strong_help() -> None:
     r = CliRunner().invoke(cli, ["monitor", "strong", "--help"])
     assert r.exit_code == 0
     assert "STRONG" in r.output or "strong" in r.output.lower()
 
+
 def test_monitor_audit_help() -> None:
     r = CliRunner().invoke(cli, ["monitor", "audit", "--help"])
     assert r.exit_code == 0
     assert "audit" in r.output.lower()
+
 
 def test_doctor_strong_audit_flags_help() -> None:
     r = CliRunner().invoke(cli, ["doctor", "--help"])
@@ -26,6 +29,7 @@ def test_doctor_strong_audit_flags_help() -> None:
     assert "last_abort_fail_peers" in r.output or "residual_ops_hint" in r.output
     assert "not auto-heal" in r.output.lower() or "ops only" in r.output.lower()
 
+
 def test_distlab_suite_help() -> None:
     r = CliRunner().invoke(cli, ["distlab", "suite", "--help"])
     assert r.exit_code == 0
@@ -33,10 +37,12 @@ def test_distlab_suite_help() -> None:
     assert "--limit" in r.output
     assert "--preset" in r.output
 
+
 def test_distlab_presets_help() -> None:
     r = CliRunner().invoke(cli, ["distlab", "presets", "--help"])
     assert r.exit_code == 0
     assert "preset" in r.output.lower() or r.exit_code == 0
+
 
 def test_doctor_strong_evaluate_payload_honesty() -> None:
     """T19: evaluate_strong_doctor_payload fails closed on dishonest caps."""
@@ -126,6 +132,7 @@ def test_doctor_strong_evaluate_payload_honesty() -> None:
     )
     assert mis_ok is False
 
+
 def test_doctor_strong_row_residual_ops_hint_field() -> None:
     """T71: doctor strong checks expose residual_ops_hint for JSON consumers.
 
@@ -210,6 +217,7 @@ def test_doctor_strong_row_residual_ops_hint_field() -> None:
     assert empty_fields["last_abort_fail_peers"] == []
     assert isinstance(empty_fields["last_abort_fail_peers"], list)
 
+
 def test_doctor_shared_audit_evaluate_payload_honesty() -> None:
     """T22: evaluate_shared_audit_doctor_payload fails closed on dishonest caps."""
     from mpreg.cli.main import evaluate_shared_audit_doctor_payload
@@ -247,9 +255,11 @@ def test_doctor_shared_audit_evaluate_payload_honesty() -> None:
     assert bad is False
     assert "dishonest" in bdetail
 
+
 def test_doctor_residual_hint_hypothesis() -> None:
     """T74: property — residual peers ⇒ hint; empty peers ⇒ no CLI template."""
-    from hypothesis import given, settings, strategies as st
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
 
     from mpreg.cli.main import (
         evaluate_strong_doctor_payload,
@@ -258,7 +268,9 @@ def test_doctor_residual_hint_hypothesis() -> None:
 
     peer_st = st.lists(
         st.text(
-            alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="-_"),
+            alphabet=st.characters(
+                whitelist_categories=("L", "N"), whitelist_characters="-_"
+            ),
             min_size=1,
             max_size=8,
         ).filter(lambda s: s.strip() != ""),
@@ -305,9 +317,11 @@ def test_doctor_residual_hint_hypothesis() -> None:
 
     _prop()
 
+
 def test_doctor_dishonest_caps_hypothesis() -> None:
     """T74: property — dishonest get/delete quorum always fails doctor."""
-    from hypothesis import given, settings, strategies as st
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
 
     from mpreg.cli.main import evaluate_strong_doctor_payload
 
@@ -341,7 +355,9 @@ def test_doctor_dishonest_caps_hypothesis() -> None:
             "counters": {},
         }
         ok, detail = evaluate_strong_doctor_payload({"strong": body})
-        dishonest = get_q or del_q or (not cft) or (not abort_be) or ttl_gc or (not retry_ops)
+        dishonest = (
+            get_q or del_q or (not cft) or (not abort_be) or ttl_gc or (not retry_ops)
+        )
         if dishonest:
             assert ok is False
             assert "dishonest" in detail
@@ -349,6 +365,7 @@ def test_doctor_dishonest_caps_hypothesis() -> None:
             assert ok is True
 
     _prop()
+
 
 def test_count_abort_fail_peers_helper() -> None:
     """T80: count_abort_fail_peers dedupes and reads nested coordinator."""
@@ -359,16 +376,16 @@ def test_count_abort_fail_peers_helper() -> None:
     assert count_abort_fail_peers(["n1", "n1", "n2"]) == 2
     assert count_abort_fail_peers(body={"last_abort_fail_peers": ["a", "b"]}) == 2
     assert (
-        count_abort_fail_peers(
-            body={"coordinator": {"last_abort_fail_peers": ["x"]}}
-        )
+        count_abort_fail_peers(body={"coordinator": {"last_abort_fail_peers": ["x"]}})
         == 1
     )
     assert count_abort_fail_peers(body={}) == 0
 
+
 def test_count_abort_fail_peers_hypothesis() -> None:
     """T84: property — count equals unique non-empty peers; body path matches."""
-    from hypothesis import given, settings, strategies as st
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
 
     from mpreg.core.cache_strong import count_abort_fail_peers
 
@@ -393,9 +410,12 @@ def test_count_abort_fail_peers_hypothesis() -> None:
             == expected
         )
         # explicit peers wins over body
-        assert count_abort_fail_peers(["solo"], body={"last_abort_fail_peers": peers}) == 1
+        assert (
+            count_abort_fail_peers(["solo"], body={"last_abort_fail_peers": peers}) == 1
+        )
 
     _prop()
+
 
 def test_doctor_detail_abort_fail_peer_count() -> None:
     """T87: doctor detail and helper surface abort_fail_peer_count."""
@@ -432,9 +452,11 @@ def test_doctor_detail_abort_fail_peer_count() -> None:
     body2["abort_fail_peer_count"] = 0
     assert _strong_abort_fail_peer_count(body2) == 2
 
+
 def test_strong_abort_fail_peer_count_max_hypothesis() -> None:
     """T97: property — peer-count helper never under-reports non-empty peers."""
-    from hypothesis import given, settings, strategies as st
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
 
     from mpreg.cli.main import _strong_abort_fail_peer_count
 
@@ -465,6 +487,7 @@ def test_strong_abort_fail_peer_count_max_hypothesis() -> None:
             assert n == max(reported, 0)
 
     _prop()
+
 
 def test_strong_doctor_json_residual_fields_types() -> None:
     """T100/T101/T110: doctor JSON residual fields use int + list + op_id str."""
@@ -504,9 +527,11 @@ def test_strong_doctor_json_residual_fields_types() -> None:
     assert clean["last_abort_fail_op_id"] == ""
     assert isinstance(clean["last_abort_fail_op_id"], str)
 
+
 def test_strong_doctor_json_residual_fields_hypothesis() -> None:
     """T113: property — residual doctor JSON fields keep JSON-native types."""
-    from hypothesis import given, settings, strategies as st
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
 
     from mpreg.cli.main import strong_doctor_json_residual_fields
 
@@ -553,6 +578,7 @@ def test_strong_doctor_json_residual_fields_hypothesis() -> None:
 
     _prop()
 
+
 def test_openapi_abort_fail_peer_count_example() -> None:
     """T102/T123/T124: OpenAPI residual fields document typed examples."""
     import json
@@ -584,9 +610,10 @@ def test_openapi_abort_fail_peer_count_example() -> None:
     assert count_node is not None
     assert count_node.get("type") == "integer"
     assert count_node.get("example") == 1
-    assert "doctor" in str(count_node.get("description", "")).lower() or "integer" in str(
-        count_node.get("description", "")
-    ).lower()
+    assert (
+        "doctor" in str(count_node.get("description", "")).lower()
+        or "integer" in str(count_node.get("description", "")).lower()
+    )
 
     oid_node = _find_prop(doc, "last_abort_fail_op_id")
     assert oid_node is not None
@@ -598,4 +625,3 @@ def test_openapi_abort_fail_peer_count_example() -> None:
     assert peers_node.get("type") == "array"
     assert isinstance(peers_node.get("example"), list)
     assert peers_node.get("example")
-

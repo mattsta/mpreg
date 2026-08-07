@@ -16,6 +16,7 @@ from mpreg.core.transport.enhanced_health import (
 )
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run(
         "transport_health_attach",
@@ -112,6 +113,7 @@ async def main() -> None:
             ok(f"removed monitor; remaining={after}")
 
         await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

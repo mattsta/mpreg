@@ -14,6 +14,7 @@ from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 from tests.test_helpers import TestPortManager, wait_for_condition
 
+
 class TestFederationPubSubIntegration:
     """Test PubSub notifications across federated clusters."""
 

@@ -10,6 +10,7 @@ from mpreg.fabric.message_codec import (
     unified_message_to_dict,
 )
 
+
 def test_unified_message_roundtrip() -> None:
     headers = MessageHeaders(
         correlation_id="corr-1",

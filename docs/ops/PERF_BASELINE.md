@@ -1,10 +1,10 @@
 # MPREG Performance Baseline (Lab Evidence)
 
-| Field | Value |
-| --- | --- |
-| **Milestone** | 0.3.0 Production Snapshot |
-| **Honesty** | Lab / same-host numbers only — **not** a WAN multi-region SLA |
-| **Related** | `tests/performance/`, `docs/PRODUCTION_DEPLOYMENT.md` |
+| Field         | Value                                                         |
+| ------------- | ------------------------------------------------------------- |
+| **Milestone** | 0.3.0 Production Snapshot                                     |
+| **Honesty**   | Lab / same-host numbers only — **not** a WAN multi-region SLA |
+| **Related**   | `tests/performance/`, `docs/PRODUCTION_DEPLOYMENT.md`         |
 
 ## What this document is
 
@@ -25,11 +25,11 @@ When publishing numbers, record:
 
 ## Default lab topology
 
-| Role | Settings sketch |
-| --- | --- |
+| Role        | Settings sketch                                 |
+| ----------- | ----------------------------------------------- |
 | Single node | `mpreg/profiles/single-node.toml` or `dev.toml` |
-| Transport | `ws://127.0.0.1` (plain lab) |
-| Logging | INFO or WARNING (DEBUG skews latency) |
+| Transport   | `ws://127.0.0.1` (plain lab)                    |
+| Logging     | INFO or WARNING (DEBUG skews latency)           |
 
 ## Reproducible commands
 
@@ -73,28 +73,28 @@ These are **starting expectations** for a modern laptop/desktop loopback run.
 Your numbers will differ. Fail CI only on **catastrophic** regressions (orders
 of magnitude), not tight percentile flakes.
 
-| Signal | Component | Lab ballpark | Notes |
-| --- | --- | --- | --- |
-| RPC latency p95 | local call | tens of ms | Depends on handler work |
-| RPC throughput | simple echo | hundreds–thousands RPS | Single process |
-| Pub/sub fanout | topic exchange | hardware-bound | Hierarchical topics; not a global SLA |
-| STRONG put | 3-node same-host | much slower than EVENTUAL | Quorum RTTs; flag-gated |
-| Cache EVENTUAL get | local L1 | sub-ms to low ms | After warm |
+| Signal             | Component        | Lab ballpark              | Notes                                 |
+| ------------------ | ---------------- | ------------------------- | ------------------------------------- |
+| RPC latency p95    | local call       | tens of ms                | Depends on handler work               |
+| RPC throughput     | simple echo      | hundreds–thousands RPS    | Single process                        |
+| Pub/sub fanout     | topic exchange   | hardware-bound            | Hierarchical topics; not a global SLA |
+| STRONG put         | 3-node same-host | much slower than EVENTUAL | Quorum RTTs; flag-gated               |
+| Cache EVENTUAL get | local L1         | sub-ms to low ms          | After warm                            |
 
 If README or marketing text mentions high throughput, it must point here and
 state **lab/hardware-dependent**.
 
 ## Non-claims
 
-- Not a multi-region or WAN latency SLA  
-- Not Jepsen/Elle linearizability under partition  
-- Not proof of “million+ msg/s” on arbitrary hardware  
-- STRONG path is correctness-first CFT, not max-PPS  
+- Not a multi-region or WAN latency SLA
+- Not Jepsen/Elle linearizability under partition
+- Not proof of “million+ msg/s” on arbitrary hardware
+- STRONG path is correctness-first CFT, not max-PPS
 - Golden-signal SLOs in `docs/ops/SLO_GOLDEN_SIGNALS.md` are **ops thresholds**,
-  not marketing benchmarks  
+  not marketing benchmarks
 
 ## Updating baselines
 
-1. Run the full suite on reference hardware.  
-2. Record environment in a short PR note or appendix table.  
-3. Adjust bands only with rationale; never silent tighten to chase green CI.  
+1. Run the full suite on reference hardware.
+2. Record environment in a short PR note or appendix table.
+3. Adjust bands only with rationale; never silent tighten to chase green CI.

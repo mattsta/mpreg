@@ -19,6 +19,7 @@ from mpreg.datastructures.vector_clock import VectorClock
 from mpreg.fabric.consensus import StateType, StateValue
 from mpreg.server import MPREGServer
 
+
 async def debug_planet_scale_consensus_deep_dive():
     """Deep dive debugging of planet scale consensus."""
 
@@ -218,6 +219,7 @@ async def debug_planet_scale_consensus_deep_dive():
 
         await asyncio.gather(*server_tasks, return_exceptions=True)
 
+
 async def main():
     """Run deep dive debugging."""
     logger.info("Starting deep dive debug of planet scale consensus")
@@ -229,6 +231,7 @@ async def main():
         logger.info("✅ Planet scale consensus is working correctly")
     else:
         logger.error("❌ Planet scale consensus has fundamental issues")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

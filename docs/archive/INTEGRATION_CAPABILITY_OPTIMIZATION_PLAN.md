@@ -351,6 +351,7 @@ Ready to implement the RPC-Topic integration as the next logical step?
       headers: MessageHeaders
       timestamp: float
 
+
   @dataclass(frozen=True, slots=True)
   class FabricRouteResult:
       route_id: str
@@ -358,6 +359,7 @@ Ready to implement the RPC-Topic integration as the next logical step?
       routing_path: list[str]
       estimated_latency_ms: float
       federation_required: bool
+
 
   @dataclass(slots=True)
   class FabricRoutingConfig:
@@ -1430,6 +1432,7 @@ class TopicRoutedQueue:
     delivery_guarantee: DeliveryGuarantee
     consumer_groups: set[str] = field(default_factory=set)
 
+
 @dataclass(frozen=True, slots=True)
 class TopicQueueMessage:
     topic: str
@@ -1547,6 +1550,7 @@ class TopicQueueRouter:
       subscribe_to_dependencies: bool = True
       dependency_topic_patterns: list[str] = field(default_factory=list)
 
+
   @dataclass(frozen=True, slots=True)
   class RPCProgressEvent:
       command_id: str
@@ -1554,6 +1558,7 @@ class TopicQueueRouter:
       current_step: str
       estimated_completion_ms: float
       metadata: dict[str, Any] = field(default_factory=dict)
+
 
   @dataclass(slots=True)
   class TopicAwareRPCConfig:
@@ -1645,6 +1650,7 @@ class TopicQueueRouter:
       resource_usage: ResourceUsage
       dependency_wait_time_ms: float
       topic_events_triggered: int
+
 
   class RPCAnalyticsCollector:
       async def collect_execution_metrics(

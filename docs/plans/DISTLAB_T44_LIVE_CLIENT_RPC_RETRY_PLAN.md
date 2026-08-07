@@ -1,13 +1,13 @@
 # DistLab T44 — Live client RPC strong_retry_abort e2e (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T43 (`aac82c0`) |
-| **Scope** | Live multi-server proof that client/RPC retry_abort clears residual |
-| **Point budget** | **~30 pts** |
-| **Entry points only** | `uv run pytest …` |
+| Field                 | Value                                                               |
+| --------------------- | ------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                        |
+| **Date**              | 2026-08-06                                                          |
+| **Authority**         | Continuation after T43 (`aac82c0`)                                  |
+| **Scope**             | Live multi-server proof that client/RPC retry_abort clears residual |
+| **Point budget**      | **~30 pts**                                                         |
+| **Entry points only** | `uv run pytest …`                                                   |
 
 ## Problem
 

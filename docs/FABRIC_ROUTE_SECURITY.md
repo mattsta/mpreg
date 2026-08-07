@@ -64,6 +64,7 @@ the registry on a schedule:
 ```python
 from mpreg.fabric.route_keys import RouteKeyRegistry, RouteKeyProvider
 
+
 class PKIKeyProvider(RouteKeyProvider):
     def refresh(self, registry: RouteKeyRegistry) -> None:
         # Load keys from your PKI, secrets manager, or mTLS bundle.

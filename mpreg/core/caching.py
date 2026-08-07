@@ -29,12 +29,14 @@ T = TypeVar("T")
 # Type alias for memory sizes that can be fractional MB
 MemoryMB = int | float
 
+
 class CacheLevel(Enum):
     """Cache tier levels for multi-tier architecture."""
 
     L1_MEMORY = "l1_memory"
     L2_PERSISTENT = "l2_persistent"
     L3_DISTRIBUTED = "l3_distributed"
+
 
 class EvictionPolicy(Enum):
     """Cache eviction policy types."""
@@ -45,6 +47,7 @@ class EvictionPolicy(Enum):
     DEPENDENCY_AWARE = "dependency_aware"
     TTL = "ttl"
     S4LRU = "s4lru"
+
 
 @dataclass(frozen=True, slots=True)
 class CacheKey:
@@ -70,6 +73,7 @@ class CacheKey:
 
     def __str__(self) -> str:
         return f"{self.function_name}:{self.args_hash}:{self.kwargs_hash}"
+
 
 @dataclass(slots=True)
 class CacheEntry:
@@ -134,6 +138,7 @@ class CacheEntry:
         benefit = effective_cost_ms * effective_freq
         return benefit / self.size_bytes
 
+
 @dataclass(slots=True)
 class CacheStatistics:
     """Cache performance statistics."""
@@ -174,6 +179,7 @@ class CacheStatistics:
         self.value_memory_bytes = 0
         self.last_reset_time = time.time()
 
+
 @dataclass(slots=True)
 class EvictionCandidate:
     """Candidate for cache eviction with scoring."""
@@ -194,6 +200,7 @@ class EvictionCandidate:
             return self.entry.last_access_time < other.entry.last_access_time
         return self.entry.creation_time < other.entry.creation_time
 
+
 @dataclass(slots=True)
 class CacheLimits:
     """Cache capacity limits configuration."""
@@ -211,6 +218,7 @@ class CacheLimits:
             # Set reasonable defaults
             self.max_memory_bytes = 100 * 1024 * 1024  # 100MB
             self.max_entries = 10000
+
 
 @dataclass(slots=True)
 class CacheConfiguration:
@@ -276,6 +284,7 @@ class CacheConfiguration:
         else:
             return memory_exceeded or count_exceeded
 
+
 @dataclass(slots=True)
 class S4LRUSegmentStats:
     """Statistics for an S4LRU cache segment."""
@@ -293,6 +302,7 @@ class S4LRUSegmentStats:
         if self.max_memory_bytes == 0:
             return 0.0
         return self.current_memory_bytes / self.max_memory_bytes
+
 
 @dataclass(slots=True)
 class S4LRUSegment:
@@ -337,6 +347,7 @@ class S4LRUSegment:
     def contains(self, key: CacheKey) -> bool:
         """Check if segment contains key."""
         return key in self.entry_set
+
 
 @dataclass(slots=True)
 class S4LRUCache:
@@ -497,6 +508,7 @@ class S4LRUCache:
             segment.entry_set.clear()
         self.key_to_segment.clear()
 
+
 class EvictionPolicyEngine:
     """Engine for implementing different eviction policies."""
 
@@ -531,6 +543,7 @@ class EvictionPolicyEngine:
         """Dependency-aware: Entries with fewer dependents = higher eviction score."""
         dependents = dependency_graph.get(entry.key, set())
         return len(dependents)  # More dependents = lower eviction score
+
 
 class SmartCacheManager[T](ManagedObject):
     """
@@ -1028,11 +1041,13 @@ class SmartCacheManager[T](ManagedObject):
         self.clear()
         cache_store_log.info("Cache manager sync shutdown complete")
 
+
 # Factory functions for common configurations
 def create_default_cache_manager() -> SmartCacheManager[Any]:
     """Create cache manager with default configuration."""
     config = CacheConfiguration()
     return SmartCacheManager(config)
+
 
 def create_memory_optimized_cache_manager(
     max_memory_mb: MemoryMB = 50,
@@ -1047,6 +1062,7 @@ def create_memory_optimized_cache_manager(
     )
     return SmartCacheManager(config)
 
+
 def create_performance_cache_manager() -> SmartCacheManager[Any]:
     """Create performance-optimized cache manager."""
     limits = CacheLimits(
@@ -1060,6 +1076,7 @@ def create_performance_cache_manager() -> SmartCacheManager[Any]:
         enable_dependency_tracking=True,
     )
     return SmartCacheManager(config)
+
 
 def create_s4lru_cache_manager(
     max_entries: int = 10000, segments: int = 4

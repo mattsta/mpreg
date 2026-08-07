@@ -1,13 +1,13 @@
 # DistLab T30 — Orphan Pre-Commit Backup GC (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T29 (`e7347a0`); product bug from CFT residual path |
-| **Scope** | Drop orphan `_backups` when op_id is no longer live (visible or pending) |
-| **Point budget** | **~55 pts** |
-| **Entry points only** | `uv run mpreg …` / `uv run pytest …` |
+| Field                 | Value                                                                    |
+| --------------------- | ------------------------------------------------------------------------ |
+| **Status**            | **Complete**                                                             |
+| **Date**              | 2026-08-06                                                               |
+| **Authority**         | Continuation after T29 (`e7347a0`); product bug from CFT residual path   |
+| **Scope**             | Drop orphan `_backups` when op_id is no longer live (visible or pending) |
+| **Point budget**      | **~55 pts**                                                              |
+| **Entry points only** | `uv run mpreg …` / `uv run pytest …`                                     |
 
 ## Problem
 
@@ -25,12 +25,12 @@ Current residual op still retains backup for successful uncommit.
 
 ## Stages
 
-| Stage | Exit | Status |
-| --- | --- | --- |
-| T30-S0 | Plan | done |
-| T30-S1 | `_prune_orphan_backups` + call sites | done |
-| T30-S2 | DistLab + unit proofs | done |
-| T30-S3 | Gate + Phase 18 + commit | done |
+| Stage  | Exit                                 | Status |
+| ------ | ------------------------------------ | ------ |
+| T30-S0 | Plan                                 | done   |
+| T30-S1 | `_prune_orphan_backups` + call sites | done   |
+| T30-S2 | DistLab + unit proofs                | done   |
+| T30-S3 | Gate + Phase 18 + commit             | done   |
 
 ## Non-claims
 

@@ -1,13 +1,13 @@
 # DistLab T42 — Client/RPC strong_retry_abort Surface (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T41 (`9479463`) |
-| **Scope** | Expose ops-driven `strong_retry_abort` on platform RPC + MPREGClient |
-| **Point budget** | **~40 pts** |
-| **Entry points only** | `uv run pytest …` / `uv run mpreg …` |
+| Field                 | Value                                                                |
+| --------------------- | -------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                         |
+| **Date**              | 2026-08-06                                                           |
+| **Authority**         | Continuation after T41 (`9479463`)                                   |
+| **Scope**             | Expose ops-driven `strong_retry_abort` on platform RPC + MPREGClient |
+| **Point budget**      | **~40 pts**                                                          |
+| **Entry points only** | `uv run pytest …` / `uv run mpreg …`                                 |
 
 ## Problem
 

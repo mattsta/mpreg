@@ -13,8 +13,13 @@ from mpreg.server_pkg.shared_audit import (
     record_from_mgmt_entry,
 )
 
-def _node(node_id: str, transport: InProcessSharedAuditTransport, *, max_entries: int = 500):
-    store = SharedAuditStore(cluster_id="c1", local_node=node_id, max_entries=max_entries)
+
+def _node(
+    node_id: str, transport: InProcessSharedAuditTransport, *, max_entries: int = 500
+):
+    store = SharedAuditStore(
+        cluster_id="c1", local_node=node_id, max_entries=max_entries
+    )
 
     def peers():
         return [p for p in transport.peers if p != node_id]
@@ -31,7 +36,10 @@ def _node(node_id: str, transport: InProcessSharedAuditTransport, *, max_entries
     transport.register(rep)
     return store, rep
 
-def _rec(origin: str, event: str, ts: float, *, eligible: bool = True, cluster: str = "c1"):
+
+def _rec(
+    origin: str, event: str, ts: float, *, eligible: bool = True, cluster: str = "c1"
+):
     return record_from_mgmt_entry(
         event=event,
         timestamp=ts,
@@ -42,6 +50,7 @@ def _rec(origin: str, event: str, ts: float, *, eligible: bool = True, cluster: 
         origin_node=origin,
         gossip_eligible=eligible,
     )
+
 
 @pytest.mark.asyncio
 async def test_partition_then_heal_converges() -> None:
@@ -85,6 +94,7 @@ async def test_partition_then_heal_converges() -> None:
     assert sb.size() >= 5
     assert sc.size() >= 5
 
+
 @pytest.mark.asyncio
 async def test_duplicate_delta_idempotent() -> None:
     tr = InProcessSharedAuditTransport()
@@ -97,6 +107,7 @@ async def test_duplicate_delta_idempotent() -> None:
     await ra._flush_outbound()
     assert sb.size() == 1
     assert sb.get("c1", rec.entry_id) is not None
+
 
 @pytest.mark.asyncio
 async def test_gossip_ineligible_never_epidemic() -> None:
@@ -117,14 +128,16 @@ async def test_gossip_ineligible_never_epidemic() -> None:
         sample = origins["a"].get("id_sample") or []
         assert rec.entry_id not in sample
 
+
 @pytest.mark.asyncio
 async def test_cross_cluster_rejected() -> None:
     tr = InProcessSharedAuditTransport()
-    sa, ra = _node("a", tr)
-    sb, _rb = _node("b", tr)
+    sa, _ra = _node("a", tr)
+    _sb, _rb = _node("b", tr)
     rec = _rec("a", "x", 1.0, cluster="other")
     assert sa.insert(rec) is None
     assert sa.rejected_cross_cluster >= 1
+
 
 @pytest.mark.asyncio
 async def test_outbound_queue_drop_counter() -> None:
@@ -138,6 +151,7 @@ async def test_outbound_queue_drop_counter() -> None:
     health = ra.health()
     assert health.publish_dropped >= 1
     assert sa.size() >= 32  # local store kept inserts
+
 
 @pytest.mark.asyncio
 async def test_multi_origin_burst_converge() -> None:
@@ -158,6 +172,7 @@ async def test_multi_origin_burst_converge() -> None:
     for s in stores.values():
         assert s.size() >= 6
 
+
 @pytest.mark.asyncio
 async def test_watermark_no_resurrection() -> None:
     store = SharedAuditStore(cluster_id="c1", local_node="a", max_entries=5)
@@ -169,7 +184,7 @@ async def test_watermark_no_resurrection() -> None:
     # Compaction should have advanced watermark and dropped old
     assert store.size() <= 5
     # Try re-insert oldest
-    old = _rec("a", "w0", 1.0)
+    _rec("a", "w0", 1.0)
     # Force same entry_id if possible — mint may differ; use get of dropped
     # Re-insert a record below watermark with synthetic low ts
     from mpreg.server_pkg.shared_audit.models import SharedAuditRecord
@@ -193,6 +208,7 @@ async def test_watermark_no_resurrection() -> None:
         assert store.insert(low) is None
         assert store.rejected_below_watermark >= 1
 
+
 @pytest.mark.asyncio
 async def test_replicator_stop_start() -> None:
     tr = InProcessSharedAuditTransport()
@@ -208,6 +224,7 @@ async def test_replicator_stop_start() -> None:
     await ra._flush_outbound()
     assert _sb.size() >= 1
 
+
 @pytest.mark.asyncio
 async def test_drop_delta_digest_repair() -> None:
     tr = InProcessSharedAuditTransport()
@@ -222,6 +239,7 @@ async def test_drop_delta_digest_repair() -> None:
     tr.drop_types.clear()
     await rb._on_digest(ra.build_digest())
     assert sb.get("c1", rec.entry_id) is not None
+
 
 @pytest.mark.asyncio
 async def test_reorder_buffer_converges() -> None:

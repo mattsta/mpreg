@@ -9,11 +9,13 @@ from pathlib import Path
 
 type LineNumber = int
 
+
 @dataclass(frozen=True, slots=True)
 class SectionRequest:
     path: Path
     start: LineNumber
     end: LineNumber
+
 
 def _parse_args() -> SectionRequest:
     parser = argparse.ArgumentParser(
@@ -27,6 +29,7 @@ def _parse_args() -> SectionRequest:
     start = max(1, int(args.start))
     end = max(start, int(args.end))
     return SectionRequest(path=Path(str(args.file)), start=start, end=end)
+
 
 def main() -> int:
     request = _parse_args()
@@ -44,6 +47,7 @@ def main() -> int:
     for line_no in range(start, end + 1):
         print(f"{line_no:5d}: {lines[line_no - 1]}")
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

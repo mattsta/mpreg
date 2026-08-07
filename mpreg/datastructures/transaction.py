@@ -37,6 +37,7 @@ from .blockchain_types import (
     generate_transaction_id,
 )
 
+
 class _LazySt:
     """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
 
@@ -52,7 +53,9 @@ class _LazySt:
     def __getattr__(self, name: str) -> object:
         return getattr(self._load(), name)
 
+
 st = _LazySt()
+
 
 @dataclass(frozen=True, slots=True)
 class Transaction:
@@ -310,6 +313,7 @@ class Transaction:
             f"fee={self.fee}, nonce={self.nonce})"
         )
 
+
 @dataclass(frozen=True, slots=True)
 class TransactionPool:
     """
@@ -376,11 +380,14 @@ class TransactionPool:
         """Check if transaction is in pool."""
         return any(tx.transaction_id == transaction_id for tx in self.transactions)
 
+
 # Hypothesis strategies for property-based testing
+
 
 def transaction_id_strategy() -> st.SearchStrategy[TransactionId]:
     """Generate valid transaction IDs."""
     return st.text(min_size=1, max_size=100)
+
 
 def node_id_strategy() -> st.SearchStrategy[NodeId]:
     """Generate valid node IDs."""
@@ -392,9 +399,11 @@ def node_id_strategy() -> st.SearchStrategy[NodeId]:
         ),
     )
 
+
 def transaction_payload_strategy() -> st.SearchStrategy[TransactionPayload]:
     """Generate valid transaction payloads."""
     return st.binary(max_size=1024)
+
 
 def transaction_strategy() -> st.SearchStrategy[Transaction]:
     """Generate valid Transaction instances for testing."""
@@ -423,6 +432,7 @@ def transaction_strategy() -> st.SearchStrategy[Transaction]:
         return base
 
     return _transaction()
+
 
 def transaction_pool_strategy() -> st.SearchStrategy[TransactionPool]:
     """Generate valid TransactionPool instances for testing."""

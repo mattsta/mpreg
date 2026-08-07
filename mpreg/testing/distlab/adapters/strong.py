@@ -20,6 +20,7 @@ from mpreg.testing.distlab.history import History
 from mpreg.testing.distlab.models import OpKind
 from mpreg.testing.faults import FaultInjector
 
+
 @dataclass
 class StrongChaosTransport:
     """StrongPeerTransport driven by FaultInjector + malice sets."""
@@ -76,9 +77,7 @@ class StrongChaosTransport:
             return True
         if frozenset({src, dst}) in self.edge_cuts:
             return True
-        if not self.injector.can_deliver(src, dst, plane="data"):
-            return True
-        return False
+        return bool(not self.injector.can_deliver(src, dst, plane="data"))
 
     async def _maybe_delay(self) -> None:
         d = self.delay_override_s or self.injector.delay_for(plane="data")
@@ -171,6 +170,7 @@ class StrongChaosTransport:
             return False
         return await be.abort(op_id=op_id, key=key)
 
+
 @dataclass
 class StrongStateSnapshot:
     """Checker-facing snapshot of a STRONG mesh."""
@@ -221,6 +221,7 @@ class StrongStateSnapshot:
             if v is not None:
                 return v[0]
         return None
+
 
 @dataclass
 class StrongSUT:
@@ -309,9 +310,7 @@ class StrongSUT:
         op_id: str | None = None,
     ) -> Any:
         k = self.key(logical_key)
-        history.invoke(
-            process, OpKind.PUT, key=logical_key, value=value, op_id=op_id
-        )
+        history.invoke(process, OpKind.PUT, key=logical_key, value=value, op_id=op_id)
         try:
             res = await self.coords[origin].strong_put(
                 k,
@@ -320,7 +319,7 @@ class StrongSUT:
                 eligible_peers=list(self.peer_ids),
                 op_id=op_id,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             history.info(
                 process,
                 OpKind.PUT,

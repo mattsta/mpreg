@@ -8,6 +8,7 @@ from mpreg.server_pkg.types import (
     RemoteCommandStats,
 )
 
+
 def test_message_and_remote_stats() -> None:
     stats = MessageStats()
     stats.total_processed = 3
@@ -15,6 +16,7 @@ def test_message_and_remote_stats() -> None:
     remote.record("echo")
     assert remote.total == 1
     assert remote.last_command == "echo"
+
 
 def test_departed_peer_expiry() -> None:
     now = time.time()
@@ -27,6 +29,7 @@ def test_departed_peer_expiry() -> None:
         ttl_seconds=1.0,
     )
     assert peer.is_expired(now)
+
 
 def test_command_execution_result() -> None:
     result = CommandExecutionResult(name="a", value=1)

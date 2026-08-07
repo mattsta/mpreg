@@ -19,6 +19,7 @@ from mpreg.server import MPREGServer
 from mpreg.server_pkg.mgmt_mutations import apply_node_drain
 from tests.conftest import AsyncTestContext
 
+
 def _audit_settings(
     port: int,
     mon: int,
@@ -44,6 +45,7 @@ def _audit_settings(
         mgmt_audit_shared_gossip_targets=3,
     )
 
+
 async def _wait_connected_mesh(
     servers: list[MPREGServer], *, timeout: float = 10.0
 ) -> None:
@@ -54,11 +56,7 @@ async def _wait_connected_mesh(
         for s in servers:
             try:
                 conns = s._get_all_peer_connections()
-                n = sum(
-                    1
-                    for c in conns.values()
-                    if getattr(c, "is_connected", False)
-                )
+                n = sum(1 for c in conns.values() if getattr(c, "is_connected", False))
             except Exception:  # noqa: BLE001
                 n = 0
             if n < 1 and len(servers) > 1:
@@ -79,6 +77,7 @@ async def _wait_connected_mesh(
                 return
         await asyncio.sleep(0.15)
     raise AssertionError("peer mesh not connected in time")
+
 
 async def _wait_cluster_events(
     servers: list[MPREGServer],
@@ -118,7 +117,10 @@ async def _wait_cluster_events(
                 if len(inter) >= min_events:
                     last = snapshots[0]
                     return last
-                if all(s == id_sets[0] for s in id_sets) and len(id_sets[0]) >= min_events:
+                if (
+                    all(s == id_sets[0] for s in id_sets)
+                    and len(id_sets[0]) >= min_events
+                ):
                     last = snapshots[0]
                     return last
         await asyncio.sleep(0.2)
@@ -130,15 +132,13 @@ async def _wait_cluster_events(
                 s.settings.name,
                 body.get("mutation_count"),
                 (body.get("health") or {}),
-                [
-                    m.get("origin_node")
-                    for m in (body.get("mutations") or [])[:8]
-                ],
+                [m.get("origin_node") for m in (body.get("mutations") or [])[:8]],
             )
         )
     raise AssertionError(
         f"cluster audit did not converge to {min_events} events: {dumps}"
     )
+
 
 @pytest.mark.asyncio
 async def test_live_multi_origin_drain_converges(
@@ -150,12 +150,8 @@ async def test_live_multi_origin_drain_converges(
         url0 = f"ws://127.0.0.1:{ws[0]}"
         servers = [
             MPREGServer(_audit_settings(ws[0], mon[0], "A0", audit_dir)),
-            MPREGServer(
-                _audit_settings(ws[1], mon[1], "A1", audit_dir, peers=[url0])
-            ),
-            MPREGServer(
-                _audit_settings(ws[2], mon[2], "A2", audit_dir, peers=[url0])
-            ),
+            MPREGServer(_audit_settings(ws[1], mon[1], "A1", audit_dir, peers=[url0])),
+            MPREGServer(_audit_settings(ws[2], mon[2], "A2", audit_dir, peers=[url0])),
         ]
         test_context.servers.extend(servers)
         tasks = [asyncio.create_task(s.server()) for s in servers]
@@ -199,6 +195,7 @@ async def test_live_multi_origin_drain_converges(
         assert cluster.get("scope") == "cluster"
         assert cluster.get("shared_enabled") is True
 
+
 @pytest.mark.asyncio
 async def test_live_late_joiner_backfill(
     test_context: AsyncTestContext,
@@ -209,9 +206,7 @@ async def test_live_late_joiner_backfill(
         audit_dir = tempfile.mkdtemp(prefix="mpreg-audit-late-")
         url0 = f"ws://127.0.0.1:{ws[0]}"
         s0 = MPREGServer(_audit_settings(ws[0], mon[0], "L0", audit_dir))
-        s1 = MPREGServer(
-            _audit_settings(ws[1], mon[1], "L1", audit_dir, peers=[url0])
-        )
+        s1 = MPREGServer(_audit_settings(ws[1], mon[1], "L1", audit_dir, peers=[url0]))
         test_context.servers.extend([s0, s1])
         tasks = [
             asyncio.create_task(s0.server()),
@@ -222,17 +217,13 @@ async def test_live_late_joiner_backfill(
         await _wait_connected_mesh([s0, s1], timeout=12.0)
 
         for i in range(4):
-            apply_node_drain(
-                s0, draining=bool(i % 2), actor="late", reason=f"e{i}"
-            )
+            apply_node_drain(s0, draining=bool(i % 2), actor="late", reason=f"e{i}")
             await asyncio.sleep(0.15)
 
         await _wait_cluster_events([s0, s1], min_events=4, timeout=18.0)
 
         # Late joiner
-        s2 = MPREGServer(
-            _audit_settings(ws[2], mon[2], "L2", audit_dir, peers=[url0])
-        )
+        s2 = MPREGServer(_audit_settings(ws[2], mon[2], "L2", audit_dir, peers=[url0]))
         test_context.servers.append(s2)
         test_context.tasks.append(asyncio.create_task(s2.server()))
         await asyncio.sleep(0.8)

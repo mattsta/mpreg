@@ -6,6 +6,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 from tests.test_helpers import TestPortManager, wait_for_condition
 
+
 async def _run_server(
     settings: MPREGSettings,
 ) -> tuple[MPREGServer, asyncio.Task[None]]:
@@ -14,6 +15,7 @@ async def _run_server(
     await asyncio.sleep(1.0)
     return server, task
 
+
 async def _stop_server(server: MPREGServer, task: asyncio.Task[None]) -> None:
     await server.shutdown_async()
     try:
@@ -21,6 +23,7 @@ async def _stop_server(server: MPREGServer, task: asyncio.Task[None]) -> None:
     except TimeoutError:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
+
 
 @pytest.mark.asyncio
 async def test_persistence_config_file_restores_queues(tmp_path) -> None:

@@ -44,6 +44,7 @@ from mpreg.fabric.cache_federation import (
 )
 from mpreg.fabric.cache_transport import InProcessCacheTransport
 
+
 class TestGlobalCacheKey:
     """Test GlobalCacheKey functionality."""
 
@@ -83,6 +84,7 @@ class TestGlobalCacheKey:
 
         local_key = key.to_local_key()
         assert local_key.function_name == "test.namespace.abc123"
+
 
 class TestGlobalCacheManager:
     """Test GlobalCacheManager functionality."""
@@ -247,6 +249,7 @@ class TestGlobalCacheManager:
         options = CacheOptions()
         assert CacheLevel.L4 in options.cache_levels
 
+
 class TestFabricCacheProtocol:
     """Test FabricCacheProtocol functionality."""
 
@@ -360,6 +363,7 @@ class TestFabricCacheProtocol:
         assert "conflicts" in stats
         assert "cache_state" in stats
         assert stats["node_id"] == "test_node_1"
+
 
 class TestCacheProtocol:
     """Test cache protocol message handling."""
@@ -484,6 +488,7 @@ class TestCacheProtocol:
         assert response_dict["status"] == "error"
         assert "error_message" in response_dict
 
+
 class TestCacheIntegration:
     """Test integration between cache components."""
 
@@ -571,6 +576,7 @@ class TestCacheIntegration:
         await cache_manager.shutdown()
         await cache_protocol.shutdown()
 
+
 # Performance and stress tests
 class TestCachePerformance:
     """Test cache performance and scalability."""
@@ -657,6 +663,7 @@ class TestCachePerformance:
 
         # Cleanup
         await cache_manager.shutdown()
+
 
 class TestMPREGCacheIntegration:
     """Test integration with MPREG server and client infrastructure."""
@@ -912,6 +919,7 @@ class TestMPREGCacheIntegration:
         await cache_manager.shutdown()
         await cache_protocol.shutdown()
 
+
 # Performance benchmarks for real-world scenarios
 class TestCacheRealWorldPerformance:
     """Test cache performance under realistic workloads."""
@@ -1043,6 +1051,7 @@ class TestCacheRealWorldPerformance:
         assert len(stored_keys) > stats["l1_statistics"]["entry_count"]
 
         await cache_manager.shutdown()
+
 
 if __name__ == "__main__":
     # Run tests with pytest

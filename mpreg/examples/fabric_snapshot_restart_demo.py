@@ -16,6 +16,7 @@ from mpreg.fabric.federation_config import create_permissive_bridging_config
 from mpreg.fabric.route_keys import RouteKeyRegistry
 from mpreg.server import MPREGServer
 
+
 async def _start_server(
     port: int,
     name: str,
@@ -54,6 +55,7 @@ async def _start_server(
     await asyncio.sleep(1.0)
     return server, task
 
+
 async def _stop_server(server: MPREGServer, task: asyncio.Task[None]) -> None:
     await server.shutdown_async()
     try:
@@ -61,6 +63,7 @@ async def _stop_server(server: MPREGServer, task: asyncio.Task[None]) -> None:
     except TimeoutError:
         task.cancel()
         await asyncio.gather(task, return_exceptions=True)
+
 
 async def _wait_for_function(
     server: MPREGServer, function_name: str, *, timeout: float = 5.0
@@ -75,6 +78,7 @@ async def _wait_for_function(
             return True
         await asyncio.sleep(0.1)
     return False
+
 
 async def main() -> None:
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -130,6 +134,7 @@ async def main() -> None:
                 bool(restored_keys.resolve_public_keys("cluster-remote")),
             )
             await _stop_server(restored_server, restored_task)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

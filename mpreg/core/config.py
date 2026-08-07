@@ -28,6 +28,7 @@ from mpreg.fabric.route_keys import RouteKeyProvider, RouteKeyRegistry
 from mpreg.fabric.route_policy_directory import RoutePolicyDirectory
 from mpreg.fabric.route_security import RouteAnnouncementSigner, RouteSecurityConfig
 
+
 @dataclass(slots=True)
 class MPREGSettings:
     """MPREG server configuration settings."""

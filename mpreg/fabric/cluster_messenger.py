@@ -11,6 +11,7 @@ from mpreg.fabric.federation_planner import FabricForwardingPlan
 
 from .message import MessageHeaders, UnifiedMessage
 
+
 class ClusterHopPlanner(Protocol):
     def plan_next_hop(
         self,
@@ -20,8 +21,10 @@ class ClusterHopPlanner(Protocol):
         remaining_hops: HopCount | None = None,
     ) -> FabricForwardingPlan: ...
 
+
 class FabricClusterTransport(Protocol):
     async def send_message(self, peer_id: str, message: UnifiedMessage) -> bool: ...
+
 
 @dataclass(slots=True)
 class ClusterMessenger:

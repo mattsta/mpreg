@@ -51,6 +51,7 @@ try:
 except ImportError:
     CONSUL_AVAILABLE = False
 
+
 class DiscoveryProtocol(Enum):
     """Supported discovery protocols."""
 
@@ -60,6 +61,7 @@ class DiscoveryProtocol(Enum):
     STATIC_CONFIG = "static_config"
     HTTP_ENDPOINT = "http_endpoint"
     GOSSIP_MESH = "gossip_mesh"
+
 
 @dataclass(frozen=True, slots=True)
 class DiscoveredCluster:
@@ -87,12 +89,14 @@ class DiscoveredCluster:
             created_at=self.last_seen,
         )
 
+
 @dataclass(frozen=True, slots=True)
 class DnsSrvRecord:
     priority: int
     weight: int
     port: int
     host: str
+
 
 @dataclass(frozen=True, slots=True)
 class DiscoveryConfiguration:
@@ -139,6 +143,7 @@ class DiscoveryConfiguration:
     discovery_interval: float = 30.0
     registration_ttl: float = 60.0
 
+
 class DiscoveryBackend(ABC):
     """Abstract base class for discovery backends."""
 
@@ -162,6 +167,7 @@ class DiscoveryBackend(ABC):
     @abstractmethod
     async def health_check(self) -> bool:
         """Check if the discovery backend is healthy."""
+
 
 class DNSDiscoveryBackend(DiscoveryBackend):
     """DNS SRV record-based discovery."""
@@ -350,6 +356,7 @@ class DNSDiscoveryBackend(DiscoveryBackend):
         except Exception:
             return False
 
+
 class ConsulDiscoveryBackend(DiscoveryBackend):
     """Consul-based service discovery."""
 
@@ -486,6 +493,7 @@ class ConsulDiscoveryBackend(DiscoveryBackend):
         except Exception:
             return False
 
+
 class StaticConfigDiscoveryBackend(DiscoveryBackend):
     """Static configuration file-based discovery."""
 
@@ -546,6 +554,7 @@ class StaticConfigDiscoveryBackend(DiscoveryBackend):
             return config_path.exists() and config_path.is_file()
         except Exception:
             return False
+
 
 class HTTPDiscoveryBackend(DiscoveryBackend):
     """HTTP endpoint-based discovery."""
@@ -681,6 +690,7 @@ class HTTPDiscoveryBackend(DiscoveryBackend):
                 return response.status == 200
         except Exception:
             return False
+
 
 @dataclass(slots=True)
 class AutoDiscoveryService:
@@ -1072,6 +1082,7 @@ class AutoDiscoveryService:
                 total_events=total_events,
             )
 
+
 # Factory function for easy service creation
 async def create_auto_discovery_service(
     discovery_configs: list[DiscoveryConfiguration],
@@ -1086,6 +1097,7 @@ async def create_auto_discovery_service(
         f"Created auto-discovery service with {len(discovery_configs)} backends"
     )
     return service
+
 
 # Configuration factory functions
 def create_consul_discovery_config(
@@ -1105,6 +1117,7 @@ def create_consul_discovery_config(
         discovery_interval=discovery_interval,
     )
 
+
 def create_static_discovery_config(
     config_path: str, discovery_interval: float = 60.0
 ) -> DiscoveryConfiguration:
@@ -1114,6 +1127,7 @@ def create_static_discovery_config(
         static_config_path=config_path,
         discovery_interval=discovery_interval,
     )
+
 
 def create_http_discovery_config(
     discovery_url: str,
@@ -1127,6 +1141,7 @@ def create_http_discovery_config(
         discovery_interval=discovery_interval,
         registration_ttl=registration_ttl,
     )
+
 
 def create_dns_discovery_config(
     domain: str,

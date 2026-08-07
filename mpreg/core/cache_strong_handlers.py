@@ -13,6 +13,7 @@ from mpreg.core.cache_strong import (
     StrongVersion,
 )
 
+
 def key_from_payload(raw: dict[str, Any] | None) -> GlobalCacheKey | None:
     if not isinstance(raw, dict):
         return None
@@ -28,8 +29,10 @@ def key_from_payload(raw: dict[str, Any] | None) -> GlobalCacheKey | None:
         except Exception:  # noqa: BLE001
             return None
 
+
 def key_to_payload(key: GlobalCacheKey) -> dict[str, Any]:
     return CacheKeyMessage.from_global_cache_key(key).to_dict()
+
 
 class StrongPeerHandler:
     """Dispatches STRONG_* request payloads against a :class:`StrongLocalBackend`."""
@@ -124,13 +127,16 @@ class StrongPeerHandler:
             "request_id": payload.get("request_id", ""),
         }
 
+
 def _prep_ack(node_id: str, ok: bool, reason: str = "") -> dict[str, Any]:
     return {"node_id": node_id, "ok": ok, "reason": reason}
+
 
 def _commit_ack(
     node_id: str, ok: bool, applied: bool, reason: str = ""
 ) -> dict[str, Any]:
     return {"node_id": node_id, "ok": ok, "applied": applied, "reason": reason}
+
 
 def prepare_ack_from_dict(raw: dict[str, Any]) -> PrepareAck:
     return PrepareAck(
@@ -138,6 +144,7 @@ def prepare_ack_from_dict(raw: dict[str, Any]) -> PrepareAck:
         ok=bool(raw.get("ok")),
         reason=str(raw.get("reason") or ""),
     )
+
 
 def commit_ack_from_dict(raw: dict[str, Any]) -> CommitAck:
     return CommitAck(

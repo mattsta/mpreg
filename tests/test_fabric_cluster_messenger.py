@@ -12,6 +12,7 @@ from mpreg.fabric.message import (
     UnifiedMessage,
 )
 
+
 class DummyTransport:
     def __init__(self) -> None:
         self.sent: list[tuple[str, UnifiedMessage]] = []
@@ -19,6 +20,7 @@ class DummyTransport:
     async def send_message(self, peer_id: str, message: UnifiedMessage) -> bool:
         self.sent.append((peer_id, message))
         return True
+
 
 class DummyPlanner:
     def __init__(self, next_peer: str | None) -> None:
@@ -41,6 +43,7 @@ class DummyPlanner:
             reason=FabricForwardingFailureReason.OK,
         )
 
+
 def test_next_headers_initial() -> None:
     transport = DummyTransport()
     messenger = ClusterMessenger(
@@ -59,6 +62,7 @@ def test_next_headers_initial() -> None:
     assert headers.routing_path == ("node-a",)
     assert headers.federation_path == ("cluster-a",)
     assert headers.hop_budget == 3
+
 
 def test_next_headers_appends_paths() -> None:
     transport = DummyTransport()
@@ -85,6 +89,7 @@ def test_next_headers_appends_paths() -> None:
     assert headers.hop_budget == 2
     assert headers.target_cluster == "cluster-b"
 
+
 def test_next_headers_loop_detected() -> None:
     from mpreg.core.errors import MpregError, MpregErrorCode
 
@@ -102,6 +107,7 @@ def test_next_headers_loop_detected() -> None:
     with pytest.raises(MpregError) as ei:
         messenger.next_headers("corr-loop", existing, target_cluster="cluster-b")
     assert ei.value.code == int(MpregErrorCode.ROUTE_LOOP)
+
 
 def test_next_headers_hop_budget_exceeded() -> None:
     from mpreg.core.errors import MpregError, MpregErrorCode
@@ -122,6 +128,7 @@ def test_next_headers_hop_budget_exceeded() -> None:
     with pytest.raises(MpregError) as ei:
         messenger.next_headers("corr-hop", existing, target_cluster="cluster-b")
     assert ei.value.code == int(MpregErrorCode.HOP_BUDGET_EXCEEDED)
+
 
 @pytest.mark.asyncio
 async def test_send_to_cluster_with_planner() -> None:
@@ -147,6 +154,7 @@ async def test_send_to_cluster_with_planner() -> None:
     sent = await messenger.send_to_cluster(message, "cluster-b", None)
     assert sent is True
     assert transport.sent[0][0] == "peer-planned"
+
 
 @pytest.mark.asyncio
 async def test_send_to_cluster_fallback_peer_locator() -> None:

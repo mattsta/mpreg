@@ -9,6 +9,7 @@ from mpreg.datastructures.blockchain import Blockchain
 from mpreg.datastructures.blockchain_store import BlockchainStore
 from mpreg.datastructures.blockchain_types import Timestamp
 
+
 @dataclass(slots=True)
 class BlockchainLedger:
     """Mutable holder for the current blockchain state."""

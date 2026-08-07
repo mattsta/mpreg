@@ -3,6 +3,7 @@ from mpreg.datastructures.rpc_spec import RpcRegistration
 from mpreg.fabric.adapters.function_registry import LocalFunctionCatalogAdapter
 from mpreg.fabric.catalog import TransportEndpoint
 
+
 def test_function_registry_adapter_builds_delta() -> None:
     registry = RpcRegistry()
 

@@ -14,12 +14,14 @@ from mpreg.core.native_codec import (
 from mpreg.core.serialization import JsonSerializer
 from mpreg.fabric.gossip import GossipMessage, GossipMessageType
 
+
 def test_roundtrip_and_canonical_sort() -> None:
     data = {"b": 1, "a": {"z": 3, "y": 2}}
     assert loads(dumps(data)) == data
     assert canonical_dumps(data) == b'{"a":{"y":2,"z":3},"b":1}'
     ser = JsonSerializer()
     assert ser.serialize_canonical(data) == canonical_dumps(data)
+
 
 def test_estimate_size_fast_on_huge_nested() -> None:
     nested = {
@@ -34,6 +36,7 @@ def test_estimate_size_fast_on_huge_nested() -> None:
     dt = time.perf_counter() - t0
     assert size > 0
     assert dt < 0.05, f"estimate too slow: {dt:.3f}s"
+
 
 def test_payload_fingerprint_catalog_fast_path() -> None:
     payload = {
@@ -52,6 +55,7 @@ def test_payload_fingerprint_catalog_fast_path() -> None:
     payload2["functions"] = payload2["functions"] + [{"x": -1}]
     fp2 = payload_fingerprint_hex(payload2, truncate=16)
     assert fp != fp2  # length changed
+
 
 def test_gossip_checksum_avoids_str_payload() -> None:
     huge = {
@@ -74,6 +78,7 @@ def test_gossip_checksum_avoids_str_payload() -> None:
     assert len(msg.checksum) == 16
     assert len(msg.digest) == 8
     assert dt < 0.05, f"GossipMessage init too slow under huge payload: {dt:.3f}s"
+
 
 def test_bigint_canonical_and_text_helpers(tmp_path) -> None:
     """orjson accepts full u64 as numbers; only >u64 becomes decimal str."""
@@ -113,6 +118,7 @@ def test_bigint_canonical_and_text_helpers(tmp_path) -> None:
     except JSONDecodeError:
         pass
 
+
 def test_dump_path_and_canonical_hash(tmp_path) -> None:
     from mpreg.core.native_codec import canonical_hash_hex, dump_path, load_path
 
@@ -126,6 +132,7 @@ def test_dump_path_and_canonical_hash(tmp_path) -> None:
     assert len(h) == 16
     assert h == canonical_hash_hex({"a": 2, "z": 1}, truncate=16)
 
+
 def test_estimate_size_cycle_and_primitives() -> None:
     assert estimate_size_bytes(None) == 0
     assert estimate_size_bytes(b"abcd") == 4
@@ -133,6 +140,7 @@ def test_estimate_size_cycle_and_primitives() -> None:
     cyclic: dict = {"a": 1}
     cyclic["self"] = cyclic
     assert estimate_size_bytes(cyclic) > 0
+
 
 def test_backend_registry_roundtrip() -> None:
     from mpreg.core.native_codec import get_codec_backend, set_codec_backend
@@ -144,6 +152,7 @@ def test_backend_registry_roundtrip() -> None:
         assert loads(dumps({"k": 1})) == {"k": 1}
     finally:
         set_codec_backend(prev)
+
 
 def test_message_queue_fingerprint_avoids_str_payload() -> None:
     """Queue dedup fingerprint must not nested-repr large payloads."""

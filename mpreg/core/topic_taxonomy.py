@@ -30,6 +30,7 @@ type TopicTemplate = str
 type UserTopicPattern = str
 type SystemTopicPattern = str
 
+
 class TopicNamespace(Enum):
     """Reserved topic namespaces in MPREG."""
 
@@ -49,12 +50,14 @@ class TopicNamespace(Enum):
     SERVICE_ROOT = "service"
     BUSINESS_ROOT = "business"
 
+
 class TopicAccessLevel(Enum):
     """Access control levels for topic patterns."""
 
     CONTROL_PLANE = "control_plane"  # Internal system only
     DATA_PLANE = "data_plane"  # User-controlled data
     MIXED = "mixed"  # Both internal and user data
+
 
 @dataclass(frozen=True, slots=True)
 class TopicPattern:
@@ -116,6 +119,7 @@ class TopicPattern:
     def generate_example_topic(self, **kwargs: Any) -> str:
         """Generate a concrete topic from this pattern template."""
         return self.pattern.format(**kwargs)
+
 
 @dataclass(frozen=True, slots=True)
 class TopicTaxonomy:
@@ -436,6 +440,7 @@ class TopicTaxonomy:
         example_topics=["business.orders.created", "business.inventory.updated"],
     )
 
+
 class TopicValidator:
     """Validator for topic patterns and access control."""
 
@@ -544,6 +549,7 @@ class TopicValidator:
         if TopicValidator.is_internal_topic(topic):
             return TopicAccessLevel.CONTROL_PLANE
         return TopicAccessLevel.DATA_PLANE
+
 
 class TopicTemplateEngine:
     """Engine for generating topics from templates with validation."""

@@ -18,6 +18,7 @@ from mpreg.fabric.route_announcer import (
 )
 from mpreg.fabric.route_control import RouteDestination, RouteTable, RouteWithdrawal
 
+
 @pytest.mark.asyncio
 async def test_path_vector_churn_converges_small_mesh() -> None:
     transport = InProcessGossipTransport()
@@ -81,6 +82,7 @@ async def test_path_vector_churn_converges_small_mesh() -> None:
         if cluster_id == "cluster-5":
             continue
         assert table.select_route(destination, now=now + 3) is None
+
 
 @pytest.mark.asyncio
 async def test_link_state_churn_breaks_path() -> None:
@@ -158,6 +160,7 @@ async def test_link_state_churn_breaks_path() -> None:
 
     path = routers["cluster-0"].find_optimal_path("cluster-0", "cluster-3", max_hops=6)
     assert path is None
+
 
 @pytest.mark.asyncio
 async def test_link_state_mesh_supports_ecmp_paths() -> None:

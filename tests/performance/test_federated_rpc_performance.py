@@ -30,6 +30,7 @@ from tests.test_helpers import wait_for_condition
 
 pytestmark = pytest.mark.slow
 
+
 class TestFederatedRPCPerformance:
     """Performance tests for federated RPC system."""
 

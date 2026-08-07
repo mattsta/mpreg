@@ -11,6 +11,7 @@ from mpreg.server import MPREGServer
 
 from .test_helpers import TestPortManager
 
+
 @pytest.fixture
 async def two_server_cluster():
     """Create a simple 2-server cluster for dependency testing."""
@@ -85,6 +86,7 @@ async def two_server_cluster():
             print("Some server tasks did not complete within timeout")
 
         await asyncio.sleep(0.5)
+
 
 @pytest.fixture
 async def field_access_cluster():
@@ -174,6 +176,7 @@ async def field_access_cluster():
 
         await asyncio.sleep(0.5)
 
+
 class TestDependencyResolution:
     """Test dependency resolution patterns."""
 
@@ -237,6 +240,7 @@ class TestDependencyResolution:
             )  # Average of [20.1, 20.5, 21.0]
             assert result["alert_check"]["severity"] == "NORMAL"  # 20.533 < 20.8
             assert not result["alert_check"]["alert"]
+
 
 class TestComplexDependencyChains:
     """Test more complex dependency patterns that should work."""

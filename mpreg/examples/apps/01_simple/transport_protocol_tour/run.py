@@ -21,6 +21,7 @@ from mpreg.core.transport.tcp_transport import (
 )
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run(
         "transport_protocol_tour",
@@ -104,6 +105,7 @@ async def main() -> None:
             ok("TransportConfig ready for either protocol family")
 
         await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

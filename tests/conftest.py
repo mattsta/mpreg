@@ -38,11 +38,13 @@ from mpreg.core.port_allocator import (
 from mpreg.fabric.gossip_transport import InProcessGossipTransport
 from mpreg.server import MPREGServer
 
+
 @pytest.fixture
 def test_port():
     """Pytest fixture for a single test port."""
     with port_context("testing") as port:
         yield port
+
 
 @pytest.fixture
 def server_port():
@@ -50,11 +52,13 @@ def server_port():
     with port_context("servers") as port:
         yield port
 
+
 @pytest.fixture
 def client_port():
     """Pytest fixture for a client port."""
     with port_context("clients") as port:
         yield port
+
 
 @pytest.fixture
 def federation_port():
@@ -62,11 +66,13 @@ def federation_port():
     with port_context("federation") as port:
         yield port
 
+
 @pytest.fixture
 def port_pair():
     """Pytest fixture for a pair of ports (e.g., server + client)."""
     with port_range_context(2, "testing") as ports:
         yield ports
+
 
 @pytest.fixture
 def server_cluster_ports():
@@ -74,10 +80,12 @@ def server_cluster_ports():
     with port_range_context(8, "servers") as ports:
         yield ports
 
+
 @pytest.fixture
 def port_allocator():
     """Pytest fixture for the port allocator instance."""
     return get_port_allocator()
+
 
 @pytest.fixture(autouse=True)
 def _cleanup_orphaned_event_loop() -> AsyncGenerator[None]:
@@ -99,10 +107,12 @@ def _cleanup_orphaned_event_loop() -> AsyncGenerator[None]:
         loop.close()
         asyncio.set_event_loop(None)
 
+
 @pytest.fixture
 def gossip_transport() -> InProcessGossipTransport:
     """In-process transport shared by federation gossip tests."""
     return InProcessGossipTransport()
+
 
 class AsyncTestContext:
     """Context manager for async test operations with automatic cleanup."""
@@ -272,11 +282,13 @@ class AsyncTestContext:
                 except asyncio.CancelledError:
                     return
 
+
 @pytest_asyncio.fixture
 async def test_context() -> AsyncGenerator[AsyncTestContext]:
     """Provides a clean async test context with automatic resource cleanup."""
     async with AsyncTestContext() as ctx:
         yield ctx
+
 
 @pytest_asyncio.fixture
 async def single_server(
@@ -316,6 +328,7 @@ async def single_server(
     await asyncio.sleep(0.5)
 
     yield server
+
 
 @pytest_asyncio.fixture
 async def cluster_2_servers(
@@ -377,6 +390,7 @@ async def cluster_2_servers(
     await asyncio.sleep(0.5)
 
     yield server1, server2
+
 
 @pytest_asyncio.fixture
 async def cluster_3_servers(
@@ -454,6 +468,7 @@ async def cluster_3_servers(
 
     yield servers[0], servers[1], servers[2]
 
+
 @pytest_asyncio.fixture
 async def client_factory(test_context: AsyncTestContext) -> Any:
     """Factory function for creating test clients with automatic cleanup.
@@ -473,10 +488,12 @@ async def client_factory(test_context: AsyncTestContext) -> Any:
 
     return _create_client
 
+
 # Custom server registration functions for testing
 def data_processing_function(data: list[int]) -> int:
     """Example data processing function for testing workflows."""
     return sum(data)
+
 
 def ml_inference_function(
     model_name: str, input_data: dict[str, Any]
@@ -487,6 +504,7 @@ def ml_inference_function(
         "prediction": f"processed_{input_data.get('value', 'unknown')}",
         "confidence": 0.95,
     }
+
 
 def format_results_function(
     raw_results: dict[str, Any], format_type: str = "json"
@@ -500,6 +518,7 @@ def format_results_function(
         return f"Result: {raw_results.get('prediction', 'N/A')}"
     else:
         return str(raw_results)
+
 
 @pytest_asyncio.fixture
 async def enhanced_server(
@@ -553,6 +572,7 @@ async def enhanced_server(
 
     yield server
 
+
 # Pytest configuration
 def pytest_configure(config: Any) -> None:
     """Configure pytest for async testing + hang observability."""
@@ -567,16 +587,19 @@ def pytest_configure(config: Any) -> None:
     state.write_pid()
     config._mpreg_hang_state = state  # type: ignore[attr-defined]
 
+
 def pytest_runtest_logstart(nodeid: str, location: Any) -> None:
     """Breadcrumb current nodeid for hang profilers (py-spy / HangWatchdog)."""
     from mpreg.testing.hang_observe import HangStateDir
 
     HangStateDir().write_current(nodeid)
 
+
 def pytest_runtest_logfinish(nodeid: str, location: Any) -> None:
     """Clear current-test breadcrumb when a test completes."""
     from mpreg.testing.hang_observe import HangStateDir
 
     HangStateDir().clear_current()
+
 
 # Remove deprecated event_loop fixture - use pytest-asyncio defaults

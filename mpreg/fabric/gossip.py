@@ -63,6 +63,7 @@ GOSSIP_SCHED_DIAG_ENABLED = (
     os.environ.get("MPREG_DEBUG_GOSSIP_SCHED", "").strip().lower() in _DIAG_TRUE_VALUES
 )
 
+
 # New dataclasses for type safety
 @dataclass(slots=True)
 class StateUpdatePayload:
@@ -75,6 +76,7 @@ class StateUpdatePayload:
     source_node: str = ""
     ttl: int = 300
 
+
 @dataclass(slots=True)
 class MembershipUpdatePayload:
     """Payload for membership update messages."""
@@ -84,6 +86,7 @@ class MembershipUpdatePayload:
     event_type: str = "update"
     timestamp: float = field(default_factory=time.time)
     incarnation: int = 0
+
 
 @dataclass(slots=True)
 class ConfigUpdatePayload:
@@ -95,6 +98,7 @@ class ConfigUpdatePayload:
     timestamp: float = field(default_factory=time.time)
     source_node: str = ""
     scope: str = "global"  # global, regional, local
+
 
 @dataclass(slots=True)
 class HeartbeatPayload:
@@ -108,6 +112,7 @@ class HeartbeatPayload:
     connection_count: int = 0
     health_status: str = "healthy"
 
+
 @dataclass(slots=True)
 class FilterStatistics:
     """Filter statistics information."""
@@ -118,6 +123,7 @@ class FilterStatistics:
     duplicate_count: int
     expired_count: int
     filter_ratio: float
+
 
 @dataclass(slots=True)
 class SchedulerStatistics:
@@ -132,6 +138,7 @@ class SchedulerStatistics:
     avg_bandwidth_usage: float
     last_gossip_time: float
 
+
 @dataclass(slots=True)
 class NodeMetadata:
     """Metadata about a node."""
@@ -144,6 +151,7 @@ class NodeMetadata:
     health_status: str = "unknown"
     load_metrics: LoadMetrics = field(default_factory=LoadMetrics)
     connection_info: ConnectionInfo = field(default_factory=ConnectionInfo)
+
 
 @dataclass(slots=True)
 class ConvergenceStatus:
@@ -158,6 +166,7 @@ class ConvergenceStatus:
     last_gossip_time: float
     gossip_cycles: int
 
+
 @dataclass(slots=True)
 class ProtocolInfo:
     """Protocol configuration information."""
@@ -167,6 +176,7 @@ class ProtocolInfo:
     gossip_interval: float
     fanout: int
 
+
 @dataclass(slots=True)
 class StateInfo:
     """State information."""
@@ -175,6 +185,7 @@ class StateInfo:
     pending_messages: int
     recent_messages: int
     state_cache_size: int
+
 
 @dataclass(slots=True)
 class ComprehensiveStatistics:
@@ -186,6 +197,7 @@ class ComprehensiveStatistics:
     filter_stats: FilterStatistics
     state_info: StateInfo
     convergence_status: ConvergenceStatus
+
 
 class GossipMessageType(Enum):
     """Types of gossip messages."""
@@ -212,6 +224,7 @@ class GossipMessageType(Enum):
     MGMT_AUDIT_PULL = "mgmt_audit_pull"
     MGMT_AUDIT_PULL_RESP = "mgmt_audit_pull_resp"
 
+
 class GossipStrategy(Enum):
     """Gossip propagation strategies."""
 
@@ -219,6 +232,7 @@ class GossipStrategy(Enum):
     PROXIMITY = "proximity"
     TOPOLOGY_AWARE = "topology_aware"
     HYBRID = "hybrid"
+
 
 @dataclass(slots=True)
 class GossipMessage:
@@ -436,6 +450,7 @@ class GossipMessage:
             seen_by=set(payload.get("seen_by", [])),
         )
 
+
 @dataclass(slots=True)
 class GossipFilter:
     """
@@ -526,6 +541,7 @@ class GossipFilter:
             filter_ratio=self.filtered_count
             / max(1, self.filtered_count + self.duplicate_count),
         )
+
 
 @dataclass(slots=True)
 class GossipScheduler:
@@ -796,6 +812,7 @@ class GossipScheduler:
             / max(1, len(self.bandwidth_usage)),
             last_gossip_time=self.last_gossip_time,
         )
+
 
 @dataclass(slots=True)
 class GossipProtocol:

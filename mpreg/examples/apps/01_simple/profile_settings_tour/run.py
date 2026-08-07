@@ -8,6 +8,7 @@ from pathlib import Path
 from mpreg.core.config import MPREGSettings
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 def _profiles_dir() -> Path:
     here = Path(__file__).resolve()
     # …/mpreg/examples/apps/01_simple/profile_settings_tour/run.py → mpreg/profiles
@@ -20,7 +21,9 @@ def _profiles_dir() -> Path:
         return cwd
     raise FileNotFoundError(f"profiles dir not found from {here}")
 
+
 PROFILES = _profiles_dir()
+
 
 async def main() -> None:
     with app_run(
@@ -81,6 +84,7 @@ async def main() -> None:
             step("production: mpreg config-check <profile> before start")
 
         await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

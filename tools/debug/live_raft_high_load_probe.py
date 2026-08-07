@@ -19,6 +19,7 @@ from tests.test_live_raft_integration import TestLiveRaftIntegration
 type Seconds = float
 type NodeId = str
 
+
 @dataclass(frozen=True, slots=True)
 class ProbeConfig:
     cluster_sizes: tuple[int, ...]
@@ -31,6 +32,7 @@ class ProbeConfig:
     success_threshold: float
     simulate_xdist: bool
 
+
 @dataclass(frozen=True, slots=True)
 class BatchStats:
     batch_id: int
@@ -40,6 +42,7 @@ class BatchStats:
     timeout_count: int
     no_leader_count: int
     exception_count: int
+
 
 @dataclass(frozen=True, slots=True)
 class ClusterHighLoadResult:
@@ -64,11 +67,13 @@ class ClusterHighLoadResult:
     failed: bool
     failure_reason: str | None
 
+
 @dataclass(frozen=True, slots=True)
 class ProbeReport:
     generated_at_unix: float
     config: ProbeConfig
     results: tuple[ClusterHighLoadResult, ...]
+
 
 def _parse_cluster_sizes(raw: str) -> tuple[int, ...]:
     values: list[int] = []
@@ -81,6 +86,7 @@ def _parse_cluster_sizes(raw: str) -> tuple[int, ...]:
         raise ValueError("At least one cluster size is required")
     return tuple(values)
 
+
 def _percentile(values: list[float], percentile: float) -> float:
     if not values:
         return 0.0
@@ -90,6 +96,7 @@ def _percentile(values: list[float], percentile: float) -> float:
     index = round((len(ordered) - 1) * percentile)
     index = max(0, min(index, len(ordered) - 1))
     return float(ordered[index])
+
 
 def _parse_args() -> tuple[ProbeConfig, Path | None]:
     parser = argparse.ArgumentParser(
@@ -126,6 +133,7 @@ def _parse_args() -> tuple[ProbeConfig, Path | None]:
         Path(args.output_json).resolve() if str(args.output_json).strip() else None
     )
     return config, output_path
+
 
 async def _run_cluster_probe(
     *,
@@ -380,6 +388,7 @@ async def _run_cluster_probe(
                     except Exception:
                         continue
 
+
 async def _run_probe(config: ProbeConfig) -> ProbeReport:
     if config.simulate_xdist:
         os.environ["PYTEST_XDIST_WORKER"] = "probe"
@@ -412,6 +421,7 @@ async def _run_probe(config: ProbeConfig) -> ProbeReport:
         results=tuple(results),
     )
 
+
 def main() -> int:
     config, output_path = _parse_args()
     report = asyncio.run(_run_probe(config))
@@ -430,6 +440,7 @@ def main() -> int:
     if failing:
         return 1
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

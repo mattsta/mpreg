@@ -17,6 +17,7 @@ from typing import Any
 
 from mpreg.core.native_codec import JSONDecodeError, dumps_text, loads_text
 
+
 @dataclass(frozen=True, slots=True)
 class MgmtAuditEntry:
     """One admin mutation audit record."""
@@ -49,6 +50,7 @@ class MgmtAuditEntry:
         if self.schema_version is not None:
             out["schema_version"] = self.schema_version
         return out
+
 
 @dataclass(slots=True)
 class MgmtAuditLog:
@@ -121,6 +123,7 @@ class MgmtAuditLog:
             entries = entries[-limit:]
         return [e.to_dict() for e in entries]
 
+
 def apply_node_drain(
     server: Any,
     *,
@@ -144,6 +147,7 @@ def apply_node_drain(
         detail=detail,
     )
     return {"applied": True, "draining": bool(draining), "detail": detail}
+
 
 async def apply_peer_detach(
     server: Any,
@@ -211,6 +215,7 @@ async def apply_peer_detach(
     _audit(server, event="peer_detach", actor=actor, success=True, detail=detail)
     return {"applied": True, "detail": detail}
 
+
 def apply_namespace_policy(
     server: Any,
     body: dict[str, Any],
@@ -254,6 +259,7 @@ def apply_namespace_policy(
     if success and hasattr(server, "_bind_namespace_policy_to_data_planes"):
         server._bind_namespace_policy_to_data_planes()
     return result
+
 
 def policy_dry_run(server: Any, body: dict[str, Any]) -> dict[str, Any]:
     """Evaluate namespace visibility without mutating policy state."""
@@ -315,6 +321,7 @@ def policy_dry_run(server: Any, body: dict[str, Any]) -> dict[str, Any]:
         "viewer_tenant_id": viewer_tenant,
         "write": write,
     }
+
 
 def _audit(
     server: Any,

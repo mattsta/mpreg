@@ -46,6 +46,7 @@ type Timestamp = float
 type SubscriptionId = str
 type MessageIdStr = str
 
+
 class DeliveryGuarantee(Enum):
     """Message delivery guarantee types (queue data-plane).
 
@@ -63,6 +64,7 @@ class DeliveryGuarantee(Enum):
     BROADCAST = "broadcast"  # Deliver to all subscribers
     QUORUM = "quorum"  # Require N subscriber acknowledgments (not Raft quorum)
 
+
 class QueueMessageStatus(Enum):
     """Message delivery status for queue operations."""
 
@@ -72,6 +74,7 @@ class QueueMessageStatus(Enum):
     FAILED = "failed"  # Failed delivery (max retries exceeded)
     EXPIRED = "expired"  # Expired before delivery
 
+
 class QueueType(Enum):
     """Queue implementation types."""
 
@@ -79,7 +82,9 @@ class QueueType(Enum):
     PRIORITY = "priority"  # Priority-based ordering
     DELAY = "delay"  # Delayed delivery
 
+
 # MessageId imported from centralized datastructures
+
 
 @dataclass(slots=True)
 class QueuedMessage:
@@ -110,6 +115,7 @@ class QueuedMessage:
             return False
         return (time.time() - self.created_at) > ttl_seconds
 
+
 @dataclass(slots=True)
 class InFlightMessage:
     """A message that has been delivered and is awaiting acknowledgment."""
@@ -136,6 +142,7 @@ class InFlightMessage:
         else:
             return len(self.acknowledged_by) > 0
 
+
 @dataclass(frozen=True, slots=True)
 class QueueSubscription:
     """Subscription to a message queue."""
@@ -147,6 +154,7 @@ class QueueSubscription:
     subscription_id: SubscriptionId = field(default_factory=lambda: str(uuid.uuid4()))
     created_at: Timestamp = field(default_factory=time.time)
     metadata: dict[str, str] = field(default_factory=dict)
+
 
 @dataclass(frozen=True, slots=True)
 class QueueConfiguration:
@@ -170,6 +178,7 @@ class QueueConfiguration:
     # PERF-T10-07: max concurrent in-flight; None = max_size.
     max_in_flight: int | None = None
 
+
 @dataclass(slots=True)
 class QueueStatistics:
     """Statistics for queue operations."""
@@ -190,6 +199,7 @@ class QueueStatistics:
         total = self.messages_acknowledged + self.messages_failed
         return self.messages_acknowledged / total if total > 0 else 0.0
 
+
 @dataclass(frozen=True, slots=True)
 class DeliveryResult:
     """Result of a message delivery operation."""
@@ -200,6 +210,7 @@ class DeliveryResult:
     failed_deliveries: set[SubscriberId] = field(default_factory=set)
     error_message: str | None = None
     delivery_timestamp: Timestamp = field(default_factory=time.time)
+
 
 class MessageQueue(ManagedObject):
     """

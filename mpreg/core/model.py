@@ -17,6 +17,7 @@ from mpreg.datastructures.type_aliases import (
     VersionConstraintSpec,
 )
 
+
 class RPCFunctionDescriptor(BaseModel):
     """Describes a function capability with identity and version metadata."""
 
@@ -29,6 +30,7 @@ class RPCFunctionDescriptor(BaseModel):
         default_factory=tuple,
         description="Resources required to run this function.",
     )
+
 
 class RPCCommand(BaseModel):
     """
@@ -69,6 +71,7 @@ class RPCCommand(BaseModel):
         description="Optional unified routing topic for policy-based routing.",
     )
 
+
 class RPCRequest(BaseModel):
     """
     Represents a full RPC request from a client to the server.
@@ -107,6 +110,7 @@ class RPCRequest(BaseModel):
         default=False, description="Enable verbose debugging information"
     )
 
+
 class GoodbyeReason(Enum):
     """Reasons for node departure."""
 
@@ -114,6 +118,7 @@ class GoodbyeReason(Enum):
     MAINTENANCE = "maintenance"
     CLUSTER_REBALANCE = "cluster_rebalance"
     MANUAL_REMOVAL = "manual_removal"
+
 
 class RPCServerGoodbye(BaseModel):
     """
@@ -134,6 +139,7 @@ class RPCServerGoodbye(BaseModel):
     timestamp: Timestamp = Field(
         default_factory=time.time, description="When this goodbye was sent"
     )
+
 
 class RPCServerStatus(BaseModel):
     """
@@ -172,6 +178,7 @@ class RPCServerStatus(BaseModel):
         default_factory=dict, description="Additional status metrics"
     )
 
+
 @dataclass(frozen=True, slots=True)
 class CacheStatusMetrics:
     """Structured cache status metrics for server status payloads."""
@@ -184,6 +191,7 @@ class CacheStatusMetrics:
     cache_avg_latency_ms: float
     cache_reliability_score: float
 
+
 @dataclass(frozen=True, slots=True)
 class QueueStatusMetrics:
     """Structured queue status metrics for server status payloads."""
@@ -195,6 +203,7 @@ class QueueStatusMetrics:
     total_messages_failed: int
     active_subscriptions: int
     success_rate: float
+
 
 @dataclass(frozen=True, slots=True)
 class ServerStatusMetrics:
@@ -218,7 +227,9 @@ class ServerStatusMetrics:
             payload.pop("route_metrics", None)
         return payload
 
+
 type RPCServerMessage = RPCServerGoodbye | RPCServerStatus
+
 
 class FabricGossipEnvelope(BaseModel):
     """Envelope for federation gossip messages transported over MPREG connections.
@@ -233,11 +244,13 @@ class FabricGossipEnvelope(BaseModel):
     role: Literal["fabric-gossip"] = "fabric-gossip"
     payload: dict[str, Any] = Field(description="Serialized federation gossip message")
 
+
 class FabricMessageEnvelope(BaseModel):
     """Envelope for unified fabric messages transported over MPREG connections."""
 
     role: Literal["fabric-message"] = "fabric-message"
     payload: dict[str, Any] = Field(description="Serialized unified fabric message")
+
 
 class RPCServerRequest(BaseModel):
     """
@@ -247,6 +260,7 @@ class RPCServerRequest(BaseModel):
     role: Literal["server"] = "server"
     server: RPCServerMessage = Field(description="The server message payload.")
     u: str = Field(description="A unique identifier for this server request.")
+
 
 class RPCError(BaseModel):
     """Base model for structured RPC errors."""
@@ -263,6 +277,7 @@ class RPCError(BaseModel):
             "None means the client should consult the error-code catalog."
         ),
     )
+
 
 class RPCResponse(BaseModel):
     """
@@ -304,9 +319,11 @@ class RPCResponse(BaseModel):
         default=None, description="Summary of execution performance and steps"
     )
 
+
 # ============================================================================
 # INTERMEDIATE RESULTS DATA STRUCTURES
 # ============================================================================
+
 
 @dataclass(frozen=True, slots=True)
 class RPCIntermediateResult:
@@ -331,6 +348,7 @@ class RPCIntermediateResult:
         """Calculate execution progress as percentage (0.0 to 100.0)."""
         return (self.completed_levels / self.total_levels) * 100.0
 
+
 @dataclass(frozen=True, slots=True)
 class RPCExecutionSummary:
     """Summary of RPC execution performance and characteristics."""
@@ -349,9 +367,11 @@ class RPCExecutionSummary:
         """Get execution time of the bottleneck level."""
         return self.level_execution_times[self.bottleneck_level_index]
 
+
 # ============================================================================
 # PUB/SUB MESSAGE TYPES
 # ============================================================================
+
 
 class PubSubMessage(BaseModel):
     """
@@ -374,6 +394,7 @@ class PubSubMessage(BaseModel):
         default=None, description="Current hop index in the routing path."
     )
 
+
 class TopicPattern(BaseModel):
     """
     Represents a topic pattern for subscription matching.
@@ -391,6 +412,7 @@ class TopicPattern(BaseModel):
     exact_match: bool = Field(
         default=False, description="Whether this is an exact match (no wildcards)."
     )
+
 
 class PubSubSubscription(BaseModel):
     """
@@ -412,6 +434,7 @@ class PubSubSubscription(BaseModel):
         default=300, description="How many seconds of backlog to receive."
     )
 
+
 class PubSubPublish(BaseModel):
     """
     Represents a publish operation request.
@@ -420,6 +443,7 @@ class PubSubPublish(BaseModel):
     role: Literal["pubsub-publish"] = "pubsub-publish"
     message: PubSubMessage = Field(description="The message to publish.")
     u: str = Field(description="Unique identifier for this publish request.")
+
 
 class PubSubSubscribe(BaseModel):
     """
@@ -430,6 +454,7 @@ class PubSubSubscribe(BaseModel):
     subscription: PubSubSubscription = Field(description="The subscription details.")
     u: str = Field(description="Unique identifier for this subscribe request.")
 
+
 class PubSubUnsubscribe(BaseModel):
     """
     Represents an unsubscribe request.
@@ -438,6 +463,7 @@ class PubSubUnsubscribe(BaseModel):
     role: Literal["pubsub-unsubscribe"] = "pubsub-unsubscribe"
     subscription_id: str = Field(description="ID of subscription to cancel.")
     u: str = Field(description="Unique identifier for this unsubscribe request.")
+
 
 class PubSubNotification(BaseModel):
     """
@@ -448,6 +474,7 @@ class PubSubNotification(BaseModel):
     message: PubSubMessage = Field(description="The message being delivered.")
     subscription_id: str = Field(description="ID of subscription this matches.")
     u: str = Field(description="Unique identifier for this notification.")
+
 
 class PubSubAck(BaseModel):
     """
@@ -460,6 +487,7 @@ class PubSubAck(BaseModel):
     error: str | None = Field(default=None, description="Error message if failed.")
     u: str = Field(description="Unique identifier for this ack.")
 
+
 class TopicAdvertisement(BaseModel):
     """
     Represents topic subscription advertisements in gossip messages.
@@ -469,6 +497,7 @@ class TopicAdvertisement(BaseModel):
     topics: tuple[str, ...] = Field(description="Active topic patterns on this server.")
     subscriber_count: int = Field(description="Number of subscribers on this server.")
     last_activity: float = Field(description="Last message activity timestamp.")
+
 
 class ConsensusProposalMessage(BaseModel):
     """
@@ -485,6 +514,7 @@ class ConsensusProposalMessage(BaseModel):
     u: str = Field(description="Unique identifier for this message.")
     cluster_id: str = Field(description="Cluster ID this proposal originates from.")
 
+
 class ConsensusVoteMessage(BaseModel):
     """
     Consensus vote message for distributed state changes.
@@ -497,11 +527,13 @@ class ConsensusVoteMessage(BaseModel):
     u: str = Field(description="Unique identifier for this message.")
     cluster_id: str = Field(description="Cluster ID this vote originates from.")
 
+
 type PubSubMessage_Union = (
     PubSubPublish | PubSubSubscribe | PubSubUnsubscribe | PubSubNotification | PubSubAck
 )
 
 type RPCMessage = RPCRequest | RPCServerRequest | RPCResponse | PubSubMessage_Union
+
 
 @dataclass
 class MPREGException(Exception):
@@ -510,6 +542,7 @@ class MPREGException(Exception):
             code=-1, message="Unknown / Unset Error Condition"
         )
     )
+
 
 @dataclass
 class CommandNotFoundException(MPREGException):

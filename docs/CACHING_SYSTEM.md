@@ -610,13 +610,13 @@ bound on `GlobalCacheManager`, `put(..., consistency_level=STRONG)` runs a
    L1 until a later delivered ABORT or LWW success put — **not** residual-free
    in that fault mode; **not** cleared by pending TTL.
 
-| Setting                                                            | Default | Role                                |
-| ------------------------------------------------------------------ | ------- | ----------------------------------- |
-| `cache_strong_enabled`                                             | `False` | Master switch; off → `1012`         |
-| `cache_strong_replica_factor`                                      | `3`     | Target \|R\|                        |
-| `cache_strong_min_replicas`                                        | `3`     | Fail `1015` if live eligible < this |
-| `cache_strong_lab_single_node`                                     | `False` | Explicit lab-only single-node path  |
-| `cache_strong_prepare_timeout_s` / `cache_strong_commit_timeout_s` | `2.0`   | Barrier timeouts → `1016`           |
+| Setting                                                            | Default | Role                                          |
+| ------------------------------------------------------------------ | ------- | --------------------------------------------- |
+| `cache_strong_enabled`                                             | `False` | Master switch; off → `1012`                   |
+| `cache_strong_replica_factor`                                      | `3`     | Target \|R\|                                  |
+| `cache_strong_min_replicas`                                        | `3`     | Fail `1015` if live eligible < this           |
+| `cache_strong_lab_single_node`                                     | `False` | Explicit lab-only single-node path            |
+| `cache_strong_prepare_timeout_s` / `cache_strong_commit_timeout_s` | `2.0`   | Barrier timeouts → `1016`                     |
 | `cache_strong_pending_ttl_s`                                       | `30.0`  | Pending prepare TTL only (not residual L1 GC) |
 
 | Code     | Name                      | When                                                      |
@@ -639,7 +639,7 @@ in `strong-core` / `ci-core` (including `strong.cft_retry_abort_clears_residual`
 
 **CFT residual ops (T36/T37/T38):** failed puts may include
 `quorum_info.abort_fail_peers` (peers that exhausted ABORT retries — residual
-*candidates*). Coordinator / `strong_status` expose `last_abort_fail_peers` and
+_candidates_). Coordinator / `strong_status` expose `last_abort_fail_peers` and
 bounded `recent_abort_fails`. After network recovery, call
 `GlobalCacheManager.strong_retry_abort(key, op_id, peers=…)` (or
 `StrongPutCoordinator.retry_abort`, or client RPC
@@ -751,6 +751,7 @@ def put(self, key: CacheKey, value: T, dependencies: set[CacheKey] = None):
     for dep in dependencies:
         self.reverse_deps[dep].add(key)
 
+
 def invalidate_dependencies(self, key: CacheKey) -> int:
     """Cascade invalidation through dependency chain."""
     dependents = self.reverse_deps.get(key, set()).copy()
@@ -773,6 +774,7 @@ model_cache = create_enhanced_s4lru_cache_manager(
     max_memory_mb=8192,  # 8GB distributed across segments
 )
 
+
 # Cache expensive model inference
 async def predict(model_name: str, input_data: dict, version: str) -> dict:
     cache_key = CacheKey.create("model_predict", (model_name, version), input_data)
@@ -790,6 +792,7 @@ async def predict(model_name: str, input_data: dict, version: str) -> dict:
     # Cache with cost tracking for intelligent eviction
     model_cache.put(cache_key, result, computation_cost_ms=computation_time)
     return result
+
 
 # Real usage stats from production:
 # - Cache hit rate: 78% (saves significant GPU compute)
@@ -810,6 +813,7 @@ pipeline_cache = create_memory_and_count_limited_cache_manager(
     max_entries=50000,  # 50K operations max
     enforce_both=False,  # Either limit triggers eviction
 )
+
 
 async def data_pipeline(dataset_id: str, transforms: list[str]) -> pd.DataFrame:
     """Multi-stage data pipeline with intelligent caching."""
@@ -849,6 +853,7 @@ async def data_pipeline(dataset_id: str, transforms: list[str]) -> pd.DataFrame:
 
     return result
 
+
 # When raw dataset is updated:
 pipeline_cache.invalidate_dependencies(raw_key)
 # Automatically invalidates transform_key and agg_key
@@ -858,6 +863,7 @@ pipeline_cache.invalidate_dependencies(raw_key)
 
 ```python
 from mpreg.core.enhanced_caching_factories import create_memory_only_cache_manager
+
 
 class DistributedComputeNode:
     def __init__(self, node_memory_gb: int):
@@ -894,6 +900,7 @@ class DistributedComputeNode:
 
         return result
 
+
 # Production deployment:
 # - 10 compute nodes, each with 32GB RAM
 # - Cache hit rate across cluster: 65%
@@ -909,6 +916,7 @@ experiment_cache = create_enhanced_s4lru_cache_manager(
     segments=6,  # More segments for research iteration patterns
     max_memory_mb=1024,  # Modest 1GB limit
 )
+
 
 async def run_experiment(algorithm: str, dataset: str, hyperparams: dict) -> dict:
     """Cache expensive research experiments."""
@@ -935,6 +943,7 @@ async def run_experiment(algorithm: str, dataset: str, hyperparams: dict) -> dic
     )  # Results valid for 1 week
 
     return results
+
 
 # Research productivity improvements:
 # - Hyperparameter sweeps: 90% cache hit rate after initial runs
@@ -1219,6 +1228,7 @@ def create_efficient_key(model_name: str, input_hash: str) -> CacheKey:
         {},  # Minimal kwargs
     )
 
+
 # ❌ DON'T: Put large objects directly in keys
 def inefficient_key(model_name: str, large_input: dict) -> CacheKey:
     return CacheKey.create(
@@ -1280,6 +1290,7 @@ def log_cache_stats(cache: SmartCacheManager):
                 f"{stat.memory_utilization:.1%} memory"
             )
 
+
 # ✅ DO: Set up alerting for cache health
 if stats.hit_rate() < 0.5:  # Less than 50% hit rate
     alert("Cache hit rate degraded - check eviction policy")
@@ -1307,6 +1318,7 @@ try:
 except Exception as e:
     logger.error(f"Cache error: {e}")
     result = expensive_computation()  # Fallback without caching
+
 
 # ✅ DO: Clean shutdown
 @atexit.register

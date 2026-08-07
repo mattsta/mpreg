@@ -1,17 +1,17 @@
 # DistLab T37 — Retry ABORT Residual Candidates (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T36 (`13c5fb7`) |
-| **Scope** | Best-effort re-ABORT for peers listed in abort_fail_peers; curriculum + DistLab |
-| **Point budget** | **~35 pts** |
-| **Entry points only** | `uv run pytest …` / `uv run mpreg …` |
+| Field                 | Value                                                                           |
+| --------------------- | ------------------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                                    |
+| **Date**              | 2026-08-06                                                                      |
+| **Authority**         | Continuation after T36 (`13c5fb7`)                                              |
+| **Scope**             | Best-effort re-ABORT for peers listed in abort_fail_peers; curriculum + DistLab |
+| **Point budget**      | **~35 pts**                                                                     |
+| **Entry points only** | `uv run pytest …` / `uv run mpreg …`                                            |
 
 ## Problem
 
-T36 surfaces residual *candidates* but operators have no product API to
+T36 surfaces residual _candidates_ but operators have no product API to
 **re-deliver ABORT** once the network recovers — only LWW overwrite or waiting
 for a later put.
 

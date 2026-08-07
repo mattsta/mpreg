@@ -21,6 +21,7 @@ from mpreg.core.port_allocator import PortAllocator
 from mpreg.datastructures.type_aliases import EndpointScope
 from mpreg.server import MPREGServer
 
+
 @dataclass(slots=True)
 class DiscoveryLoadConfig:
     feature_nodes: int
@@ -31,12 +32,14 @@ class DiscoveryLoadConfig:
     summary_scope: EndpointScope | None
     seed: int
 
+
 @dataclass(slots=True)
 class LoadSample:
     command: str
     latency_ms: float
     ok: bool
     error: str | None
+
 
 @dataclass(slots=True)
 class LoadReport:
@@ -47,6 +50,7 @@ class LoadReport:
     p99_ms: float
     max_ms: float
 
+
 @dataclass(slots=True)
 class ClusterHandle:
     servers: list[MPREGServer]
@@ -54,6 +58,7 @@ class ClusterHandle:
     ports: list[int]
     allocator: PortAllocator
     resolver_url: str
+
 
 def _percentile(values: list[float], percent: float) -> float:
     if not values:
@@ -63,6 +68,7 @@ def _percentile(values: list[float], percent: float) -> float:
         return ordered[0]
     index = max(0, min(len(ordered) - 1, round(percent * (len(ordered) - 1))))
     return ordered[index]
+
 
 def _summarize_samples(samples: list[LoadSample]) -> dict[str, LoadReport]:
     grouped: dict[str, list[LoadSample]] = {}
@@ -82,6 +88,7 @@ def _summarize_samples(samples: list[LoadSample]) -> dict[str, LoadReport]:
         )
     return reports
 
+
 def _register_market_functions(server: MPREGServer, node_name: str) -> None:
     def handler(payload: str) -> str:
         return f"{node_name}:{payload}"
@@ -94,6 +101,7 @@ def _register_market_functions(server: MPREGServer, node_name: str) -> None:
         "svc.market.strategy",
     ):
         server.register_command(name, handler, ["market"])
+
 
 async def _start_cluster(config: DiscoveryLoadConfig) -> ClusterHandle:
     allocator = PortAllocator()
@@ -159,6 +167,7 @@ async def _start_cluster(config: DiscoveryLoadConfig) -> ClusterHandle:
         resolver_url=resolver_url,
     )
 
+
 async def _shutdown_cluster(handle: ClusterHandle) -> None:
     for server in handle.servers:
         server.shutdown()
@@ -171,6 +180,7 @@ async def _shutdown_cluster(handle: ClusterHandle) -> None:
         await asyncio.gather(*handle.tasks, return_exceptions=True)
     for port in handle.ports:
         handle.allocator.release_port(port)
+
 
 async def _run_client(
     url: str,
@@ -217,6 +227,7 @@ async def _run_client(
                 if remaining > 0:
                     await asyncio.sleep(remaining)
 
+
 async def run_load(config: DiscoveryLoadConfig) -> int:
     cluster = await _start_cluster(config)
     rng = random.Random(config.seed)
@@ -248,6 +259,7 @@ async def run_load(config: DiscoveryLoadConfig) -> int:
         return 0
     finally:
         await _shutdown_cluster(cluster)
+
 
 def _parse_args() -> DiscoveryLoadConfig:
     parser = argparse.ArgumentParser(description="Discovery load harness")
@@ -283,9 +295,11 @@ def _parse_args() -> DiscoveryLoadConfig:
         seed=args.seed,
     )
 
+
 def main() -> int:
     config = _parse_args()
     return asyncio.run(run_load(config))
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

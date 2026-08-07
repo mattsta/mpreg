@@ -6,6 +6,7 @@ import pytest
 from mpreg.core.config import MPREGSettings
 from mpreg.core.persistence.config import PersistenceMode
 
+
 def test_settings_from_dict_normalizes_collections(tmp_path: Path) -> None:
     settings = MPREGSettings.from_dict(
         {
@@ -30,6 +31,7 @@ def test_settings_from_dict_normalizes_collections(tmp_path: Path) -> None:
     assert settings.persistence_config.mode is PersistenceMode.SQLITE
     assert settings.persistence_config.data_dir == tmp_path
 
+
 def test_settings_from_dict_handles_scalar_values() -> None:
     settings = MPREGSettings.from_dict(
         {
@@ -43,6 +45,7 @@ def test_settings_from_dict_handles_scalar_values() -> None:
     assert settings.peers == ["ws://peer-1"]
     assert settings.advertised_urls == ("ws://advertised-1",)
     assert settings.log_debug_scopes == ("fabric.router",)
+
 
 def test_settings_from_toml(tmp_path: Path) -> None:
     config_path = tmp_path / "settings.toml"
@@ -64,6 +67,7 @@ def test_settings_from_toml(tmp_path: Path) -> None:
     assert settings.persistence_config is not None
     assert settings.persistence_config.mode is PersistenceMode.SQLITE
 
+
 def test_settings_from_json(tmp_path: Path) -> None:
     config_path = tmp_path / "settings.json"
     payload = {
@@ -80,6 +84,7 @@ def test_settings_from_json(tmp_path: Path) -> None:
     assert settings.monitoring_enabled is False
     assert settings.persistence_config is not None
     assert settings.persistence_config.mode is PersistenceMode.MEMORY
+
 
 def test_settings_from_path(tmp_path: Path) -> None:
     config_path = tmp_path / "settings.toml"

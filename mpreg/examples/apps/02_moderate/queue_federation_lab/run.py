@@ -14,6 +14,7 @@ from mpreg.fabric.queue_messages import (
     queue_message_from_dict,
 )
 
+
 async def main() -> None:
     with app_run(
         "queue_federation_lab",
@@ -123,6 +124,7 @@ async def main() -> None:
             ok("manager + stats types importable")
 
         await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

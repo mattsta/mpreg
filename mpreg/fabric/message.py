@@ -17,6 +17,7 @@ from mpreg.datastructures.type_aliases import (
     TopicName,
 )
 
+
 class MessageType(Enum):
     """Canonical message types for the routing fabric."""
 
@@ -26,6 +27,7 @@ class MessageType(Enum):
     CACHE = "cache"
     CONTROL = "control"
     DATA = "data"
+
 
 class DeliveryGuarantee(Enum):
     """Delivery guarantees for fabric messages.
@@ -71,6 +73,7 @@ class DeliveryGuarantee(Enum):
             )
         return QueueDG(self.value)
 
+
 class RoutingPriority(Enum):
     """Routing priority levels."""
 
@@ -79,6 +82,7 @@ class RoutingPriority(Enum):
     NORMAL = "normal"
     LOW = "low"
     BULK = "bulk"
+
 
 @dataclass(frozen=True, slots=True)
 class MessageHeaders:
@@ -146,6 +150,7 @@ class MessageHeaders:
         if self.deadline_remaining_ms is None:
             return False
         return float(self.deadline_remaining_ms) <= 0.0
+
 
 @dataclass(frozen=True, slots=True)
 class UnifiedMessage:

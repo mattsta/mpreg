@@ -12,6 +12,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.core.port_allocator import allocate_port
 from mpreg.server import MPREGServer
 
+
 @pytest.mark.asyncio
 async def test_operator_four_plane_and_drain() -> None:
     port = allocate_port("servers")
@@ -90,6 +91,7 @@ async def test_operator_four_plane_and_drain() -> None:
         with contextlib.suppress(asyncio.CancelledError, Exception):
             await task
 
+
 @pytest.mark.asyncio
 async def test_operator_drain_admission_and_drop_metrics() -> None:
     """D9: drain admission path + Prom drop series on live tracker."""
@@ -141,6 +143,7 @@ async def test_operator_drain_admission_and_drop_metrics() -> None:
     cc = MPREGClusterClient(seed_urls=(f"ws://127.0.0.1:{port}",))
     pc = cc.plane_client(f"ws://127.0.0.1:{port}")
     assert pc is not None
+
 
 @pytest.mark.asyncio
 async def test_operator_live_drain_refuses_client_rpc() -> None:

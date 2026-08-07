@@ -13,6 +13,7 @@ from .config import PersistenceConfig, PersistenceMode
 from .kv_store import KeyValueStore
 from .queue_store import QueueStore
 
+
 @dataclass(slots=True)
 class PersistenceRegistry:
     """Registry that provides unified persistence stores."""

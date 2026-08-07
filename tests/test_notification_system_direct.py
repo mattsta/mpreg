@@ -16,6 +16,7 @@ from mpreg.core.transport.interfaces import TransportInterface
 from mpreg.server import MPREGServer
 from tests.test_helpers import TestPortManager
 
+
 class TestNotificationSystemDirect:
     """Test the notification system directly."""
 

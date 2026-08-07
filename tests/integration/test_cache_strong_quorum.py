@@ -26,6 +26,7 @@ from mpreg.core.cache_strong import (
 from mpreg.core.errors import MpregErrorCode
 from mpreg.core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
 
+
 def _mesh(n: int = 3):
     transport = InProcessStrongTransport()
     backends = {f"n{i}": StrongLocalBackend(node_id=f"n{i}") for i in range(n)}
@@ -42,6 +43,7 @@ def _mesh(n: int = 3):
         commit_timeout_s=0.5,
     )
     return coord, transport, backends
+
 
 @pytest.mark.asyncio
 async def test_three_node_quorum_put_visible_on_majority() -> None:
@@ -63,6 +65,7 @@ async def test_three_node_quorum_put_visible_on_majority() -> None:
         assert ent is not None and ent.value == {"v": 7}
         assert _entry_op_id(ent) == res.operation_id
 
+
 @pytest.mark.asyncio
 async def test_five_node_quorum_math_and_partial_failure() -> None:
     coord, transport, backends = _mesh(5)
@@ -78,6 +81,7 @@ async def test_five_node_quorum_math_and_partial_failure() -> None:
     for be in backends.values():
         assert be.get_visible(key) is None
         assert be.pending_count() == 0
+
 
 @pytest.mark.asyncio
 async def test_gcm_enabled_path_lab_and_disabled() -> None:
@@ -134,6 +138,7 @@ async def test_gcm_enabled_path_lab_and_disabled() -> None:
     finally:
         await gcm2.shutdown()
 
+
 @pytest.mark.asyncio
 async def test_burst_puts_then_crash_style_abort_clean() -> None:
     """Burst of successful puts then injected commit drops leave no pending."""
@@ -152,6 +157,7 @@ async def test_burst_puts_then_crash_style_abort_clean() -> None:
         assert be.pending_count() == 0
         ent = be.get_visible(key)
         assert ent is None or _entry_op_id(ent) != res.operation_id
+
 
 @pytest.mark.asyncio
 async def test_concurrent_origins_same_backends() -> None:

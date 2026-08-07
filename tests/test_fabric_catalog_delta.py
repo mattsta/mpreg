@@ -20,6 +20,7 @@ from mpreg.fabric.catalog_policy import CatalogFilterPolicy
 from mpreg.fabric.federation_graph import GeographicCoordinate
 from mpreg.fabric.peer_directory import PeerDirectory
 
+
 def test_catalog_delta_apply_adds_entries() -> None:
     catalog = RoutingCatalog()
     applier = RoutingCatalogApplier(catalog)
@@ -104,6 +105,7 @@ def test_catalog_delta_apply_adds_entries() -> None:
     assert catalog.caches.entry_count() == 1
     assert catalog.cache_profiles.entry_count() == 1
     assert catalog.nodes.entry_count() == 1
+
 
 def test_catalog_delta_apply_removes_entries() -> None:
     catalog = RoutingCatalog()
@@ -193,6 +195,7 @@ def test_catalog_delta_apply_removes_entries() -> None:
     assert catalog.cache_profiles.entry_count() == 0
     assert catalog.nodes.entry_count() == 0
 
+
 def test_catalog_delta_observer_respects_policy_filter() -> None:
     catalog = RoutingCatalog()
     directory = PeerDirectory(
@@ -233,6 +236,7 @@ def test_catalog_delta_observer_respects_policy_filter() -> None:
     assert catalog.nodes.entry_count() == 1
     assert directory.node_for_id("allowed-node") is not None
     assert directory.node_for_id("blocked-node") is None
+
 
 def test_catalog_delta_round_trip() -> None:
     endpoint = FunctionEndpoint(

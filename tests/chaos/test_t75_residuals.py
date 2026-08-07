@@ -6,6 +6,7 @@ from pathlib import Path
 
 from mpreg.core.observability import prometheus_alert_rules_yaml
 
+
 def test_t75_slo_alert_present() -> None:
     yml = prometheus_alert_rules_yaml()
     assert "MPREGStrongAbortFailPeersPresent" in yml
@@ -13,16 +14,15 @@ def test_t75_slo_alert_present() -> None:
     assert "info" in yml
     assert "not automatic heal" in yml.lower() or "Not automatic heal" in yml
 
+
 def test_t75_packaged_alerts_yml() -> None:
     path = (
-        Path(__file__).resolve().parents[2]
-        / "mpreg"
-        / "ops"
-        / "prometheus_alerts.yml"
+        Path(__file__).resolve().parents[2] / "mpreg" / "ops" / "prometheus_alerts.yml"
     )
     text = path.read_text(encoding="utf-8")
     assert "MPREGStrongAbortFailPeersPresent" in text
     assert "mpreg_strong_abort_fail_peers" in text
+
 
 def test_t75_phase_63_honesty() -> None:
     path = (
@@ -32,6 +32,7 @@ def test_t75_phase_63_honesty() -> None:
     )
     text = path.read_text(encoding="utf-8")
     assert "Phase 63" in text
+
 
 def test_t75_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]

@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from mpreg.server import MPREGServer, MPREGSettings
 
+
 async def stress_test_server_cleanup(server_id: int):
     """Create a server, run it briefly, then shut it down."""
 
@@ -62,6 +63,7 @@ async def stress_test_server_cleanup(server_id: int):
             await server.shutdown_async()
         except TimeoutError:
             pass
+
 
 async def run_extreme_concurrency_stress_test():
     """Run multiple servers concurrently to stress test cleanup."""
@@ -111,6 +113,7 @@ async def run_extreme_concurrency_stress_test():
         print(f"Only {successful_cleanups}/{num_servers} servers cleaned up properly")
 
     return overall_success
+
 
 if __name__ == "__main__":
     try:

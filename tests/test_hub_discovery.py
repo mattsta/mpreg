@@ -32,6 +32,7 @@ from mpreg.fabric.hubs import (
     RegionalHub,
 )
 
+
 def create_local_hub_capabilities():
     """Create default capabilities for local hubs."""
     return HubCapabilities(
@@ -45,6 +46,7 @@ def create_local_hub_capabilities():
         cpu_capacity=50.0,
         memory_capacity_gb=16.0,
     )
+
 
 def create_regional_hub_capabilities():
     """Create default capabilities for regional hubs."""
@@ -60,6 +62,7 @@ def create_regional_hub_capabilities():
         memory_capacity_gb=32.0,
     )
 
+
 def create_global_hub_capabilities():
     """Create default capabilities for global hubs."""
     return HubCapabilities(
@@ -73,6 +76,7 @@ def create_global_hub_capabilities():
         cpu_capacity=1000.0,
         memory_capacity_gb=128.0,
     )
+
 
 from mpreg.fabric.federation_optimized import ClusterIdentity
 from mpreg.fabric.hub_registry import (
@@ -88,6 +92,7 @@ from mpreg.fabric.hub_registry import (
     HubRegistry,
 )
 
+
 @pytest.fixture
 def sample_hub_capabilities():
     """Create sample hub capabilities for testing."""
@@ -102,6 +107,7 @@ def sample_hub_capabilities():
         memory_capacity_gb=16.0,
     )
 
+
 @pytest.fixture
 def sample_hub_registration_info(sample_hub_capabilities):
     """Create sample hub registration info for testing."""
@@ -114,6 +120,7 @@ def sample_hub_registration_info(sample_hub_capabilities):
         connection_url="ws://test-hub.example.com",
         max_clusters=100,
     )
+
 
 @pytest.fixture
 def sample_cluster_identity():
@@ -130,6 +137,7 @@ def sample_cluster_identity():
         max_bandwidth_mbps=1000,
         preference_weight=1.0,
     )
+
 
 @pytest.fixture
 def sample_hub_topology():
@@ -168,6 +176,7 @@ def sample_hub_topology():
 
     return topology
 
+
 @pytest.fixture
 def sample_hub_registry():
     """Create sample hub registry for testing."""
@@ -178,10 +187,12 @@ def sample_hub_registry():
         cleanup_interval=30.0,
     )
 
+
 @pytest.fixture
 def sample_hub_selector(sample_hub_topology):
     """Create sample hub selector for testing."""
     return HubSelector(sample_hub_topology, RoutingPolicy())
+
 
 @pytest.fixture
 def sample_cluster_registrar(sample_hub_registry, sample_hub_selector):
@@ -189,6 +200,7 @@ def sample_cluster_registrar(sample_hub_registry, sample_hub_selector):
     return ClusterRegistrar(
         sample_hub_registry, sample_hub_selector, assignment_strategy="optimal"
     )
+
 
 @pytest.fixture
 def sample_hub_health_monitor(sample_hub_registry, sample_cluster_registrar):
@@ -199,6 +211,7 @@ def sample_hub_health_monitor(sample_hub_registry, sample_cluster_registrar):
         monitoring_interval=5.0,
         failure_threshold=2,
     )
+
 
 class TestHubRegistrationInfo:
     """Test suite for hub registration info."""
@@ -267,6 +280,7 @@ class TestHubRegistrationInfo:
         assert info.consecutive_failures == 0
         assert info.health_score > 0.5
 
+
 class TestClusterRegistrationInfo:
     """Test suite for cluster registration info."""
 
@@ -323,6 +337,7 @@ class TestClusterRegistrationInfo:
         assert "hub_001" in info.assignment_history
         assert info.failover_count == 1
         assert info.last_failover_time > 0
+
 
 class TestHubRegistry:
     """Test suite for hub registry."""
@@ -489,6 +504,7 @@ class TestHubRegistry:
         assert stats.registry_info.registry_id == "test_registry_001"
         assert stats.registration_counts.total_hubs == 0
 
+
 class TestClusterRegistrar:
     """Test suite for cluster registrar."""
 
@@ -604,6 +620,7 @@ class TestClusterRegistrar:
         assert stats.assignment_info.strategy == "optimal"
         assert stats.assignment_info.total_assignments == 0
 
+
 class TestHubHealthMonitor:
     """Test suite for hub health monitor."""
 
@@ -715,6 +732,7 @@ class TestHubHealthMonitor:
         assert stats.monitoring_info.monitoring_interval == 5.0
         assert stats.monitoring_info.failure_threshold == 2
 
+
 class TestDiscoveryProtocols:
     """Test suite for discovery protocols."""
 
@@ -803,6 +821,7 @@ class TestDiscoveryProtocols:
 
         result = await protocol.withdraw_hub("test_hub")
         assert result
+
 
 class TestEndToEndDiscovery:
     """Test suite for end-to-end discovery functionality."""
@@ -964,6 +983,7 @@ class TestEndToEndDiscovery:
         stats = registrar.get_assignment_statistics()
         assert stats.assignment_info.total_assignments == successful_assignments
 
+
 class TestPerformanceAndReliability:
     """Test suite for performance and reliability features."""
 
@@ -1080,6 +1100,7 @@ class TestPerformanceAndReliability:
         # Check statistics
         stats = monitor.get_monitoring_statistics()
         assert stats.monitoring_stats.health_checks > 0
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

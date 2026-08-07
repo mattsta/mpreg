@@ -18,6 +18,7 @@ from mpreg.fabric.route_security import (
     verify_route_withdrawal,
 )
 
+
 def _base_announcement() -> RouteAnnouncement:
     return RouteAnnouncement(
         destination=RouteDestination(cluster_id="cluster-c"),
@@ -29,6 +30,7 @@ def _base_announcement() -> RouteAnnouncement:
         epoch=1,
     )
 
+
 def _base_withdrawal() -> RouteWithdrawal:
     return RouteWithdrawal(
         destination=RouteDestination(cluster_id="cluster-c"),
@@ -37,6 +39,7 @@ def _base_withdrawal() -> RouteWithdrawal:
         withdrawn_at=101.0,
         epoch=2,
     )
+
 
 def test_route_announcement_signature_roundtrip() -> None:
     signer = RouteAnnouncementSigner.create()
@@ -50,6 +53,7 @@ def test_route_announcement_signature_roundtrip() -> None:
     restored = RouteAnnouncement.from_dict(signed.to_dict())
     assert verify_route_announcement(restored, public_key=signer.public_key)
 
+
 def test_route_withdrawal_signature_roundtrip() -> None:
     signer = RouteAnnouncementSigner.create()
     withdrawal = _base_withdrawal()
@@ -61,6 +65,7 @@ def test_route_withdrawal_signature_roundtrip() -> None:
 
     restored = RouteWithdrawal.from_dict(signed.to_dict())
     assert verify_route_withdrawal(restored, public_key=signer.public_key)
+
 
 @pytest.mark.asyncio
 async def test_route_processor_requires_signature() -> None:
@@ -102,6 +107,7 @@ async def test_route_processor_requires_signature() -> None:
     )
     assert updated is False
 
+
 @pytest.mark.asyncio
 async def test_require_signatures_rejects_self_attested_key_without_registry() -> None:
     """COR-04: signed with embedded public_key but no pinned resolver → reject."""
@@ -139,6 +145,7 @@ async def test_require_signatures_rejects_self_attested_key_without_registry() -
         signed, sender_id="node-b", now=100.0
     )
     assert updated is False
+
 
 @pytest.mark.asyncio
 async def test_route_processor_accepts_rotated_keys() -> None:
@@ -202,6 +209,7 @@ async def test_route_processor_accepts_rotated_keys() -> None:
     )
     assert updated is False
 
+
 def test_route_policy_tag_filters() -> None:
     policy = RoutePolicy(allowed_tags={"gold"}, deny_tags={"blocked"})
     table = RouteTable(local_cluster="cluster-a", policy=policy)
@@ -233,6 +241,7 @@ def test_route_policy_tag_filters() -> None:
     assert (
         table.apply_announcement(denied, received_from="cluster-b", now=100.0) is False
     )
+
 
 @pytest.mark.asyncio
 async def test_neighbor_policy_filters_announcement() -> None:

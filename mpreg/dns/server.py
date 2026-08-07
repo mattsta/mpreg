@@ -12,6 +12,7 @@ from mpreg.datastructures.type_aliases import JsonDict
 
 from .resolver import DnsResolver
 
+
 class DnsUdpProtocol(asyncio.DatagramProtocol):
     def __init__(self, gateway: DnsGateway) -> None:
         super().__init__()
@@ -31,6 +32,7 @@ class DnsUdpProtocol(asyncio.DatagramProtocol):
                 self._transport.sendto(response, addr)
 
         asyncio.create_task(_handle())
+
 
 @dataclass(slots=True)
 class DnsGatewayMetrics:
@@ -59,6 +61,7 @@ class DnsGatewayMetrics:
             "avg_latency_ms": avg_latency,
             "max_latency_ms": self.max_latency_ms,
         }
+
 
 @dataclass(slots=True)
 class DnsGateway:

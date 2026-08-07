@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-
 import pytest
 
 from mpreg.core.cache_models import GlobalCacheKey
@@ -11,13 +9,13 @@ from mpreg.core.cache_strong import (
     InProcessStrongTransport,
     StrongLocalBackend,
     StrongPutCoordinator,
-    _entry_op_id,
 )
 from mpreg.core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
 from mpreg.server_pkg.monitoring_metrics import build_strong_metrics
 from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
 from mpreg.testing.distlab.builtins import ensure_builtins
 from mpreg.testing.distlab.registry import get_registry
+
 
 @pytest.mark.asyncio
 async def test_t27_abort_counters_on_drop_abort_fail_path() -> None:
@@ -43,6 +41,7 @@ async def test_t27_abort_counters_on_drop_abort_fail_path() -> None:
     assert res.success is False
     assert coord.aborts_peer_fail >= 2  # both peers fail all attempts
     assert coord.aborts_peer_ok == 0
+
 
 @pytest.mark.asyncio
 async def test_t27_gcm_status_cft_caps_and_abort_counters() -> None:
@@ -74,6 +73,7 @@ async def test_t27_gcm_status_cft_caps_and_abort_counters() -> None:
     assert caps["get_quorum"] is False
     await gcm.shutdown()
 
+
 @pytest.mark.asyncio
 async def test_t27_distlab_cft_partial_commit_lost_abort_scenario() -> None:
     ensure_builtins()
@@ -82,6 +82,7 @@ async def test_t27_distlab_cft_partial_commit_lost_abort_scenario() -> None:
     assert (r.meta or {}).get("cft_limit") or True  # meta on scenario
     # History closed
     assert r.history_len >= 2
+
 
 def test_t27_openapi_cft_capability_enums() -> None:
     doc = build_monitoring_openapi()
@@ -92,19 +93,17 @@ def test_t27_openapi_cft_capability_enums() -> None:
     props = caps.get("properties") or {}
     assert props.get("cft_only", {}).get("enum") == [True]
     assert props.get("abort_best_effort", {}).get("enum") == [True]
-    counters_desc = str((body.get("properties") or {}).get("counters", {}).get(
-        "description", ""
-    ))
+    counters_desc = str(
+        (body.get("properties") or {}).get("counters", {}).get("description", "")
+    )
     assert "aborts_peer" in counters_desc
+
 
 def test_t27_prometheus_alerts_include_cft_honesty() -> None:
     from pathlib import Path
 
     path = (
-        Path(__file__).resolve().parents[2]
-        / "mpreg"
-        / "ops"
-        / "prometheus_alerts.yml"
+        Path(__file__).resolve().parents[2] / "mpreg" / "ops" / "prometheus_alerts.yml"
     )
     text = path.read_text(encoding="utf-8")
     assert "MPREGStrongCapCftOnlyMissing" in text
@@ -112,6 +111,7 @@ def test_t27_prometheus_alerts_include_cft_honesty() -> None:
     assert "mpreg_strong_cap_cft_only" in text
     assert "mpreg_strong_cap_abort_best_effort" in text
     assert "mpreg_strong_aborts_peer_fail_total" in text or "abort_best_effort" in text
+
 
 def test_t27_doctor_fails_closed_on_false_cft_caps() -> None:
     from mpreg.cli.main import evaluate_strong_doctor_payload
@@ -144,6 +144,7 @@ def test_t27_doctor_fails_closed_on_false_cft_caps() -> None:
     )
     assert bad is False
     assert "cft_only" in bdetail
+
 
 def test_t27_build_strong_metrics_includes_cft_caps() -> None:
     from types import SimpleNamespace
@@ -189,6 +190,7 @@ def test_t27_build_strong_metrics_includes_cft_caps() -> None:
     assert m["capabilities"]["cft_only"] is True
     assert m["capabilities"]["abort_best_effort"] is True
     assert m["counters"]["aborts_peer_fail"] == 1
+
 
 @pytest.mark.asyncio
 async def test_t27_curriculum_honesty_apps_main() -> None:

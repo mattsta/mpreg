@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t47_live_e2e_source_asserts_cap_and_client_rpc() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -18,6 +19,7 @@ def test_t47_live_e2e_source_asserts_cap_and_client_rpc() -> None:
     assert "ops_driven" in text
     assert "automatic_heal" in text
 
+
 def test_t47_phase_35_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -28,6 +30,7 @@ def test_t47_phase_35_honesty() -> None:
     assert "Phase 35" in text
     assert "cap_retry_abort" in text.lower() or "retry_abort_ops_driven" in text
 
+
 def test_t47_plan_non_claims() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -37,6 +40,7 @@ def test_t47_plan_non_claims() -> None:
     )
     text = path.read_text(encoding="utf-8").lower()
     assert "not" in text and ("auto" in text or "heal" in text)
+
 
 def test_t47_operate_mentions_cap_gauge() -> None:
     path = (

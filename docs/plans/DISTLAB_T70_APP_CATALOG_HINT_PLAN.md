@@ -1,13 +1,13 @@
 # DistLab T70 — APP_CATALOG ops_cli_tour residual_ops_hint (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T64/T66 |
-| **Scope** | APP_CATALOG ops_cli_tour product tier + residual_ops_hint ops loop |
-| **Point budget** | **~5 pts** |
-| **Entry points only** | docs + residual gates |
+| Field                 | Value                                                              |
+| --------------------- | ------------------------------------------------------------------ |
+| **Status**            | **Complete**                                                       |
+| **Date**              | 2026-08-06                                                         |
+| **Authority**         | Continuation after T64/T66                                         |
+| **Scope**             | APP_CATALOG ops_cli_tour product tier + residual_ops_hint ops loop |
+| **Point budget**      | **~5 pts**                                                         |
+| **Entry points only** | docs + residual gates                                              |
 
 ## Goals
 

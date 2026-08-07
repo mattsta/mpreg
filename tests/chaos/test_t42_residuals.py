@@ -25,9 +25,11 @@ from mpreg.server_pkg.plane_rpc import (
     register_cache_rpc_commands,
 )
 
+
 def test_t42_platform_rpc_name() -> None:
     assert PlatformRpc.CACHE_STRONG_RETRY_ABORT == "mpreg.cache.strong_retry_abort"
     assert "strong_retry_abort" in PlatformRpc.CACHE_STRONG_RETRY_ABORT
+
 
 def test_t42_cache_op_result_promotes_quorum_info() -> None:
     r = CacheOpResult.from_raw(
@@ -46,6 +48,7 @@ def test_t42_cache_op_result_promotes_quorum_info() -> None:
     assert r.quorum_info is not None
     assert "n1" in list(r.quorum_info.get("abort_fail_peers") or [])
 
+
 def test_t42_strong_retry_abort_result_from_raw() -> None:
     r = StrongRetryAbortResult.from_raw(
         {
@@ -63,6 +66,7 @@ def test_t42_strong_retry_abort_result_from_raw() -> None:
     assert r.ok_peers == ["n1"]
     assert r.automatic_heal is False
     assert r.ops_driven is True
+
 
 @pytest.mark.asyncio
 async def test_t42_plane_handler_clears_residual() -> None:
@@ -118,6 +122,7 @@ async def test_t42_plane_handler_clears_residual() -> None:
     ent = backends["n1"].get_visible(key)
     assert ent is None or _entry_op_id(ent) != oid
 
+
 @pytest.mark.asyncio
 async def test_t42_plane_handler_validation() -> None:
     class _Srv:
@@ -147,6 +152,7 @@ async def test_t42_plane_handler_validation() -> None:
     )
     assert missing.get("error_code") == PLANE_ERR_INVALID_ARGUMENT
     assert "op_id" in str(missing.get("error_message") or "")
+
 
 @pytest.mark.asyncio
 async def test_t42_client_cache_strong_retry_abort() -> None:
@@ -201,6 +207,7 @@ async def test_t42_client_cache_strong_retry_abort() -> None:
     finally:
         MPREGClientAPI.call = orig  # type: ignore[method-assign]
 
+
 def test_t42_register_includes_retry_command() -> None:
     registered: list[str] = []
 
@@ -225,12 +232,13 @@ def test_t42_register_includes_retry_command() -> None:
     register_cache_rpc_commands(_Srv())
     assert PlatformRpc.CACHE_STRONG_RETRY_ABORT in registered
 
+
 def test_t42_docs_honesty() -> None:
     root = Path(__file__).resolve().parents[2]
     guide = (root / "docs" / "MPREG_CLIENT_GUIDE.md").read_text(encoding="utf-8")
     assert "cache_strong_retry_abort" in guide or "strong_retry_abort" in guide
-    residual = (
-        root / "docs" / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md"
-    ).read_text(encoding="utf-8")
+    residual = (root / "docs" / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md").read_text(
+        encoding="utf-8"
+    )
     assert "Phase 30" in residual or "client" in residual.lower()
     assert "RPC" in residual or "rpc" in residual.lower()

@@ -47,6 +47,7 @@ from mpreg.fabric.rpc_messages import FabricRPCRequest
 
 from .test_unified_routing import routing_configs, unified_messages
 
+
 class StubFederationPlanner:
     def __init__(self, plan: FabricForwardingPlan) -> None:
         self._plan = plan
@@ -59,6 +60,7 @@ class StubFederationPlanner:
         remaining_hops: int | None = None,
     ) -> FabricForwardingPlan:
         return self._plan
+
 
 def _make_router(
     *,
@@ -78,6 +80,7 @@ def _make_router(
         routing_engine=routing_engine,
         message_queue=message_queue,
     )
+
 
 class TestRouteHandlerRegistry:
     @pytest.mark.asyncio
@@ -132,6 +135,7 @@ class TestRouteHandlerRegistry:
         assert "handler1" in handler_ids
         assert "handler2" in handler_ids
 
+
 class TestRoutingMetrics:
     def test_metrics_recording(self) -> None:
         metrics = RoutingMetrics()
@@ -184,6 +188,7 @@ class TestRoutingMetrics:
         assert snapshot.cache_hit_ratio == 1.0
         assert snapshot.average_route_computation_ms == 25.0
         assert snapshot.federation_ratio == 1.0
+
 
 class TestFabricRouter:
     def test_router_initialization(self) -> None:
@@ -815,6 +820,7 @@ class TestFabricRouter:
             return
         assert len(route_result.targets) >= 1
         assert router.metrics.total_routes_computed >= 1
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

@@ -46,6 +46,7 @@ from .blockchain_message_queue_types import (
     RoutingCriteria,
 )
 
+
 class UnsupportedDeliveryGuaranteeError(ValueError):
     """Raised when a reserved/unsupported delivery guarantee is requested (COR-08)."""
 
@@ -53,6 +54,7 @@ class UnsupportedDeliveryGuaranteeError(ValueError):
         self.guarantee = guarantee
         msg = detail or f"unsupported_delivery_guarantee:{guarantee}"
         super().__init__(msg)
+
 
 class MessageQueueGovernance:
     """DAO governance for message queue operations."""
@@ -323,6 +325,7 @@ class MessageQueueGovernance:
         )
         self.ledger.add_block(new_block)
 
+
 class EquitablePriorityQueue:
     """Priority queue with fairness guarantees governed by DAO."""
 
@@ -515,6 +518,7 @@ class EquitablePriorityQueue:
         if current_time - self.last_quota_reset > quota_window:
             self.sender_quotas.clear()
             self.last_quota_reset = current_time
+
 
 class BlockchainMessageRouter:
     """Message router with blockchain audit trail."""
@@ -763,6 +767,7 @@ class BlockchainMessageRouter:
         )
 
         self.ledger.add_block(new_block)
+
 
 @dataclass(frozen=True, slots=True)
 class BlockchainMessageQueue:

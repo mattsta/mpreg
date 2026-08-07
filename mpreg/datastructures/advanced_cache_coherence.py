@@ -63,6 +63,7 @@ from .federated_cache_coherence import (
 from .merkle_tree import MerkleHash, MerkleProofPath, MerkleTree
 from .type_aliases import JsonDict, RequestId, Timestamp
 
+
 @dataclass(frozen=True, slots=True)
 class MerkleAwareFederatedCacheKey:
     """
@@ -259,6 +260,7 @@ class MerkleAwareFederatedCacheKey:
             data_checksum=data["data_checksum"],
         )
 
+
 @dataclass(frozen=True, slots=True)
 class FederatedCacheEntry:
     """
@@ -276,8 +278,10 @@ class FederatedCacheEntry:
         if self.cache_value is None:
             raise ValueError("Cache value cannot be None")
 
+
 # Type alias for backwards compatibility with existing code
 CacheEntry = FederatedCacheEntry
+
 
 class ConflictResolutionType(Enum):
     """
@@ -293,6 +297,7 @@ class ConflictResolutionType(Enum):
     QUORUM_CONSENSUS = "quorum_consensus"  # Majority vote across clusters
     APPLICATION_SPECIFIC = "application"  # Custom application-defined resolution
     MERKLE_TREE_MERGE = "merkle_merge"  # Intelligent merge using tree diffs
+
 
 @dataclass(frozen=True, slots=True)
 class CacheConflictResolutionStrategy:
@@ -326,6 +331,7 @@ class CacheConflictResolutionStrategy:
             if not isinstance(weight, int | float) or weight < 0:
                 raise ValueError(f"Invalid leader weight for {cluster_id}: {weight}")
 
+
 @dataclass(frozen=True, slots=True)
 class ConflictResolutionContext:
     """
@@ -352,6 +358,7 @@ class ConflictResolutionContext:
         if self.conflict_timestamp <= 0:
             raise ValueError("Conflict timestamp must be positive")
 
+
 @dataclass(frozen=True, slots=True)
 class ConflictResolutionResult:
     """
@@ -371,12 +378,14 @@ class ConflictResolutionResult:
         if self.resolution_timestamp <= 0:
             raise ValueError("Resolution timestamp must be positive")
 
+
 class CacheCorruptionError(Exception):
     """Raised when cache entry fails integrity verification."""
 
     def __init__(self, message: str, entry_key: str | None = None):
         super().__init__(message)
         self.entry_key = entry_key
+
 
 @dataclass(slots=True)
 class CacheConflictResolver:
@@ -676,6 +685,7 @@ class CacheConflictResolver:
             winning_cluster=resolved_entry.cache_key.cluster_id,
             resolution_metadata={"resolver": "application_specific"},
         )
+
 
 @dataclass(slots=True)
 class CacheNamespaceLeader:

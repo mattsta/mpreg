@@ -12,6 +12,7 @@ from mpreg.fabric.connection_manager import FederationConnectionManager
 from mpreg.fabric.federation_config import FederationConfig, FederationMode
 from mpreg.fabric.monitoring_endpoints import create_federation_monitoring_system
 
+
 async def test_policy_dry_run_endpoint(server_cluster_ports: list[int]) -> None:
     port, monitoring_port = server_cluster_ports[:2]
     settings = MPREGSettings(

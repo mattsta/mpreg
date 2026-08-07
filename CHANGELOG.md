@@ -18,12 +18,12 @@ Full-tree ruff/mypy zero debt, residual honesty T140+, OAuth2/OIDC, BFT/WAN/Jeps
 
 ### Artifacts
 
-| Artifact | Path |
-| --- | --- |
-| Architecture | `docs/RELEASE_0_3_1_PRODUCTION_HARDENING_ARCHITECTURE.md` |
-| Master plan | `docs/plans/RELEASE_0_3_1_PRODUCTION_HARDENING_MASTER_PLAN.md` |
-| Burndown | `docs/plans/RELEASE_0_3_1_BURNDOWN.md` |
-| Gate | `bash scripts/release_gate.sh` |
+| Artifact     | Path                                                           |
+| ------------ | -------------------------------------------------------------- |
+| Architecture | `docs/RELEASE_0_3_1_PRODUCTION_HARDENING_ARCHITECTURE.md`      |
+| Master plan  | `docs/plans/RELEASE_0_3_1_PRODUCTION_HARDENING_MASTER_PLAN.md` |
+| Burndown     | `docs/plans/RELEASE_0_3_1_BURNDOWN.md`                         |
+| Gate         | `bash scripts/release_gate.sh`                                 |
 
 ---
 
@@ -72,13 +72,13 @@ self-healing control plane. Proof ledger: `tests/invariants/claims.yaml`.
 
 ### Release engineering artifacts
 
-| Artifact | Path |
-| --- | --- |
-| Architecture | `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md` |
-| Master plan | `docs/plans/RELEASE_0_3_PRODUCTION_SNAPSHOT_MASTER_PLAN.md` |
-| Burndown | `docs/plans/RELEASE_0_3_BURNDOWN.md` |
-| Proof ledger | `docs/plans/RELEASE_0_3_PROOF_LEDGER.md` |
-| Gate | `scripts/release_gate.sh` |
+| Artifact     | Path                                                        |
+| ------------ | ----------------------------------------------------------- |
+| Architecture | `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md`      |
+| Master plan  | `docs/plans/RELEASE_0_3_PRODUCTION_SNAPSHOT_MASTER_PLAN.md` |
+| Burndown     | `docs/plans/RELEASE_0_3_BURNDOWN.md`                        |
+| Proof ledger | `docs/plans/RELEASE_0_3_PROOF_LEDGER.md`                    |
+| Gate         | `scripts/release_gate.sh`                                   |
 
 ---
 

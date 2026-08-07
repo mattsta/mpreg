@@ -11,6 +11,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.fabric.federation_config import FederationConfig
 from mpreg.fabric.monitoring_endpoints import FederationMonitoringSystem
 
+
 @pytest.mark.asyncio
 async def test_mgmt_raft_unconfigured() -> None:
     settings = MPREGSettings(host="127.0.0.1", port=9001, name="t", cluster_id="c")
@@ -29,6 +30,7 @@ async def test_mgmt_raft_unconfigured() -> None:
         body = await resp.json()
         assert body["status"] == "ok"
         assert body["raft"]["configured"] is False
+
 
 @pytest.mark.asyncio
 async def test_mgmt_raft_with_provider() -> None:

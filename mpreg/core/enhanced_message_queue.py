@@ -65,6 +65,7 @@ from mpreg.datastructures.type_aliases import (
 type TopicQueueSubscriptionId = str
 type MessageProcessingResult = str
 
+
 @dataclass(frozen=True, slots=True)
 class TopicQueueSubscription:
     """Subscription to messages matching a topic pattern."""
@@ -79,6 +80,7 @@ class TopicQueueSubscription:
     message_count: int = 0
     error_count: int = 0
 
+
 @dataclass(frozen=True, slots=True)
 class TopicQueueSendResult:
     """Result from topic-pattern message sending operations."""
@@ -91,6 +93,7 @@ class TopicQueueSendResult:
     tracking_id: str
     send_results: list[DeliveryResult]
     error_message: str | None = None
+
 
 @dataclass(frozen=True, slots=True)
 class EnhancedQueueStats:
@@ -119,6 +122,7 @@ class EnhancedQueueStats:
     routing_errors: int
     send_errors: int
     subscription_errors: int
+
 
 class TopicEnhancedMessageQueueManager:
     """
@@ -680,7 +684,9 @@ class TopicEnhancedMessageQueueManager:
         """Async context manager exit."""
         await self.stop()
 
+
 # Factory functions for common configurations
+
 
 def create_topic_enhanced_queue_manager(
     base_config: QueueManagerConfiguration | None = None,
@@ -704,6 +710,7 @@ def create_topic_enhanced_queue_manager(
             topic_routing_config = TopicQueueRoutingConfig()
 
     return TopicEnhancedMessageQueueManager(base_config, topic_routing_config)
+
 
 def create_simple_topic_queue_manager() -> TopicEnhancedMessageQueueManager:
     """Create a simple topic-enhanced queue manager for basic use cases."""

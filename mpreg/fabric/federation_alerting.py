@@ -30,6 +30,7 @@ from loguru import logger
 from mpreg.core.native_codec import JSONDecodeError, loads_text
 from mpreg.fabric.performance_metrics import AlertSeverity, PerformanceAlert
 
+
 class NotificationBackend(Enum):
     """Supported notification backends."""
 
@@ -41,6 +42,7 @@ class NotificationBackend(Enum):
     CONSOLE = "console"
     FILE = "file"
 
+
 class EscalationLevel(Enum):
     """Alert escalation levels."""
 
@@ -49,6 +51,7 @@ class EscalationLevel(Enum):
     SECOND = "second"  # 15 minutes
     THIRD = "third"  # 30 minutes
     FINAL = "final"  # 60 minutes
+
 
 @dataclass(frozen=True, slots=True)
 class NotificationChannel:
@@ -62,6 +65,7 @@ class NotificationChannel:
     rate_limit_per_minute: int = 10
     template_name: str | None = None
 
+
 @dataclass(frozen=True, slots=True)
 class EscalationPolicy:
     """Alert escalation policy configuration."""
@@ -71,6 +75,7 @@ class EscalationPolicy:
     escalation_levels: dict[EscalationLevel, list[str]]  # level -> channel_ids
     default_channels: list[str] = field(default_factory=list)
     enabled: bool = True
+
 
 @dataclass(frozen=True, slots=True)
 class AlertRoutingRule:
@@ -84,6 +89,7 @@ class AlertRoutingRule:
     enabled: bool = True
     priority: int = 100  # Lower number = higher priority
 
+
 @dataclass(frozen=True, slots=True)
 class NotificationTemplate:
     """Template for formatting notifications."""
@@ -94,6 +100,7 @@ class NotificationTemplate:
     subject_template: str
     body_template: str
     metadata: dict[str, Any] = field(default_factory=dict)
+
 
 @dataclass(frozen=True, slots=True)
 class NotificationDelivery:
@@ -110,6 +117,7 @@ class NotificationDelivery:
     retry_count: int = 0
     delivery_time_ms: float = 0.0
 
+
 @dataclass(frozen=True, slots=True)
 class AggregatedAlert:
     """Aggregated alert combining multiple similar alerts."""
@@ -124,6 +132,7 @@ class AggregatedAlert:
     created_at: float
     last_updated: float
     suppressed_until: float | None = None
+
 
 @dataclass(slots=True)
 class NotificationStats:
@@ -140,6 +149,7 @@ class NotificationStats:
     backend_stats: dict[NotificationBackend, dict[str, int]] = field(
         default_factory=lambda: defaultdict(lambda: defaultdict(int))
     )
+
 
 class NotificationBackendProtocol(Protocol):
     """Protocol for notification backend implementations."""
@@ -165,6 +175,7 @@ class NotificationBackendProtocol(Protocol):
     async def health_check(self) -> bool:
         """Check if the backend is healthy and can send notifications."""
         ...
+
 
 @dataclass(slots=True)
 class FederationAlertingService:
@@ -744,7 +755,9 @@ class FederationAlertingService:
             ),
         }
 
+
 # Notification Backend Implementations
+
 
 class ConsoleNotificationBackend:
     """Simple console-based notification backend for development."""
@@ -821,6 +834,7 @@ class ConsoleNotificationBackend:
             message=alert.message,
             timestamp=alert.timestamp,
         )
+
 
 class WebhookNotificationBackend:
     """Webhook-based notification backend."""
@@ -921,6 +935,7 @@ class WebhookNotificationBackend:
             message=alert.message,
             timestamp=alert.timestamp,
         )
+
 
 class SlackNotificationBackend:
     """Slack-based notification backend."""
@@ -1060,6 +1075,7 @@ class SlackNotificationBackend:
             timestamp=alert.timestamp,
         )
 
+
 class EmailNotificationBackend:
     """Email-based notification backend using SMTP."""
 
@@ -1167,7 +1183,9 @@ class EmailNotificationBackend:
         """Check email backend health."""
         return True  # Simulated health check
 
+
 # Helper functions for common alerting scenarios
+
 
 def create_console_channel(
     channel_id: str, min_severity: AlertSeverity = AlertSeverity.INFO
@@ -1180,6 +1198,7 @@ def create_console_channel(
         min_severity=min_severity,
         template_name="default_console",
     )
+
 
 def create_slack_channel(
     channel_id: str,
@@ -1194,6 +1213,7 @@ def create_slack_channel(
         min_severity=min_severity,
         template_name="default_slack",
     )
+
 
 def create_webhook_channel(
     channel_id: str,
@@ -1213,6 +1233,7 @@ def create_webhook_channel(
         min_severity=min_severity,
     )
 
+
 def create_basic_escalation_policy(
     policy_id: str, immediate_channels: list[str], escalated_channels: list[str]
 ) -> EscalationPolicy:
@@ -1228,6 +1249,7 @@ def create_basic_escalation_policy(
         default_channels=immediate_channels,
     )
 
+
 def create_severity_routing_rule(
     rule_id: str,
     target_severities: list[str],
@@ -1242,6 +1264,7 @@ def create_severity_routing_rule(
         target_channels=target_channels,
         priority=priority,
     )
+
 
 def create_cluster_routing_rule(
     rule_id: str, cluster_pattern: str, target_channels: list[str], priority: int = 100

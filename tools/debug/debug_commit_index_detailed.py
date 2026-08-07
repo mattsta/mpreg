@@ -22,6 +22,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 # Simple debugging without network interception
 
+
 async def debug_commit_index_detailed():
     """Debug commit_index propagation with extreme detail."""
 
@@ -113,6 +114,7 @@ async def debug_commit_index_detailed():
         finally:
             for node in nodes.values():
                 await node.stop()
+
 
 if __name__ == "__main__":
     asyncio.run(debug_commit_index_detailed())

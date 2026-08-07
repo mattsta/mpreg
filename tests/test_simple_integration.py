@@ -7,6 +7,7 @@ import pytest
 
 from mpreg.server import MPREGServer
 
+
 class TestSimpleIntegration:
     """Basic integration tests to verify framework functionality."""
 

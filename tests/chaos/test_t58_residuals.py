@@ -6,6 +6,7 @@ from pathlib import Path
 
 from mpreg.cli.main import evaluate_strong_doctor_payload, strong_residual_ops_hint
 
+
 def test_t58_prefer_server_hint() -> None:
     body = {
         "last_abort_fail_peers": ["n1"],
@@ -13,6 +14,7 @@ def test_t58_prefer_server_hint() -> None:
         "residual_ops_hint": "SERVER_HINT_MARKER not auto-heal",
     }
     assert strong_residual_ops_hint(body) == "SERVER_HINT_MARKER not auto-heal"
+
 
 def test_t58_fallback_when_empty_server_hint() -> None:
     body = {
@@ -24,6 +26,7 @@ def test_t58_fallback_when_empty_server_hint() -> None:
     assert "cache-strong-retry-abort" in h
     assert "--peer n9" in h
     assert "oid-fb" in h
+
 
 def test_t58_doctor_uses_server_hint() -> None:
     ok, detail = evaluate_strong_doctor_payload(
@@ -54,6 +57,7 @@ def test_t58_doctor_uses_server_hint() -> None:
     assert ok is True
     assert "CUSTOM_SERVER_HINT" in detail
 
+
 def test_t58_phase_46_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -62,6 +66,7 @@ def test_t58_phase_46_honesty() -> None:
     )
     text = path.read_text(encoding="utf-8")
     assert "Phase 46" in text
+
 
 def test_t58_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]

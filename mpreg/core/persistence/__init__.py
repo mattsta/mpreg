@@ -17,6 +17,7 @@ __all__ = [
     "SQLitePersistenceBackend",
 ]
 
+
 def __getattr__(name: str):
     if name in {
         "PersistenceBackend",

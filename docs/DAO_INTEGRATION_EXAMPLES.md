@@ -140,6 +140,7 @@ class GlobalFederationGovernance:
 
         return regional_consensus
 
+
 # Usage example
 federation = GlobalFederationGovernance()
 
@@ -301,6 +302,7 @@ class RegionalHubManager:
 
         self.economic_dao = self.economic_dao.create_proposal(proposer, proposal)
         return list(self.economic_dao.proposals.keys())[-1]
+
 
 # Usage example
 asia_hub = RegionalHubManager("asia_pacific")
@@ -526,6 +528,7 @@ class CrossChainDAOCoordinator:
             "execution_results": execution_results,
         }
 
+
 # Usage example
 coordinator = CrossChainDAOCoordinator()
 
@@ -599,6 +602,7 @@ from mpreg.datastructures import (
     MembershipType,
     DaoMember,
 )
+
 
 class ProductionDAOFactory:
     """Factory for deploying production-ready DAOs."""
@@ -824,6 +828,7 @@ class ProductionDAOFactory:
         print("🎉 Complete federation deployment successful!")
         return deployed_daos
 
+
 def main():
     """Main deployment script."""
     parser = argparse.ArgumentParser(description="Deploy MPREG DAOs")
@@ -863,6 +868,7 @@ def main():
     )
 
     return 0
+
 
 if __name__ == "__main__":
     import sys

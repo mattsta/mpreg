@@ -7,6 +7,7 @@ import asyncio
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 from mpreg.testing.faults import FaultInjector, FaultKind
 
+
 async def main() -> None:
     with app_run(
         "chaos_transport",
@@ -101,6 +102,7 @@ async def main() -> None:
             )
 
         await asyncio.sleep(0)  # keep async main honest
+
 
 if __name__ == "__main__":
     asyncio.run(main())

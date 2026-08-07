@@ -24,6 +24,7 @@ from mpreg.testing.hang_observe import (
 )
 from mpreg.testing.resource_limits import NoFileLimit, raise_open_file_limit
 
+
 @dataclass(slots=True)
 class ConcurrentSuiteResult:
     exit_code: int
@@ -33,6 +34,7 @@ class ConcurrentSuiteResult:
     open_files: NoFileLimit
     stall_dumps: list[Path] = field(default_factory=list)
     summary_line: str = ""
+
 
 @dataclass(slots=True)
 class ConcurrentSuiteRunner:
@@ -154,6 +156,7 @@ class ConcurrentSuiteRunner:
             summary_line=summary,
         )
 
+
 def main(argv: list[str] | None = None) -> int:
     """CLI entry: prefer ``uv run mpreg test concurrent`` (never ``python -m``)."""
     import argparse
@@ -193,6 +196,7 @@ def main(argv: list[str] | None = None) -> int:
     for dump in result.stall_dumps:
         print(f"# stall dump: {dump}")
     return result.exit_code
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

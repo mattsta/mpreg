@@ -10,6 +10,7 @@ from mpreg.core.caching import (
 )
 from mpreg.core.enhanced_caching_factories import create_memory_only_cache_manager
 
+
 class TestKeySizeTracking:
     """Test that cache keys are properly sized and tracked."""
 
@@ -250,6 +251,7 @@ class TestKeySizeTracking:
         assert fresh_stats.value_memory_bytes > 0
 
         cache.shutdown_sync()
+
 
 class TestEdgeCases:
     """Test edge cases for key size tracking."""

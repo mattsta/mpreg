@@ -4,6 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 
+
 def test_r2_changelog_has_030_section() -> None:
     text = (ROOT / "CHANGELOG.md").read_text()
     assert "## [0.3.0]" in text

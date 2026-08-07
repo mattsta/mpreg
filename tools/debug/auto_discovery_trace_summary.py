@@ -10,10 +10,12 @@ from pathlib import Path
 
 type Seconds = float
 
+
 @dataclass(frozen=True, slots=True)
 class ThresholdConfig:
     min_discovered_peers: int
     min_nodes_meeting_threshold: int
+
 
 @dataclass(frozen=True, slots=True)
 class SnapshotPoint:
@@ -56,11 +58,13 @@ class SnapshotPoint:
     avg_reachable_total: float
     max_reachable_total: int
 
+
 @dataclass(frozen=True, slots=True)
 class ThresholdHitSummary:
     first_function_seconds: Seconds | None
     first_node_seconds: Seconds | None
     first_peer_directory_seconds: Seconds | None
+
 
 def _as_snapshot(payload: dict[str, object]) -> SnapshotPoint:
     return SnapshotPoint(
@@ -134,6 +138,7 @@ def _as_snapshot(payload: dict[str, object]) -> SnapshotPoint:
         max_reachable_total=int(payload.get("max_reachable_total", 0)),
     )
 
+
 def _first_threshold_hit(
     snapshots: list[SnapshotPoint],
     threshold: int,
@@ -151,6 +156,7 @@ def _first_threshold_hit(
             return snapshot.elapsed_seconds
     return None
 
+
 def _summarize_threshold_hits(
     snapshots: list[SnapshotPoint], threshold: ThresholdConfig
 ) -> ThresholdHitSummary:
@@ -166,10 +172,12 @@ def _summarize_threshold_hits(
         ),
     )
 
+
 def _format_optional_seconds(value: Seconds | None) -> str:
     if value is None:
         return "never"
     return f"{value:.1f}s"
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -302,6 +310,7 @@ def main() -> int:
         preview = ", ".join(stopped_refresh_nodes[:10])
         print(f"refresh_task_stopped_preview={preview}")
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

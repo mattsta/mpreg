@@ -57,6 +57,7 @@ Use `target_cluster` to constrain execution to a federated cluster and
 ```python
 from mpreg.client.client_api import MPREGClientAPI
 
+
 async def main():
     async with MPREGClientAPI("ws://cache-server:<port>") as client:
         # Simple function call
@@ -116,6 +117,7 @@ for stable failover.
 
 ```python
 from mpreg.client.cluster_client import MPREGClusterClient
+
 
 async def main():
     client = MPREGClusterClient(seed_urls=("ws://hub-1:<port>", "ws://hub-2:<port>"))
@@ -348,9 +350,11 @@ watch_info = await client.summary_watch(scope="zone", namespace="svc.market")
 pubsub = MPREGPubSubClient(base_client=client)
 await pubsub.start()
 
+
 def on_summary(message):
     payload = message.payload
     print(payload["summaries"])
+
 
 await pubsub.subscribe([watch_info["topic"]], on_summary, get_backlog=False)
 ```
@@ -448,6 +452,7 @@ cross-cluster forwarding; no separate pub/sub gossip plane exists.
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.client.pubsub_client import MPREGPubSubClient
 
+
 async def main():
     base_client = MPREGClientAPI("ws://cache-server:<port>")
     await base_client.connect()
@@ -469,6 +474,7 @@ async def main():
 
     await pubsub.stop()
     await base_client.disconnect()
+
 
 async def handle_cache_event(message):
     print(f"Cache event: {message.topic}")
@@ -494,6 +500,7 @@ from mpreg.core.global_cache import (
     GlobalCacheKey,
     GlobalCacheManager,
 )
+
 
 async def main():
     cache_transport = InProcessCacheTransport()
@@ -768,6 +775,7 @@ query the DNS gateway over UDP/TCP.
 ```python
 from mpreg.client.client_api import MPREGClientAPI
 
+
 async def main():
     async with MPREGClientAPI("ws://ingress:<port>") as client:
         await client.dns_register(
@@ -814,9 +822,11 @@ mpreg client dns-resolve --host <gateway-host> --port <udp-port> \
 ```python
 from mpreg.client.dns_client import MPREGDnsClient
 
+
 async def main():
     dns = MPREGDnsClient(host="127.0.0.1", port=5353)
     result = await dns.resolve("_svc._tcp.tradefeed.market.mpreg", qtype="SRV")
+
 
 print(result.to_dict())
 ```
@@ -959,16 +969,16 @@ endpoints.
   (`abort_fail_peers`) / `last_abort_fail_peers` (ops candidates, not
   auto-heal). `CacheOpResult.operation_id` carries the put `op_id` for
   targeted repair. After recovery, re-deliver ABORT best-effort via:
-  * library: `GlobalCacheManager.strong_retry_abort(key, op_id, peers=…)`
-  * client RPC: `MPREGClient.cache_strong_retry_abort(ns, id, op_id, peers=…,
-    locs=…)` → platform `mpreg.cache.strong_retry_abort` →
+  - library: `GlobalCacheManager.strong_retry_abort(key, op_id, peers=…)`
+  - client RPC: `MPREGClient.cache_strong_retry_abort(ns, id, op_id, peers=…,
+locs=…)` → platform `mpreg.cache.strong_retry_abort` →
     `StrongRetryAbortResult` (`cleared`, `ok_peers`/`fail_peers`,
     `ops_driven=True`, `automatic_heal=False`). Optional `locs` pins resource
     routing (unpinned may land on any `cache` node, including a residual peer;
     self-target still local-aborts).
-  * CLI: `uv run mpreg client cache-strong-retry-abort --url … \
-    --namespace NS --key ID --op-id OID [--peer PEER…] [--loc cache] [--json]`
-  * ops loop: `GET /metrics/strong` (or `mpreg monitor strong` /
+  - CLI: `uv run mpreg client cache-strong-retry-abort --url … \
+--namespace NS --key ID --op-id OID [--peer PEER…] [--loc cache] [--json]`
+  - ops loop: `GET /metrics/strong` (or `mpreg monitor strong` /
     `mpreg doctor --check-strong`) exposes `last_abort_fail_peers`,
     `last_abort_fail_op_id`, and `residual_ops_hint` (CLI command template when
     candidates exist; empty otherwise; may fill `--namespace`/`--key` from
@@ -976,12 +986,12 @@ endpoints.
     `from mpreg.core.cache_strong import format_residual_ops_hint`.
     Hint is operator guidance after network recovery — **not** automatic heal.
     DistLab: `strong.cft_residual_ops_hint_enriched` (guidance only). Prometheus gauge `mpreg_strong_abort_fail_peers` / JSON `abort_fail_peer_count` mirror `len(last_abort_fail_peers)` (process-local; not auto-heal). Doctor JSON (`mpreg doctor --strong --format json`) includes on strong check rows: `residual_ops_hint` (str), `abort_fail_peer_count` (int), `last_abort_fail_peers` (list), `last_abort_fail_op_id` (str) — same types as `/metrics/strong` (`strong_doctor_json_residual_fields`).
-  Still CFT; not background heal. Pending TTL does **not** clear residual L1.
-  Default **off** → `1012 UNSUPPORTED_CONSISTENCY`. STRONG **get** and
-  **delete** always refuse with `1012`. Operational put failures use
-  **1015–1018** (`INSUFFICIENT_QUORUM`, `QUORUM_TIMEOUT`, `STRONG_CONFLICT`,
-  `STRONG_PENDING_FULL`). See `docs/CACHING_SYSTEM.md` and claim
-  `INV-CACHE-STRONG-01`. Curriculum: `cache_strong_quorum`.
+    Still CFT; not background heal. Pending TTL does **not** clear residual L1.
+    Default **off** → `1012 UNSUPPORTED_CONSISTENCY`. STRONG **get** and
+    **delete** always refuse with `1012`. Operational put failures use
+    **1015–1018** (`INSUFFICIENT_QUORUM`, `QUORUM_TIMEOUT`, `STRONG_CONFLICT`,
+    `STRONG_PENDING_FULL`). See `docs/CACHING_SYSTEM.md` and claim
+    `INV-CACHE-STRONG-01`. Curriculum: `cache_strong_quorum`.
 - `location_consistency.ConsistencyLevel.STRONG` remains fail-closed (separate
   plane; not the GlobalCacheManager product path).
 - `CacheOpResult` / `QueueSendResult` expose `error_code` (ERG-T13-03) so callers

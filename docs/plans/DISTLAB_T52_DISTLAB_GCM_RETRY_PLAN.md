@@ -1,13 +1,13 @@
 # DistLab T52 — DistLab GCM.strong_retry_abort scenario (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T51 |
-| **Scope** | First-class DistLab scenario for product library GCM.strong_retry_abort |
-| **Point budget** | **~15 pts** |
-| **Entry points only** | `uv run pytest …` / DistLab suite presets |
+| Field                 | Value                                                                   |
+| --------------------- | ----------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                            |
+| **Date**              | 2026-08-06                                                              |
+| **Authority**         | Continuation after T51                                                  |
+| **Scope**             | First-class DistLab scenario for product library GCM.strong_retry_abort |
+| **Point budget**      | **~15 pts**                                                             |
+| **Entry points only** | `uv run pytest …` / DistLab suite presets                               |
 
 ## Goals
 

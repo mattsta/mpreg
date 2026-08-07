@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t50_hypothesis_self_target_present() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -15,6 +16,7 @@ def test_t50_hypothesis_self_target_present() -> None:
     assert "test_cft_retry_abort_self_target_clears_local" in text
     assert "peers=[self]" in text or "self-target" in text or "self_target" in text
 
+
 def test_t50_phase_38_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -24,6 +26,7 @@ def test_t50_phase_38_honesty() -> None:
     text = path.read_text(encoding="utf-8")
     assert "Phase 38" in text
     assert "test_cft_retry_abort_self_target_clears_local" in text
+
 
 def test_t50_ledger_t49_t50() -> None:
     path = (
@@ -37,6 +40,7 @@ def test_t50_ledger_t49_t50() -> None:
     assert "T50" in text
     assert "self_target" in text or "self-target" in text
 
+
 def test_t50_runbook_self_target() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -47,6 +51,7 @@ def test_t50_runbook_self_target() -> None:
     text = path.read_text(encoding="utf-8")
     assert "self_target" in text or "self-target" in text or "peers=[self]" in text
 
+
 def test_t50_operate_self_target() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -56,6 +61,7 @@ def test_t50_operate_self_target() -> None:
     )
     text = path.read_text(encoding="utf-8")
     assert "self_target" in text or "cft_retry_abort_self_target" in text
+
 
 def test_t50_plans_exist() -> None:
     root = Path(__file__).resolve().parents[2] / "docs" / "plans"

@@ -13,6 +13,7 @@ from mpreg.fabric.federation_planner import FabricForwardingPlan
 from .catalog import FunctionEndpoint
 from .index import FunctionQuery, RoutingIndex
 
+
 class FederationPlanner(Protocol):
     def plan_next_hop(
         self,
@@ -22,6 +23,7 @@ class FederationPlanner(Protocol):
         remaining_hops: HopCount | None = None,
     ) -> FabricForwardingPlan: ...  # pragma: no cover - protocol definition
 
+
 class FunctionRouteReason(Enum):
     LOCAL_MATCH = "local_match"
     REMOTE_PLANNED = "remote_planned"
@@ -30,12 +32,14 @@ class FunctionRouteReason(Enum):
     NO_TARGET = "no_target_cluster"
     NO_FEDERATION = "no_federation_planner"
 
+
 class ClusterRouteReason(Enum):
     LOCAL = "local"
     REMOTE_PLANNED = "remote_planned"
     REMOTE_UNAVAILABLE = "remote_unavailable"
     NO_TARGET = "no_target_cluster"
     NO_FEDERATION = "no_federation_planner"
+
 
 @dataclass(frozen=True, slots=True)
 class FunctionRoutePlan:
@@ -45,6 +49,7 @@ class FunctionRoutePlan:
     forwarding: FabricForwardingPlan | None
     is_local: bool
     reason: FunctionRouteReason
+
 
 @dataclass(frozen=True, slots=True)
 class ClusterRoutePlan:
@@ -58,6 +63,7 @@ class ClusterRoutePlan:
         if self.forwarding is None:
             return False
         return self.forwarding.can_forward
+
 
 @dataclass(slots=True)
 class RoutingEngine:

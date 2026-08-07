@@ -44,12 +44,14 @@ RAFT_DIAG_ENABLED = (
     os.environ.get("MPREG_DEBUG_RAFT", "").strip().lower() in _DIAG_TRUE_VALUES
 )
 
+
 class ContactStatus(Enum):
     """Follower contact status enum."""
 
     NEVER_CONTACTED = "never_contacted"
     REACHABLE = "reachable"
     UNREACHABLE = "unreachable"
+
 
 @dataclass
 class FollowerContactInfo:
@@ -93,6 +95,7 @@ class FollowerContactInfo:
             return False
         # Only reachable if we've had recent successful contact
         return current_time - self.last_successful_contact <= timeout
+
 
 @dataclass
 class ElectionCoordinator:
@@ -299,6 +302,7 @@ class ElectionCoordinator:
             if RAFT_DIAG_ENABLED:
                 raft_log.warning("[DIAG_RAFT] action=election_callback_end")
 
+
 @dataclass(frozen=True, slots=True)
 class RaftConfiguration:
     """Configuration parameters for Raft implementation."""
@@ -336,6 +340,7 @@ class RaftConfiguration:
             raise ValueError(
                 "Heartbeat interval should be much smaller than election timeout"
             )
+
 
 @dataclass(slots=True)
 class RaftMetrics:
@@ -397,6 +402,7 @@ class RaftMetrics:
             "last_applied": self.last_applied,
             "log_size": self.log_size,
         }
+
 
 @dataclass(slots=True)
 class ProductionRaft(ProductionRaftRPCs):

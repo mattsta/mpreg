@@ -29,6 +29,7 @@ from mpreg.fabric.cache_federation import FabricCacheProtocol
 from mpreg.fabric.cache_transport import InProcessCacheTransport
 from mpreg.server import MPREGServer
 
+
 async def main() -> None:
     with app_run(
         "shipping_fulfillment",
@@ -322,6 +323,7 @@ async def main() -> None:
                             await cr
 
             await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

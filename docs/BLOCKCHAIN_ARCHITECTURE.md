@@ -274,6 +274,7 @@ type StakeAmount = int
 type TransactionPayload = bytes
 type OperationType = str
 
+
 # Configuration types
 @dataclass(frozen=True, slots=True)
 class ConsensusConfig:
@@ -281,6 +282,7 @@ class ConsensusConfig:
     block_time_target: int  # seconds
     difficulty_adjustment_interval: int  # blocks
     max_transactions_per_block: int
+
 
 @dataclass(frozen=True, slots=True)
 class SlashingConfig:
@@ -330,6 +332,7 @@ def test_transaction_hash_consistency(tx):
     """Transactions with same data have same hash."""
     assert tx.get_hash() == tx.get_hash()
 
+
 @given(block_strategy())
 def test_block_merkle_verification(block):
     """Block Merkle root matches transaction tree."""
@@ -337,6 +340,7 @@ def test_block_merkle_verification(block):
         [tx.to_bytes() for tx in block.transactions]
     ).root_hash()
     assert block.merkle_root == expected_root
+
 
 @given(blockchain_strategy())
 def test_blockchain_causality(chain):

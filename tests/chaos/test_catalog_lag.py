@@ -12,6 +12,7 @@ from mpreg.fabric.catalog import (
     FunctionSelector,
 )
 
+
 def test_missing_function_structured_not_found() -> None:
     cat = FunctionCatalog()
     selector = FunctionSelector(name="brand_new_fn")
@@ -21,6 +22,7 @@ def test_missing_function_structured_not_found() -> None:
     assert err.code == int(MpregErrorCode.COMMAND_NOT_FOUND)
     # Must be a structured error object clients can branch on
     assert err.rpc_error.code == int(MpregErrorCode.COMMAND_NOT_FOUND)
+
 
 def test_lagged_registration_becomes_visible() -> None:
     cat = FunctionCatalog()
@@ -38,6 +40,7 @@ def test_lagged_registration_becomes_visible() -> None:
     found = cat.find(FunctionSelector(name="new_fn"), now=now)
     assert len(found) == 1
     assert found[0].cluster_id == "c1"
+
 
 def test_stale_catalog_does_not_invent_endpoints() -> None:
     cat = FunctionCatalog()

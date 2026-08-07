@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t54_hypothesis_gcm_retry_present() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -16,6 +17,7 @@ def test_t54_hypothesis_gcm_retry_present() -> None:
     assert "GlobalCacheManager" in text
     assert "retry_abort_cleared" in text
 
+
 def test_t54_phase_42_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -25,6 +27,7 @@ def test_t54_phase_42_honesty() -> None:
     text = path.read_text(encoding="utf-8")
     assert "Phase 42" in text
     assert "test_cft_gcm_retry_abort_clears_residual_after_heal" in text
+
 
 def test_t54_ledger_and_plan() -> None:
     root = Path(__file__).resolve().parents[2]
@@ -38,12 +41,8 @@ def test_t54_ledger_and_plan() -> None:
     plan53 = root / "docs" / "plans" / "DISTLAB_T53_RESIDUAL_OPS_HINT_METRICS_PLAN.md"
     assert plan53.is_file()
 
+
 def test_t54_claims_gcm_property() -> None:
-    path = (
-        Path(__file__).resolve().parents[2]
-        / "tests"
-        / "invariants"
-        / "claims.yaml"
-    )
+    path = Path(__file__).resolve().parents[2] / "tests" / "invariants" / "claims.yaml"
     text = path.read_text(encoding="utf-8")
     assert "gcm" in text.lower() or "GCM" in text

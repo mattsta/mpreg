@@ -19,6 +19,7 @@ from tests.test_production_raft_integration import (
     TestableStateMachine,
 )
 
+
 @pytest.mark.asyncio
 async def test_single_node_becomes_leader() -> None:
     network = MockNetwork()
@@ -51,6 +52,7 @@ async def test_single_node_becomes_leader() -> None:
         oracle.assert_safe()
     finally:
         await node.stop()
+
 
 @pytest.mark.asyncio
 async def test_three_node_election_safety() -> None:

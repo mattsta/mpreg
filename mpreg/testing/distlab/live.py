@@ -22,6 +22,7 @@ from mpreg.server import MPREGServer
 from mpreg.testing.distlab.history import History
 from mpreg.testing.distlab.models import OpKind
 
+
 def strong_settings(
     port: int,
     name: str,
@@ -49,6 +50,7 @@ def strong_settings(
         cache_strong_commit_timeout_s=1.5,
     )
 
+
 def audit_settings(
     port: int,
     mon: int,
@@ -75,6 +77,7 @@ def audit_settings(
         mgmt_audit_shared_gossip_targets=3,
     )
 
+
 def both_settings(
     port: int,
     mon: int,
@@ -84,7 +87,7 @@ def both_settings(
     cluster_id: str = "distlab-both",
     peers: list[str] | None = None,
 ) -> MPREGSettings:
-    s = strong_settings(port, name, cluster_id=cluster_id, peers=peers)
+    strong_settings(port, name, cluster_id=cluster_id, peers=peers)
     # rebuild with monitoring + audit
     return MPREGSettings(
         host="127.0.0.1",
@@ -109,6 +112,7 @@ def both_settings(
         mgmt_audit_shared_gossip_targets=3,
     )
 
+
 async def wait_cache_peers(
     servers: Sequence[MPREGServer], *, timeout: float = 10.0
 ) -> None:
@@ -129,6 +133,7 @@ async def wait_cache_peers(
         detail.append((s.settings.name, list(tr.peer_ids()) if tr else None))
     raise AssertionError(f"cache peers not ready: {detail}")
 
+
 async def wait_gossip_connected(
     servers: Sequence[MPREGServer], *, timeout: float = 12.0
 ) -> None:
@@ -147,6 +152,7 @@ async def wait_gossip_connected(
             return
         await asyncio.sleep(0.15)
     raise AssertionError("gossip mesh not connected")
+
 
 async def wait_audit_cluster_events(
     servers: Sequence[MPREGServer],
@@ -171,6 +177,7 @@ async def wait_audit_cluster_events(
         body = s._mgmt_audit_snapshot(scope="cluster", limit=20)
         dumps.append((s.settings.name, body.get("mutation_count"), body.get("health")))
     raise AssertionError(f"audit did not converge min={min_events}: {dumps}")
+
 
 @dataclass
 class LiveStrongState:
@@ -237,6 +244,7 @@ class LiveStrongState:
             if v is not None:
                 return v[0]
         return None
+
 
 @dataclass
 class LiveStrongSUT:

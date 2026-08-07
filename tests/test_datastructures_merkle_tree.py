@@ -29,6 +29,7 @@ from mpreg.datastructures.merkle_tree import (
     non_empty_merkle_tree_strategy,
 )
 
+
 class TestMerkleNode:
     """Test MerkleNode datastructure."""
 
@@ -103,6 +104,7 @@ class TestMerkleNode:
         # Invalid: internal missing children
         with pytest.raises(ValueError, match="Internal nodes must have both children"):
             MerkleNode(hash_value=hash_value, left_child=left)
+
 
 class TestMerkleTreeBasics:
     """Test basic MerkleTree functionality."""
@@ -186,6 +188,7 @@ class TestMerkleTreeBasics:
 
         with pytest.raises(IndexError):
             tree[10]
+
 
 class TestMerkleTreeOperations:
     """Test MerkleTree operations and mutations."""
@@ -291,6 +294,7 @@ class TestMerkleTreeOperations:
         with pytest.raises(ValueError, match="Leaf data not found"):
             tree.find_leaf_index(non_existent)
 
+
 class TestMerkleProofs:
     """Test Merkle proof generation and verification."""
 
@@ -375,6 +379,7 @@ class TestMerkleProofs:
         )
         assert not invalid_proof2.verify()
 
+
 class TestMerkleTreeComparison:
     """Test MerkleTree comparison and synchronization."""
 
@@ -436,6 +441,7 @@ class TestMerkleTreeComparison:
 
         with pytest.raises(TypeError, match="Can only compare with MerkleTree"):
             tree.find_differences(42)  # type: ignore
+
 
 class TestMerkleTreeProperties:
     """Test mathematical and cryptographic properties of Merkle trees."""
@@ -517,6 +523,7 @@ class TestMerkleTreeProperties:
             assert new_tree is not tree
             assert updated_tree is not tree
 
+
 class TestMerkleTreeSerialization:
     """Test Merkle tree serialization and deserialization."""
 
@@ -547,6 +554,7 @@ class TestMerkleTreeSerialization:
 
         assert reconstructed.is_empty()
         assert reconstructed.compare_trees(tree) == "equal"
+
 
 class TestMerkleTreeValidation:
     """Test Merkle tree validation and error conditions."""
@@ -587,6 +595,7 @@ class TestMerkleTreeValidation:
         # Cannot access leaves in empty tree
         with pytest.raises(IndexError):
             tree.get_leaf(0)
+
 
 class TestMerkleTreeExamples:
     """Test specific examples and use cases."""

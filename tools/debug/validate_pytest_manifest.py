@@ -12,6 +12,7 @@ from pathlib import Path
 
 type NodeId = str
 
+
 @dataclass(frozen=True, slots=True)
 class ValidationRun:
     nodeid: NodeId
@@ -19,6 +20,7 @@ class ValidationRun:
     exit_code: int
     valid: bool
     output_excerpt: tuple[str, ...]
+
 
 @dataclass(frozen=True, slots=True)
 class ValidationReport:
@@ -29,8 +31,10 @@ class ValidationReport:
     invalid_tests: int
     runs: tuple[ValidationRun, ...]
 
+
 def _utc_now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
 
 def _load_manifest_tests(manifest_path: Path) -> tuple[NodeId, ...]:
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -43,6 +47,7 @@ def _load_manifest_tests(manifest_path: Path) -> tuple[NodeId, ...]:
     if not tests:
         raise ValueError("Manifest contains no tests")
     return tests
+
 
 def _validate_nodeid(nodeid: NodeId) -> ValidationRun:
     command = ("uv", "run", "pytest", "--collect-only", "-q", nodeid)
@@ -62,6 +67,7 @@ def _validate_nodeid(nodeid: NodeId) -> ValidationRun:
         valid=is_valid,
         output_excerpt=output_lines,
     )
+
 
 def _write_report(output_dir: Path, report: ValidationReport) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -86,6 +92,7 @@ def _write_report(output_dir: Path, report: ValidationReport) -> None:
         for excerpt in run.output_excerpt[:3]:
             lines.append(f"    out={excerpt}")
     text_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -125,6 +132,7 @@ def main() -> int:
     )
 
     return 0 if report.invalid_tests == 0 else 1
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

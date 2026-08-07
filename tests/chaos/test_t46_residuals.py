@@ -7,12 +7,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from click.testing import CliRunner
 
+
 def test_t46_cli_help_has_loc() -> None:
     from mpreg.cli.main import cli
 
     r = CliRunner().invoke(cli, ["client", "cache-strong-retry-abort", "--help"])
     assert r.exit_code == 0
     assert "--loc" in r.output
+
 
 def test_t46_cli_forwards_loc() -> None:
     from mpreg.cli.main import cli
@@ -55,18 +57,20 @@ def test_t46_cli_forwards_loc() -> None:
     kwargs = mock_client.cache_strong_retry_abort.await_args.kwargs
     assert kwargs.get("locs") == frozenset({"cache"})
 
+
 def test_t46_docs_honesty() -> None:
     root = Path(__file__).resolve().parents[2]
     guide = (root / "docs" / "MPREG_CLIENT_GUIDE.md").read_text(encoding="utf-8")
     assert "locs" in guide.lower() or "resource" in guide.lower()
-    residual = (
-        root / "docs" / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md"
-    ).read_text(encoding="utf-8")
+    residual = (root / "docs" / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md").read_text(
+        encoding="utf-8"
+    )
     assert "Phase 34" in residual
     plan = (
         root / "docs" / "plans" / "DISTLAB_T46_CLIENT_LOCS_RETRY_PLAN.md"
     ).read_text(encoding="utf-8")
     assert "not" in plan.lower() and ("bft" in plan.lower() or "auto" in plan.lower())
+
 
 def test_t46_runbook_locs() -> None:
     path = (

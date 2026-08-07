@@ -11,6 +11,7 @@ from mpreg.fabric.catalog_publisher import CatalogDeltaPublisher
 from mpreg.fabric.gossip import GossipProtocol
 from mpreg.fabric.gossip_transport import InProcessGossipTransport
 
+
 @pytest.mark.asyncio
 async def test_catalog_broadcaster_applies_and_publishes() -> None:
     catalog = RoutingCatalog()

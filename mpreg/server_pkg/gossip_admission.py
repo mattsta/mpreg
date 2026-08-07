@@ -10,6 +10,7 @@ from typing import Any
 
 from loguru import logger
 
+
 def accept_fabric_gossip_payload(
     *,
     payload: dict[str, Any],

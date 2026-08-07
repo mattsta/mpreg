@@ -39,6 +39,7 @@ from mpreg.fabric.hubs import (
     RegionalHub,
 )
 
+
 class TestHubMessageQueue:
     """Test hub-specific blockchain message queue functionality."""
 
@@ -194,6 +195,7 @@ class TestHubMessageQueue:
         assert status.messages_routed == 100
         assert status.cross_region_messages == 25
 
+
 class TestFederationRouteManager:
     """Test federation-wide route management and governance."""
 
@@ -325,6 +327,7 @@ class TestFederationRouteManager:
             hub_policies = hub_queue.queue.governance.get_active_policies()
             # Hub should have at least the same number of policies as global
             assert len(hub_policies) >= len(global_policies)
+
 
 class TestCrossRegionCoordinator:
     """Test cross-region message coordination."""
@@ -466,6 +469,7 @@ class TestCrossRegionCoordinator:
         assert route_perf["average_latency_ms"] == 50.0
         assert route_perf["average_cost"] == 10.0
         assert route_perf["average_hops"] == 3.0
+
 
 class TestBlockchainFederationBridge:
     """Test the main federation bridge integration."""
@@ -659,6 +663,7 @@ class TestBlockchainFederationBridge:
         assert status["total_hubs"] >= 1
         assert status["global_dao_members"] == len(self.global_dao.members)
 
+
 class TestFederationMessageRoute:
     """Test federation-specific message routing."""
 
@@ -726,6 +731,7 @@ class TestFederationMessageRoute:
 
         # Preferred route should have lower cost
         assert preferred_route.total_cost_score < normal_route.total_cost_score
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

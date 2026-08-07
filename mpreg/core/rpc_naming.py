@@ -37,6 +37,7 @@ NS_POLICY: Final = f"{PLATFORM_NAMESPACE_ROOT}.policy"
 NS_QUEUE: Final = f"{PLATFORM_NAMESPACE_ROOT}.queue"
 NS_CACHE: Final = f"{PLATFORM_NAMESPACE_ROOT}.cache"
 
+
 class PlatformRpc:
     """Canonical FQNs for platform-owned RPC commands.
 
@@ -93,6 +94,7 @@ class PlatformRpc:
     # T42: ops-driven CFT residual re-ABORT (not automatic heal)
     CACHE_STRONG_RETRY_ABORT: Final = f"{NS_CACHE}.strong_retry_abort"
 
+
 @dataclass(frozen=True, slots=True)
 class RpcNameContext:
     """Active namespace + optional hierarchical bound for qualify/assert."""
@@ -118,6 +120,7 @@ class RpcNameContext:
             bound_namespace=self.bound_namespace,
         )
 
+
 def normalize_namespace(namespace: str | None) -> str:
     """Return a non-empty namespace string (default user root)."""
     if namespace is None:
@@ -131,9 +134,11 @@ def normalize_namespace(namespace: str | None) -> str:
         return DEFAULT_USER_NAMESPACE
     return value
 
+
 def is_fqn(name: str) -> bool:
     """True when *name* already contains a namespace separator."""
     return "." in name
+
 
 def leaf_name(fqn: str) -> str:
     """Last segment of an FQN (or the whole string if bare)."""
@@ -143,11 +148,13 @@ def leaf_name(fqn: str) -> str:
         return fqn
     return fqn.rsplit(".", 1)[-1]
 
+
 def namespace_of(fqn: str) -> str:
     """Parent namespace of an FQN (empty string for bare names)."""
     if "." not in fqn:
         return ""
     return fqn.rsplit(".", 1)[0]
+
 
 def is_under_namespace(name: str, bound: str) -> bool:
     """True if *name* equals *bound* or is a hierarchical child of it.
@@ -168,6 +175,7 @@ def is_under_namespace(name: str, bound: str) -> bool:
         return True
     return name.startswith(f"{bound_n}.")
 
+
 def is_platform_namespace(name: str) -> bool:
     """True if *name* is the platform root or any ``mpreg.*`` FQN."""
     if not name:
@@ -175,6 +183,7 @@ def is_platform_namespace(name: str) -> bool:
     if name == PLATFORM_NAMESPACE_ROOT:
         return True
     return name.startswith(f"{PLATFORM_NAMESPACE_ROOT}.")
+
 
 def qualify_rpc_name(
     name: str,
@@ -192,6 +201,7 @@ def qualify_rpc_name(
         return raw
     ns = normalize_namespace(default_namespace)
     return f"{ns}.{raw}"
+
 
 def assert_registration_allowed(
     fqn: str,
@@ -229,6 +239,7 @@ def assert_registration_allowed(
                 f"under that hierarchical prefix."
             )
 
+
 def assert_call_allowed(
     fqn: str,
     *,
@@ -264,6 +275,7 @@ def assert_call_allowed(
         )
         + "."
     )
+
 
 __all__ = [
     "DEFAULT_USER_NAMESPACE",

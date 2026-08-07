@@ -45,6 +45,7 @@ from ..core.statistics import (
     PathCacheManagerStatistics,
 )
 
+
 class MetricType(Enum):
     """Types of metrics collected for graph optimization."""
 
@@ -54,6 +55,7 @@ class MetricType(Enum):
     JITTER = "jitter"
     BANDWIDTH = "bandwidth"
     HEALTH = "health"
+
 
 @dataclass(slots=True)
 class GraphMetric:
@@ -74,6 +76,7 @@ class GraphMetric:
         """Check if metric is reliable enough for routing decisions."""
         return self.confidence >= min_confidence
 
+
 @dataclass(slots=True)
 class OptimizationSuggestion:
     """A suggestion for graph optimization."""
@@ -89,6 +92,7 @@ class OptimizationSuggestion:
         """For priority queue ordering."""
         return self.priority < other.priority
 
+
 class MetricsCollectorProtocol(Protocol):
     """Protocol for metrics collection sources."""
 
@@ -103,6 +107,7 @@ class MetricsCollectorProtocol(Protocol):
     def get_collection_interval(self) -> float:
         """Get the collection interval in seconds."""
         ...
+
 
 @dataclass(slots=True)
 class GraphMetricsCollector:
@@ -361,6 +366,7 @@ class GraphMetricsCollector:
                 recent_metrics_by_type=recent_metrics_by_type,
             )
 
+
 @dataclass(slots=True)
 class PathCacheManager:
     """
@@ -557,6 +563,7 @@ class PathCacheManager:
                 invalidations_by_reason=dict(self.invalidations_by_reason),
                 thresholds=thresholds,
             )
+
 
 @dataclass(slots=True)
 class GraphOptimizer:
@@ -828,6 +835,7 @@ class GraphOptimizer:
                 current_suggestions=len(self.optimization_suggestions),
                 suggestions_by_priority=suggestions_by_priority,
             )
+
 
 @dataclass(slots=True)
 class FederationGraphMonitor:

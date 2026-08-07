@@ -6,6 +6,7 @@ from pathlib import Path
 
 from mpreg.core.config import MPREGSettings
 
+
 def test_packaged_profiles_load() -> None:
     root = Path(__file__).resolve().parents[1] / "mpreg" / "profiles"
     names = ["dev", "single-node", "cluster", "federated", "discovery-resolver"]
@@ -16,11 +17,13 @@ def test_packaged_profiles_load() -> None:
         assert settings.cluster_id
         assert settings.name
 
+
 def test_dev_profile_enables_four_plane_facade() -> None:
     root = Path(__file__).resolve().parents[1] / "mpreg" / "profiles"
     dev = MPREGSettings.from_path(root / "dev.toml")
     assert dev.enable_default_cache is True
     assert dev.enable_default_queue is True
+
 
 def test_federated_profile_snapshot_fail_closed() -> None:
     root = Path(__file__).resolve().parents[1] / "mpreg" / "profiles"
@@ -30,6 +33,7 @@ def test_federated_profile_snapshot_fail_closed() -> None:
     assert fed.fabric_route_security_config.allow_unsigned is False
     assert fed.fabric_gossip_require_hmac is True
     assert fed.fabric_gossip_hmac_secret
+
 
 def test_function_index_alias() -> None:
     from mpreg.server import Cluster

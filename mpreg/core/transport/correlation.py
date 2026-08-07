@@ -27,6 +27,7 @@ type EndpointUrl = str
 type ConnectionId = str
 type TransportLatencyMs = float
 
+
 @dataclass(frozen=True, slots=True)
 class CorrelationResult:
     """Result of a correlated transport operation."""
@@ -40,6 +41,7 @@ class CorrelationResult:
     error_message: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
+
 @dataclass(frozen=True, slots=True)
 class CorrelationConfig:
     """Configuration for correlation tracking."""
@@ -47,6 +49,7 @@ class CorrelationConfig:
     correlation_timeout_ms: float = 30000.0  # 30 seconds
     max_correlation_history: int = 10000
     enable_performance_tracking: bool = True
+
 
 @dataclass(slots=True)
 class CorrelationTracker:
@@ -139,6 +142,7 @@ class CorrelationTracker:
             "success_rate_percent": success_rate,
             "recent_operations": len(recent_results),
         }
+
 
 # Factory function for creating correlation trackers
 def create_correlation_tracker(

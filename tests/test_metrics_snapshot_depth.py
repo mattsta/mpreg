@@ -2,6 +2,7 @@
 
 from mpreg.core.monitoring.server_monitoring import ServerMetricsTracker
 
+
 def test_snapshot_rpc_depth_keys() -> None:
     t = ServerMetricsTracker()
     for i in range(5):
@@ -15,6 +16,7 @@ def test_snapshot_rpc_depth_keys() -> None:
     assert "min_ms" in rpc and "max_ms" in rpc
     assert rpc["min_ms"] <= rpc["avg_ms"] <= rpc["max_ms"] + 1e-9
     assert "p50_ms" in rpc and "p95_ms" in rpc and "p99_ms" in rpc
+
 
 def test_snapshot_includes_fabric_hop_stats() -> None:
     from mpreg.core.monitoring.server_monitoring import ServerMetricsTracker

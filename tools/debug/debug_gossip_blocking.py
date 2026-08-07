@@ -9,6 +9,7 @@ from mpreg.core.model import GoodbyeReason
 from mpreg.server import MPREGServer
 from tests.test_helpers import TestPortManager
 
+
 async def debug_gossip_blocking():
     """Debug gossip blocking with detailed logging."""
     port_manager = TestPortManager()
@@ -154,6 +155,7 @@ async def debug_gossip_blocking():
             )
 
         port_manager.cleanup()
+
 
 if __name__ == "__main__":
     asyncio.run(debug_gossip_blocking())

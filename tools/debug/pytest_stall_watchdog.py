@@ -21,10 +21,12 @@ type RunMode = str
 type EnvKey = str
 type EnvValue = str
 
+
 @dataclass(frozen=True, slots=True)
 class EnvOverride:
     key: EnvKey
     value: EnvValue
+
 
 @dataclass(frozen=True, slots=True)
 class ManifestConfig:
@@ -35,6 +37,7 @@ class ManifestConfig:
     run_mode: RunMode
     env_overrides: tuple[EnvOverride, ...]
 
+
 @dataclass(frozen=True, slots=True)
 class WatchdogConfig:
     manifest_path: str
@@ -44,12 +47,14 @@ class WatchdogConfig:
     sample_seconds: Seconds
     timeout_seconds: Seconds | None
 
+
 @dataclass(frozen=True, slots=True)
 class WorkerCpuSnapshot:
     pid: Pid
     ppid: Pid
     cpu_percent: float
     command: str
+
 
 @dataclass(frozen=True, slots=True)
 class StallCapture:
@@ -60,6 +65,7 @@ class StallCapture:
     sample_path: str | None
     hottest_worker_pid: Pid | None
     worker_cpu_snapshots: tuple[WorkerCpuSnapshot, ...]
+
 
 @dataclass(frozen=True, slots=True)
 class RunReport:
@@ -73,11 +79,14 @@ class RunReport:
     duration_seconds: Seconds
     stall_capture: StallCapture | None
 
+
 def _utc_now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
+
 
 def _parse_args() -> WatchdogConfig:
     parser = argparse.ArgumentParser(
@@ -124,6 +133,7 @@ def _parse_args() -> WatchdogConfig:
         timeout_seconds=None if timeout_value <= 0.0 else timeout_value,
     )
 
+
 def _parse_env_overrides(raw_entries: object) -> tuple[EnvOverride, ...]:
     if raw_entries is None:
         return ()
@@ -142,6 +152,7 @@ def _parse_env_overrides(raw_entries: object) -> tuple[EnvOverride, ...]:
             raise ValueError(f"Invalid env_overrides entry (empty key): {entry}")
         overrides.append(EnvOverride(key=clean_key, value=value))
     return tuple(overrides)
+
 
 def _load_manifest(path: Path) -> ManifestConfig:
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -181,12 +192,14 @@ def _load_manifest(path: Path) -> ManifestConfig:
         env_overrides=env_overrides,
     )
 
+
 def _build_command(manifest: ManifestConfig) -> tuple[str, ...]:
     if manifest.run_mode != "batch":
         raise ValueError("Watchdog currently supports only batch manifests")
     if manifest.run_full_suite:
         return ("uv", "run", "pytest", "-q", "-s", *manifest.pytest_args)
     return ("uv", "run", "pytest", "-q", "-s", *manifest.pytest_args, *manifest.tests)
+
 
 def _read_process_table() -> tuple[tuple[Pid, Pid], ...]:
     table_raw = subprocess.run(
@@ -207,6 +220,7 @@ def _read_process_table() -> tuple[tuple[Pid, Pid], ...]:
             continue
     return tuple(rows)
 
+
 def _descendants(root_pid: Pid) -> tuple[Pid, ...]:
     table = _read_process_table()
     children_by_parent: dict[Pid, list[Pid]] = {}
@@ -223,6 +237,7 @@ def _descendants(root_pid: Pid) -> tuple[Pid, ...]:
             seen.add(child)
             pending.append(child)
     return tuple(sorted(seen))
+
 
 def _cpu_snapshot(pids: tuple[Pid, ...]) -> tuple[WorkerCpuSnapshot, ...]:
     if not pids:
@@ -260,6 +275,7 @@ def _cpu_snapshot(pids: tuple[Pid, ...]) -> tuple[WorkerCpuSnapshot, ...]:
         )
     return tuple(snapshots)
 
+
 def _write_ps_snapshot(path: Path) -> None:
     ps_snapshot = subprocess.run(
         ("ps", "-axo", "pid,ppid,%cpu,%mem,state,etime,command"),
@@ -269,6 +285,7 @@ def _write_ps_snapshot(path: Path) -> None:
         text=True,
     )
     path.write_text(ps_snapshot.stdout, encoding="utf-8")
+
 
 def _sample_process(pid: Pid, sample_seconds: Seconds, output_path: Path) -> bool:
     sample_cmd = (
@@ -289,6 +306,7 @@ def _sample_process(pid: Pid, sample_seconds: Seconds, output_path: Path) -> boo
         return True
     output_path.write_text(run.stdout, encoding="utf-8")
     return False
+
 
 def _terminate_group(process: subprocess.Popen[str]) -> None:
     if process.poll() is not None:
@@ -312,6 +330,7 @@ def _terminate_group(process: subprocess.Popen[str]) -> None:
         return
     except Exception:
         pass
+
 
 def _run_watchdog(config: WatchdogConfig, manifest: ManifestConfig) -> RunReport:
     session_dir = Path(config.output_dir) / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -438,6 +457,7 @@ def _run_watchdog(config: WatchdogConfig, manifest: ManifestConfig) -> RunReport
             print(f"stall_sample={stall_capture.sample_path}")
     return report
 
+
 def main() -> int:
     config = _parse_args()
     manifest = _load_manifest(Path(config.manifest_path))
@@ -447,6 +467,7 @@ def main() -> int:
     if report.exit_code is None:
         return 2
     return int(report.exit_code)
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

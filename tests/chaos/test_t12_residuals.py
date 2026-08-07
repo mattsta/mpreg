@@ -45,6 +45,7 @@ from mpreg.fabric.queue_messages import (
 )
 from tests.test_production_raft_integration import TestableStateMachine
 
+
 class _NullTransport:
     async def send_request_vote(self, target, request):  # type: ignore[no-untyped-def]
         return None
@@ -54,6 +55,7 @@ class _NullTransport:
 
     async def send_install_snapshot(self, target, request):  # type: ignore[no-untyped-def]
         return None
+
 
 def _make_node(node_id: str = "n1", members: set[str] | None = None) -> ProductionRaft:
     members = members or {node_id, "n2"}
@@ -70,6 +72,7 @@ def _make_node(node_id: str = "n1", members: set[str] | None = None) -> Producti
             snapshot_threshold=5,
         ),
     )
+
 
 def _leader_with_snapshot_base(
     node_id: str = "L", follower: str = "f1"
@@ -93,6 +96,7 @@ def _leader_with_snapshot_base(
     node.leader_volatile_state.match_index[follower] = 0
     return node
 
+
 @pytest.mark.asyncio
 async def test_cor_t12_01_install_snapshot_leader_fail_closed_missing_success() -> None:
     """COR-T12-01: leader must not advance match/next when success attr missing."""
@@ -109,6 +113,7 @@ async def test_cor_t12_01_install_snapshot_leader_fail_closed_missing_success() 
     assert node.leader_volatile_state is not None
     assert node.leader_volatile_state.match_index["f1"] == 0
     assert node.leader_volatile_state.next_index["f1"] == 1
+
 
 @pytest.mark.asyncio
 async def test_cor_t12_01b_install_snapshot_leader_advances_on_explicit_success() -> (
@@ -128,6 +133,7 @@ async def test_cor_t12_01b_install_snapshot_leader_advances_on_explicit_success(
     assert node.leader_volatile_state is not None
     assert node.leader_volatile_state.match_index["f1"] == 50
     assert node.leader_volatile_state.next_index["f1"] == 51
+
 
 def test_cor_t12_02_queue_federation_ack_missing_success_false() -> None:
     """COR-T12-02: missing success on wire → False (fail-closed)."""
@@ -160,6 +166,7 @@ def test_cor_t12_02_queue_federation_ack_missing_success_false() -> None:
     )
     assert bare.success is False
 
+
 def _fed_mgr(**kwargs: object) -> FabricQueueFederationManager:
     return FabricQueueFederationManager(
         cluster_id="c1",
@@ -170,6 +177,7 @@ def _fed_mgr(**kwargs: object) -> FabricQueueFederationManager:
         messenger=SimpleNamespace(),  # type: ignore[arg-type]
         **kwargs,  # type: ignore[arg-type]
     )
+
 
 @pytest.mark.asyncio
 async def test_cor_t12_02b_failed_ack_does_not_count_success() -> None:
@@ -214,6 +222,7 @@ async def test_cor_t12_02b_failed_ack_does_not_count_success() -> None:
     assert mgr.stats.failed_deliveries == 1
     assert mgr.stats.successful_deliveries == 0
 
+
 @pytest.mark.asyncio
 async def test_cor_t12_02c_success_ack_counts() -> None:
     mgr = _fed_mgr()
@@ -255,6 +264,7 @@ async def test_cor_t12_02c_success_ack_counts() -> None:
     assert mgr.stats.successful_deliveries == 1
     assert mgr.stats.failed_deliveries == 0
 
+
 def test_obs_t12_01_catalog_dedup_hook() -> None:
     hits: list[int] = []
     applier = RoutingCatalogApplier(
@@ -269,6 +279,7 @@ def test_obs_t12_01_catalog_dedup_hook() -> None:
     applier.apply(d)
     applier.apply(d)  # dedup
     assert hits == [1, 1]
+
 
 @pytest.mark.asyncio
 async def test_obs_t12_01_fed_in_flight_drop_hook() -> None:
@@ -303,6 +314,7 @@ async def test_obs_t12_01_fed_in_flight_drop_hook() -> None:
     assert hits == [1]
     assert mgr.in_flight_drops == 1
 
+
 @pytest.mark.asyncio
 async def test_obs_t12_02_dlq_hook_on_manager() -> None:
     hits: list[int] = []
@@ -320,6 +332,7 @@ async def test_obs_t12_02_dlq_hook_on_manager() -> None:
     )
     await q._move_to_dead_letter_queue(msg, "test")
     assert hits == [1]
+
 
 def test_obs_t12_metrics_prom_series_still_present() -> None:
     t = ServerMetricsTracker()

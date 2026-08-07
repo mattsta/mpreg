@@ -18,6 +18,7 @@ from mpreg.fabric.gossip_signatures import (
     verify_gossip_payload,
 )
 
+
 async def main() -> None:
     with app_run(
         "discovery_signatures_lab",
@@ -126,6 +127,7 @@ async def main() -> None:
             ok("fail-closed without signature field")
 
         await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

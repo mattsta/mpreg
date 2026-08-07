@@ -8,6 +8,7 @@ from tests.port_allocator import get_port_allocator
 
 from tests.conftest import AsyncTestContext
 
+
 @pytest.fixture
 def my_large_cluster_ports():
     """Exactly the same fixture as the failing test."""
@@ -19,6 +20,7 @@ def my_large_cluster_ports():
     for port in ports:
         allocator.release_port(port)
     print("   🧹 Released ports")
+
 
 class TestMinimalLargeCluster:
     """Minimal reproduction of the failing large cluster test."""
@@ -34,6 +36,7 @@ class TestMinimalLargeCluster:
         print(f"   Got {len(my_large_cluster_ports)} ports")
         print(f"   Context has {len(test_context.servers)} servers")
         print("✅ Test completed!")
+
 
 if __name__ == "__main__":
     import subprocess

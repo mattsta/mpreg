@@ -5,6 +5,7 @@ from __future__ import annotations
 from mpreg.fabric.route_decision_log import RouteDecisionLog, make_record_from_route
 from mpreg.fabric.router import FabricRouter, FabricRoutingConfig
 
+
 def test_router_owns_distinct_decision_log() -> None:
     cfg = FabricRoutingConfig(local_cluster_id="c1", local_node_id="n1")
     r1 = FabricRouter(config=cfg)

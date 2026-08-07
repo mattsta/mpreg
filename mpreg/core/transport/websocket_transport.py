@@ -40,6 +40,7 @@ from .interfaces import (
     TransportTimeoutError,
 )
 
+
 class WebSocketTransport(TransportInterface):
     """WebSocket transport implementation.
 
@@ -273,6 +274,7 @@ class WebSocketTransport(TransportInterface):
         except WebSocketException as e:
             raise TransportError(f"WebSocket ping error: {e}")
 
+
 class WebSocketListener(TransportListener):
     """WebSocket listener for accepting incoming connections."""
 
@@ -396,6 +398,7 @@ class WebSocketListener(TransportListener):
             with contextlib.suppress(Exception):
                 await websocket.wait_closed()
 
+
 class _WebSocketServerTransport(TransportInterface):
     """WebSocket transport wrapper for server-side connections."""
 
@@ -501,6 +504,7 @@ class _WebSocketServerTransport(TransportInterface):
             raise TransportConnectionError("WebSocket connection closed")
         except WebSocketException as e:
             raise TransportError(f"WebSocket ping error: {e}")
+
 
 # Protocol specifications for external client development
 _WEBSOCKET_SPEC = ProtocolSpec(

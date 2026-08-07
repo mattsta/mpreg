@@ -42,6 +42,7 @@ DEFAULT_ENDPOINT_SCOPE: EndpointScope = "zone"
 VALID_ENDPOINT_SCOPES = {"local", "zone", "region", "global"}
 SCOPE_RANKS: dict[str, int] = {"local": 0, "zone": 1, "region": 2, "global": 3}
 
+
 def normalize_endpoint_scope(value: str | None) -> EndpointScope:
     if value is None:
         return DEFAULT_ENDPOINT_SCOPE
@@ -53,9 +54,11 @@ def normalize_endpoint_scope(value: str | None) -> EndpointScope:
         return DEFAULT_ENDPOINT_SCOPE
     return alias
 
+
 def endpoint_scope_rank(scope: str | None) -> int:
     normalized = normalize_endpoint_scope(scope)
     return SCOPE_RANKS.get(normalized, SCOPE_RANKS[DEFAULT_ENDPOINT_SCOPE])
+
 
 def _normalize_tags(tags: object) -> frozenset[str]:
     if tags is None:
@@ -65,6 +68,7 @@ def _normalize_tags(tags: object) -> frozenset[str]:
     if isinstance(tags, (list, tuple, set)):
         return frozenset(str(tag) for tag in tags if tag)
     return frozenset(str(tags)) if tags else frozenset()
+
 
 def _normalize_metadata(metadata: object) -> dict[MetadataKey, MetadataValue]:
     if not isinstance(metadata, dict):
@@ -80,6 +84,7 @@ def _normalize_metadata(metadata: object) -> dict[MetadataKey, MetadataValue]:
             normalized[key_str] = str(value)
     return normalized
 
+
 def _is_stale_advertisement_update(
     *,
     existing_advertised_at: Timestamp,
@@ -93,6 +98,7 @@ def _is_stale_advertisement_update(
     if incoming_advertised_at > existing_advertised_at:
         return False
     return incoming_ttl_seconds <= existing_ttl_seconds
+
 
 @dataclass(frozen=True, slots=True)
 class TransportEndpoint:
@@ -144,6 +150,7 @@ class TransportEndpoint:
             host=assignment.host,
             port=assignment.port,
         )
+
 
 @dataclass(frozen=True, slots=True)
 class NodeDescriptor:
@@ -218,6 +225,7 @@ class NodeDescriptor:
             ttl_seconds=float(payload.get("ttl_seconds", 30.0)),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class NodeKey:
     cluster_id: ClusterId
@@ -232,6 +240,7 @@ class NodeKey:
             cluster_id=str(payload.get("cluster_id", "")),
             node_id=str(payload.get("node_id", "")),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class FunctionEndpoint:
@@ -314,6 +323,7 @@ class FunctionEndpoint:
             ttl_seconds=float(payload.get("ttl_seconds", 30.0)),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class FunctionKey:
     cluster_id: ClusterId
@@ -339,6 +349,7 @@ class FunctionKey:
             ),
             resources=frozenset(payload.get("resources", [])),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class TopicSubscription:
@@ -384,10 +395,12 @@ class TopicSubscription:
             ttl_seconds=float(payload.get("ttl_seconds", 30.0)),
         )
 
+
 class QueueHealth(Enum):
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNAVAILABLE = "unavailable"
+
 
 @dataclass(frozen=True, slots=True)
 class QueueEndpoint:
@@ -452,6 +465,7 @@ class QueueEndpoint:
             ttl_seconds=float(payload.get("ttl_seconds", 30.0)),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class QueueKey:
     cluster_id: ClusterId
@@ -472,6 +486,7 @@ class QueueKey:
             node_id=str(payload.get("node_id", "")),
             queue_name=str(payload.get("queue_name", "")),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class ServiceEndpoint:
@@ -556,6 +571,7 @@ class ServiceEndpoint:
             ttl_seconds=float(payload.get("ttl_seconds", 30.0)),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class ServiceKey:
     cluster_id: ClusterId
@@ -586,12 +602,14 @@ class ServiceKey:
             port=int(payload.get("port", 0) or 0),
         )
 
+
 class CacheRole(Enum):
     COORDINATOR = "coordinator"
     INVALIDATOR = "invalidator"
     REPLICA = "replica"
     SYNC = "sync"
     MONITOR = "monitor"
+
 
 @dataclass(frozen=True, slots=True)
 class CacheRoleEntry:
@@ -641,6 +659,7 @@ class CacheRoleEntry:
             ttl_seconds=float(payload.get("ttl_seconds", 30.0)),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class CacheRoleKey:
     cluster_id: ClusterId
@@ -661,6 +680,7 @@ class CacheRoleKey:
             node_id=str(payload.get("node_id", "")),
             role=CacheRole(str(payload.get("role", CacheRole.COORDINATOR.value))),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class CacheNodeProfile:
@@ -735,6 +755,7 @@ class CacheNodeProfile:
             ttl_seconds=float(payload.get("ttl_seconds", 30.0)),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class CacheNodeKey:
     cluster_id: ClusterId
@@ -752,6 +773,7 @@ class CacheNodeKey:
             cluster_id=str(payload.get("cluster_id", "")),
             node_id=str(payload.get("node_id", "")),
         )
+
 
 @dataclass(slots=True)
 class FunctionCatalog:
@@ -856,6 +878,7 @@ class FunctionCatalog:
         ]
         return tuple(entries)
 
+
 @dataclass(slots=True)
 class TopicCatalog:
     _subscriptions: dict[SubscriptionId, TopicSubscription] = field(
@@ -927,6 +950,7 @@ class TopicCatalog:
     def entry_count(self) -> int:
         return len(self._subscriptions)
 
+
 @dataclass(slots=True)
 class QueueCatalog:
     _entries: dict[QueueKey, QueueEndpoint] = field(default_factory=dict)
@@ -987,6 +1011,7 @@ class QueueCatalog:
 
     def entry_count(self) -> int:
         return len(self._entries)
+
 
 @dataclass(slots=True)
 class ServiceCatalog:
@@ -1061,6 +1086,7 @@ class ServiceCatalog:
     def entry_count(self) -> int:
         return len(self._entries)
 
+
 @dataclass(slots=True)
 class CacheCatalog:
     _entries: dict[CacheRoleKey, CacheRoleEntry] = field(default_factory=dict)
@@ -1119,6 +1145,7 @@ class CacheCatalog:
 
     def entry_count(self) -> int:
         return len(self._entries)
+
 
 @dataclass(slots=True)
 class CacheProfileCatalog:
@@ -1185,6 +1212,7 @@ class CacheProfileCatalog:
     def entry_count(self) -> int:
         return len(self._profiles)
 
+
 @dataclass(slots=True)
 class NodeCatalog:
     _nodes: dict[NodeKey, NodeDescriptor] = field(default_factory=dict)
@@ -1241,6 +1269,7 @@ class NodeCatalog:
 
     def entry_count(self) -> int:
         return len(self._nodes)
+
 
 @dataclass(slots=True)
 class RoutingCatalog:

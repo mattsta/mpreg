@@ -14,6 +14,7 @@ from tests.conftest import AsyncTestContext
 from tests.test_helpers import TestPortManager, wait_for_condition
 from tests.test_production_raft_integration import TestableStateMachine
 
+
 async def _wait_for_peers(server: MPREGServer, expected: int) -> None:
     await wait_for_condition(
         lambda: len(server.cluster.peer_neighbors()) >= expected,
@@ -21,6 +22,7 @@ async def _wait_for_peers(server: MPREGServer, expected: int) -> None:
         interval=0.2,
         error_message=f"Server {server.settings.name} did not see {expected} peers",
     )
+
 
 @pytest.mark.asyncio
 async def test_fabric_raft_leader_election_and_replication() -> None:

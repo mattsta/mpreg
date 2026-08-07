@@ -6,6 +6,7 @@ from mpreg.fabric.auto_discovery import (
     DNSDiscoveryBackend,
 )
 
+
 def test_dns_auto_discovery_srv_parsing() -> None:
     config = DiscoveryConfiguration(
         protocol=DiscoveryProtocol.DNS_SRV, dns_domain="example.com"
@@ -27,6 +28,7 @@ def test_dns_auto_discovery_srv_parsing() -> None:
     assert record.weight == 5
     assert record.port == 9000
     assert record.host == "node.example.com"
+
 
 def test_dns_auto_discovery_resolver_override() -> None:
     config = DiscoveryConfiguration(

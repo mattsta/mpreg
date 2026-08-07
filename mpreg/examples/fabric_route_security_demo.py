@@ -19,6 +19,7 @@ from mpreg.fabric.route_policy_directory import (
 from mpreg.fabric.route_security import RouteAnnouncementSigner, RouteSecurityConfig
 from mpreg.server import MPREGServer
 
+
 async def _wait_for_route(
     route_table: RouteTable,
     destination: RouteDestination,
@@ -31,6 +32,7 @@ async def _wait_for_route(
             return
         await asyncio.sleep(0.2)
     raise RuntimeError(f"Timed out waiting for route to {destination.cluster_id}")
+
 
 async def demo_route_security_and_policy() -> None:
     with port_range_context(3, "servers") as ports:
@@ -137,6 +139,7 @@ async def demo_route_security_and_policy() -> None:
             print("Key rotation applied; cluster-b route still valid.")
 
         await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(demo_route_security_and_policy())

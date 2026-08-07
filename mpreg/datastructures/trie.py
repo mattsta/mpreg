@@ -49,6 +49,7 @@ type TrieSegment = str  # Individual segment of a pattern (e.g., "user", "*", "l
 type TrieKey = str  # Key being matched against patterns
 type TrieCacheKey = str  # Cache key for performance optimization
 
+
 @dataclass(frozen=True, slots=True)
 class TrieStatistics:
     """Performance statistics for trie operations."""
@@ -61,6 +62,7 @@ class TrieStatistics:
     total_patterns: int
     average_pattern_depth: float
     memory_usage_estimate_bytes: int
+
 
 @dataclass(slots=True)
 class TrieNode[T]:
@@ -85,6 +87,7 @@ class TrieNode[T]:
     match_count: MatchCount = 0
     last_accessed: float = field(default_factory=time.time)
 
+
 @dataclass(slots=True)
 class TrieConfig:
     """Configuration for trie behavior and performance tuning."""
@@ -104,6 +107,7 @@ class TrieConfig:
 
     # Memory optimization
     enable_node_cleanup: bool = False  # Enable automatic cleanup of empty nodes
+
 
 @dataclass(slots=True)
 class Trie[T]:
@@ -494,6 +498,7 @@ class Trie[T]:
 
         return patterns
 
+
 # Specialized trie for topic routing (backward compatibility)
 class TopicTrie(Trie[SubscriptionId]):
     """
@@ -539,6 +544,7 @@ class TopicTrie(Trie[SubscriptionId]):
         """Get performance statistics (backward compatibility method name)."""
         return super().get_statistics()
 
+
 # Factory functions for common use cases
 def create_topic_trie(
     enable_caching: bool = True, max_cache_size: int = 10000, thread_safe: bool = True
@@ -549,6 +555,7 @@ def create_topic_trie(
         max_cache_size=max_cache_size,
         thread_safe=thread_safe,
     )
+
 
 def create_generic_trie[T](
     value_type: type[T],

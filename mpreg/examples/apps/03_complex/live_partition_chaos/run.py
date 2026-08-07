@@ -22,6 +22,7 @@ from mpreg.examples.apps._shared.runtime import (
 from mpreg.server import MPREGServer
 from mpreg.testing.faults import FaultInjector
 
+
 async def main() -> None:
     with (
         app_run(
@@ -291,6 +292,7 @@ async def main() -> None:
                 ok("local RPC after drain/detach cycle")
 
         await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -7,6 +7,7 @@ import asyncio
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 from mpreg.testing.oracles import RaftOracle, RoutingOracle, RpcOracle, RpcStreamEvent
 
+
 async def main() -> None:
     with app_run(
         "routing_oracle_lab",
@@ -88,6 +89,7 @@ async def main() -> None:
             step("lab oracles model correctness; not live fabric control plane")
 
         await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

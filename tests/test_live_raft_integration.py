@@ -37,6 +37,7 @@ from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 from tests.test_helpers import wait_for_condition
 
+
 class TestLiveRaftIntegration:
     """Live Raft integration tests using real network connections."""
 
@@ -1110,6 +1111,7 @@ class TestLiveRaftIntegration:
                 await asyncio.sleep(0.1)
 
         print("✓ All concurrent high load tests completed")
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "-s"])

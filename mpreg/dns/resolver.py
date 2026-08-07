@@ -19,8 +19,10 @@ from mpreg.fabric.catalog import (
 from .names import match_zone, parse_node_labels, parse_service_labels
 from .records import AAAARecord, ARecord, DnsRecord, SrvRecord, TxtRecord
 
+
 class CatalogQueryProvider(Protocol):
     def __call__(self, request: CatalogQueryRequest) -> PayloadMapping: ...
+
 
 @dataclass(frozen=True, slots=True)
 class DnsResolverConfig:
@@ -29,10 +31,12 @@ class DnsResolverConfig:
     max_ttl_seconds: int = 60
     allow_external_names: bool = False
 
+
 @dataclass(slots=True)
 class DnsResolutionResult:
     records: list[DnsRecord]
     rcode: int
+
 
 def _ip_version(host: str) -> int | None:
     try:
@@ -40,6 +44,7 @@ def _ip_version(host: str) -> int | None:
     except ValueError:
         return None
     return 6 if ip.version == 6 else 4
+
 
 def _protocol_matches_dns_proto(protocol: str, dns_proto: str) -> bool:
     proto = protocol.lower()
@@ -50,9 +55,11 @@ def _protocol_matches_dns_proto(protocol: str, dns_proto: str) -> bool:
         return proto == "udp"
     return proto == dns_proto
 
+
 def _clamp_ttl(ttl_seconds: float, config: DnsResolverConfig) -> int:
     ttl = int(max(config.min_ttl_seconds, min(config.max_ttl_seconds, ttl_seconds)))
     return max(1, ttl)
+
 
 class DnsResolver:
     def __init__(

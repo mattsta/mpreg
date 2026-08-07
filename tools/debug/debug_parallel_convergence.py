@@ -9,6 +9,7 @@ from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.model import RPCCommand
 from mpreg.server import MPREGServer, MPREGSettings
 
+
 async def debug_parallel_convergence():
     print("=== DEBUG: Parallel Branch Convergence Test ===")
 
@@ -198,6 +199,7 @@ async def debug_parallel_convergence():
             await server.stop()
         for task in tasks:
             task.cancel()
+
 
 if __name__ == "__main__":
     asyncio.run(debug_parallel_convergence())

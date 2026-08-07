@@ -37,6 +37,7 @@ from mpreg.core.topic_exchange import TopicExchange
 from mpreg.datastructures.vector_clock import VectorClock
 from mpreg.server import MPREGServer
 
+
 class TestVectorClock:
     """Test vector clock implementation for causal consistency."""
 
@@ -92,6 +93,7 @@ class TestVectorClock:
         assert clock1.concurrent_with(clock2)
         assert clock2.concurrent_with(clock1)
 
+
 class TestLocationInfo:
     """Test location information for geographic clusters."""
 
@@ -116,6 +118,7 @@ class TestLocationInfo:
         assert location.data_center == "sf-dc-1"
         assert location.provider == "aws"
         assert location.network_tier == "premium"
+
 
 class TestReplicatedCacheEntry:
     """Test replicated cache entry structure."""
@@ -143,6 +146,7 @@ class TestReplicatedCacheEntry:
         assert entry.consistency_level == ConsistencyLevel.STRONG
         assert entry.replication_strategy == ReplicationStrategy.LOCATION_BASED
         assert entry.created_at <= time.time()
+
 
 class TestLocationConsistencyConfig:
     """Test location consistency configuration."""
@@ -177,6 +181,7 @@ class TestLocationConsistencyConfig:
         assert config.max_replicas_per_entry == 5
         assert config.replication_factor == 0.8
         assert config.prefer_local_reads is False
+
 
 class TestLocationConsistencyManagerBasic:
     """Test basic location consistency manager functionality."""
@@ -309,6 +314,7 @@ class TestLocationConsistencyManagerBasic:
 
         entry_key = consistency_manager._entry_key(cache_key)
         assert entry_key == "test_ns:test_id:v2.0.0"
+
 
 class TestLocationConsistencyWithLiveServers:
     """Test location consistency with live MPREG servers."""
@@ -611,6 +617,7 @@ class TestLocationConsistencyWithLiveServers:
         await pubsub_integration.shutdown()
         await cache_manager.shutdown()
 
+
 class TestLocationConsistencyEdgeCases:
     """Test edge cases and error conditions."""
 
@@ -691,6 +698,7 @@ class TestLocationConsistencyEdgeCases:
 
         # Should return empty set since no other clusters are registered
         assert targets == frozenset()
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -36,9 +36,11 @@ from .model import (
     TopicAdvertisement,
 )
 
+
 def estimate_payload_size_bytes(payload: Any) -> int:
     """Bounded payload size for backlog stats (never nested str/repr)."""
     return estimate_size_bytes(payload)
+
 
 @dataclass(slots=True, frozen=True)
 class StoredMessage:
@@ -47,6 +49,7 @@ class StoredMessage:
     message: PubSubMessage
     stored_at: float
     size_bytes: int
+
 
 @dataclass(slots=True)
 class MessageBacklog:
@@ -190,6 +193,7 @@ class MessageBacklog:
             active_topics=len(self.backlogs),
             cleanup_queue_size=len(self.cleanup_heap),
         )
+
 
 @dataclass(slots=True)
 class TopicExchange:
@@ -467,6 +471,7 @@ class TopicExchange:
             if self.remote_topic_servers
             else 0,
         )
+
 
 # Performance testing utilities
 @dataclass(slots=True)

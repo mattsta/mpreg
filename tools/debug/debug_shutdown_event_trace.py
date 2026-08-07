@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from mpreg.server import MPREGServer, MPREGSettings
 
+
 class DebugMPREGServer(MPREGServer):
     """Instrumented version of MPREGServer to trace shutdown event behavior."""
 
@@ -146,6 +147,7 @@ class DebugMPREGServer(MPREGServer):
                 f"[{self.settings.name}] DEBUG: _manage_peer_connections() exiting at t={elapsed:.3f}s"
             )
 
+
 async def debug_shutdown_event_trace():
     """Test what exactly happens to the shutdown event during task destruction."""
 
@@ -204,6 +206,7 @@ async def debug_shutdown_event_trace():
             await server.shutdown_async()
         except TimeoutError:
             pass
+
 
 if __name__ == "__main__":
     try:

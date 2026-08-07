@@ -33,6 +33,7 @@ from mpreg.fabric.message import (
     UnifiedMessage,
 )
 
+
 @dataclass(slots=True)
 class StubReceiver:
     node_id: str
@@ -50,9 +51,11 @@ class StubReceiver:
     def get_cache_entry(self, key: GlobalCacheKey) -> GlobalCacheEntry | None:
         return self.entries.get(str(key))
 
+
 @dataclass(slots=True)
 class StubConnection:
     is_connected: bool = True
+
 
 @dataclass(slots=True)
 class StubCluster:
@@ -62,10 +65,12 @@ class StubCluster:
     def cluster_id_for_node_url(self, node_url: str) -> str | None:
         return self.cluster_map.get(node_url)
 
+
 @dataclass(slots=True)
 class StubSettings:
     cluster_id: str
     fabric_routing_max_hops: int = 3
+
 
 @dataclass(slots=True)
 class StubPlanner:
@@ -98,6 +103,7 @@ class StubPlanner:
             remaining_hops=max(0, remaining - 1),
             reason=FabricForwardingFailureReason.OK,
         )
+
 
 @dataclass(slots=True)
 class StubServer:
@@ -144,6 +150,7 @@ class StubServer:
             return plan.next_peer_url
         return None
 
+
 def _build_digest(node_id: str, key: GlobalCacheKey) -> CacheDigest:
     entry = CacheDigestEntry(
         key=key,
@@ -160,6 +167,7 @@ def _build_digest(node_id: str, key: GlobalCacheKey) -> CacheDigest:
         total_entries=1,
         total_size_bytes=10,
     )
+
 
 @pytest.mark.asyncio
 async def test_transport_register_and_send_operation() -> None:
@@ -186,6 +194,7 @@ async def test_transport_register_and_send_operation() -> None:
     assert success
     assert receiver.last_message == message
 
+
 @pytest.mark.asyncio
 async def test_transport_fetch_digest_and_entry() -> None:
     transport = InProcessCacheTransport()
@@ -209,6 +218,7 @@ async def test_transport_fetch_digest_and_entry() -> None:
 
     assert fetched_digest == digest
     assert fetched_entry == entry
+
 
 def test_server_cache_transport_selects_peers_by_profile() -> None:
     now = time.time()
@@ -288,6 +298,7 @@ def test_server_cache_transport_selects_peers_by_profile() -> None:
 
     assert peers == ("node-eu",)
 
+
 @pytest.mark.asyncio
 async def test_server_cache_transport_uses_path_vector_next_hop() -> None:
     target_node = "node-remote"
@@ -321,6 +332,7 @@ async def test_server_cache_transport_uses_path_vector_next_hop() -> None:
     assert sent is True
     assert server.last_target_nodes == (next_hop,)
 
+
 @pytest.mark.asyncio
 async def test_server_cache_transport_prefers_direct_peer() -> None:
     target_node = "node-remote"
@@ -353,6 +365,7 @@ async def test_server_cache_transport_prefers_direct_peer() -> None:
     assert sent is True
     assert server.last_target_nodes == (target_node,)
 
+
 @pytest.mark.asyncio
 async def test_server_cache_transport_drops_without_route() -> None:
     target_node = "node-remote"
@@ -384,6 +397,7 @@ async def test_server_cache_transport_drops_without_route() -> None:
 
     assert sent is False
     assert server.last_target_nodes is None
+
 
 @pytest.mark.asyncio
 async def test_cache_transport_forwards_operation_to_target_node() -> None:

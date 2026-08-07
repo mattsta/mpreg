@@ -14,6 +14,7 @@ from mpreg.fabric.catalog_delta import RoutingCatalogDelta
 
 DISCOVERY_DELTA_TOPIC = "mpreg.discovery.delta"
 
+
 @dataclass(frozen=True, slots=True)
 class CatalogDeltaCounts:
     """Counts summary for catalog delta application."""
@@ -70,6 +71,7 @@ class CatalogDeltaCounts:
             "nodes_added": self.nodes_added,
             "nodes_removed": self.nodes_removed,
         }
+
 
 @dataclass(frozen=True, slots=True)
 class DiscoveryDeltaMessage:

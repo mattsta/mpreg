@@ -42,6 +42,7 @@ type RPCProgressPercentage = float
 type TopicSubscriptionId = str
 type RPCStreamToken = str
 
+
 class RPCExecutionStage(Enum):
     """RPC execution lifecycle stages for topic coordination."""
 
@@ -57,6 +58,7 @@ class RPCExecutionStage(Enum):
     REQUEST_COMPLETED = "request_completed"  # Entire request completed
     REQUEST_FAILED = "request_failed"  # Request failed
 
+
 class RPCProgressType(Enum):
     """Types of RPC progress updates."""
 
@@ -66,6 +68,7 @@ class RPCProgressType(Enum):
     RESOURCE_ALLOCATION = "resource_allocation"  # Resource usage information
     DEPENDENCY_RESOLVED = "dependency_resolved"  # Dependency became available
     ERROR_RECOVERABLE = "error_recoverable"  # Recoverable error occurred
+
 
 @dataclass(frozen=True, slots=True)
 class TopicAwareRPCConfig:
@@ -89,6 +92,7 @@ class TopicAwareRPCConfig:
     max_intermediate_results: int = 100
     result_stream_buffer_size: int = 1000
     subscription_timeout_ms: float = 30000.0  # 30 second subscription timeout
+
 
 @dataclass(frozen=True, slots=True)
 class RPCProgressEvent:
@@ -118,6 +122,7 @@ class RPCProgressEvent:
     correlation_id: CorrelationId | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
+
 @dataclass(frozen=True, slots=True)
 class RPCDependencyEvent:
     """Event indicating RPC dependency resolution."""
@@ -136,6 +141,7 @@ class RPCDependencyEvent:
     execution_level: RPCExecutionLevel | None = None
     correlation_id: CorrelationId | None = None
 
+
 @dataclass(frozen=True, slots=True)
 class RPCResult:
     """Result of a single RPC command execution."""
@@ -153,6 +159,7 @@ class RPCResult:
     success: bool = True
     error_message: str | None = None
     error_type: str | None = None
+
 
 @dataclass(frozen=True, slots=True)
 class RPCRequestResult:
@@ -178,6 +185,7 @@ class RPCRequestResult:
         """Check if all commands completed successfully."""
         return self.failed_commands == 0
 
+
 @dataclass(frozen=True, slots=True)
 class RPCResultStream:
     """Streaming RPC result for real-time delivery."""
@@ -199,6 +207,7 @@ class RPCResultStream:
     def is_final_result(self) -> bool:
         """Check if this is the final result in the stream."""
         return self.result_type == "final"
+
 
 @dataclass(frozen=True, slots=True)
 class TopicAwareRPCCommand:
@@ -258,6 +267,7 @@ class TopicAwareRPCCommand:
             locs=self.locs,
         )
 
+
 @dataclass(frozen=True, slots=True)
 class TopicAwareRPCRequest:
     """Enhanced RPC request with topic-aware capabilities."""
@@ -308,6 +318,7 @@ class TopicAwareRPCRequest:
             cmds=base_commands,
             u=self.u,
         )
+
 
 @dataclass(frozen=True, slots=True)
 class TopicAwareRPCResponse:
@@ -393,6 +404,7 @@ class TopicAwareRPCResponse:
             tracestate=self.tracestate,
             headers=dict(self.headers or {}),
         )
+
 
 @dataclass(slots=True)
 class RPCTopicSubscriptionManager:
@@ -482,6 +494,7 @@ class RPCTopicSubscriptionManager:
 
         return cleanup_success
 
+
 @dataclass(slots=True)
 class RPCCommandState:
     """Tracks the execution state of a topic-aware RPC command."""
@@ -504,6 +517,7 @@ class RPCCommandState:
     # Metadata
     estimated_completion_time: float | None = None
     resource_usage: dict[str, Any] = field(default_factory=dict)
+
 
 @dataclass(slots=True)
 class TopicAwareRPCExecutor:
@@ -885,7 +899,9 @@ class TopicAwareRPCExecutor:
             },
         }
 
+
 # Factory functions for creating topic-aware RPC components
+
 
 def create_topic_aware_command(
     command: RPCCommand,
@@ -900,6 +916,7 @@ def create_topic_aware_command(
         enable_result_streaming=enable_streaming,
         **kwargs,
     )
+
 
 def create_topic_aware_request(
     request: RPCRequest,
@@ -927,6 +944,7 @@ def create_topic_aware_request(
         **kwargs,
     )
 
+
 def create_rpc_subscription_manager(
     topic_template_engine: TopicTemplateEngine | None = None,
 ) -> RPCTopicSubscriptionManager:
@@ -935,6 +953,7 @@ def create_rpc_subscription_manager(
         topic_template_engine = TopicTemplateEngine()
 
     return RPCTopicSubscriptionManager(topic_template_engine=topic_template_engine)
+
 
 def create_topic_aware_rpc_executor(
     topic_exchange: Any = None,

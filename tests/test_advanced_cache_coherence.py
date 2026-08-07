@@ -45,6 +45,7 @@ from mpreg.datastructures.vector_clock import VectorClock
 
 # Hypothesis strategies for property-based testing
 
+
 def merkle_aware_cache_key_strategy() -> st.SearchStrategy[
     MerkleAwareFederatedCacheKey
 ]:
@@ -113,6 +114,7 @@ def merkle_aware_cache_key_strategy() -> st.SearchStrategy[
 
     return _merkle_key_strategy()
 
+
 def conflict_resolution_strategy_strategy() -> st.SearchStrategy[
     CacheConflictResolutionStrategy
 ]:
@@ -154,6 +156,7 @@ def conflict_resolution_strategy_strategy() -> st.SearchStrategy[
 
     return _strategy_strategy()
 
+
 def conflict_resolution_context_strategy() -> st.SearchStrategy[
     ConflictResolutionContext
 ]:
@@ -178,6 +181,7 @@ def conflict_resolution_context_strategy() -> st.SearchStrategy[
             max_size=5,
         ),
     )
+
 
 class TestMerkleAwareFederatedCacheKey:
     """Test merkle-aware cache key functionality."""
@@ -411,6 +415,7 @@ class TestMerkleAwareFederatedCacheKey:
                 tree_version=0,  # Invalid version
             )
 
+
 class TestFederatedCacheEntry:
     """Test federated cache entry functionality."""
 
@@ -471,6 +476,7 @@ class TestFederatedCacheEntry:
                 cache_value=None,
                 coherence_metadata=coherence_metadata,
             )
+
 
 class TestConflictResolutionStrategy:
     """Test conflict resolution strategy configuration."""
@@ -542,6 +548,7 @@ class TestConflictResolutionStrategy:
                 leader_preference={"cluster-a": -1.0},  # Negative weight
             )
 
+
 class TestConflictResolutionContext:
     """Test conflict resolution context."""
 
@@ -578,6 +585,7 @@ class TestConflictResolutionContext:
                 remote_cluster="remote-cluster",
                 conflict_timestamp=-1.0,
             )
+
 
 class TestCacheConflictResolver:
     """Test cache conflict resolver functionality."""
@@ -802,6 +810,7 @@ class TestCacheConflictResolver:
         with pytest.raises(ValueError, match="Unknown conflict resolution strategy"):
             await resolver.resolve_conflict(local_entry, remote_entry, context)
 
+
 class TestConflictResolutionResult:
     """Test conflict resolution result."""
 
@@ -849,6 +858,7 @@ class TestConflictResolutionResult:
                 winning_cluster="val-cluster",
                 resolution_timestamp=-1.0,
             )
+
 
 class TestLeaderElectionMetrics:
     """Test leader election metrics functionality."""
@@ -929,6 +939,7 @@ class TestLeaderElectionMetrics:
         bad_score = bad_metrics.fitness_score()
         assert bad_score < good_score  # Should be lower than good
         assert 0.0 <= bad_score <= 50.0  # Should be low score
+
 
 class TestMetricBasedLeaderElection:
     """Test metric-based leader election implementation."""
@@ -1017,6 +1028,7 @@ class TestMetricBasedLeaderElection:
 
         # Should no longer be leader
         assert await election.get_current_leader("test_namespace") is None
+
 
 class TestCacheNamespaceLeader:
     """Test cache namespace leader coordination."""
@@ -1152,6 +1164,7 @@ class TestCacheNamespaceLeader:
         with pytest.raises(ValueError, match="Namespace cannot be empty"):
             leader.force_leader_election("")
 
+
 class TestCacheCorruptionError:
     """Test cache corruption error handling."""
 
@@ -1171,7 +1184,9 @@ class TestCacheCorruptionError:
         assert str(error) == "Merkle proof verification failed"
         assert error.entry_key == "users:profile:123"
 
+
 # Property-based testing for advanced cache coherence
+
 
 class TestAdvancedCacheCoherencePropertyBased:
     """Property-based tests for advanced cache coherence."""
@@ -1256,6 +1271,7 @@ class TestAdvancedCacheCoherencePropertyBased:
 
         except Exception as e:
             pytest.fail(f"Conflict resolution context validation failed: {e}")
+
 
 # Integration test for complete advanced workflow
 class TestAdvancedCacheCoherenceIntegration:

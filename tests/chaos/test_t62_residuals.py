@@ -9,6 +9,7 @@ import pytest
 from mpreg.testing.distlab.builtins import ensure_builtins
 from mpreg.testing.distlab.registry import get_registry, resolve_preset
 
+
 @pytest.mark.asyncio
 async def test_t62_distlab_hint_enriched_scenario() -> None:
     ensure_builtins()
@@ -22,10 +23,12 @@ async def test_t62_distlab_hint_enriched_scenario() -> None:
     surfaces = " ".join(meta.get("ops_surfaces") or ())
     assert "residual_ops_hint" in surfaces
 
+
 def test_t62_preset_includes_hint_enriched() -> None:
     ensure_builtins()
     assert "strong.cft_residual_ops_hint_enriched" in resolve_preset("strong-core")
     assert "strong.cft_residual_ops_hint_enriched" in resolve_preset("ci-core")
+
 
 def test_t62_phase_50_honesty() -> None:
     path = (
@@ -37,6 +40,7 @@ def test_t62_phase_50_honesty() -> None:
     assert "Phase 50" in text
     assert "cft_residual_ops_hint_enriched" in text or "hint_enriched" in text
 
+
 def test_t62_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]
     assert (
@@ -46,6 +50,7 @@ def test_t62_plan_and_ledger() -> None:
         encoding="utf-8"
     )
     assert "T62" in ledger
+
 
 def test_t62_operate_docs() -> None:
     path = (

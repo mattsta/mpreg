@@ -16,6 +16,7 @@ from mpreg.fabric import (
 )
 from mpreg.fabric.federation_graph import GeographicCoordinate
 
+
 def test_routing_index_function_query_filters_resources() -> None:
     index = RoutingIndex()
     cpu_endpoint = FunctionEndpoint(
@@ -52,6 +53,7 @@ def test_routing_index_function_query_filters_resources() -> None:
     matches = index.find_functions(query, now=105.0)
     assert matches == [gpu_endpoint]
 
+
 def test_routing_index_topic_query_match() -> None:
     index = RoutingIndex()
     subscription = TopicSubscription(
@@ -66,6 +68,7 @@ def test_routing_index_topic_query_match() -> None:
 
     matches = index.match_topics(TopicQuery(topic="foo.bar"), now=15.0)
     assert matches == [subscription]
+
 
 def test_routing_index_node_query_filters_resources_and_capabilities() -> None:
     index = RoutingIndex()
@@ -87,6 +90,7 @@ def test_routing_index_node_query_filters_resources_and_capabilities() -> None:
 
     none_matches = index.find_nodes(NodeQuery(resources=frozenset({"fpga"})), now=55.0)
     assert none_matches == []
+
 
 def test_routing_index_cache_profile_query() -> None:
     index = RoutingIndex()

@@ -28,6 +28,7 @@ from tests.conftest import AsyncTestContext
 
 # Hypothesis strategies for generating RPC topologies
 
+
 @st.composite
 def node_config(draw):
     """Generate a single node configuration."""
@@ -49,6 +50,7 @@ def node_config(draw):
         "resources": resources,
     }
 
+
 @st.composite
 def cluster_topology(draw):
     """Generate a cluster topology with 2-5 nodes."""
@@ -66,6 +68,7 @@ def cluster_topology(draw):
     topology_type = draw(st.sampled_from(["linear", "star", "mesh", "tree"]))
 
     return {"nodes": nodes, "topology_type": topology_type, "num_nodes": num_nodes}
+
 
 @st.composite
 def rpc_command_spec(draw):
@@ -93,6 +96,7 @@ def rpc_command_spec(draw):
         "resource": resource_name,
     }
 
+
 @st.composite
 def dependency_chain(draw):
     """Generate a dependency chain of RPC commands."""
@@ -116,6 +120,7 @@ def dependency_chain(draw):
         "dependencies": dependencies,
         "chain_length": chain_length,
     }
+
 
 @st.composite
 def parallel_execution_pattern(draw):
@@ -148,6 +153,7 @@ def parallel_execution_pattern(draw):
         "sync_cmd": sync_cmd,
         "num_branches": num_parallel_branches,
     }
+
 
 class TestPropertyBasedRPCTopologies:
     """Property-based tests for RPC execution across various topologies."""
@@ -550,6 +556,7 @@ class TestPropertyBasedRPCTopologies:
             # Document rather than fail
 
         print("✓ Dependency resolution property test completed")
+
 
 class TestPropertyBasedFieldAccess:
     """Property-based tests for field access patterns in dependencies."""

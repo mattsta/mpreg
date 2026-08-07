@@ -10,11 +10,13 @@ from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 from tests.test_helpers import TestPortManager, wait_for_condition
 
+
 def _peer_node_ids(server: MPREGServer) -> set[str]:
     directory = server._peer_directory
     if not directory:
         return set()
     return {node.node_id for node in directory.nodes()}
+
 
 class TestGoodbyeConnectionStormPrevention:
     @pytest.mark.asyncio

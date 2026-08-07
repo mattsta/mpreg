@@ -23,6 +23,7 @@ DEFAULT_NODEID: NodeId = (
     "test_hierarchical_regional_federation_with_auto_balancing"
 )
 
+
 @dataclass(frozen=True, slots=True)
 class ProbeConfig:
     nodeid: NodeId
@@ -31,12 +32,14 @@ class ProbeConfig:
     output_dir: str
     enable_platform_diag: bool
 
+
 @dataclass(frozen=True, slots=True)
 class RunMetrics:
     load_balance_percent: Percent | None
     propagation_success_percent: Percent | None
     fault_tolerance_percent: Percent | None
     hierarchy_efficiency_percent: Percent | None
+
 
 @dataclass(frozen=True, slots=True)
 class RunResult:
@@ -48,6 +51,7 @@ class RunResult:
     passed: bool
     metrics: RunMetrics
     failure_line: str | None
+
 
 @dataclass(frozen=True, slots=True)
 class ProbeReport:
@@ -62,8 +66,10 @@ class ProbeReport:
     avg_load_balance_percent: Percent | None
     runs: tuple[RunResult, ...]
 
+
 def _utc_now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
 
 def _parse_args() -> ProbeConfig:
     parser = argparse.ArgumentParser(
@@ -90,6 +96,7 @@ def _parse_args() -> ProbeConfig:
         enable_platform_diag=bool(args.enable_platform_diag),
     )
 
+
 def _extract_percent(pattern: str, text: str) -> Percent | None:
     match = re.search(pattern, text)
     if not match:
@@ -99,6 +106,7 @@ def _extract_percent(pattern: str, text: str) -> Percent | None:
     except ValueError:
         return None
 
+
 def _extract_failure_line(text: str) -> str | None:
     for line in text.splitlines():
         stripped = line.strip()
@@ -107,6 +115,7 @@ def _extract_failure_line(text: str) -> str | None:
         if stripped.startswith("FAILED "):
             return stripped
     return None
+
 
 def _extract_metrics(text: str) -> RunMetrics:
     return RunMetrics(
@@ -121,6 +130,7 @@ def _extract_metrics(text: str) -> RunMetrics:
             r"Hierarchy efficiency:\s+([0-9.]+)%", text
         ),
     )
+
 
 def _run_once(config: ProbeConfig, run_index: int, session_dir: Path) -> RunResult:
     log_path = session_dir / f"run_{run_index:03d}.log"
@@ -191,6 +201,7 @@ def _run_once(config: ProbeConfig, run_index: int, session_dir: Path) -> RunResu
         failure_line=_extract_failure_line(text),
     )
 
+
 def _build_report(config: ProbeConfig, runs: tuple[RunResult, ...]) -> ProbeReport:
     load_values = [
         run.metrics.load_balance_percent
@@ -218,6 +229,7 @@ def _build_report(config: ProbeConfig, runs: tuple[RunResult, ...]) -> ProbeRepo
         avg_load_balance_percent=avg_load,
         runs=runs,
     )
+
 
 def _write_report(report: ProbeReport, session_dir: Path) -> None:
     json_path = session_dir / "probe_report.json"
@@ -258,6 +270,7 @@ def _write_report(report: ProbeReport, session_dir: Path) -> None:
 
     text_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
+
 def main() -> int:
     config = _parse_args()
     session_dir = Path(config.output_dir) / datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -292,6 +305,7 @@ def main() -> int:
         f"load_balance_min={report.min_load_balance_percent}"
     )
     return 0 if report.failed_runs == 0 else 1
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

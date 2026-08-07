@@ -15,12 +15,14 @@ from mpreg.fabric.link_state import (
 )
 from mpreg.fabric.peer_directory import PeerNeighbor
 
+
 class _StubPublisher:
     def __init__(self) -> None:
         self.updates: list[LinkStateUpdate] = []
 
     async def publish(self, update: LinkStateUpdate) -> None:
         self.updates.append(update)
+
 
 def test_link_state_table_rejects_stale_update() -> None:
     table = LinkStateTable(local_cluster="cluster-a")
@@ -42,6 +44,7 @@ def test_link_state_table_rejects_stale_update() -> None:
         sequence=1,
     )
     assert table.apply_update(stale, now=now + 1.0) is False
+
 
 @pytest.mark.asyncio
 async def test_link_state_processor_updates_graph() -> None:
@@ -74,6 +77,7 @@ async def test_link_state_processor_updates_graph() -> None:
     assert await processor.handle_update(remove, sender_id="node-a") is True
     assert router.graph.get_edge("cluster-a", "cluster-b") is None
 
+
 def test_link_state_update_serializes_area() -> None:
     update = LinkStateUpdate(
         origin="cluster-a",
@@ -87,6 +91,7 @@ def test_link_state_update_serializes_area() -> None:
     assert payload["area"] == "area-1"
     parsed = LinkStateUpdate.from_dict(payload)
     assert parsed.area == "area-1"
+
 
 def test_link_state_table_neighbor_clusters() -> None:
     table = LinkStateTable(local_cluster="cluster-a")
@@ -102,6 +107,7 @@ def test_link_state_table_neighbor_clusters() -> None:
     )
     assert table.apply_update(update) is True
     assert table.neighbor_clusters("cluster-a") == frozenset({"cluster-b", "cluster-c"})
+
 
 @pytest.mark.asyncio
 async def test_link_state_expiry_removes_edges() -> None:
@@ -126,6 +132,7 @@ async def test_link_state_expiry_removes_edges() -> None:
     removed = processor.prune_expired(now=now + 6.0)
     assert removed == 1
     assert router.graph.get_edge("cluster-a", "cluster-b") is None
+
 
 @pytest.mark.asyncio
 async def test_link_state_processor_filters_area() -> None:
@@ -160,6 +167,7 @@ async def test_link_state_processor_filters_area() -> None:
     assert await processor.handle_update(allowed, sender_id="node-a") is True
     assert router.graph.get_edge("cluster-a", "cluster-b") is not None
 
+
 @pytest.mark.asyncio
 async def test_link_state_announcer_multi_area_updates() -> None:
     publisher = _StubPublisher()
@@ -188,6 +196,7 @@ async def test_link_state_announcer_multi_area_updates() -> None:
     by_area = {update.area: update for update in publisher.updates}
     assert [n.cluster_id for n in by_area["area-a"].neighbors] == ["cluster-b"]
     assert [n.cluster_id for n in by_area["area-b"].neighbors] == ["cluster-c"]
+
 
 @pytest.mark.asyncio
 async def test_link_state_announcer_summary_exports() -> None:

@@ -8,6 +8,7 @@ from mpreg.fabric.route_key_gossip import RouteKeyAnnouncer, RouteKeyProcessor
 from mpreg.fabric.route_keys import RouteKeyAnnouncement, RouteKeyRegistry
 from mpreg.fabric.route_security import RouteAnnouncementSigner
 
+
 def test_route_key_announcement_round_trip() -> None:
     signer = RouteAnnouncementSigner.create()
     registry = RouteKeyRegistry()
@@ -31,6 +32,7 @@ def test_route_key_announcement_round_trip() -> None:
     assert parsed.cluster_id == "cluster-a"
     assert parsed.primary_key_id == "key-a"
     assert parsed.keys[0].public_key == signer.public_key
+
 
 @pytest.mark.asyncio
 async def test_route_key_gossip_propagates_keys() -> None:

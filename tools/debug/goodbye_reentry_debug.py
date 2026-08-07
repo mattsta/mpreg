@@ -6,6 +6,7 @@ from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 from tests.test_helpers import TestPortManager
 
+
 async def main() -> None:
     async with AsyncTestContext() as ctx:
         port_manager = TestPortManager()
@@ -66,6 +67,7 @@ async def main() -> None:
             "server2 in server1 peers after:", server2_url in server1.cluster.peers_info
         )
         print("server1 departed:", list(server1.cluster._departed_peers))
+
 
 if __name__ == "__main__":
     asyncio.run(main())

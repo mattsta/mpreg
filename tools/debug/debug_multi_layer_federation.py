@@ -15,6 +15,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
+
 async def debug_multi_layer_federation():
     """Debug multi-layer federation with detailed connection analysis."""
 
@@ -263,6 +264,7 @@ async def debug_multi_layer_federation():
 
         print("=" * 80)
         print("🔍 DEBUG ANALYSIS COMPLETE")
+
 
 if __name__ == "__main__":
     asyncio.run(debug_multi_layer_federation())

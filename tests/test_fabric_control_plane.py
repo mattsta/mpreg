@@ -4,6 +4,7 @@ from mpreg.fabric.control_plane import FabricControlPlane
 from mpreg.fabric.gossip import GossipProtocol
 from mpreg.fabric.gossip_transport import InProcessGossipTransport
 
+
 @pytest.mark.asyncio
 async def test_fabric_control_plane_create_wires_gossip() -> None:
     transport = InProcessGossipTransport()

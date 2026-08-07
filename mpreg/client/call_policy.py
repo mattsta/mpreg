@@ -14,6 +14,7 @@ from mpreg.core.errors import MpregError, MpregErrorCode, map_exception
 
 T = TypeVar("T")
 
+
 class RpcExecutionMode(StrEnum):
     """Product RPC evaluation modalities (architecture claims INV-P*).
 
@@ -25,6 +26,7 @@ class RpcExecutionMode(StrEnum):
     M1_ASYNC = "async"
     M2_SOFT_RT = "soft_rt"
     M3_STREAMING = "streaming"
+
 
 @dataclass(frozen=True, slots=True)
 class ClientCallPolicy:
@@ -107,6 +109,7 @@ class ClientCallPolicy:
             delay += random.uniform(0, self.jitter_seconds)
         return float(delay)
 
+
 async def call_with_policy[T](
     operation: Callable[[], Awaitable[T]],
     policy: ClientCallPolicy,
@@ -160,6 +163,7 @@ async def call_with_policy[T](
             await asyncio.sleep(delay)
     assert last_exc is not None
     raise map_exception(last_exc) from last_exc
+
 
 def default_ha_policy() -> ClientCallPolicy:
     """Sensible defaults for multi-endpoint clients (retry only retryable codes)."""

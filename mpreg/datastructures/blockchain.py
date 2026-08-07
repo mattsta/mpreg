@@ -27,6 +27,7 @@ from .blockchain_types import (
 from .transaction import Transaction, transaction_strategy
 from .vector_clock import VectorClock
 
+
 class _LazySt:
     """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
 
@@ -42,7 +43,9 @@ class _LazySt:
     def __getattr__(self, name: str) -> object:
         return getattr(self._load(), name)
 
+
 st = _LazySt()
+
 
 @dataclass(frozen=True, slots=True)
 class Blockchain:
@@ -434,7 +437,9 @@ class Blockchain:
             f"consensus={self.consensus_config.consensus_type.value})"
         )
 
+
 # Hypothesis strategies for property-based testing
+
 
 def chain_id_strategy() -> st.SearchStrategy[ChainId]:
     """Generate valid chain IDs."""
@@ -446,6 +451,7 @@ def chain_id_strategy() -> st.SearchStrategy[ChainId]:
         ),
     )
 
+
 def consensus_config_strategy() -> st.SearchStrategy[ConsensusConfig]:
     """Generate valid consensus configurations."""
     return st.builds(
@@ -456,6 +462,7 @@ def consensus_config_strategy() -> st.SearchStrategy[ConsensusConfig]:
         max_transactions_per_block=st.integers(min_value=1, max_value=10000),
     )
 
+
 def blockchain_strategy() -> st.SearchStrategy[Blockchain]:
     """Generate valid Blockchain instances for testing."""
     return st.builds(
@@ -465,6 +472,7 @@ def blockchain_strategy() -> st.SearchStrategy[Blockchain]:
         blocks=st.lists(block_strategy(), max_size=10).map(tuple),
         consensus_config=consensus_config_strategy(),
     ).filter(lambda chain: chain.validate_chain())
+
 
 def simple_blockchain_strategy() -> st.SearchStrategy[Blockchain]:
     """Generate simple valid blockchains for testing."""

@@ -9,6 +9,7 @@ from mpreg.core.errors import MpregErrorCode
 from mpreg.core.intermediate_results import IntermediateResultCollector
 from mpreg.testing.oracles import RpcOracle, RpcStreamEvent
 
+
 def topological_levels(edges: list[tuple[int, int]], n: int) -> list[list[int]]:
     """Kahn levels: nodes with no remaining deps form a level."""
     indeg = [0] * n
@@ -30,6 +31,7 @@ def topological_levels(edges: list[tuple[int, int]], n: int) -> list[list[int]]:
             for v in succ[u]:
                 indeg[v] -= 1
     return levels
+
 
 @given(
     n=st.integers(min_value=1, max_value=8),
@@ -53,6 +55,7 @@ def test_levels_cover_all_nodes(n: int, edge_data: list[tuple[int, int]]) -> Non
         )
         oracle.observe(RpcStreamEvent(kind="intermediate", level=mid.level_index))
     oracle.observe(RpcStreamEvent(kind="final"))
+
 
 def test_hop_budget_code() -> None:
     from mpreg.server_pkg.rpc_handlers import RpcPlane

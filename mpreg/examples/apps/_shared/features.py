@@ -879,8 +879,10 @@ APP_FEATURES: dict[str, tuple[str, ...]] = {
     ),
 }
 
+
 def features_for(app_id: str) -> tuple[str, ...]:
     return APP_FEATURES.get(app_id, ())
+
 
 def all_feature_ids() -> frozenset[str]:
     out: set[str] = set()

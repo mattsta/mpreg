@@ -56,6 +56,7 @@ from .raft_messages import (
 
 raft_log = logger
 
+
 class RaftNodeProtocol(Protocol):
     node_id: NodeId
 
@@ -71,12 +72,14 @@ class RaftNodeProtocol(Protocol):
         self, request: InstallSnapshotRequest
     ) -> InstallSnapshotResponse: ...
 
+
 @dataclass(frozen=True, slots=True)
 class FabricRaftTransportConfig:
     node_id: NodeId
     cluster_id: ClusterId
     request_timeout_seconds: float = 1.0
     max_hops: HopCount | None = None
+
 
 @dataclass(frozen=True, slots=True)
 class FabricRaftTransportHooks:
@@ -85,6 +88,7 @@ class FabricRaftTransportHooks:
         [ClusterId, UnifiedMessage, NodeId | None], Awaitable[bool]
     ]
     resolve_cluster: Callable[[NodeId], ClusterId | None]
+
 
 @dataclass(slots=True)
 class FabricRaftTransport:

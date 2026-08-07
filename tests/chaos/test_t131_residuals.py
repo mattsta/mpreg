@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t131_phase_119_honesty() -> None:
     assert "Phase 119" in (
         Path(__file__).resolve().parents[2]
         / "docs"
         / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md"
     ).read_text(encoding="utf-8")
+
 
 def test_t131_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]
@@ -19,6 +21,7 @@ def test_t131_plan_and_ledger() -> None:
     assert "T131" in (root / "docs" / "plans" / "DISTLAB_PROOF_LEDGER.md").read_text(
         encoding="utf-8"
     )
+
 
 def test_t131_curriculum_monitor_json() -> None:
     root = Path(__file__).resolve().parents[2]

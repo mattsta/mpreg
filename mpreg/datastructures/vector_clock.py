@@ -17,6 +17,7 @@ from .type_aliases import (
     VectorClockTimestamp,
 )
 
+
 class _LazySt:
     """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
 
@@ -32,7 +33,9 @@ class _LazySt:
     def __getattr__(self, name: str) -> object:
         return getattr(self._load(), name)
 
+
 st = _LazySt()
+
 
 @dataclass(frozen=True, slots=True)
 class ClockEntry:
@@ -46,6 +49,7 @@ class ClockEntry:
             raise ValueError(f"Timestamp must be non-negative, got {self.timestamp}")
         if not self.node_id:
             raise ValueError("Node ID cannot be empty")
+
 
 @dataclass(frozen=True, slots=True)
 class VectorClock:
@@ -290,6 +294,7 @@ class VectorClock:
         )
         return f"VectorClock({{{entries_str}}})"
 
+
 # Hypothesis strategies for property-based testing
 def clock_entry_strategy() -> st.SearchStrategy[ClockEntry]:
     """Generate valid ClockEntry instances for testing."""
@@ -304,6 +309,7 @@ def clock_entry_strategy() -> st.SearchStrategy[ClockEntry]:
         ),
         timestamp=st.integers(min_value=0, max_value=1000),
     )
+
 
 def vector_clock_strategy(
     max_entries: int = 10, node_ids: list[str] | None = None
@@ -356,6 +362,7 @@ def vector_clock_strategy(
             return VectorClock(_entries=frozenset(entries))
 
         return build_with_unique_nodes()
+
 
 def ordered_vector_clocks_strategy() -> st.SearchStrategy[
     tuple[VectorClock, VectorClock]

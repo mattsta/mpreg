@@ -17,6 +17,7 @@ from .catalog import (
     TopicSubscription,
 )
 
+
 @dataclass(frozen=True, slots=True)
 class CatalogFilterPolicy:
     """Filter policy for routing catalog updates."""

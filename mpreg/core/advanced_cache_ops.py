@@ -31,6 +31,7 @@ from loguru import logger
 from .cache_interfaces import CacheManagerProtocol
 from .cache_models import CacheMetadata, CacheOptions, GlobalCacheKey
 
+
 class AtomicOperation(Enum):
     """Types of atomic cache operations."""
 
@@ -40,6 +41,7 @@ class AtomicOperation(Enum):
     DECREMENT = "decrement"
     APPEND = "append"
     PREPEND = "prepend"
+
 
 class DataStructureType(Enum):
     """Server-side data structure types."""
@@ -52,6 +54,7 @@ class DataStructureType(Enum):
     QUEUE = "queue"
     STACK = "stack"
 
+
 class ConstraintType(Enum):
     """Value constraint types for server-side validation."""
 
@@ -63,6 +66,7 @@ class ConstraintType(Enum):
     TYPE_CHECK = "type_check"
     CUSTOM_VALIDATOR = "custom_validator"
 
+
 @dataclass(frozen=True, slots=True)
 class ValueConstraint:
     """Constraint definition for server-side value validation."""
@@ -70,6 +74,7 @@ class ValueConstraint:
     constraint_type: ConstraintType
     value: Any
     error_message: str = ""
+
 
 @dataclass(frozen=True, slots=True)
 class AtomicOperationRequest:
@@ -85,6 +90,7 @@ class AtomicOperationRequest:
     ttl_seconds: float | None = None
     if_not_exists: bool = False  # Create only if key doesn't exist
 
+
 @dataclass(frozen=True, slots=True)
 class AtomicOperationResult:
     """Result of atomic cache operation."""
@@ -95,6 +101,7 @@ class AtomicOperationResult:
     error_message: str | None = None
     constraint_violations: list[str] = field(default_factory=list)
     operation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+
 
 @dataclass(frozen=True, slots=True)
 class DataStructureOperation:
@@ -110,6 +117,7 @@ class DataStructureOperation:
     range_end: int | None = None
     count: int = 1
 
+
 @dataclass(frozen=True, slots=True)
 class DataStructureResult:
     """Result of data structure operation."""
@@ -121,6 +129,7 @@ class DataStructureResult:
     error_message: str | None = None
     operation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
+
 @dataclass(frozen=True, slots=True)
 class NamespaceOperation:
     """Bulk operation on cache namespace."""
@@ -130,6 +139,7 @@ class NamespaceOperation:
     pattern: str = "*"  # Glob pattern for filtering
     limit: int = 1000  # Limit for scan operations
     include_metadata: bool = False
+
 
 @dataclass(frozen=True, slots=True)
 class NamespaceResult:
@@ -141,6 +151,7 @@ class NamespaceResult:
     cleared_count: int = 0
     error_message: str | None = None
     operation_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+
 
 class AdvancedCacheOperations:
     """

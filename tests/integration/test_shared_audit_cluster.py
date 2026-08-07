@@ -25,6 +25,7 @@ from mpreg.server_pkg.shared_audit import (
     record_from_mgmt_entry,
 )
 
+
 @pytest.mark.asyncio
 async def test_three_node_server_boot_shared_store_and_local_publish() -> None:
     """Each node with mgmt_audit_shared_enabled owns a SharedAuditStore;
@@ -121,6 +122,7 @@ async def test_three_node_server_boot_shared_store_and_local_publish() -> None:
                 t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
 
+
 @pytest.mark.asyncio
 async def test_inprocess_mesh_rejoin_anti_entropy() -> None:
     """Node joins late; digest+PULL backfills history still above watermarks."""
@@ -182,6 +184,7 @@ async def test_inprocess_mesh_rejoin_anti_entropy() -> None:
         self_node="c",
     )
     assert body["mutation_count"] >= 8
+
 
 @pytest.mark.asyncio
 async def test_partition_heal_via_digest() -> None:

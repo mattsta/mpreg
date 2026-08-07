@@ -35,6 +35,7 @@ NodeId = str
 EdgeWeight = float
 PathList = list[str]
 
+
 class NodeType(Enum):
     """Types of nodes in the federation graph."""
 
@@ -42,6 +43,7 @@ class NodeType(Enum):
     LOCAL_HUB = "local_hub"
     REGIONAL_HUB = "regional_hub"
     GLOBAL_HUB = "global_hub"
+
 
 @dataclass(slots=True, frozen=True)
 class GeographicCoordinate:
@@ -71,6 +73,7 @@ class GeographicCoordinate:
 
         # Earth's radius in kilometers
         return 6371.0 * c
+
 
 @dataclass(slots=True)
 class FederationGraphNode:
@@ -125,6 +128,7 @@ class FederationGraphNode:
     def get_node_id(self) -> str:
         """Get unique identifier for this node (GraphNode protocol compatibility)."""
         return self.node_id
+
 
 @dataclass(slots=True)
 class FederationGraphEdge:
@@ -225,6 +229,7 @@ class FederationGraphEdge:
         self.sample_count += 1
         self.last_updated = time.time()
 
+
 class FederationGraphAdapter:
     """Adapter to make FederationGraph compatible with Graph protocol."""
 
@@ -247,6 +252,7 @@ class FederationGraphAdapter:
         """Get all node IDs in the graph."""
         return list(self.federation_graph.nodes.keys())
 
+
 class GraphRouterProtocol(Protocol):
     """Protocol defining the graph router interface."""
 
@@ -268,6 +274,7 @@ class GraphRouterProtocol(Protocol):
         """Update real-time edge metrics."""
         ...
 
+
 @dataclass(slots=True)
 class PathCacheEntry:
     """Cache entry for computed paths with TTL."""
@@ -276,6 +283,7 @@ class PathCacheEntry:
     computed_at: float
     access_count: int = 0
     last_accessed: float = field(default_factory=time.time)
+
 
 @dataclass(slots=True)
 class FederationGraph:
@@ -569,6 +577,7 @@ class FederationGraph:
                 usability_ratio=usable_edges / max(1, total_edges),
             )
 
+
 @dataclass(slots=True)
 class DijkstraRouter:
     """
@@ -618,6 +627,7 @@ class DijkstraRouter:
         self.graph.path_computations += 1
 
         return path
+
 
 @dataclass(slots=True)
 class MultiPathRouter:
@@ -697,6 +707,7 @@ class MultiPathRouter:
 
         return paths
 
+
 @dataclass(slots=True)
 class GeographicAStarRouter:
     """
@@ -756,6 +767,7 @@ class GeographicAStarRouter:
 
         self.computation_time_ms = result.computation_time_ms
         return result.path
+
 
 @dataclass(slots=True)
 class GraphBasedFederationRouter:

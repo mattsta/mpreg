@@ -14,6 +14,7 @@ from .unified_monitoring import (
 
 _HOUR_WINDOW_SECONDS = 3600.0
 
+
 def _calculate_percentile(values: list[float], percentile: float) -> float:
     if not values:
         return 0.0
@@ -22,9 +23,11 @@ def _calculate_percentile(values: list[float], percentile: float) -> float:
     index = max(0, min(index, len(sorted_values) - 1))
     return float(sorted_values[index])
 
+
 def _prune_samples(samples: deque[tuple[float, int]], now: float) -> None:
     while samples and (now - samples[0][0]) > _HOUR_WINDOW_SECONDS:
         samples.popleft()
+
 
 def _calculate_health(
     average_latency_ms: float, error_rate_percent: float
@@ -40,6 +43,7 @@ def _calculate_health(
     if health_score > 0.0:
         return health_score, HealthStatus.CRITICAL
     return health_score, HealthStatus.UNAVAILABLE
+
 
 @dataclass(slots=True)
 class CacheSystemMonitor:
@@ -96,6 +100,7 @@ class CacheSystemMonitor:
         metrics = await self.get_system_metrics()
         return _calculate_health(metrics.average_latency_ms, metrics.error_rate_percent)
 
+
 @dataclass(slots=True)
 class QueueSystemMonitor:
     queue_manager: Any
@@ -151,6 +156,7 @@ class QueueSystemMonitor:
     async def get_health_status(self) -> tuple[HealthScore, HealthStatus]:
         metrics = await self.get_system_metrics()
         return _calculate_health(metrics.average_latency_ms, metrics.error_rate_percent)
+
 
 @dataclass(slots=True)
 class FederationSystemMonitor:

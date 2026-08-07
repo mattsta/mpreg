@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t90_ops_cli_peer_count_asserts() -> None:
     text = (
         Path(__file__).resolve().parents[2]
@@ -18,6 +19,7 @@ def test_t90_ops_cli_peer_count_asserts() -> None:
     assert "abort_fail_peer_count" in text
     assert "metrics_strong" in text
 
+
 def test_t90_phase_78_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -25,6 +27,7 @@ def test_t90_phase_78_honesty() -> None:
         / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md"
     )
     assert "Phase 78" in path.read_text(encoding="utf-8")
+
 
 def test_t90_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]

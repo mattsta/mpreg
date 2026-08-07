@@ -7,12 +7,14 @@ from mpreg.dns.records import TxtRecord
 from mpreg.dns.resolver import DnsResolutionResult
 from mpreg.dns.server import DnsGateway
 
+
 class _StubResolver:
     def __init__(self, records: list[TxtRecord]) -> None:
         self._records = records
 
     def resolve(self, qname: str, qtype: str) -> DnsResolutionResult:
         return DnsResolutionResult(records=list(self._records), rcode=0)
+
 
 @pytest.mark.asyncio
 async def test_dns_gateway_udp_truncates_large_response() -> None:
@@ -32,6 +34,7 @@ async def test_dns_gateway_udp_truncates_large_response() -> None:
     assert response.header.tc == 1
     assert response.header.rcode == 0
     assert len(response.rr) > 0
+
 
 @pytest.mark.asyncio
 async def test_dns_gateway_tcp_does_not_truncate() -> None:

@@ -34,6 +34,7 @@ from mpreg.fabric.route_decision_log import RouteDecisionLog, make_record_from_r
 from mpreg.fabric.router import FabricRouteReason
 from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
 
+
 def test_rpc_error_carries_retryable_on_wire() -> None:
     err = timeout_error("slow")
     wire = err.to_rpc_error()
@@ -45,9 +46,11 @@ def test_rpc_error_carries_retryable_on_wire() -> None:
     assert mapped.retryable is True
     assert mapped.code == 1006
 
+
 def test_rpc_error_non_retryable_on_wire() -> None:
     err = MpregError.of(MpregErrorCode.COMMAND_NOT_FOUND, details="nope")
     assert err.to_rpc_error().retryable is False
+
 
 def test_client_defaults_are_prod_safe() -> None:
     c = Client(url="ws://127.0.0.1:1")
@@ -55,6 +58,7 @@ def test_client_defaults_are_prod_safe() -> None:
     assert c.default_timeout_seconds == 30.0
     api = MPREGClientAPI(url="ws://127.0.0.1:1")
     assert api.full_log is False
+
 
 @pytest.mark.asyncio
 async def test_call_policy_applies_with_max_attempts_one() -> None:
@@ -72,6 +76,7 @@ async def test_call_policy_applies_with_max_attempts_one() -> None:
         await call_with_policy(slow, policy)
     assert ei.value.code == int(MpregErrorCode.TIMEOUT)
 
+
 @pytest.mark.asyncio
 async def test_send_raw_message_timeout_fails_closed() -> None:
     client = Client(url="ws://127.0.0.1:1", full_log=False)
@@ -83,6 +88,7 @@ async def test_send_raw_message_timeout_fails_closed() -> None:
     with pytest.raises(MpregError) as ei:
         await client.send_raw_message({"hello": "world"})
     assert ei.value.code == int(MpregErrorCode.TIMEOUT)
+
 
 @pytest.mark.asyncio
 async def test_strong_cache_put_fails_closed_when_l3_requested() -> None:
@@ -105,6 +111,7 @@ async def test_strong_cache_put_fails_closed_when_l3_requested() -> None:
     finally:
         mgr.shutdown_sync()
 
+
 @pytest.mark.asyncio
 async def test_strong_cache_put_l1_only_fails_closed_no_residual() -> None:
     """L1-only + STRONG must not paper-succeed (COR-01)."""
@@ -125,6 +132,7 @@ async def test_strong_cache_put_l1_only_fails_closed_no_residual() -> None:
         assert get_result.success is False
     finally:
         mgr.shutdown_sync()
+
 
 @pytest.mark.asyncio
 async def test_exactly_once_queue_route_unsupported() -> None:
@@ -162,6 +170,7 @@ async def test_exactly_once_queue_route_unsupported() -> None:
     result = await router.route_message(msg)
     assert result.reason == FabricRouteReason.UNSUPPORTED_DELIVERY
     assert result.targets == []
+
 
 @pytest.mark.asyncio
 async def test_exactly_once_all_message_types_unsupported() -> None:
@@ -201,6 +210,7 @@ async def test_exactly_once_all_message_types_unsupported() -> None:
         assert result.reason == FabricRouteReason.UNSUPPORTED_DELIVERY, mtype
         assert result.targets == []
 
+
 @pytest.mark.asyncio
 async def test_exactly_once_does_not_auto_create_queue() -> None:
     """COR-07: EO reject must not create queue side effects."""
@@ -237,6 +247,7 @@ async def test_exactly_once_does_not_auto_create_queue() -> None:
     assert result.reason == FabricRouteReason.UNSUPPORTED_DELIVERY
     mq.create_queue.assert_not_called()
 
+
 def test_openapi_includes_live_ready_traceparent() -> None:
     doc = build_monitoring_openapi()
     paths = doc["paths"]
@@ -245,6 +256,7 @@ def test_openapi_includes_live_ready_traceparent() -> None:
     params = paths["/routing/decisions"]["get"]["parameters"]
     names = {p["name"] for p in params}
     assert "traceparent" in names
+
 
 def test_decision_log_unsupported_delivery_counts_blackhole() -> None:
     log = RouteDecisionLog()

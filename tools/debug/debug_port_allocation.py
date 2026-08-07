@@ -7,6 +7,7 @@ import time
 
 from tests.port_allocator import get_port_allocator
 
+
 def test_port_allocation_performance():
     """Test how long it takes to allocate different numbers of ports."""
 
@@ -33,6 +34,7 @@ def test_port_allocation_performance():
             end_time = time.time()
             duration = end_time - start_time
             print(f"❌ FAILED: {e} (took {duration:.2f}s)")
+
 
 if __name__ == "__main__":
     test_port_allocation_performance()

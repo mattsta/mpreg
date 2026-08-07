@@ -41,6 +41,7 @@ from ..datastructures.type_aliases import ClusterId, NodeId, Timestamp
 
 metrics_log = logger
 
+
 class AlertSeverity(Enum):
     """Alert severity levels."""
 
@@ -49,6 +50,7 @@ class AlertSeverity(Enum):
     ERROR = "error"
     CRITICAL = "critical"
     EMERGENCY = "emergency"
+
 
 @dataclass(frozen=True, slots=True)
 class PerformanceAlert:
@@ -64,6 +66,7 @@ class PerformanceAlert:
     timestamp: Timestamp
     message: str
     resolved: bool = False
+
 
 @dataclass(frozen=True, slots=True)
 class PerformanceThresholds:
@@ -104,6 +107,7 @@ class PerformanceThresholds:
     memory_error: float = 90.0
     memory_critical: float = 95.0
 
+
 @dataclass(frozen=True, slots=True)
 class ClusterMetrics:
     """Performance metrics for a single cluster."""
@@ -142,9 +146,11 @@ class ClusterMetrics:
     messages_failed: int = 0
     queue_depth: int = 0
 
+
 # FederationMetrics is now imported from core.statistics as FederationPerformanceMetrics
 
 # Duplicate PerformanceAlert class removed - using the one defined at line 59
+
 
 class MetricsCollector(Protocol):
     """Protocol for metrics collection backends."""
@@ -156,6 +162,7 @@ class MetricsCollector(Protocol):
     async def health_check(self) -> bool:
         """Check if metrics collection is working."""
         ...
+
 
 @dataclass(slots=True)
 class PerformanceMetricsService:
@@ -775,7 +782,9 @@ class PerformanceMetricsService:
                 timestamp=time.time(),
             )
 
+
 # Helper functions for creating common metric collection scenarios
+
 
 def create_performance_metrics_service(
     collection_interval: float = 30.0,
@@ -796,6 +805,7 @@ def create_performance_metrics_service(
     )
     return service
 
+
 def create_production_thresholds() -> PerformanceThresholds:
     """Create production-appropriate performance thresholds."""
     return PerformanceThresholds(
@@ -812,6 +822,7 @@ def create_production_thresholds() -> PerformanceThresholds:
         health_score_error=70.0,
         health_score_critical=50.0,
     )
+
 
 def create_development_thresholds() -> PerformanceThresholds:
     """Create development-appropriate performance thresholds."""

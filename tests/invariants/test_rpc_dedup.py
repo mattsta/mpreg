@@ -9,6 +9,7 @@ from mpreg.datastructures.federated_types import (
     FederatedRPCAnnouncement,
 )
 
+
 def test_announcement_dedup_same_id() -> None:
     tracker = FederatedAnnouncementTracker(ttl_seconds=60.0)
     ann = FederatedRPCAnnouncement.create_initial(
@@ -27,6 +28,7 @@ def test_announcement_dedup_same_id() -> None:
     fwd = ann.create_forwarded()
     assert fwd.propagation.announcement_id == ann.propagation.announcement_id
     assert fwd.should_process(local, tracker) is False
+
 
 def test_distinct_announcement_ids_process_independently() -> None:
     tracker = FederatedAnnouncementTracker(ttl_seconds=60.0)
@@ -48,6 +50,7 @@ def test_distinct_announcement_ids_process_independently() -> None:
     tracker.mark_seen(a1.propagation.announcement_id, time.time())
     assert a2.should_process(local, tracker)
 
+
 def test_hop_limit_stops_forwarding() -> None:
     tracker = FederatedAnnouncementTracker(ttl_seconds=60.0)
     ann = FederatedRPCAnnouncement.create_initial(
@@ -65,6 +68,7 @@ def test_hop_limit_stops_forwarding() -> None:
     # Exhausted hop budget ⇒ should_process False even if unseen
     assert fwd.should_process("ws://remote:1", tracker) is False
 
+
 def test_tracker_ttl_expiry_allows_reprocess() -> None:
     tracker = FederatedAnnouncementTracker(ttl_seconds=5.0)
     ann = FederatedRPCAnnouncement.create_initial(
@@ -79,6 +83,7 @@ def test_tracker_ttl_expiry_allows_reprocess() -> None:
     removed = tracker.cleanup_expired(now + 10.0)
     assert removed >= 1
     assert ann.should_process("ws://x:1", tracker) is True
+
 
 def test_retry_storm_same_announcement_id_single_apply() -> None:
     """INV-P7 live-shaped: many retries of the same announcement apply once."""

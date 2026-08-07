@@ -19,6 +19,7 @@ from tests.test_production_raft_integration import (
     TestProductionRaftIntegration,
 )
 
+
 async def debug_leader_failure_reelection():
     """Debug leader failure and reelection process."""
 
@@ -193,6 +194,7 @@ async def debug_leader_failure_reelection():
             for node in nodes.values():
                 with contextlib.suppress(TimeoutError):
                     await asyncio.wait_for(node.stop(), timeout=1.0)
+
 
 if __name__ == "__main__":
     # Simulate high concurrency environment

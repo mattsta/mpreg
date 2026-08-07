@@ -9,12 +9,14 @@ from mpreg.fabric.route_control import (
 )
 from mpreg.fabric.route_withdrawal import RouteWithdrawalCoordinator
 
+
 class StubPublisher:
     def __init__(self) -> None:
         self.withdrawals = []
 
     async def publish_withdrawal(self, withdrawal) -> None:
         self.withdrawals.append(withdrawal)
+
 
 @pytest.mark.asyncio
 async def test_withdrawal_coordinator_publishes() -> None:

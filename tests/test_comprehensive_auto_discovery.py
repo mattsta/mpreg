@@ -31,9 +31,11 @@ from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 from tests.test_helpers import wait_for_condition
 
+
 def get_concurrency_factor() -> float:
     """Scale timeouts for xdist workers under high concurrency."""
     return 2.0 if os.environ.get("PYTEST_XDIST_WORKER") else 1.0
+
 
 # Custom fixture for larger cluster sizes
 @pytest.fixture
@@ -45,6 +47,7 @@ def large_cluster_ports():
     for port in ports:
         allocator.release_port(port)
 
+
 @pytest.fixture
 def medium_cluster_ports():
     """Pytest fixture for medium cluster testing (20 ports)."""
@@ -53,6 +56,7 @@ def medium_cluster_ports():
     yield ports
     for port in ports:
         allocator.release_port(port)
+
 
 @dataclass
 class AutoDiscoveryTestResult:
@@ -65,6 +69,7 @@ class AutoDiscoveryTestResult:
     success: bool = False
     failure_reason: str = ""
     details: list[str] = field(default_factory=list)
+
 
 class AutoDiscoveryTestHelpers:
     """Shared helper methods for auto-discovery testing."""
@@ -546,6 +551,7 @@ class AutoDiscoveryTestHelpers:
             fabric_routing_enabled=fabric_routing_enabled,
         )
 
+
 class TestAutoDiscoverySmallClusters(AutoDiscoveryTestHelpers):
     """Test auto-discovery in small clusters (2-8 nodes)."""
 
@@ -626,6 +632,7 @@ class TestAutoDiscoverySmallClusters(AutoDiscoveryTestHelpers):
         )
         assert result.success, f"8-node star hub failed: {result.failure_reason}"
 
+
 class TestAutoDiscoveryMediumClusters(AutoDiscoveryTestHelpers):
     """Test auto-discovery in medium clusters (10-20 nodes).
 
@@ -676,6 +683,7 @@ class TestAutoDiscoveryMediumClusters(AutoDiscoveryTestHelpers):
         except TimeoutError:
             pytest.fail("Test timed out after 2 minutes - likely hanging issue")
 
+
 class TestAutoDiscoveryLargeClusters(AutoDiscoveryTestHelpers):
     """Test auto-discovery in large clusters (30-50 nodes).
 
@@ -714,6 +722,7 @@ class TestAutoDiscoveryLargeClusters(AutoDiscoveryTestHelpers):
             test_context, large_cluster_ports[:50], "MULTI_HUB", expected_peers=49
         )
         assert result.success, f"50-node multi-hub failed: {result.failure_reason}"
+
 
 class TestAutoDiscoveryFunctionPropagation(AutoDiscoveryTestHelpers):
     """Test function propagation across auto-discovered nodes."""

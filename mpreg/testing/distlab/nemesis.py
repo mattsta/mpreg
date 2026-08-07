@@ -7,6 +7,7 @@ system-specific hooks (partition mesh links, crash backends, malice modes).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import random
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
@@ -16,6 +17,7 @@ from typing import Any, Protocol
 from mpreg.testing.distlab.history import History
 from mpreg.testing.distlab.models import OpKind, OpStatus
 from mpreg.testing.faults import FaultInjector
+
 
 class NemesisAction(StrEnum):
     PARTITION_MAJORITY = "partition_majority"
@@ -27,6 +29,7 @@ class NemesisAction(StrEnum):
     DELAY = "delay"
     CLEAR_RATES = "clear_rates"
     CUSTOM = "custom"
+
 
 class NemesisTarget(Protocol):
     """System hooks the nemesis can call."""
@@ -46,6 +49,7 @@ class NemesisTarget(Protocol):
     def set_delay(self, seconds: float) -> None: ...
 
     def clear_fault_rates(self) -> None: ...
+
 
 @dataclass(slots=True)
 class NullNemesisTarget:
@@ -77,6 +81,7 @@ class NullNemesisTarget:
 
     def clear_fault_rates(self) -> None:
         self.log.append("clear_rates")
+
 
 @dataclass(slots=True)
 class FaultInjectorNemesisTarget:
@@ -132,6 +137,7 @@ class FaultInjectorNemesisTarget:
         self.injector.control_delay_seconds = 0.0
         self.injector.data_delay_seconds = 0.0
         self.injector.duplicate_rate = 0.0
+
 
 @dataclass(slots=True)
 class Nemesis:
@@ -246,10 +252,8 @@ class Nemesis:
         self._task = None
         if t is not None:
             t.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await t
-            except asyncio.CancelledError:
-                pass
         # Always heal on stop so residual checks see a connected world
         try:
             self.target.heal_network()

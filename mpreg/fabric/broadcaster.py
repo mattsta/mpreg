@@ -12,10 +12,12 @@ from .catalog import RoutingCatalog
 from .catalog_delta import RoutingCatalogApplier, RoutingCatalogDelta
 from .catalog_publisher import CatalogDeltaPublisher
 
+
 @dataclass(frozen=True, slots=True)
 class CatalogBroadcastResult:
     counts: dict[str, int]
     message: GossipMessage
+
 
 @dataclass(slots=True)
 class CatalogBroadcaster:

@@ -56,6 +56,7 @@ from .route_keys import RouteKeyRegistry
 from .route_security import RouteAnnouncementSigner, RouteSecurityConfig
 from .route_withdrawal import RouteWithdrawalCoordinator
 
+
 @dataclass(slots=True)
 class FabricControlPlane:
     local_cluster: ClusterId
@@ -345,6 +346,7 @@ class FabricControlPlane:
                 )
             else:
                 self.gossip.message_target_filter = None
+
 
 def _build_route_target_filter(
     *,

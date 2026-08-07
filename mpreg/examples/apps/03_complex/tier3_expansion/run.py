@@ -37,6 +37,7 @@ from mpreg.fabric.cache_transport import InProcessCacheTransport
 from mpreg.fabric.federation_config import create_permissive_bridging_config
 from mpreg.server import MPREGServer
 
+
 async def _await_fabric_ready(
     server: MPREGServer,
     *,
@@ -58,6 +59,7 @@ async def _await_fabric_ready(
     raise RuntimeError(
         f"fabric route to {target_cluster} not ready for {function_name} ({fqn})"
     )
+
 
 async def main() -> None:
     with app_run(
@@ -322,6 +324,7 @@ async def main() -> None:
                 )
 
             await run_with_servers(settings, _run)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

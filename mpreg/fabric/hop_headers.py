@@ -21,6 +21,7 @@ from typing import Any
 from mpreg.core.errors import hop_budget_exceeded, route_loop_detected
 from mpreg.fabric.message import MessageHeaders
 
+
 def advance_fabric_headers(
     *,
     correlation_id: str,

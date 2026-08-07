@@ -8,7 +8,7 @@
 | **Date**                      | 2026-08-05                                                                                                                                                                                                                                                                                                            |
 | **Status**                    | **Shipped** (rev 3 design; Tracks A+S implemented; claims INV-SHARED-AUDIT-01 / INV-CACHE-STRONG-01)                                                                                                                                                                                                                  |
 | **Tracks**                    | Independent PR DAGs (A = Shared Audit, S = STRONG); may ship in either order                                                                                                                                                                                                                                          |
-| **Sequencing**                | **Complete** for v1 MVP + residual honesty track (live mesh, history, adversarial fail-closed). Remaining: REPL modes / full UI; STRONG get/delete v1.1; WAN/Jepsen/BFT/fsync stay non_claims.                                                                                                                          |
+| **Sequencing**                | **Complete** for v1 MVP + residual honesty track (live mesh, history, adversarial fail-closed). Remaining: REPL modes / full UI; STRONG get/delete v1.1; WAN/Jepsen/BFT/fsync stay non_claims.                                                                                                                        |
 | **Related**                   | `docs/MANAGEMENT_UI_CLI_NEXT_STEPS.md`, `docs/CACHING_SYSTEM.md`, `docs/ARCHITECTURE.md`, `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`, `tests/invariants/claims.yaml`                                                                                                                                              |
 | **Mechanical conflict zones** | Both tracks touch `mpreg/core/config.py`, `mpreg/server.py` boot, `mpreg/examples/apps/_shared/features.py` + `registry.py`, and optionally monitoring metrics. No logical cross-deps, but parallel long-lived branches will conflict — prefer short-lived branches or sequential integration windows on those files. |
 
@@ -916,14 +916,14 @@ Land **minimal counters in enablement PR (S3b)**; expand histograms in S4.
 
 ### STRONG
 
-| Alternative                                                      | Pros                                                  | Cons                                             | Verdict        |
-| ---------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------ | -------------- |
+| Alternative                                                      | Pros                                                                           | Cons                                             | Verdict        |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------ | -------------- |
 | **Commit-barrier majority via ServerCacheTransport RR (chosen)** | Matches “committed” word; residual-free when ABORT delivered (CFT best-effort) | 2 RTT                                            | **v1**         |
-| Prepare-barrier only                                             | Faster                                                | Weaker than STRONG name                          | Rejected       |
-| Single-phase visible prepare + delete abort                      | One barrier                                           | Dirty get windows; harder COR-01 spirit on peers | Rejected       |
-| Raft value log                                                   | Ordering                                              | Bloat                                            | Rejected       |
-| Full-mesh ACK                                                    | Simple                                                | Fragile with N                                   | Rejected       |
-| Greenfield coherence libraries as product                        | Existing code                                         | Unwired; second path                             | Prior art only |
+| Prepare-barrier only                                             | Faster                                                                         | Weaker than STRONG name                          | Rejected       |
+| Single-phase visible prepare + delete abort                      | One barrier                                                                    | Dirty get windows; harder COR-01 spirit on peers | Rejected       |
+| Raft value log                                                   | Ordering                                                                       | Bloat                                            | Rejected       |
+| Full-mesh ACK                                                    | Simple                                                                         | Fragile with N                                   | Rejected       |
+| Greenfield coherence libraries as product                        | Existing code                                                                  | Unwired; second path                             | Prior art only |
 
 ---
 

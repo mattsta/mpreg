@@ -9,6 +9,7 @@ from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 from tests.test_helpers import TestPortManager
 
+
 @pytest.mark.asyncio
 async def test_version_constraint_rejects_mismatch() -> None:
     async with AsyncTestContext() as ctx:

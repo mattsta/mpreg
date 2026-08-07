@@ -17,6 +17,7 @@ from tests.test_production_raft_integration import (
     TestProductionRaftIntegration,
 )
 
+
 async def focused_vote_debug():
     """Debug vote collection with detailed tracing and timeouts."""
     print("🔍 FOCUSED VOTE DEBUG SESSION")
@@ -212,6 +213,7 @@ async def focused_vote_debug():
                 )
             except TimeoutError:
                 print("⚠️  Node shutdown timeout")
+
 
 if __name__ == "__main__":
     asyncio.run(focused_vote_debug())

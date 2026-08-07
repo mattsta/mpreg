@@ -10,6 +10,7 @@ from mpreg.fabric.link_state import LinkStateMode
 
 _PROFILES = Path(__file__).resolve().parents[2] / "mpreg" / "profiles"
 
+
 def test_soft_rt_profile_loads() -> None:
     settings = MPREGSettings.from_path(str(_PROFILES / "soft-rt.toml"))
     assert settings.fabric_routing_enabled is True
@@ -22,6 +23,7 @@ def test_soft_rt_profile_loads() -> None:
     assert policy.share_deadline_across_attempts is True
     assert policy.deadline_seconds == 0.5
 
+
 def test_federated_profile_loads() -> None:
     settings = MPREGSettings.from_path(str(_PROFILES / "federated.toml"))
     assert settings.fabric_routing_enabled is True
@@ -29,6 +31,7 @@ def test_federated_profile_loads() -> None:
     # Federated default client: HA async (not soft-RT fail-closed by default)
     ha = ClientCallPolicy.for_mode(RpcExecutionMode.M1_ASYNC)
     assert ha.share_deadline_across_attempts is False
+
 
 def test_dev_profile_loads() -> None:
     settings = MPREGSettings.from_path(str(_PROFILES / "dev.toml"))

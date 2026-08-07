@@ -19,6 +19,7 @@ from mpreg.server_pkg.shared_audit import (
     record_from_mgmt_entry,
 )
 
+
 def _node(node_id: str, transport: InProcessSharedAuditTransport):
     store = SharedAuditStore(
         cluster_id="shared-audit-mesh",
@@ -40,6 +41,7 @@ def _node(node_id: str, transport: InProcessSharedAuditTransport):
     )
     transport.register(rep)
     return store, rep
+
 
 async def main() -> None:
     with app_run(
@@ -191,6 +193,7 @@ async def main() -> None:
 
         _ = (sc, rc)
         await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

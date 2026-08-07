@@ -18,6 +18,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
+
 @dataclass(frozen=True, slots=True)
 class DevTlsMaterial:
     """Paths to generated PEM material + the owning temp directory."""
@@ -34,6 +35,7 @@ class DevTlsMaterial:
         """Remove the temp directory tree (best-effort)."""
         shutil.rmtree(self.directory, ignore_errors=True)
 
+
 def _name(common_name: str) -> x509.Name:
     return x509.Name(
         [
@@ -43,11 +45,14 @@ def _name(common_name: str) -> x509.Name:
         ]
     )
 
+
 def _key() -> rsa.RSAPrivateKey:
     return rsa.generate_private_key(public_exponent=65537, key_size=2048)
 
+
 def _write_cert(path: Path, cert: x509.Certificate) -> None:
     path.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
+
 
 def _write_key(path: Path, key: rsa.RSAPrivateKey) -> None:
     path.write_bytes(
@@ -57,6 +62,7 @@ def _write_key(path: Path, key: rsa.RSAPrivateKey) -> None:
             encryption_algorithm=serialization.NoEncryption(),
         )
     )
+
 
 def generate_dev_tls_material(
     *,
@@ -223,5 +229,6 @@ def generate_dev_tls_material(
     _write_cert(material.client_cert, client_cert)
     _write_key(material.client_key, client_key)
     return material
+
 
 __all__ = ["DevTlsMaterial", "generate_dev_tls_material"]

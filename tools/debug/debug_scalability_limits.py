@@ -20,6 +20,7 @@ from tests.port_allocator import PortAllocator
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 class ScalabilityAnalyzer:
     """Analyzes cluster scalability limits and identifies bottlenecks."""
 
@@ -282,6 +283,7 @@ class ScalabilityAnalyzer:
             else:
                 print("   🔧 UNKNOWN CAUSE: Requires deeper investigation")
 
+
 async def main():
     """Run the scalability investigation."""
     analyzer = ScalabilityAnalyzer()
@@ -289,6 +291,7 @@ async def main():
         await analyzer.run_scalability_analysis()
     finally:
         await analyzer.cleanup()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

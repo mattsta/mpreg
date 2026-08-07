@@ -27,6 +27,7 @@ from mpreg.server_pkg.mgmt_mutations import (
 )
 from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
 
+
 class _FakeServer:
     def __init__(self) -> None:
         self.settings = MPREGSettings(
@@ -74,6 +75,7 @@ class _FakeServer:
     def _bind_namespace_policy_to_data_planes(self) -> None:
         self._bound = True
 
+
 def test_apply_node_drain_and_audit() -> None:
     server = _FakeServer()
     result = apply_node_drain(server, draining=True, actor="ops", reason="deploy")
@@ -88,6 +90,7 @@ def test_apply_node_drain_and_audit() -> None:
     clear = apply_node_drain(server, draining=False, actor="ops")
     assert clear["draining"] is False
     assert server._mgmt_draining is False
+
 
 @pytest.mark.asyncio
 async def test_apply_peer_detach() -> None:
@@ -106,6 +109,7 @@ async def test_apply_peer_detach() -> None:
     assert ok["applied"] is True
     assert "ws://peer:9" in server._closed
     assert "ws://peer:9" not in server._peer_dial_state
+
 
 def test_apply_policy_and_dry_run() -> None:
     server = _FakeServer()
@@ -140,6 +144,7 @@ def test_apply_policy_and_dry_run() -> None:
     assert dry["dry_run"] is True
     # Engine may not be set on fake until apply rebuilds it; dry-run builds ephemeral
     assert "allowed" in dry
+
 
 @pytest.mark.asyncio
 async def test_mgmt_http_drain_detach_audit_ready(
@@ -275,6 +280,7 @@ async def test_mgmt_http_drain_detach_audit_ready(
         with contextlib.suppress(asyncio.CancelledError):
             await task
         await um.stop()
+
 
 def test_openapi_mutations_not_501() -> None:
     doc = build_monitoring_openapi()

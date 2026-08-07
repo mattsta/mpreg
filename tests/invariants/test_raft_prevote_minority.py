@@ -19,6 +19,7 @@ from tests.test_production_raft_integration import (
     TestableStateMachine,
 )
 
+
 @pytest.mark.asyncio
 async def test_minority_term_growth_bounded_with_prevote() -> None:
     network = MockNetwork()

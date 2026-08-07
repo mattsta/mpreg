@@ -13,6 +13,7 @@ from mpreg.client.call_policy import (
     call_with_policy,
 )
 
+
 @pytest.mark.asyncio
 async def test_m1_throughput_smoke() -> None:
     policy = ClientCallPolicy.for_mode(RpcExecutionMode.M1_ASYNC)
@@ -34,6 +35,7 @@ async def test_m1_throughput_smoke() -> None:
     # Sanity: should complete quickly in-process
     assert elapsed < 5.0
 
+
 @pytest.mark.asyncio
 async def test_m2_deadline_miss_rate_bounded() -> None:
     policy = ClientCallPolicy.for_mode(
@@ -53,6 +55,7 @@ async def test_m2_deadline_miss_rate_bounded() -> None:
             misses += 1
     # Soft-RT must fail closed on slow ops
     assert misses == total
+
 
 @pytest.mark.asyncio
 async def test_m3_time_to_first_intermediate_budget() -> None:

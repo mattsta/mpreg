@@ -20,6 +20,7 @@ from mpreg.testing.distlab.scenario import Scenario
 
 _REGISTERED = False
 
+
 def _strong_happy(n: int, key: str) -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
 
@@ -38,6 +39,7 @@ def _strong_happy(n: int, key: str) -> Scenario:
         checker=default_strong_checkers(key=key),
         meta={"n": n, "track": "T2"},
     )
+
 
 def _strong_partition_majority() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
@@ -70,6 +72,7 @@ def _strong_partition_majority() -> Scenario:
         checker=default_strong_checkers(key="pm"),
         meta={"track": "T2"},
     )
+
 
 def _strong_heal() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
@@ -107,6 +110,7 @@ def _strong_heal() -> Scenario:
         meta={"track": "T2"},
     )
 
+
 def _strong_concurrent() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
 
@@ -119,6 +123,7 @@ def _strong_concurrent() -> Scenario:
         checker=default_strong_checkers(key="ck"),
         meta={"track": "T2"},
     )
+
 
 def _strong_multi_key() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
@@ -134,6 +139,7 @@ def _strong_multi_key() -> Scenario:
         checker=default_strong_checkers(),
         meta={"track": "T2"},
     )
+
 
 def _strong_drop_prepare() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
@@ -155,6 +161,7 @@ def _strong_drop_prepare() -> Scenario:
         meta={"track": "T2"},
     )
 
+
 def _strong_drop_commit() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
 
@@ -174,6 +181,7 @@ def _strong_drop_commit() -> Scenario:
         checker=default_strong_checkers(key="dc"),
         meta={"track": "T2"},
     )
+
 
 def _strong_drop_abort() -> Scenario:
     """Drop ABORT after prepare+failed commit — purge TTL clears pending residual.
@@ -214,6 +222,7 @@ def _strong_drop_abort() -> Scenario:
         checker=default_strong_checkers(key="da"),
         meta={"track": "T13", "fault": "drop_abort"},
     )
+
 
 def _strong_refuse_get_delete() -> Scenario:
     """T19: STRONG get/delete always 1012; EVENTUAL RYW after majority put.
@@ -267,7 +276,9 @@ def _strong_refuse_get_delete() -> Scenario:
             options=CacheOptions(consistency_level=ConsistencyLevel.STRONG),
         )
         if put.success:
-            history.ok("c0", OpKind.PUT, key="refuse-gd", value=42, op_id=put.operation_id)
+            history.ok(
+                "c0", OpKind.PUT, key="refuse-gd", value=42, op_id=put.operation_id
+            )
         else:
             history.fail(
                 "c0",
@@ -311,7 +322,12 @@ def _strong_refuse_get_delete() -> Scenario:
         history.invoke("c0", OpKind.GET, key="refuse-gd")
         ryw = await gcm.get(key)
         if ryw.success:
-            history.ok("c0", OpKind.GET, key="refuse-gd", value=ryw.entry.value if ryw.entry else None)
+            history.ok(
+                "c0",
+                OpKind.GET,
+                key="refuse-gd",
+                value=ryw.entry.value if ryw.entry else None,
+            )
         else:
             history.fail(
                 "c0",
@@ -342,6 +358,7 @@ def _strong_refuse_get_delete() -> Scenario:
         meta={"track": "T18", "fault": "refuse"},
     )
 
+
 def _strong_lie_prepare() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
 
@@ -361,6 +378,7 @@ def _strong_lie_prepare() -> Scenario:
         checker=default_strong_checkers(key="lie"),
         meta={"track": "T3"},
     )
+
 
 def _strong_nemesis() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
@@ -397,6 +415,7 @@ def _strong_nemesis() -> Scenario:
         meta={"track": "T2"},
     )
 
+
 def _strong_interleaved() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
 
@@ -422,6 +441,7 @@ def _strong_interleaved() -> Scenario:
         meta={"track": "T2"},
     )
 
+
 def _strong_duplicate_commit() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
 
@@ -441,6 +461,7 @@ def _strong_duplicate_commit() -> Scenario:
         checker=default_strong_checkers(key="dup"),
         meta={"track": "T2"},
     )
+
 
 def _strong_fail_prepare() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
@@ -462,6 +483,7 @@ def _strong_fail_prepare() -> Scenario:
         meta={"track": "T3"},
     )
 
+
 def _strong_wrong_cluster() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
 
@@ -482,6 +504,7 @@ def _strong_wrong_cluster() -> Scenario:
         meta={"track": "T3"},
     )
 
+
 def _strong_delay_ok() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
 
@@ -501,6 +524,7 @@ def _strong_delay_ok() -> Scenario:
         checker=default_strong_checkers(key="dlay"),
         meta={"track": "T2"},
     )
+
 
 def _strong_not_bft_lie_commit() -> Scenario:
     """Both peers lie on COMMIT_ACK — DistLab documents not_bft boundary.
@@ -529,6 +553,7 @@ def _strong_not_bft_lie_commit() -> Scenario:
         checker=NoOpenInvokeChecker(),
         meta={"track": "T3", "not_bft": True},
     )
+
 
 def _strong_cft_partial_commit_lost_abort() -> Scenario:
     """T27 honesty: partial peer COMMIT + lost ABORT can leave peer L1.
@@ -559,9 +584,7 @@ def _strong_cft_partial_commit_lost_abort() -> Scenario:
         )
         assert res.success is False, "put must fail without peer commit quorum"
         oid = res.operation_id or ""
-        key = GlobalCacheKey(
-            namespace="distlab", identifier="cft", version="v1"
-        )
+        key = GlobalCacheKey(namespace="distlab", identifier="cft", version="v1")
         # Origin residual-free (local abort always runs)
         o_ent = sut.backends["n0"].get_visible(key)
         assert o_ent is None or _entry_op_id(o_ent) != oid
@@ -600,6 +623,7 @@ def _strong_cft_partial_commit_lost_abort() -> Scenario:
         },
     )
 
+
 def _strong_cft_orphan_backup_gc() -> Scenario:
     """T30 product: repeated CFT residual + LWW must not unbounded-grow backups.
 
@@ -619,9 +643,7 @@ def _strong_cft_orphan_backup_gc() -> Scenario:
     )
 
     async def body(history: History, s: object) -> None:
-        key = GlobalCacheKey(
-            namespace="distlab", identifier="obgc", version="v1"
-        )
+        key = GlobalCacheKey(namespace="distlab", identifier="obgc", version="v1")
         # Five CFT residual paths on n1
         sut.transport.drop_commit |= {"n2", "n3", "n4"}
         sut.transport.drop_abort |= {"n1"}
@@ -670,6 +692,7 @@ def _strong_cft_orphan_backup_gc() -> Scenario:
         },
     )
 
+
 def _strong_cft_residual_survives_pending_purge() -> Scenario:
     """T29 honesty: residual L1 survives pending TTL purge after COMMIT apply.
 
@@ -703,9 +726,7 @@ def _strong_cft_residual_survives_pending_purge() -> Scenario:
         )
         assert res.success is False
         oid = res.operation_id or ""
-        key = GlobalCacheKey(
-            namespace="distlab", identifier="ttl", version="v1"
-        )
+        key = GlobalCacheKey(namespace="distlab", identifier="ttl", version="v1")
         n1 = sut.backends["n1"]
         ent = n1.get_visible(key)
         assert ent is not None and _entry_op_id(ent) == oid
@@ -733,6 +754,7 @@ def _strong_cft_residual_survives_pending_purge() -> Scenario:
             "fault": "partial_commit_lost_abort_then_purge",
         },
     )
+
 
 def _strong_cft_retry_abort_clears_residual() -> Scenario:
     """T37 product: retry_abort after drop_abort cleared can clear residual L1.
@@ -765,9 +787,7 @@ def _strong_cft_retry_abort_clears_residual() -> Scenario:
         )
         assert res.success is False
         oid = res.operation_id or ""
-        key = GlobalCacheKey(
-            namespace="distlab", identifier="retry", version="v1"
-        )
+        key = GlobalCacheKey(namespace="distlab", identifier="retry", version="v1")
         n1 = sut.backends["n1"]
         assert n1.get_visible(key) is not None
         assert _entry_op_id(n1.get_visible(key)) == oid
@@ -807,6 +827,7 @@ def _strong_cft_retry_abort_clears_residual() -> Scenario:
         },
     )
 
+
 def _strong_cft_retry_abort_self_target() -> Scenario:
     """T44/T49: retry_abort with peers=[self] clears local residual (RPC fan-in).
 
@@ -826,9 +847,7 @@ def _strong_cft_retry_abort_self_target() -> Scenario:
     )
 
     async def body(history: History, s: object) -> None:
-        key = GlobalCacheKey(
-            namespace="distlab", identifier="self-tgt", version="v1"
-        )
+        key = GlobalCacheKey(namespace="distlab", identifier="self-tgt", version="v1")
         oid = "distlab-self-target-oid"
         # Residual lives on n1; coordinate *as* n1 (RPC landed on residual peer)
         be = sut.backends["n1"]
@@ -868,6 +887,7 @@ def _strong_cft_retry_abort_self_target() -> Scenario:
         },
     )
 
+
 def _strong_cft_gcm_retry_abort_clears_residual() -> Scenario:
     """T52: GCM.strong_retry_abort clears residual (product library surface).
 
@@ -900,9 +920,7 @@ def _strong_cft_gcm_retry_abort_clears_residual() -> Scenario:
         )
         assert res.success is False
         oid = res.operation_id or ""
-        key = GlobalCacheKey(
-            namespace="distlab", identifier="gcm-retry", version="v1"
-        )
+        key = GlobalCacheKey(namespace="distlab", identifier="gcm-retry", version="v1")
         n1 = sut.backends["n1"]
         assert n1.get_visible(key) is not None
         assert _entry_op_id(n1.get_visible(key)) == oid
@@ -951,6 +969,7 @@ def _strong_cft_gcm_retry_abort_clears_residual() -> Scenario:
         },
     )
 
+
 def _strong_cft_residual_ops_hint_enriched() -> Scenario:
     """T62: after CFT residual, GCM residual_ops_hint fills ns/key/op_id/peer.
 
@@ -982,9 +1001,7 @@ def _strong_cft_residual_ops_hint_enriched() -> Scenario:
         )
         assert res.success is False
         oid = res.operation_id or ""
-        key = GlobalCacheKey(
-            namespace="distlab", identifier="hint-key", version="v1"
-        )
+        key = GlobalCacheKey(namespace="distlab", identifier="hint-key", version="v1")
         n1 = sut.backends["n1"]
         assert n1.get_visible(key) is not None
         assert _entry_op_id(n1.get_visible(key)) == oid
@@ -1041,6 +1058,7 @@ def _strong_cft_residual_ops_hint_enriched() -> Scenario:
         },
     )
 
+
 def _strong_cft_residual_healed_by_lww() -> Scenario:
     """T28 honesty: later successful put can LWW-overwrite a CFT residual L1.
 
@@ -1072,9 +1090,7 @@ def _strong_cft_residual_healed_by_lww() -> Scenario:
         )
         assert res_fail.success is False
         fail_oid = res_fail.operation_id or ""
-        key = GlobalCacheKey(
-            namespace="distlab", identifier="heal", version="v1"
-        )
+        key = GlobalCacheKey(namespace="distlab", identifier="heal", version="v1")
         n1_stale = sut.backends["n1"].get_visible(key)
         assert n1_stale is not None and _entry_op_id(n1_stale) == fail_oid
 
@@ -1095,8 +1111,7 @@ def _strong_cft_residual_healed_by_lww() -> Scenario:
             ent = sut.backends[nid].get_visible(key)
             assert ent is not None, f"{nid} missing healed value"
             assert _entry_op_id(ent) == ok_oid, (
-                f"{nid} still on residual op {_entry_op_id(ent)!r} "
-                f"want {ok_oid!r}"
+                f"{nid} still on residual op {_entry_op_id(ent)!r} want {ok_oid!r}"
             )
             assert ent.value == {"healed": True}
 
@@ -1113,6 +1128,7 @@ def _strong_cft_residual_healed_by_lww() -> Scenario:
             "fault": "partial_commit_lost_abort_then_lww",
         },
     )
+
 
 def _strong_soak_n(n_puts: int) -> Scenario:
     import time
@@ -1155,6 +1171,7 @@ def _strong_soak_n(n_puts: int) -> Scenario:
         meta={"track": "T2", "sli": True, "n_puts": n_puts},
     )
 
+
 def _audit_multi() -> Scenario:
     from mpreg.testing.distlab.adapters.audit import AuditSUT
 
@@ -1167,6 +1184,7 @@ def _audit_multi() -> Scenario:
         meta={"track": "T4"},
     )
 
+
 def _audit_burst() -> Scenario:
     from mpreg.testing.distlab.adapters.audit import AuditSUT
 
@@ -1178,6 +1196,7 @@ def _audit_burst() -> Scenario:
         checker=default_audit_checkers(min_ids=30),
         meta={"track": "T4"},
     )
+
 
 def _audit_partition_heal() -> Scenario:
     from mpreg.testing.distlab.adapters.audit import AuditSUT
@@ -1198,9 +1217,7 @@ def _audit_partition_heal() -> Scenario:
     async def body(history: History, s: object) -> None:
         target.apply_partition_groups([{"a0"}, {"a1", "a2"}])
         for i in range(4):
-            await sut.publish(
-                history, process="c0", origin="a0", event=f"p{i}"
-            )
+            await sut.publish(history, process="c0", origin="a0", event=f"p{i}")
         target.heal_network()
         await sut.flush_all()
         await sut.reconcile_all()
@@ -1213,6 +1230,7 @@ def _audit_partition_heal() -> Scenario:
         checker=default_audit_checkers(min_ids=4),
         meta={"track": "T4"},
     )
+
 
 def _audit_digest_repair() -> Scenario:
     from mpreg.testing.distlab.adapters.audit import AuditSUT
@@ -1233,6 +1251,7 @@ def _audit_digest_repair() -> Scenario:
         checker=default_audit_checkers(min_ids=1),
         meta={"track": "T4"},
     )
+
 
 def _audit_ineligible() -> Scenario:
     from mpreg.testing.distlab.adapters.audit import AuditSUT
@@ -1258,6 +1277,7 @@ def _audit_ineligible() -> Scenario:
         checker=default_audit_checkers(min_ids=0),
         meta={"track": "T4"},
     )
+
 
 def _audit_nemesis() -> Scenario:
     from mpreg.testing.distlab.adapters.audit import AuditSUT
@@ -1303,6 +1323,7 @@ def _audit_nemesis() -> Scenario:
         meta={"track": "T4"},
     )
 
+
 def _audit_burst_n(n: int) -> Scenario:
     from mpreg.testing.distlab.adapters.audit import AuditSUT
 
@@ -1314,6 +1335,7 @@ def _audit_burst_n(n: int) -> Scenario:
         checker=default_audit_checkers(min_ids=n),
         meta={"track": "T4"},
     )
+
 
 def _audit_duplicate() -> Scenario:
     from mpreg.testing.distlab.adapters.audit import AuditSUT
@@ -1335,6 +1357,7 @@ def _audit_duplicate() -> Scenario:
         meta={"track": "T4"},
     )
 
+
 def _strong_single_node() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
 
@@ -1353,6 +1376,7 @@ def _strong_single_node() -> Scenario:
         checker=default_strong_checkers(key="solo"),
         meta={"track": "T2"},
     )
+
 
 def _strong_partition_one_peer() -> Scenario:
     """Isolate one peer; origin+other peer can still form Q=2."""
@@ -1388,6 +1412,7 @@ def _strong_partition_one_peer() -> Scenario:
         meta={"track": "T2"},
     )
 
+
 def _strong_crash_recover() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
 
@@ -1407,9 +1432,7 @@ def _strong_crash_recover() -> Scenario:
     async def body(history: History, s: object) -> None:
         target.crash_node("n2")
         # Q=2 still possible with n0+n1
-        res = await sut.put(
-            history, process="c0", origin="n0", logical_key="cr", value=1
-        )
+        await sut.put(history, process="c0", origin="n0", logical_key="cr", value=1)
         # May succeed (2 live) or fail depending on replica selection — residual free either way
         target.recover_node("n2")
         target.heal_network()
@@ -1425,6 +1448,7 @@ def _strong_crash_recover() -> Scenario:
         checker=default_strong_checkers(key="cr"),
         meta={"track": "T2"},
     )
+
 
 def _strong_delay_beyond_timeout() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
@@ -1446,6 +1470,7 @@ def _strong_delay_beyond_timeout() -> Scenario:
         meta={"track": "T2"},
     )
 
+
 def _strong_lie_commit_single() -> Scenario:
     """One peer lies on COMMIT_ACK — Q=2 may still form honestly with other peer."""
     from mpreg.testing.distlab.adapters.strong import StrongSUT
@@ -1455,9 +1480,7 @@ def _strong_lie_commit_single() -> Scenario:
 
     async def body(history: History, s: object) -> None:
         # Success is allowed; residual-free still required for any fails
-        await sut.put(
-            history, process="c0", origin="n0", logical_key="lc1", value="x"
-        )
+        await sut.put(history, process="c0", origin="n0", logical_key="lc1", value="x")
 
     return Scenario(
         name="strong.lie_commit_single_peer",
@@ -1468,6 +1491,7 @@ def _strong_lie_commit_single() -> Scenario:
         meta={"track": "T3"},
         strict=False,  # partial BFT edge — record outcome; registry test checks residual on fail
     )
+
 
 def _strong_sequential_lww() -> Scenario:
     from mpreg.testing.distlab.adapters.strong import StrongSUT
@@ -1496,6 +1520,7 @@ def _strong_sequential_lww() -> Scenario:
         meta={"track": "T2"},
     )
 
+
 def _strong_pending_full() -> Scenario:
     """max_pending exhaustion surfaces fail without residual dirty apply."""
     from mpreg.testing.distlab.adapters.strong import StrongSUT
@@ -1523,6 +1548,7 @@ def _strong_pending_full() -> Scenario:
         checker=default_strong_checkers(),
         meta={"track": "T6", "reg": "pending_full"},
     )
+
 
 def _reg_expired_commit() -> Scenario:
     """Regression: expired pending rejects commit (reason=expired path)."""
@@ -1579,6 +1605,7 @@ def _reg_expired_commit() -> Scenario:
         meta={"track": "T6", "reg": "expired_commit"},
     )
 
+
 def register_builtins(registry=None) -> int:
     """Idempotent registration of all built-in scenarios. Returns count.
 
@@ -1589,21 +1616,105 @@ def register_builtins(registry=None) -> int:
     reg = registry if registry is not None else DEFAULT_REGISTRY
 
     specs: list[tuple[str, object, str, str, tuple[str, ...]]] = [
-        ("strong.happy_3", lambda: _strong_happy(3, "k3"), "T2", "3-node happy", ("strong", "happy")),
-        ("strong.happy_5", lambda: _strong_happy(5, "k5"), "T2", "5-node Q=3", ("strong", "happy")),
-        ("strong.happy_7", lambda: _strong_happy(7, "k7"), "T2", "7-node Q=4", ("strong", "happy")),
-        ("strong.single_node", _strong_single_node, "T2", "min_replicas=1 lab", ("strong", "happy")),
-        ("strong.soak_20", lambda: _strong_soak_n(20), "T2", "20 multi-origin soak", ("strong", "soak")),
-        ("strong.soak_50", lambda: _strong_soak_n(50), "T2", "50 multi-origin soak", ("strong", "soak")),
-        ("strong.sequential_lww", _strong_sequential_lww, "T2", "sequential LWW last wins", ("strong", "lww")),
-        ("strong.partition_majority", _strong_partition_majority, "T2", "partition residual", ("strong", "fault")),
-        ("strong.partition_one_peer", _strong_partition_one_peer, "T2", "isolate one peer still Q", ("strong", "fault")),
+        (
+            "strong.happy_3",
+            lambda: _strong_happy(3, "k3"),
+            "T2",
+            "3-node happy",
+            ("strong", "happy"),
+        ),
+        (
+            "strong.happy_5",
+            lambda: _strong_happy(5, "k5"),
+            "T2",
+            "5-node Q=3",
+            ("strong", "happy"),
+        ),
+        (
+            "strong.happy_7",
+            lambda: _strong_happy(7, "k7"),
+            "T2",
+            "7-node Q=4",
+            ("strong", "happy"),
+        ),
+        (
+            "strong.single_node",
+            _strong_single_node,
+            "T2",
+            "min_replicas=1 lab",
+            ("strong", "happy"),
+        ),
+        (
+            "strong.soak_20",
+            lambda: _strong_soak_n(20),
+            "T2",
+            "20 multi-origin soak",
+            ("strong", "soak"),
+        ),
+        (
+            "strong.soak_50",
+            lambda: _strong_soak_n(50),
+            "T2",
+            "50 multi-origin soak",
+            ("strong", "soak"),
+        ),
+        (
+            "strong.sequential_lww",
+            _strong_sequential_lww,
+            "T2",
+            "sequential LWW last wins",
+            ("strong", "lww"),
+        ),
+        (
+            "strong.partition_majority",
+            _strong_partition_majority,
+            "T2",
+            "partition residual",
+            ("strong", "fault"),
+        ),
+        (
+            "strong.partition_one_peer",
+            _strong_partition_one_peer,
+            "T2",
+            "isolate one peer still Q",
+            ("strong", "fault"),
+        ),
         ("strong.heal", _strong_heal, "T2", "heal then success", ("strong", "fault")),
-        ("strong.concurrent_same_key", _strong_concurrent, "T2", "concurrent LWW", ("strong", "conc")),
-        ("strong.concurrent_multi_key", _strong_multi_key, "T2", "multi-key", ("strong", "conc")),
-        ("strong.drop_prepare", _strong_drop_prepare, "T2", "drop prepare", ("strong", "fault")),
-        ("strong.drop_commit", _strong_drop_commit, "T2", "drop commit", ("strong", "fault")),
-        ("strong.drop_abort", _strong_drop_abort, "T13", "drop abort residual-free", ("strong", "fault")),
+        (
+            "strong.concurrent_same_key",
+            _strong_concurrent,
+            "T2",
+            "concurrent LWW",
+            ("strong", "conc"),
+        ),
+        (
+            "strong.concurrent_multi_key",
+            _strong_multi_key,
+            "T2",
+            "multi-key",
+            ("strong", "conc"),
+        ),
+        (
+            "strong.drop_prepare",
+            _strong_drop_prepare,
+            "T2",
+            "drop prepare",
+            ("strong", "fault"),
+        ),
+        (
+            "strong.drop_commit",
+            _strong_drop_commit,
+            "T2",
+            "drop commit",
+            ("strong", "fault"),
+        ),
+        (
+            "strong.drop_abort",
+            _strong_drop_abort,
+            "T13",
+            "drop abort residual-free",
+            ("strong", "fault"),
+        ),
         (
             "strong.refuse_get_delete",
             _strong_refuse_get_delete,
@@ -1611,14 +1722,62 @@ def register_builtins(registry=None) -> int:
             "STRONG get/delete 1012 refuse + RYW",
             ("strong", "refuse"),
         ),
-        ("strong.fail_prepare", _strong_fail_prepare, "T3", "fail prepare residual", ("strong", "adv")),
-        ("strong.wrong_cluster", _strong_wrong_cluster, "T3", "wrong cluster residual", ("strong", "adv")),
-        ("strong.delay_within_timeout", _strong_delay_ok, "T2", "delay within timeout", ("strong", "fault")),
-        ("strong.delay_beyond_timeout", _strong_delay_beyond_timeout, "T2", "delay beyond timeout", ("strong", "fault")),
-        ("strong.crash_recover", _strong_crash_recover, "T2", "crash one then recover", ("strong", "fault")),
-        ("strong.lie_prepare", _strong_lie_prepare, "T3", "lie prepare residual", ("strong", "adv")),
-        ("strong.lie_commit_single_peer", _strong_lie_commit_single, "T3", "single peer COMMIT lie", ("strong", "adv")),
-        ("strong.not_bft_lie_commit_both", _strong_not_bft_lie_commit, "T3", "BFT boundary demo", ("strong", "not_bft")),
+        (
+            "strong.fail_prepare",
+            _strong_fail_prepare,
+            "T3",
+            "fail prepare residual",
+            ("strong", "adv"),
+        ),
+        (
+            "strong.wrong_cluster",
+            _strong_wrong_cluster,
+            "T3",
+            "wrong cluster residual",
+            ("strong", "adv"),
+        ),
+        (
+            "strong.delay_within_timeout",
+            _strong_delay_ok,
+            "T2",
+            "delay within timeout",
+            ("strong", "fault"),
+        ),
+        (
+            "strong.delay_beyond_timeout",
+            _strong_delay_beyond_timeout,
+            "T2",
+            "delay beyond timeout",
+            ("strong", "fault"),
+        ),
+        (
+            "strong.crash_recover",
+            _strong_crash_recover,
+            "T2",
+            "crash one then recover",
+            ("strong", "fault"),
+        ),
+        (
+            "strong.lie_prepare",
+            _strong_lie_prepare,
+            "T3",
+            "lie prepare residual",
+            ("strong", "adv"),
+        ),
+        (
+            "strong.lie_commit_single_peer",
+            _strong_lie_commit_single,
+            "T3",
+            "single peer COMMIT lie",
+            ("strong", "adv"),
+        ),
+        (
+            "strong.not_bft_lie_commit_both",
+            _strong_not_bft_lie_commit,
+            "T3",
+            "BFT boundary demo",
+            ("strong", "not_bft"),
+        ),
         (
             "strong.cft_partial_commit_lost_abort",
             _strong_cft_partial_commit_lost_abort,
@@ -1675,18 +1834,78 @@ def register_builtins(registry=None) -> int:
             "orphan pre-commit backup GC after CFT residual",
             ("strong", "cft_limit", "product"),
         ),
-        ("strong.nemesis_concurrent", _strong_nemesis, "T2", "nemesis concurrent", ("strong", "nemesis")),
-        ("strong.interleaved_fault_success", _strong_interleaved, "T2", "fault then ok", ("strong", "fault")),
-        ("strong.duplicate_commit", _strong_duplicate_commit, "T2", "dup commit", ("strong", "fault")),
-        ("strong.pending_full_recover", _strong_pending_full, "T6", "pending full then recover", ("strong", "reg")),
-        ("reg_expired_commit", _reg_expired_commit, "T6", "expired commit reject", ("strong", "reg")),
+        (
+            "strong.nemesis_concurrent",
+            _strong_nemesis,
+            "T2",
+            "nemesis concurrent",
+            ("strong", "nemesis"),
+        ),
+        (
+            "strong.interleaved_fault_success",
+            _strong_interleaved,
+            "T2",
+            "fault then ok",
+            ("strong", "fault"),
+        ),
+        (
+            "strong.duplicate_commit",
+            _strong_duplicate_commit,
+            "T2",
+            "dup commit",
+            ("strong", "fault"),
+        ),
+        (
+            "strong.pending_full_recover",
+            _strong_pending_full,
+            "T6",
+            "pending full then recover",
+            ("strong", "reg"),
+        ),
+        (
+            "reg_expired_commit",
+            _reg_expired_commit,
+            "T6",
+            "expired commit reject",
+            ("strong", "reg"),
+        ),
         ("audit.multi_origin", _audit_multi, "T4", "multi-origin", ("audit",)),
-        ("audit.burst_30", lambda: _audit_burst_n(30), "T4", "burst 30", ("audit", "soak")),
-        ("audit.burst_100", lambda: _audit_burst_n(100), "T4", "burst 100", ("audit", "soak")),
-        ("audit.partition_heal", _audit_partition_heal, "T4", "part heal", ("audit", "fault")),
-        ("audit.digest_repair", _audit_digest_repair, "T4", "digest repair", ("audit", "fault")),
+        (
+            "audit.burst_30",
+            lambda: _audit_burst_n(30),
+            "T4",
+            "burst 30",
+            ("audit", "soak"),
+        ),
+        (
+            "audit.burst_100",
+            lambda: _audit_burst_n(100),
+            "T4",
+            "burst 100",
+            ("audit", "soak"),
+        ),
+        (
+            "audit.partition_heal",
+            _audit_partition_heal,
+            "T4",
+            "part heal",
+            ("audit", "fault"),
+        ),
+        (
+            "audit.digest_repair",
+            _audit_digest_repair,
+            "T4",
+            "digest repair",
+            ("audit", "fault"),
+        ),
         ("audit.ineligible_local", _audit_ineligible, "T4", "ineligible", ("audit",)),
-        ("audit.duplicate_idempotent", _audit_duplicate, "T4", "duplicate idempotent", ("audit",)),
+        (
+            "audit.duplicate_idempotent",
+            _audit_duplicate,
+            "T4",
+            "duplicate idempotent",
+            ("audit",),
+        ),
         ("audit.nemesis", _audit_nemesis, "T4", "nemesis audit", ("audit", "nemesis")),
     ]
     for name, factory, track, desc, tags in specs:
@@ -1697,6 +1916,7 @@ def register_builtins(registry=None) -> int:
     if registry is None:
         _REGISTERED = True
     return len(reg.list())
+
 
 def ensure_builtins() -> None:
     register_builtins()

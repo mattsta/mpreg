@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t114_phase_102_honesty() -> None:
     assert "Phase 102" in (
         Path(__file__).resolve().parents[2]
         / "docs"
         / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md"
     ).read_text(encoding="utf-8")
+
 
 def test_t114_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]
@@ -20,6 +22,7 @@ def test_t114_plan_and_ledger() -> None:
         encoding="utf-8"
     )
 
+
 def test_t114_docs_op_id() -> None:
     root = Path(__file__).resolve().parents[2]
     for rel in (
@@ -28,4 +31,3 @@ def test_t114_docs_op_id() -> None:
         "docs/MPREG_CLIENT_GUIDE.md",
     ):
         assert "last_abort_fail_op_id" in (root / rel).read_text(encoding="utf-8"), rel
-

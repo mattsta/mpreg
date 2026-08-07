@@ -11,6 +11,7 @@ from .cache_models import (
     GlobalCacheKey,
 )
 
+
 class CacheManagerProtocol(Protocol):
     async def get(
         self, key: GlobalCacheKey, options: CacheOptions | None = None

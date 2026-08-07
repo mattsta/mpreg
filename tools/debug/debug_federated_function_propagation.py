@@ -10,6 +10,7 @@ from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 async def test_federated_function_propagation():
     """Test that function announcements propagate across federated servers."""
 
@@ -100,6 +101,7 @@ async def test_federated_function_propagation():
 
     with contextlib.suppress(asyncio.CancelledError):
         await task2
+
 
 if __name__ == "__main__":
     asyncio.run(test_federated_function_propagation())

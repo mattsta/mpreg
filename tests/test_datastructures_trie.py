@@ -31,6 +31,7 @@ from mpreg.datastructures.trie import (
     create_topic_trie,
 )
 
+
 # Hypothesis strategies for generating test data
 @st.composite
 def valid_pattern_segments(draw):
@@ -44,6 +45,7 @@ def valid_pattern_segments(draw):
             max_size=10,
         )
     )
+
 
 @st.composite
 def valid_patterns(draw, max_segments=5, allow_wildcards=True):
@@ -66,12 +68,14 @@ def valid_patterns(draw, max_segments=5, allow_wildcards=True):
 
     return ".".join(segments)
 
+
 @st.composite
 def valid_keys(draw, max_segments=5):
     """Generate valid keys for matching (no wildcards)."""
     num_segments = draw(st.integers(min_value=1, max_value=max_segments))
     segments = [draw(valid_pattern_segments()) for _ in range(num_segments)]
     return ".".join(segments)
+
 
 @st.composite
 def subscription_ids(draw):
@@ -85,6 +89,7 @@ def subscription_ids(draw):
             max_size=20,
         ).filter(lambda x: x.strip() and len(x.strip()) > 0)
     )
+
 
 class TestTrieBasics:
     """Basic functionality tests for the trie implementation."""
@@ -176,6 +181,7 @@ class TestTrieBasics:
 
         matches2 = trie.match_pattern("user/123/anything")
         assert "sub2" in matches2
+
 
 class TestTrieProperties:
     """Property-based tests using Hypothesis."""
@@ -657,6 +663,7 @@ class TestTrieProperties:
             assert stats_cached.cache_hits > 0
             assert stats_uncached.cache_hits == 0
 
+
 class TestTrieStateMachine(RuleBasedStateMachine):
     """Stateful property-based testing using Hypothesis state machine."""
 
@@ -757,8 +764,10 @@ class TestTrieStateMachine(RuleBasedStateMachine):
         assert 0.0 <= stats.cache_hit_ratio <= 1.0
         assert stats.total_patterns >= 0
 
+
 # Run the state machine test
 TestTrieStateMachineTest = TestTrieStateMachine.TestCase
+
 
 class TestTrieThreadSafety:
     """Tests for thread safety of trie operations."""
@@ -831,6 +840,7 @@ class TestTrieThreadSafety:
         for result in results:
             assert "base_sub" in result
 
+
 class TestTopicTrieBackwardCompatibility:
     """Tests for TopicTrie backward compatibility."""
 
@@ -866,6 +876,7 @@ class TestTopicTrieBackwardCompatibility:
         trie = create_topic_trie(enable_caching=False, thread_safe=False)
         assert trie.config.enable_caching is False
         assert not trie.config.thread_safe
+
 
 class TestTriePerformance:
     """Performance and scalability tests."""
@@ -931,6 +942,7 @@ class TestTriePerformance:
         assert final_memory > initial_memory
         assert final_stats.total_nodes > initial_stats.total_nodes
 
+
 class TestTrieEdgeCases:
     """Tests for edge cases and error conditions."""
 
@@ -945,6 +957,7 @@ class TestTrieEdgeCases:
         # Single segment pattern
         trie.add_pattern("single", "sub2")
         assert "sub2" in trie.match_pattern("single")
+
 
 class TestWildcardPatternExpansion:
     """Comprehensive tests for wildcard pattern expansion and positioning."""
@@ -1559,6 +1572,7 @@ class TestWildcardPatternExpansion:
             "something.start"
         )  # Wrong structure
 
+
 class TestTriePropertyBasedTesting:
     """Comprehensive property-based testing using Hypothesis for edge case discovery."""
 
@@ -1867,6 +1881,7 @@ class TestTriePropertyBasedTesting:
             assert cached_normalized == uncached_normalized, (
                 f"Cache affected correctness for key '{key}'"
             )
+
 
 if __name__ == "__main__":
     # Run specific test classes for debugging

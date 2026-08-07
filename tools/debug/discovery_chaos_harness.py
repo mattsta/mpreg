@@ -22,6 +22,7 @@ from mpreg.core.port_allocator import PortAllocator
 from mpreg.datastructures.type_aliases import EndpointScope
 from mpreg.server import MPREGServer
 
+
 @dataclass(slots=True)
 class ChaosConfig:
     feature_nodes: int
@@ -32,6 +33,7 @@ class ChaosConfig:
     summary_scope: EndpointScope | None
     seed: int
 
+
 @dataclass(slots=True)
 class NodeHandle:
     name: str
@@ -40,11 +42,13 @@ class NodeHandle:
     server: MPREGServer
     task: asyncio.Task[None]
 
+
 @dataclass(slots=True)
 class ChaosResults:
     query_count: int = 0
     error_count: int = 0
     restart_count: int = 0
+
 
 def _register_market_functions(server: MPREGServer, node_name: str) -> None:
     def handler(payload: str) -> str:
@@ -58,6 +62,7 @@ def _register_market_functions(server: MPREGServer, node_name: str) -> None:
         "svc.market.strategy",
     ):
         server.register_command(name, handler, ["market"])
+
 
 async def _start_node(settings: MPREGSettings) -> NodeHandle:
     server = MPREGServer(settings=settings)
@@ -73,12 +78,14 @@ async def _start_node(settings: MPREGSettings) -> NodeHandle:
         task=task,
     )
 
+
 async def _stop_node(handle: NodeHandle) -> None:
     handle.server.shutdown()
     with contextlib.suppress(TimeoutError):
         await handle.server.shutdown_async()
     handle.task.cancel()
     await asyncio.gather(handle.task, return_exceptions=True)
+
 
 async def _query_loop(
     url: str,
@@ -102,6 +109,7 @@ async def _query_loop(
             except Exception:
                 results.error_count += 1
             await asyncio.sleep(interval_seconds)
+
 
 async def run_chaos(config: ChaosConfig) -> int:
     allocator = PortAllocator()
@@ -198,6 +206,7 @@ async def run_chaos(config: ChaosConfig) -> int:
         for port in ports:
             allocator.release_port(port)
 
+
 def _parse_args() -> ChaosConfig:
     parser = argparse.ArgumentParser(description="Discovery chaos harness")
     parser.add_argument("--feature-nodes", type=int, default=3)
@@ -232,9 +241,11 @@ def _parse_args() -> ChaosConfig:
         seed=args.seed,
     )
 
+
 def main() -> int:
     config = _parse_args()
     return asyncio.run(run_chaos(config))
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

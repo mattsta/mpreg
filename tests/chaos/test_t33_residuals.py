@@ -9,6 +9,7 @@ import yaml
 
 from mpreg.cli.main import evaluate_strong_doctor_payload
 
+
 def test_t33_doctor_detail_includes_ttl_gc_and_counts() -> None:
     ok, detail = evaluate_strong_doctor_payload(
         {
@@ -41,12 +42,9 @@ def test_t33_doctor_detail_includes_ttl_gc_and_counts() -> None:
     assert "pruned=5" in detail
     assert "abort_fail=1" in detail
 
+
 def test_t33_claims_yaml_cft_non_claims() -> None:
-    path = (
-        Path(__file__).resolve().parents[1]
-        / "invariants"
-        / "claims.yaml"
-    )
+    path = Path(__file__).resolve().parents[1] / "invariants" / "claims.yaml"
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     non = " ".join(data.get("non_claims") or []).lower()
     assert "lost abort" in non or "partial peer commit" in non
@@ -70,6 +68,7 @@ def test_t33_claims_yaml_cft_non_claims() -> None:
     assert "tests/chaos/test_t33_residuals.py" in tests
     assert "tests/examples_apps/test_curriculum_apps.py" in tests
 
+
 def test_t33_curriculum_readme_mentions_cft_limit() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -85,6 +84,7 @@ def test_t33_curriculum_readme_mentions_cft_limit() -> None:
     assert "lost abort" in text or "abort" in text
     assert "pending ttl" in text
     assert "not residual-free" in text or "not residual" in text
+
 
 @pytest.mark.asyncio
 async def test_t33_cache_strong_quorum_curriculum_cft_scenario() -> None:

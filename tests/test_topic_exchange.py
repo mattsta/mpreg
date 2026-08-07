@@ -29,12 +29,14 @@ from mpreg.core.topic_exchange import (
     estimate_payload_size_bytes,
 )
 
+
 @contextmanager
 def topic_exchange_context(cluster_id: str = "test_cluster", host: str = "localhost"):
     """Create a TopicExchange with a dynamically allocated URL."""
     with port_context("testing") as port:
         server_url = f"ws://{host}:{port}"
         yield TopicExchange(server_url, cluster_id), server_url
+
 
 class TestTopicTrie:
     """Test the high-performance trie-based topic matching engine."""
@@ -208,6 +210,7 @@ class TestTopicTrie:
         assert trie.cache_hits > 0
         assert trie.cache_misses == initial_misses
 
+
 class TestMessageBacklog:
     """Test the time-windowed message backlog system."""
 
@@ -369,6 +372,7 @@ class TestMessageBacklog:
         assert len(backlog.backlogs["burst.topic"]) == 3
         assert stats.total_size_bytes > 0
 
+
 class TestPayloadSizeEstimate:
     """Payload size estimation must stay cheap for nested discovery payloads."""
 
@@ -406,6 +410,7 @@ class TestPayloadSizeEstimate:
         cyclic["self"] = cyclic
         size = estimate_payload_size_bytes(cyclic)
         assert size > 0
+
 
 class TestTopicExchange:
     """Test the main topic exchange engine."""
@@ -592,6 +597,7 @@ class TestTopicExchange:
             assert stats.trie_stats is not None
             assert stats.backlog_stats is not None
 
+
 class TestTopicMatchingBenchmark:
     """Test topic matching performance benchmarks."""
 
@@ -658,6 +664,7 @@ class TestTopicMatchingBenchmark:
         assert results["matching"]["match_iterations"] == 1000
         assert results["matching"]["matches_per_second"] > 0
         assert results["trie_stats"].total_nodes > 0
+
 
 class TestIntegrationScenarios:
     """Integration tests for realistic pub/sub scenarios."""

@@ -4,6 +4,7 @@ from mpreg.fabric.catalog import NodeDescriptor, NodeKey
 from mpreg.fabric.catalog_delta import RoutingCatalogDelta
 from mpreg.fabric.peer_directory import PeerDirectory
 
+
 def test_peer_directory_adds_nodes() -> None:
     directory = PeerDirectory(local_node_id="node-a", local_cluster_id="cluster-a")
     now = time.time()
@@ -35,6 +36,7 @@ def test_peer_directory_adds_nodes() -> None:
     assert result.nodes_added == 2
     assert directory.cluster_id_for_node("node-b") == "cluster-a"
     assert directory.peers_for_cluster("cluster-a") == ["node-b"]
+
 
 def test_peer_directory_connected_filtering() -> None:
     directory = PeerDirectory(local_node_id="node-a", local_cluster_id="cluster-a")
@@ -70,6 +72,7 @@ def test_peer_directory_connected_filtering() -> None:
     assert directory.peers_for_cluster("cluster-a") == ["node-b", "node-c"]
     assert directory.peers_for_cluster("cluster-a", connected_only=True) == ["node-b"]
 
+
 def test_peer_directory_removals_update_indexes() -> None:
     directory = PeerDirectory(local_node_id="node-a", local_cluster_id="cluster-a")
     now = time.time()
@@ -97,6 +100,7 @@ def test_peer_directory_removals_update_indexes() -> None:
     assert result.nodes_removed == 1
     assert directory.cluster_id_for_node("node-b") is None
     assert directory.peers_for_cluster("cluster-a") == []
+
 
 def test_peer_directory_ignores_expired_nodes() -> None:
     directory = PeerDirectory(local_node_id="node-a", local_cluster_id="cluster-a")

@@ -36,6 +36,7 @@ from mpreg.datastructures.graph_algorithms import (
 
 # Test data structures
 
+
 class TestNode:
     """Test implementation of GraphNode protocol."""
 
@@ -56,6 +57,7 @@ class TestNode:
     def is_healthy(self) -> bool:
         return self.healthy
 
+
 class TestEdge:
     """Test implementation of GraphEdge protocol."""
 
@@ -71,12 +73,14 @@ class TestEdge:
     def is_usable(self) -> bool:
         return self.usable
 
+
 @dataclass(frozen=True, slots=True)
 class EdgeKey:
     """Typed edge key for test graphs."""
 
     source: str
     target: str
+
 
 class TestGraph:
     """Test implementation of Graph protocol."""
@@ -138,7 +142,9 @@ class TestGraph:
     def get_all_nodes(self) -> list[str]:
         return list(self.nodes.keys())
 
+
 # Hypothesis strategies for generating test data
+
 
 @st.composite
 def node_ids(draw):
@@ -151,12 +157,14 @@ def node_ids(draw):
         )
     )
 
+
 @st.composite
 def edge_weights(draw):
     """Generate valid edge weights."""
     return draw(
         st.floats(min_value=0.1, max_value=100.0, allow_nan=False, allow_infinity=False)
     )
+
 
 @st.composite
 def coordinates(draw):
@@ -172,6 +180,7 @@ def coordinates(draw):
         )
     )
     return (x, y)
+
 
 @st.composite
 def simple_graphs(draw, min_nodes=2, max_nodes=10, min_edges=1, max_edges=20):
@@ -217,7 +226,9 @@ def simple_graphs(draw, min_nodes=2, max_nodes=10, min_edges=1, max_edges=20):
 
     return graph, coord_map
 
+
 # Core property tests for Dijkstra's algorithm
+
 
 class TestDijkstraProperties:
     """Property-based tests for Dijkstra's algorithm correctness."""
@@ -381,7 +392,9 @@ class TestDijkstraProperties:
 
         return total_cost
 
+
 # Core property tests for A* algorithm
+
 
 class TestAStarProperties:
     """Property-based tests for A* algorithm correctness."""
@@ -493,7 +506,9 @@ class TestAStarProperties:
                 f"A* with zero heuristic cost {zero_result.total_cost} != Dijkstra cost {dijkstra_result.total_cost}"
             )
 
+
 # Stateful testing for complex graph operations
+
 
 class GraphAlgorithmStateMachine(RuleBasedStateMachine):
     """Stateful testing for graph algorithms."""
@@ -553,7 +568,9 @@ class GraphAlgorithmStateMachine(RuleBasedStateMachine):
         if dijkstra_result is not None and astar_result is not None:
             assert abs(dijkstra_result.total_cost - astar_result.total_cost) < 1e-10
 
+
 # Integration tests
+
 
 class TestGraphAlgorithmIntegration:
     """Integration tests for complete algorithm functionality."""
@@ -687,6 +704,7 @@ class TestGraphAlgorithmIntegration:
             assert len(result.path) == 5  # 5 nodes = 4 hops
         else:
             assert result is None  # Should not find path due to hop limit
+
 
 # Test runner for stateful testing
 GraphAlgorithmStateMachineTest = GraphAlgorithmStateMachine.TestCase

@@ -16,6 +16,7 @@ from mpreg.core.model import RPCCommand
 from mpreg.server import MPREGServer
 from tests.test_helpers import TestPortManager, wait_for_condition
 
+
 @pytest.fixture
 async def production_cluster():
     """Create a production-like cluster with realistic specializations."""
@@ -142,6 +143,7 @@ async def production_cluster():
 
         # Cleanup port allocations
         port_manager.cleanup()
+
 
 async def _register_business_functions(servers):
     """Register realistic business functions."""
@@ -318,6 +320,7 @@ async def _register_business_functions(servers):
         "generate_report", generate_report, ["analytics", "reporting"]
     )
 
+
 class TestECommerceWorkflows:
     """Test complete e-commerce workflows across microservices."""
 
@@ -491,6 +494,7 @@ class TestECommerceWorkflows:
                 assert "reservation_id" in reservation
                 assert reservation["status"] == "reserved"
 
+
 class TestMicroserviceOrchestration:
     """Test sophisticated microservice orchestration patterns."""
 
@@ -649,6 +653,7 @@ class TestMicroserviceOrchestration:
             report = events_workflow["analytics_report"]
             assert report["report_type"] == "user_journey"
             assert report["unique_users"] > 0
+
 
 class TestHighThroughputScenarios:
     """Test high-throughput scenarios demonstrating MPREG's scalability."""

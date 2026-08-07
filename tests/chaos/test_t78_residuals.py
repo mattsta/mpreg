@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t78_curriculum_hint_assert() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -20,6 +21,7 @@ def test_t78_curriculum_hint_assert() -> None:
     assert "not auto-heal" in text
     assert "gcm_hint" in text or "strong_status" in text
 
+
 def test_t78_phase_66_honesty() -> None:
     path = (
         Path(__file__).resolve().parents[2]
@@ -27,6 +29,7 @@ def test_t78_phase_66_honesty() -> None:
         / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md"
     )
     assert "Phase 66" in path.read_text(encoding="utf-8")
+
 
 def test_t78_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]

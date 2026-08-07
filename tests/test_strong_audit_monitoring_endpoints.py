@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
 import aiohttp
 import pytest
@@ -22,6 +21,7 @@ from mpreg.server_pkg.monitoring_metrics import (
     build_strong_metrics,
 )
 from tests.conftest import AsyncTestContext
+
 
 @pytest.mark.asyncio
 async def test_strong_and_audit_monitoring_routes(
@@ -123,7 +123,9 @@ async def test_strong_and_audit_monitoring_routes(
             async with session.get(f"{base}/endpoints") as resp:
                 assert resp.status == 200
                 data = await resp.json()
-                paths = {e["path"] for e in data.get("endpoints", data.get("routes", []))}
+                paths = {
+                    e["path"] for e in data.get("endpoints", data.get("routes", []))
+                }
                 # endpoints payload shape varies; also accept openapi
                 if not paths:
                     async with session.get(f"{base}/openapi.json") as oresp:

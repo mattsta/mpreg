@@ -8,6 +8,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.core.port_allocator import get_port_allocator
 from mpreg.server import MPREGServer
 
+
 def build_settings(node_id: int, port: int, hub_port: int) -> MPREGSettings:
     connect_to = f"ws://127.0.0.1:{hub_port}" if node_id > 0 else None
     return MPREGSettings(
@@ -24,6 +25,7 @@ def build_settings(node_id: int, port: int, hub_port: int) -> MPREGSettings:
         monitoring_enabled=False,
         fabric_routing_enabled=False,
     )
+
 
 async def main() -> None:
     allocator = get_port_allocator()
@@ -120,6 +122,7 @@ async def main() -> None:
         for port in ports:
             allocator.release_port(port)
         print("Cleanup complete.")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

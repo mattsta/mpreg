@@ -42,6 +42,7 @@ from mpreg.datastructures.metrics_structures import (
 FIXED_TIME_BASE = 1640995200.0  # Fixed timestamp for consistent testing
 FIXED_TIME_RANGE = 86400.0  # 24 hours
 
+
 @pytest.fixture
 def mock_time():
     """Mock time.time() to return consistent values for testing."""
@@ -49,13 +50,16 @@ def mock_time():
         mock.return_value = FIXED_TIME_BASE
         yield mock
 
+
 # Test Strategies
+
 
 @st.composite
 def bounded_moving_average_config(draw):
     """Generate valid BoundedMovingAverage configurations."""
     window_size = draw(st.integers(min_value=1, max_value=1000))
     return {"window_size": window_size}
+
 
 @st.composite
 def percentile_tracker_config(draw):
@@ -71,12 +75,14 @@ def percentile_tracker_config(draw):
     )
     return {"max_samples": max_samples, "percentiles": sorted(percentiles)}
 
+
 @st.composite
 def time_series_config(draw):
     """Generate valid TimeSeriesBuffer configurations."""
     max_age_seconds = draw(st.floats(min_value=1.0, max_value=3600.0))
     max_samples = draw(st.integers(min_value=10, max_value=1000))
     return {"max_age_seconds": max_age_seconds, "max_samples": max_samples}
+
 
 @st.composite
 def metric_value_strategy(draw):
@@ -117,6 +123,7 @@ def metric_value_strategy(draw):
         value=value, timestamp=timestamp, metric_type=metric_type, labels=labels
     )
 
+
 @st.composite
 def health_score_strategy(draw):
     """Generate valid HealthScore instances."""
@@ -147,7 +154,9 @@ def health_score_strategy(draw):
         timestamp=timestamp,
     )
 
+
 # Property Tests for BoundedMovingAverage
+
 
 class TestBoundedMovingAverageProperties:
     """Property tests for BoundedMovingAverage datastructure."""
@@ -290,7 +299,9 @@ class TestBoundedMovingAverageProperties:
         assert not math.isnan(snapshot["average"])
         assert not math.isinf(snapshot["sum"])
 
+
 # Property Tests for BoundedPercentileTracker
+
 
 class TestBoundedPercentileTrackerProperties:
     """Property tests for BoundedPercentileTracker datastructure."""
@@ -444,7 +455,9 @@ class TestBoundedPercentileTrackerProperties:
         assert stats["count"] <= config["max_samples"]
         assert stats["total_samples"] == len(values)
 
+
 # Property Tests for TimeSeriesBuffer
+
 
 class TestTimeSeriesBufferProperties:
     """Property tests for TimeSeriesBuffer datastructure."""
@@ -581,7 +594,9 @@ class TestTimeSeriesBufferProperties:
         assert cleaned >= 0
         assert buffer.get_sample_count() <= max_samples
 
+
 # Property Tests for MetricsAggregator
+
 
 class TestMetricsAggregatorProperties:
     """Property tests for MetricsAggregator comprehensive functionality."""
@@ -664,7 +679,9 @@ class TestMetricsAggregatorProperties:
             reset_stats = agg.get_comprehensive_stats()
             assert reset_stats["total_samples"] == 0
 
+
 # Property Tests for HealthScore and Status
+
 
 class TestHealthScoreProperties:
     """Property tests for HealthScore datastructure."""
@@ -713,7 +730,9 @@ class TestHealthScoreProperties:
         assert health_score.status == original_status
         assert health_score.is_healthy == original_healthy
 
+
 # Property Tests for MetricValue
+
 
 class TestMetricValueProperties:
     """Property tests for MetricValue datastructure."""
@@ -754,7 +773,9 @@ class TestMetricValueProperties:
         with pytest.raises(ValueError, match="Timestamp must be a positive number"):
             MetricValue(value=1.0, timestamp=-1.0, metric_type=MetricType.GAUGE)
 
+
 # Comprehensive Integration Properties
+
 
 class TestMetricsStructuresIntegrationProperties:
     """Integration property tests across all metrics datastructures."""
@@ -846,6 +867,7 @@ class TestMetricsStructuresIntegrationProperties:
         assert stats["min_value"] == min(results)
         assert stats["max_value"] == max(results)
         assert not math.isnan(stats["moving_average"]["average"])
+
 
 if __name__ == "__main__":
     pytest.main([__file__])

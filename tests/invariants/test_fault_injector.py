@@ -9,6 +9,7 @@ from mpreg.testing.faults import (
 )
 from mpreg.testing.oracles import RaftOracle, RoutingOracle, RpcOracle, RpcStreamEvent
 
+
 def test_partition_blocks_cross_group() -> None:
     inj = FaultInjector(seed=1)
     inj.partition({"a", "b"}, {"c", "d"})
@@ -18,12 +19,14 @@ def test_partition_blocks_cross_group() -> None:
     inj.heal()
     assert inj.view().can_communicate("a", "c")
 
+
 def test_crash_blocks_delivery() -> None:
     inj = FaultInjector()
     inj.crash("x")
     assert not inj.can_deliver("x", "y")
     inj.recover("x")
     assert inj.can_deliver("x", "y")
+
 
 def test_clock_skew_now_for() -> None:
     inj = FaultInjector()
@@ -32,9 +35,11 @@ def test_clock_skew_now_for() -> None:
     assert inj.view().now_for("n1", wall) == 1005.0
     assert inj.view().now_for("n2", wall) == 1000.0
 
+
 def test_drop_rate_deterministic() -> None:
     inj = FaultInjector(seed=42, control_drop_rate=1.0)
     assert not inj.can_deliver("a", "b", plane="control")
+
 
 def test_routing_loop_helper() -> None:
     assert_no_routing_loop(("a", "b", "c"))
@@ -44,6 +49,7 @@ def test_routing_loop_helper() -> None:
     except AssertionError as exc:
         assert "loop" in str(exc).lower()
 
+
 def test_leader_helper() -> None:
     assert_at_most_one_leader({1: {"n1"}})
     try:
@@ -52,12 +58,14 @@ def test_leader_helper() -> None:
     except AssertionError:
         pass
 
+
 def test_routing_oracle_bfs() -> None:
     o = RoutingOracle()
     o.set_edge("a", "b")
     o.set_edge("b", "c")
     assert o.bfs_next_hops("a", "c") == frozenset({"b"})
     assert o.bfs_next_hops("a", "b") == frozenset({"b"})
+
 
 def test_raft_oracle_safety() -> None:
     o = RaftOracle()
@@ -69,6 +77,7 @@ def test_raft_oracle_safety() -> None:
         raise AssertionError("expected multi-leader")
     except AssertionError:
         pass
+
 
 def test_rpc_oracle_monotonic() -> None:
     o = RpcOracle()

@@ -13,11 +13,13 @@ from mpreg.fabric.message import MessageHeaders
 from mpreg.testing.hang_observe import HangStateDir, enable_faulthandler
 from mpreg.testing.resource_limits import NoFileLimit, raise_open_file_limit
 
+
 def test_raise_open_file_limit_is_self_managing() -> None:
     before = NoFileLimit.current()
     after = raise_open_file_limit(1_048_576)
     assert after.soft >= min(before.soft, 8192)
     assert after.soft >= before.soft or after.soft >= 8192
+
 
 def test_hang_state_breadcrumbs(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -36,6 +38,7 @@ def test_hang_state_breadcrumbs(
     state.clear_current()
     assert state.breadcrumbs() == []
 
+
 def test_advance_fabric_headers_fail_closed_loop() -> None:
     with pytest.raises(MpregError) as ei:
         advance_fabric_headers(
@@ -49,6 +52,7 @@ def test_advance_fabric_headers_fail_closed_loop() -> None:
             max_hops=5,
         )
     assert ei.value.code == int(MpregErrorCode.ROUTE_LOOP)
+
 
 def test_advance_fabric_headers_fail_closed_budget() -> None:
     with pytest.raises(MpregError) as ei:
@@ -65,6 +69,7 @@ def test_advance_fabric_headers_fail_closed_budget() -> None:
         )
     assert ei.value.code == int(MpregErrorCode.HOP_BUDGET_EXCEEDED)
 
+
 def test_hang_profiler_writes_dump(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -77,6 +82,7 @@ def test_hang_profiler_writes_dump(
     out = profiler.dump(label="unit", pids=[os.getpid()], breadcrumbs=[], top_n=1)
     assert out.is_dir()
     assert (out / "watchdog.log").is_file()
+
 
 def test_concurrent_runner_builds_command_shape(tmp_path: Path) -> None:
     """Runner config is self-describing without invoking full pytest."""

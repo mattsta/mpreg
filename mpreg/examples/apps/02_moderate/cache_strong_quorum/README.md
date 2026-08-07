@@ -45,17 +45,17 @@ uv run mpreg-example run cache_strong_quorum
 
 ## API drill-down
 
-| Surface     | API                                                      |
-| ----------- | -------------------------------------------------------- |
-| Enum        | `ConsistencyLevel.STRONG` on `CacheOptions`              |
-| Coordinator | `StrongPutCoordinator.strong_put` / `retry_abort`        |
-| GCM         | `attach_strong_coordinator` / `put` / `strong_retry_abort` |
+| Surface     | API                                                                       |
+| ----------- | ------------------------------------------------------------------------- |
+| Enum        | `ConsistencyLevel.STRONG` on `CacheOptions`                               |
+| Coordinator | `StrongPutCoordinator.strong_put` / `retry_abort`                         |
+| GCM         | `attach_strong_coordinator` / `put` / `strong_retry_abort`                |
 | Client RPC  | `MPREGClient.cache_strong_retry_abort` → `mpreg.cache.strong_retry_abort` |
-| CLI         | `mpreg client cache-strong-retry-abort --op-id …`                        |
-| Codes       | `1012`, `1015`–`1018` (`MpregErrorCode`)                 |
-| Settings    | `cache_strong_enabled`, `cache_strong_min_replicas=3`, … |
-| Wire        | `CacheMessageKind.STRONG_*`                              |
-| Claim       | `INV-CACHE-STRONG-01`                                    |
+| CLI         | `mpreg client cache-strong-retry-abort --op-id …`                         |
+| Codes       | `1012`, `1015`–`1018` (`MpregErrorCode`)                                  |
+| Settings    | `cache_strong_enabled`, `cache_strong_min_replicas=3`, …                  |
+| Wire        | `CacheMessageKind.STRONG_*`                                               |
+| Claim       | `INV-CACHE-STRONG-01`                                                     |
 
 ## Non-claims
 

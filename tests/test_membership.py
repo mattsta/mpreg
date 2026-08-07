@@ -37,6 +37,7 @@ from mpreg.fabric.membership import (
     ProbeResult,
 )
 
+
 @pytest.fixture
 def sample_membership_info():
     """Create a sample membership info for testing."""
@@ -47,6 +48,7 @@ def sample_membership_info():
         coordinates=GeographicCoordinate(40.7128, -74.0060),
         region="us-east",
     )
+
 
 @pytest.fixture
 def sample_probe_request():
@@ -60,6 +62,7 @@ def sample_probe_request():
         timeout=5.0,
     )
 
+
 @pytest.fixture
 def sample_membership_event():
     """Create a sample membership event for testing."""
@@ -72,6 +75,7 @@ def sample_membership_event():
         reason="startup",
     )
 
+
 @pytest.fixture
 def mock_gossip_protocol():
     """Create a mock gossip protocol for testing."""
@@ -79,10 +83,12 @@ def mock_gossip_protocol():
     mock_protocol.add_message = AsyncMock()
     return mock_protocol
 
+
 @pytest.fixture
 def mock_consensus_manager():
     """Create a mock consensus manager for testing."""
     return Mock(spec=ConsensusManager)
+
 
 @pytest.fixture
 def sample_membership_protocol(mock_gossip_protocol, mock_consensus_manager):
@@ -96,6 +102,7 @@ def sample_membership_protocol(mock_gossip_protocol, mock_consensus_manager):
         suspicion_timeout=2.0,
         indirect_probe_count=2,
     )
+
 
 class TestMembershipInfo:
     """Test suite for membership info implementation."""
@@ -209,6 +216,7 @@ class TestMembershipInfo:
         assert hasattr(summary, "suspicion_level")
         assert summary.is_available
 
+
 class TestMembershipEvent:
     """Test suite for membership event implementation."""
 
@@ -236,6 +244,7 @@ class TestMembershipEvent:
         assert summary.source_node == "source_node"
         assert summary.reason == "startup"
         assert hasattr(summary, "age_seconds")
+
 
 class TestProbeRequest:
     """Test suite for probe request implementation."""
@@ -276,6 +285,7 @@ class TestProbeRequest:
         time.sleep(0.1)
         new_age = probe.get_age()
         assert new_age > age
+
 
 class TestMembershipProtocol:
     """Test suite for membership protocol implementation."""
@@ -639,6 +649,7 @@ class TestMembershipProtocol:
         assert stats.membership_stats["test_stat"] == 42
         assert stats.probe_stats["test_probe"] == 10
 
+
 class TestEndToEndMembershipScenarios:
     """Test suite for end-to-end membership scenarios."""
 
@@ -806,6 +817,7 @@ class TestEndToEndMembershipScenarios:
             for protocol in protocols.values():
                 await protocol.stop()
 
+
 class TestMembershipPerformanceAndScalability:
     """Test suite for membership performance and scalability."""
 
@@ -926,6 +938,7 @@ class TestMembershipPerformanceAndScalability:
         assert operation_time < 0.1
         assert alive_count == 1000
         assert staleness_sum >= 0
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

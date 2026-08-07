@@ -11,6 +11,7 @@ import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 
+
 @dataclass(slots=True)
 class FederationGraphNode:
     """A node in the federation graph representing a cluster or hub."""
@@ -22,6 +23,7 @@ class FederationGraphNode:
     capacity: int
     current_load: float = 0.0
     connections: dict[str, FederationGraphEdge] = field(default_factory=dict)
+
 
 @dataclass(slots=True)
 class FederationGraphEdge:
@@ -41,6 +43,7 @@ class FederationGraphEdge:
         base_weight = self.latency_ms * (1.0 + self.current_utilization)
         reliability_penalty = (1.0 - self.reliability) * 100
         return base_weight + reliability_penalty
+
 
 class GraphBasedFederationRouter:
     """
@@ -321,6 +324,7 @@ class GraphBasedFederationRouter:
             ),
         }
 
+
 # Example usage demonstrating the missing graph capabilities
 def demo_graph_routing():
     """Demonstrate the graph-based routing capabilities."""
@@ -394,6 +398,7 @@ def demo_graph_routing():
     print(f"   Nodes: {stats['total_nodes']}, Edges: {stats['total_edges']}")
     print(f"   Average connectivity: {stats['average_connectivity']:.1f}")
     print(f"   Node types: {stats['node_types']}")
+
 
 if __name__ == "__main__":
     demo_graph_routing()

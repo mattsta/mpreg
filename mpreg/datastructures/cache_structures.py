@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+
 class _LazySt:
     """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
 
@@ -27,7 +28,9 @@ class _LazySt:
     def __getattr__(self, name: str) -> object:
         return getattr(self._load(), name)
 
+
 st = _LazySt()
+
 
 class CacheLevel(Enum):
     """Cache level enumeration."""
@@ -37,6 +40,7 @@ class CacheLevel(Enum):
     L3 = "l3"
     PERSISTENT = "persistent"
     DISTRIBUTED = "distributed"
+
 
 @dataclass(frozen=True, slots=True)
 class CacheNamespace:
@@ -52,6 +56,7 @@ class CacheNamespace:
             raise ValueError(
                 "Cache namespace name must be alphanumeric with underscores/hyphens"
             )
+
 
 @dataclass(frozen=True, slots=True)
 class CacheKey:
@@ -118,6 +123,7 @@ class CacheKey:
     def __hash__(self) -> int:
         return hash((self.namespace.name, self.key, self.subkey, self.version))
 
+
 @dataclass(frozen=True, slots=True)
 class CacheMetadata:
     """Metadata for cache entries."""
@@ -164,6 +170,7 @@ class CacheMetadata:
             tags=self.tags,
             source=self.source,
         )
+
 
 @dataclass(frozen=True, slots=True)
 class CacheEntry:
@@ -213,6 +220,7 @@ class CacheEntry:
     def size_bytes(self) -> int:
         """Get size of this cache entry in bytes."""
         return self.metadata.size_bytes
+
 
 @dataclass(frozen=True, slots=True)
 class CacheStatistics:
@@ -319,6 +327,7 @@ class CacheStatistics:
             max_size_bytes=self.max_size_bytes,
         )
 
+
 # Hypothesis strategies for property-based testing
 def cache_namespace_strategy() -> st.SearchStrategy[CacheNamespace]:
     """Generate valid CacheNamespace instances for testing."""
@@ -334,6 +343,7 @@ def cache_namespace_strategy() -> st.SearchStrategy[CacheNamespace]:
         description=st.text(max_size=200),
     )
 
+
 def cache_key_strategy() -> st.SearchStrategy[CacheKey]:
     """Generate valid CacheKey instances for testing."""
     return st.builds(
@@ -343,6 +353,7 @@ def cache_key_strategy() -> st.SearchStrategy[CacheKey]:
         subkey=st.text(max_size=50),
         version=st.integers(min_value=1, max_value=1000),
     )
+
 
 def cache_metadata_strategy() -> st.SearchStrategy[CacheMetadata]:
     """Generate valid CacheMetadata instances for testing."""
@@ -360,6 +371,7 @@ def cache_metadata_strategy() -> st.SearchStrategy[CacheMetadata]:
         source=st.text(max_size=100),
     )
 
+
 def cache_entry_strategy() -> st.SearchStrategy[CacheEntry]:
     """Generate valid CacheEntry instances for testing."""
     return st.builds(
@@ -375,6 +387,7 @@ def cache_entry_strategy() -> st.SearchStrategy[CacheEntry]:
         metadata=cache_metadata_strategy(),
         level=st.sampled_from(CacheLevel),
     )
+
 
 def cache_statistics_strategy() -> st.SearchStrategy[CacheStatistics]:
     """Generate valid CacheStatistics instances for testing."""

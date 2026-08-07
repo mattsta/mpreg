@@ -14,6 +14,7 @@ from mpreg.fabric.gossip import (
 
 from .catalog_delta import RoutingCatalogDelta
 
+
 @dataclass(slots=True)
 class CatalogDeltaPublisher:
     gossip: GossipProtocol

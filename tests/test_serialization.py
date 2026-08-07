@@ -3,6 +3,7 @@ import orjson
 from mpreg.core.model import RPCCommand, RPCError, RPCRequest, RPCResponse
 from mpreg.core.serialization import JsonSerializer
 
+
 def test_json_serializer_serialize() -> None:
     serializer = JsonSerializer()
     data = {"key": "value", "number": 123, "boolean": True}
@@ -10,12 +11,14 @@ def test_json_serializer_serialize() -> None:
     assert isinstance(serialized_data, bytes)
     assert orjson.loads(serialized_data) == data
 
+
 def test_json_serializer_deserialize() -> None:
     serializer = JsonSerializer()
     data_bytes = b'{"key": "value", "number": 123, "boolean": true}'
     deserialized_data = serializer.deserialize(data_bytes)
     assert isinstance(deserialized_data, dict)
     assert deserialized_data == {"key": "value", "number": 123, "boolean": True}
+
 
 def test_json_serializer_with_pydantic_model() -> None:
     serializer = JsonSerializer()
@@ -28,6 +31,7 @@ def test_json_serializer_with_pydantic_model() -> None:
     deserialized_req = RPCRequest.model_validate(serializer.deserialize(serialized_req))
 
     assert deserialized_req == req
+
 
 def test_json_serializer_with_pydantic_response_error() -> None:
     serializer = JsonSerializer()

@@ -28,17 +28,21 @@ VoteChoice = str
 QuorumThreshold = float
 ApprovalThreshold = float
 
+
 def generate_dao_id() -> DaoId:
     """Generate unique DAO identifier."""
     return f"dao_{uuid.uuid4()}"
+
 
 def generate_proposal_id() -> ProposalId:
     """Generate unique proposal identifier."""
     return f"prop_{uuid.uuid4()}"
 
+
 def current_timestamp() -> Timestamp:
     """Get current timestamp."""
     return time.time()
+
 
 class DaoType(Enum):
     """Types of DAOs supported."""
@@ -50,6 +54,7 @@ class DaoType(Enum):
     RESOURCE_ALLOCATION = "resource_allocation"
     PROTOCOL_UPGRADE = "protocol_upgrade"
 
+
 class MembershipType(Enum):
     """Types of DAO membership."""
 
@@ -58,6 +63,7 @@ class MembershipType(Enum):
     INVITE_ONLY = "invite_only"
     REPUTATION_BASED = "reputation_based"
     DELEGATION_BASED = "delegation_based"
+
 
 class ProposalType(Enum):
     """Types of proposals that can be made."""
@@ -72,6 +78,7 @@ class ProposalType(Enum):
     EMERGENCY_ACTION = "emergency_action"
     PROTOCOL_UPGRADE = "protocol_upgrade"
 
+
 class ProposalStatus(Enum):
     """Status of DAO proposals."""
 
@@ -83,12 +90,14 @@ class ProposalStatus(Enum):
     CANCELLED = "cancelled"
     EXPIRED = "expired"
 
+
 class VoteType(Enum):
     """Types of votes in DAO proposals."""
 
     FOR = "for"
     AGAINST = "against"
     ABSTAIN = "abstain"
+
 
 class ExecutionStatus(Enum):
     """Status of proposal execution."""
@@ -98,6 +107,7 @@ class ExecutionStatus(Enum):
     EXECUTED = "executed"
     FAILED = "failed"
     REVERTED = "reverted"
+
 
 @dataclass(frozen=True, slots=True)
 class DaoConfig:
@@ -129,6 +139,7 @@ class DaoConfig:
             raise ValueError("Proposal deposit cannot be negative")
         if self.minimum_voting_power <= 0:
             raise ValueError("Minimum voting power must be positive")
+
 
 @dataclass(frozen=True, slots=True)
 class DaoMember:
@@ -190,6 +201,7 @@ class DaoMember:
             is_active=self.is_active,
             metadata=self.metadata,
         )
+
 
 @dataclass(frozen=True, slots=True)
 class DaoProposal:
@@ -296,6 +308,7 @@ class DaoProposal:
             metadata=self.metadata,
         )
 
+
 @dataclass(frozen=True, slots=True)
 class DaoVote:
     """Individual vote cast by DAO member."""
@@ -322,6 +335,7 @@ class DaoVote:
     def is_delegated_vote(self) -> bool:
         """Check if this is a delegated vote."""
         return self.delegated_from is not None
+
 
 @dataclass(frozen=True, slots=True)
 class DaoVotingResult:
@@ -375,6 +389,7 @@ class DaoVotingResult:
             "against": self.votes_against / total_votes,
             "abstain": self.votes_abstain / total_votes,
         }
+
 
 @dataclass(frozen=True, slots=True)
 class DaoExecution:

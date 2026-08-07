@@ -1,13 +1,13 @@
 # DistLab T69 — config-check pytest residual_ops_hint guide (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T65/T66 |
-| **Scope** | test_config_check_explain_includes_guide asserts strong_cache residual loop |
-| **Point budget** | **~6 pts** |
-| **Entry points only** | `uv run pytest tests/test_config_check_cli.py` |
+| Field                 | Value                                                                       |
+| --------------------- | --------------------------------------------------------------------------- |
+| **Status**            | **Complete**                                                                |
+| **Date**              | 2026-08-06                                                                  |
+| **Authority**         | Continuation after T65/T66                                                  |
+| **Scope**             | test_config_check_explain_includes_guide asserts strong_cache residual loop |
+| **Point budget**      | **~6 pts**                                                                  |
+| **Entry points only** | `uv run pytest tests/test_config_check_cli.py`                              |
 
 ## Goals
 

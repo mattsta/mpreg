@@ -17,6 +17,7 @@ from mpreg.core.global_cache import GlobalCacheManager
 from mpreg.server_pkg.monitoring_metrics import build_strong_metrics
 from mpreg.server_pkg.openapi_surface import _strong_metrics_schema
 
+
 def _gcm_with_retry() -> GlobalCacheManager:
     tr = InProcessStrongTransport()
     backends = {f"n{i}": StrongLocalBackend(node_id=f"n{i}") for i in range(5)}
@@ -44,6 +45,7 @@ def _gcm_with_retry() -> GlobalCacheManager:
     gcm._backends = backends
     return gcm
 
+
 @pytest.mark.asyncio
 async def test_t39_build_strong_metrics_retry_counters() -> None:
     gcm = _gcm_with_retry()
@@ -69,6 +71,7 @@ async def test_t39_build_strong_metrics_retry_counters() -> None:
     assert int(payload.get("retry_abort_cleared") or 0) >= 1
     ctr = payload.get("counters") or {}
     assert int(ctr.get("retry_abort_calls") or 0) >= 1
+
 
 @pytest.mark.asyncio
 async def test_t39_prometheus_text_includes_retry_series() -> None:
@@ -127,12 +130,14 @@ async def test_t39_prometheus_text_includes_retry_series() -> None:
     assert "retry_abort=" in detail
     assert "retry_cleared=" in detail
 
+
 def test_t39_openapi_retry_fields() -> None:
     props = _strong_metrics_schema()["properties"]["strong"]["properties"]
     assert "retry_abort_calls" in props
     assert "retry_abort_cleared" in props
     assert "retry_abort_still_fail" in props
     assert "not automatic" in props["retry_abort_calls"]["description"].lower()
+
 
 def test_t39_design_doc_retry_abort() -> None:
     path = (
@@ -143,6 +148,7 @@ def test_t39_design_doc_retry_abort() -> None:
     text = path.read_text(encoding="utf-8").lower()
     assert "retry_abort" in text
     assert "ops-driven" in text or "not automatic" in text
+
 
 def test_t39_runbook_retry_prom() -> None:
     path = (

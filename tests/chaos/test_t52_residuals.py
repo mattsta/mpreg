@@ -9,6 +9,7 @@ import pytest
 from mpreg.testing.distlab.builtins import ensure_builtins
 from mpreg.testing.distlab.registry import get_registry, resolve_preset
 
+
 @pytest.mark.asyncio
 async def test_t52_distlab_gcm_retry_abort_scenario() -> None:
     ensure_builtins()
@@ -22,12 +23,12 @@ async def test_t52_distlab_gcm_retry_abort_scenario() -> None:
     surfaces = " ".join(meta.get("ops_surfaces") or ())
     assert "GlobalCacheManager.strong_retry_abort" in surfaces
 
+
 def test_t52_preset_includes_gcm_retry() -> None:
     ensure_builtins()
-    assert "strong.cft_gcm_retry_abort_clears_residual" in resolve_preset(
-        "strong-core"
-    )
+    assert "strong.cft_gcm_retry_abort_clears_residual" in resolve_preset("strong-core")
     assert "strong.cft_gcm_retry_abort_clears_residual" in resolve_preset("ci-core")
+
 
 def test_t52_phase_40_honesty() -> None:
     path = (
@@ -39,6 +40,7 @@ def test_t52_phase_40_honesty() -> None:
     assert "Phase 40" in text
     assert "gcm_retry_abort" in text or "GCM.strong_retry_abort" in text
 
+
 def test_t52_ledger_and_plan() -> None:
     root = Path(__file__).resolve().parents[2]
     ledger = (root / "docs" / "plans" / "DISTLAB_PROOF_LEDGER.md").read_text(
@@ -48,6 +50,7 @@ def test_t52_ledger_and_plan() -> None:
     assert "gcm" in ledger.lower() or "GCM" in ledger
     plan = root / "docs" / "plans" / "DISTLAB_T52_DISTLAB_GCM_RETRY_PLAN.md"
     assert plan.is_file()
+
 
 def test_t52_operate_gcm_scenario() -> None:
     path = (

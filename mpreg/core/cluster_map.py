@@ -30,6 +30,7 @@ from mpreg.fabric.catalog import TransportEndpoint
 
 T = TypeVar("T")
 
+
 @dataclass(frozen=True, slots=True)
 class NodeLoadMetrics:
     """Snapshot of node load metrics for client-side selection."""
@@ -94,6 +95,7 @@ class NodeLoadMetrics:
             load_score=float(payload.get("load_score", 0.0) or 0.0),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class ClusterNodeSnapshot:
     """Cluster node snapshot for clients."""
@@ -151,6 +153,7 @@ class ClusterNodeSnapshot:
             load=load,
         )
 
+
 @dataclass(frozen=True, slots=True)
 class ClusterMapSnapshot:
     """Cluster map snapshot for discovery-aware clients."""
@@ -174,6 +177,7 @@ class ClusterMapSnapshot:
                 for node_payload in payload.get("nodes", []) or []
             ),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class ClusterMapRequest:
@@ -225,6 +229,7 @@ class ClusterMapRequest:
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
 
+
 @dataclass(frozen=True, slots=True)
 class ClusterMapResponse:
     """Response payload for cluster_map_v2."""
@@ -257,6 +262,7 @@ class ClusterMapResponse:
                 else None
             ),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class CatalogQueryRequest:
@@ -418,6 +424,7 @@ class CatalogQueryRequest:
             viewer_tenant_id=request.viewer_tenant_id,
         )
 
+
 @dataclass(frozen=True, slots=True)
 class CatalogQueryResponse:
     """Response payload for catalog_query."""
@@ -446,6 +453,7 @@ class CatalogQueryResponse:
                 else None
             ),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class CatalogWatchRequest:
@@ -483,6 +491,7 @@ class CatalogWatchRequest:
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
 
+
 @dataclass(frozen=True, slots=True)
 class CatalogWatchResponse:
     """Response payload for catalog_watch."""
@@ -516,6 +525,7 @@ class CatalogWatchResponse:
             ),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class ListPeersRequest:
     """Request payload for list_peers."""
@@ -539,6 +549,7 @@ class ListPeersRequest:
 
     def to_dict(self) -> Payload:
         return payload_from_dataclass(self)
+
 
 @dataclass(frozen=True, slots=True)
 class PageWindow:
@@ -568,6 +579,7 @@ class PageWindow:
             return None
         return f"{next_offset}:{self.limit}"
 
+
 def paginate_items[T](
     items: Iterable[T],
     *,
@@ -584,6 +596,7 @@ def paginate_items[T](
         window = PageWindow(offset=window.offset, limit=min(limit, max_limit))
     sliced = item_list[window.offset : window.offset + window.limit]
     return tuple(sliced), window.next_token(len(item_list))
+
 
 @dataclass(frozen=True, slots=True)
 class PeerSnapshot:

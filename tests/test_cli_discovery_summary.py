@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+
 def test_discovery_summary_does_not_shadow_include_ingress() -> None:
     source = Path("mpreg/cli/main.py").read_text()
     tree = ast.parse(source)

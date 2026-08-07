@@ -457,6 +457,7 @@ Real-world example: Bootstrapping a new fabric federation
 
 from mpreg.datastructures import *
 
+
 def bootstrap_fabric_federation():
     # 1. Create genesis blockchain for fabric governance
     governance_chain = Blockchain.create_new_chain(
@@ -502,6 +503,7 @@ def bootstrap_fabric_federation():
 
     return governance_chain.add_block(genesis_block)
 
+
 # Usage
 fabric_chain = bootstrap_fabric_federation()
 print(f"Fabric federation initialized with {fabric_chain.get_height()} blocks")
@@ -513,6 +515,7 @@ print(f"Fabric federation initialized with {fabric_chain.get_height()} blocks")
 """
 Real-world example: Routing messages with blockchain-based delivery proof
 """
+
 
 class FederationMessageRouter:
     def __init__(self):
@@ -579,6 +582,7 @@ class FederationMessageRouter:
         result = self.routing_chain.find_transaction(message_id)
         return result is not None
 
+
 # Usage
 router = FederationMessageRouter()
 delivery_proof = router.route_message(
@@ -595,6 +599,7 @@ delivery_proof = router.route_message(
 """
 Real-world example: Fabric-wide configuration updates via blockchain consensus
 """
+
 
 class FederationGovernance:
     def __init__(self, governance_chain: Blockchain):
@@ -717,6 +722,7 @@ class FederationGovernance:
                 "reject_stake": total_reject_stake,
             }
 
+
 # Usage
 governance = FederationGovernance(fabric_chain)
 
@@ -750,6 +756,7 @@ print(f"Proposal result: {result['status']}")
 Integration points with existing MPREG fabric components
 """
 
+
 # 1. Message Queue Integration
 class BlockchainMessageQueue:
     def __init__(self, queue_chain: Blockchain):
@@ -775,6 +782,7 @@ class BlockchainMessageQueue:
                     msg = QueuedMessage.deserialize(tx.payload)
                     messages.append(msg)
         return messages
+
 
 # 2. Hub Registry Integration
 class BlockchainHubRegistry:
@@ -803,6 +811,7 @@ class BlockchainHubRegistry:
                 elif tx.operation_type == OperationType.FEDERATION_LEAVE:
                     nodes.pop(tx.sender, None)
         return list(nodes.values())
+
 
 # 3. Gossip Protocol Integration
 class BlockchainGossip:
@@ -925,6 +934,7 @@ to offload storage to SQLite when persistence is required.
 # Estimated memory usage for fabric blockchain
 import sys
 
+
 def estimate_blockchain_memory(num_blocks: int, txs_per_block: int) -> dict:
     # Base object sizes (64-bit Python)
     transaction_size = 500  # bytes (estimated with all fields)
@@ -945,6 +955,7 @@ def estimate_blockchain_memory(num_blocks: int, txs_per_block: int) -> dict:
         "memory_per_tx_bytes": transaction_size,
         "scalability_limit": "~10k blocks for 1GB RAM",
     }
+
 
 # Fabric size estimates
 small_fabric = estimate_blockchain_memory(1000, 100)  # 1K blocks, 100K txs
@@ -1045,6 +1056,7 @@ Indicative results from local testing; re-measure per environment:
    # TODO: Replace in-memory registry with blockchain
    from mpreg.fabric.hub_registry import HubRegistry
 
+
    def upgrade_hub_registry_to_blockchain():
        # Migrate existing registry to blockchain format
        # Rewrite to the blockchain-backed registry (no compat layers)
@@ -1056,6 +1068,7 @@ Indicative results from local testing; re-measure per environment:
    ```python
    # TODO: Add blockchain-based state consensus
    from mpreg.fabric.cache_federation import FabricCacheProtocol
+
 
    def add_blockchain_cache_sync():
        # Use blockchain for cache sync consensus
@@ -1146,6 +1159,7 @@ Complete integration example: Blockchain-backed message queue
 from mpreg.core.message_queue import MessageQueueManager
 from mpreg.datastructures import Blockchain, Transaction, OperationType
 
+
 class BlockchainMessageQueue(MessageQueueManager):
     def __init__(self):
         super().__init__()
@@ -1211,6 +1225,7 @@ Complete integration example: Blockchain-based hub registry
 
 from mpreg.fabric.hub_registry import HubRegistry
 from mpreg.datastructures import Blockchain, Transaction, OperationType
+
 
 class BlockchainHubRegistry(HubRegistry):
     def __init__(self):

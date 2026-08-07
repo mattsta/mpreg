@@ -8,6 +8,7 @@ from mpreg.server_pkg.openapi_surface import (
     route_table_path_set,
 )
 
+
 def test_t21_openapi_strong_schema_honesty() -> None:
     """OpenAPI documents put-only capabilities and refuse counters."""
     doc = build_monitoring_openapi()
@@ -33,9 +34,9 @@ def test_t21_openapi_strong_schema_honesty() -> None:
         resp = paths[p]["get"]["responses"]["200"]
         ref = resp["content"]["application/json"]["schema"]["$ref"]
         assert ref.endswith("StrongMetricsResponse")
-    audit_ref = paths["/metrics/shared-audit"]["get"]["responses"]["200"][
-        "content"
-    ]["application/json"]["schema"]["$ref"]
+    audit_ref = paths["/metrics/shared-audit"]["get"]["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]["$ref"]
     assert audit_ref.endswith("SharedAuditMetricsResponse")
 
     # Description honesty
@@ -46,9 +47,11 @@ def test_t21_openapi_strong_schema_honesty() -> None:
     tags = {t["name"]: t for t in (doc.get("tags") or []) if isinstance(t, dict)}
     assert "strong" in tags
     assert "audit" in tags
-    assert "v1.1" in tags["strong"]["description"] or "get" in tags["strong"][
-        "description"
-    ].lower()
+    assert (
+        "v1.1" in tags["strong"]["description"]
+        or "get" in tags["strong"]["description"].lower()
+    )
+
 
 def test_t21_openapi_still_matches_route_table() -> None:
     assert openapi_path_set() == route_table_path_set()

@@ -28,6 +28,7 @@ from mpreg.core.transport.tcp_transport import (
 
 from .test_helpers import create_test_ssl_context
 
+
 class TestTCPTransport:
     """Test cases for TCP transport implementation."""
 
@@ -519,10 +520,12 @@ class TestTCPTransport:
         finally:
             await listener.stop()
 
+
 @pytest.fixture
 async def tcp_port(port_allocator):
     """Allocate a TCP port for testing."""
     return port_allocator.allocate_port()
+
 
 class TestTCPStreaming:
     """Test cases for TCP streaming functionality."""
@@ -737,6 +740,7 @@ class TestTCPStreaming:
 
         finally:
             await listener.stop()
+
 
 class TestTCPPerformance:
     """Performance tests for TCP transport."""

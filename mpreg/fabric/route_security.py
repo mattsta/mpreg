@@ -17,6 +17,7 @@ from mpreg.datastructures.blockchain_types import (
 
 from .route_control import RouteAnnouncement, RouteWithdrawal
 
+
 @dataclass(frozen=True, slots=True)
 class RouteSecurityConfig:
     """Policy for route announcement signature handling."""
@@ -24,6 +25,7 @@ class RouteSecurityConfig:
     require_signatures: bool = False
     allow_unsigned: bool = True
     signature_algorithm: str = "ed25519"
+
 
 @dataclass(frozen=True, slots=True)
 class RouteAnnouncementSigner:
@@ -68,6 +70,7 @@ class RouteAnnouncementSigner:
             algorithm=self.algorithm,
         )
 
+
 def verify_route_announcement(
     announcement: RouteAnnouncement,
     *,
@@ -85,6 +88,7 @@ def verify_route_announcement(
         public_key,
         selected_algorithm,
     )
+
 
 def verify_route_withdrawal(
     withdrawal: RouteWithdrawal,

@@ -22,11 +22,14 @@ from .production_raft import (
     RequestVoteResponse,
 )
 
+
 def encode_bytes(data: bytes) -> str:
     return base64.b64encode(data).decode("ascii")
 
+
 def decode_bytes(data: str) -> bytes:
     return base64.b64decode(data.encode("ascii"))
+
 
 def serialize_log_entry(entry: LogEntry) -> dict[str, Any]:
     return {
@@ -39,6 +42,7 @@ def serialize_log_entry(entry: LogEntry) -> dict[str, Any]:
         "timestamp": entry.timestamp,
     }
 
+
 def deserialize_log_entry(data: dict[str, Any]) -> LogEntry:
     return LogEntry(
         term=int(data["term"]),
@@ -50,8 +54,10 @@ def deserialize_log_entry(data: dict[str, Any]) -> LogEntry:
         timestamp=float(data.get("timestamp", 0.0)),
     )
 
+
 def serialize_request_vote(request: RequestVoteRequest) -> dict[str, Any]:
     return asdict(request)
+
 
 def deserialize_request_vote(data: dict[str, Any]) -> RequestVoteRequest:
     return RequestVoteRequest(
@@ -61,8 +67,10 @@ def deserialize_request_vote(data: dict[str, Any]) -> RequestVoteRequest:
         last_log_term=int(data["last_log_term"]),
     )
 
+
 def serialize_request_vote_response(response: RequestVoteResponse) -> dict[str, Any]:
     return asdict(response)
+
 
 def deserialize_request_vote_response(data: dict[str, Any]) -> RequestVoteResponse:
     # COR-T13-01: missing vote_granted → False (fail-closed), same as InstallSnapshot.
@@ -72,6 +80,7 @@ def deserialize_request_vote_response(data: dict[str, Any]) -> RequestVoteRespon
         vote_granted=vote_granted,
         voter_id=str(data["voter_id"]),
     )
+
 
 def serialize_append_entries(request: AppendEntriesRequest) -> dict[str, Any]:
     return {
@@ -83,6 +92,7 @@ def serialize_append_entries(request: AppendEntriesRequest) -> dict[str, Any]:
         "leader_commit": request.leader_commit,
     }
 
+
 def deserialize_append_entries(data: dict[str, Any]) -> AppendEntriesRequest:
     return AppendEntriesRequest(
         term=int(data["term"]),
@@ -93,10 +103,12 @@ def deserialize_append_entries(data: dict[str, Any]) -> AppendEntriesRequest:
         leader_commit=int(data["leader_commit"]),
     )
 
+
 def serialize_append_entries_response(
     response: AppendEntriesResponse,
 ) -> dict[str, Any]:
     return asdict(response)
+
 
 def deserialize_append_entries_response(
     data: dict[str, Any],
@@ -112,6 +124,7 @@ def deserialize_append_entries_response(
         conflict_term=int(data.get("conflict_term", -1)),
     )
 
+
 def serialize_install_snapshot(request: InstallSnapshotRequest) -> dict[str, Any]:
     cfg = getattr(request, "configuration", ()) or ()
     return {
@@ -124,6 +137,7 @@ def serialize_install_snapshot(request: InstallSnapshotRequest) -> dict[str, Any
         "offset": request.offset,
         "configuration": list(cfg),
     }
+
 
 def deserialize_install_snapshot(data: dict[str, Any]) -> InstallSnapshotRequest:
     raw_cfg = data.get("configuration") or ()
@@ -143,10 +157,12 @@ def deserialize_install_snapshot(data: dict[str, Any]) -> InstallSnapshotRequest
         configuration=cfg,
     )
 
+
 def serialize_install_snapshot_response(
     response: InstallSnapshotResponse,
 ) -> dict[str, Any]:
     return asdict(response)
+
 
 def deserialize_install_snapshot_response(
     data: dict[str, Any],

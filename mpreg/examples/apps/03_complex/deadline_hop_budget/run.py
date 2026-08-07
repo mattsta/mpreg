@@ -9,6 +9,7 @@ from mpreg.core.rpc_deadline import DeadlineBudget, decrement_deadline_headers
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 from mpreg.fabric.message import MessageHeaders
 
+
 async def main() -> None:
     with app_run(
         "deadline_hop_budget",
@@ -77,6 +78,7 @@ async def main() -> None:
             ok(f"from_headers remaining_ms={b2.remaining_ms:.1f}")
 
         await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

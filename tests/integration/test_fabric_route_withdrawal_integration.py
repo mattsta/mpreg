@@ -14,6 +14,7 @@ from mpreg.fabric.route_announcer import (
 from mpreg.fabric.route_control import RouteDestination, RouteTable
 from mpreg.fabric.route_withdrawal import RouteWithdrawalCoordinator
 
+
 @pytest.mark.asyncio
 async def test_withdrawal_on_connection_loss_propagates() -> None:
     transport = InProcessGossipTransport()

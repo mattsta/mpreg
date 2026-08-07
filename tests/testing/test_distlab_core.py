@@ -22,6 +22,7 @@ from mpreg.testing.distlab import (
 from mpreg.testing.distlab.checker import LWWRegisterChecker
 from mpreg.testing.distlab.models import CheckResult, CheckViolation
 
+
 def test_history_monotonic_and_pairing() -> None:
     h = History()
     h.invoke("c0", OpKind.PUT, key="k", value=1, op_id="a")
@@ -36,6 +37,7 @@ def test_history_monotonic_and_pairing() -> None:
     assert h.successful_puts("k")[0].op_id == "a"
     assert h.failed_puts("k")[0].error_code == 1016
 
+
 def test_no_open_invoke_checker() -> None:
     h = History()
     h.invoke("c0", OpKind.PUT, key="k", value=1)
@@ -44,6 +46,7 @@ def test_no_open_invoke_checker() -> None:
     h.ok("c0", OpKind.PUT, key="k", value=1, op_id="x")
     r2 = NoOpenInvokeChecker().check(h)
     assert r2.ok is True
+
 
 def test_composite_merges_failures() -> None:
     h = History()
@@ -55,6 +58,7 @@ def test_composite_merges_failures() -> None:
     )
     r = bad.check(h, state=None)
     assert r.ok is False
+
 
 class _FakeState:
     def pending_count(self) -> int:
@@ -71,6 +75,7 @@ class _FakeState:
 
     def final_value(self, key: str):
         return "v"
+
 
 def test_residual_and_lww_checkers() -> None:
     h = History()
@@ -89,10 +94,13 @@ def test_residual_and_lww_checkers() -> None:
     assert LWWRegisterChecker(key="k").check(h, state=st2).ok is True
     assert default_strong_checkers(key="k").check(h, state=st2).ok is True
 
+
 def test_nemesis_step_and_stop_heals() -> None:
     target = NullNemesisTarget(nodes=["n0", "n1", "n2"])
     h = History()
-    nem = Nemesis(target=target, history=h, seed=1, actions=[NemesisAction.PARTITION_ONE])
+    nem = Nemesis(
+        target=target, history=h, seed=1, actions=[NemesisAction.PARTITION_ONE]
+    )
     act = nem.step_once()
     assert act is NemesisAction.PARTITION_ONE
     assert any("partition" in x for x in target.log)
@@ -104,6 +112,7 @@ def test_nemesis_step_and_stop_heals() -> None:
 
     asyncio.run(_stop())
     assert any(x == "heal" for x in target.log)
+
 
 @pytest.mark.asyncio
 async def test_scenario_runs_clients_and_checks() -> None:
@@ -125,6 +134,7 @@ async def test_scenario_runs_clients_and_checks() -> None:
     assert len(seen) == 3
     assert result.history_len == 6
 
+
 @pytest.mark.asyncio
 async def test_scenario_body_and_failure_raises() -> None:
     async def body(history: History, sut: object) -> None:
@@ -140,6 +150,7 @@ async def test_scenario_body_and_failure_raises() -> None:
     with pytest.raises(AssertionError):
         await sc.run()
 
+
 def test_check_result_raise() -> None:
     r = CheckResult(
         name="x",
@@ -148,6 +159,7 @@ def test_check_result_raise() -> None:
     )
     with pytest.raises(AssertionError, match="boom"):
         r.raise_if_failed()
+
 
 def test_history_by_key_and_unmatched() -> None:
     h = History()
@@ -160,6 +172,7 @@ def test_history_by_key_and_unmatched() -> None:
     open_pairs = [p for p in pairs if p[1] is None]
     assert len(open_pairs) == 1
     assert open_pairs[0][0].key == "b"
+
 
 def test_replica_agreement_majority_null_ok() -> None:
     from mpreg.testing.distlab.checker import ReplicaAgreementChecker
@@ -174,6 +187,7 @@ def test_replica_agreement_majority_null_ok() -> None:
     r = ReplicaAgreementChecker().check(h, state=St())
     assert r.ok is True
 
+
 def test_replica_agreement_conflict_fail() -> None:
     from mpreg.testing.distlab.checker import ReplicaAgreementChecker
 
@@ -186,6 +200,7 @@ def test_replica_agreement_conflict_fail() -> None:
     h.ok("c", OpKind.PUT, key="k", value="v1", op_id="op1")
     r = ReplicaAgreementChecker().check(h, state=St())
     assert r.ok is False
+
 
 def test_gset_checker_eligible_false_ignored() -> None:
     from mpreg.testing.distlab.checker import GSetConvergenceChecker
@@ -202,6 +217,7 @@ def test_gset_checker_eligible_false_ignored() -> None:
     r = GSetConvergenceChecker(min_ids=1).check(h, state=St())
     assert r.ok is True
 
+
 def test_callable_checker_plugin() -> None:
     from mpreg.testing.distlab import CallableChecker
 
@@ -213,6 +229,7 @@ def test_callable_checker_plugin() -> None:
     h.ok("c", OpKind.BARRIER)
     r = CallableChecker(name="plugin", fn=fn).check(h)
     assert r.ok and r.stats["n"] == 2
+
 
 def test_nemesis_actions_matrix() -> None:
     target = NullNemesisTarget(nodes=["n0", "n1", "n2"])
@@ -230,6 +247,7 @@ def test_nemesis_actions_matrix() -> None:
         nem = Nemesis(target=target, history=h, seed=3, actions=[act])
         assert nem.step_once() is act
 
+
 @pytest.mark.asyncio
 async def test_scenario_non_strict_returns_ok_false() -> None:
     async def body(history: History, sut: object) -> None:
@@ -243,6 +261,7 @@ async def test_scenario_non_strict_returns_ok_false() -> None:
     )
     r = await sc.run()
     assert r.ok is False
+
 
 @pytest.mark.asyncio
 async def test_scenario_suite_stop_on_fail() -> None:
@@ -265,6 +284,7 @@ async def test_scenario_suite_stop_on_fail() -> None:
     with pytest.raises(AssertionError):
         await suite.run_all(stop_on_fail=True)
 
+
 @pytest.mark.asyncio
 async def test_history_concurrent_append() -> None:
     h = History()
@@ -276,6 +296,7 @@ async def test_history_concurrent_append() -> None:
 
     await asyncio.gather(*[worker(i) for i in range(4)])
     assert len(h) == 160
+
 
 def test_history_error_code_and_outcome_counts() -> None:
     from mpreg.testing.distlab.history import History

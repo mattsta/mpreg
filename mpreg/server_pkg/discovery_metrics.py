@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
+
 def build_discovery_summary_metrics(server: Any) -> dict[str, Any]:
     timestamp = time.time()
     snapshot = server._summary_export_state.snapshot(
@@ -26,6 +27,7 @@ def build_discovery_summary_metrics(server: Any) -> dict[str, Any]:
         generated_at=timestamp,
     )
     return snapshot.to_dict()
+
 
 def build_discovery_cache_metrics(server: Any) -> dict[str, Any]:
     from mpreg.core.discovery_resolver import (
@@ -94,6 +96,7 @@ def build_discovery_cache_metrics(server: Any) -> dict[str, Any]:
         "summary_cache": summary_response.to_dict(),
     }
 
+
 def build_discovery_policy_metrics(server: Any) -> dict[str, Any]:
     from mpreg.core.discovery_monitoring import DiscoveryPolicyStatus
 
@@ -123,6 +126,7 @@ def build_discovery_policy_metrics(server: Any) -> dict[str, Any]:
         access_total=access_total,
     )
     return status.to_dict()
+
 
 def build_discovery_lag_metrics(server: Any) -> dict[str, Any]:
     from mpreg.core.discovery_monitoring import DiscoveryLagStatus

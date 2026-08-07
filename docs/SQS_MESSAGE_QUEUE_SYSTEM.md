@@ -170,9 +170,11 @@ manager = MessageQueueManager(config)
 # Create a queue
 await manager.create_queue("my-queue")
 
+
 # Subscribe to messages
 def process_message(message):
     print(f"Processing: {message.payload}")
+
 
 manager.subscribe_to_queue(
     "my-queue",
@@ -212,6 +214,7 @@ from mpreg.core.message_queue import DeliveryGuarantee
 from mpreg.core.port_allocator import port_range_context
 from mpreg.examples.showcase_utils import run_with_servers
 from mpreg.fabric.federation_config import create_permissive_bridging_config
+
 
 async def demo() -> None:
     with port_range_context(2, "servers") as ports:
@@ -516,6 +519,7 @@ async def setup_ecommerce_queues():
     manager.subscribe_to_queue("notifications", "notification-service", "notify.*")
 
     return manager
+
 
 # Usage
 manager = await setup_ecommerce_queues()

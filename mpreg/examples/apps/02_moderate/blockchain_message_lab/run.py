@@ -13,6 +13,7 @@ from mpreg.core.blockchain_message_queue_types import (
 )
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run(
         "blockchain_message_lab",
@@ -116,6 +117,7 @@ async def main() -> None:
             ok("BlockchainFederationBridge importable")
 
         await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

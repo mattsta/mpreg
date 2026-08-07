@@ -16,6 +16,7 @@ from mpreg.fabric.connection_manager import FederationConnectionManager
 from mpreg.fabric.federation_config import FederationConfig, FederationMode
 from mpreg.fabric.monitoring_endpoints import create_federation_monitoring_system
 
+
 async def test_prometheus_endpoint_text_format(
     server_cluster_ports: list[int],
 ) -> None:
@@ -63,6 +64,7 @@ async def test_prometheus_endpoint_text_format(
         with contextlib.suppress(asyncio.CancelledError):
             await task
         await unified_monitor.stop()
+
 
 async def test_prometheus_exports_rpc_histograms_and_error_codes(
     server_cluster_ports: list[int],

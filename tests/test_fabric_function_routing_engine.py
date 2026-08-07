@@ -15,6 +15,7 @@ from mpreg.fabric.federation_planner import (
 from mpreg.fabric.index import FunctionQuery, RoutingIndex
 from tests.test_helpers import TestPortManager
 
+
 def _endpoint(
     *,
     node_id: str,
@@ -34,6 +35,7 @@ def _endpoint(
         advertised_at=time.time(),
         ttl_seconds=30.0,
     )
+
 
 @dataclass(slots=True)
 class _StubFederationPlanner:
@@ -63,6 +65,7 @@ class _StubFederationPlanner:
             reason=reason,
         )
 
+
 def test_routing_engine_local_match() -> None:
     with TestPortManager() as port_manager:
         node_id = port_manager.get_server_url()
@@ -84,6 +87,7 @@ def test_routing_engine_local_match() -> None:
         assert plan.selected_target == entry
         assert plan.reason is FunctionRouteReason.LOCAL_MATCH
 
+
 def test_routing_engine_resource_mismatch() -> None:
     with TestPortManager() as port_manager:
         node_id = port_manager.get_server_url()
@@ -103,6 +107,7 @@ def test_routing_engine_resource_mismatch() -> None:
 
         assert plan.selected_target is None
         assert plan.reason is FunctionRouteReason.NO_MATCH
+
 
 def test_routing_engine_remote_requires_planner() -> None:
     with TestPortManager() as port_manager:
@@ -127,6 +132,7 @@ def test_routing_engine_remote_requires_planner() -> None:
 
         assert plan.selected_target == entry
         assert plan.reason is FunctionRouteReason.NO_FEDERATION
+
 
 def test_routing_engine_hop_budget_blocks_remote() -> None:
     with TestPortManager() as port_manager:

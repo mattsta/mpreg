@@ -16,6 +16,7 @@ from hierarchical_federation_probe import ProbeConfig, _run_probe
 type RunIndex = int
 type Seconds = float
 
+
 @dataclass(frozen=True, slots=True)
 class SweepRunResult:
     run_index: RunIndex
@@ -26,6 +27,7 @@ class SweepRunResult:
     initial_unreachable_from_global: int
     post_fault_unreachable_from_global: int
     surviving_component_sizes: tuple[int, ...]
+
 
 @dataclass(frozen=True, slots=True)
 class ScenarioSummary:
@@ -45,6 +47,7 @@ class ScenarioSummary:
     max_post_fault_unreachable: int
     runs: tuple[SweepRunResult, ...]
 
+
 @dataclass(frozen=True, slots=True)
 class SweepReport:
     generated_at_unix: float
@@ -57,6 +60,7 @@ class SweepReport:
     failure_mode: str
     scenarios: tuple[ScenarioSummary, ...]
 
+
 def _configure_runtime_logging() -> None:
     # Keep probe output focused on metrics; warnings are captured in JSON artifacts.
     logging.getLogger("websockets.server").setLevel(logging.ERROR)
@@ -68,6 +72,7 @@ def _configure_runtime_logging() -> None:
         return
     loguru_logger.remove()
     loguru_logger.add(sys.stderr, level="ERROR")
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -126,8 +131,10 @@ def _parse_args() -> argparse.Namespace:
     )
     return parser.parse_args()
 
+
 def _timestamp_id() -> str:
     return datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+
 
 def _load_probe_metrics(report_path: Path) -> SweepRunResult:
     payload = json.loads(report_path.read_text(encoding="utf-8"))
@@ -145,6 +152,7 @@ def _load_probe_metrics(report_path: Path) -> SweepRunResult:
             int(value) for value in payload["surviving_component_sizes"]
         ),
     )
+
 
 async def _run_scenario(
     *,
@@ -267,6 +275,7 @@ async def _run_scenario(
         runs=tuple(run_results),
     )
 
+
 async def _run() -> int:
     args = _parse_args()
     _configure_runtime_logging()
@@ -329,8 +338,10 @@ async def _run() -> int:
     print(f"wrote_report={report_path}")
     return 0
 
+
 def main() -> int:
     return asyncio.run(_run())
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

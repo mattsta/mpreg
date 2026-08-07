@@ -34,9 +34,11 @@ from mpreg.fabric.cache_transport import InProcessCacheTransport
 from mpreg.fabric.federation_config import create_permissive_bridging_config
 from mpreg.server import MPREGServer
 
+
 def _ensure(condition: bool, message: str) -> None:
     if not condition:
         raise RuntimeError(message)
+
 
 async def demo_rpc() -> None:
     """Full RPC system demo: dependency graph + resource routing + concurrency."""
@@ -100,6 +102,7 @@ async def demo_rpc() -> None:
                 )
 
         await run_with_servers(settings, _run)
+
 
 async def demo_pubsub() -> None:
     """Full Topic Exchange demo: routing, wildcards, and fan-out."""
@@ -169,6 +172,7 @@ async def demo_pubsub() -> None:
     print("PubSub notifications:", len(notifications))
     _ensure(len(notifications) == 3, "PubSub demo: unexpected notification count")
 
+
 async def demo_queue() -> None:
     """Full queue demo: at-least-once and quorum delivery."""
     manager = create_reliable_queue_manager()
@@ -201,6 +205,7 @@ async def demo_queue() -> None:
         "Queue demo: missing expected deliveries",
     )
     await manager.shutdown()
+
 
 async def demo_cache() -> None:
     """Full cache demo: L1-L4 with fabric sync and federation scope."""
@@ -262,6 +267,7 @@ async def demo_cache() -> None:
     await cache_protocol_a.shutdown()
     await cache_protocol_b.shutdown()
 
+
 async def demo_fabric() -> None:
     """Full fabric federation demo: multi-cluster routing + status sharing."""
     config_a = create_permissive_bridging_config("cluster-a")
@@ -320,6 +326,7 @@ async def demo_fabric() -> None:
 
         await run_with_servers(settings, _run)
 
+
 async def demo_monitoring() -> None:
     """Full monitoring demo: cross-system tracking timeline."""
     from mpreg.core.monitoring.unified_monitoring import (
@@ -358,6 +365,7 @@ async def demo_monitoring() -> None:
     _ensure(len(timeline) >= 3, "Monitoring demo: incomplete timeline")
     await monitor.stop()
 
+
 SYSTEMS = {
     "rpc": demo_rpc,
     "pubsub": demo_pubsub,
@@ -367,11 +375,13 @@ SYSTEMS = {
     "monitoring": demo_monitoring,
 }
 
+
 async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--system", choices=sorted(SYSTEMS.keys()), required=True)
     args = parser.parse_args()
     await SYSTEMS[args.system]()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

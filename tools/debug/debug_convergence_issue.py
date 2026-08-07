@@ -13,6 +13,7 @@ from tests.test_raft_byzantine_edge_cases import (
     TestRaftByzantineEdgeCases,
 )
 
+
 async def debug_convergence_issue():
     """Debug the convergence issue step by step."""
     print("=== DEBUGGING CONVERGENCE ISSUE ===")
@@ -222,6 +223,7 @@ async def debug_convergence_issue():
                 )
             except TimeoutError:
                 print("Warning: Some nodes did not stop within timeout")
+
 
 if __name__ == "__main__":
     asyncio.run(debug_convergence_issue())

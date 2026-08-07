@@ -26,8 +26,10 @@ T = TypeVar("T")
 # Active probe for the current app_run (optional).
 _ACTIVE_PROBE: ExampleProbe | None = None
 
+
 class ExampleFailed(RuntimeError):
     """Raised when an example assertion or invariant fails."""
+
 
 def ensure(condition: bool, message: str) -> None:
     """Assert a demo invariant; raise ExampleFailed on failure.
@@ -39,6 +41,7 @@ def ensure(condition: bool, message: str) -> None:
     if not condition:
         raise ExampleFailed(message)
 
+
 def banner(title: str, *, level: str = "", app_id: str = "") -> None:
     """Print a consistent section banner for CLI output."""
     bits = [p for p in (level, app_id, title) if p]
@@ -48,16 +51,20 @@ def banner(title: str, *, level: str = "", app_id: str = "") -> None:
     print(line)
     print("=" * 64)
 
+
 def step(msg: str) -> None:
     print(f"  → {msg}")
 
+
 def ok(msg: str) -> None:
     print(f"  ✓ {msg}")
+
 
 def feature(feature_id: str, detail: str = "") -> None:
     """Announce a catalog feature being exercised (see FEATURE_CATALOG.md)."""
     suffix = f" — {detail}" if detail else ""
     print(f"  ◆ feature:{feature_id}{suffix}")
+
 
 @dataclass
 class ScenarioStats:
@@ -69,11 +76,14 @@ class ScenarioStats:
     def note_ensure(self) -> None:
         self.ensures += 1
 
+
 _ACTIVE_STATS: ScenarioStats | None = None
+
 
 def ensure_counted(condition: bool, message: str) -> None:
     """Alias for :func:`ensure` (counters are built into ensure under app_run)."""
     ensure(condition, message)
+
 
 @contextmanager
 def scenario(name: str, *feature_ids: str) -> Iterator[None]:
@@ -120,12 +130,14 @@ def scenario(name: str, *feature_ids: str) -> Iterator[None]:
             )
             probe.record(key, (time.perf_counter() - t0) * 1000.0, ok=ok_flag)
 
+
 def get_probe() -> ExampleProbe | None:
     """Return the active :class:`ExampleProbe` if ``app_run`` attached one.
 
     Phase H: probes are **on by default** (``app_run(..., probe=True)``).
     """
     return _ACTIVE_PROBE
+
 
 @contextmanager
 def app_run(
@@ -164,12 +176,14 @@ def app_run(
                 f"~{stats.ensures} counted ensures"
             )
 
+
 @dataclass(frozen=True, slots=True)
 class RunReport:
     app_id: str
     ok: bool
     duration_s: float
     error: str | None = None
+
 
 async def run_with_timeout[T](
     coro: Awaitable[T],
@@ -179,6 +193,7 @@ async def run_with_timeout[T](
     if timeout_s is None or timeout_s <= 0:
         return await coro
     return await asyncio.wait_for(coro, timeout=timeout_s)
+
 
 async def wait_until(
     predicate: Callable[[], bool | Awaitable[bool]],
@@ -197,6 +212,7 @@ async def wait_until(
             return
         await asyncio.sleep(interval_s)
     raise ExampleFailed(f"Timed out waiting for {what} ({timeout_s:.1f}s)")
+
 
 async def run_app_main(
     app_id: str,
@@ -225,6 +241,7 @@ async def run_app_main(
             error=f"{type(exc).__name__}: {exc}\n{tb}",
         )
 
+
 def exit_from_report(report: RunReport) -> None:
     if report.ok:
         ok(f"{report.app_id} completed in {report.duration_s:.2f}s")
@@ -233,6 +250,7 @@ def exit_from_report(report: RunReport) -> None:
     if report.error:
         print(report.error, file=sys.stderr)
     raise SystemExit(1)
+
 
 # Re-export lifecycle helpers for app authors
 __all__ = [

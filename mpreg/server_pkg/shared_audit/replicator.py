@@ -20,6 +20,7 @@ from mpreg.server_pkg.shared_audit.store import SharedAuditStore, Watermark
 
 MAX_DELTA_RECORDS = 64
 
+
 @dataclass(frozen=True, slots=True)
 class SharedAuditHealth:
     enabled: bool
@@ -41,6 +42,7 @@ class SharedAuditHealth:
             "last_delta_at": self.last_delta_at,
         }
 
+
 class SharedAuditTransport(Protocol):
     """Minimal fanout + unicast surface for the replicator."""
 
@@ -54,7 +56,9 @@ class SharedAuditTransport(Protocol):
         """Directed send to one peer; return success."""
         ...
 
+
 PeerListFn = Callable[[], Sequence[str]]
+
 
 @dataclass(slots=True)
 class SharedAuditReplicator:
@@ -364,6 +368,7 @@ class SharedAuditReplicator:
         if sent:
             self._last_digest_at = time.time()
 
+
 @dataclass(slots=True)
 class InProcessSharedAuditTransport:
     """Deterministic inject transport for unit tests (drop/reorder/partition)."""
@@ -400,9 +405,7 @@ class InProcessSharedAuditTransport:
     def _blocked(self, src: str, dst: str) -> bool:
         if (src, dst) in self.drop_links:
             return True
-        if frozenset({src, dst}) in self.partitions:
-            return True
-        return False
+        return frozenset({src, dst}) in self.partitions
 
     async def send_epidemic(self, message_type: str, payload: dict[str, Any]) -> int:
         if message_type in self.drop_types:

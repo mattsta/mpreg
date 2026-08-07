@@ -26,6 +26,7 @@ from mpreg.core.cache_models import (
     GlobalCacheKey,
 )
 
+
 class StrongErrorCode(IntEnum):
     """Operational STRONG codes (1015–1018). 1012 remains not-implemented."""
 
@@ -33,6 +34,7 @@ class StrongErrorCode(IntEnum):
     QUORUM_TIMEOUT = 1016
     STRONG_CONFLICT = 1017
     STRONG_PENDING_FULL = 1018
+
 
 def _split_abort_fail_key(key_blob: str | None) -> tuple[str, str]:
     """Parse ``namespace/identifier`` from recent_abort_fails key field."""
@@ -43,6 +45,7 @@ def _split_abort_fail_key(key_blob: str | None) -> tuple[str, str]:
     ns = ns.strip() or "<ns>"
     kid = rest.strip() or "<id>"
     return ns, kid
+
 
 def count_abort_fail_peers(
     peers: Sequence[str] | None = None,
@@ -67,6 +70,7 @@ def count_abort_fail_peers(
     if not isinstance(raw, (list, tuple)):
         return 0
     return len([p for p in dict.fromkeys(list(raw)) if p])
+
 
 def format_residual_ops_hint(
     peers: Sequence[str] | None,
@@ -119,6 +123,7 @@ def format_residual_ops_hint(
         "(CFT best-effort; still fails while ABORT dropped)"
     )
 
+
 @dataclass(frozen=True, slots=True)
 class StrongVersion:
     logical_ts: int
@@ -148,6 +153,7 @@ class StrongVersion:
             op_id=str(raw.get("op_id") or ""),
         )
 
+
 @dataclass(slots=True)
 class StrongPending:
     """Invisible prepare slot — must not be served by get/list."""
@@ -161,11 +167,13 @@ class StrongPending:
     expires_at: float
     pre_commit_backup: GlobalCacheEntry | None = None
 
+
 @dataclass(frozen=True, slots=True)
 class PrepareAck:
     node_id: str
     ok: bool
     reason: str = ""
+
 
 @dataclass(frozen=True, slots=True)
 class CommitAck:
@@ -173,6 +181,7 @@ class CommitAck:
     ok: bool
     applied: bool = False
     reason: str = ""
+
 
 class StrongPeerTransport(Protocol):
     """Minimal peer RPC surface used by the coordinator (in-process or fabric)."""
@@ -213,6 +222,7 @@ class StrongPeerTransport(Protocol):
         timeout: float,
     ) -> bool: ...
 
+
 def _attach_strong_version(
     metadata: CacheMetadata, version: StrongVersion
 ) -> CacheMetadata:
@@ -231,6 +241,7 @@ def _attach_strong_version(
         size_estimate_bytes=metadata.size_estimate_bytes,
     )
 
+
 def _entry_strong_version(entry: GlobalCacheEntry) -> StrongVersion | None:
     meta = getattr(entry, "metadata", None)
     if meta is None:
@@ -240,14 +251,17 @@ def _entry_strong_version(entry: GlobalCacheEntry) -> StrongVersion | None:
         return StrongVersion.from_dict(ap.get("strong_version"))
     return None
 
+
 def _entry_op_id(entry: GlobalCacheEntry) -> str | None:
     sv = _entry_strong_version(entry)
     return sv.op_id if sv else None
+
 
 def majority_quorum(n: int) -> int:
     if n <= 0:
         return 0
     return n // 2 + 1
+
 
 @dataclass(slots=True)
 class StrongLocalBackend:
@@ -331,9 +345,7 @@ class StrongLocalBackend:
             # Expired prepare must not become a late visible commit.
             if pending.expires_at <= time.time():
                 del self._pending[op_id]
-                return CommitAck(
-                    self.node_id, False, applied=False, reason="expired"
-                )
+                return CommitAck(self.node_id, False, applied=False, reason="expired")
 
             ks = self._key_str(pending.key)
             current = self._visible.get(ks)
@@ -448,6 +460,7 @@ class StrongLocalBackend:
     def backups_count(self) -> int:
         """Pre-commit backups retained for live visible/pending ops (orphan GC on commit/abort)."""
         return len(self._backups)
+
 
 @dataclass(slots=True)
 class StrongPutCoordinator:
@@ -916,7 +929,9 @@ class StrongPutCoordinator:
                 "attempts": 0,
                 "error": "op_id required",
             }
-        requested = list(peers) if peers is not None else list(self.last_abort_fail_peers)
+        requested = (
+            list(peers) if peers is not None else list(self.last_abort_fail_peers)
+        )
         requested = [p for p in dict.fromkeys(requested) if p]
         # Self is never ABORTed via peer transport; local.abort handles it.
         # Client RPC may land on the residual peer (peers=[self]) — that must
@@ -936,10 +951,7 @@ class StrongPutCoordinator:
                 if not pending:
                     break
                 results = await asyncio.gather(
-                    *[
-                        self._abort_peer(p, oid, key, sv, _count=False)
-                        for p in pending
-                    ],
+                    *[self._abort_peer(p, oid, key, sv, _count=False) for p in pending],
                     return_exceptions=True,
                 )
                 still: set[str] = set()
@@ -1014,6 +1026,7 @@ class StrongPutCoordinator:
             if _count:
                 self.aborts_peer_fail += 1
             return False
+
 
 @dataclass(slots=True)
 class InProcessStrongTransport:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+
 def test_t96_live_doctor_detail_assert() -> None:
     text = (
         Path(__file__).resolve().parents[2]
@@ -16,12 +17,14 @@ def test_t96_live_doctor_detail_assert() -> None:
     assert "test_distlab_live_doctor_strong_audit_e2e" in text
     assert "test_distlab_live_residual_ops_hint_enriched_e2e" in text
 
+
 def test_t96_phase_84_honesty() -> None:
     assert "Phase 84" in (
         Path(__file__).resolve().parents[2]
         / "docs"
         / "SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md"
     ).read_text(encoding="utf-8")
+
 
 def test_t96_plan_and_ledger() -> None:
     root = Path(__file__).resolve().parents[2]

@@ -13,6 +13,7 @@ from .block import Block
 from .blockchain import Blockchain
 from .blockchain_types import ConsensusConfig, ConsensusType, CryptoConfig
 
+
 @dataclass(slots=True)
 class BlockchainStore:
     """Persist and load blockchains from sqlite."""

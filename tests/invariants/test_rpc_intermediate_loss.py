@@ -6,6 +6,7 @@ from mpreg.core.intermediate_results import IntermediateResultCollector
 from mpreg.testing.faults import FaultInjector
 from mpreg.testing.oracles import RpcOracle, RpcStreamEvent
 
+
 def test_partial_levels_survived_under_loss() -> None:
     """When later hops drop, clients still observe completed levels monotonically."""
     inj = FaultInjector(seed=7, control_drop_rate=0.0)

@@ -16,6 +16,7 @@ from mpreg.datastructures.vector_clock import VectorClock
 from mpreg.fabric.consensus import StateType, StateValue
 from mpreg.server import MPREGServer
 
+
 async def debug_consensus_integration():
     """Debug the consensus integration step by step."""
     logger.info("🔍 Starting consensus integration debug")
@@ -137,6 +138,7 @@ async def debug_consensus_integration():
             await server2.shutdown_async()
         except Exception as e:
             logger.warning(f"Shutdown error: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(debug_consensus_integration())

@@ -13,6 +13,7 @@ from statistics import median
 type Seconds = float
 type NodeUrl = str
 
+
 @dataclass(frozen=True, slots=True)
 class ConnectFailure:
     url: str
@@ -22,6 +23,7 @@ class ConnectFailure:
     elapsed_seconds: Seconds
     error: str
 
+
 @dataclass(frozen=True, slots=True)
 class ConnectSuccess:
     url: str
@@ -29,6 +31,7 @@ class ConnectSuccess:
     attempts_total: int
     timeout_seconds: Seconds
     elapsed_seconds: Seconds
+
 
 @dataclass(frozen=True, slots=True)
 class DiscoveryLoopSnapshot:
@@ -46,6 +49,7 @@ class DiscoveryLoopSnapshot:
     peer_directory_discovered: int
     pending_catalog_updates: int
     interval_seconds: Seconds
+
 
 CONNECT_FAILURE_RE = re.compile(
     r"\[DIAG_CONN\] connect_failure url=(?P<url>\S+) "
@@ -72,11 +76,13 @@ DISCOVERY_LOOP_RE = re.compile(
     r"interval=(?P<interval>[0-9.]+)s$"
 )
 
+
 def _parse_args() -> Path:
     parser = argparse.ArgumentParser(description="Analyze discovery diagnostic log")
     parser.add_argument("--log", required=True, help="Path to pytest run log")
     args = parser.parse_args()
     return Path(str(args.log))
+
 
 def _classify_failure(error: str) -> str:
     lower_error = error.lower()
@@ -90,12 +96,14 @@ def _classify_failure(error: str) -> str:
         return "max_retries"
     return "other"
 
+
 def _percentile(values: list[float], p: float) -> float:
     if not values:
         return 0.0
     ordered = sorted(values)
     index = max(0, min(len(ordered) - 1, round((len(ordered) - 1) * p)))
     return ordered[index]
+
 
 def main() -> int:
     log_path = _parse_args()
@@ -251,6 +259,7 @@ def main() -> int:
             )
 
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

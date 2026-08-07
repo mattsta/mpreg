@@ -17,9 +17,11 @@ from mpreg.core.native_codec import canonical_dumps
 SIGNATURE_KEY = "mpreg_gossip_hmac"
 SIGNATURE_ALG = "hmac-sha256"
 
+
 def _canonical_bytes(payload: Mapping[str, Any]) -> bytes:
     body = {k: v for k, v in payload.items() if k != SIGNATURE_KEY}
     return canonical_dumps(body)
+
 
 def sign_gossip_payload(payload: Mapping[str, Any], secret: str) -> dict[str, Any]:
     """Return a copy of payload with HMAC field attached."""
@@ -31,6 +33,7 @@ def sign_gossip_payload(payload: Mapping[str, Any], secret: str) -> dict[str, An
     out = dict(payload)
     out[SIGNATURE_KEY] = f"{SIGNATURE_ALG}:{digest}"
     return out
+
 
 def verify_gossip_payload(payload: Mapping[str, Any], secret: str) -> bool:
     """Verify HMAC on payload.
@@ -51,6 +54,7 @@ def verify_gossip_payload(payload: Mapping[str, Any], secret: str) -> bool:
     ).hexdigest()
     return hmac.compare_digest(expected, digest)
 
+
 def envelope_dict_with_hmac(
     payload: Mapping[str, Any],
     *,
@@ -62,6 +66,7 @@ def envelope_dict_with_hmac(
     if require_hmac and secret:
         body = sign_gossip_payload(body, secret)
     return {"role": "fabric-gossip", "payload": body}
+
 
 def accept_gossip_payload(
     payload: Mapping[str, Any],

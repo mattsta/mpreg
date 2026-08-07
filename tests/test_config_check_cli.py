@@ -5,6 +5,7 @@ from click.testing import CliRunner
 
 from mpreg.cli.main import cli
 
+
 def test_config_check_dev_profile() -> None:
     runner = CliRunner()
     result = runner.invoke(
@@ -13,6 +14,7 @@ def test_config_check_dev_profile() -> None:
     # dev profile may warn about missing monitoring auth → exit 2
     assert result.exit_code in (0, 2)
     assert "groups" in result.output or "identity" in result.output
+
 
 def test_config_check_explain_includes_guide() -> None:
     runner = CliRunner()
@@ -58,7 +60,10 @@ def test_config_check_explain_includes_guide() -> None:
     sc_guide = str(guide.get("strong_cache") or "")
     assert "residual_ops_hint" in sc_guide
     assert "cache-strong-retry-abort" in sc_guide
-    assert "abort_fail_peer_count" in sc_guide or "mpreg_strong_abort_fail_peers" in sc_guide
+    assert (
+        "abort_fail_peer_count" in sc_guide
+        or "mpreg_strong_abort_fail_peers" in sc_guide
+    )
     assert "doctor" in sc_guide.lower()
     assert "strong_doctor_json_residual_fields" in sc_guide or (
         "int" in sc_guide and "list" in sc_guide
@@ -67,6 +72,7 @@ def test_config_check_explain_includes_guide() -> None:
     assert "not" in sc_guide.lower() and (
         "auto-heal" in sc_guide.lower() or "ops-driven" in sc_guide.lower()
     )
+
 
 def test_config_check_strong_enabled_honesty_warnings(tmp_path: Path) -> None:
     """T20: enabling STRONG surfaces put-only MVP honesty + mon/cache deps."""
@@ -103,6 +109,7 @@ monitoring_enabled = false
     assert "put-only" in warns or "1012" in warns
     assert "metrics/strong" in warns or "monitoring_enabled" in warns
 
+
 def test_config_check_shared_audit_honesty_warnings(tmp_path: Path) -> None:
     """T20: shared audit without path / mon warns honestly."""
     cfg = tmp_path / "audit.toml"
@@ -134,6 +141,7 @@ monitoring_enabled = false
     assert "mgmt_audit_path" in warns or "jsonl" in warns
     assert "siem" in warns or "g-set" in warns or "bft" in warns
 
+
 def test_config_check_report_includes_critical_warnings_field() -> None:
     """R3: JSON report always includes critical_warnings list."""
     runner = CliRunner()
@@ -144,6 +152,7 @@ def test_config_check_report_includes_critical_warnings_field() -> None:
     data = json.loads(result.output)
     assert "critical_warnings" in data
     assert isinstance(data["critical_warnings"], list)
+
 
 def test_config_check_federated_profile_strict_exits_2() -> None:
     """R3: stock federated.toml still has change-me → strict fails."""

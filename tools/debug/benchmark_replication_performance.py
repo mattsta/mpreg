@@ -17,6 +17,7 @@ from tests.test_production_raft_integration import (
     TestProductionRaftIntegration,
 )
 
+
 async def benchmark_replication_performance():
     """Benchmark replication performance with concurrent I/O."""
 
@@ -106,6 +107,7 @@ async def benchmark_replication_performance():
         finally:
             for node in nodes.values():
                 await node.stop()
+
 
 if __name__ == "__main__":
     asyncio.run(benchmark_replication_performance())

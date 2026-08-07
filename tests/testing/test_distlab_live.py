@@ -22,6 +22,7 @@ from mpreg.testing.distlab.live import (
 )
 from tests.conftest import AsyncTestContext
 
+
 @pytest.mark.asyncio
 async def test_distlab_live_strong_happy_3(test_context: AsyncTestContext) -> None:
     with port_range_context(3, "servers") as ports:
@@ -52,6 +53,7 @@ async def test_distlab_live_strong_happy_3(test_context: AsyncTestContext) -> No
         )
         assert check.ok, check.violations
         assert sut.state.pending_count() == 0
+
 
 @pytest.mark.asyncio
 async def test_distlab_live_strong_multi_origin_keys(
@@ -84,18 +86,19 @@ async def test_distlab_live_strong_multi_origin_keys(
         check = default_strong_checkers().check(history, state=sut.snapshot_state())
         assert check.ok, check.violations
 
+
 @pytest.mark.asyncio
 async def test_distlab_live_strong_disabled_1012(
     test_context: AsyncTestContext,
 ) -> None:
     """When cache_strong_enabled is off, STRONG put fails closed (1012)."""
-    from mpreg.core.config import MPREGSettings
-    from mpreg.core.errors import MpregErrorCode
     from mpreg.core.cache_models import (
         CacheOptions,
         ConsistencyLevel,
         GlobalCacheKey,
     )
+    from mpreg.core.config import MPREGSettings
+    from mpreg.core.errors import MpregErrorCode
 
     with port_range_context(1, "servers") as ports:
         s = MPREGServer(
@@ -122,6 +125,7 @@ async def test_distlab_live_strong_disabled_1012(
         )
         assert res.success is False
         assert res.error_code == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY)
+
 
 @pytest.mark.asyncio
 async def test_distlab_live_strong_peer_loss_residual(
@@ -160,6 +164,7 @@ async def test_distlab_live_strong_peer_loss_residual(
         )
         assert check.ok, check.violations
 
+
 @pytest.mark.asyncio
 async def test_distlab_live_audit_multi_origin(
     test_context: AsyncTestContext,
@@ -170,15 +175,9 @@ async def test_distlab_live_audit_multi_origin(
             sp, mp = ports[0:3], ports[3:6]
             url0 = f"ws://127.0.0.1:{sp[0]}"
             servers = [
-                MPREGServer(
-                    audit_settings(sp[0], mp[0], "A0", td)
-                ),
-                MPREGServer(
-                    audit_settings(sp[1], mp[1], "A1", td, peers=[url0])
-                ),
-                MPREGServer(
-                    audit_settings(sp[2], mp[2], "A2", td, peers=[url0])
-                ),
+                MPREGServer(audit_settings(sp[0], mp[0], "A0", td)),
+                MPREGServer(audit_settings(sp[1], mp[1], "A1", td, peers=[url0])),
+                MPREGServer(audit_settings(sp[2], mp[2], "A2", td, peers=[url0])),
             ]
             test_context.servers.extend(servers)
             tasks = [asyncio.create_task(s.server()) for s in servers]
@@ -190,6 +189,7 @@ async def test_distlab_live_audit_multi_origin(
             for s in servers:
                 apply_node_drain(s, draining=True, reason="distlab-live")
             await wait_audit_cluster_events(servers, min_events=3, timeout=20.0)
+
 
 @pytest.mark.asyncio
 async def test_distlab_live_coexistence_strong_audit(
@@ -246,6 +246,7 @@ async def test_distlab_live_coexistence_strong_audit(
             assert res2.success, res2.error_message
             assert sut.state.pending_count() == 0
 
+
 @pytest.mark.asyncio
 async def test_distlab_live_strong_happy_4(test_context: AsyncTestContext) -> None:
     """T13: 4-node live STRONG majority put (Q=3)."""
@@ -253,9 +254,7 @@ async def test_distlab_live_strong_happy_4(test_context: AsyncTestContext) -> No
         url0 = f"ws://127.0.0.1:{ports[0]}"
         servers = [
             MPREGServer(
-                strong_settings(
-                    ports[0], "F0", replica_factor=4, min_replicas=3
-                )
+                strong_settings(ports[0], "F0", replica_factor=4, min_replicas=3)
             ),
             MPREGServer(
                 strong_settings(
@@ -294,6 +293,7 @@ async def test_distlab_live_strong_happy_4(test_context: AsyncTestContext) -> No
         )
         assert check.ok, check.violations
         assert sut.state.pending_count() == 0
+
 
 @pytest.mark.asyncio
 async def test_distlab_live_strong_mid_put_peer_kill(
@@ -334,6 +334,7 @@ async def test_distlab_live_strong_mid_put_peer_kill(
         assert check.ok, check.violations
         assert sut.state.pending_count() == 0
 
+
 @pytest.mark.asyncio
 async def test_distlab_live_audit_late_joiner(
     test_context: AsyncTestContext,
@@ -357,9 +358,7 @@ async def test_distlab_live_audit_late_joiner(
                 apply_node_drain(s, draining=True, reason="late-pre")
             await wait_audit_cluster_events(early, min_events=2, timeout=18.0)
 
-            late = MPREGServer(
-                audit_settings(sp[2], mp[2], "LJ2", td, peers=[url0])
-            )
+            late = MPREGServer(audit_settings(sp[2], mp[2], "LJ2", td, peers=[url0]))
             test_context.servers.append(late)
             test_context.tasks.append(asyncio.create_task(late.server()))
             await asyncio.sleep(1.0)
@@ -367,6 +366,7 @@ async def test_distlab_live_audit_late_joiner(
             await wait_gossip_connected(all_servers, timeout=14.0)
             # Late node should see prior cluster events via gossip/reconcile
             await wait_audit_cluster_events(all_servers, min_events=2, timeout=22.0)
+
 
 @pytest.mark.asyncio
 async def test_distlab_live_strong_metrics_e2e(
@@ -514,10 +514,15 @@ async def test_distlab_live_strong_metrics_e2e(
                 assert int(body.get("visible_count") or 0) >= 1  # successful put
                 # T39/T40: retry_abort counters present (0 until ops call)
                 assert "retry_abort_calls" in counters or "retry_abort_calls" in body
-                assert int(
-                    counters.get("retry_abort_calls", body.get("retry_abort_calls", 0))
-                    or 0
-                ) >= 0
+                assert (
+                    int(
+                        counters.get(
+                            "retry_abort_calls", body.get("retry_abort_calls", 0)
+                        )
+                        or 0
+                    )
+                    >= 0
+                )
                 assert "last_abort_fail_peers" in body
                 # T57: residual_ops_hint always present; empty after clean put
                 assert "residual_ops_hint" in body
@@ -530,16 +535,22 @@ async def test_distlab_live_strong_metrics_e2e(
             retry_out = await cm.strong_retry_abort(
                 key, op_id="live-noop-retry", peers=[]
             )
-            assert retry_out.get("cleared") is not False or retry_out.get("attempts") == 0
+            assert (
+                retry_out.get("cleared") is not False or retry_out.get("attempts") == 0
+            )
             st2 = cm.strong_status()
             assert int(st2.get("retry_abort_calls") or 0) >= 1
             async with session.get(f"{base}/metrics/strong") as resp:
                 data = await resp.json()
                 body2 = data.get("strong") or {}
                 c2 = body2.get("counters") or {}
-                assert int(
-                    c2.get("retry_abort_calls", body2.get("retry_abort_calls", 0)) or 0
-                ) >= 1
+                assert (
+                    int(
+                        c2.get("retry_abort_calls", body2.get("retry_abort_calls", 0))
+                        or 0
+                    )
+                    >= 1
+                )
             async with session.get(f"{base}/metrics/prometheus") as resp:
                 text = await resp.text()
                 assert "mpreg_strong_gets_refused_total" in text
@@ -573,9 +584,7 @@ async def test_distlab_live_strong_metrics_e2e(
                         "mpreg_strong_cap_pending_ttl_clears_residual_l1{"
                     ):
                         assert line.rstrip().endswith(" 0")
-                    if line.startswith(
-                        "mpreg_strong_cap_retry_abort_ops_driven{"
-                    ):
+                    if line.startswith("mpreg_strong_cap_retry_abort_ops_driven{"):
                         assert line.rstrip().endswith(" 1")
 
         # T47: client RPC retry_abort also bumps counters (ops-driven path)
@@ -614,6 +623,7 @@ async def test_distlab_live_strong_metrics_e2e(
                 # T57: residual_ops_hint still present after client RPC path
                 assert "residual_ops_hint" in body3
                 assert isinstance(body3.get("residual_ops_hint"), str)
+
 
 @pytest.mark.asyncio
 async def test_distlab_live_residual_ops_hint_enriched_e2e(
@@ -790,6 +800,7 @@ async def test_distlab_live_residual_ops_hint_enriched_e2e(
         assert isinstance(dfields["last_abort_fail_op_id"], str)
         assert dfields["residual_ops_hint"] == hint
 
+
 @pytest.mark.asyncio
 async def test_distlab_live_audit_metrics_e2e(
     test_context: AsyncTestContext,
@@ -857,9 +868,7 @@ async def test_distlab_live_audit_metrics_e2e(
                             assert line.rstrip().endswith(" 0")
                         if line.startswith("mpreg_shared_audit_cap_bft{"):
                             assert line.rstrip().endswith(" 0")
-                        if line.startswith(
-                            "mpreg_shared_audit_cap_gset_epidemic{"
-                        ):
+                        if line.startswith("mpreg_shared_audit_cap_gset_epidemic{"):
                             assert line.rstrip().endswith(" 1")
                         if line.startswith(
                             "mpreg_shared_audit_cap_infinite_retention{"
@@ -869,6 +878,7 @@ async def test_distlab_live_audit_metrics_e2e(
                             "mpreg_shared_audit_cap_linearizable_cluster_ops{"
                         ):
                             assert line.rstrip().endswith(" 0")
+
 
 @pytest.mark.asyncio
 async def test_distlab_live_doctor_strong_audit_e2e(
@@ -963,7 +973,9 @@ async def test_distlab_live_doctor_strong_audit_e2e(
                     # T96: doctor detail always includes peer count field
                     assert "abort_fail_peer_count=0" in detail
                     strong = data.get("strong") or {}
-                    assert int((strong.get("counters") or {}).get("gets_refused", 0)) >= 1
+                    assert (
+                        int((strong.get("counters") or {}).get("gets_refused", 0)) >= 1
+                    )
                     assert int((strong.get("counters") or {}).get("puts_ok", 0)) >= 1
                     caps = strong.get("capabilities") or {}
                     assert caps.get("get_quorum") is False

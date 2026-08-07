@@ -13,6 +13,7 @@ from typing import Any, Final
 
 from mpreg.core.model import MPREGException, RPCError
 
+
 class MpregErrorCode(IntEnum):
     """Stable public error codes (do not renumber existing members)."""
 
@@ -45,6 +46,7 @@ class MpregErrorCode(IntEnum):
     DISCOVERY_RATE_LIMITED = 1102
     # Catch-all
     INTERNAL = 1099
+
 
 PUBLIC_ERROR_CODES: Final[frozenset[int]] = frozenset(
     int(c) for c in MpregErrorCode if int(c) >= 1000
@@ -99,6 +101,7 @@ _LEGACY_WIRE_REMAP: dict[tuple[int, str], MpregErrorCode] = {
     # (code, message_substring_lower) → new code
 }
 
+
 def _coerce_enum(code: MpregErrorCode | int) -> MpregErrorCode:
     if isinstance(code, MpregErrorCode):
         return code
@@ -106,6 +109,7 @@ def _coerce_enum(code: MpregErrorCode | int) -> MpregErrorCode:
         return MpregErrorCode(int(code))
     except ValueError:
         return MpregErrorCode.UNKNOWN
+
 
 @dataclass
 class MpregError(MPREGException):
@@ -150,6 +154,7 @@ class MpregError(MPREGException):
         """Canonical wire ``RPCError`` (prefer this over constructing RPCError)."""
         return self.rpc_error
 
+
 def rpc_error(
     code: MpregErrorCode | int,
     *,
@@ -162,6 +167,7 @@ def rpc_error(
     return MpregError.of(
         code, message=message, details=details, retryable=retryable, **context
     ).to_rpc_error()
+
 
 def as_exception(
     code: MpregErrorCode | int,
@@ -176,6 +182,7 @@ def as_exception(
         code, message=message, details=details, retryable=retryable, **context
     )
 
+
 def command_not_found(name: str, **context: Any) -> MpregError:
     return MpregError.of(
         MpregErrorCode.COMMAND_NOT_FOUND,
@@ -183,6 +190,7 @@ def command_not_found(name: str, **context: Any) -> MpregError:
         command_name=name,
         **context,
     )
+
 
 def version_mismatch(function_id: str, constraint: str, **context: Any) -> MpregError:
     return MpregError.of(
@@ -193,6 +201,7 @@ def version_mismatch(function_id: str, constraint: str, **context: Any) -> Mpreg
         **context,
     )
 
+
 def hop_budget_exceeded(hop_budget: int, **context: Any) -> MpregError:
     return MpregError.of(
         MpregErrorCode.HOP_BUDGET_EXCEEDED,
@@ -200,6 +209,7 @@ def hop_budget_exceeded(hop_budget: int, **context: Any) -> MpregError:
         hop_budget=hop_budget,
         **context,
     )
+
 
 def route_loop_detected(**context: Any) -> MpregError:
     """Fail-closed when a node already appears on the fabric routing path."""
@@ -209,12 +219,14 @@ def route_loop_detected(**context: Any) -> MpregError:
         **context,
     )
 
+
 def policy_denied(reason: str, **context: Any) -> MpregError:
     return MpregError.of(
         MpregErrorCode.POLICY_DENIED,
         details=reason,
         **context,
     )
+
 
 def route_not_found(target: str, **context: Any) -> MpregError:
     """No fabric/cluster route to *target*.
@@ -237,6 +249,7 @@ def route_not_found(target: str, **context: Any) -> MpregError:
         **context,
     )
 
+
 def timeout_error(details: str, **context: Any) -> MpregError:
     return MpregError.of(
         MpregErrorCode.TIMEOUT,
@@ -244,6 +257,7 @@ def timeout_error(details: str, **context: Any) -> MpregError:
         retryable=True,
         **context,
     )
+
 
 def unavailable(details: str, **context: Any) -> MpregError:
     return MpregError.of(
@@ -253,12 +267,14 @@ def unavailable(details: str, **context: Any) -> MpregError:
         **context,
     )
 
+
 def invalid_argument(details: str, **context: Any) -> MpregError:
     return MpregError.of(
         MpregErrorCode.INVALID_ARGUMENT,
         details=details,
         **context,
     )
+
 
 def internal_error(details: str | None = None, **context: Any) -> MpregError:
     return MpregError.of(
@@ -268,12 +284,14 @@ def internal_error(details: str | None = None, **context: Any) -> MpregError:
         **context,
     )
 
+
 def protocol_error(details: str, **context: Any) -> MpregError:
     return MpregError.of(
         MpregErrorCode.PROTOCOL,
         details=details,
         **context,
     )
+
 
 def discovery_access_denied(details: str, **context: Any) -> MpregError:
     return MpregError.of(
@@ -283,6 +301,7 @@ def discovery_access_denied(details: str, **context: Any) -> MpregError:
         **context,
     )
 
+
 def discovery_rate_limited(details: str, **context: Any) -> MpregError:
     return MpregError.of(
         MpregErrorCode.DISCOVERY_RATE_LIMITED,
@@ -291,6 +310,7 @@ def discovery_rate_limited(details: str, **context: Any) -> MpregError:
         retryable=True,
         **context,
     )
+
 
 def _legacy_remap_code(code: int, message: str, details: str) -> int:
     """Map historical colliding wire codes onto the public namespace."""
@@ -325,6 +345,7 @@ def _legacy_remap_code(code: int, message: str, details: str) -> int:
     if code == 500:
         return int(MpregErrorCode.INTERNAL)
     return code
+
 
 def map_exception(exc: BaseException) -> MpregError:
     """Map any exception to a structured ``MpregError`` (never returns None)."""
@@ -393,6 +414,7 @@ def map_exception(exc: BaseException) -> MpregError:
             retryable=False,
         )
     return internal_error(text, exception_type=name)
+
 
 def error_code_catalog() -> list[dict[str, Any]]:
     """Language-neutral catalog of public error codes."""

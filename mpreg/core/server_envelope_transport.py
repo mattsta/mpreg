@@ -19,6 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from mpreg.core.connection import Connection
     from mpreg.server import MPREGServer
 
+
 @dataclass(slots=True)
 class ServerEnvelopeTransport:
     """Deliver serialized envelopes over MPREG server peer connections."""

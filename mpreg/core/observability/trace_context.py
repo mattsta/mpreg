@@ -24,18 +24,22 @@ _current_tracestate: ContextVar[str | None] = ContextVar(
     "mpreg_current_tracestate", default=None
 )
 
+
 def generate_trace_id() -> str:
     """Return a 16-byte trace id as 32 lowercase hex characters."""
     return secrets.token_hex(16)
+
 
 def generate_span_id() -> str:
     """Return an 8-byte span id as 16 lowercase hex characters."""
     return secrets.token_hex(8)
 
+
 def generate_traceparent(*, sampled: bool = True) -> str:
     """Build a W3C ``traceparent`` header value (version 00)."""
     flags = "01" if sampled else "00"
     return f"00-{generate_trace_id()}-{generate_span_id()}-{flags}"
+
 
 def extract_traceparent(metadata: Mapping[str, Any] | None) -> str | None:
     if not metadata:
@@ -45,6 +49,7 @@ def extract_traceparent(metadata: Mapping[str, Any] | None) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
 
 def ensure_traceparent(metadata: MutableMapping[str, Any] | None = None) -> str:
     """Return existing traceparent or create one; mutate metadata when provided."""
@@ -57,12 +62,15 @@ def ensure_traceparent(metadata: MutableMapping[str, Any] | None = None) -> str:
     meta[TRACEPARENT_KEY] = tp
     return tp
 
+
 def get_current_traceparent() -> str | None:
     """Return the task-local ingress/outbound traceparent if bound."""
     return _current_traceparent.get()
 
+
 def get_current_tracestate() -> str | None:
     return _current_tracestate.get()
+
 
 @contextmanager
 def bind_current_trace(
@@ -78,6 +86,7 @@ def bind_current_trace(
     finally:
         _current_traceparent.reset(token_tp)
         _current_tracestate.reset(token_ts)
+
 
 def inject_trace_metadata(
     metadata: MutableMapping[str, Any] | None = None,

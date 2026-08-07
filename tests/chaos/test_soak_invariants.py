@@ -16,6 +16,7 @@ from mpreg.fabric.route_control import (
 from mpreg.testing.faults import FaultInjector, assert_no_routing_loop
 from mpreg.testing.oracles import RaftOracle, RoutingOracle
 
+
 def test_short_soak_routing_and_faults() -> None:
     """Run a compressed soak loop (~1s) asserting zero invariant violations."""
     inj = FaultInjector(seed=99)

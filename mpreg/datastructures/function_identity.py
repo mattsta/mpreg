@@ -7,6 +7,7 @@ from .type_aliases import FunctionId, FunctionName, FunctionVersion
 
 _VERSION_RE = re.compile(r"^v?\d+(\.\d+){0,2}$")
 
+
 @dataclass(frozen=True, order=True, slots=True)
 class SemanticVersion:
     major: int
@@ -40,6 +41,7 @@ class SemanticVersion:
             int(payload["minor"]),
             int(payload["patch"]),
         )
+
 
 @dataclass(frozen=True, slots=True)
 class VersionConstraint:
@@ -153,6 +155,7 @@ class VersionConstraint:
             include_max=bool(payload.get("include_max", True)),
         )
 
+
 @dataclass(frozen=True, slots=True)
 class FunctionIdentity:
     name: FunctionName
@@ -174,6 +177,7 @@ class FunctionIdentity:
             version=SemanticVersion.parse(payload["version"]),
         )
 
+
 def _names_compatible(selector_name: FunctionName, identity_name: FunctionName) -> bool:
     """Exact match, or bare leaf equals the other side's leaf (FQN-aware).
 
@@ -189,6 +193,7 @@ def _names_compatible(selector_name: FunctionName, identity_name: FunctionName) 
     if "." not in selector_name and sel_leaf == id_leaf:
         return True
     return bool("." not in identity_name and sel_leaf == id_leaf)
+
 
 @dataclass(frozen=True, slots=True)
 class FunctionSelector:

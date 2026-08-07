@@ -8,6 +8,7 @@ from collections import deque
 from dataclasses import asdict, dataclass
 from typing import Any
 
+
 @dataclass(frozen=True, slots=True)
 class RouteDecisionRecord:
     timestamp: float
@@ -25,6 +26,7 @@ class RouteDecisionRecord:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+
 # Reasons that mean "no deliverable path" (observable blackhole / unreachable).
 UNREACHABLE_REASONS: frozenset[str] = frozenset(
     {
@@ -39,6 +41,7 @@ UNREACHABLE_REASONS: frozenset[str] = frozenset(
         "no_match",
     }
 )
+
 
 class RouteDecisionLog:
     """Thread-safe fixed-size log of route decisions."""
@@ -105,11 +108,14 @@ class RouteDecisionLog:
         with self._lock:
             return self._blackhole_count
 
+
 # Process-wide default log used by FabricRouter instances that share it.
 _DEFAULT_LOG = RouteDecisionLog(maxlen=512)
 
+
 def get_default_route_decision_log() -> RouteDecisionLog:
     return _DEFAULT_LOG
+
 
 def make_record_from_route(
     *,

@@ -17,6 +17,7 @@ from mpreg.fabric.raft_transport import (
     FabricRaftTransportHooks,
 )
 
+
 class LoopbackRaftNetwork:
     def __init__(self) -> None:
         self.nodes: dict[str, FabricRaftTransport] = {}
@@ -55,6 +56,7 @@ class LoopbackRaftNetwork:
     def resolve_cluster(self, node_id: str) -> str | None:
         return self.node_clusters.get(node_id)
 
+
 @pytest.mark.asyncio
 async def test_raft_leader_election_single_node() -> None:
     raft = RaftBasedLeaderElection(cluster_id="cluster-a")
@@ -62,6 +64,7 @@ async def test_raft_leader_election_single_node() -> None:
     assert leader == "cluster-a"
     assert await raft.is_leader("namespace") is True
     await raft.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_raft_leader_election_multi_node_fabric_transport() -> None:

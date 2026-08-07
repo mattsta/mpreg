@@ -35,6 +35,7 @@ from mpreg.core.caching import (
     create_s4lru_cache_manager,
 )
 
+
 @contextmanager
 def managed_cache(cache_manager):
     """Context manager to ensure proper cleanup of cache managers."""
@@ -43,6 +44,7 @@ def managed_cache(cache_manager):
     finally:
         # Clean up background tasks
         cache_manager.shutdown_sync()
+
 
 class TestCacheKey:
     """Test cache key generation and hashing."""
@@ -88,6 +90,7 @@ class TestCacheKey:
         assert "test_func" in key_str
         assert ":" in key_str
         assert len(key_str.split(":")) == 3
+
 
 class TestCacheEntry:
     """Test cache entry metadata and operations."""
@@ -210,6 +213,7 @@ class TestCacheEntry:
         )
         assert newer.cost_benefit_score() > older.cost_benefit_score()
 
+
 class TestCacheStatistics:
     """Test cache statistics tracking."""
 
@@ -254,6 +258,7 @@ class TestCacheStatistics:
         assert stats.misses == 0
         assert stats.evictions == 0
         assert stats.last_reset_time > old_reset_time
+
 
 class TestEvictionPolicyEngine:
     """Test eviction policy scoring algorithms."""
@@ -355,6 +360,7 @@ class TestEvictionPolicyEngine:
 
         # Lower score = higher eviction priority (less remaining time = lower score)
         assert soon_score < later_score
+
 
 class TestSmartCacheManager:
     """Test smart cache manager functionality."""
@@ -641,6 +647,7 @@ class TestSmartCacheManager:
 
         await cache.shutdown()
 
+
 class TestCacheFactoryFunctions:
     """Test cache factory functions."""
 
@@ -668,6 +675,7 @@ class TestCacheFactoryFunctions:
             assert cache.config.max_entries == 50000
             assert cache.config.eviction_policy == EvictionPolicy.COST_BASED
             assert cache.config.enable_dependency_tracking
+
 
 class TestCacheConfiguration:
     """Test cache configuration options."""
@@ -714,6 +722,7 @@ class TestCacheConfiguration:
         assert not config.enable_compression
         assert not config.enable_dependency_tracking
 
+
 class TestEvictionCandidate:
     """Test eviction candidate selection and sorting."""
 
@@ -744,6 +753,7 @@ class TestEvictionCandidate:
         # Should be sorted by score (ascending - lower scores evicted first)
         scores = [c.score for c in candidates]
         assert scores == [0.2, 0.5, 0.8]
+
 
 class TestS4LRUSegment:
     """Test S4LRU segment functionality."""
@@ -808,6 +818,7 @@ class TestS4LRUSegment:
 
         # Removing non-existent key should return False
         assert not segment.remove(key1)
+
 
 class TestS4LRUCache:
     """Test S4LRU cache algorithm."""
@@ -964,6 +975,7 @@ class TestS4LRUCache:
         for key in keys:
             assert not cache.contains(key)
 
+
 class TestS4LRUIntegration:
     """Test S4LRU integration with SmartCacheManager."""
 
@@ -1061,6 +1073,7 @@ class TestS4LRUIntegration:
         assert cache.config.enable_dependency_tracking
 
         await cache.shutdown()
+
 
 class TestS4LRUVsTraditionalLRU:
     """Test S4LRU performance vs traditional LRU."""

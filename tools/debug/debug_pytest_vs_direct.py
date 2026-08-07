@@ -8,6 +8,7 @@ import asyncio
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 async def test_simple_cluster_direct():
     """Test creating just 5 servers directly (like my debug script)."""
     print("🔧 Creating 5 servers directly...")
@@ -54,6 +55,7 @@ async def test_simple_cluster_direct():
             print(f"Shutdown error: {e}")
 
     print("✅ DIRECT TEST COMPLETED")
+
 
 async def test_simple_cluster_pytest_style():
     """Test creating 5 servers using pytest-style patterns."""
@@ -104,6 +106,7 @@ async def test_simple_cluster_pytest_style():
     finally:
         await test_context.cleanup()
 
+
 async def main():
     """Run both tests to compare."""
     print("=" * 50)
@@ -116,6 +119,7 @@ async def main():
     print("\n" + "=" * 50)
     print("\n2. PYTEST-STYLE TEST:")
     await test_simple_cluster_pytest_style()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

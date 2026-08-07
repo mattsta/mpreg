@@ -28,6 +28,7 @@ from mpreg.core.message_queue_manager import (
     QueueManagerConfiguration,
 )
 
+
 class TestMessageQueue:
     """Test core MessageQueue functionality."""
 
@@ -357,6 +358,7 @@ class TestMessageQueue:
 
         queue.shutdown_sync()
 
+
 class TestMessageQueueManager:
     """Test MessageQueueManager functionality."""
 
@@ -532,6 +534,7 @@ class TestMessageQueueManager:
 
         await manager.shutdown()
 
+
 class TestErrorHandling:
     """Test error handling and edge cases."""
 
@@ -606,6 +609,7 @@ class TestErrorHandling:
 
         await manager.shutdown()
 
+
 class TestDeduplication:
     """Test message deduplication functionality."""
 
@@ -650,6 +654,7 @@ class TestDeduplication:
         assert received_count == 1
 
         await queue.shutdown()
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

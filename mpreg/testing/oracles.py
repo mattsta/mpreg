@@ -10,6 +10,7 @@ from enum import StrEnum
 from mpreg.fabric.link_state import LinkStateMode
 from mpreg.fabric.route_control import RouteDestination, RouteTable
 
+
 class PlannerSource(StrEnum):
     """Which plane a next-hop decision came from (oracle classification)."""
 
@@ -18,6 +19,7 @@ class PlannerSource(StrEnum):
     GRAPH = "graph"
     PEER_FALLBACK = "peer_fallback"
     NONE = "none"
+
 
 @dataclass(frozen=True, slots=True)
 class ExpectedNextHop:
@@ -28,6 +30,7 @@ class ExpectedNextHop:
     allowed_next_hops: frozenset[str]
     preferred_source: PlannerSource
     must_not_use_path_vector: bool = False
+
 
 @dataclass(slots=True)
 class RoutingOracle:
@@ -215,6 +218,7 @@ class RoutingOracle:
                     f"INV-R3 residual route dest={destination} advertiser={advertiser}"
                 )
 
+
 @dataclass(slots=True)
 class RaftOracle:
     """Track leaders-per-term and commit monotonicity across a simulated cluster.
@@ -261,6 +265,7 @@ class RaftOracle:
         if self.violations:
             raise AssertionError("; ".join(self.violations))
 
+
 @dataclass(frozen=True, slots=True)
 class RpcStreamEvent:
     """One progressive/stream observation."""
@@ -268,6 +273,7 @@ class RpcStreamEvent:
     kind: str  # "partial" | "intermediate" | "final" | "error"
     level: int | None = None
     code: int | None = None
+
 
 @dataclass(slots=True)
 class RpcOracle:

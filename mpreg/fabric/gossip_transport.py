@@ -10,6 +10,7 @@ from mpreg.datastructures.type_aliases import NodeId
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .gossip import GossipMessage, GossipProtocol
 
+
 class GossipTransport(Protocol):
     def register(self, protocol: GossipProtocol) -> None: ...
 
@@ -18,6 +19,7 @@ class GossipTransport(Protocol):
     def peer_ids(self, *, exclude: NodeId | None = None) -> tuple[NodeId, ...]: ...
 
     async def send_message(self, peer_id: NodeId, message: GossipMessage) -> bool: ...
+
 
 @dataclass(slots=True)
 class InProcessGossipTransport:

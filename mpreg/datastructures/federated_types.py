@@ -54,6 +54,7 @@ type FunctionRegistry = dict[FunctionName, NodeURL]
 # FEDERATED RPC DATACLASSES
 # ============================================================================
 
+
 @dataclass(frozen=True, slots=True)
 class FederatedPropagationInfo:
     """
@@ -107,6 +108,7 @@ class FederatedPropagationInfo:
         """Check if this is a federated announcement (hop_count > 0)."""
         return self.hop_count > 0
 
+
 @dataclass(frozen=True, slots=True)
 class ServerCapabilities:
     """
@@ -147,9 +149,11 @@ class ServerCapabilities:
         """Number of resources associated with this server."""
         return len(self.resources)
 
+
 # ============================================================================
 # CROSS-DATACENTER FEDERATION DATACLASSES
 # ============================================================================
+
 
 @dataclass(frozen=True, slots=True)
 class DatacenterConfig:
@@ -160,6 +164,7 @@ class DatacenterConfig:
     base_latency_ms: int
     region_code: str
 
+
 @dataclass(frozen=True, slots=True)
 class LatencyMapEntry:
     """Latency configuration between two datacenters."""
@@ -168,9 +173,11 @@ class LatencyMapEntry:
     to_region: str
     latency_ms: int
 
+
 # ============================================================================
 # PARTITION SCENARIO DATACLASSES
 # ============================================================================
+
 
 @dataclass(frozen=True, slots=True)
 class PartitionScenarioConfig:
@@ -181,6 +188,7 @@ class PartitionScenarioConfig:
     isolation_time_ms: int
     expected_recovery_time_ms: int
 
+
 @dataclass(frozen=True, slots=True)
 class ResilientMeshConfig:
     """Configuration for resilient mesh testing."""
@@ -188,9 +196,11 @@ class ResilientMeshConfig:
     cluster_size: int
     partition_scenarios: list[PartitionScenarioConfig]
 
+
 # ============================================================================
 # TOPOLOGY COMPARISON DATACLASSES
 # ============================================================================
+
 
 @dataclass(frozen=True, slots=True)
 class TopologyComparisonConfig:
@@ -202,6 +212,7 @@ class TopologyComparisonConfig:
     topology_type: str
     expected_efficiency: float
     test_phases: list[str]
+
 
 @dataclass(frozen=True, slots=True)
 class TopologyComparisonResult:
@@ -220,6 +231,7 @@ class TopologyComparisonResult:
     expected_efficiency: float
     efficiency_ratio: float
     test_phases: list[str]
+
 
 @dataclass(frozen=True, slots=True)
 class PartitionScenarioResult:
@@ -240,9 +252,11 @@ class PartitionScenarioResult:
     propagation_recovery_rate: float
     recovery_connections_established: int
 
+
 # ============================================================================
 # HIERARCHICAL FEDERATION DATACLASSES
 # ============================================================================
+
 
 @dataclass(frozen=True, slots=True)
 class RegionConfig:
@@ -250,6 +264,7 @@ class RegionConfig:
 
     name: str
     size: int
+
 
 @dataclass(frozen=True, slots=True)
 class HierarchicalTierConfig:
@@ -264,6 +279,7 @@ class HierarchicalTierConfig:
         """Calculate total nodes in this tier."""
         return self.regions * self.nodes_per_region
 
+
 @dataclass(frozen=True, slots=True)
 class HierarchicalRegionData:
     """Data for a region within a hierarchical tier."""
@@ -272,6 +288,7 @@ class HierarchicalRegionData:
     coordinator_port: int
     servers: list  # List of MPREGServer instances
     ports: list[int]
+
 
 @dataclass(frozen=True, slots=True)
 class HierarchicalTierData:
@@ -286,9 +303,11 @@ class HierarchicalTierData:
         """Total servers across all regions in this tier."""
         return sum(len(region.servers) for region in self.regions)
 
+
 # ============================================================================
 # PLANET-SCALE FEDERATION DATACLASSES
 # ============================================================================
+
 
 @dataclass(frozen=True, slots=True)
 class ContinentalRegion:
@@ -299,6 +318,7 @@ class ContinentalRegion:
     base_port: int
     vector_clock_sync: bool
     merkle_tree_verification: bool
+
 
 @dataclass(frozen=True, slots=True)
 class ContinentalConfig:
@@ -315,6 +335,7 @@ class ContinentalConfig:
     def total_nodes(self) -> int:
         """Calculate total nodes in this continent."""
         return len(self.regions) * self.nodes_per_region
+
 
 @dataclass(frozen=True, slots=True)
 class PlanetScaleConfig:
@@ -333,6 +354,7 @@ class PlanetScaleConfig:
         """Total number of continents in the federation."""
         return len(self.continents)
 
+
 @dataclass(frozen=True, slots=True)
 class ContinentalBridge:
     """Represents a bridge between two continental leaders."""
@@ -344,6 +366,7 @@ class ContinentalBridge:
     features_enabled: tuple[str, ...]
     establishment_time_ms: float
 
+
 @dataclass(frozen=True, slots=True)
 class VectorClockData:
     """Vector clock information for distributed coordination."""
@@ -353,6 +376,7 @@ class VectorClockData:
     logical_timestamp: int
     physical_timestamp: int
 
+
 @dataclass(frozen=True, slots=True)
 class MerkleVerification:
     """Merkle tree verification data for integrity checking."""
@@ -361,6 +385,7 @@ class MerkleVerification:
     tree_depth: int
     verification_path: str
     integrity_verified: bool
+
 
 @dataclass(frozen=True, slots=True)
 class PlanetScaleFunction:
@@ -375,6 +400,7 @@ class PlanetScaleFunction:
     cache_coherence_level: str
     federation_hops: int
 
+
 @dataclass(frozen=True, slots=True)
 class PlanetScaleMetrics:
     """Comprehensive metrics for planet-scale federation."""
@@ -383,6 +409,7 @@ class PlanetScaleMetrics:
     merkle_trees_built: int
     raft_bridges_established: int
     cache_coherence_enabled: int
+
 
 @dataclass(frozen=True, slots=True)
 class CrossContinentalResult:
@@ -398,6 +425,7 @@ class CrossContinentalResult:
     def success_percentage(self) -> float:
         """Get propagation rate as percentage."""
         return self.propagation_rate * 100.0
+
 
 @dataclass(frozen=True, slots=True)
 class PlanetScaleResults:
@@ -426,6 +454,7 @@ class PlanetScaleResults:
     def propagation_percentage(self) -> float:
         """Get function propagation rate as percentage."""
         return self.function_propagation_rate * 100.0
+
 
 @dataclass(slots=True)
 class FederatedAnnouncementTracker:
@@ -467,6 +496,7 @@ class FederatedAnnouncementTracker:
     def announcement_count(self) -> int:
         """Number of announcements currently being tracked."""
         return len(self.seen_announcements)
+
 
 @dataclass(frozen=True, slots=True)
 class FederatedRPCAnnouncement:
@@ -542,9 +572,11 @@ class FederatedRPCAnnouncement:
             and not self.is_loop_back(local_node)
         )
 
+
 # ============================================================================
 # TYPE CONVERSION UTILITIES
 # ============================================================================
+
 
 def create_federated_propagation_from_primitives(
     hop_count: int, max_hops: int, announcement_id: str, original_source: str
@@ -556,6 +588,7 @@ def create_federated_propagation_from_primitives(
         announcement_id=announcement_id,
         original_source=original_source,
     )
+
 
 def create_server_capabilities_from_primitives(
     functions: tuple[str, ...],

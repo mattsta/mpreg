@@ -605,6 +605,7 @@ asyncio.run(server.server())
 from mpreg.client.client_api import MPREGClientAPI
 import asyncio
 
+
 async def main():
     async with MPREGClientAPI("ws://127.0.0.1:9001") as client:
         # Simple call
@@ -623,6 +624,7 @@ async def main():
             ]
         )
         print(f"Workflow result: {workflow}")
+
 
 asyncio.run(main())
 ```
@@ -988,7 +990,7 @@ MPREG continues evolving toward an even more comprehensive distributed computing
 
 ### 🎯 **Roadmap**
 
-**🔐 Security & Authentication** *(roadmap — not shipped as product in 0.3.0)*
+**🔐 Security & Authentication** _(roadmap — not shipped as product in 0.3.0)_
 
 - **OAuth2/OIDC Integration**: Enterprise IdP integration (not in 0.3.0; see `SECURITY.md` for current token/TLS posture)
 - **Default mTLS mesh**: Optional TLS exists for wss/tcps; full mesh-default mTLS is roadmap

@@ -18,6 +18,7 @@ from tests.conftest import AsyncTestContext
 
 pytestmark = pytest.mark.slow
 
+
 class CleanPerformanceResearch:
     """Clean performance research with minimal logging."""
 
@@ -296,6 +297,7 @@ class CleanPerformanceResearch:
 
         return results
 
+
 class TestCleanPerformanceResearch:
     """Clean performance research test suite."""
 
@@ -454,6 +456,7 @@ class TestCleanPerformanceResearch:
         assert all(r["function_success_rate"] >= 0.7 for r in comparison_results)
 
         print("✅ Topology comparison research completed")
+
 
 # Custom fixtures for clean testing
 @pytest.fixture

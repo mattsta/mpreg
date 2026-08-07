@@ -32,6 +32,7 @@ from mpreg.fabric.federation_alerting import (
 )
 from mpreg.fabric.performance_metrics import PerformanceAlert
 
+
 class TestNotificationChannels:
     """Test notification channel configurations."""
 
@@ -73,6 +74,7 @@ class TestNotificationChannels:
         assert channel.config["headers"] == headers
         assert channel.min_severity == AlertSeverity.CRITICAL
 
+
 class TestEscalationPolicies:
     """Test escalation policy configurations."""
 
@@ -92,6 +94,7 @@ class TestEscalationPolicies:
         assert policy.escalation_levels[EscalationLevel.FINAL] == escalated_channels
         assert policy.default_channels == immediate_channels
         assert policy.enabled is True
+
 
 class TestRoutingRules:
     """Test alert routing rule configurations."""
@@ -126,6 +129,7 @@ class TestRoutingRules:
         assert rule.conditions["cluster_pattern"] == "prod-.*"
         assert rule.target_channels == ["slack-prod", "webhook-monitor"]
         assert rule.priority == 20
+
 
 class TestNotificationBackends:
     """Test notification backend implementations."""
@@ -244,6 +248,7 @@ class TestNotificationBackends:
         assert await console_backend.health_check() is True
         assert await webhook_backend.health_check() is True
         assert await slack_backend.health_check() is True
+
 
 class TestFederationAlertingService:
     """Test the main federation alerting service."""
@@ -622,6 +627,7 @@ class TestFederationAlertingService:
         )  # (10+20+15+25+12)/5
         assert stats["delivery_stats"]["rate_limited"] == 5
 
+
 class TestNotificationTemplates:
     """Test notification template functionality."""
 
@@ -691,7 +697,9 @@ class TestNotificationTemplates:
         template_used = any("TEST: WARNING - cpu_usage" in call for call in print_calls)
         assert template_used
 
+
 # Integration tests
+
 
 @pytest.mark.asyncio
 async def test_complete_alerting_workflow():
@@ -827,6 +835,7 @@ async def test_complete_alerting_workflow():
     assert stats["escalation_policies"] == 1
     assert stats["delivery_stats"]["total_sent"] >= 3
     assert stats["delivery_stats"]["success_rate_percent"] > 0
+
 
 @pytest.mark.asyncio
 async def test_alerting_service_resilience():

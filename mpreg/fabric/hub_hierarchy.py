@@ -44,6 +44,7 @@ from .hubs import (
     RegionalHub,
 )
 
+
 class RoutingStrategy(Enum):
     """Routing strategies for hierarchical routing."""
 
@@ -51,6 +52,7 @@ class RoutingStrategy(Enum):
     FASTEST = "fastest"  # Minimize hop count
     BALANCED = "balanced"  # Balance latency and load
     GEOGRAPHIC = "geographic"  # Optimize for geographic proximity
+
 
 @dataclass(slots=True)
 class RoutingPolicy:
@@ -82,6 +84,7 @@ class RoutingPolicy:
     optimize_for_bandwidth: bool = True
     optimize_for_reliability: bool = True
     prefer_direct_paths: bool = True
+
 
 @dataclass(slots=True)
 class HubRoute:
@@ -136,6 +139,7 @@ class HubRoute:
 
         return base_score * load_penalty * hop_penalty * geo_penalty
 
+
 @dataclass(slots=True)
 class ZoneDefinition:
     """Defines a routing zone with its characteristics."""
@@ -189,6 +193,7 @@ class ZoneDefinition:
         # Geographic distance-based latency
         distance = self.center_coordinates.distance_to(other_zone.center_coordinates)
         return max(self.external_latency_ms, distance * 0.01)  # ~10ms per 1000km
+
 
 @dataclass(slots=True)
 class HubSelector:
@@ -601,6 +606,7 @@ class HubSelector:
                 policy_config=policy_config,
             )
 
+
 @dataclass(slots=True)
 class ZonePartitioner:
     """
@@ -830,6 +836,7 @@ class ZonePartitioner:
             distribution["global_hubs"] += len(zone.global_hubs)
 
         return dict(distribution)
+
 
 @dataclass(slots=True)
 class HierarchicalRouter:

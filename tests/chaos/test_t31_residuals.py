@@ -7,6 +7,7 @@ from mpreg.server_pkg.openapi_surface import build_monitoring_openapi
 from mpreg.testing.distlab.builtins import ensure_builtins
 from mpreg.testing.distlab.registry import resolve_preset
 
+
 def test_t31_doctor_detail_includes_abort_fail() -> None:
     ok, detail = evaluate_strong_doctor_payload(
         {
@@ -26,6 +27,7 @@ def test_t31_doctor_detail_includes_abort_fail() -> None:
     assert "abort_fail=4" in detail
     assert "cft=True" in detail
 
+
 def test_t31_openapi_has_ttl_and_counts() -> None:
     doc = build_monitoring_openapi()
     schemas = (doc.get("components") or {}).get("schemas") or {}
@@ -36,6 +38,7 @@ def test_t31_openapi_has_ttl_and_counts() -> None:
     assert "backups_count" in props
     caps = (props.get("capabilities") or {}).get("properties") or {}
     assert caps.get("pending_ttl_clears_residual_l1", {}).get("enum") == [False]
+
 
 def test_t31_ci_core_includes_all_cft_scenarios() -> None:
     ensure_builtins()
@@ -48,14 +51,12 @@ def test_t31_ci_core_includes_all_cft_scenarios() -> None:
     ):
         assert name in ci, name
 
+
 def test_t31_prometheus_alerts_include_ttl_honesty() -> None:
     from pathlib import Path
 
     path = (
-        Path(__file__).resolve().parents[2]
-        / "mpreg"
-        / "ops"
-        / "prometheus_alerts.yml"
+        Path(__file__).resolve().parents[2] / "mpreg" / "ops" / "prometheus_alerts.yml"
     )
     text = path.read_text(encoding="utf-8")
     assert "MPREGStrongCapPendingTtlClearsResidualClaimed" in text

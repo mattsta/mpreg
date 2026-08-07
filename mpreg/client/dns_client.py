@@ -8,6 +8,7 @@ from dnslib import QTYPE, RCODE, DNSRecord
 from mpreg.core.errors import map_exception
 from mpreg.datastructures.type_aliases import JsonDict
 
+
 @dataclass(frozen=True, slots=True)
 class DnsAnswer:
     name: str
@@ -23,6 +24,7 @@ class DnsAnswer:
             "rdata": self.rdata,
         }
 
+
 @dataclass(frozen=True, slots=True)
 class DnsResolveResult:
     qname: str
@@ -37,6 +39,7 @@ class DnsResolveResult:
             "rcode": self.rcode,
             "answers": [answer.to_dict() for answer in self.answers],
         }
+
 
 class MPREGDnsClient:
     def __init__(
@@ -87,6 +90,7 @@ class MPREGDnsClient:
             answers=answers,
         )
 
+
 def _dns_answers_from_response(response: DNSRecord) -> tuple[DnsAnswer, ...]:
     answers: list[DnsAnswer] = []
     for rr in response.rr:
@@ -99,6 +103,7 @@ def _dns_answers_from_response(response: DNSRecord) -> tuple[DnsAnswer, ...]:
             )
         )
     return tuple(answers)
+
 
 async def _udp_dns_query(
     host: str, port: int, qname: str, qtype: str, timeout: float
@@ -130,6 +135,7 @@ async def _udp_dns_query(
     finally:
         transport.close()
     return DNSRecord.parse(data)
+
 
 async def _tcp_dns_query(
     host: str, port: int, qname: str, qtype: str, timeout: float

@@ -17,6 +17,7 @@ from tests.port_allocator import PortAllocator
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 class RootCauseInvestigator:
     """Isolates the exact root cause of scaling failures."""
 
@@ -248,10 +249,12 @@ class RootCauseInvestigator:
         print("   • Default function auto-registration")
         print("   • Logging system being overwhelmed")
 
+
 async def main():
     """Run the root cause investigation."""
     investigator = RootCauseInvestigator()
     await investigator.run_investigation()
+
 
 if __name__ == "__main__":
     # Suppress ALL output except our prints

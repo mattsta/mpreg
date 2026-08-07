@@ -7,6 +7,7 @@ from mpreg.fabric.gossip import GossipProtocol
 from mpreg.fabric.gossip_transport import InProcessGossipTransport
 from mpreg.fabric.route_control import RouteDestination, RoutePolicy
 
+
 @pytest.mark.asyncio
 async def test_route_policy_reload_keeps_existing_routes() -> None:
     transport = InProcessGossipTransport()

@@ -24,6 +24,7 @@ from mpreg.fabric.gossip import (
     VectorClock,
 )
 
+
 async def debug_standalone_gossip_isolation():
     """
     Demonstrate the issue with standalone gossip protocols in planet scale example.
@@ -121,6 +122,7 @@ async def debug_standalone_gossip_isolation():
         await node2_consensus.stop()
         await node2_gossip.stop()
 
+
 async def demonstrate_solution_approach():
     """
     Demonstrate how server-integrated consensus would solve this.
@@ -140,6 +142,7 @@ async def demonstrate_solution_approach():
     logger.info("   - No actual message propagation between nodes")
     logger.info("   - Simulated connections that don't actually work")
 
+
 async def main():
     """Main debug analysis."""
     logger.info("🚀 Starting Planet Scale Consensus Issue Debug")
@@ -155,6 +158,7 @@ async def main():
     logger.info("   1. Use MPREG servers with real networking (recommended)")
     logger.info("   2. Implement actual networking between gossip protocols")
     logger.info("   3. Document that this is a demo with simulated networking")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -22,6 +22,7 @@ from mpreg.fabric.catalog import FunctionCatalog, FunctionEndpoint
 
 ALPHABET = string.ascii_lowercase + string.digits + "_-"
 
+
 @st.composite
 def semantic_versions(draw: st.DrawFn) -> SemanticVersion:
     return SemanticVersion(
@@ -30,12 +31,14 @@ def semantic_versions(draw: st.DrawFn) -> SemanticVersion:
         draw(st.integers(min_value=0, max_value=10)),
     )
 
+
 @st.composite
 def function_identities(draw: st.DrawFn) -> FunctionIdentity:
     name = draw(st.text(min_size=1, max_size=20, alphabet=ALPHABET))
     function_id = draw(st.text(min_size=1, max_size=20, alphabet=ALPHABET))
     version = draw(semantic_versions())
     return FunctionIdentity(name=name, function_id=function_id, version=version)
+
 
 @st.composite
 def function_resources(draw: st.DrawFn) -> frozenset[str]:
@@ -48,6 +51,7 @@ def function_resources(draw: st.DrawFn) -> frozenset[str]:
         )
     )
     return frozenset(items)
+
 
 @st.composite
 def function_endpoint(draw: st.DrawFn) -> FunctionEndpoint:
@@ -72,6 +76,7 @@ def function_endpoint(draw: st.DrawFn) -> FunctionEndpoint:
         ttl_seconds=ttl_seconds,
     )
 
+
 @st.composite
 def ordered_versions(
     draw: st.DrawFn,
@@ -79,6 +84,7 @@ def ordered_versions(
     v1 = draw(semantic_versions())
     v2 = draw(semantic_versions())
     return (v1, v2) if v1 <= v2 else (v2, v1)
+
 
 class TestFunctionCatalogProperties:
     """Property-based tests for catalog identity and selection behavior."""

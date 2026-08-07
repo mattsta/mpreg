@@ -27,6 +27,7 @@ from .type_aliases import Timestamp
 
 T = TypeVar("T")
 
+
 class MetricType(Enum):
     """Types of metrics for collection and aggregation."""
 
@@ -36,6 +37,7 @@ class MetricType(Enum):
     SUMMARY = "summary"  # Statistical summaries (quantiles)
     TIMER = "timer"  # Duration measurements with percentiles
 
+
 class AlertSeverity(Enum):
     """Alert severity levels with escalation."""
 
@@ -43,6 +45,7 @@ class AlertSeverity(Enum):
     WARNING = "warning"  # Warning conditions
     CRITICAL = "critical"  # Critical conditions requiring attention
     EMERGENCY = "emergency"  # Emergency conditions requiring immediate action
+
 
 @dataclass(frozen=True, slots=True)
 class MetricValue:
@@ -60,6 +63,7 @@ class MetricValue:
 
         if not isinstance(self.timestamp, int | float) or self.timestamp <= 0:
             raise ValueError("Timestamp must be a positive number")
+
 
 @dataclass(slots=True)
 class BoundedMovingAverage:
@@ -136,6 +140,7 @@ class BoundedMovingAverage:
                 "count": len(self._values),
                 "window_size": self.window_size,
             }
+
 
 @dataclass(slots=True)
 class BoundedPercentileTracker:
@@ -248,6 +253,7 @@ class BoundedPercentileTracker:
             self._sorted = True
             self._total_samples = 0
 
+
 @dataclass(slots=True)
 class TimeSeriesBuffer:
     """
@@ -326,6 +332,7 @@ class TimeSeriesBuffer:
 
             return initial_count - len(self._samples)
 
+
 class HealthStatus(Enum):
     """Health status enumeration with clear semantics."""
 
@@ -333,6 +340,7 @@ class HealthStatus(Enum):
     DEGRADED = "degraded"  # System operating with reduced performance
     CRITICAL = "critical"  # System operating with significant issues
     UNAVAILABLE = "unavailable"  # System not responding or offline
+
 
 @dataclass(frozen=True, slots=True)
 class HealthScore:
@@ -381,6 +389,7 @@ class HealthScore:
     def needs_attention(self) -> bool:
         """Check if health needs attention."""
         return self.status in (HealthStatus.CRITICAL, HealthStatus.UNAVAILABLE)
+
 
 @dataclass(slots=True)
 class MetricsAggregator:
@@ -451,7 +460,9 @@ class MetricsAggregator:
             self._total_samples = 0
             self._last_update = 0.0
 
+
 # Factory functions for common metric patterns
+
 
 def create_latency_aggregator(window_size: int = 100) -> MetricsAggregator:
     """Create a metrics aggregator optimized for latency measurements."""
@@ -464,6 +475,7 @@ def create_latency_aggregator(window_size: int = 100) -> MetricsAggregator:
         time_series=TimeSeriesBuffer(max_age_seconds=3600.0, max_samples=10000),
     )
 
+
 def create_throughput_aggregator(window_size: int = 60) -> MetricsAggregator:
     """Create a metrics aggregator optimized for throughput measurements."""
     return MetricsAggregator(
@@ -474,6 +486,7 @@ def create_throughput_aggregator(window_size: int = 60) -> MetricsAggregator:
         ),
         time_series=TimeSeriesBuffer(max_age_seconds=7200.0, max_samples=5000),
     )
+
 
 def create_error_rate_aggregator(window_size: int = 50) -> MetricsAggregator:
     """Create a metrics aggregator optimized for error rate measurements."""

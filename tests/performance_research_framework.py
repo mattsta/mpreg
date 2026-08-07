@@ -28,12 +28,14 @@ import psutil
 
 from mpreg.server import MPREGServer
 
+
 @dataclass
 class TopologyEdge:
     """Typed edge identifier for topology metrics."""
 
     source_id: str
     target_id: str
+
 
 @dataclass
 class NetworkTopologyMetrics:
@@ -50,6 +52,7 @@ class NetworkTopologyMetrics:
     bridge_edges: list[TopologyEdge] = field(default_factory=list)
     articulation_points: list[str] = field(default_factory=list)
 
+
 @dataclass
 class ResourceUtilizationMetrics:
     """System resource utilization metrics."""
@@ -64,6 +67,7 @@ class ResourceUtilizationMetrics:
     open_file_descriptors: int
     thread_count: int
 
+
 @dataclass
 class PerformanceTrend:
     """Performance trend analysis."""
@@ -75,6 +79,7 @@ class PerformanceTrend:
     slope: float
     r_squared: float
     anomalies: list[int] = field(default_factory=list)  # Indices of anomalous values
+
 
 class RealTimePerformanceMonitor:
     """Real-time performance monitoring for MPREG servers."""
@@ -411,6 +416,7 @@ class RealTimePerformanceMonitor:
             json.dump(export_data, f, indent=2)
 
         print(f"📊 Detailed performance metrics exported to {filename}")
+
 
 class ScalabilityBenchmark:
     """Scalability benchmark suite for distributed systems."""

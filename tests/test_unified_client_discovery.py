@@ -2,6 +2,7 @@
 
 from mpreg.client.unified_client import MPREGClient
 
+
 def test_unified_client_has_discovery_methods() -> None:
     c = MPREGClient(url="ws://127.0.0.1:1")
     for name in (
@@ -31,6 +32,7 @@ def test_unified_client_has_discovery_methods() -> None:
     ):
         assert hasattr(c, name), name
         assert callable(getattr(c, name)), name
+
 
 def test_unified_client_api_async_parity() -> None:
     """Every public async API method is on the unified façade (Phase R)."""

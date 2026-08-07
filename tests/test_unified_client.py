@@ -16,6 +16,7 @@ from mpreg.client.unified_client import UnifiedMPREGClient
 from mpreg.core.errors import MpregError, MpregErrorCode
 from mpreg.core.model import RPCCommand
 
+
 def test_exports_and_aliases() -> None:
     assert MPREGClient is UnifiedMPREGClient
     r = QueueSendResult.from_raw(
@@ -38,6 +39,7 @@ def test_exports_and_aliases() -> None:
         {"success": True, "cleared": True, "ok_peers": [], "fail_peers": []}
     )
     assert sr.cleared and sr.ops_driven and not sr.automatic_heal
+
 
 @pytest.mark.asyncio
 async def test_unified_client_composes_api() -> None:
@@ -90,6 +92,7 @@ async def test_unified_client_composes_api() -> None:
         MPREGClientAPI.connect = orig_connect  # type: ignore[method-assign]
         MPREGClientAPI.request = orig_request  # type: ignore[method-assign]
 
+
 @pytest.mark.asyncio
 async def test_unified_publish_fail_closed_by_default() -> None:
     """MPREGClient.publish raises on negative ack (ERG-05); soft path opt-in."""
@@ -115,6 +118,7 @@ async def test_unified_publish_fail_closed_by_default() -> None:
 
     ok = await client.publish("t.topic", {"x": 1}, raise_on_failure=False)
     assert ok is False
+
 
 @pytest.mark.asyncio
 async def test_pubsub_publish_soft_bool_default() -> None:

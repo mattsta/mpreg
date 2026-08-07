@@ -1,13 +1,13 @@
 # DistLab T18 — STRONG Refuse Correctness, Audit Metrics E2E, Smoke Suite (Official)
 
-| Field | Value |
-| --- | --- |
-| **Status** | **Complete (gated 222)** |
-| **Date** | 2026-08-06 |
-| **Authority** | Continuation after T17 complete (`805dc06`) |
-| **Scope** | STRONG + shared audit + DistLab — not whole-platform |
-| **Point budget** | **~110 pts** |
-| **Entry points only** | `uv run mpreg …` / `uv run pytest …` |
+| Field                 | Value                                                |
+| --------------------- | ---------------------------------------------------- |
+| **Status**            | **Complete (gated 222)**                             |
+| **Date**              | 2026-08-06                                           |
+| **Authority**         | Continuation after T17 complete (`805dc06`)          |
+| **Scope**             | STRONG + shared audit + DistLab — not whole-platform |
+| **Point budget**      | **~110 pts**                                         |
+| **Entry points only** | `uv run mpreg …` / `uv run pytest …`                 |
 
 ## Global rules
 
@@ -19,15 +19,15 @@
 
 ## Stages
 
-| Stage | Exit |
-| --- | --- |
-| T18-S0 | Official plan |
-| T18-S1 | Product: GCM STRONG get/delete always 1012 + counters + capabilities |
-| T18-S2 | Ops: `build_strong_metrics` capabilities; prom refuse counters |
-| T18-S3 | DistLab: `smoke` suite preset (`mpreg distlab suite --preset smoke`) |
-| T18-S4 | Unit: get/delete refuse + status capabilities + metrics keys |
-| T18-S5 | Live e2e: audit publish → scrape `/metrics/shared-audit` + prom |
-| T18-S6 | Residual Hypothesis expand (drop_commit + drop_abort pairs) |
+| Stage  | Exit                                                                   |
+| ------ | ---------------------------------------------------------------------- |
+| T18-S0 | Official plan                                                          |
+| T18-S1 | Product: GCM STRONG get/delete always 1012 + counters + capabilities   |
+| T18-S2 | Ops: `build_strong_metrics` capabilities; prom refuse counters         |
+| T18-S3 | DistLab: `smoke` suite preset (`mpreg distlab suite --preset smoke`)   |
+| T18-S4 | Unit: get/delete refuse + status capabilities + metrics keys           |
+| T18-S5 | Live e2e: audit publish → scrape `/metrics/shared-audit` + prom        |
+| T18-S6 | Residual Hypothesis expand (drop_commit + drop_abort pairs)            |
 | T18-S7 | Docs, claims, honesty Phase 6, proof ledger, full related gate, commit |
 
 ## Points (summary)
@@ -45,10 +45,10 @@
 
 Fast in-process subset (excludes live/not_bft/soak):
 
-* `strong.happy_3`
-* `strong.drop_prepare`
-* `strong.drop_abort` (if registered)
-* `audit.multi_origin`
+- `strong.happy_3`
+- `strong.drop_prepare`
+- `strong.drop_abort` (if registered)
+- `audit.multi_origin`
 
 ## Gate
 
@@ -68,14 +68,14 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
 
 ## Status dashboard
 
-| Item | Status |
-| --- | --- |
-| S0 plan | complete |
+| Item              | Status   |
+| ----------------- | -------- |
+| S0 plan           | complete |
 | S1 product refuse | complete |
-| S2 ops metrics | complete |
-| S3 smoke preset | complete |
-| S4–S6 tests | complete |
-| S7 gate/docs | complete |
+| S2 ops metrics    | complete |
+| S3 smoke preset   | complete |
+| S4–S6 tests       | complete |
+| S7 gate/docs      | complete |
 
 ## Non-claims (unchanged)
 

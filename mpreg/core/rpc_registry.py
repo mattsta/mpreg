@@ -29,10 +29,12 @@ from mpreg.datastructures.type_aliases import (
     Timestamp,
 )
 
+
 @dataclass(frozen=True, slots=True)
 class RpcRegistryKey:
     name: FunctionName
     function_id: FunctionId
+
 
 @dataclass(slots=True)
 class RpcRegistry:

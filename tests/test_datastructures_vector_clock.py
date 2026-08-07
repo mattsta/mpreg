@@ -17,6 +17,7 @@ from mpreg.datastructures.vector_clock import (
     vector_clock_strategy,
 )
 
+
 class TestClockEntry:
     """Test ClockEntry datastructure."""
 
@@ -51,6 +52,7 @@ class TestClockEntry:
             assert hash(entry1) == hash(entry2)
         else:
             assert entry1 != entry2
+
 
 class TestVectorClockBasics:
     """Test basic VectorClock functionality."""
@@ -126,6 +128,7 @@ class TestVectorClockBasics:
         """Test that copy returns the same object (since immutable)."""
         copy = clock.copy()
         assert copy is clock  # Same object for immutable types
+
 
 class TestVectorClockOperations:
     """Test VectorClock operations."""
@@ -213,6 +216,7 @@ class TestVectorClockOperations:
         result1 = clock.update(other)
         result2 = clock.merge(other)
         assert result1.to_dict() == result2.to_dict()
+
 
 class TestVectorClockComparison:
     """Test VectorClock comparison operations."""
@@ -304,6 +308,7 @@ class TestVectorClockComparison:
         with pytest.raises(TypeError, match="Can only compare with VectorClock"):
             clock.happens_before("not a clock")  # type: ignore
 
+
 class TestVectorClockProperties:
     """Test mathematical properties of VectorClock operations."""
 
@@ -379,6 +384,7 @@ class TestVectorClockProperties:
             assert not a.happens_before(b)
             assert not a.happens_after(b)
 
+
 class TestVectorClockRepresentation:
     """Test VectorClock string representation and debugging."""
 
@@ -413,6 +419,7 @@ class TestVectorClockRepresentation:
             for node_id in clock.node_ids():
                 # Node ID should appear in representation
                 assert node_id in repr_str
+
 
 class TestVectorClockValidation:
     """Test VectorClock validation and error conditions."""
@@ -450,6 +457,7 @@ class TestVectorClockValidation:
         # New objects have changes
         assert incremented.get_timestamp("node2") == 1
         assert updated.get_timestamp("node3") == 1
+
 
 # Examples for documentation and edge case testing
 class TestVectorClockExamples:

@@ -23,6 +23,7 @@ from mpreg.core.monitoring.unified_monitoring import (
 )
 from mpreg.core.transport.enhanced_health import HealthScore
 
+
 class MockSystemMonitor:
     """Mock system monitor for testing."""
 
@@ -61,6 +62,7 @@ class MockSystemMonitor:
         """Get mock health status."""
         return self.health_score, self.health_status
 
+
 class TestMonitoringConfig:
     """Test monitoring configuration."""
 
@@ -91,6 +93,7 @@ class TestMonitoringConfig:
         assert config.correlation_cleanup_interval_ms == 30000.0
         assert config.max_event_history == 10000
         assert config.enable_transport_monitoring is False
+
 
 class TestTrackingIdGeneration:
     """Test ULID-based tracking ID generation."""
@@ -155,6 +158,7 @@ class TestTrackingIdGeneration:
             tracking_id = monitor.generate_tracking_id()
             assert tracking_id not in tracking_ids
             tracking_ids.add(tracking_id)
+
 
 class TestCrossSystemEventRecording:
     """Test cross-system event recording and tracking."""
@@ -286,6 +290,7 @@ class TestCrossSystemEventRecording:
         assert (
             perf_data["p95_latency_ms"] == 30.0
         )  # Should be close to max for small dataset
+
 
 class TestUnifiedSystemMonitor:
     """Test unified system monitor functionality."""
@@ -445,6 +450,7 @@ class TestUnifiedSystemMonitor:
         )
         assert len(rpc_start_events) == 1
 
+
 class TestMonitoringAsyncContextManager:
     """Test monitoring system as async context manager."""
 
@@ -464,6 +470,7 @@ class TestMonitoringAsyncContextManager:
 
         # Should be stopped after context exit
         assert monitor._running is False
+
 
 class TestFactoryFunction:
     """Test factory function for creating monitors."""
@@ -490,6 +497,7 @@ class TestFactoryFunction:
         assert monitor.config.max_event_history == 25000
         assert monitor.config.enable_transport_monitoring is False
         assert monitor.config.enable_cache_monitoring is False
+
 
 class TestMonitoringPropertyBasedTests:
     """Property-based tests for monitoring system."""
@@ -606,6 +614,7 @@ class TestMonitoringPropertyBasedTests:
         # We have 6 possible system types, but only attach len(health_scores) of them
         # The rest should be counted as unavailable
         assert total_systems == 6  # Always 6 system types total
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

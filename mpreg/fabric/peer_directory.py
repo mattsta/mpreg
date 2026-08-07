@@ -13,6 +13,7 @@ from mpreg.datastructures.type_aliases import ClusterId, NodeId, Timestamp
 from .catalog import NodeDescriptor, NodeKey
 from .catalog_delta import RoutingCatalogDelta
 
+
 @dataclass(frozen=True, slots=True)
 class PeerDirectoryDelta:
     nodes_added: int
@@ -20,12 +21,14 @@ class PeerDirectoryDelta:
     nodes_removed: int
     nodes_ignored: int
 
+
 @dataclass(frozen=True, slots=True, order=True)
 class PeerNeighbor:
     """Typed peer neighbor reference for discovery/routing."""
 
     cluster_id: ClusterId
     node_id: NodeId
+
 
 @dataclass(eq=False, slots=True)
 class PeerDirectory:

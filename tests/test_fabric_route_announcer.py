@@ -16,12 +16,14 @@ from mpreg.fabric.route_control import (
     RouteTable,
 )
 
+
 class StubPublisher:
     def __init__(self) -> None:
         self.announcements: list[RouteAnnouncement] = []
 
     async def publish(self, announcement: RouteAnnouncement) -> None:
         self.announcements.append(announcement)
+
 
 @pytest.mark.asyncio
 async def test_route_announcement_processor_relays_updates() -> None:
@@ -53,6 +55,7 @@ async def test_route_announcement_processor_relays_updates() -> None:
     assert relayed.advertiser == "cluster-a"
     assert relayed.path.hops == ("cluster-a", "cluster-b", "cluster-c")
 
+
 @pytest.mark.asyncio
 async def test_route_announcer_publishes_local() -> None:
     table = RouteTable(local_cluster="cluster-a")
@@ -72,6 +75,7 @@ async def test_route_announcer_publishes_local() -> None:
     assert announcement.advertiser == "cluster-a"
     assert announcement.destination.cluster_id == "cluster-a"
     assert announcement.path.hops == ("cluster-a",)
+
 
 @pytest.mark.asyncio
 async def test_route_publisher_export_policy_blocks() -> None:

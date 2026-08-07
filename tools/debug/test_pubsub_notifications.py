@@ -12,6 +12,7 @@ from mpreg.client.pubsub_client import MPREGPubSubExtendedClient
 from mpreg.core.config import MPREGSettings
 from mpreg.server import MPREGServer
 
+
 async def test_basic_pubsub_notifications():
     """Test that PubSub notifications are properly delivered to clients."""
     print("=" * 60)
@@ -117,6 +118,7 @@ async def test_basic_pubsub_notifications():
         server_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await server_task
+
 
 if __name__ == "__main__":
     result = asyncio.run(test_basic_pubsub_notifications())

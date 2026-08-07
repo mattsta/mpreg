@@ -3,11 +3,13 @@ import pytest
 from mpreg.server import MPREGServer
 from tests.test_helpers import wait_for_condition
 
+
 def _peer_node_ids(server: MPREGServer) -> set[str]:
     directory = server._peer_directory
     if not directory:
         return set()
     return {node.node_id for node in directory.nodes()}
+
 
 @pytest.mark.asyncio
 async def test_peer_directory_converges(cluster_3_servers):

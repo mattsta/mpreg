@@ -78,6 +78,7 @@ MessageSize = int
 ProcessingFee = int
 DeliveryGuarantee = str
 
+
 class MessagePriority(Enum):
     """Message priority levels with democratic governance."""
 
@@ -86,6 +87,7 @@ class MessagePriority(Enum):
     NORMAL = "normal"  # Standard operations
     LOW = "low"  # Background tasks
     BULK = "bulk"  # Batch operations
+
 
 class DeliveryGuarantee(Enum):
     """Delivery guarantee levels."""
@@ -97,6 +99,7 @@ class DeliveryGuarantee(Enum):
     )
     ORDERED = "ordered"  # Maintain message order
 
+
 class RouteStatus(Enum):
     """Route health status."""
 
@@ -104,6 +107,7 @@ class RouteStatus(Enum):
     DEGRADED = "degraded"
     MAINTENANCE = "maintenance"
     FAILED = "failed"
+
 
 @dataclass(frozen=True, slots=True)
 class MessageRoute:
@@ -132,6 +136,7 @@ class MessageRoute:
             raise ValueError("Latency cannot be negative")
         if not (0.0 <= self.reliability_score <= 1.0):
             raise ValueError("Reliability score must be between 0 and 1")
+
 
 @dataclass(frozen=True, slots=True)
 class BlockchainMessage:
@@ -164,6 +169,7 @@ class BlockchainMessage:
         if self.retry_count < 0 or self.max_retries < 0:
             raise ValueError("Retry counts cannot be negative")
 
+
 @dataclass(frozen=True, slots=True)
 class QueueGovernancePolicy:
     """DAO-governed queue management policy."""
@@ -195,6 +201,7 @@ class QueueGovernancePolicy:
             return False
 
         return True
+
 
 @dataclass(frozen=True, slots=True)
 class QueueMetrics:
@@ -236,6 +243,7 @@ from mpreg.datastructures import (
     DaoProposal,
     ProposalType,
 )
+
 
 class MessageQueueGovernance:
     """DAO governance for message queue operations."""
@@ -576,6 +584,7 @@ class EquitablePriorityQueue:
 
 ```python
 from mpreg.datastructures import Blockchain, Block, Transaction, OperationType
+
 
 class BlockchainMessageRouter:
     """Message router with blockchain audit trail."""

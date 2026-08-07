@@ -45,43 +45,43 @@ HTTP:
 
 Prometheus series (process-local; **not** WAN SLO):
 
-| Series | Meaning |
-| --- | --- |
-| `mpreg_strong_enabled` | Coordinator bound (1/0) |
-| `mpreg_strong_puts_ok_total` | Successful majority-commit puts |
-| `mpreg_strong_puts_fail_total` | Failed puts (quorum/timeout/conflict) |
-| `mpreg_strong_refused_disabled_total` | Put refused — flag off / unbound (1012) |
-| `mpreg_strong_gets_refused_total` | Get refused — STRONG get not implemented (1012) |
-| `mpreg_strong_deletes_refused_total` | Delete refused — STRONG delete not implemented (1012) |
-| `mpreg_strong_pending` | Local pending prepare count |
-| `mpreg_strong_visible` | Local visible L1 strong entries (may include CFT residuals) |
-| `mpreg_strong_backups` | Pre-commit backups for live ops |
-| `mpreg_strong_backups_pruned_total` | Orphan backups dropped (not residual L1 clear) |
-| `mpreg_strong_put_latency_p50_ms` / `_p99_ms` | Lab latency ring |
-| `mpreg_strong_cap_put_majority_commit` | 1 when put path available |
-| `mpreg_strong_cap_get_quorum` / `_delete_quorum` | **Always 0** in v1 |
-| `mpreg_strong_cap_local_ryw_after_put` | 1 when RYW via EVENTUAL |
-| `mpreg_strong_aborts_peer_ok_total` | Successful peer ABORT deliveries |
-| `mpreg_strong_aborts_peer_fail_total` | Failed peer ABORT (CFT; may leave peer L1) |
-| `mpreg_strong_retry_abort_calls_total` | Ops-driven `strong_retry_abort` invocations |
-| `mpreg_strong_retry_abort_cleared_total` | retry_abort runs that cleared all targets |
-| `mpreg_strong_retry_abort_still_fail_total` | retry_abort runs still failing (CFT) |
-| `mpreg_strong_cap_cft_only` | **Always 1** — not BFT |
-| `mpreg_strong_cap_abort_best_effort` | **Always 1** — lost ABORT CFT limit |
-| `mpreg_strong_cap_pending_ttl_clears_residual_l1` | **Always 0** — purge ≠ residual GC |
+| Series                                            | Meaning                                                     |
+| ------------------------------------------------- | ----------------------------------------------------------- |
+| `mpreg_strong_enabled`                            | Coordinator bound (1/0)                                     |
+| `mpreg_strong_puts_ok_total`                      | Successful majority-commit puts                             |
+| `mpreg_strong_puts_fail_total`                    | Failed puts (quorum/timeout/conflict)                       |
+| `mpreg_strong_refused_disabled_total`             | Put refused — flag off / unbound (1012)                     |
+| `mpreg_strong_gets_refused_total`                 | Get refused — STRONG get not implemented (1012)             |
+| `mpreg_strong_deletes_refused_total`              | Delete refused — STRONG delete not implemented (1012)       |
+| `mpreg_strong_pending`                            | Local pending prepare count                                 |
+| `mpreg_strong_visible`                            | Local visible L1 strong entries (may include CFT residuals) |
+| `mpreg_strong_backups`                            | Pre-commit backups for live ops                             |
+| `mpreg_strong_backups_pruned_total`               | Orphan backups dropped (not residual L1 clear)              |
+| `mpreg_strong_put_latency_p50_ms` / `_p99_ms`     | Lab latency ring                                            |
+| `mpreg_strong_cap_put_majority_commit`            | 1 when put path available                                   |
+| `mpreg_strong_cap_get_quorum` / `_delete_quorum`  | **Always 0** in v1                                          |
+| `mpreg_strong_cap_local_ryw_after_put`            | 1 when RYW via EVENTUAL                                     |
+| `mpreg_strong_aborts_peer_ok_total`               | Successful peer ABORT deliveries                            |
+| `mpreg_strong_aborts_peer_fail_total`             | Failed peer ABORT (CFT; may leave peer L1)                  |
+| `mpreg_strong_retry_abort_calls_total`            | Ops-driven `strong_retry_abort` invocations                 |
+| `mpreg_strong_retry_abort_cleared_total`          | retry_abort runs that cleared all targets                   |
+| `mpreg_strong_retry_abort_still_fail_total`       | retry_abort runs still failing (CFT)                        |
+| `mpreg_strong_cap_cft_only`                       | **Always 1** — not BFT                                      |
+| `mpreg_strong_cap_abort_best_effort`              | **Always 1** — lost ABORT CFT limit                         |
+| `mpreg_strong_cap_pending_ttl_clears_residual_l1` | **Always 0** — purge ≠ residual GC                          |
 
 ### Capabilities (always honest in v1)
 
-| Flag | v1 value | Notes |
-| --- | --- | --- |
-| `put_majority_commit` | true when coordinator bound | Product path |
-| `get_quorum` | **false** | Quorum get is v1.1; always 1012 |
-| `delete_quorum` | **false** | Quorum delete is v1.1; always 1012 |
-| `local_ryw_after_put` | true | Use EVENTUAL/WEAK get after STRONG put |
-| `cft_only` | **true** | Not BFT |
-| `abort_best_effort` | **true** | Lost ABORT may leave peer L1 until ABORT/LWW |
-| `pending_ttl_clears_residual_l1` | **false** | Purge is not residual GC after COMMIT |
-| `retry_abort_ops_driven` | **true** | `strong_retry_abort` is ops-driven, not auto-heal |
+| Flag                             | v1 value                    | Notes                                             |
+| -------------------------------- | --------------------------- | ------------------------------------------------- |
+| `put_majority_commit`            | true when coordinator bound | Product path                                      |
+| `get_quorum`                     | **false**                   | Quorum get is v1.1; always 1012                   |
+| `delete_quorum`                  | **false**                   | Quorum delete is v1.1; always 1012                |
+| `local_ryw_after_put`            | true                        | Use EVENTUAL/WEAK get after STRONG put            |
+| `cft_only`                       | **true**                    | Not BFT                                           |
+| `abort_best_effort`              | **true**                    | Lost ABORT may leave peer L1 until ABORT/LWW      |
+| `pending_ttl_clears_residual_l1` | **false**                   | Purge is not residual GC after COMMIT             |
+| `retry_abort_ops_driven`         | **true**                    | `strong_retry_abort` is ops-driven, not auto-heal |
 
 Doctor fails closed if metrics claim `get_quorum` or `delete_quorum`, if
 `cft_only` / `abort_best_effort` are advertised as false, or if
@@ -103,12 +103,12 @@ residual-free proof. Monitor table prints `abort_fail_peers=…`.
 
 **retry_abort (T37/T42/T43 ops):** after network recovery, re-deliver ABORT via:
 
-* library: `StrongPutCoordinator.retry_abort` /
+- library: `StrongPutCoordinator.retry_abort` /
   `GlobalCacheManager.strong_retry_abort`
-* client RPC: `MPREGClient.cache_strong_retry_abort(ns, id, op_id, peers=…)`
+- client RPC: `MPREGClient.cache_strong_retry_abort(ns, id, op_id, peers=…)`
   → `mpreg.cache.strong_retry_abort`
-* CLI: `uv run mpreg client cache-strong-retry-abort --url … \
-  --namespace NS --key ID --op-id OID [--peer PEER…] [--loc cache] [--json]`
+- CLI: `uv run mpreg client cache-strong-retry-abort --url … \
+--namespace NS --key ID --op-id OID [--peer PEER…] [--loc cache] [--json]`
   (`--loc` pins resource routing; unpinned may land on any `cache` node)
 
 **Doctor / monitor residual hint (T51/T53):** when `last_abort_fail_peers` is
@@ -149,13 +149,13 @@ Presets: `strong-core` and `ci-core` include the CFT honesty scenarios.
 
 ### Health values
 
-| health | meaning |
-| --- | --- |
-| `disabled` | flag off — expected if unused |
-| `misconfigured` | flag on but coordinator unbound |
-| `degraded_pending` | pending_count > 64 |
-| `ok` | coordinator bound, pending healthy |
-| `unwired` | monitoring provider not attached |
+| health             | meaning                            |
+| ------------------ | ---------------------------------- |
+| `disabled`         | flag off — expected if unused      |
+| `misconfigured`    | flag on but coordinator unbound    |
+| `degraded_pending` | pending_count > 64                 |
+| `ok`               | coordinator bound, pending healthy |
+| `unwired`          | monitoring provider not attached   |
 
 ### Failure modes
 
@@ -211,26 +211,26 @@ uv run mpreg monitor audit --url "$MPREG_MONITORING_URL" --format table
 
 ### Capabilities (always honest in v1)
 
-| Flag | v1 value | Notes |
-| --- | --- | --- |
-| `gset_epidemic` | true when flag on + store present | Product path |
-| `siem` | **false** | Not a SIEM |
-| `bft` | **false** | CFT gossip only |
-| `infinite_retention` | **false** | Bounded watermark window |
-| `linearizable_cluster_ops` | **false** | Visibility ≠ mutation linearizability |
-| `multi_tenant_beyond_cluster_id` | **false** | cluster_id reject only |
+| Flag                             | v1 value                          | Notes                                 |
+| -------------------------------- | --------------------------------- | ------------------------------------- |
+| `gset_epidemic`                  | true when flag on + store present | Product path                          |
+| `siem`                           | **false**                         | Not a SIEM                            |
+| `bft`                            | **false**                         | CFT gossip only                       |
+| `infinite_retention`             | **false**                         | Bounded watermark window              |
+| `linearizable_cluster_ops`       | **false**                         | Visibility ≠ mutation linearizability |
+| `multi_tenant_beyond_cluster_id` | **false**                         | cluster_id reject only                |
 
 Doctor fails closed if metrics claim any dishonest capability above.
 
 ### Status values
 
-| status | meaning |
-| --- | --- |
-| `disabled` | flag off |
-| `misconfigured` | flag on, store missing |
-| `degraded_drops` | publish_dropped > 0 |
-| `ok_no_peers` | single-node or not yet meshed |
-| `ok` | healthy |
+| status           | meaning                       |
+| ---------------- | ----------------------------- |
+| `disabled`       | flag off                      |
+| `misconfigured`  | flag on, store missing        |
+| `degraded_drops` | publish_dropped > 0           |
+| `ok_no_peers`    | single-node or not yet meshed |
+| `ok`             | healthy                       |
 
 ## DistLab validation (lab only)
 

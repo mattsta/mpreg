@@ -18,6 +18,7 @@ from mpreg.fabric.hubs import (
     RegionalHub,
 )
 
+
 def _caps(*, max_clusters: int = 100, radius: float = 500.0) -> HubCapabilities:
     return HubCapabilities(
         max_clusters=max_clusters,
@@ -25,6 +26,7 @@ def _caps(*, max_clusters: int = 100, radius: float = 500.0) -> HubCapabilities:
         max_subscriptions=10000,
         coverage_radius_km=radius,
     )
+
 
 def _cluster(cid: str, region: str, lat: float, lon: float) -> ClusterIdentity:
     return ClusterIdentity(
@@ -39,6 +41,7 @@ def _cluster(cid: str, region: str, lat: float, lon: float) -> ClusterIdentity:
         max_bandwidth_mbps=1000,
         preference_weight=1.0,
     )
+
 
 async def main() -> None:
     with app_run(
@@ -189,6 +192,7 @@ async def main() -> None:
             ok("start/stop lifecycle")
 
         await asyncio.sleep(0)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

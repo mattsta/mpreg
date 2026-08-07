@@ -10,6 +10,7 @@ from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 from tests.test_helpers import wait_for_condition
 
+
 async def _udp_query(host: str, port: int, qname: str, qtype: str) -> DNSRecord:
     loop = asyncio.get_running_loop()
     query = DNSRecord.question(qname, qtype)
@@ -39,6 +40,7 @@ async def _udp_query(host: str, port: int, qname: str, qtype: str) -> DNSRecord:
         transport.close()
     return DNSRecord.parse(data)
 
+
 async def _tcp_query(host: str, port: int, qname: str, qtype: str) -> DNSRecord:
     reader, writer = await asyncio.open_connection(host, port)
     query = DNSRecord.question(qname, qtype).pack()
@@ -50,6 +52,7 @@ async def _tcp_query(host: str, port: int, qname: str, qtype: str) -> DNSRecord:
     writer.close()
     await writer.wait_closed()
     return DNSRecord.parse(data)
+
 
 class TestDnsGatewayIntegration:
     @pytest.mark.asyncio

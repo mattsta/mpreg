@@ -19,8 +19,10 @@ from mpreg.core.cache_strong import (
 from mpreg.core.errors import MpregErrorCode
 from mpreg.core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
 
+
 def _key() -> GlobalCacheKey:
     return GlobalCacheKey(namespace="t", identifier="k", version="v1")
+
 
 @pytest.mark.asyncio
 async def test_strong_refused_when_disabled() -> None:
@@ -44,6 +46,7 @@ async def test_strong_refused_when_disabled() -> None:
         assert not got.success or got.entry is None
     finally:
         await gcm.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_strong_lab_single_node_success() -> None:
@@ -82,6 +85,7 @@ async def test_strong_lab_single_node_success() -> None:
     finally:
         await gcm.shutdown()
 
+
 @pytest.mark.asyncio
 async def test_strong_insufficient_quorum_no_residual() -> None:
     gcm = GlobalCacheManager(
@@ -115,6 +119,7 @@ async def test_strong_insufficient_quorum_no_residual() -> None:
         assert not got.success or got.entry is None
     finally:
         await gcm.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_strong_status_and_metrics_after_puts() -> None:
@@ -176,6 +181,7 @@ async def test_strong_status_and_metrics_after_puts() -> None:
     finally:
         await gcm.shutdown()
 
+
 @pytest.mark.asyncio
 async def test_strong_get_always_refuses_1012() -> None:
     """T18: ConsistencyLevel.STRONG get is design-refuse (quorum get is v1.1)."""
@@ -227,6 +233,7 @@ async def test_strong_get_always_refuses_1012() -> None:
         assert good.entry.value == {"v": 1}
     finally:
         await gcm.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_strong_delete_always_refuses_1012() -> None:

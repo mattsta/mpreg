@@ -18,8 +18,10 @@ from mpreg.testing.distlab import (
     default_strong_checkers,
 )
 
+
 def _sut(n: int = 3, **kw) -> StrongSUT:
     return StrongSUT.create(n, **kw)
+
 
 @pytest.mark.asyncio
 async def test_distlab_strong_happy_3() -> None:
@@ -41,14 +43,13 @@ async def test_distlab_strong_happy_3() -> None:
     assert r.ok
     assert r.history_len >= 2
 
+
 @pytest.mark.asyncio
 async def test_distlab_strong_happy_5_quorum() -> None:
     sut = _sut(5, prepare_timeout_s=0.6, commit_timeout_s=0.6)
 
     async def body(history: History, s: StrongSUT) -> None:
-        res = await s.put(
-            history, process="c0", origin="n0", logical_key="k5", value=5
-        )
+        res = await s.put(history, process="c0", origin="n0", logical_key="k5", value=5)
         assert res.success
         assert res.quorum_info and res.quorum_info["quorum"] == 3
 
@@ -59,6 +60,7 @@ async def test_distlab_strong_happy_5_quorum() -> None:
         checker=default_strong_checkers(key="k5"),
         strict=True,
     ).run()
+
 
 @pytest.mark.asyncio
 async def test_distlab_strong_partition_majority_residual_free() -> None:
@@ -91,6 +93,7 @@ async def test_distlab_strong_partition_majority_residual_free() -> None:
         strict=True,
     ).run()
     target.heal_network()
+
 
 @pytest.mark.asyncio
 async def test_distlab_strong_heal_then_success() -> None:
@@ -127,6 +130,7 @@ async def test_distlab_strong_heal_then_success() -> None:
         strict=True,
     ).run()
 
+
 @pytest.mark.asyncio
 async def test_distlab_strong_concurrent_same_key() -> None:
     sut = _sut(3)
@@ -149,6 +153,7 @@ async def test_distlab_strong_concurrent_same_key() -> None:
         checker=default_strong_checkers(key="ck"),
         strict=True,
     ).run()
+
 
 @pytest.mark.asyncio
 async def test_distlab_strong_multi_key_concurrent() -> None:
@@ -173,6 +178,7 @@ async def test_distlab_strong_multi_key_concurrent() -> None:
         strict=True,
     ).run()
 
+
 @pytest.mark.asyncio
 async def test_distlab_strong_soak_multi_origin() -> None:
     sut = _sut(3)
@@ -196,15 +202,14 @@ async def test_distlab_strong_soak_multi_origin() -> None:
         strict=True,
     ).run()
 
+
 @pytest.mark.asyncio
 async def test_distlab_strong_drop_prepare_residual() -> None:
     sut = _sut(3)
     sut.transport.drop_prepare |= {"n1", "n2"}
 
     async def body(history: History, s: StrongSUT) -> None:
-        res = await s.put(
-            history, process="c0", origin="n0", logical_key="dp", value=1
-        )
+        res = await s.put(history, process="c0", origin="n0", logical_key="dp", value=1)
         assert res.success is False
 
     await Scenario(
@@ -214,6 +219,7 @@ async def test_distlab_strong_drop_prepare_residual() -> None:
         checker=default_strong_checkers(key="dp"),
         strict=True,
     ).run()
+
 
 @pytest.mark.asyncio
 async def test_distlab_strong_nemesis_during_puts() -> None:
@@ -261,6 +267,7 @@ async def test_distlab_strong_nemesis_during_puts() -> None:
     ).run()
     assert r.nemesis_actions >= 1
 
+
 @given(drops=st.lists(st.sampled_from(["n1", "n2"]), max_size=2, unique=True))
 @settings(max_examples=15, deadline=None)
 def test_distlab_hypothesis_prepare_drops(drops: list[str]) -> None:
@@ -269,9 +276,7 @@ def test_distlab_hypothesis_prepare_drops(drops: list[str]) -> None:
         sut.transport.drop_prepare |= set(drops)
 
         async def body(history: History, s: StrongSUT) -> None:
-            await s.put(
-                history, process="c0", origin="n0", logical_key="hyp", value=1
-            )
+            await s.put(history, process="c0", origin="n0", logical_key="hyp", value=1)
 
         await Scenario(
             name="hyp-drop",
@@ -282,6 +287,7 @@ def test_distlab_hypothesis_prepare_drops(drops: list[str]) -> None:
         ).run()
 
     asyncio.run(_run())
+
 
 @given(values=st.lists(st.integers(0, 200), min_size=2, max_size=5))
 @settings(max_examples=12, deadline=None)
@@ -310,6 +316,7 @@ def test_distlab_hypothesis_concurrent_lww(values: list[int]) -> None:
 
     asyncio.run(_run())
 
+
 @pytest.mark.asyncio
 async def test_distlab_strong_lie_prepare_residual() -> None:
     sut = _sut(3)
@@ -328,6 +335,7 @@ async def test_distlab_strong_lie_prepare_residual() -> None:
         checker=default_strong_checkers(key="lie"),
         strict=True,
     ).run()
+
 
 @pytest.mark.asyncio
 async def test_distlab_strong_not_bft_lie_commit_documented() -> None:
@@ -352,7 +360,7 @@ async def test_distlab_strong_not_bft_lie_commit_documented() -> None:
         )
         assert miss >= 1
         # Do not run replica-agreement requiring all nodes — CFT non_claim
-        from mpreg.testing.distlab import ResidualFreeChecker, NoOpenInvokeChecker
+        from mpreg.testing.distlab import NoOpenInvokeChecker
         from mpreg.testing.distlab.checker import CompositeChecker
 
         # Residual-free only applies to failures; successes may diverge under lies
@@ -367,14 +375,13 @@ async def test_distlab_strong_not_bft_lie_commit_documented() -> None:
         )
         assert r.ok, r.violations
 
+
 @pytest.mark.asyncio
 async def test_distlab_strong_happy_7() -> None:
     sut = _sut(7, prepare_timeout_s=0.8, commit_timeout_s=0.8)
 
     async def body(history: History, s: StrongSUT) -> None:
-        res = await s.put(
-            history, process="c0", origin="n0", logical_key="k7", value=7
-        )
+        res = await s.put(history, process="c0", origin="n0", logical_key="k7", value=7)
         assert res.success
         assert res.quorum_info and res.quorum_info["quorum"] == 4
 
@@ -386,15 +393,14 @@ async def test_distlab_strong_happy_7() -> None:
         strict=True,
     ).run()
 
+
 @pytest.mark.asyncio
 async def test_distlab_strong_drop_commit_residual() -> None:
     sut = _sut(3)
     sut.transport.drop_commit |= {"n1", "n2"}
 
     async def body(history: History, s: StrongSUT) -> None:
-        res = await s.put(
-            history, process="c0", origin="n0", logical_key="dc", value=1
-        )
+        res = await s.put(history, process="c0", origin="n0", logical_key="dc", value=1)
         assert res.success is False
 
     await Scenario(
@@ -404,6 +410,7 @@ async def test_distlab_strong_drop_commit_residual() -> None:
         checker=default_strong_checkers(key="dc"),
         strict=True,
     ).run()
+
 
 @pytest.mark.asyncio
 async def test_distlab_strong_fail_prepare_and_wrong_cluster() -> None:
@@ -428,6 +435,7 @@ async def test_distlab_strong_fail_prepare_and_wrong_cluster() -> None:
             strict=True,
         ).run()
 
+
 @pytest.mark.asyncio
 async def test_distlab_strong_duplicate_commit_idempotent() -> None:
     sut = _sut(3)
@@ -446,6 +454,7 @@ async def test_distlab_strong_duplicate_commit_idempotent() -> None:
         checker=default_strong_checkers(key="dup"),
         strict=True,
     ).run()
+
 
 @pytest.mark.asyncio
 async def test_distlab_strong_interleaved_fault_success() -> None:
@@ -471,6 +480,7 @@ async def test_distlab_strong_interleaved_fault_success() -> None:
         strict=True,
     ).run()
 
+
 @pytest.mark.asyncio
 async def test_distlab_strong_delay_within_timeout() -> None:
     sut = _sut(3, prepare_timeout_s=1.0, commit_timeout_s=1.0)
@@ -489,6 +499,7 @@ async def test_distlab_strong_delay_within_timeout() -> None:
         checker=default_strong_checkers(key="dlay"),
         strict=True,
     ).run()
+
 
 @pytest.mark.asyncio
 async def test_distlab_registry_strong_subset() -> None:
@@ -515,6 +526,7 @@ async def test_distlab_registry_strong_subset() -> None:
         r = await reg.run(name)
         assert r.ok, f"{name} failed: {r.check.violations}"
 
+
 @pytest.mark.asyncio
 async def test_distlab_registry_all_strong_builtins_close() -> None:
     """Every strong.* registry scenario must exit without open invokes.
@@ -525,7 +537,7 @@ async def test_distlab_registry_all_strong_builtins_close() -> None:
 
     ensure_builtins()
     reg = get_registry()
-    names = [n for n in reg.list() if n.startswith("strong.") or n.startswith("reg_")]
+    names = [n for n in reg.list() if n.startswith(("strong.", "reg_"))]
     assert len(names) >= 20
     for name in names:
         # Fresh factory each time
@@ -541,6 +553,7 @@ async def test_distlab_registry_all_strong_builtins_close() -> None:
             continue
         r = await sc.run()
         assert r.ok, f"{name}: {r.check.violations}"
+
 
 @given(seed=st.integers(0, 50))
 @settings(max_examples=8, deadline=None)
@@ -569,9 +582,7 @@ def test_distlab_hypothesis_partition_heal(seed: int) -> None:
             history, process="c0", origin="n0", logical_key="ph", value=1
         )
         assert good.success is True
-        r = default_strong_checkers(key="ph").check(
-            history, state=sut.snapshot_state()
-        )
+        r = default_strong_checkers(key="ph").check(history, state=sut.snapshot_state())
         assert r.ok, r.violations
 
     asyncio.run(_run())

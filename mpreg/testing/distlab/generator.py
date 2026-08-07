@@ -9,12 +9,15 @@ from typing import Any, Protocol
 
 from mpreg.testing.distlab.history import History
 
+
 class WorkItem(Protocol):
     """One unit of client work."""
 
     async def run(self, history: History, idx: int) -> None: ...
 
+
 ClientFn = Callable[[History, int], Awaitable[None]]
+
 
 @dataclass(slots=True)
 class SequentialPuts:
@@ -42,6 +45,7 @@ class SequentialPuts:
                 )
 
         return body
+
 
 @dataclass(slots=True)
 class ConcurrentPuts:
@@ -73,6 +77,7 @@ class ConcurrentPuts:
 
         return [make] * self.n_clients
 
+
 @dataclass(slots=True)
 class AuditBurst:
     """Publish N audit events round-robin origins."""
@@ -96,6 +101,7 @@ class AuditBurst:
             await s.reconcile_all()
 
         return body
+
 
 @dataclass(slots=True)
 class RandomFaultPlan:

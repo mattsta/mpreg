@@ -27,6 +27,7 @@ from .catalog import (
     TopicSubscription,
 )
 
+
 @dataclass(frozen=True, slots=True)
 class FunctionQuery:
     selector: FunctionSelector
@@ -34,14 +35,17 @@ class FunctionQuery:
     cluster_id: ClusterId | None = None
     node_id: NodeId | None = None
 
+
 @dataclass(frozen=True, slots=True)
 class TopicQuery:
     topic: str
+
 
 @dataclass(frozen=True, slots=True)
 class QueueQuery:
     queue_name: QueueName
     cluster_id: ClusterId | None = None
+
 
 @dataclass(frozen=True, slots=True)
 class ServiceQuery:
@@ -52,15 +56,18 @@ class ServiceQuery:
     cluster_id: ClusterId | None = None
     node_id: NodeId | None = None
 
+
 @dataclass(frozen=True, slots=True)
 class CacheQuery:
     role: CacheRole
     cluster_id: ClusterId | None = None
 
+
 @dataclass(frozen=True, slots=True)
 class CacheProfileQuery:
     cluster_id: ClusterId | None = None
     node_id: NodeId | None = None
+
 
 @dataclass(frozen=True, slots=True)
 class NodeQuery:
@@ -68,6 +75,7 @@ class NodeQuery:
     node_id: NodeId | None = None
     resources: frozenset[str] | None = None
     capabilities: frozenset[str] | None = None
+
 
 @dataclass(slots=True)
 class RoutingIndex:

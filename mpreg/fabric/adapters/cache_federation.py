@@ -16,6 +16,7 @@ from mpreg.datastructures.type_aliases import (
 from ..catalog import CacheRole, CacheRoleEntry
 from ..catalog_delta import RoutingCatalogDelta
 
+
 @dataclass(slots=True)
 class CacheFederationCatalogAdapter:
     node_id: NodeId

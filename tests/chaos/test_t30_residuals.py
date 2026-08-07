@@ -14,6 +14,7 @@ from mpreg.core.cache_strong import (
 from mpreg.testing.distlab.builtins import ensure_builtins
 from mpreg.testing.distlab.registry import get_registry, resolve_preset
 
+
 @pytest.mark.asyncio
 async def test_t30_orphan_backups_pruned_on_repeated_cft_residual() -> None:
     tr = InProcessStrongTransport()
@@ -50,6 +51,7 @@ async def test_t30_orphan_backups_pruned_on_repeated_cft_residual() -> None:
     assert ent is not None and _entry_op_id(ent) == ok.operation_id
     assert ent.value == {"healed": True}
 
+
 @pytest.mark.asyncio
 async def test_t30_distlab_orphan_backup_gc_scenario() -> None:
     ensure_builtins()
@@ -57,10 +59,12 @@ async def test_t30_distlab_orphan_backup_gc_scenario() -> None:
     assert r.ok, r
     assert (r.meta or {}).get("product_fix") is True
 
+
 def test_t30_preset_includes_orphan_backup_gc() -> None:
     ensure_builtins()
     assert "strong.cft_orphan_backup_gc" in resolve_preset("strong-core")
     assert "strong.cft_orphan_backup_gc" in resolve_preset("ci-core")
+
 
 @pytest.mark.asyncio
 async def test_t30_abort_still_uncommits_current_residual() -> None:

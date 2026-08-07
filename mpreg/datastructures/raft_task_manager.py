@@ -19,6 +19,7 @@ from loguru import logger
 
 task_log = logger
 
+
 class TaskState(Enum):
     """States for managed tasks."""
 
@@ -28,6 +29,7 @@ class TaskState(Enum):
     STOPPING = "stopping"  # Graceful shutdown in progress
     STOPPED = "stopped"
     FAILED = "failed"
+
 
 @dataclass
 class ManagedTask:
@@ -56,6 +58,7 @@ class ManagedTask:
         end_time = self.stopped_at or time.time()
         return end_time - self.started_at
 
+
 @dataclass
 class TaskStateCounts:
     """Count of tasks by state."""
@@ -67,6 +70,7 @@ class TaskStateCounts:
     stopped: int = 0
     failed: int = 0
 
+
 @dataclass
 class TaskInfo:
     """Information about a single task."""
@@ -75,6 +79,7 @@ class TaskInfo:
     state: str
     runtime: float
     is_active: bool
+
 
 @dataclass
 class TaskGroupStatus:
@@ -86,6 +91,7 @@ class TaskGroupStatus:
     state_counts: TaskStateCounts
     tasks: list[TaskInfo]
 
+
 @dataclass
 class TaskManagerStatus:
     """Complete status of the task manager."""
@@ -95,6 +101,7 @@ class TaskManagerStatus:
     total_tasks: int
     active_tasks: int
     groups: list[TaskGroupStatus]
+
 
 @dataclass
 class TaskGroup:
@@ -129,6 +136,7 @@ class TaskGroup:
             elif task.state == TaskState.FAILED:
                 counts.failed += 1
         return counts
+
 
 class RaftTaskManager:
     """

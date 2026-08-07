@@ -9,12 +9,14 @@ from mpreg.datastructures.type_aliases import ClusterId
 
 from .route_control import RoutePolicy
 
+
 @dataclass(frozen=True, slots=True)
 class RouteNeighborPolicy:
     """Route policy assigned to a specific neighbor cluster."""
 
     cluster_id: ClusterId
     policy: RoutePolicy
+
 
 @dataclass(slots=True)
 class RoutePolicyDirectory:

@@ -19,6 +19,7 @@ from mpreg.fabric.link_state import (
     LinkStateUpdate,
 )
 
+
 async def main() -> None:
     with app_run(
         "fabric_policy_modes",
@@ -130,6 +131,7 @@ async def main() -> None:
 
         await asyncio.sleep(0)
         ok("fabric_policy_modes complete")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

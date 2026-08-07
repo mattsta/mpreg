@@ -33,6 +33,7 @@ from mpreg.fabric.federation_graph import (
     NodeType,
 )
 
+
 class TestGeographicCoordinate:
     """Test geographic coordinate calculations."""
 
@@ -62,6 +63,7 @@ class TestGeographicCoordinate:
         distance2 = point2.distance_to(point1)
 
         assert abs(distance1 - distance2) < 0.001
+
 
 class TestFederationGraphNode:
     """Test federation graph node functionality."""
@@ -183,6 +185,7 @@ class TestFederationGraphNode:
             f"Good node weight {good_weight} should be less than bad node weight {bad_weight}"
         )
 
+
 class TestFederationGraphEdge:
     """Test federation graph edge functionality."""
 
@@ -303,6 +306,7 @@ class TestFederationGraphEdge:
         assert (
             0.3 < edge.current_utilization < 0.7
         )  # Should be between old and new values
+
 
 class TestFederationGraph:
     """Test federation graph data structure."""
@@ -454,6 +458,7 @@ class TestFederationGraph:
         assert hasattr(stats, "cache_statistics")
         assert hasattr(stats, "node_types")
 
+
 class TestDijkstraRouter:
     """Test Dijkstra's algorithm implementation."""
 
@@ -556,6 +561,7 @@ class TestDijkstraRouter:
         stats = self.graph.get_statistics()
         assert stats.cache_statistics.cache_hits >= 1
 
+
 class TestMultiPathRouter:
     """Test multiple path routing functionality."""
 
@@ -623,6 +629,7 @@ class TestMultiPathRouter:
 
         # Should return only the paths that exist
         assert len(paths) <= 2
+
 
 class TestGeographicAStarRouter:
     """Test A* algorithm with geographic heuristics."""
@@ -716,6 +723,7 @@ class TestGeographicAStarRouter:
         """Test path from a node to itself."""
         path = self.router.find_geographic_path("san_francisco", "san_francisco")
         assert path == ["san_francisco"]
+
 
 class TestGraphBasedFederationRouter:
     """Test the unified graph-based federation router."""
@@ -839,6 +847,7 @@ class TestGraphBasedFederationRouter:
         result = self.router.remove_node("temp_node")
         assert result is True
         assert self.router.graph.get_node("temp_node") is None
+
 
 class TestPerformanceBenchmarks:
     """Performance benchmarks for graph routing algorithms."""
@@ -1002,6 +1011,7 @@ class TestPerformanceBenchmarks:
             assert path is not None
             assert path[0] == "node_0"
             assert path[-1] == "node_4"
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

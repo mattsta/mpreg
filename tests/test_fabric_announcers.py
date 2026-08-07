@@ -20,6 +20,7 @@ from mpreg.fabric.gossip import GossipProtocol
 from mpreg.fabric.gossip_transport import InProcessGossipTransport
 from mpreg.fabric.message import DeliveryGuarantee
 
+
 @pytest.mark.asyncio
 async def test_fabric_function_announcer_broadcasts() -> None:
     registry = RpcRegistry()
@@ -64,6 +65,7 @@ async def test_fabric_function_announcer_broadcasts() -> None:
     assert result.counts["functions_added"] == 1
     assert catalog.functions.entry_count() == 1
 
+
 @pytest.mark.asyncio
 async def test_fabric_queue_announcer_broadcasts() -> None:
     advertisement = QueueEndpoint(
@@ -94,6 +96,7 @@ async def test_fabric_queue_announcer_broadcasts() -> None:
     assert result.counts["queues_added"] == 1
     assert catalog.queues.entry_count() == 1
 
+
 @pytest.mark.asyncio
 async def test_fabric_cache_role_announcer_broadcasts() -> None:
     catalog = RoutingCatalog()
@@ -119,6 +122,7 @@ async def test_fabric_cache_role_announcer_broadcasts() -> None:
 
     assert result.counts["caches_added"] == 1
     assert catalog.caches.entry_count() == 1
+
 
 @pytest.mark.asyncio
 async def test_fabric_topic_announcer_broadcasts() -> None:

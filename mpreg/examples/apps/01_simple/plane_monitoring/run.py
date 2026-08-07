@@ -11,6 +11,7 @@ from mpreg.core.monitoring.unified_monitoring import (
 )
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 
+
 async def main() -> None:
     with app_run(
         "plane_monitoring",
@@ -85,6 +86,7 @@ async def main() -> None:
             step("production: attach transport adapters + OpenAPI /routing/decisions")
         finally:
             await monitor.stop()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
