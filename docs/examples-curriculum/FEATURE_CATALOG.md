@@ -292,7 +292,7 @@ are not thin vertical slices — they are **API drill-downs** that prove power.
 | ID                              | Feature                 | Primary APIs                                                     | Depth   | Apps                                        |
 | ------------------------------- | ----------------------- | ---------------------------------------------------------------- | ------- | ------------------------------------------- |
 | `ops.cli_call`                  | `mpreg call`            | CLI                                                              | shipped | `ops_cli_tour`                              |
-| `ops.cli_planes`                | queue/cache/publish CLI | `mpreg client-*`                                                 | shipped | `ops_cli_tour`                              |
+| `ops.cli_planes`                | queue/cache/publish CLI | `mpreg client-*` (incl. `cache-strong-retry-abort`)              | shipped | `ops_cli_tour`                              |
 | `ops.cli_dns`                   | DNS CLI group           | `mpreg dns` / `mpreg client dns-*`                               | shipped | `ops_cli_tour`                              |
 | `ops.cli_ns`                    | Namespace policy CLI    | `mpreg namespace-policy`                                         | shipped | `ops_cli_tour`                              |
 | `ops.cli_discovery`             | peers / resolver        | `list-peers`, resolver cmds                                      | shipped | `ops_cli_tour`                              |

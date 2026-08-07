@@ -101,12 +101,14 @@ residual-free. Watch `mpreg_strong_aborts_peer_fail_total`.
 **CFT residual candidates** for targeted repair, not auto-heal and not
 residual-free proof. Monitor table prints `abort_fail_peers=…`.
 
-**retry_abort (T37/T42 ops):** after network recovery, re-deliver ABORT via:
+**retry_abort (T37/T42/T43 ops):** after network recovery, re-deliver ABORT via:
 
 * library: `StrongPutCoordinator.retry_abort` /
   `GlobalCacheManager.strong_retry_abort`
 * client RPC: `MPREGClient.cache_strong_retry_abort(ns, id, op_id, peers=…)`
   → `mpreg.cache.strong_retry_abort`
+* CLI: `uv run mpreg client cache-strong-retry-abort --url … \
+  --namespace NS --key ID --op-id OID [--peer PEER…] [--json]`
 
 DistLab `strong.cft_retry_abort_clears_residual` proves clear when ABORT can
 land. Still CFT best-effort — fails while peers drop ABORT; not background

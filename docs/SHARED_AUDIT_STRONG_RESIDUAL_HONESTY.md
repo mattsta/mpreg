@@ -579,3 +579,17 @@ Still **not** claimed: automatic heal; residual-free under lost ABORT;
 WAN/Elle/BFT/fsync. RPC path is CFT best-effort ops only.
 
 Plan: `docs/plans/DISTLAB_T42_CLIENT_RPC_RETRY_ABORT_PLAN.md`.
+
+## Phase 31 — CLI cache-strong-retry-abort (2026-08-06)
+
+T43 adds operator entry-point for the T42 RPC:
+
+* `uv run mpreg client cache-strong-retry-abort --namespace … --key … --op-id …`
+* Optional `--peer` (repeatable), `--version`, `--timeout`, `--json`
+* Non-zero exit when residual peers still fail; honesty banner on human output
+* Docs: runbook, client guide, curriculum OPERATE
+
+Still **not** claimed: automatic heal; residual-free under lost ABORT;
+WAN/Elle/BFT/fsync. CLI is thin client of ops-driven CFT RPC only.
+
+Plan: `docs/plans/DISTLAB_T43_CLI_RETRY_ABORT_PLAN.md`.

@@ -432,6 +432,109 @@ def client_cache_invalidate(url: str | None, pattern: str) -> None:
 
     run_coro(_run())
 
+@client.command("cache-strong-retry-abort")
+@click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
+@click.option("--namespace", required=True, help="Cache namespace")
+@click.option("--key", "identifier", required=True, help="Cache key identifier")
+@click.option(
+    "--op-id",
+    "op_id",
+    required=True,
+    help="STRONG put operation_id / op_id to re-ABORT",
+)
+@click.option(
+    "--version",
+    default="v1.0.0",
+    show_default=True,
+    help="Cache key version (must match put)",
+)
+@click.option(
+    "--peer",
+    "peers",
+    multiple=True,
+    help="Optional residual peer id (repeatable); default = last_abort_fail_peers",
+)
+@click.option(
+    "--timeout",
+    type=float,
+    default=None,
+    help="Optional RPC timeout seconds",
+)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Print raw result dict as JSON",
+)
+def client_cache_strong_retry_abort(
+    url: str | None,
+    namespace: str,
+    identifier: str,
+    op_id: str,
+    version: str,
+    peers: tuple[str, ...],
+    timeout: float | None,
+    as_json: bool,
+) -> None:
+    """Ops-driven CFT re-ABORT after recovery (not automatic heal).
+
+    Calls ``MPREGClient.cache_strong_retry_abort`` → platform RPC
+    ``mpreg.cache.strong_retry_abort``. Still CFT best-effort — not residual-free
+    while ABORT is lost, not BFT, not background heal.
+    """
+    if not url:
+        raise click.UsageError("Provide --url or set MPREG_URL.")
+
+    async def _run() -> None:
+        from mpreg.client.unified_client import MPREGClient
+
+        peer_list = list(peers) if peers else None
+        async with MPREGClient(url) as c:
+            result = await c.cache_strong_retry_abort(
+                namespace,
+                identifier,
+                op_id,
+                version=version,
+                peers=peer_list,
+                timeout=timeout,
+            )
+            if as_json:
+                payload = {
+                    "success": result.success,
+                    "cleared": result.cleared,
+                    "ok_peers": list(result.ok_peers or []),
+                    "fail_peers": list(result.fail_peers or []),
+                    "op_id": result.op_id,
+                    "attempts": result.attempts,
+                    "ops_driven": result.ops_driven,
+                    "automatic_heal": result.automatic_heal,
+                    "error_message": result.error_message,
+                    "error_code": result.error_code,
+                }
+                console.print_json(data=payload)
+            else:
+                status = "cleared" if result.cleared else "still_fail"
+                console.print(
+                    f"retry_abort {status} op_id={result.op_id} "
+                    f"ok={list(result.ok_peers or [])} "
+                    f"fail={list(result.fail_peers or [])} "
+                    f"attempts={result.attempts} "
+                    f"ops_driven={result.ops_driven} "
+                    f"automatic_heal={result.automatic_heal}"
+                )
+                if result.error_message:
+                    console.print(f"[yellow]error={result.error_message}[/yellow]")
+                # Honesty banner — never market as auto-heal
+                console.print(
+                    "[dim]CFT best-effort ops path only "
+                    "(not automatic residual heal, not BFT)[/dim]"
+                )
+            if not result.success:
+                raise SystemExit(1)
+
+    run_coro(_run())
+
 @client.command("publish")
 @click.option("--url", default=None, envvar="MPREG_URL", help="MPREG server URL")
 @click.option("--topic", required=True)

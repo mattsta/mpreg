@@ -964,6 +964,8 @@ endpoints.
     → platform `mpreg.cache.strong_retry_abort` → `StrongRetryAbortResult`
     (`cleared`, `ok_peers`/`fail_peers`, `ops_driven=True`,
     `automatic_heal=False`)
+  * CLI: `uv run mpreg client cache-strong-retry-abort --url … \
+    --namespace NS --key ID --op-id OID [--peer PEER…] [--json]`
   Still CFT; not background heal. Pending TTL does **not** clear residual L1.
   Default **off** → `1012 UNSUPPORTED_CONSISTENCY`. STRONG **get** and
   **delete** always refuse with `1012`. Operational put failures use

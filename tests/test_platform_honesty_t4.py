@@ -626,7 +626,13 @@ def test_cli_client_plane_smokes_registered() -> None:
     runner = CliRunner()
     result = runner.invoke(cli, ["client", "--help"])
     assert result.exit_code == 0
-    for name in ("queue-send", "cache-get", "cache-put", "publish"):
+    for name in (
+        "queue-send",
+        "cache-get",
+        "cache-put",
+        "cache-strong-retry-abort",
+        "publish",
+    ):
         assert name in result.output, name
 
 def test_openapi_covers_golden_extra_routes() -> None:

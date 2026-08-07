@@ -263,9 +263,10 @@ residual candidates (ops only). Prom also exposes `mpreg_strong_visible`,
 `mpreg_strong_backups`, `mpreg_strong_backups_pruned_total`,
 `mpreg_strong_retry_abort_{calls,cleared,still_fail}_total` (process-local;
 not residual-free proof; retry is ops-driven not auto-heal).
-Ops re-ABORT after recovery: library `strong_retry_abort`, or client
+Ops re-ABORT after recovery: library `strong_retry_abort`, client
 `MPREGClient.cache_strong_retry_abort` → platform RPC
-`mpreg.cache.strong_retry_abort` (still CFT; not background heal).
+`mpreg.cache.strong_retry_abort`, or CLI
+`uv run mpreg client cache-strong-retry-abort` (still CFT; not background heal).
 
 Runbook: `docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md`.
 OpenAPI: `GET $MPREG_MONITORING_URL/openapi.json` → `StrongMetricsResponse` /
