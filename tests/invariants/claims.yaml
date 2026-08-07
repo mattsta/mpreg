@@ -409,8 +409,8 @@ release_0_3_1:
     support_only: true
     tests:
       - tests/release/test_h2_lint_bar.py
-  - id: REL-0.3.1-CONTAINER-SUPPORT
-    claim: "0.3.1 ships SUPPORT.md; native process deploy only"
+  - id: REL-0.3.1-SUPPORT
+    claim: "0.3.1 ships SUPPORT.md with help and security pointers"
     proof: [L2]
     support_only: true
     tests:

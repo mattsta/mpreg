@@ -47,14 +47,14 @@ uv run pytest tests/release/ -q
 25. `tests/release/test_h2_lint_bar.py`
 26–40. Buffer
 
-# TRACK H3 — Container & support (~20 pts)
+# TRACK H3 — Support & publish docs (~20 pts)
 
 41. `SUPPORT.md` (how to get help, links to SECURITY/claims)
-42. Explicit non-support of process/process-mesh in ops docs
-43. RELEASE_CHECKLIST publish path without support docss
+42. PRODUCTION_DEPLOYMENT and checklist link SUPPORT.md
+43. RELEASE_CHECKLIST publish path
 44. RELEASE_CHECKLIST support docs + PyPI section refresh
 45. PRODUCTION_DEPLOYMENT support docs pointer
-46. `tests/release/test_h3_support docs_support.py`
+46. `tests/release/test_h3_support_md.py`
 47–60. Buffer
 
 # TRACK H4 — Version & honesty (~15 pts)
@@ -69,7 +69,7 @@ uv run pytest tests/release/ -q
 # TRACK H5 — Gate & freeze (~25 pts)
 
 76. Update package smoke assert 0.3.1
-77. release_gate still orchestrates all
+77. release_gate still runs the full script matrix
 78. All burndown checked
 79. Master/arch Complete
 80. Full release_gate green

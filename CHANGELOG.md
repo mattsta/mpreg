@@ -9,6 +9,7 @@ Patch release raising the **quality floor** after the 0.3.0 Production Snapshot.
 - **Broader CI unit-fast** — GCM bridge tests, unified client, client trace metadata
 - **Stronger lint bar** — ruff I/F401/UP035 clean on `mpreg/`; E9 full tree
 - **Typecheck expansion** — more import smoke + release-surface mypy modules
+- **SUPPORT.md** — how to get help, security path, and ops pointers
 - Package smoke reads expected version from `pyproject.toml` (not hardcoded)
 
 ### Still deferred

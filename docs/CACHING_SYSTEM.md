@@ -1125,7 +1125,7 @@ Memory prediction accuracy: 98.5% (pympler vs actual usage)
 ### Factory Function Selection
 
 ```python
-# 1. Memory-Constrained Environments (Cloud, Containers)
+# 1. Memory-Constrained Environments (Cloud, tight RAM hosts)
 cache = create_memory_only_cache_manager(max_memory_mb=2048)
 
 # 2. Fixed Workload Scenarios (Known Result Count)

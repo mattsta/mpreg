@@ -33,8 +33,9 @@
 ## H3 — Support & publish docs
 
 - [x] H3.01 SUPPORT.md
-- [x] H3.02 Explicit no process/process-mesh in ops docs
+- [x] H3.02 PRODUCTION / checklist links to SUPPORT.md
 - [x] H3.03 Checklist / PRODUCTION links
+- [x] H3.04 `test_h3_support_md.py`
 
 ## H4 — Version & honesty
 

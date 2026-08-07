@@ -16,7 +16,6 @@
 ## Non-claims
 
 - 0.3.1 does not claim full-tree ruff/mypy zero
-- process/process-mesh are not supported deployment targets
 - SUPPORT.md is not a commercial SLA
 - Hardening patch ≠ new distributed guarantees (still CFT, not BFT/WAN/Jepsen)
 

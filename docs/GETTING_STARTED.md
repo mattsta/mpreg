@@ -1109,6 +1109,8 @@ server.register_command("admin_func", admin_function, ["admin"])
 
 #### **3. Auto-scaling & Dynamic Cluster Management**
 
+Scale by running additional MPREG processes with shared `cluster_id` and peer connect URLs (profiles + `mpreg server start-config`).
+
 ### **🚀 Advanced Features to Build**
 
 #### **1. Stream Processing**
@@ -1208,6 +1210,8 @@ await scheduler.run_dag(dag, schedule="@daily")
 ### **🌍 Ecosystem Integration**
 
 #### **1. Process & host deployment**
+
+Deploy MPREG as ordinary OS processes or systemd units using shipped profiles (`mpreg/profiles/`) and `docs/PRODUCTION_DEPLOYMENT.md`.
 
 #### **2. Language Bindings**
 

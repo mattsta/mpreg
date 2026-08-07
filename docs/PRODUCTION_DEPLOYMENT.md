@@ -10,6 +10,7 @@ and cache. All cross-node routing is catalog-driven and gossip-propagated.
 
 - Hardening: `docs/RELEASE_0_3_1_PRODUCTION_HARDENING_ARCHITECTURE.md`
 - Support: `SUPPORT.md`
+- Deploy with profiles and `mpreg server start-config` (OS processes / systemd)
 
 ## Release snapshot (0.3.0)
 

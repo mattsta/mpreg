@@ -39,3 +39,5 @@ Prefer GitHub issues with:
 
 ## Deployment posture
 
+MPREG runs as ordinary OS processes using profiles and `mpreg server start-config`.
+See `docs/PRODUCTION_DEPLOYMENT.md`.

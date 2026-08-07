@@ -18,7 +18,7 @@ residual-honesty micro-bands or enterprise roadmap features:
 
 - Broader **unit-fast** and **import/typecheck** surfaces
 - Safe **lint autofix** + slightly stricter lint bar
-- **Container + support/publish** artifacts for “upload everywhere”
+- **SUPPORT.md** and publish/docs path for public distribution
 - Patch version, CHANGELOG, claims, full `release_gate` green
 
 ## 2. Non-goals (still frozen)
@@ -49,7 +49,7 @@ residual-honesty micro-bands or enterprise roadmap features:
 | Typecheck | import smoke + tiny mypy surface | + more core modules; version dynamic |
 | Unit-fast | ~5 product paths + release | + client/core/integration smoke paths |
 | Package | wheel smoke | + publish docs |
-| Docs | SECURITY + checklist | + SUPPORT + container section |
+| Docs | SECURITY + checklist | + SUPPORT.md |
 
 ## 5. Definition of done
 
