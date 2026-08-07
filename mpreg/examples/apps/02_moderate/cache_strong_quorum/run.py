@@ -324,13 +324,58 @@ async def main() -> None:
                     "retry_abort must clear residual when ABORT can land",
                 )
                 ensure(coord_cft.last_abort_fail_peers == [], "fail peers cleared")
-                # T42/T47 teach: production ops path is client RPC / CLI
-                # (mpreg.cache.strong_retry_abort) wrapping the same coordinator
-                # method — still ops-driven CFT, not automatic heal.
+                # T38/T49: GCM.strong_retry_abort wraps coordinator (ops path)
+                tr_cft.drop_commit |= {"n2", "n3", "n4"}
+                tr_cft.drop_abort |= {"n1"}
+                fail_gcm = await coord_cft.strong_put(
+                    k_cft, {"stale_gcm": True}, eligible_peers=list(be_cft)
+                )
+                ensure(not fail_gcm.success, "gcm residual put must fail")
+                oid_gcm = fail_gcm.operation_id or ""
+                ensure(
+                    be_cft["n1"].get_visible(k_cft) is not None
+                    and _entry_op_id(be_cft["n1"].get_visible(k_cft)) == oid_gcm,
+                    "expected residual for GCM retry path",
+                )
+                tr_cft.drop_abort.clear()
+                tr_cft.drop_commit.clear()
+                gcm_cft = GlobalCacheManager(
+                    GlobalCacheConfiguration(
+                        enable_l2_persistent=False,
+                        enable_l3_distributed=False,
+                        enable_l4_federation=False,
+                        local_cluster_id="strong-lab-cft",
+                    )
+                )
+                gcm_cft.attach_strong_coordinator(coord_cft)
+                try:
+                    gcm_out = await gcm_cft.strong_retry_abort(
+                        k_cft, oid_gcm, peers=["n1"]
+                    )
+                    ensure(
+                        gcm_out.get("cleared") is True,
+                        f"GCM strong_retry_abort: {gcm_out}",
+                    )
+                    ensure(
+                        int(gcm_cft.strong_status().get("retry_abort_calls") or 0) >= 1,
+                        "GCM retry_abort_calls",
+                    )
+                    ensure(
+                        int(gcm_cft.strong_status().get("retry_abort_cleared") or 0)
+                        >= 1,
+                        "GCM retry_abort_cleared",
+                    )
+                    n1_gcm = be_cft["n1"].get_visible(k_cft)
+                    ensure(
+                        n1_gcm is None or _entry_op_id(n1_gcm) != oid_gcm,
+                        "GCM retry must clear residual",
+                    )
+                finally:
+                    await gcm_cft.shutdown()
                 step(
-                    "ops path: MPREGClient.cache_strong_retry_abort / "
-                    "mpreg client cache-strong-retry-abort → same retry_abort "
-                    "(ops-driven; not auto-heal; not BFT)"
+                    "ops path: GCM.strong_retry_abort → client RPC "
+                    "MPREGClient.cache_strong_retry_abort / CLI "
+                    "cache-strong-retry-abort (ops-driven; not auto-heal; not BFT)"
                 )
                 # Seed a fresh residual then LWW heal (not reliable ABORT)
                 tr_cft.drop_commit |= {"n2", "n3", "n4"}

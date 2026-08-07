@@ -663,3 +663,36 @@ T48 documents platform cache FQNs in monitoring OpenAPI components:
 Still **not** claimed: OpenAPI catalog is an invoke API; auto-heal; BFT/WAN.
 
 Plan: `docs/plans/DISTLAB_T48_OPENAPI_PLATFORM_CACHE_RPC_PLAN.md`.
+
+## Phase 37 — GCM curriculum + DistLab self-target (2026-08-06)
+
+T49 closes the teachable ops stack and DistLab coverage for RPC fan-in:
+
+* Curriculum `cache_strong_quorum`: after coordinator `retry_abort`, a second
+  residual is cleared via `GlobalCacheManager.strong_retry_abort` (counters
+  `retry_abort_calls` / `retry_abort_cleared`)
+* DistLab `strong.cft_retry_abort_self_target` — residual on n1, coordinate as
+  n1, `peers=["n1"]` → local.abort clears (simulates client RPC landing on
+  residual peer)
+* Scenario in `strong-core` / `ci-core`
+* `ops_surfaces` meta on `strong.cft_retry_abort_clears_residual` lists full
+  stack: coordinator → GCM → platform FQN → client → CLI
+
+Still **not** claimed: self-target is automatic heal; BFT; WAN; locs = quorum.
+
+Plan: `docs/plans/DISTLAB_T49_GCM_CURRICULUM_SELF_TARGET_PLAN.md`.
+
+## Phase 38 — Hypothesis self-target property (2026-08-06)
+
+T50 property-tests the self-target path:
+
+* `test_cft_retry_abort_self_target_clears_local` (n∈[3,7]): residual seeded on
+  non-origin peer; coordinator origin_id = residual peer; `peers=[self]` clears
+* Residual gate: `tests/chaos/test_t49_residuals.py`,
+  `tests/chaos/test_t50_residuals.py`
+* Ledger / runbook / OPERATE / claims honesty
+
+Still **not** claimed: in-process property is kernel partition / kill -9 / WAN;
+automatic background heal; residual-free under continued ABORT loss.
+
+Plan: `docs/plans/DISTLAB_T50_HYPOTHESIS_SELF_TARGET_PLAN.md`.

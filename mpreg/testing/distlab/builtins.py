@@ -796,6 +796,75 @@ def _strong_cft_retry_abort_clears_residual() -> Scenario:
             "product_fix": True,
             "cft_limit": True,
             "fault": "retry_abort_after_lost_abort",
+            # T42/T49: same clear is exposed via GCM/client RPC/CLI
+            "ops_surfaces": (
+                "StrongPutCoordinator.retry_abort",
+                "GlobalCacheManager.strong_retry_abort",
+                "mpreg.cache.strong_retry_abort",
+                "MPREGClient.cache_strong_retry_abort",
+                "mpreg client cache-strong-retry-abort",
+            ),
+        },
+    )
+
+def _strong_cft_retry_abort_self_target() -> Scenario:
+    """T44/T49: retry_abort with peers=[self] clears local residual (RPC fan-in).
+
+    Simulates client RPC landing on the residual peer: that node's coordinator
+    receives peers=[own_id] and must local-abort rather than no-op.
+    """
+    from mpreg.core.cache_models import CacheMetadata, GlobalCacheKey
+    from mpreg.core.cache_strong import StrongVersion, _entry_op_id
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+    from mpreg.testing.distlab.checker import NoOpenInvokeChecker
+
+    sut = StrongSUT.create(
+        3,
+        prepare_timeout_s=0.4,
+        commit_timeout_s=0.25,
+        pending_ttl_s=30.0,
+    )
+
+    async def body(history: History, s: object) -> None:
+        key = GlobalCacheKey(
+            namespace="distlab", identifier="self-tgt", version="v1"
+        )
+        oid = "distlab-self-target-oid"
+        # Residual lives on n1; coordinate *as* n1 (RPC landed on residual peer)
+        be = sut.backends["n1"]
+        coord = sut.coords["n1"]
+        sv = StrongVersion(logical_ts=1, origin_node="n0", op_id=oid)
+        pack = await be.prepare(
+            key=key,
+            value={"stale": True},
+            metadata=CacheMetadata(),
+            strong_version=sv,
+            replica_set=tuple(sut.backends.keys()),
+            quorum=2,
+            ttl_s=30.0,
+        )
+        assert pack.ok
+        cack = await be.commit(op_id=oid, key=key)
+        assert cack.ok and cack.applied
+        assert be.get_visible(key) is not None
+        out = await coord.retry_abort(key, oid, peers=["n1"])
+        assert out.get("cleared") is True, out
+        assert "n1" in list(out.get("ok_peers") or [])
+        ent = be.get_visible(key)
+        assert ent is None or _entry_op_id(ent) != oid
+
+    return Scenario(
+        name="strong.cft_retry_abort_self_target",
+        setup=lambda: sut,
+        body=body,
+        checker=NoOpenInvokeChecker(),
+        meta={
+            "track": "T49",
+            "product_fix": True,
+            "cft_limit": True,
+            "fault": "retry_abort_self_target_rpc_fanin",
+            "ops_driven": True,
+            "not_automatic_heal": True,
         },
     )
 
@@ -1404,6 +1473,13 @@ def register_builtins(registry=None) -> int:
             "T37",
             "retry_abort clears CFT residual when ABORT can land",
             ("strong", "cft_limit", "product"),
+        ),
+        (
+            "strong.cft_retry_abort_self_target",
+            _strong_cft_retry_abort_self_target,
+            "T49",
+            "retry_abort peers=[self] clears local residual (RPC fan-in)",
+            ("strong", "cft_limit", "product", "ops_driven"),
         ),
         (
             "strong.cft_orphan_backup_gc",

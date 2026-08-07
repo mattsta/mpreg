@@ -114,6 +114,11 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T47 live cap scrape | `mpreg_strong_cap_retry_abort_ops_driven==1` live e2e | support ops |
 | T47 client RPC metrics | cache_strong_retry_abort on live metrics e2e | product |
 | T48 OpenAPI cache RPC | `PlatformCacheRpcCatalog` + strong_retry_abort FQN | support ops |
+| T49 GCM curriculum | `cache_strong_quorum` GCM.strong_retry_abort residual→clear | teach |
+| T49 DistLab self-target | `strong.cft_retry_abort_self_target` + strong-core/ci-core | product |
+| T49 ops_surfaces meta | clears-residual meta lists full ops stack | honesty |
+| T50 Hypothesis self-target | `test_cft_retry_abort_self_target_clears_local` | product |
+| T50 residual gate | `test_t49_residuals` + `test_t50_residuals` | honesty |
 
 ## Non-claims (do not market)
 
@@ -126,6 +131,8 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 - `abort_fail_peers` / `last_abort_fail_peers` are CFT residual candidates only
   (not residual-free proof, not automatic residual heal)
 - `retry_abort` is ops-driven CFT best-effort — not automatic background heal
+- Self-target `peers=[self]` is RPC fan-in local.abort correctness — not
+  automatic residual heal, not BFT, not WAN
 
 ## Gate commands
 

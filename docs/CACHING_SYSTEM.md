@@ -633,7 +633,8 @@ bound on `GlobalCacheManager`, `put(..., consistency_level=STRONG)` runs a
 **After a successful STRONG put**, read with default/EVENTUAL get (not a quorum
 read). Curriculum: `cache_strong_quorum` (CFT residual + `retry_abort` + LWW heal).
 Claims: `INV-CACHE-STRONG-01` (proof L1/L2/L4). DistLab: `strong.cft_*` scenarios
-in `strong-core` / `ci-core` (including `strong.cft_retry_abort_clears_residual`).
+in `strong-core` / `ci-core` (including `strong.cft_retry_abort_clears_residual`
+and `strong.cft_retry_abort_self_target` for RPC fan-in peers=[self]).
 
 **CFT residual ops (T36/T37/T38):** failed puts may include
 `quorum_info.abort_fail_peers` (peers that exhausted ABORT retries — residual

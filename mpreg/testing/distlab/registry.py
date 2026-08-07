@@ -210,6 +210,8 @@ SUITE_PRESETS: dict[str, tuple[str, ...]] = {
         "strong.cft_residual_survives_pending_purge",
         "strong.cft_orphan_backup_gc",
         "strong.cft_retry_abort_clears_residual",
+        # T49: RPC fan-in self-target (peers=[self] local.abort)
+        "strong.cft_retry_abort_self_target",
     ),
     "audit-core": (
         "audit.multi_origin",

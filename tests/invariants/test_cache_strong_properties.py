@@ -632,6 +632,66 @@ async def test_cft_retry_abort_clears_residual_after_heal(n: int) -> None:
     assert coord.last_abort_fail_peers == []
 
 @pytest.mark.asyncio
+@given(n=st.integers(min_value=3, max_value=7))
+@settings(
+    max_examples=12,
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
+)
+async def test_cft_retry_abort_self_target_clears_local(n: int) -> None:
+    """T50: peers=[self] must local-abort residual (RPC landed on residual peer).
+
+    Client/plane RPC may fan in to any ``cache`` node. When that node *is* the
+    residual holder, retry_abort(peers=[own_id]) must clear local L1 rather than
+    filter self and no-op. Still ops-driven CFT — not automatic heal / BFT.
+    """
+    peers = [f"n{i}" for i in range(n)]
+    residual = peers[1]  # non-origin residual holder
+    tr = InProcessStrongTransport()
+    backends: dict[str, StrongLocalBackend] = {}
+    for p in peers:
+        be = StrongLocalBackend(node_id=p)
+        tr.register(be)
+        backends[p] = be
+    # Coordinate *as* the residual peer (simulates RPC fan-in)
+    coord = StrongPutCoordinator(
+        origin_id=residual,
+        local=backends[residual],
+        transport=tr,
+        cluster_id="c1",
+        replica_factor=n,
+        min_replicas=max(2, n // 2 + 1),
+        prepare_timeout_s=0.3,
+        commit_timeout_s=0.25,
+        pending_ttl_s=30.0,
+        abort_attempts=2,
+    )
+    key = _key(f"self-tgt-{n}")
+    oid = f"self-oid-{n}"
+    sv = StrongVersion(logical_ts=1, origin_node=peers[0], op_id=oid)
+    pack = await backends[residual].prepare(
+        key=key,
+        value={"stale": n},
+        metadata=CacheMetadata(),
+        strong_version=sv,
+        replica_set=tuple(peers),
+        quorum=max(2, n // 2 + 1),
+        ttl_s=30.0,
+    )
+    assert pack.ok
+    cack = await backends[residual].commit(op_id=oid, key=key)
+    assert cack.ok and cack.applied
+    assert backends[residual].get_visible(key) is not None
+    assert _entry_op_id(backends[residual].get_visible(key)) == oid
+
+    out = await coord.retry_abort(key, oid, peers=[residual])
+    assert out.get("cleared") is True, out
+    assert residual in list(out.get("ok_peers") or [])
+    assert list(out.get("fail_peers") or []) == []
+    ent = backends[residual].get_visible(key)
+    assert ent is None or _entry_op_id(ent) != oid
+
+@pytest.mark.asyncio
 @given(
     n=st.integers(min_value=5, max_value=7),
     rounds=st.integers(min_value=2, max_value=5),

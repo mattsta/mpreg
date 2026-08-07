@@ -255,6 +255,8 @@ encapsulation:
       - tests/chaos/test_t40_residuals.py
       - tests/chaos/test_t41_residuals.py
       - tests/chaos/test_t42_residuals.py
+      - tests/chaos/test_t49_residuals.py
+      - tests/chaos/test_t50_residuals.py
       - tests/invariants/test_cache_strong_properties.py
       - tests/invariants/test_cache_strong_history.py
       - tests/integration/test_cache_strong_quorum.py
@@ -298,6 +300,7 @@ non_claims:
   - "cache_strong_retry_abort locs pin is ordinary RPC resource routing — not quorum membership, not residual-free guarantee, not auto-heal"
   - "mpreg_strong_cap_retry_abort_ops_driven is honesty gauge (always 1) — not a toggle that enables automatic residual heal"
   - "OpenAPI PlatformCacheRpcCatalog documents wire FQNs — not an HTTP invoke path, not SIEM orchestration, not auto-heal"
+  - "retry_abort self-target peers=[self] is RPC fan-in local.abort correctness — not automatic residual heal, not BFT, not WAN"
   - "Lying COMMIT_ACK applied bits can satisfy CFT quorum math without peer L1 apply — documented non_claim (not BFT)"
   - "mpreg.testing.distlab is Jepsen-inspired (history/checker/nemesis) — not Elle, not WAN geo generators, not a JVM Jepsen port"
   - "DistLab lab SLI budgets (p99/avg soak bounds) are same-host in-process — not production WAN latency SLAs"
