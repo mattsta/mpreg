@@ -623,3 +623,16 @@ Still **not** claimed: scanner is full-corpus NLP; CLI help is live residual
 clear; automatic heal; residual-free under lost ABORT; WAN/Elle/BFT/fsync.
 
 Plan: `docs/plans/DISTLAB_T45_HONESTY_SCAN_CLI_CURRICULUM_PLAN.md`.
+
+## Phase 34 — Client locs pin for retry_abort (2026-08-06)
+
+T46 adds optional routing pin for ops retry:
+
+* `MPREGClient.cache_strong_retry_abort(..., locs=frozenset({"cache"}))`
+* CLI `--loc` (repeatable)
+* Unpinned still correct after T44 self-target local abort; pin is for
+  coordinator affinity / counter scrape, not residual-free guarantee
+
+Still **not** claimed: locs = quorum membership; automatic heal; BFT/WAN.
+
+Plan: `docs/plans/DISTLAB_T46_CLIENT_LOCS_RETRY_PLAN.md`.

@@ -461,6 +461,12 @@ def client_cache_invalidate(url: str | None, pattern: str) -> None:
     help="Optional RPC timeout seconds",
 )
 @click.option(
+    "--loc",
+    "locs",
+    multiple=True,
+    help="Optional resource location pin (repeatable; e.g. cache)",
+)
+@click.option(
     "--json",
     "as_json",
     is_flag=True,
@@ -475,6 +481,7 @@ def client_cache_strong_retry_abort(
     version: str,
     peers: tuple[str, ...],
     timeout: float | None,
+    locs: tuple[str, ...],
     as_json: bool,
 ) -> None:
     """Ops-driven CFT re-ABORT after recovery (not automatic heal).
@@ -490,6 +497,7 @@ def client_cache_strong_retry_abort(
         from mpreg.client.unified_client import MPREGClient
 
         peer_list = list(peers) if peers else None
+        loc_set = frozenset(locs) if locs else None
         async with MPREGClient(url) as c:
             result = await c.cache_strong_retry_abort(
                 namespace,
@@ -497,6 +505,7 @@ def client_cache_strong_retry_abort(
                 op_id,
                 version=version,
                 peers=peer_list,
+                locs=loc_set,
                 timeout=timeout,
             )
             if as_json:

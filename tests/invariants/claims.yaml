@@ -295,6 +295,7 @@ non_claims:
   - "mpreg client cache-strong-retry-abort is ops-driven CFT CLI smoke — not automatic residual heal, not BFT, not SIEM orchestration"
   - "Live client RPC retry_abort e2e seeds residual via backend prepare+commit — not kernel partition / kill -9 / WAN proof"
   - "Product-doc residual honesty scan is bounded string checks on known paths — not full-corpus NLP proof of every historical plan doc"
+  - "cache_strong_retry_abort locs pin is ordinary RPC resource routing — not quorum membership, not residual-free guarantee, not auto-heal"
   - "Lying COMMIT_ACK applied bits can satisfy CFT quorum math without peer L1 apply — documented non_claim (not BFT)"
   - "mpreg.testing.distlab is Jepsen-inspired (history/checker/nemesis) — not Elle, not WAN geo generators, not a JVM Jepsen port"
   - "DistLab lab SLI budgets (p99/avg soak bounds) are same-host in-process — not production WAN latency SLAs"

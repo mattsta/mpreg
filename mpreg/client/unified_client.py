@@ -506,6 +506,7 @@ class MPREGClient:
         *,
         version: str | None = None,
         peers: list[str] | None = None,
+        locs: frozenset[str] | set[str] | None = None,
         timeout: float | None = None,
     ) -> StrongRetryAbortResult:
         """Ops-driven CFT re-ABORT for residual candidates (not automatic heal).
@@ -513,6 +514,12 @@ class MPREGClient:
         Call after network recovery when a failed STRONG put listed peers in
         ``quorum_info.abort_fail_peers`` / ``last_abort_fail_peers``. Still
         best-effort CFT — not residual-free while ABORT is lost, not BFT.
+
+        ``locs`` optionally pins routing (e.g. ``frozenset({\"cache\"})``).
+        Unpinned calls may land on any node advertising the cache resource —
+        including a residual peer; ``retry_abort`` still local-aborts self and
+        peer-aborts remotes (T44). Prefer the put origin when collecting
+        ``retry_abort_*`` counters on a specific coordinator.
         """
         body: dict[str, Any] = {
             "namespace": namespace,
@@ -523,8 +530,11 @@ class MPREGClient:
             body["version"] = version
         if peers is not None:
             body["peers"] = list(peers)
+        call_kw: dict[str, Any] = {"timeout": timeout}
+        if locs is not None:
+            call_kw["locs"] = frozenset(locs)
         raw = await self.api.call(
-            PlatformRpc.CACHE_STRONG_RETRY_ABORT, body, timeout=timeout
+            PlatformRpc.CACHE_STRONG_RETRY_ABORT, body, **call_kw
         )
         return StrongRetryAbortResult.from_raw(raw)
 

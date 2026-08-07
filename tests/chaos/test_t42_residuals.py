@@ -157,13 +157,13 @@ async def test_t42_client_cache_strong_retry_abort() -> None:
 
     async def fake_call(self, fun, *args, **kwargs):
         captured["fun"] = fun
+        captured["kwargs"] = dict(kwargs)
         body = args[0] if args else kwargs.get("args") or {}
         if isinstance(body, dict):
             captured["body"] = body
         elif args and isinstance(args[0], dict):
             captured["body"] = args[0]
         else:
-            # call(fun, body, timeout=...)
             captured["body"] = args[0] if args else {}
         return {
             "success": True,
@@ -181,7 +181,12 @@ async def test_t42_client_cache_strong_retry_abort() -> None:
         MPREGClientAPI.call = fake_call  # type: ignore[method-assign]
         object.__setattr__(client.api, "_connected", True)
         r = await client.cache_strong_retry_abort(
-            "ns", "id", "oid-z", peers=["n1"], version="v1"
+            "ns",
+            "id",
+            "oid-z",
+            peers=["n1"],
+            version="v1",
+            locs=frozenset({"cache"}),
         )
         assert r.success and r.cleared
         assert r.ok_peers == ["n1"]
@@ -191,6 +196,8 @@ async def test_t42_client_cache_strong_retry_abort() -> None:
         assert body.get("namespace") == "ns"
         assert body.get("op_id") == "oid-z"
         assert body.get("peers") == ["n1"]
+        # T46: locs forwarded as call kw
+        assert captured.get("kwargs", {}).get("locs") == frozenset({"cache"})
     finally:
         MPREGClientAPI.call = orig  # type: ignore[method-assign]
 

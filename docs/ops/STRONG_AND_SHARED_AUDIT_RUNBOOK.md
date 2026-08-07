@@ -108,7 +108,8 @@ residual-free proof. Monitor table prints `abort_fail_peers=…`.
 * client RPC: `MPREGClient.cache_strong_retry_abort(ns, id, op_id, peers=…)`
   → `mpreg.cache.strong_retry_abort`
 * CLI: `uv run mpreg client cache-strong-retry-abort --url … \
-  --namespace NS --key ID --op-id OID [--peer PEER…] [--json]`
+  --namespace NS --key ID --op-id OID [--peer PEER…] [--loc cache] [--json]`
+  (`--loc` pins resource routing; unpinned may land on any `cache` node)
 
 DistLab `strong.cft_retry_abort_clears_residual` proves clear when ABORT can
 land. Live mesh: `test_live_client_rpc_strong_retry_abort_clears_residual`
