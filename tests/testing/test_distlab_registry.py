@@ -270,6 +270,30 @@ async def test_registry_run_suite_ci_core_preset() -> None:
     assert report["ran"] == len(names)
     assert report["passed"] == report["ran"]
 
+def test_strong_core_includes_retry_abort_ops_scenarios() -> None:
+    """T56: strong-core/ci-core include full retry_abort ops surface scenarios."""
+    from mpreg.testing.distlab.builtins import ensure_builtins
+    from mpreg.testing.distlab.registry import get_registry, resolve_preset
+
+    ensure_builtins()
+    required = (
+        "strong.cft_retry_abort_clears_residual",
+        "strong.cft_retry_abort_self_target",
+        "strong.cft_gcm_retry_abort_clears_residual",
+        "strong.cft_partial_commit_lost_abort",
+        "strong.cft_residual_healed_by_lww",
+        "strong.cft_residual_survives_pending_purge",
+        "strong.cft_orphan_backup_gc",
+    )
+    for preset in ("strong-core", "ci-core"):
+        names = resolve_preset(preset)
+        for sc in required:
+            assert sc in names, f"{sc} missing from {preset}"
+    # Factories registered and runnable via name lookup
+    reg = get_registry()
+    for sc in required:
+        assert sc in reg.list(), f"{sc} not registered"
+
 @pytest.mark.asyncio
 async def test_strong_refuse_get_delete_scenario() -> None:
     """T19: builtin refuse scenario passes NoOpenInvokeChecker."""

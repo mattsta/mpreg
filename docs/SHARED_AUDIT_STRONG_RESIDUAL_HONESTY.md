@@ -753,3 +753,29 @@ T54 property-tests the product library surface:
 Still **not** claimed: in-process property is kernel partition / WAN; auto-heal.
 
 Plan: `docs/plans/DISTLAB_T54_HYPOTHESIS_GCM_RETRY_PLAN.md`.
+
+## Phase 43 — Curriculum ops loop polish (2026-08-06)
+
+T55 teaches the full operator path in curriculum + product docs:
+
+* `ops_cli_tour`: step after retry-abort `--help` documents
+  `/metrics/strong` → `residual_ops_hint` / `abort_fail_op_id` → CLI
+* `CACHING_SYSTEM.md` ops section lists doctor/monitor/JSON hint fields
+* Design doc CFT exception lists GCM + self-target DistLab scenarios and
+  `residual_ops_hint`
+
+Still **not** claimed: curriculum help smoke is live residual clear; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T55_CURRICULUM_OPS_LOOP_PLAN.md`.
+
+## Phase 44 — strong-core membership gate (2026-08-06)
+
+T56 locks DistLab preset membership for the full CFT retry_abort surface:
+
+* `test_strong_core_includes_retry_abort_ops_scenarios` requires clears /
+  self-target / GCM + prior CFT honesty scenarios in strong-core and ci-core
+* Residual: `tests/chaos/test_t56_residuals.py`
+
+Still **not** claimed: preset gate is Jepsen/WAN; residual-free product.
+
+Plan: `docs/plans/DISTLAB_T56_STRONG_CORE_MEMBERSHIP_PLAN.md`.

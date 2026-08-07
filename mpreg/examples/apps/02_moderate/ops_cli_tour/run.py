@@ -383,6 +383,17 @@ async def main() -> None:
                         or "best-effort" in hout,
                         f"honesty missing in help: {help_r.output[:400]}",
                     )
+                    ensure(
+                        "--peer" in hout or "peer" in hout,
+                        f"missing --peer: {help_r.output[:300]}",
+                    )
+                    # T55: teach ops loop metrics → residual_ops_hint → this CLI
+                    step(
+                        "ops loop: GET /metrics/strong residual_ops_hint + "
+                        "abort_fail_op_id → cache-strong-retry-abort "
+                        "(ops-driven CFT; not auto-heal; doctor does not fail "
+                        "on residual candidates)"
+                    )
                     ok("cache-strong-retry-abort CLI registered (ops-driven CFT)")
 
                 with scenario(

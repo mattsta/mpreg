@@ -650,11 +650,15 @@ resource node (including a residual peer); `retry_abort` always local-aborts
 and peer-aborts remotes. LWW success put remains an alternate overwrite path.
 Still not residual-free while ABORT is lost.
 
-Ops: `mpreg monitor strong` (`abort_fail_peers=`), `mpreg_strong_aborts_peer_*`,
-`mpreg_strong_visible` / `_backups` / `_backups_pruned_total`. Non-claims: no WAN
-multi-region SLA, not BFT, not fsync disk durability, not STRONG get/delete MVP,
-not residual-free under lost ABORT, pending TTL ≠ residual GC, LWW heal ≠
-reliable ABORT, `retry_abort` ≠ automatic heal.
+Ops: `mpreg monitor strong` (`abort_fail_peers=` / `abort_fail_op_id=`),
+`mpreg doctor --check-strong` (same fields + residual ops hint), JSON
+`residual_ops_hint` on `/metrics/strong` and GCM `strong_status` (empty when no
+candidates; CLI template for `cache-strong-retry-abort` — not auto-heal),
+`mpreg_strong_aborts_peer_*`, `mpreg_strong_visible` / `_backups` /
+`_backups_pruned_total`. Non-claims: no WAN multi-region SLA, not BFT, not fsync
+disk durability, not STRONG get/delete MVP, not residual-free under lost ABORT,
+pending TTL ≠ residual GC, LWW heal ≠ reliable ABORT, `retry_abort` ≠ automatic
+heal, `residual_ops_hint` ≠ heal toggle.
 
 ```python
 # Flag off or unbound coordinator — fail closed, no local write

@@ -126,6 +126,8 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T53 residual_ops_hint | `format_residual_ops_hint` + metrics/status/OpenAPI field | support ops |
 | T53 client guide | metrics → residual_ops_hint → CLI ops loop | teach |
 | T54 Hypothesis GCM | `test_cft_gcm_retry_abort_clears_residual_after_heal` | product |
+| T55 curriculum ops loop | ops_cli_tour residual_ops_hint step + CACHING/design | teach |
+| T56 strong-core membership | registry gate for retry_abort ops scenarios | honesty |
 
 ## Non-claims (do not market)
 
