@@ -637,14 +637,16 @@ after COMMIT apply (pending is already gone). DistLab
 `strong.cft_partial_commit_lost_abort` documents this; counters
 `aborts_peer_fail` / caps `abort_best_effort` / `pending_ttl_clears_residual_l1=false`
 expose it. Ops surface `abort_fail_peers` / `last_abort_fail_peers` /
-`last_abort_fail_op_id` / `residual_ops_hint` (metrics JSON + doctor/monitor);
-after network recovery, `StrongPutCoordinator.retry_abort` /
-`GlobalCacheManager.strong_retry_abort` re-delivers ABORT best-effort
-(`strong.cft_retry_abort_clears_residual`,
+`last_abort_fail_op_id` / `residual_ops_hint` (metrics JSON + doctor/monitor;
+may fill `--namespace`/`--key` from process-local `recent_abort_fails`;
+helper `format_residual_ops_hint`). After network recovery,
+`StrongPutCoordinator.retry_abort` / `GlobalCacheManager.strong_retry_abort`
+re-delivers ABORT best-effort (`strong.cft_retry_abort_clears_residual`,
 `strong.cft_gcm_retry_abort_clears_residual`,
-`strong.cft_retry_abort_self_target`) — **ops-driven**, not automatic
-background heal. This is **not** BFT and **not** claimed residual-free under
-lost ABORT.
+`strong.cft_retry_abort_self_target`). Guidance-only DistLab:
+`strong.cft_residual_ops_hint_enriched` (does not clear residual). All
+**ops-driven**, not automatic background heal. This is **not** BFT and
+**not** claimed residual-free under lost ABORT.
 
 **Commit ordering rule (prefer origin-commit-last):**
 

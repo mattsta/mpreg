@@ -122,6 +122,74 @@ def test_doctor_strong_evaluate_payload_honesty() -> None:
     )
     assert mis_ok is False
 
+def test_doctor_strong_row_residual_ops_hint_field() -> None:
+    """T71: doctor strong checks expose residual_ops_hint for JSON consumers.
+
+    Mirrors the row-building rule in ``doctor`` when metrics_strong/mgmt_strong
+    succeed: always include the key (empty when no residual candidates).
+    """
+    from mpreg.cli.main import (
+        evaluate_strong_doctor_payload,
+        strong_residual_ops_hint,
+    )
+
+    payload = {
+        "strong": {
+            "health": "ok",
+            "coordinator_bound": True,
+            "capabilities": {
+                "put_majority_commit": True,
+                "get_quorum": False,
+                "delete_quorum": False,
+                "local_ryw_after_put": True,
+                "cft_only": True,
+                "abort_best_effort": True,
+                "pending_ttl_clears_residual_l1": False,
+                "retry_abort_ops_driven": True,
+            },
+            "counters": {"puts_ok": 1, "aborts_peer_fail": 1},
+            "last_abort_fail_peers": ["n1"],
+            "last_abort_fail_op_id": "oid-t71",
+            "recent_abort_fails": [
+                {
+                    "op_id": "oid-t71",
+                    "key": "ns-t71/key-t71",
+                    "peers": ["n1"],
+                }
+            ],
+        }
+    }
+    ok, detail = evaluate_strong_doctor_payload(payload)
+    assert ok is True
+    assert "cache-strong-retry-abort" in detail
+    body = payload["strong"]
+    hint = strong_residual_ops_hint(body)
+    assert hint
+    assert "--namespace ns-t71" in hint
+    assert "--key key-t71" in hint
+    # Same shape doctor JSON rows use for metrics_strong / mgmt_strong
+    row = {
+        "check": "metrics_strong",
+        "status": "OK",
+        "detail": detail,
+        "residual_ops_hint": hint,
+    }
+    assert row["residual_ops_hint"]
+    assert "not auto-heal" in row["residual_ops_hint"]
+    # Empty when no residual candidates
+    empty_body = {
+        "health": "ok",
+        "capabilities": {
+            "get_quorum": False,
+            "delete_quorum": False,
+            "cft_only": True,
+            "abort_best_effort": True,
+        },
+        "counters": {},
+        "last_abort_fail_peers": [],
+    }
+    assert strong_residual_ops_hint(empty_body) == ""
+
 def test_doctor_shared_audit_evaluate_payload_honesty() -> None:
     """T22: evaluate_shared_audit_doctor_payload fails closed on dishonest caps."""
     from mpreg.cli.main import evaluate_shared_audit_doctor_payload

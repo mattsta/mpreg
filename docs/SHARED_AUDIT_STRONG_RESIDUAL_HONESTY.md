@@ -885,3 +885,61 @@ metrics → residual_ops_hint → `cache-strong-retry-abort` (not auto-heal).
 Still **not** claimed: explain text is auto-heal; SIEM.
 
 Plan: `docs/plans/DISTLAB_T65_CONFIG_CHECK_HINT_PLAN.md`.
+
+## Phase 54 — Curriculum config-check residual_ops_hint assert (2026-08-06)
+
+T66: `ops_cli_tour` config-check `--explain` scenario asserts explain output
+includes `residual_ops_hint` / `cache-strong-retry-abort` and CFT honesty
+(not auto-heal / ops-driven).
+
+Still **not** claimed: curriculum assert is live residual clear; auto-heal; SIEM.
+
+Plan: `docs/plans/DISTLAB_T66_CURRICULUM_EXPLAIN_ASSERT_PLAN.md`.
+
+## Phase 55 — Design-doc residual_ops_hint polish (2026-08-06)
+
+T67: `SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md` documents
+`format_residual_ops_hint`, process-local `recent_abort_fails` ns/key fill,
+and DistLab `strong.cft_residual_ops_hint_enriched` (guidance only).
+
+Still **not** claimed: design polish is residual-free product claim; BFT/WAN.
+
+Plan: `docs/plans/DISTLAB_T67_DESIGN_HINT_POLISH_PLAN.md`.
+
+## Phase 56 — Ledger + live doctor residual polish (2026-08-06)
+
+T68: proof ledger maps T66–T71; live doctor e2e + enriched residual_ops_hint
+e2e remain the multi-process runtime proof path for doctor/hint surfaces.
+
+Still **not** claimed: ledger inventory is Jepsen/WAN; live seed ≠ kernel drop.
+
+Plan: `docs/plans/DISTLAB_T68_LEDGER_LIVE_DOCTOR_PLAN.md`.
+
+## Phase 57 — config-check pytest residual_ops_hint guide (2026-08-06)
+
+T69: `test_config_check_explain_includes_guide` parses JSON `guide.strong_cache`
+for `residual_ops_hint` + `cache-strong-retry-abort` + not auto-heal/ops-driven.
+
+Still **not** claimed: pytest coverage is auto-heal; SIEM orchestration.
+
+Plan: `docs/plans/DISTLAB_T69_CONFIG_CHECK_PYTEST_HINT_PLAN.md`.
+
+## Phase 58 — APP_CATALOG ops_cli_tour residual_ops_hint (2026-08-06)
+
+T70: APP_CATALOG elevates `ops_cli_tour` to product tier and documents
+STRONG residual_ops_hint ops loop in the app summary.
+
+Still **not** claimed: catalog row is residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T70_APP_CATALOG_HINT_PLAN.md`.
+
+## Phase 59 — Doctor JSON residual_ops_hint field (2026-08-06)
+
+T71: `mpreg doctor --strong` JSON rows for `metrics_strong` / `mgmt_strong`
+always include `residual_ops_hint` (empty when no residual candidates). Same
+guidance string as metrics/doctor detail — not a heal toggle.
+
+Still **not** claimed: doctor JSON field is auto-heal; SIEM; residual-free proof.
+
+Plan: `docs/plans/DISTLAB_T71_DOCTOR_JSON_HINT_PLAN.md`.
+

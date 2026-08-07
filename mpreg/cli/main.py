@@ -1989,6 +1989,7 @@ def doctor(
                             if "mpreg_info" not in payload:
                                 ok = False
                                 body_preview = "missing mpreg_info metric"
+                        residual_hint = ""
                         if (
                             ok
                             and name in ("metrics_strong", "mgmt_strong")
@@ -1998,6 +1999,14 @@ def doctor(
                             if not sok:
                                 ok = False
                             body_preview = sdetail
+                            # T71: machine-readable residual_ops_hint on doctor JSON rows
+                            sbody = (
+                                payload.get("strong")
+                                if isinstance(payload.get("strong"), dict)
+                                else payload
+                            )
+                            if isinstance(sbody, dict):
+                                residual_hint = strong_residual_ops_hint(sbody)
                         if (
                             ok
                             and name == "metrics_shared_audit"
@@ -2024,13 +2033,15 @@ def doctor(
                                 body_preview = f"unexpected raft body: {body_preview}"
                         if not ok:
                             failures += 1
-                        rows.append(
-                            {
-                                "check": name,
-                                "status": "OK" if ok else str(response.status),
-                                "detail": body_preview,
-                            }
-                        )
+                        row: dict[str, str] = {
+                            "check": name,
+                            "status": "OK" if ok else str(response.status),
+                            "detail": body_preview,
+                        }
+                        # T71: always key on strong checks (empty when no residual)
+                        if name in ("metrics_strong", "mgmt_strong"):
+                            row["residual_ops_hint"] = residual_hint
+                        rows.append(row)
                 except Exception as exc:  # noqa: BLE001 - doctor must report all failures
                     failures += 1
                     rows.append(

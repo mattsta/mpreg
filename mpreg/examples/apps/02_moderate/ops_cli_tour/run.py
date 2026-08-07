@@ -85,7 +85,23 @@ async def main() -> None:
                 or "persistence" in out.lower(),
                 f"explain thin: {out[:300]}",
             )
-            step("ERG: --explain documents groups for operator discoverability")
+            # T66: strong_cache guide documents residual_ops_hint ops loop
+            ensure(
+                "residual_ops_hint" in out
+                or "cache-strong-retry-abort" in out
+                or "abort_fail" in out,
+                f"explain missing STRONG residual ops loop: {out[:500]}",
+            )
+            ensure(
+                "not" in out.lower()
+                and ("auto-heal" in out.lower() or "auto heal" in out.lower()
+                     or "ops-driven" in out.lower() or "best-effort" in out.lower()),
+                f"explain missing CFT honesty on strong_cache: {out[:500]}",
+            )
+            step(
+                "ERG: --explain strong_cache → residual_ops_hint → "
+                "cache-strong-retry-abort (ops-driven CFT; not auto-heal)"
+            )
             ok("config-check --explain guide present")
 
         with scenario("examples list via mpreg CLI", "ops.cli_examples"):

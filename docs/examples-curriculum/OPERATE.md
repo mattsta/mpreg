@@ -264,6 +264,7 @@ strong-core / ci-core). Doctor/monitor show `abort_fail_op_id=` and an ops
 hint → `cache-strong-retry-abort` when residual candidates present;
 JSON `residual_ops_hint` on `/metrics/strong` carries the same string
 (empty when none; not auto-heal; may fill ns/key from `recent_abort_fails`).
+Doctor JSON (`mpreg doctor --strong --format json`) includes `residual_ops_hint` on `metrics_strong` / `mgmt_strong` rows (empty when none).
 DistLab `strong.cft_residual_ops_hint_enriched` proves the guidance surface
 without clearing residual. Monitor table shows `cft=` / `abort_be=` /
 `abort_fail=` / `abort_fail_peers=` / `retry_abort=` / `retry_cleared=` /

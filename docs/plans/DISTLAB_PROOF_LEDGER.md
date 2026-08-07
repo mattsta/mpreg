@@ -137,6 +137,12 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T63 Hypothesis hint enrich | `test_format_residual_ops_hint_enriches_ns_key` | product |
 | T64 catalog/docs hint | FEATURE_CATALOG + client guide + CACHING_SYSTEM | teach |
 | T65 config-check explain | strong_cache guide residual_ops_hint ops loop | support ops |
+| T66 curriculum explain assert | ops_cli_tour residual_ops_hint + CFT honesty | teach |
+| T67 design-doc hint polish | SHARED_AUDIT design format_residual_ops_hint | teach |
+| T68 ledger + live doctor polish | ledger T66–T71; live doctor/hint e2e | honesty |
+| T69 config-check pytest hint | test_config_check_explain residual_ops_hint | support ops |
+| T70 APP_CATALOG ops_cli hint | ops_cli_tour product + residual_ops_hint | teach |
+| T71 doctor JSON residual_ops_hint | doctor strong rows residual_ops_hint field | support ops |
 
 ## Non-claims (do not market)
 
@@ -161,6 +167,14 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
   prepare/commit residual — not kernel drop injectors, not WAN, not auto-heal
 - DistLab `strong.cft_residual_ops_hint_enriched` proves guidance only — does
   not clear residual
+- Curriculum config-check residual_ops_hint assert is teachable guidance — not
+  live residual clear, not automatic heal
+- Design-doc residual_ops_hint polish is documentation — not residual-free claim
+- config-check pytest guide assert is operator guidance coverage — not auto-heal
+- APP_CATALOG ops_cli_tour residual_ops_hint row is teachable inventory — not
+  residual-free product claim
+- Doctor JSON `residual_ops_hint` field is the same guidance string — not a heal
+  toggle, not SIEM orchestration, not residual-free proof
 
 ## Gate commands
 
@@ -190,6 +204,12 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t43_residuals.py tests/chaos/test_t44_residuals.py \
   tests/chaos/test_t45_residuals.py tests/chaos/test_t46_residuals.py \
   tests/chaos/test_t47_residuals.py tests/chaos/test_t48_residuals.py \
+  tests/chaos/test_t60_residuals.py tests/chaos/test_t61_residuals.py \
+  tests/chaos/test_t62_residuals.py tests/chaos/test_t63_residuals.py \
+  tests/chaos/test_t64_residuals.py tests/chaos/test_t65_residuals.py \
+  tests/chaos/test_t66_residuals.py tests/chaos/test_t67_residuals.py \
+  tests/chaos/test_t68_residuals.py tests/chaos/test_t69_residuals.py \
+  tests/chaos/test_t70_residuals.py tests/chaos/test_t71_residuals.py \
   tests/integration/test_cache_strong_live_mesh.py \
   tests/testing/test_distlab_live.py::test_distlab_live_strong_metrics_e2e \
   tests/test_config_check_cli.py tests/test_unified_client.py -q
