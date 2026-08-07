@@ -75,21 +75,15 @@ def _strong_abort_fail_op_id(body: dict[str, Any]) -> str:
 def strong_residual_ops_hint(body: dict[str, Any]) -> str:
     """Ops remediation hint when CFT residual candidates are present.
 
-    Points operators at ``cache-strong-retry-abort`` after network recovery.
+    Wraps ``format_residual_ops_hint`` for metrics/doctor payloads.
     Still CFT best-effort — not automatic heal, not residual-free proof, not BFT.
     Empty when no abort_fail peers (no residual candidates known).
     """
-    peers = _strong_abort_fail_peers(body)
-    if not peers:
-        return ""
-    oid = _strong_abort_fail_op_id(body)
-    oid_part = f" --op-id {oid}" if oid else " --op-id <op_id>"
-    peer_parts = " ".join(f"--peer {p}" for p in peers)
-    return (
-        "hint: after network recovery, ops re-ABORT (not auto-heal): "
-        f"uv run mpreg client cache-strong-retry-abort --url <ws>{oid_part} "
-        f"--namespace <ns> --key <id> {peer_parts} "
-        "(CFT best-effort; still fails while ABORT dropped)"
+    from mpreg.core.cache_strong import format_residual_ops_hint
+
+    return format_residual_ops_hint(
+        _strong_abort_fail_peers(body),
+        _strong_abort_fail_op_id(body),
     )
 
 def evaluate_strong_doctor_payload(

@@ -111,10 +111,12 @@ residual-free proof. Monitor table prints `abort_fail_peers=…`.
   --namespace NS --key ID --op-id OID [--peer PEER…] [--loc cache] [--json]`
   (`--loc` pins resource routing; unpinned may land on any `cache` node)
 
-**Doctor / monitor residual hint (T51):** when `last_abort_fail_peers` is
+**Doctor / monitor residual hint (T51/T53):** when `last_abort_fail_peers` is
 non-empty, `mpreg doctor --check-strong` detail and `mpreg monitor strong
 --format table` print `abort_fail_op_id=` and an ops remediation hint pointing
 at `cache-strong-retry-abort` (still CFT; not auto-heal; not doctor-fail).
+JSON field `residual_ops_hint` on `/metrics/strong` and GCM `strong_status`
+carries the same string (empty when no candidates) for automation scrape.
 
 DistLab `strong.cft_retry_abort_clears_residual` proves clear when ABORT can
 land; `strong.cft_retry_abort_self_target` proves `peers=[self]` local.abort

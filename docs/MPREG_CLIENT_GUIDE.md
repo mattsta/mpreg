@@ -968,6 +968,11 @@ endpoints.
     self-target still local-aborts).
   * CLI: `uv run mpreg client cache-strong-retry-abort --url … \
     --namespace NS --key ID --op-id OID [--peer PEER…] [--loc cache] [--json]`
+  * ops loop: `GET /metrics/strong` (or `mpreg monitor strong` /
+    `mpreg doctor --check-strong`) exposes `last_abort_fail_peers`,
+    `last_abort_fail_op_id`, and `residual_ops_hint` (CLI command template when
+    candidates exist; empty otherwise). Hint is operator guidance after
+    network recovery — **not** automatic heal.
   Still CFT; not background heal. Pending TTL does **not** clear residual L1.
   Default **off** → `1012 UNSUPPORTED_CONSISTENCY`. STRONG **get** and
   **delete** always refuse with `1012`. Operational put failures use

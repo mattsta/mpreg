@@ -692,6 +692,60 @@ async def test_cft_retry_abort_self_target_clears_local(n: int) -> None:
     assert ent is None or _entry_op_id(ent) != oid
 
 @pytest.mark.asyncio
+@given(n=st.integers(min_value=5, max_value=7))
+@settings(
+    max_examples=10,
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
+)
+async def test_cft_gcm_retry_abort_clears_residual_after_heal(n: int) -> None:
+    """T54: GCM.strong_retry_abort clears residual + counters after heal."""
+    from mpreg.core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
+
+    peers = [f"n{i}" for i in range(n)]
+    non_origin = peers[1:]
+    commit_peer = non_origin[0]
+    dc = frozenset(non_origin[1:])
+    da = frozenset({commit_peer})
+    coord, tr, backends = _cluster(
+        n,
+        drop_commit=dc,
+        drop_abort=da,
+        min_replicas=n,
+        prepare_timeout_s=0.3,
+        commit_timeout_s=0.25,
+        pending_ttl_s=30.0,
+    )
+    key = _key(f"gcm-retry-{n}")
+    res = await coord.strong_put(key, {"cft": n}, eligible_peers=peers)
+    assert res.success is False
+    oid = res.operation_id or ""
+    assert backends[commit_peer].get_visible(key) is not None
+    tr.drop_abort.clear()
+    tr.drop_commit.clear()
+    gcm = GlobalCacheManager(
+        GlobalCacheConfiguration(
+            enable_l2_persistent=False,
+            enable_l3_distributed=False,
+            enable_l4_federation=False,
+            local_cluster_id=f"prop-gcm-{n}",
+        )
+    )
+    gcm.attach_strong_coordinator(coord)
+    try:
+        out = await gcm.strong_retry_abort(key, oid, peers=[commit_peer])
+        assert out.get("cleared") is True, out
+        st = gcm.strong_status()
+        assert int(st.get("retry_abort_calls") or 0) >= 1
+        assert int(st.get("retry_abort_cleared") or 0) >= 1
+        # After clear, residual_ops_hint must be empty (no candidates)
+        assert st.get("residual_ops_hint") in ("", None)
+        ent = backends[commit_peer].get_visible(key)
+        assert ent is None or _entry_op_id(ent) != oid
+    finally:
+        await gcm.shutdown()
+
+@pytest.mark.asyncio
 @given(
     n=st.integers(min_value=5, max_value=7),
     rounds=st.integers(min_value=2, max_value=5),

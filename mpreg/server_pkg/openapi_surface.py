@@ -135,6 +135,16 @@ def _strong_metrics_schema() -> dict[str, Any]:
                         "type": "string",
                         "description": "op_id associated with last_abort_fail_peers.",
                     },
+                    "residual_ops_hint": {
+                        "type": "string",
+                        "description": (
+                            "Operator remediation when abort_fail peers are "
+                            "non-empty (points at cache-strong-retry-abort). "
+                            "Empty string when no residual candidates. "
+                            "CFT best-effort guidance — not automatic heal, "
+                            "not residual-free proof, not SIEM/BFT."
+                        ),
+                    },
                     "recent_abort_fails": {
                         "type": "array",
                         "description": (

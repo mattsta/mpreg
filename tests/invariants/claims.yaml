@@ -259,6 +259,8 @@ encapsulation:
       - tests/chaos/test_t50_residuals.py
       - tests/chaos/test_t51_residuals.py
       - tests/chaos/test_t52_residuals.py
+      - tests/chaos/test_t53_residuals.py
+      - tests/chaos/test_t54_residuals.py
       - tests/invariants/test_cache_strong_properties.py
       - tests/invariants/test_cache_strong_history.py
       - tests/integration/test_cache_strong_quorum.py
@@ -305,6 +307,8 @@ non_claims:
   - "retry_abort self-target peers=[self] is RPC fan-in local.abort correctness — not automatic residual heal, not BFT, not WAN"
   - "Doctor/monitor residual ops hint (abort_fail_op_id + cache-strong-retry-abort guidance) is operator remediation after recovery — not automatic heal, not SIEM, not residual-free proof"
   - "DistLab strong.cft_gcm_retry_abort_clears_residual proves GCM library surface only — not automatic heal, not BFT, not WAN"
+  - "residual_ops_hint JSON/metrics field is operator remediation guidance string — not automatic heal toggle, not SIEM, not residual-free proof"
+  - "Hypothesis GCM.strong_retry_abort property is in-process library surface — not kernel partition, kill -9, WAN, or automatic heal"
   - "Lying COMMIT_ACK applied bits can satisfy CFT quorum math without peer L1 apply — documented non_claim (not BFT)"
   - "mpreg.testing.distlab is Jepsen-inspired (history/checker/nemesis) — not Elle, not WAN geo generators, not a JVM Jepsen port"
   - "DistLab lab SLI budgets (p99/avg soak bounds) are same-host in-process — not production WAN latency SLAs"

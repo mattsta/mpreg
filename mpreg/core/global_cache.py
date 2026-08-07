@@ -418,6 +418,8 @@ class GlobalCacheManager(ManagedObject):
 
     def strong_status(self) -> dict[str, Any]:
         """Compact STRONG readiness for clients/operators."""
+        from mpreg.core.cache_strong import format_residual_ops_hint
+
         snap = self.strong_metrics_snapshot()
         c = snap["counters"]
         return {
@@ -460,6 +462,15 @@ class GlobalCacheManager(ManagedObject):
             "retry_abort_calls": int(c.get("retry_abort_calls", 0)),
             "retry_abort_cleared": int(c.get("retry_abort_cleared", 0)),
             "retry_abort_still_fail": int(c.get("retry_abort_still_fail", 0)),
+            # T53: machine-readable ops remediation (empty when no candidates)
+            "residual_ops_hint": format_residual_ops_hint(
+                list(
+                    (snap.get("coordinator") or {}).get("last_abort_fail_peers") or []
+                ),
+                str(
+                    (snap.get("coordinator") or {}).get("last_abort_fail_op_id") or ""
+                ),
+            ),
         }
 
     def _enqueue_replication(

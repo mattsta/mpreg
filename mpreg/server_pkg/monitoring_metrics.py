@@ -135,6 +135,11 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
                             base[k] = int(st.get(k) or 0)
                             if isinstance(base.get("counters"), dict):
                                 base["counters"][k] = int(st.get(k) or 0)
+                    # T53: residual ops hint from GCM status when present
+                    if "residual_ops_hint" in st:
+                        base["residual_ops_hint"] = str(
+                            st.get("residual_ops_hint") or ""
+                        )
             except Exception:  # noqa: BLE001
                 pass
         # Fallback from coordinator block when status path skipped fields
@@ -211,6 +216,29 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
         base["health"] = "degraded_pending"
     else:
         base["health"] = "ok"
+    # T53: machine-readable residual ops remediation (empty when no candidates)
+    try:
+        from mpreg.core.cache_strong import format_residual_ops_hint
+
+        peers = list(base.get("last_abort_fail_peers") or [])
+        if not peers:
+            coord = base.get("coordinator") or {}
+            if isinstance(coord, dict):
+                peers = list(coord.get("last_abort_fail_peers") or [])
+        oid = str(base.get("last_abort_fail_op_id") or "")
+        if not oid:
+            coord = base.get("coordinator") or {}
+            if isinstance(coord, dict):
+                oid = str(coord.get("last_abort_fail_op_id") or "")
+        # Prefer GCM strong_status residual_ops_hint when already set
+        existing = base.get("residual_ops_hint")
+        if existing is None or existing == "":
+            # Also pull from status path if present on base from st
+            pass
+        hint = format_residual_ops_hint(peers, oid)
+        base["residual_ops_hint"] = hint
+    except Exception:  # noqa: BLE001
+        base.setdefault("residual_ops_hint", "")
     return base
 
 def build_shared_audit_metrics(server: Any) -> dict[str, Any]:

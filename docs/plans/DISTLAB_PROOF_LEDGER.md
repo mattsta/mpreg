@@ -123,6 +123,9 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T51 residual ops hint | `strong_residual_ops_hint` → cache-strong-retry-abort | support ops |
 | T51 monitor table | abort_fail_op_id + yellow hint on residual candidates | support ops |
 | T52 DistLab GCM retry | `strong.cft_gcm_retry_abort_clears_residual` + strong-core | product |
+| T53 residual_ops_hint | `format_residual_ops_hint` + metrics/status/OpenAPI field | support ops |
+| T53 client guide | metrics → residual_ops_hint → CLI ops loop | teach |
+| T54 Hypothesis GCM | `test_cft_gcm_retry_abort_clears_residual_after_heal` | product |
 
 ## Non-claims (do not market)
 
@@ -139,6 +142,8 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
   automatic residual heal, not BFT, not WAN
 - Doctor/monitor residual ops hint is operator guidance after recovery — not
   automatic heal, not SIEM orchestration, not residual-free proof
+- `residual_ops_hint` JSON field is the same guidance string — not a heal
+  toggle, not SIEM, not residual-free proof
 
 ## Gate commands
 

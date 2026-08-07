@@ -34,6 +34,35 @@ class StrongErrorCode(IntEnum):
     STRONG_CONFLICT = 1017
     STRONG_PENDING_FULL = 1018
 
+def format_residual_ops_hint(
+    peers: Sequence[str] | None,
+    op_id: str | None = None,
+    *,
+    namespace: str = "<ns>",
+    key_id: str = "<id>",
+    url_placeholder: str = "<ws>",
+) -> str:
+    """Operator remediation string when CFT residual candidates are known.
+
+    Empty when ``peers`` is empty. Points at
+    ``mpreg client cache-strong-retry-abort`` after network recovery.
+    Still CFT best-effort — **not** automatic heal, residual-free proof, BFT,
+    or SIEM orchestration.
+    """
+    clean = [p for p in dict.fromkeys(list(peers or [])) if p]
+    if not clean:
+        return ""
+    oid = str(op_id or "").strip()
+    oid_part = f" --op-id {oid}" if oid else " --op-id <op_id>"
+    peer_parts = " ".join(f"--peer {p}" for p in clean)
+    return (
+        "hint: after network recovery, ops re-ABORT (not auto-heal): "
+        f"uv run mpreg client cache-strong-retry-abort "
+        f"--url {url_placeholder}{oid_part} "
+        f"--namespace {namespace} --key {key_id} {peer_parts} "
+        "(CFT best-effort; still fails while ABORT dropped)"
+    )
+
 @dataclass(frozen=True, slots=True)
 class StrongVersion:
     logical_ts: int

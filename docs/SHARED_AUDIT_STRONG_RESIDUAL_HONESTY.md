@@ -727,3 +727,29 @@ T52 first-class DistLab coverage of the product library surface:
 Still **not** claimed: GCM path is auto-heal; BFT; WAN; SIEM.
 
 Plan: `docs/plans/DISTLAB_T52_DISTLAB_GCM_RETRY_PLAN.md`.
+
+## Phase 41 — residual_ops_hint metrics field (2026-08-06)
+
+T53 closes the machine-readable ops loop:
+
+* `format_residual_ops_hint(peers, op_id)` shared helper in `cache_strong`
+* `GlobalCacheManager.strong_status()["residual_ops_hint"]`
+* `build_strong_metrics` → `/metrics/strong` top-level `residual_ops_hint`
+* OpenAPI documents field with honesty (empty when no candidates; not auto-heal)
+* CLI doctor/monitor reuse the same formatter (T51)
+
+Still **not** claimed: hint is automatic heal; SIEM; BFT/WAN; residual-free.
+
+Plan: `docs/plans/DISTLAB_T53_RESIDUAL_OPS_HINT_METRICS_PLAN.md`.
+
+## Phase 42 — Hypothesis GCM.strong_retry_abort (2026-08-06)
+
+T54 property-tests the product library surface:
+
+* `test_cft_gcm_retry_abort_clears_residual_after_heal` (n∈[5,7])
+* After clear: residual gone, `retry_abort_calls`/`cleared` ≥ 1,
+  `residual_ops_hint` empty
+
+Still **not** claimed: in-process property is kernel partition / WAN; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T54_HYPOTHESIS_GCM_RETRY_PLAN.md`.
