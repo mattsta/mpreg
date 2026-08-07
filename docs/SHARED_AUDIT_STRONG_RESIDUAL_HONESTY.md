@@ -247,3 +247,21 @@ T21 machine-readable contract + teaching:
 Plan: `docs/plans/DISTLAB_T21_OPENAPI_CURRICULUM_RUNBOOK_PLAN.md`.
 
 Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete.
+
+## Phase 10 — Shared-audit capability honesty + curriculum parity (2026-08-06)
+
+T22 ops contract parity with STRONG honesty:
+
+* **Metrics:** `build_shared_audit_metrics` always exposes `capabilities`
+  (`gset_epidemic` when on; `siem`/`bft`/`infinite_retention`/
+  `linearizable_cluster_ops`/`multi_tenant_beyond_cluster_id` always false).
+* **Doctor:** `evaluate_shared_audit_doctor_payload` fails closed on dishonest
+  capability claims; wired into `mpreg doctor --audit`.
+* **Monitor:** `mpreg monitor audit --format table` prints capability summary.
+* **OpenAPI:** `SharedAuditMetricsResponse.capabilities` enums false.
+* **Curriculum:** `shared_audit_mesh` teaches metrics capability honesty.
+* **Preset:** `audit-core` adds digest_repair / duplicate / ineligible.
+
+Plan: `docs/plans/DISTLAB_T22_AUDIT_CAPABILITY_HONESTY_PLAN.md`.
+
+Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM.

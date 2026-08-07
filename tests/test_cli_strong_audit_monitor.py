@@ -83,3 +83,40 @@ def test_doctor_strong_evaluate_payload_honesty() -> None:
         {"strong": {"health": "misconfigured", "capabilities": {}, "counters": {}}}
     )
     assert mis_ok is False
+
+def test_doctor_shared_audit_evaluate_payload_honesty() -> None:
+    """T22: evaluate_shared_audit_doctor_payload fails closed on dishonest caps."""
+    from mpreg.cli.main import evaluate_shared_audit_doctor_payload
+
+    ok, detail = evaluate_shared_audit_doctor_payload(
+        {
+            "shared_audit": {
+                "status": "ok",
+                "store_size": 2,
+                "capabilities": {
+                    "gset_epidemic": True,
+                    "siem": False,
+                    "bft": False,
+                    "infinite_retention": False,
+                    "linearizable_cluster_ops": False,
+                    "multi_tenant_beyond_cluster_id": False,
+                },
+                "counters": {"deltas_recv": 1, "publish_dropped": 0},
+            }
+        }
+    )
+    assert ok is True
+    assert "gset=True" in detail
+    assert "siem=False" in detail
+
+    bad, bdetail = evaluate_shared_audit_doctor_payload(
+        {
+            "shared_audit": {
+                "status": "ok",
+                "capabilities": {"siem": True},
+                "counters": {},
+            }
+        }
+    )
+    assert bad is False
+    assert "dishonest" in bdetail

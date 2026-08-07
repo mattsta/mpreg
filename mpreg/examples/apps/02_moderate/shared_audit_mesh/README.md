@@ -25,6 +25,9 @@ uv run mpreg-example run shared_audit_mesh
 
 - Drain-shaped record on A appears in B and C stores after DELTA flush
 - `scope=cluster` response includes foreign origin rows + `shared_audit` metadata
+- Digest/PULL repairs dropped DELTA
+- `build_shared_audit_metrics` capabilities: `gset_epidemic` when on; never
+  SIEM / BFT / infinite retention / linearizable cluster ops
 - Feature tags: `ops.shared_audit`, `ops.mgmt_drain`, `ops.mgmt_audit`
 
 ## API drill-down

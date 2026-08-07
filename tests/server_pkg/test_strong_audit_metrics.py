@@ -91,3 +91,10 @@ def test_build_shared_audit_metrics_disabled() -> None:
     m = build_shared_audit_metrics(server)
     assert m["enabled_flag"] is False
     assert m["status"] == "disabled"
+    caps = m.get("capabilities") or {}
+    assert caps.get("gset_epidemic") is False
+    assert caps.get("siem") is False
+    assert caps.get("bft") is False
+    assert caps.get("infinite_retention") is False
+    assert caps.get("linearizable_cluster_ops") is False
+    assert caps.get("multi_tenant_beyond_cluster_id") is False

@@ -220,8 +220,10 @@ uv run mpreg admin audit --url "$MPREG_MONITORING_URL"
 # GET $MPREG_MONITORING_URL/mgmt/v1/audit?scope=cluster
 ```
 
-Curriculum: `shared_audit_mesh`, `live_partition_chaos`, `ops_cli_tour`.
+Curriculum: `shared_audit_mesh` (G-Set + metrics capabilities honesty),
+`live_partition_chaos`, `ops_cli_tour`.
 Settings: `docs/ops/SETTINGS_GROUPS.md` (mgmt audit + shared flags).
+DistLab: `uv run mpreg distlab suite --preset audit-core`.
 
 ### Cache STRONG put (flag-gated)
 

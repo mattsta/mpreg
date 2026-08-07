@@ -108,6 +108,68 @@ def evaluate_strong_doctor_payload(
         ),
     )
 
+# Capability keys that must never be true in v1 shared-audit metrics.
+_AUDIT_DISHONEST_CAPS = (
+    "siem",
+    "bft",
+    "infinite_retention",
+    "linearizable_cluster_ops",
+    "multi_tenant_beyond_cluster_id",
+)
+
+def evaluate_shared_audit_doctor_payload(
+    payload: dict[str, Any],
+) -> tuple[bool, str]:
+    """Semantic doctor check for /metrics/shared-audit JSON.
+
+    Returns ``(ok, detail)``. Fails closed if capabilities claim SIEM/BFT/
+    infinite retention/linearizable ops/multi-tenant beyond cluster_id.
+    Does not claim WAN SLA.
+    """
+    body = (
+        payload.get("shared_audit")
+        if isinstance(payload.get("shared_audit"), dict)
+        else payload
+    )
+    if not isinstance(body, dict):
+        return False, "shared_audit body missing"
+    status = str(body.get("status", "")).lower()
+    caps = body.get("capabilities") or {}
+    counters = body.get("counters") or {}
+    dishonest = [k for k in _AUDIT_DISHONEST_CAPS if caps.get(k)]
+    if dishonest:
+        return (
+            False,
+            f"shared_audit dishonest capabilities ({','.join(dishonest)} claimed)",
+        )
+    if status in {"misconfigured", "critical"}:
+        return False, f"shared_audit status={status}"
+    if status == "disabled":
+        return (
+            True,
+            (
+                f"shared_audit disabled (ok) "
+                f"gset={caps.get('gset_epidemic', False)} "
+                f"siem={caps.get('siem', False)} "
+                f"bft={caps.get('bft', False)} "
+                f"store_size={body.get('store_size', 0)}"
+            ),
+        )
+    return (
+        True,
+        (
+            f"shared_audit status={status or 'n/a'} "
+            f"gset={caps.get('gset_epidemic')} "
+            f"siem={caps.get('siem', False)} "
+            f"bft={caps.get('bft', False)} "
+            f"inf_ret={caps.get('infinite_retention', False)} "
+            f"lin_ops={caps.get('linearizable_cluster_ops', False)} "
+            f"store_size={body.get('store_size', 0)} "
+            f"deltas_recv={counters.get('deltas_recv', 0)} "
+            f"drops={counters.get('publish_dropped', 0)}"
+        ),
+    )
+
 def setup_logging(verbose: bool = False, *, json_logs: bool = False) -> None:
     """Setup logging configuration."""
     level = "DEBUG" if verbose else "INFO"
@@ -1743,15 +1805,12 @@ def doctor(
                             and name == "metrics_shared_audit"
                             and isinstance(payload, dict)
                         ):
-                            body = payload.get("shared_audit") if isinstance(
-                                payload.get("shared_audit"), dict
-                            ) else payload
-                            status = str((body or {}).get("status", "")).lower()
-                            if status in {"misconfigured", "critical"}:
+                            aok, adetail = evaluate_shared_audit_doctor_payload(
+                                payload
+                            )
+                            if not aok:
                                 ok = False
-                                body_preview = (
-                                    f"shared_audit status={status}: {body_preview}"
-                                )
+                            body_preview = adetail
                         if (
                             deep
                             and ok
@@ -3783,6 +3842,31 @@ def monitor_audit(url: str | None, output_format: str) -> None:
         async with aiohttp.ClientSession() as session:
             async with session.get(endpoint) as response:
                 payload = await response.json()
+                # Human summary for table/plain: capabilities honesty
+                fmt = (output_format or "json").lower()
+                if fmt in {"table", "plain"} and isinstance(payload, dict):
+                    body = (
+                        payload.get("shared_audit")
+                        if isinstance(payload.get("shared_audit"), dict)
+                        else payload
+                    )
+                    if isinstance(body, dict):
+                        caps = body.get("capabilities") or {}
+                        counters = body.get("counters") or {}
+                        console.print(
+                            "[bold]Shared audit[/bold] "
+                            f"status={body.get('status')} "
+                            f"store={body.get('store_size', 0)} "
+                            f"flag={body.get('enabled_flag')} | "
+                            f"caps gset={caps.get('gset_epidemic')} "
+                            f"siem={caps.get('siem', False)} "
+                            f"bft={caps.get('bft', False)} "
+                            f"inf_ret={caps.get('infinite_retention', False)} "
+                            f"lin_ops={caps.get('linearizable_cluster_ops', False)} | "
+                            f"deltas_recv={counters.get('deltas_recv', 0)} "
+                            f"drops={counters.get('publish_dropped', 0)} "
+                            "[dim](not SIEM; not BFT; bounded watermark)[/dim]"
+                        )
                 emit(payload, output_format=output_format, table_title="Shared audit")
 
     run_coro(_audit())

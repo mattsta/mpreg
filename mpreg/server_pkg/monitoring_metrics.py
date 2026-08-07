@@ -175,6 +175,15 @@ def build_shared_audit_metrics(server: Any) -> dict[str, Any]:
             status = "ok"
     elif enabled and store is None:
         status = "misconfigured"
+    # Honest capability flags (v1 G-Set epidemic — not SIEM/BFT/infinite retention)
+    capabilities = {
+        "gset_epidemic": bool(enabled and store is not None),
+        "siem": False,
+        "bft": False,
+        "infinite_retention": False,
+        "linearizable_cluster_ops": False,
+        "multi_tenant_beyond_cluster_id": False,
+    }
     return {
         "enabled_flag": enabled,
         "store_present": store is not None,
@@ -183,6 +192,7 @@ def build_shared_audit_metrics(server: Any) -> dict[str, Any]:
         "counters": counters,
         "health": health_dict,
         "status": status,
+        "capabilities": capabilities,
         "settings": {
             "reconcile_interval_s": getattr(
                 server.settings, "mgmt_audit_shared_reconcile_interval_s", None

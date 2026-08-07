@@ -207,6 +207,9 @@ SUITE_PRESETS: dict[str, tuple[str, ...]] = {
     "audit-core": (
         "audit.multi_origin",
         "audit.partition_heal",
+        "audit.digest_repair",
+        "audit.duplicate_idempotent",
+        "audit.ineligible_local",
     ),
 }
 

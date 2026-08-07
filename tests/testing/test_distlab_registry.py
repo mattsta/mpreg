@@ -216,6 +216,30 @@ async def test_registry_run_suite_smoke_preset() -> None:
     assert report["passed"] == report["ran"]
 
 @pytest.mark.asyncio
+async def test_registry_run_suite_audit_core_preset() -> None:
+    """T22: audit-core preset expands digest/duplicate/ineligible paths."""
+    from mpreg.testing.distlab.builtins import ensure_builtins
+    from mpreg.testing.distlab.registry import SUITE_PRESETS, get_registry
+
+    ensure_builtins()
+    reg = get_registry()
+    assert "audit-core" in SUITE_PRESETS
+    selected = reg.select(preset="audit-core")
+    for name in (
+        "audit.multi_origin",
+        "audit.partition_heal",
+        "audit.digest_repair",
+        "audit.duplicate_idempotent",
+        "audit.ineligible_local",
+    ):
+        assert name in selected, name
+    report = await reg.run_suite(preset="audit-core", fail_fast=True)
+    assert report["preset"] == "audit-core"
+    assert report["ok"] is True
+    assert report["ran"] >= 5
+    assert report["passed"] == report["ran"]
+
+@pytest.mark.asyncio
 async def test_strong_refuse_get_delete_scenario() -> None:
     """T19: builtin refuse scenario passes NoOpenInvokeChecker."""
     from mpreg.testing.distlab.builtins import ensure_builtins

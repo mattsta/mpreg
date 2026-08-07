@@ -91,7 +91,9 @@ def _shared_audit_metrics_schema() -> dict[str, Any]:
         "type": "object",
         "description": (
             "Shared audit G-Set epidemic metrics. Bounded watermark window — "
-            "not SIEM, not BFT, not infinite retention."
+            "not SIEM, not BFT, not infinite retention. capabilities.siem / "
+            "bft / infinite_retention / linearizable_cluster_ops / "
+            "multi_tenant_beyond_cluster_id are always false in v1."
         ),
         "properties": {
             "status": {"type": "string", "example": "ok"},
@@ -117,10 +119,64 @@ def _shared_audit_metrics_schema() -> dict[str, Any]:
                     "counters": {
                         "type": "object",
                         "additionalProperties": {"type": "integer"},
+                        "description": (
+                            "Epidemic counters: deltas_sent/recv, digests_sent, "
+                            "pulls_*, publish_dropped, rejected_cross_cluster, …"
+                        ),
                     },
                     "health": {"type": "object", "nullable": True},
+                    "capabilities": {
+                        "type": "object",
+                        "description": (
+                            "Honest v1 capability advertisement. gset_epidemic is "
+                            "true when flag on and store present; siem/bft/"
+                            "infinite_retention/linearizable_cluster_ops/"
+                            "multi_tenant_beyond_cluster_id must be false."
+                        ),
+                        "properties": {
+                            "gset_epidemic": {"type": "boolean"},
+                            "siem": {
+                                "type": "boolean",
+                                "enum": [False],
+                                "description": "Always false — not a SIEM.",
+                            },
+                            "bft": {
+                                "type": "boolean",
+                                "enum": [False],
+                                "description": "Always false — CFT gossip only.",
+                            },
+                            "infinite_retention": {
+                                "type": "boolean",
+                                "enum": [False],
+                                "description": "Always false — bounded watermark.",
+                            },
+                            "linearizable_cluster_ops": {
+                                "type": "boolean",
+                                "enum": [False],
+                                "description": (
+                                    "Always false — audit visibility is not "
+                                    "linearizable cluster mutation."
+                                ),
+                            },
+                            "multi_tenant_beyond_cluster_id": {
+                                "type": "boolean",
+                                "enum": [False],
+                                "description": (
+                                    "Always false — isolation is cluster_id reject only."
+                                ),
+                            },
+                        },
+                        "required": [
+                            "siem",
+                            "bft",
+                            "infinite_retention",
+                            "linearizable_cluster_ops",
+                            "multi_tenant_beyond_cluster_id",
+                        ],
+                    },
                     "settings": {"type": "object"},
                 },
+                "required": ["capabilities"],
             },
         },
     }
@@ -224,6 +280,8 @@ def build_monitoring_openapi() -> dict[str, Any]:
                 "summary": "Shared audit G-Set epidemic metrics",
                 "description": (
                     "Bounded G-Set epidemic — not SIEM, not BFT, not infinite retention. "
+                    "capabilities.siem/bft/infinite_retention/linearizable_cluster_ops/"
+                    "multi_tenant_beyond_cluster_id are always false. "
                     "Prometheus: mpreg_shared_audit_*."
                 ),
                 "tags": ["metrics", "audit"],
@@ -498,7 +556,8 @@ def build_monitoring_openapi() -> dict[str, Any]:
             {
                 "name": "audit",
                 "description": (
-                    "Shared mgmt audit G-Set epidemic. Not SIEM, not BFT."
+                    "Shared mgmt audit G-Set epidemic. Not SIEM, not BFT, "
+                    "not infinite retention, not linearizable cluster ops."
                 ),
             },
             {"name": "metrics", "description": "Process metrics endpoints"},

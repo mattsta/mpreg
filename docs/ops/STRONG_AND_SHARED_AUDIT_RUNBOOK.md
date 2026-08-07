@@ -110,9 +110,27 @@ uv run mpreg admin audit --scope cluster --url "$MPREG_URL"   # if wired
 
 HTTP:
 
-- `GET /metrics/shared-audit` — store size, counters, replicator health
+- `GET /metrics/shared-audit` — store size, counters, replicator health, **capabilities**
 - `GET /mgmt/v1/audit?scope=cluster` — G-Set snapshot
 - Prometheus: `mpreg_shared_audit_*`
+- OpenAPI: `SharedAuditMetricsResponse` (capability enums false for SIEM/BFT/…)
+
+```bash
+uv run mpreg monitor audit --url "$MPREG_MONITORING_URL" --format table
+```
+
+### Capabilities (always honest in v1)
+
+| Flag | v1 value | Notes |
+| --- | --- | --- |
+| `gset_epidemic` | true when flag on + store present | Product path |
+| `siem` | **false** | Not a SIEM |
+| `bft` | **false** | CFT gossip only |
+| `infinite_retention` | **false** | Bounded watermark window |
+| `linearizable_cluster_ops` | **false** | Visibility ≠ mutation linearizability |
+| `multi_tenant_beyond_cluster_id` | **false** | cluster_id reject only |
+
+Doctor fails closed if metrics claim any dishonest capability above.
 
 ### Status values
 
@@ -134,6 +152,7 @@ uv run mpreg distlab run strong.happy_3
 uv run mpreg distlab run strong.refuse_get_delete
 uv run mpreg distlab run strong.drop_abort
 uv run mpreg distlab run audit.partition_heal
+uv run mpreg distlab suite --preset audit-core
 ```
 
 Live multi-process proofs live under `tests/testing/test_distlab_live.py`.

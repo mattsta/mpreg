@@ -69,7 +69,7 @@ uv run mpreg monitor decisions --limit 50 --format table
 uv run mpreg monitor prometheus
 uv run mpreg monitor status
 uv run mpreg monitor strong --format table   # capabilities + refuse counters
-uv run mpreg monitor audit --format json
+uv run mpreg monitor audit --format table    # capabilities honesty (not SIEM/BFT)
 uv run mpreg doctor --url "$MPREG_MONITORING_URL" --strong --audit
 ```
 
@@ -83,6 +83,7 @@ uv run mpreg doctor --url "$MPREG_MONITORING_URL" --strong --audit
 | STRONG latency | `mpreg_strong_put_latency_p99_ms` | **Lab ring only — not WAN SLA** |
 | Audit store | `mpreg_shared_audit_store_size` | Bounded G-Set |
 | Audit drops | `mpreg_shared_audit_publish_dropped_total` | degraded_drops |
+| Audit caps | `/metrics/shared-audit` `capabilities.*` | siem/bft/… always false |
 
 Do **not** page on STRONG p99 as a multi-region contract. See
 `docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md`.
