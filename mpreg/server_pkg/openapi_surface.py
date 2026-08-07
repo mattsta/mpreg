@@ -87,11 +87,31 @@ def _strong_metrics_schema() -> dict[str, Any]:
                                 "enum": [True],
                                 "description": (
                                     "Always true — lost ABORT may leave peer L1 "
-                                    "until repair (CFT limit)."
+                                    "until delivered ABORT or later LWW success "
+                                    "put (CFT limit; not pending TTL)."
+                                ),
+                            },
+                            "pending_ttl_clears_residual_l1": {
+                                "type": "boolean",
+                                "enum": [False],
+                                "description": (
+                                    "Always false — purge_expired_pending does "
+                                    "not uncommit residual L1 after COMMIT apply."
                                 ),
                             },
                         },
                         "required": ["get_quorum", "delete_quorum"],
+                    },
+                    "pending_count": {"type": "integer", "minimum": 0},
+                    "visible_count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Local visible L1 strong entries (may include CFT residuals).",
+                    },
+                    "backups_count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "Pre-commit backups awaiting ABORT uncommit.",
                     },
                     "coordinator": {"type": "object"},
                     "settings": {"type": "object"},

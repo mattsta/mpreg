@@ -100,6 +100,8 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
         snap = cm.strong_metrics_snapshot()
         base["coordinator_bound"] = bool(snap.get("enabled"))
         base["pending_count"] = int(snap.get("pending_count") or 0)
+        base["visible_count"] = int(snap.get("visible_count") or 0)
+        base["backups_count"] = int(snap.get("backups_count") or 0)
         base["counters"] = dict(snap.get("counters") or {})
         base["latency_ms"] = dict(snap.get("latency_ms") or {})
         base["coordinator"] = dict(snap.get("coordinator") or {})
@@ -115,6 +117,16 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
             base["pending_count"] = int(be.pending_count())
         except Exception:  # noqa: BLE001
             pass
+        if hasattr(be, "visible_count"):
+            try:
+                base["visible_count"] = int(be.visible_count())
+            except Exception:  # noqa: BLE001
+                base["visible_count"] = 0
+        if hasattr(be, "backups_count"):
+            try:
+                base["backups_count"] = int(be.backups_count())
+            except Exception:  # noqa: BLE001
+                base["backups_count"] = 0
         base["counters"] = {}
         base["latency_ms"] = {}
     else:
@@ -130,7 +142,13 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
             "local_ryw_after_put": True,
             "cft_only": True,
             "abort_best_effort": True,
+            "pending_ttl_clears_residual_l1": False,
         }
+    else:
+        # Ensure honesty flag present even when GCM status provided older shape
+        caps = base["capabilities"]
+        if isinstance(caps, dict) and "pending_ttl_clears_residual_l1" not in caps:
+            caps["pending_ttl_clears_residual_l1"] = False
     # Simple health hint for doctor
     if not enabled_flag:
         base["health"] = "disabled"

@@ -60,6 +60,7 @@ Prometheus series (process-local; **not** WAN SLO):
 | `mpreg_strong_aborts_peer_fail_total` | Failed peer ABORT (CFT; may leave peer L1) |
 | `mpreg_strong_cap_cft_only` | **Always 1** — not BFT |
 | `mpreg_strong_cap_abort_best_effort` | **Always 1** — lost ABORT CFT limit |
+| `mpreg_strong_cap_pending_ttl_clears_residual_l1` | **Always 0** — purge ≠ residual GC |
 
 ### Capabilities (always honest in v1)
 
@@ -70,14 +71,19 @@ Prometheus series (process-local; **not** WAN SLO):
 | `delete_quorum` | **false** | Quorum delete is v1.1; always 1012 |
 | `local_ryw_after_put` | true | Use EVENTUAL/WEAK get after STRONG put |
 | `cft_only` | **true** | Not BFT |
-| `abort_best_effort` | **true** | Lost ABORT may leave peer L1 until repair |
+| `abort_best_effort` | **true** | Lost ABORT may leave peer L1 until ABORT/LWW |
+| `pending_ttl_clears_residual_l1` | **false** | Purge is not residual GC after COMMIT |
 
-Doctor fails closed if metrics claim `get_quorum` or `delete_quorum`, or if
-`cft_only` / `abort_best_effort` are advertised as false.
+Doctor fails closed if metrics claim `get_quorum` or `delete_quorum`, if
+`cft_only` / `abort_best_effort` are advertised as false, or if
+`pending_ttl_clears_residual_l1` is true.
 
 **CFT limit:** if a peer applies COMMIT but ABORT is lost and the put fails,
-that peer may retain L1 for `op_id` until pending TTL / later repair. DistLab
-`strong.cft_partial_commit_lost_abort` documents this — it is **not** claimed
+that peer may retain L1 for `op_id` indefinitely until a delivered ABORT or a
+later successful LWW put. **Pending TTL does not clear residual L1** — after
+COMMIT apply the pending slot is already gone; `purge_expired_pending` only
+drops uncommitted prepares. DistLab `strong.cft_partial_commit_lost_abort` and
+`strong.cft_residual_survives_pending_purge` document this — **not** claimed
 residual-free. Watch `mpreg_strong_aborts_peer_fail_total`.
 
 **LWW heal (not reliable ABORT):** a later successful majority put for the same
@@ -85,7 +91,7 @@ key can overwrite stale peer L1 (`strong.cft_residual_healed_by_lww`). That is
 ordinary LWW, not guaranteed ABORT delivery. Monitor table shows
 `cft=` / `abort_be=` / `abort_fail=` on `monitor strong --format table`.
 
-Presets: `strong-core` and `ci-core` include both CFT honesty scenarios.
+Presets: `strong-core` and `ci-core` include the CFT honesty scenarios.
 
 ### Health values
 

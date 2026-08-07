@@ -24,6 +24,7 @@ def test_t24_prometheus_alerts_include_honesty_rules() -> None:
     assert "MPREGStrongCapDeleteQuorumClaimed" in text
     assert "MPREGStrongCapCftOnlyMissing" in text
     assert "MPREGStrongCapAbortBestEffortMissing" in text
+    assert "MPREGStrongCapPendingTtlClearsResidualClaimed" in text
     assert "MPREGSharedAuditCapSiemClaimed" in text
     assert "MPREGSharedAuditCapBftClaimed" in text
     assert "MPREGStrongPendingElevated" in text
@@ -33,6 +34,7 @@ def test_t24_prometheus_alerts_include_honesty_rules() -> None:
     assert "mpreg_strong_cap_get_quorum" in text
     assert "mpreg_strong_cap_cft_only" in text
     assert "mpreg_strong_cap_abort_best_effort" in text
+    assert "mpreg_strong_cap_pending_ttl_clears_residual_l1" in text
     assert "mpreg_shared_audit_cap_siem" in text
 
 def test_t24_openapi_still_matches_route_table() -> None:
@@ -46,4 +48,5 @@ def test_t24_slo_helper_includes_honesty_group() -> None:
     assert "mpreg_strong_cap_get_quorum" in yml
     assert "mpreg_strong_cap_cft_only" in yml
     assert "mpreg_strong_cap_abort_best_effort" in yml
+    assert "mpreg_strong_cap_pending_ttl_clears_residual_l1" in yml
     assert "mpreg_shared_audit_cap_siem" in yml

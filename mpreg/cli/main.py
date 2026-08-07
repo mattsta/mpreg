@@ -94,6 +94,13 @@ def evaluate_strong_doctor_payload(
             "strong dishonest capabilities "
             "(abort_best_effort=false; lost ABORT is a CFT limit)",
         )
+    # T29: pending TTL must never be advertised as residual L1 GC
+    if caps and caps.get("pending_ttl_clears_residual_l1") is True:
+        return (
+            False,
+            "strong dishonest capabilities "
+            "(pending_ttl_clears_residual_l1=true; purge is not residual GC)",
+        )
     if health in {"misconfigured", "critical"}:
         return False, f"strong health={health}"
     if health == "disabled":
@@ -2044,6 +2051,7 @@ def config_check(
                 "local_ryw_after_put": True,
                 "cft_only": True,
                 "abort_best_effort": True,
+                "pending_ttl_clears_residual_l1": False,
             },
         },
         "shared_audit": {
@@ -2258,7 +2266,8 @@ def config_check(
             "(cache_strong_enabled). Default off → 1012. Put-only MVP: get/delete "
             "always refuse 1012; local RYW via EVENTUAL/WEAK get. CFT only: "
             "ABORT is best-effort (aborts_peer_fail may leave peer L1 until "
-            "repair). Not WAN SLA, not BFT, not fsync. "
+            "delivered ABORT or later LWW success put — not pending TTL). "
+            "Not WAN SLA, not BFT, not fsync. "
             "See docs/CACHING_SYSTEM.md and residual honesty."
         ),
         "shared_audit": (

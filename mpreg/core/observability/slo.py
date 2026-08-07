@@ -146,6 +146,14 @@ def prometheus_alert_rules_yaml() -> str:
           scope: honesty
         annotations:
           summary: "STRONG dishonestly claims reliable ABORT (must stay best-effort)"
+      - alert: MPREGStrongCapPendingTtlClearsResidualClaimed
+        expr: mpreg_strong_cap_pending_ttl_clears_residual_l1 > 0
+        for: 0m
+        labels:
+          severity: critical
+          scope: honesty
+        annotations:
+          summary: "STRONG dishonestly claims pending TTL clears residual L1"
       - alert: MPREGSharedAuditCapSiemClaimed
         expr: mpreg_shared_audit_cap_siem > 0
         for: 0m

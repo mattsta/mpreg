@@ -2644,6 +2644,11 @@ class FederationMonitoringSystem:
                             "Always 1 — ABORT delivery is best-effort (lost ABORT CFT limit).",
                             bool(caps.get("abort_best_effort", True)),
                         ),
+                        (
+                            "mpreg_strong_cap_pending_ttl_clears_residual_l1",
+                            "Always 0 — pending TTL purge does not clear residual L1 after COMMIT.",
+                            bool(caps.get("pending_ttl_clears_residual_l1", False)),
+                        ),
                     )
                     for mname, help_s, val in cap_specs:
                         lines.append(f"# HELP {mname} {help_s}")

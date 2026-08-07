@@ -314,11 +314,25 @@ class StrongLocalBackend:
         return len(self._pending)
 
     def purge_expired_pending(self, now: float | None = None) -> int:
+        """Drop expired **pending prepares only**.
+
+        Does **not** uncommit residual L1 after COMMIT apply — pending is
+        already removed on successful apply. CFT residual heal is ABORT
+        delivery or later LWW success put, not this purge.
+        """
         now = now if now is not None else time.time()
         dead = [oid for oid, p in self._pending.items() if p.expires_at <= now]
         for oid in dead:
             del self._pending[oid]
         return len(dead)
+
+    def visible_count(self) -> int:
+        """Number of visible L1 strong entries (includes any CFT residuals)."""
+        return len(self._visible)
+
+    def backups_count(self) -> int:
+        """Pre-commit backups retained until ABORT uncommit (or forever if lost)."""
+        return len(self._backups)
 
 @dataclass(slots=True)
 class StrongPutCoordinator:
@@ -326,7 +340,9 @@ class StrongPutCoordinator:
 
     Residual-free is a **CFT best-effort** claim: ABORT is retried but not
     guaranteed delivered. Partial peer COMMIT apply + lost ABORT can leave
-    peer L1 until pending TTL / later repair — not BFT, not fsync recovery.
+    peer L1 until a later delivered ABORT or LWW overwrite by a successful
+    put — **not** cleared by ``purge_expired_pending`` (pending is already
+    gone after COMMIT apply). Not BFT, not fsync recovery.
     Counters ``aborts_peer_ok`` / ``aborts_peer_fail`` expose that boundary.
     """
 

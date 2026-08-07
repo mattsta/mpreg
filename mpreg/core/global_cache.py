@@ -274,11 +274,23 @@ class GlobalCacheManager(ManagedObject):
         coord = self._strong_coordinator
         be = self._strong_backend
         pending = 0
+        visible = 0
+        backups = 0
         if be is not None and hasattr(be, "pending_count"):
             try:
                 pending = int(be.pending_count())
             except Exception:  # noqa: BLE001
                 pending = 0
+        if be is not None and hasattr(be, "visible_count"):
+            try:
+                visible = int(be.visible_count())
+            except Exception:  # noqa: BLE001
+                visible = 0
+        if be is not None and hasattr(be, "backups_count"):
+            try:
+                backups = int(be.backups_count())
+            except Exception:  # noqa: BLE001
+                backups = 0
         samples = list(self._strong_latency_ms)
         lat: dict[str, float | int] = {
             "sample_count": len(samples),
@@ -322,6 +334,9 @@ class GlobalCacheManager(ManagedObject):
         return {
             "enabled": coord is not None,
             "pending_count": pending,
+            # T29: local L1 / backup sizes (not residual-free proof; ops only)
+            "visible_count": visible,
+            "backups_count": backups,
             "counters": counters,
             "latency_ms": lat,
             "coordinator": cfg,
@@ -334,6 +349,8 @@ class GlobalCacheManager(ManagedObject):
         return {
             "enabled": snap["enabled"],
             "pending_count": snap["pending_count"],
+            "visible_count": int(snap.get("visible_count") or 0),
+            "backups_count": int(snap.get("backups_count") or 0),
             "puts_ok": int(c.get("puts_ok", 0)),
             "puts_fail": int(c.get("puts_fail", 0)),
             "refused_disabled": int(c.get("refused_disabled", 0)),
@@ -347,6 +364,8 @@ class GlobalCacheManager(ManagedObject):
                 "local_ryw_after_put": True,
                 "cft_only": True,  # not BFT
                 "abort_best_effort": True,  # lost ABORT may leave peer L1
+                # pending TTL is not residual GC after COMMIT apply
+                "pending_ttl_clears_residual_l1": False,
             },
             "aborts_peer_ok": int(c.get("aborts_peer_ok", 0)),
             "aborts_peer_fail": int(c.get("aborts_peer_fail", 0)),

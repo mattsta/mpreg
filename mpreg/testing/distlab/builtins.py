@@ -589,6 +589,70 @@ def _strong_cft_partial_commit_lost_abort() -> Scenario:
         },
     )
 
+def _strong_cft_residual_survives_pending_purge() -> Scenario:
+    """T29 honesty: residual L1 survives pending TTL purge after COMMIT apply.
+
+    After partial COMMIT + lost ABORT, peer holds visible L1 with pending=0.
+    Waiting past ``pending_ttl_s`` and calling ``purge_expired_pending`` must
+    **not** clear that residual — purge only drops uncommitted prepares.
+    """
+    from mpreg.core.cache_models import GlobalCacheKey
+    from mpreg.core.cache_strong import _entry_op_id
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+    from mpreg.testing.distlab.checker import NoOpenInvokeChecker
+
+    sut = StrongSUT.create(
+        5,
+        prepare_timeout_s=0.4,
+        commit_timeout_s=0.25,
+        pending_ttl_s=0.05,
+    )
+    sut.transport.drop_commit |= {"n2", "n3", "n4"}
+    sut.transport.drop_abort |= {"n1"}
+
+    async def body(history: History, s: object) -> None:
+        import asyncio
+
+        res = await sut.put(
+            history,
+            process="c0",
+            origin="n0",
+            logical_key="ttl",
+            value={"stale": True},
+        )
+        assert res.success is False
+        oid = res.operation_id or ""
+        key = GlobalCacheKey(
+            namespace="distlab", identifier="ttl", version="v1"
+        )
+        n1 = sut.backends["n1"]
+        ent = n1.get_visible(key)
+        assert ent is not None and _entry_op_id(ent) == oid
+        assert n1.pending_count() == 0, "COMMIT apply already cleared pending"
+        await asyncio.sleep(0.08)
+        purged = n1.purge_expired_pending()
+        assert purged == 0  # nothing pending to purge
+        ent2 = n1.get_visible(key)
+        assert ent2 is not None and _entry_op_id(ent2) == oid, (
+            "pending purge must not clear residual L1 after COMMIT apply"
+        )
+        # backups may still hold pre-commit snapshot for a future ABORT
+        assert n1.backups_count() >= 0
+
+    return Scenario(
+        name="strong.cft_residual_survives_pending_purge",
+        setup=lambda: sut,
+        body=body,
+        checker=NoOpenInvokeChecker(),
+        meta={
+            "track": "T29",
+            "cft_limit": True,
+            "not_residual_free": True,
+            "pending_ttl_not_residual_gc": True,
+            "fault": "partial_commit_lost_abort_then_purge",
+        },
+    )
+
 def _strong_cft_residual_healed_by_lww() -> Scenario:
     """T28 honesty: later successful put can LWW-overwrite a CFT residual L1.
 
@@ -1180,6 +1244,13 @@ def register_builtins(registry=None) -> int:
             "T28",
             "CFT residual then LWW heal (not reliable ABORT)",
             ("strong", "cft_limit", "lww_heal"),
+        ),
+        (
+            "strong.cft_residual_survives_pending_purge",
+            _strong_cft_residual_survives_pending_purge,
+            "T29",
+            "CFT residual survives pending TTL purge (not residual GC)",
+            ("strong", "cft_limit", "fault"),
         ),
         ("strong.nemesis_concurrent", _strong_nemesis, "T2", "nemesis concurrent", ("strong", "nemesis")),
         ("strong.interleaved_fault_success", _strong_interleaved, "T2", "fault then ok", ("strong", "fault")),

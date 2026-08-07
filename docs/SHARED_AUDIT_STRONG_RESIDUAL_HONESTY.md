@@ -362,3 +362,20 @@ Plan: `docs/plans/DISTLAB_T28_CFT_OPS_LIVE_PRESET_HEAL_PLAN.md`.
 
 Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM;
 residual-free under partial-commit+lost-abort; automatic ABORT delivery.
+
+## Phase 17 — Pending TTL is not residual L1 GC (2026-08-06)
+
+T29 corrects a dishonest implication that pending TTL clears residual peer L1:
+
+* **Fact:** after COMMIT apply, pending is already gone; `purge_expired_pending`
+  only drops uncommitted prepares. Residual L1 survives purge.
+* **Cap:** `pending_ttl_clears_residual_l1=false` on status/OpenAPI/config-check;
+  doctor fails closed if true; prom gauge always 0 + honesty alert.
+* **DistLab:** `strong.cft_residual_survives_pending_purge`.
+* **Hypothesis:** `test_cft_residual_survives_pending_purge`.
+* **Ops:** `visible_count` / `backups_count` on strong metrics snapshot.
+
+Plan: `docs/plans/DISTLAB_T29_CFT_RESIDUAL_TTL_HONESTY_PLAN.md`.
+
+Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM;
+residual-free under partial-commit+lost-abort; pending TTL as residual GC.

@@ -63,6 +63,10 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T28 LWW heal DistLab | `strong.cft_residual_healed_by_lww` | honesty (not reliable ABORT) |
 | T28 presets | strong-core/ci-core include CFT scenarios | support |
 | T28 ops curriculum | `ops_cli_tour` CFT monitor fields | teach |
+| T29 TTL honesty | `pending_ttl_clears_residual_l1=false`, doctor, prom alert | support ops |
+| T29 DistLab TTL | `strong.cft_residual_survives_pending_purge` | honesty (not residual GC) |
+| T29 Hypothesis TTL | `test_cft_residual_survives_pending_purge` | honesty |
+| T29 visible/backups | GCM snapshot `visible_count` / `backups_count` | support ops |
 
 ## Non-claims (do not market)
 
@@ -91,5 +95,5 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t23_residuals.py tests/chaos/test_t24_residuals.py \
   tests/chaos/test_t25_residuals.py tests/chaos/test_t26_residuals.py \
   tests/chaos/test_t27_residuals.py tests/chaos/test_t28_residuals.py \
-  tests/test_config_check_cli.py -q
+  tests/chaos/test_t29_residuals.py tests/test_config_check_cli.py -q
 ```
