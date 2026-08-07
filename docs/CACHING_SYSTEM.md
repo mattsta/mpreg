@@ -1,4 +1,4 @@
-> **Honesty banner:** Cache `ConsistencyLevel.STRONG` **put** is a flag-gated majority-commit barrier (`cache_strong_enabled`; default **off** → `1012 UNSUPPORTED_CONSISTENCY`). EVENTUAL/WEAK remain the default live path. STRONG **get** and **delete** stay refuse (`1012`). Peer commits bridge into GCM L1; live same-host mesh + residual-free peer-loss are proven (`tests/integration/test_cache_strong_live_mesh.py`). Not WAN SLA, not BFT, not fsync durability, not Jepsen/Elle — see residual doc + `claims.yaml` non_claims. The separate `location_consistency` plane never implements STRONG. Design: `docs/SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md`, residual: `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`, claim `INV-CACHE-STRONG-01`.
+> **Honesty banner:** Cache `ConsistencyLevel.STRONG` **put** is a flag-gated majority-commit barrier (`cache_strong_enabled`; default **off** → `1012 UNSUPPORTED_CONSISTENCY`). EVENTUAL/WEAK remain the default live path. STRONG **get** and **delete** stay refuse (`1012`). Peer commits bridge into GCM L1; live same-host mesh + residual-free peer-loss are proven (`tests/integration/test_cache_strong_live_mesh.py`). **CFT only:** ABORT is best-effort — partial peer COMMIT + lost ABORT may leave peer L1 (not residual-free). Pending TTL purge does **not** clear residual L1 after COMMIT apply. Later LWW success put can overwrite residual (not reliable ABORT). Not WAN SLA, not BFT, not fsync durability, not Jepsen/Elle — see residual doc + `claims.yaml` non_claims. The separate `location_consistency` plane never implements STRONG. Design: `docs/SHARED_AUDIT_AND_STRONG_CACHE_DESIGN.md`, residual: `docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`, claim `INV-CACHE-STRONG-01`.
 
 # MPREG Smart Caching System Documentation
 
@@ -604,8 +604,11 @@ bound on `GlobalCacheManager`, `put(..., consistency_level=STRONG)` runs a
 1. **PREPARE** — peers hold pending (invisible) state only.
 2. **COMMIT** — majority \(Q = \lfloor N/2 \rfloor + 1\) **COMMIT_ACKs**;
    **origin commits last**.
-3. Client success only after the barrier. Failures send **ABORT** and
-   **uncommit** peer+origin L1 for that `op_id` (residual-free).
+3. Client success only after the barrier. Failures send **ABORT** (retried
+   best-effort) and **uncommit** peer+origin L1 for that `op_id` when ABORT
+   is delivered. Under CFT, partial peer COMMIT + lost ABORT may leave peer
+   L1 until a later delivered ABORT or LWW success put — **not** residual-free
+   in that fault mode; **not** cleared by pending TTL.
 
 | Setting                                                            | Default | Role                                |
 | ------------------------------------------------------------------ | ------- | ----------------------------------- |
@@ -614,7 +617,7 @@ bound on `GlobalCacheManager`, `put(..., consistency_level=STRONG)` runs a
 | `cache_strong_min_replicas`                                        | `3`     | Fail `1015` if live eligible < this |
 | `cache_strong_lab_single_node`                                     | `False` | Explicit lab-only single-node path  |
 | `cache_strong_prepare_timeout_s` / `cache_strong_commit_timeout_s` | `2.0`   | Barrier timeouts → `1016`           |
-| `cache_strong_pending_ttl_s`                                       | `30.0`  | Pending TTL backstop                |
+| `cache_strong_pending_ttl_s`                                       | `30.0`  | Pending prepare TTL only (not residual L1 GC) |
 
 | Code     | Name                      | When                                                      |
 | -------- | ------------------------- | --------------------------------------------------------- |
@@ -628,9 +631,13 @@ bound on `GlobalCacheManager`, `put(..., consistency_level=STRONG)` runs a
 (`mpreg/fabric/cache_transport.py`). Coordinator: `mpreg/core/cache_strong.py`.
 
 **After a successful STRONG put**, read with default/EVENTUAL get (not a quorum
-read). Curriculum: `cache_strong_quorum`. Claims: `INV-CACHE-STRONG-01`
-(proof L1/L2/L4). Non-claims: no WAN multi-region SLA, not BFT, not fsync disk
-durability, not STRONG get/delete MVP.
+read). Curriculum: `cache_strong_quorum` (includes CFT residual + LWW heal demo).
+Claims: `INV-CACHE-STRONG-01` (proof L1/L2/L4). DistLab: `strong.cft_*` scenarios
+in `strong-core` / `ci-core`. Ops: `mpreg monitor strong`,
+`mpreg_strong_aborts_peer_*`, `mpreg_strong_visible` / `_backups` /
+`_backups_pruned_total`. Non-claims: no WAN multi-region SLA, not BFT, not fsync
+disk durability, not STRONG get/delete MVP, not residual-free under lost ABORT,
+pending TTL ≠ residual GC, LWW heal ≠ reliable ABORT.
 
 ```python
 # Flag off or unbound coordinator — fail closed, no local write

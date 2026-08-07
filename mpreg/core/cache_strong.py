@@ -341,11 +341,16 @@ class StrongLocalBackend:
         Does **not** uncommit residual L1 after COMMIT apply — pending is
         already removed on successful apply. CFT residual heal is ABORT
         delivery or later LWW success put, not this purge.
+
+        Also runs orphan pre-commit backup GC (same as commit/abort) so the
+        server purge loop cannot leave unbounded backups if commit-path prune
+        was skipped.
         """
         now = now if now is not None else time.time()
         dead = [oid for oid, p in self._pending.items() if p.expires_at <= now]
         for oid in dead:
             del self._pending[oid]
+        self._prune_orphan_backups()
         return len(dead)
 
     def visible_count(self) -> int:

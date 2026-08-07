@@ -76,6 +76,9 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T33 curriculum CFT | `cache_strong_quorum` residual + LWW heal scenario | teach |
 | T33 claims.yaml | INV-CACHE-STRONG-01 CFT text + non_claims | honesty |
 | T33 doctor counts | `ttl_gc` / visible / backups / pruned in doctor detail | support ops |
+| T34 CACHING_SYSTEM | CFT honesty in product caching doc | honesty |
+| T34 purge prune | `purge_expired_pending` → orphan backup GC | product |
+| T34 Hypothesis GC | `test_cft_orphan_backups_bounded_under_repeated_residual` | product |
 
 ## Non-claims (do not market)
 
@@ -106,5 +109,6 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t27_residuals.py tests/chaos/test_t28_residuals.py \
   tests/chaos/test_t29_residuals.py tests/chaos/test_t30_residuals.py \
   tests/chaos/test_t31_residuals.py tests/chaos/test_t32_residuals.py \
-  tests/chaos/test_t33_residuals.py tests/test_config_check_cli.py -q
+  tests/chaos/test_t33_residuals.py tests/chaos/test_t34_residuals.py \
+  tests/test_config_check_cli.py -q
 ```

@@ -591,6 +591,45 @@ async def test_cft_partial_commit_plus_lost_abort_leaves_peer_l1(n: int) -> None
     assert coord.aborts_peer_fail >= 1
 
 @pytest.mark.asyncio
+@given(
+    n=st.integers(min_value=5, max_value=7),
+    rounds=st.integers(min_value=2, max_value=5),
+)
+@settings(
+    max_examples=10,
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
+)
+async def test_cft_orphan_backups_bounded_under_repeated_residual(
+    n: int, rounds: int
+) -> None:
+    """T34: repeated CFT residual must not unbounded-grow pre-commit backups."""
+    peers = [f"n{i}" for i in range(n)]
+    non_origin = peers[1:]
+    commit_peer = non_origin[0]
+    dc = frozenset(non_origin[1:])
+    da = frozenset({commit_peer})
+    coord, _t, backends = _cluster(
+        n,
+        drop_commit=dc,
+        drop_abort=da,
+        min_replicas=n,
+        prepare_timeout_s=0.3,
+        commit_timeout_s=0.25,
+        pending_ttl_s=30.0,
+    )
+    key = _key(f"obgc-{n}-{rounds}")
+    be = backends[commit_peer]
+    for i in range(rounds):
+        res = await coord.strong_put(key, {"r": i}, eligible_peers=peers)
+        assert res.success is False
+        assert be.backups_count() <= 1
+        assert be.get_visible(key) is not None
+    # Purge path also prunes orphans (belt-and-suspenders)
+    be.purge_expired_pending()
+    assert be.backups_count() <= 1
+
+@pytest.mark.asyncio
 @given(n=st.integers(min_value=5, max_value=7))
 @settings(
     max_examples=10,

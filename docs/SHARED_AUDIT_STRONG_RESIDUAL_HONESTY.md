@@ -440,3 +440,17 @@ T33 teaches the CFT boundary in the primary STRONG curriculum and claims map:
 Plan: `docs/plans/DISTLAB_T33_CURRICULUM_CLAIMS_CFT_PLAN.md`.
 
 Still **not** claimed: residual-free under lost ABORT; WAN/Elle/BFT/fsync.
+
+## Phase 22 — CACHING_SYSTEM CFT honesty + purge prune (2026-08-06)
+
+T34 product-doc + belt-and-suspenders GC:
+
+* **Docs:** `docs/CACHING_SYSTEM.md` banner + STRONG section state CFT residual,
+  TTL ≠ residual GC, LWW ≠ ABORT; ops/DistLab pointers.
+* **Purge:** `purge_expired_pending` also runs `_prune_orphan_backups` so the
+  server purge loop cannot leave unbounded backups.
+* **Hypothesis:** `test_cft_orphan_backups_bounded_under_repeated_residual`.
+
+Plan: `docs/plans/DISTLAB_T34_CACHING_DOC_PURGE_PRUNE_PLAN.md`.
+
+Still **not** claimed: residual-free under lost ABORT; WAN/Elle/BFT/fsync.
