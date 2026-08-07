@@ -740,6 +740,11 @@ async def test_distlab_live_residual_ops_hint_enriched_e2e(
                 assert "not auto-heal" in hint
                 assert oid == (body.get("last_abort_fail_op_id") or "")
                 assert peer_id in list(body.get("last_abort_fail_peers") or [])
+                # T85: JSON count matches peer list / prom gauge
+                assert int(body.get("abort_fail_peer_count") or 0) >= 1
+                assert int(body.get("abort_fail_peer_count") or 0) == len(
+                    list(body.get("last_abort_fail_peers") or [])
+                )
 
             async with session.get(f"{base}/mgmt/v1/strong") as resp:
                 assert resp.status == 200

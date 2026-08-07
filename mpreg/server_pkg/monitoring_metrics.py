@@ -244,10 +244,13 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
                 base["residual_ops_hint"] = enriched
     except Exception:  # noqa: BLE001
         base.setdefault("residual_ops_hint", "")
-        # T80: numeric peer count mirrors Prometheus mpreg_strong_abort_fail_peers
+    # T80: numeric peer count mirrors Prometheus mpreg_strong_abort_fail_peers
+    try:
         from mpreg.core.cache_strong import count_abort_fail_peers
 
         base["abort_fail_peer_count"] = count_abort_fail_peers(body=base)
+    except Exception:  # noqa: BLE001
+        base.setdefault("abort_fail_peer_count", 0)
     return base
 
 def build_shared_audit_metrics(server: Any) -> dict[str, Any]:

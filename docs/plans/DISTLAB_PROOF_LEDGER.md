@@ -155,6 +155,9 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T81 DistLab peer count | hint_enriched abort_fail_peer_count | product |
 | T82 ops_cli doctor JSON hint | doctor --strong --format json residual_ops_hint | teach |
 | T83 client guide peer count | MPREG_CLIENT_GUIDE gauge + doctor JSON | teach |
+| T84 Hypothesis peer count | count_abort_fail_peers properties | product |
+| T85 live peer count | live doctor 0 + enriched >= 1 | support ops |
+| T86 design/OPERATE peer count | design + OPERATE abort_fail_peer_count | teach |
 
 ## Non-claims (do not market)
 
@@ -201,6 +204,11 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
   signals — not residual-free proof, not automatic heal, not WAN SLO
 - ops_cli doctor JSON residual_ops_hint assert is teachable — not auto-heal
 - Client guide peer-count docs are guidance — not residual-free product claim
+- Hypothesis count_abort_fail_peers is pure unit formatting — not live mesh,
+  not automatic heal
+- Live abort_fail_peer_count asserts seed coordinator fields — not kernel drop,
+  not WAN, not automatic heal
+- Design/OPERATE abort_fail_peer_count docs are guidance — not residual-free claim
 
 ## Gate commands
 
@@ -242,6 +250,8 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t78_residuals.py tests/chaos/test_t79_residuals.py \
   tests/chaos/test_t80_residuals.py tests/chaos/test_t81_residuals.py \
   tests/chaos/test_t82_residuals.py tests/chaos/test_t83_residuals.py \
+  tests/chaos/test_t84_residuals.py tests/chaos/test_t85_residuals.py \
+  tests/chaos/test_t86_residuals.py \
   tests/integration/test_cache_strong_live_mesh.py \
   tests/testing/test_distlab_live.py::test_distlab_live_strong_metrics_e2e \
   tests/test_config_check_cli.py tests/test_unified_client.py -q

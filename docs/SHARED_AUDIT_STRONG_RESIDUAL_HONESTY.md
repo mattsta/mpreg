@@ -1055,3 +1055,30 @@ Still **not** claimed: docs are residual-free product claim.
 
 Plan: `docs/plans/DISTLAB_T83_CLIENT_GUIDE_PEER_COUNT_PLAN.md`.
 
+## Phase 72 — Hypothesis count_abort_fail_peers (2026-08-06)
+
+T84: property tests — unique non-empty peers; body/coordinator paths; explicit
+peers override body.
+
+Still **not** claimed: pure unit property is live mesh; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T84_HYPOTHESIS_PEER_COUNT_PLAN.md`.
+
+## Phase 73 — Live abort_fail_peer_count (2026-08-06)
+
+T85: live doctor e2e asserts `abort_fail_peer_count == 0` after clean put;
+live enriched e2e asserts count >= 1 and equals `len(last_abort_fail_peers)`.
+
+Still **not** claimed: live seed is kernel drop; WAN; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T85_LIVE_PEER_COUNT_PLAN.md`.
+
+## Phase 74 — Design + OPERATE peer count (2026-08-06)
+
+T86: design doc and OPERATE document `abort_fail_peer_count` /
+`count_abort_fail_peers` / `mpreg_strong_abort_fail_peers`.
+
+Still **not** claimed: docs are residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T86_DESIGN_PEER_COUNT_PLAN.md`.
+

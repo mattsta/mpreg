@@ -346,3 +346,34 @@ def test_count_abort_fail_peers_helper() -> None:
     )
     assert count_abort_fail_peers(body={}) == 0
 
+def test_count_abort_fail_peers_hypothesis() -> None:
+    """T84: property — count equals unique non-empty peers; body path matches."""
+    from hypothesis import given, settings, strategies as st
+
+    from mpreg.core.cache_strong import count_abort_fail_peers
+
+    peer = st.text(
+        alphabet=st.characters(
+            whitelist_categories=("L", "N"), whitelist_characters="-_:"
+        ),
+        min_size=1,
+        max_size=10,
+    ).filter(lambda s: s.strip() != "")
+
+    @given(peers=st.lists(peer, max_size=6))
+    @settings(max_examples=50, deadline=None)
+    def _prop(peers: list[str]) -> None:
+        expected = len(list(dict.fromkeys(peers)))
+        assert count_abort_fail_peers(peers) == expected
+        assert count_abort_fail_peers(body={"last_abort_fail_peers": peers}) == expected
+        assert (
+            count_abort_fail_peers(
+                body={"coordinator": {"last_abort_fail_peers": peers}}
+            )
+            == expected
+        )
+        # explicit peers wins over body
+        assert count_abort_fail_peers(["solo"], body={"last_abort_fail_peers": peers}) == 1
+
+    _prop()
+
