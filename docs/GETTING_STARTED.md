@@ -1105,24 +1105,9 @@ def admin_function():
     pass
 
 server.register_command("admin_func", admin_function, ["admin"])
-# orchestrator-native auto-scaling
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: mpreg-workers
-spec:
-  replicas: 3  # Auto-scales based on load
-  template:
-    spec:
-      containers:
-      - name: mpreg-worker
-        image: mpreg:latest
-        env:
-        - name: MPREG_RESOURCES
-          value: "compute,cpu"
-        - name: MPREG_DISCOVERY_SERVICE
-          value: "etcd://etcd-cluster:2379"
 ```
+
+#### **3. Auto-scaling & Dynamic Cluster Management**
 
 ### **🚀 Advanced Features to Build**
 
@@ -1222,19 +1207,7 @@ await scheduler.run_dag(dag, schedule="@daily")
 
 ### **🌍 Ecosystem Integration**
 
-#### **1. Cloud Native Integration**
-
-```yaml
-# Packaging notes for deployment
-apiVersion: v2
-name: mpreg-cluster
-version: 1.0.0
-dependencies:
-  - name: prometheus
-    version: "15.x"
-  - name: grafana
-    version: "6.x"
-```
+#### **1. Process & host deployment**
 
 #### **2. Language Bindings**
 

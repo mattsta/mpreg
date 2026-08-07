@@ -838,21 +838,6 @@ jobs:
         run: |
           uv run mpreg health --output json > health-report.json
           uv run mpreg topology
-FROM python:3.12-slim
-
-WORKDIR /app
-
-COPY pyproject.toml uv.lock ./
-RUN pip install uv && uv sync --no-dev
-
-COPY . .
-
-# Health check endpoint
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD uv run mpreg health --output json || exit 1
-
-# Default command
-CMD ["uv", "run", "mpreg", "monitor", "health-watch", "--interval", "60"]
 ```
 
 ## Troubleshooting

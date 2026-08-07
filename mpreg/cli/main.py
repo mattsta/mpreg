@@ -2564,7 +2564,7 @@ def config_check(
             "Scrape /metrics/shared-audit when mon on."
         ),
         "persistence": (
-            "Unified persistence (memory|sqlite today). remote SQL/other stores backends "
+            "Unified persistence (memory|sqlite today). Additional remote backends "
             "are not shipped — see PERSISTENCE_FRAMEWORK_PLAN. data_dir holds sqlite files."
         ),
         "warnings": (

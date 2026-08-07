@@ -49,9 +49,12 @@ uv run pytest tests/release/ -q
 
 # TRACK H3 — Container & support (~20 pts)
 
-43. `SUPPORT.md` (how to get help, links to SECURITY/claims)
-44. RELEASE_CHECKLIST container + PyPI section refresh
-45. PRODUCTION_DEPLOYMENT container pointer
+41. `SUPPORT.md` (how to get help, links to SECURITY/claims)
+42. Explicit non-support of process/process-mesh in ops docs
+43. RELEASE_CHECKLIST publish path without support docss
+44. RELEASE_CHECKLIST support docs + PyPI section refresh
+45. PRODUCTION_DEPLOYMENT support docs pointer
+46. `tests/release/test_h3_support docs_support.py`
 47–60. Buffer
 
 # TRACK H4 — Version & honesty (~15 pts)
@@ -79,7 +82,7 @@ uv run pytest tests/release/ -q
 | --- | --- |
 | H1 CI surface | **complete** |
 | H2 Lint | **complete** |
-| H3 Container/support | **complete** |
+| H3 Support/docs | **complete** |
 | H4 Version/honesty | **complete** |
 | H5 Gate | **complete** |
 

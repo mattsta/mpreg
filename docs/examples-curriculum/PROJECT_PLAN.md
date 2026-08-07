@@ -873,7 +873,7 @@ Serialized from post-P backlog + integrity residual (`client.summary` join):
 | Q2  | ERG      | `mpreg config-check --explain` (human field guide + groups already JSON)              | [x]    |
 | Q3  | OBS/PERF | Route-decision hop stats on `ServerMetricsTracker.snapshot` (`fabric.hops`)           | [x]    |
 | Q4  | CAP      | Mgmt audit durability teach: `mgmt_audit_path` JSONL + CLI `admin audit` path         | [x]    |
-| Q5  | CAP      | Persistence surface teach: memory/sqlite backends (remote SQL/other stores = honest non-claim) | [x]    |
+| Q5  | CAP      | Persistence surface teach: memory/sqlite backends (remote stores = honest non-claim) | [x]    |
 | Q6  | USE      | Plane error_code promotion already on façade — teach ensure path in unified tour      | [x]    |
 | Q7  | OBS      | Absorb probe annotations depth on one additional L2 ops path (`ops_cli_tour`)         | [x]    |
 | Q8  | CAP      | Discovery in-process residual: unified `rpc_list`/`rpc_describe` façade parity        | [x]    |
@@ -882,7 +882,7 @@ Serialized from post-P backlog + integrity residual (`client.summary` join):
 **Exit:** every Q row `[x]`; feature constants uncovered=0; suite green; WT clean commit.
 
 **Deferred (not in Q — topology/product scale, append only after Q9):**
-full mgmt UI, remote SQL/other stores backends, multi-continent SLA.
+full mgmt UI, remote SQL/other backends, multi-continent SLA.
 (**Shipped later in Phase Y:** multi-node shared audit store, ConsistencyLevel.STRONG put.)
 
 ### Phase R — Sequential unified façade parity (**COMPLETE**)
@@ -941,7 +941,7 @@ STAGES/TRACKER/catalog/friction truth; `format_server_snapshot` unit; OPERATE
 fabric hop fields. **97** apps.
 
 Deferred (topology/product scale only — not active queue): full mgmt UI,
-remote SQL/other stores backends, multi-continent SLA. (Shared audit + STRONG put shipped
+remote SQL/other backends, multi-continent SLA. (Shared audit + STRONG put shipped
 in Phase Y.)
 
 ---
@@ -978,7 +978,7 @@ APP_CATALOG P–T; README 97 apps. Deferred topology/product only.
 through Phase V/X. **Phase Y shipped** multi-node shared audit + ConsistencyLevel.STRONG
 put (apps `shared_audit_mesh`, `cache_strong_quorum`; claims INV-SHARED-AUDIT-01 /
 INV-CACHE-STRONG-01). Deferred only (not auto-appended): full mgmt UI,
-remote SQL/other stores backends, multi-continent SLA, STRONG quorum get/delete (v1.1).
+remote SQL/other backends, multi-continent SLA, STRONG quorum get/delete (v1.1).
 
 ### Phase Y — Shared audit + STRONG put (**COMPLETE**)
 

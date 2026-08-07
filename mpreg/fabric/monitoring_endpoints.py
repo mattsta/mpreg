@@ -637,7 +637,7 @@ class FederationMonitoringSystem:
     # Health monitoring endpoints
 
     async def _get_live(self, request: web.Request) -> web.Response:
-        """probe-style liveness: process is up and serving HTTP."""
+        """Process liveness: process is up and serving HTTP."""
         return web.json_response(
             {"status": "live", "timestamp": time.time()},
             status=200,

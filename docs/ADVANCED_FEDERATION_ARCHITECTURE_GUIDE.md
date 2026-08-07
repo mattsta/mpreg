@@ -520,10 +520,6 @@ Based on extensive testing across all topology patterns:
    - Choose Cross-Datacenter for global distribution
    - Implement Self-Healing for mission-critical systems
 
-### Native process deployment Example
-
-### Native cluster deployment
-
 ## Extension and Customization
 
 ### Custom Topology Implementation

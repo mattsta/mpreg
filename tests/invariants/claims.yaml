@@ -410,9 +410,11 @@ release_0_3_1:
     tests:
       - tests/release/test_h2_lint_bar.py
   - id: REL-0.3.1-CONTAINER-SUPPORT
+    claim: "0.3.1 ships SUPPORT.md; native process deploy only"
     proof: [L2]
     support_only: true
     tests:
+      - tests/release/test_h3_support_md.py
   - id: REL-0.3.1-PACKAGE
     claim: "package version 0.3.1 with dynamic package-smoke version check"
     proof: [L2]
@@ -587,4 +589,5 @@ support_only:
   - tests/release/test_r7_gate_artifacts.py
   - tests/release/test_h1_ci_surface.py
   - tests/release/test_h2_lint_bar.py
+  - tests/release/test_h3_support_md.py
   - tests/release/test_h4_version_031.py

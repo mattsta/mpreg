@@ -6,6 +6,7 @@
 | H1 unit-fast | `scripts/ci_unit_fast.sh`, `tests/release/test_h1_ci_surface.py` | support CI |
 | H1 typecheck | `scripts/ci_typecheck.sh` | support CI |
 | H2 lint | `scripts/ci_lint.sh`, ruff autofix, `test_h2_lint_bar.py` | support quality |
+| H3 support docs | `SUPPORT.md`, `tests/release/test_h3_support_md.py` | support ops |
 | H3 support | `SUPPORT.md` | support ops |
 | H4 version | `pyproject.toml`, `test_h4_version_031.py` | support package |
 | H4 claims | `tests/invariants/claims.yaml` `release_0_3_1` | honesty |
@@ -15,6 +16,7 @@
 ## Non-claims
 
 - 0.3.1 does not claim full-tree ruff/mypy zero
+- process/process-mesh are not supported deployment targets
 - SUPPORT.md is not a commercial SLA
 - Hardening patch ≠ new distributed guarantees (still CFT, not BFT/WAN/Jepsen)
 

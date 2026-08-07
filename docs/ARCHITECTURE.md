@@ -1,5 +1,7 @@
 # MPREG Architecture Documentation
 
+> **0.3.1 Production Hardening:** `docs/RELEASE_0_3_1_PRODUCTION_HARDENING_ARCHITECTURE.md` (broader CI, lint bar, SUPPORT.md; native process deploy only).
+
 > **0.3.0 Production Snapshot:** release architecture and gate live in `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md` (CI matrix, honesty freeze, `scripts/release_gate.sh`). Residual honesty through T139 remains separate (`docs/SHARED_AUDIT_STRONG_RESIDUAL_HONESTY.md`).
 
 ## Overview

@@ -30,9 +30,10 @@
 - [x] H2.03 `test_h2_lint_bar.py`
 - [x] H2.04 lint green
 
-## H3 — Container & support
+## H3 — Support & publish docs
 
-- [x] H3.02 SUPPORT.md
+- [x] H3.01 SUPPORT.md
+- [x] H3.02 Explicit no process/process-mesh in ops docs
 - [x] H3.03 Checklist / PRODUCTION links
 
 ## H4 — Version & honesty

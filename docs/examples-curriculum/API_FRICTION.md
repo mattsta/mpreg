@@ -112,7 +112,7 @@ Also shipped: `ServerMetricsTracker.snapshot()`, shared `ExampleProbe`
 | Q2  | settings discoverability            | `mpreg config-check --explain` field guide            |
 | Q3  | fabric hop visibility               | `ServerMetricsTracker.snapshot()["fabric"]` hop stats |
 | Q4  | mgmt audit durability               | teach `mgmt_audit_path` JSONL + `/mgmt/v1/audit`      |
-| Q5  | persistence backend honesty         | PersistenceMode memory/sqlite + remote stores non-claim    |
+| Q5  | persistence backend honesty         | PersistenceMode memory/sqlite + remote store non-claim |
 | Q6  | plane error_code                    | teach CacheOpResult/QueueSendResult promotion         |
 | Q7  | ops probe depth                     | ExampleProbe on `ops_cli_tour`                        |
 | Q8  | unified inventory                   | `rpc_list`/`rpc_describe`/`rpc_report` on MPREGClient |

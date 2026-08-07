@@ -37,6 +37,7 @@ residual-honesty micro-bands or enterprise roadmap features:
 | --- | --- |
 | **H1** | CI unit-fast + typecheck expansion |
 | **H2** | Safe ruff fix + lint bar raise |
+| **H3** | SUPPORT.md + publish/docs path |
 | **H4** | Version 0.3.1 + CHANGELOG + claims |
 | **H5** | Gate tests + `release_gate` + freeze |
 
@@ -47,6 +48,7 @@ residual-honesty micro-bands or enterprise roadmap features:
 | Lint | E9 full tree + full rules on `tests/release` | + safe autofix; + I/F401/UP on `mpreg/` where clean |
 | Typecheck | import smoke + tiny mypy surface | + more core modules; version dynamic |
 | Unit-fast | ~5 product paths + release | + client/core/integration smoke paths |
+| Package | wheel smoke | + publish docs |
 | Docs | SECURITY + checklist | + SUPPORT + container section |
 
 ## 5. Definition of done
@@ -55,6 +57,7 @@ residual-honesty micro-bands or enterprise roadmap features:
 2. `bash scripts/release_gate.sh` exit 0
 3. `uv run pytest tests/release/ -q` green (0.3.0 + 0.3.1 tests)
 4. CHANGELOG `## [0.3.1]`; claims `release_0_3_1`
+5. SUPPORT.md present and linked
 6. Master/burndown/architecture status **Complete**
 
 ## 6. Validation

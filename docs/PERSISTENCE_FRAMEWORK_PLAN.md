@@ -4,7 +4,7 @@
 > `mpreg/core/persistence/` (backend, KV store, cache L2 store, queue store,
 > registry) with `PersistenceConfig` on `MPREGSettings` and
 > `from_toml` / `from_json` / `from_path` loaders. Monitoring exposes
-> `/metrics/persistence`. Remaining work is backend expansion (remote SQL/other stores),
+> `/metrics/persistence`. Remaining work is backend expansion (Postgres and other stores),
 > deeper crash-recovery hardening, and doc examples — not greenfield scaffolding.
 
 ## Goals

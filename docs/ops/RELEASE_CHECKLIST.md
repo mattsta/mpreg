@@ -75,8 +75,6 @@ uv build
 # uvx twine upload dist/*
 ```
 
-## Container (0.3.1+)
-
 ## Post-tag
 
 - [ ] GitHub Release published  

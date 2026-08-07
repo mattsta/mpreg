@@ -6,6 +6,7 @@ capabilities for federated MPREG deployments. It supports multiple discovery
 protocols and provides self-managing, health-aware cluster coordination.
 
 Features:
+- Multi-protocol discovery (DNS, Consul, etcd, static config)
 - Health-aware discovery with automatic filtering
 - Self-registration and heartbeat maintenance
 - Dynamic configuration updates
@@ -118,9 +119,6 @@ class DiscoveryConfiguration:
     etcd_host: str = "localhost"
     etcd_port: int = 2379
     etcd_prefix: str = "/mpreg/fabric/clusters"
-
-    cluster_namespace: str = "default"
-    cluster_service_label: str = "app=mpreg-federation"
 
     # HTTP endpoint configuration
     http_discovery_url: str = ""

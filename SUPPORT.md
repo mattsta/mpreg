@@ -3,11 +3,11 @@
 ## How to get help
 
 1. **Docs first:** `docs/GETTING_STARTED.md`, `docs/PRODUCTION_DEPLOYMENT.md`,
-   `docs/MPREG_CLIENT_GUIDE.md`, `docs/ops/RELEASE_CHECKLIST.md`.
+ `docs/MPREG_CLIENT_GUIDE.md`, `docs/ops/RELEASE_CHECKLIST.md`.
 2. **Config gate:** `uv run mpreg config-check <profile> --strict --format json`.
 3. **Health:** `uv run mpreg doctor --url $MPREG_MONITORING_URL`.
 4. **Claims / non-claims:** `tests/invariants/claims.yaml` and honesty banners in
-   README / PRODUCTION docs.
+ README / PRODUCTION docs.
 
 ## Security issues
 
@@ -37,7 +37,5 @@ Prefer GitHub issues with:
 - Profile or minimal settings (redact secrets)
 - Repro steps and logs (INFO level)
 
-## Container
+## Deployment posture
 
-`docs/ops/RELEASE_CHECKLIST.md`. Always mount a **rotated** profile; never ship
-`change-me` secrets.

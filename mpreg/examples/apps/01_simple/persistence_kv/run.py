@@ -119,7 +119,7 @@ async def main() -> None:
             shipped = {m.value for m in PersistenceMode}
             ensure(shipped == {"memory", "sqlite"}, f"unexpected modes {shipped}")
             step(
-                "non-claim: remote SQL/other stores backends not in PersistenceMode — "
+                "non-claim: remote SQL/other backends not in PersistenceMode — "
                 "see docs/PERSISTENCE_FRAMEWORK_PLAN.md"
             )
             ok(f"PersistenceConfig modes={sorted(shipped)}")
