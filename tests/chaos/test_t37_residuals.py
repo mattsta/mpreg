@@ -86,6 +86,48 @@ async def test_t37_retry_abort_empty_peers_noop() -> None:
     assert out.get("attempts") == 0
 
 @pytest.mark.asyncio
+async def test_t37_retry_abort_self_target_clears_local() -> None:
+    """RPC may land on residual peer: peers=[self] must local-abort, not no-op."""
+    tr = InProcessStrongTransport()
+    backends = {f"n{i}": StrongLocalBackend(node_id=f"n{i}") for i in range(3)}
+    for be in backends.values():
+        tr.register(be)
+    # Residual lives on n1; coordinate *as* n1 (simulates RPC fan-in to residual)
+    coord = StrongPutCoordinator(
+        origin_id="n1",
+        local=backends["n1"],
+        transport=tr,
+        replica_factor=3,
+        min_replicas=2,
+        prepare_timeout_s=0.3,
+        commit_timeout_s=0.2,
+        abort_attempts=2,
+    )
+    key = GlobalCacheKey(namespace="t37", identifier="self", version="v1")
+    from mpreg.core.cache_models import CacheMetadata
+    from mpreg.core.cache_strong import StrongVersion
+
+    oid = "self-residual"
+    sv = StrongVersion(logical_ts=1, origin_node="n0", op_id=oid)
+    await backends["n1"].prepare(
+        key=key,
+        value={"stale": True},
+        metadata=CacheMetadata(),
+        strong_version=sv,
+        replica_set=("n0", "n1", "n2"),
+        quorum=2,
+        ttl_s=30.0,
+    )
+    await backends["n1"].commit(op_id=oid, key=key)
+    assert backends["n1"].get_visible(key) is not None
+
+    out = await coord.retry_abort(key, oid, peers=["n1"])
+    assert out.get("cleared") is True, out
+    assert "n1" in list(out.get("ok_peers") or [])
+    ent = backends["n1"].get_visible(key)
+    assert ent is None or _entry_op_id(ent) != oid
+
+@pytest.mark.asyncio
 async def test_t37_distlab_retry_abort_scenario() -> None:
     ensure_builtins()
     r = await get_registry().run("strong.cft_retry_abort_clears_residual")

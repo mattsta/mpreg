@@ -314,3 +314,102 @@ async def test_live_strong_disabled_still_1012(
         )
         assert res.success is False
         assert res.error_code == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY)
+
+@pytest.mark.asyncio
+async def test_live_client_rpc_strong_retry_abort_clears_residual(
+    test_context: AsyncTestContext,
+) -> None:
+    """T44: MPREGClient.cache_strong_retry_abort over live mesh clears peer L1.
+
+    Seeds a CFT residual on one peer backend (prepare+commit, no ABORT), then
+    re-delivers ABORT via platform RPC from a client attached to the origin.
+    Still ops-driven CFT — not automatic heal, not BFT, not WAN.
+    """
+    from mpreg.client.unified_client import MPREGClient
+    from mpreg.core.cache_models import CacheMetadata
+    from mpreg.core.cache_strong import StrongVersion, _entry_op_id
+
+    with port_range_context(3, "servers") as ports:
+        url0 = f"ws://127.0.0.1:{ports[0]}"
+        servers = [
+            MPREGServer(_strong_settings(ports[0], "R0")),
+            MPREGServer(_strong_settings(ports[1], "R1", peers=[url0])),
+            MPREGServer(_strong_settings(ports[2], "R2", peers=[url0])),
+        ]
+        test_context.servers.extend(servers)
+        tasks = [asyncio.create_task(s.server()) for s in servers]
+        test_context.tasks.extend(tasks)
+
+        await asyncio.sleep(1.0)
+        await _wait_peers(servers)
+
+        origin = servers[0]
+        peer = servers[1]
+        key = GlobalCacheKey(
+            namespace="strong-live", identifier="t44-rpc", version="v1"
+        )
+        oid = "t44-residual-op-id"
+        replica = tuple(s.cluster.local_url for s in servers)
+        sv = StrongVersion(
+            logical_ts=1, origin_node=origin.cluster.local_url, op_id=oid
+        )
+        be = peer._strong_local_backend
+        pack = await be.prepare(
+            key=key,
+            value={"stale": True, "t44": 1},
+            metadata=CacheMetadata(),
+            strong_version=sv,
+            replica_set=replica,
+            quorum=2,
+            ttl_s=60.0,
+        )
+        assert pack.ok, getattr(pack, "reason", pack)
+        cack = await be.commit(op_id=oid, key=key)
+        assert cack.ok and cack.applied
+        residual = be.get_visible(key)
+        assert residual is not None and _entry_op_id(residual) == oid
+
+        # Client RPC path: ops-driven re-ABORT. Unpinned call may land on any
+        # node advertising resource "cache" — including the residual peer.
+        # retry_abort always local-aborts and peer-aborts remotes so either
+        # landing clears the residual (T44 product fix).
+        async with MPREGClient(url0) as client:
+            put = await client.cache_put(
+                "strong-live",
+                "t44-eventual-probe",
+                {"probe": True},
+                version="v1",
+            )
+            assert put.success is True, (
+                f"client cache_put probe failed: {put.error_code} {put.error_message}"
+            )
+
+            retry = await client.cache_strong_retry_abort(
+                "strong-live",
+                "t44-rpc",
+                oid,
+                version="v1",
+                peers=[peer.cluster.local_url],
+            )
+            assert retry.ops_driven is True
+            assert retry.automatic_heal is False
+            assert retry.success is True, (
+                f"retry_abort failed: {retry.error_message} "
+                f"fail={retry.fail_peers} raw={retry.raw}"
+            )
+            assert retry.cleared is True
+
+        cleared = be.get_visible(key)
+        assert cleared is None or _entry_op_id(cleared) != oid
+
+        # Counters increment on whichever node handled the RPC
+        total_calls = sum(
+            int(s._cache_manager.strong_status().get("retry_abort_calls") or 0)
+            for s in servers
+        )
+        total_cleared = sum(
+            int(s._cache_manager.strong_status().get("retry_abort_cleared") or 0)
+            for s in servers
+        )
+        assert total_calls >= 1
+        assert total_cleared >= 1

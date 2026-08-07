@@ -593,3 +593,19 @@ Still **not** claimed: automatic heal; residual-free under lost ABORT;
 WAN/Elle/BFT/fsync. CLI is thin client of ops-driven CFT RPC only.
 
 Plan: `docs/plans/DISTLAB_T43_CLI_RETRY_ABORT_PLAN.md`.
+
+## Phase 32 — Live client RPC retry_abort e2e (2026-08-06)
+
+T44 proves the T42 client/RPC path on a live 3-node STRONG mesh:
+
+* Seed peer residual via backend prepare+commit (lost-ABORT stand-in)
+* `MPREGClient.cache_strong_retry_abort` over live wire clears residual
+* GCM `retry_abort_calls` / `retry_abort_cleared` increment (any handler node)
+* Product fix: `retry_abort` always `local.abort` + treats self-targeted peers
+  (RPC may land on residual peer advertising `cache` resource)
+* Test: `tests/integration/test_cache_strong_live_mesh.py::test_live_client_rpc_strong_retry_abort_clears_residual`
+
+Still **not** claimed: automatic heal; residual-free under lost ABORT;
+WAN/Elle/BFT/fsync; kernel partition / kill -9 durability.
+
+Plan: `docs/plans/DISTLAB_T44_LIVE_CLIENT_RPC_RETRY_PLAN.md`.

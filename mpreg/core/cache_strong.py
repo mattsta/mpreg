@@ -831,47 +831,52 @@ class StrongPutCoordinator:
                 "attempts": 0,
                 "error": "op_id required",
             }
-        target = list(peers) if peers is not None else list(self.last_abort_fail_peers)
-        # Never ABORT self via peer path; origin local abort is separate.
-        target = [p for p in dict.fromkeys(target) if p and p != self.origin_id]
-        if not target:
-            self.last_abort_fail_peers = []
-            self.last_abort_fail_op_id = oid
-            return {
-                "ok_peers": [],
-                "fail_peers": [],
-                "op_id": oid,
-                "attempts": 0,
-            }
+        requested = list(peers) if peers is not None else list(self.last_abort_fail_peers)
+        requested = [p for p in dict.fromkeys(requested) if p]
+        # Self is never ABORTed via peer transport; local.abort handles it.
+        # Client RPC may land on the residual peer (peers=[self]) — that must
+        # still clear local L1 rather than no-op after filtering self out.
+        remote = [p for p in requested if p != self.origin_id]
+        self_targeted = self.origin_id in requested
         sv = strong_version or StrongVersion(
             logical_ts=0, origin_node=self.origin_id, op_id=oid
         )
-        attempts = max(1, int(self.abort_attempts))
-        pending = set(target)
         ok_peers: list[str] = []
-        for attempt in range(attempts):
-            if not pending:
-                break
-            results = await asyncio.gather(
-                *[
-                    self._abort_peer(p, oid, key, sv, _count=False)
-                    for p in pending
-                ],
-                return_exceptions=True,
-            )
-            still: set[str] = set()
-            for p, res in zip(list(pending), results, strict=True):
-                if res is True:
-                    self.aborts_peer_ok += 1
-                    ok_peers.append(p)
-                else:
-                    still.add(p)
-            pending = still
-            if pending and attempt + 1 < attempts:
-                await asyncio.sleep(0)
-        failed = sorted(pending)
-        for _p in failed:
-            self.aborts_peer_fail += 1
+        failed: list[str] = []
+        attempts = 0
+        if remote:
+            attempts = max(1, int(self.abort_attempts))
+            pending = set(remote)
+            for attempt in range(attempts):
+                if not pending:
+                    break
+                results = await asyncio.gather(
+                    *[
+                        self._abort_peer(p, oid, key, sv, _count=False)
+                        for p in pending
+                    ],
+                    return_exceptions=True,
+                )
+                still: set[str] = set()
+                for p, res in zip(list(pending), results, strict=True):
+                    if res is True:
+                        self.aborts_peer_ok += 1
+                        ok_peers.append(p)
+                    else:
+                        still.add(p)
+                pending = still
+                if pending and attempt + 1 < attempts:
+                    await asyncio.sleep(0)
+            failed = sorted(pending)
+            for _p in failed:
+                self.aborts_peer_fail += 1
+
+        # Always best-effort local abort: clears origin residual, and also the
+        # residual when this coordinator *is* the residual peer (RPC fan-in).
+        await self.local.abort(op_id=oid, key=key)
+        if self_targeted and self.origin_id not in failed:
+            ok_peers.append(self.origin_id)
+
         self.last_abort_fail_peers = list(failed)
         self.last_abort_fail_op_id = oid
         if failed:
@@ -884,8 +889,6 @@ class StrongPutCoordinator:
                     "retry": True,
                 }
             )
-        # Also clear local residual if any (origin usually already clean)
-        await self.local.abort(op_id=oid, key=key)
         return {
             "ok_peers": sorted(set(ok_peers)),
             "fail_peers": failed,

@@ -111,8 +111,10 @@ residual-free proof. Monitor table prints `abort_fail_peers=…`.
   --namespace NS --key ID --op-id OID [--peer PEER…] [--json]`
 
 DistLab `strong.cft_retry_abort_clears_residual` proves clear when ABORT can
-land. Still CFT best-effort — fails while peers drop ABORT; not background
-heal. LWW success put remains an alternate overwrite path.
+land. Live mesh: `test_live_client_rpc_strong_retry_abort_clears_residual`
+(client RPC over `ServerCacheTransport`). Still CFT best-effort — fails while
+peers drop ABORT; not background heal. LWW success put remains an alternate
+overwrite path.
 
 **LWW heal (not reliable ABORT):** a later successful majority put for the same
 key can overwrite stale peer L1 (`strong.cft_residual_healed_by_lww`). That is

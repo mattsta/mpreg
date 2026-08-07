@@ -643,8 +643,10 @@ bounded `recent_abort_fails`. After network recovery, call
 `StrongPutCoordinator.retry_abort`, or client RPC
 `MPREGClient.cache_strong_retry_abort` / `mpreg.cache.strong_retry_abort`, or
 CLI `uv run mpreg client cache-strong-retry-abort`) to re-deliver ABORT —
-**ops-driven**, not automatic background heal. LWW success put remains an
-alternate overwrite path. Still not residual-free while ABORT is lost.
+**ops-driven**, not automatic background heal. RPC may land on any `cache`
+resource node (including a residual peer); `retry_abort` always local-aborts
+and peer-aborts remotes. LWW success put remains an alternate overwrite path.
+Still not residual-free while ABORT is lost.
 
 Ops: `mpreg monitor strong` (`abort_fail_peers=`), `mpreg_strong_aborts_peer_*`,
 `mpreg_strong_visible` / `_backups` / `_backups_pruned_total`. Non-claims: no WAN
