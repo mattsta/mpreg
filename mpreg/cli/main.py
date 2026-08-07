@@ -3842,12 +3842,16 @@ def monitor_strong(url: str | None, use_mgmt: bool, output_format: str) -> None:
                             f"caps put={caps.get('put_majority_commit')} "
                             f"get_quorum={caps.get('get_quorum', False)} "
                             f"delete_quorum={caps.get('delete_quorum', False)} "
-                            f"ryw={caps.get('local_ryw_after_put')} | "
+                            f"ryw={caps.get('local_ryw_after_put')} "
+                            f"cft={caps.get('cft_only', True)} "
+                            f"abort_be={caps.get('abort_best_effort', True)} | "
                             f"puts_ok={counters.get('puts_ok', 0)} "
                             f"puts_fail={counters.get('puts_fail', 0)} "
                             f"gets_refused={counters.get('gets_refused', 0)} "
                             f"deletes_refused={counters.get('deletes_refused', 0)} "
-                            "[dim](not WAN SLA; get/delete quorum is v1.1)[/dim]"
+                            f"abort_fail={counters.get('aborts_peer_fail', 0)} "
+                            "[dim](not WAN SLA; get/delete quorum is v1.1; "
+                            "ABORT best-effort CFT)[/dim]"
                         )
                 emit(payload, output_format=output_format, table_title="STRONG")
 

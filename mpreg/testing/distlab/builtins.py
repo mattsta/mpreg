@@ -589,6 +589,79 @@ def _strong_cft_partial_commit_lost_abort() -> Scenario:
         },
     )
 
+def _strong_cft_residual_healed_by_lww() -> Scenario:
+    """T28 honesty: later successful put can LWW-overwrite a CFT residual L1.
+
+    Same setup as partial-commit+lost-abort (peer n1 holds failed op), then
+    clear drop sets and put a new value. Peer L1 advances to the success op —
+    **not** reliable ABORT; LWW heal only.
+    """
+    from mpreg.core.cache_models import GlobalCacheKey
+    from mpreg.core.cache_strong import _entry_op_id
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+    from mpreg.testing.distlab.checker import NoOpenInvokeChecker
+
+    sut = StrongSUT.create(
+        5,
+        prepare_timeout_s=0.4,
+        commit_timeout_s=0.25,
+        pending_ttl_s=30.0,
+    )
+    sut.transport.drop_commit |= {"n2", "n3", "n4"}
+    sut.transport.drop_abort |= {"n1"}
+
+    async def body(history: History, s: object) -> None:
+        res_fail = await sut.put(
+            history,
+            process="c0",
+            origin="n0",
+            logical_key="heal",
+            value={"stale": True},
+        )
+        assert res_fail.success is False
+        fail_oid = res_fail.operation_id or ""
+        key = GlobalCacheKey(
+            namespace="distlab", identifier="heal", version="v1"
+        )
+        n1_stale = sut.backends["n1"].get_visible(key)
+        assert n1_stale is not None and _entry_op_id(n1_stale) == fail_oid
+
+        # Heal path: clear transport faults; majority put overwrites residual
+        sut.transport.drop_commit.clear()
+        sut.transport.drop_abort.clear()
+        res_ok = await sut.put(
+            history,
+            process="c0",
+            origin="n0",
+            logical_key="heal",
+            value={"healed": True},
+        )
+        assert res_ok.success is True, res_ok.error_message
+        ok_oid = res_ok.operation_id or ""
+        assert ok_oid and ok_oid != fail_oid
+        for nid in ("n0", "n1", "n2", "n3", "n4"):
+            ent = sut.backends[nid].get_visible(key)
+            assert ent is not None, f"{nid} missing healed value"
+            assert _entry_op_id(ent) == ok_oid, (
+                f"{nid} still on residual op {_entry_op_id(ent)!r} "
+                f"want {ok_oid!r}"
+            )
+            assert ent.value == {"healed": True}
+
+    return Scenario(
+        name="strong.cft_residual_healed_by_lww",
+        setup=lambda: sut,
+        body=body,
+        checker=NoOpenInvokeChecker(),
+        meta={
+            "track": "T28",
+            "cft_limit": True,
+            "lww_heal": True,
+            "not_reliable_abort": True,
+            "fault": "partial_commit_lost_abort_then_lww",
+        },
+    )
+
 def _strong_soak_n(n_puts: int) -> Scenario:
     import time
 
@@ -1100,6 +1173,13 @@ def register_builtins(registry=None) -> int:
             "T27",
             "CFT limit: partial COMMIT + lost ABORT peer L1",
             ("strong", "cft_limit", "fault"),
+        ),
+        (
+            "strong.cft_residual_healed_by_lww",
+            _strong_cft_residual_healed_by_lww,
+            "T28",
+            "CFT residual then LWW heal (not reliable ABORT)",
+            ("strong", "cft_limit", "lww_heal"),
         ),
         ("strong.nemesis_concurrent", _strong_nemesis, "T2", "nemesis concurrent", ("strong", "nemesis")),
         ("strong.interleaved_fault_success", _strong_interleaved, "T2", "fault then ok", ("strong", "fault")),

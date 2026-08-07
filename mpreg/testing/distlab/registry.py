@@ -204,6 +204,9 @@ SUITE_PRESETS: dict[str, tuple[str, ...]] = {
         "strong.drop_commit",
         "strong.drop_abort",
         "strong.refuse_get_delete",
+        # T28: CFT honesty demo (not residual-free; structural checker only)
+        "strong.cft_partial_commit_lost_abort",
+        "strong.cft_residual_healed_by_lww",
     ),
     "audit-core": (
         "audit.multi_origin",

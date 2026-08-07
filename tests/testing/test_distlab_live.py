@@ -485,25 +485,46 @@ async def test_distlab_live_strong_metrics_e2e(
         st = cm.strong_status()
         assert st["gets_refused"] >= 1
         assert st["deletes_refused"] >= 1
-        assert (st.get("capabilities") or {}).get("get_quorum") is False
+        caps = st.get("capabilities") or {}
+        assert caps.get("get_quorum") is False
+        # T28: CFT honesty on live status after put + refuse
+        assert caps.get("cft_only") is True
+        assert caps.get("abort_best_effort") is True
+        assert "aborts_peer_ok" in st
+        assert "aborts_peer_fail" in st
 
         async with aiohttp.ClientSession() as session:
             async with session.get(f"{base}/metrics/strong") as resp:
                 assert resp.status == 200
                 data = await resp.json()
-                counters = (data.get("strong") or {}).get("counters") or {}
+                body = data.get("strong") or {}
+                counters = body.get("counters") or {}
                 assert int(counters.get("gets_refused", 0)) >= 1
                 assert int(counters.get("deletes_refused", 0)) >= 1
+                mcaps = body.get("capabilities") or {}
+                assert mcaps.get("cft_only") is True
+                assert mcaps.get("abort_best_effort") is True
+                # Abort counters always present (0 after clean put path)
+                assert "aborts_peer_ok" in counters
+                assert "aborts_peer_fail" in counters
             async with session.get(f"{base}/metrics/prometheus") as resp:
                 text = await resp.text()
                 assert "mpreg_strong_gets_refused_total" in text
                 assert "mpreg_strong_deletes_refused_total" in text
+                assert "mpreg_strong_aborts_peer_ok_total" in text
+                assert "mpreg_strong_aborts_peer_fail_total" in text
+                assert "mpreg_strong_cap_cft_only" in text
+                assert "mpreg_strong_cap_abort_best_effort" in text
                 # Caps remain honest after refuse path
                 for line in text.splitlines():
                     if line.startswith("mpreg_strong_cap_get_quorum{"):
                         assert line.rstrip().endswith(" 0")
                     if line.startswith("mpreg_strong_cap_delete_quorum{"):
                         assert line.rstrip().endswith(" 0")
+                    if line.startswith("mpreg_strong_cap_cft_only{"):
+                        assert line.rstrip().endswith(" 1")
+                    if line.startswith("mpreg_strong_cap_abort_best_effort{"):
+                        assert line.rstrip().endswith(" 1")
 
 @pytest.mark.asyncio
 async def test_distlab_live_audit_metrics_e2e(

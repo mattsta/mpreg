@@ -248,7 +248,14 @@ uv run mpreg-example run ops_cli_tour
 ```
 
 Prom honesty gauges (process-local, not WAN SLO): `mpreg_strong_cap_*`,
-`mpreg_shared_audit_cap_*` (get/delete quorum and SIEM/BFT always 0).
+`mpreg_shared_audit_cap_*` (get/delete quorum and SIEM/BFT always 0;
+`mpreg_strong_cap_cft_only` / `mpreg_strong_cap_abort_best_effort` always 1).
+Abort series: `mpreg_strong_aborts_peer_ok_total` /
+`mpreg_strong_aborts_peer_fail_total` (CFT best-effort; not residual-free under
+partial-commit+lost-abort). CFT DistLab:
+`strong.cft_partial_commit_lost_abort`, `strong.cft_residual_healed_by_lww`
+(in strong-core / ci-core). Monitor table shows `cft=` / `abort_be=` /
+`abort_fail=`.
 
 Runbook: `docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md`.
 OpenAPI: `GET $MPREG_MONITORING_URL/openapi.json` → `StrongMetricsResponse` /

@@ -311,10 +311,18 @@ class GlobalCacheManager(ManagedObject):
                 self._strong_metrics["aborts_peer_ok"] = live_ok
             if live_fail > int(self._strong_metrics.get("aborts_peer_fail", 0)):
                 self._strong_metrics["aborts_peer_fail"] = live_fail
+        # Always surface CFT abort counters (0 when unused) for ops honesty.
+        counters = dict(self._strong_metrics)
+        counters.setdefault("aborts_peer_ok", 0)
+        counters.setdefault("aborts_peer_fail", 0)
+        counters.setdefault("puts_ok", 0)
+        counters.setdefault("puts_fail", 0)
+        counters.setdefault("gets_refused", 0)
+        counters.setdefault("deletes_refused", 0)
         return {
             "enabled": coord is not None,
             "pending_count": pending,
-            "counters": dict(self._strong_metrics),
+            "counters": counters,
             "latency_ms": lat,
             "coordinator": cfg,
         }

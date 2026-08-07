@@ -343,3 +343,22 @@ Plan: `docs/plans/DISTLAB_T27_CFT_RESIDUAL_ABORT_METRICS_PLAN.md`.
 
 Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM;
 residual-free under partial-commit+lost-abort.
+
+## Phase 16 — CFT ops live + LWW heal honesty (2026-08-06)
+
+T28 closes the operator/live loop for T27 CFT surfaces:
+
+* **Monitor:** `monitor strong --format table` shows `cft=` / `abort_be=` /
+  `abort_fail=` plus ABORT best-effort dim note.
+* **Live e2e:** `/metrics/strong` + prom assert CFT caps and abort counter series
+  after put + refuse.
+* **Presets:** `strong.cft_partial_commit_lost_abort` and
+  `strong.cft_residual_healed_by_lww` in `strong-core` → `ci-core`.
+* **DistLab LWW heal:** later successful put overwrites CFT residual peer L1
+  (not reliable ABORT).
+* **Curriculum:** `ops_cli_tour` requires CFT fields on monitor table.
+
+Plan: `docs/plans/DISTLAB_T28_CFT_OPS_LIVE_PRESET_HEAL_PLAN.md`.
+
+Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM;
+residual-free under partial-commit+lost-abort; automatic ABORT delivery.

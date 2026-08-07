@@ -58,6 +58,11 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T27 curriculum honesty | `test_t27_curriculum_honesty_apps_main` | teach |
 | T27 doctor CFT | `evaluate_strong_doctor_payload` fails closed on `cft_only`/`abort_best_effort` false | support ops |
 | T27 prom CFT alerts | `MPREGStrongCapCftOnlyMissing`, `MPREGStrongCapAbortBestEffortMissing` | support ops |
+| T28 monitor CFT | `monitor strong --format table` cft/abort_be/abort_fail | support ops |
+| T28 live CFT prom | `test_distlab_live_strong_metrics_e2e` CFT caps + abort series | support ops |
+| T28 LWW heal DistLab | `strong.cft_residual_healed_by_lww` | honesty (not reliable ABORT) |
+| T28 presets | strong-core/ci-core include CFT scenarios | support |
+| T28 ops curriculum | `ops_cli_tour` CFT monitor fields | teach |
 
 ## Non-claims (do not market)
 
@@ -85,5 +90,6 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t21_residuals.py tests/chaos/test_t22_residuals.py \
   tests/chaos/test_t23_residuals.py tests/chaos/test_t24_residuals.py \
   tests/chaos/test_t25_residuals.py tests/chaos/test_t26_residuals.py \
-  tests/chaos/test_t27_residuals.py tests/test_config_check_cli.py -q
+  tests/chaos/test_t27_residuals.py tests/chaos/test_t28_residuals.py \
+  tests/test_config_check_cli.py -q
 ```

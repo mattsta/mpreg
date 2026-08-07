@@ -27,8 +27,11 @@ Requires eligible fabric cache peers (or `lab_single_node` path for N=1).
 ```bash
 export MPREG_MONITORING_URL=http://127.0.0.1:<mon-port>
 uv run mpreg monitor strong --url "$MPREG_MONITORING_URL" --format json
+uv run mpreg monitor strong --url "$MPREG_MONITORING_URL" --format table
 uv run mpreg monitor strong --mgmt --url "$MPREG_MONITORING_URL"
 uv run mpreg doctor --url "$MPREG_MONITORING_URL" --strong
+uv run mpreg distlab run strong.cft_partial_commit_lost_abort
+uv run mpreg distlab run strong.cft_residual_healed_by_lww
 ```
 
 HTTP:
@@ -76,6 +79,13 @@ Doctor fails closed if metrics claim `get_quorum` or `delete_quorum`, or if
 that peer may retain L1 for `op_id` until pending TTL / later repair. DistLab
 `strong.cft_partial_commit_lost_abort` documents this — it is **not** claimed
 residual-free. Watch `mpreg_strong_aborts_peer_fail_total`.
+
+**LWW heal (not reliable ABORT):** a later successful majority put for the same
+key can overwrite stale peer L1 (`strong.cft_residual_healed_by_lww`). That is
+ordinary LWW, not guaranteed ABORT delivery. Monitor table shows
+`cft=` / `abort_be=` / `abort_fail=` on `monitor strong --format table`.
+
+Presets: `strong-core` and `ci-core` include both CFT honesty scenarios.
 
 ### Health values
 
