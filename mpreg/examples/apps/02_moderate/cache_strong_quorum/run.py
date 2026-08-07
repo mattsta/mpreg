@@ -324,6 +324,14 @@ async def main() -> None:
                     "retry_abort must clear residual when ABORT can land",
                 )
                 ensure(coord_cft.last_abort_fail_peers == [], "fail peers cleared")
+                # T42/T47 teach: production ops path is client RPC / CLI
+                # (mpreg.cache.strong_retry_abort) wrapping the same coordinator
+                # method — still ops-driven CFT, not automatic heal.
+                step(
+                    "ops path: MPREGClient.cache_strong_retry_abort / "
+                    "mpreg client cache-strong-retry-abort → same retry_abort "
+                    "(ops-driven; not auto-heal; not BFT)"
+                )
                 # Seed a fresh residual then LWW heal (not reliable ABORT)
                 tr_cft.drop_commit |= {"n2", "n3", "n4"}
                 tr_cft.drop_abort |= {"n1"}
@@ -361,7 +369,8 @@ async def main() -> None:
                     "not fsync durability; local RYW is EVENTUAL/WEAK get; "
                     "ABORT best-effort (CFT residual possible); pending TTL ≠ "
                     "residual GC; LWW heal is not reliable ABORT; "
-                    "retry_abort is ops best-effort (not automatic heal, not BFT)"
+                    "retry_abort is ops best-effort (not automatic heal, not BFT); "
+                    "client RPC/CLI is the same ops path, not SIEM orchestration"
                 )
                 ok("honesty banners retained outside majority-commit put claim")
         finally:

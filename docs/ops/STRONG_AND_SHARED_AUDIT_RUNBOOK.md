@@ -123,6 +123,12 @@ ordinary LWW, not guaranteed ABORT delivery. Monitor table shows
 `cft=` / `abort_be=` / `abort_fail=` / `abort_fail_peers=` on
 `monitor strong --format table`.
 
+**OpenAPI platform RPC catalog (T48):** monitoring
+`GET $MPREG_MONITORING_URL/openapi.json` →
+`components.schemas.PlatformCacheRpcCatalog` lists wire FQNs
+(`mpreg.cache.get|put|invalidate|strong_retry_abort`) with honesty flags.
+These are RPC-plane names, not HTTP paths.
+
 Presets: `strong-core` and `ci-core` include the CFT honesty scenarios.
 
 ### Health values

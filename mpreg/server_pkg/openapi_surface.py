@@ -272,6 +272,148 @@ def _shared_audit_metrics_schema() -> dict[str, Any]:
         },
     }
 
+def _platform_cache_rpc_catalog() -> dict[str, Any]:
+    """Document platform cache RPC FQNs (wire names, not HTTP paths).
+
+    These are WebSocket/RPC plane commands registered under resource ``cache``.
+    Not an HTTP path table — operators discover them via ``mpreg.rpc.list`` /
+    client façades. Honesty-first descriptions only.
+    """
+    from mpreg.core.rpc_naming import PlatformRpc
+
+    return {
+        "type": "object",
+        "description": (
+            "Platform cache RPC command catalog (FQN wire names). "
+            "Invoked over the MPREG RPC plane, not HTTP. "
+            "STRONG retry_abort is ops-driven CFT best-effort — not automatic "
+            "heal, not BFT, not residual-free while ABORT is lost."
+        ),
+        "properties": {
+            "namespace": {
+                "type": "string",
+                "enum": ["mpreg.cache"],
+                "description": "Reserved platform cache namespace.",
+            },
+            "resource": {
+                "type": "string",
+                "enum": ["cache"],
+                "description": "Registration resource tag for routing.",
+            },
+            "commands": {
+                "type": "object",
+                "properties": {
+                    "get": {
+                        "type": "object",
+                        "properties": {
+                            "fqn": {
+                                "type": "string",
+                                "enum": [PlatformRpc.CACHE_GET],
+                            },
+                            "summary": {
+                                "type": "string",
+                                "description": "Fetch cache entry (default EVENTUAL).",
+                            },
+                        },
+                        "required": ["fqn"],
+                    },
+                    "put": {
+                        "type": "object",
+                        "properties": {
+                            "fqn": {
+                                "type": "string",
+                                "enum": [PlatformRpc.CACHE_PUT],
+                            },
+                            "summary": {
+                                "type": "string",
+                                "description": (
+                                    "Store entry; optional consistency_level=strong "
+                                    "when cache_strong_enabled (put-only MVP)."
+                                ),
+                            },
+                        },
+                        "required": ["fqn"],
+                    },
+                    "invalidate": {
+                        "type": "object",
+                        "properties": {
+                            "fqn": {
+                                "type": "string",
+                                "enum": [PlatformRpc.CACHE_INVALIDATE],
+                            },
+                            "summary": {
+                                "type": "string",
+                                "description": "Invalidate by pattern.",
+                            },
+                        },
+                        "required": ["fqn"],
+                    },
+                    "strong_retry_abort": {
+                        "type": "object",
+                        "properties": {
+                            "fqn": {
+                                "type": "string",
+                                "enum": [PlatformRpc.CACHE_STRONG_RETRY_ABORT],
+                            },
+                            "summary": {
+                                "type": "string",
+                                "description": (
+                                    "Ops-driven CFT re-ABORT for residual "
+                                    "candidates (not automatic heal, not BFT)."
+                                ),
+                            },
+                            "body": {
+                                "type": "object",
+                                "properties": {
+                                    "namespace": {"type": "string"},
+                                    "identifier": {"type": "string"},
+                                    "op_id": {"type": "string"},
+                                    "version": {"type": "string"},
+                                    "peers": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": (
+                                            "Optional residual peer ids; default "
+                                            "last_abort_fail_peers on handler node."
+                                        ),
+                                    },
+                                },
+                                "required": ["namespace", "identifier", "op_id"],
+                            },
+                            "result_honesty": {
+                                "type": "object",
+                                "properties": {
+                                    "ops_driven": {
+                                        "type": "boolean",
+                                        "enum": [True],
+                                    },
+                                    "automatic_heal": {
+                                        "type": "boolean",
+                                        "enum": [False],
+                                    },
+                                    "cft_best_effort": {
+                                        "type": "boolean",
+                                        "enum": [True],
+                                    },
+                                },
+                            },
+                        },
+                        "required": ["fqn"],
+                    },
+                },
+                "required": ["get", "put", "invalidate", "strong_retry_abort"],
+            },
+            "client_facade": {
+                "type": "string",
+                "description": (
+                    "MPREGClient.cache_get/put/invalidate/"
+                    "cache_strong_retry_abort; CLI: mpreg client cache-*"
+                ),
+            },
+        },
+        "required": ["namespace", "commands"],
+    }
+
 def build_monitoring_openapi() -> dict[str, Any]:
     """Return an OpenAPI 3.0 document for the monitoring HTTP server."""
     # When monitoring_auth_token is configured, mutations and metrics require bearer.
@@ -633,6 +775,12 @@ def build_monitoring_openapi() -> dict[str, Any]:
             "schemas": {
                 "StrongMetricsResponse": _strong_metrics_schema(),
                 "SharedAuditMetricsResponse": _shared_audit_metrics_schema(),
+                "PlatformCacheRpcCatalog": _platform_cache_rpc_catalog(),
+            },
+            "x-mpreg-platform-rpc": {
+                "cache": {
+                    "$ref": "#/components/schemas/PlatformCacheRpcCatalog"
+                },
             },
         },
         "paths": paths,
@@ -641,7 +789,8 @@ def build_monitoring_openapi() -> dict[str, Any]:
                 "name": "strong",
                 "description": (
                     "ConsistencyLevel.STRONG put majority-commit (flag-gated). "
-                    "Not WAN SLA, not BFT, not fsync. Get/delete quorum v1.1."
+                    "Not WAN SLA, not BFT, not fsync. Get/delete quorum v1.1. "
+                    "Ops re-ABORT: mpreg.cache.strong_retry_abort (CFT; not auto-heal)."
                 ),
             },
             {
@@ -649,6 +798,14 @@ def build_monitoring_openapi() -> dict[str, Any]:
                 "description": (
                     "Shared mgmt audit G-Set epidemic. Not SIEM, not BFT, "
                     "not infinite retention, not linearizable cluster ops."
+                ),
+            },
+            {
+                "name": "platform-rpc",
+                "description": (
+                    "Platform RPC FQN catalog (see components.schemas."
+                    "PlatformCacheRpcCatalog). Wire names over WS/RPC plane, "
+                    "not HTTP paths."
                 ),
             },
             {"name": "metrics", "description": "Process metrics endpoints"},

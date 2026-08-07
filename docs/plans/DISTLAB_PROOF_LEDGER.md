@@ -111,6 +111,9 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T45 ops_cli retry | cache-strong-retry-abort --help in ops_cli_tour | teach |
 | T46 client locs | `cache_strong_retry_abort(..., locs=…)` | product |
 | T46 CLI --loc | optional resource pin on retry-abort CLI | support ops |
+| T47 live cap scrape | `mpreg_strong_cap_retry_abort_ops_driven==1` live e2e | support ops |
+| T47 client RPC metrics | cache_strong_retry_abort on live metrics e2e | product |
+| T48 OpenAPI cache RPC | `PlatformCacheRpcCatalog` + strong_retry_abort FQN | support ops |
 
 ## Non-claims (do not market)
 
@@ -151,6 +154,8 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t41_residuals.py tests/chaos/test_t42_residuals.py \
   tests/chaos/test_t43_residuals.py tests/chaos/test_t44_residuals.py \
   tests/chaos/test_t45_residuals.py tests/chaos/test_t46_residuals.py \
+  tests/chaos/test_t47_residuals.py tests/chaos/test_t48_residuals.py \
   tests/integration/test_cache_strong_live_mesh.py \
+  tests/testing/test_distlab_live.py::test_distlab_live_strong_metrics_e2e \
   tests/test_config_check_cli.py tests/test_unified_client.py -q
 ```

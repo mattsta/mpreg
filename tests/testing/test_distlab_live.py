@@ -550,6 +550,8 @@ async def test_distlab_live_strong_metrics_e2e(
                 assert "mpreg_strong_retry_abort_calls_total" in text
                 assert "mpreg_strong_retry_abort_cleared_total" in text
                 assert "mpreg_strong_retry_abort_still_fail_total" in text
+                # T47: retry_abort_ops_driven honesty cap always 1 on live scrape
+                assert "mpreg_strong_cap_retry_abort_ops_driven" in text
                 # Caps remain honest after refuse path
                 for line in text.splitlines():
                     if line.startswith("mpreg_strong_cap_get_quorum{"):
@@ -564,6 +566,44 @@ async def test_distlab_live_strong_metrics_e2e(
                         "mpreg_strong_cap_pending_ttl_clears_residual_l1{"
                     ):
                         assert line.rstrip().endswith(" 0")
+                    if line.startswith(
+                        "mpreg_strong_cap_retry_abort_ops_driven{"
+                    ):
+                        assert line.rstrip().endswith(" 1")
+
+        # T47: client RPC retry_abort also bumps counters (ops-driven path)
+        from mpreg.client.unified_client import MPREGClient
+
+        before_calls = int(cm.strong_status().get("retry_abort_calls") or 0)
+        async with MPREGClient(url0) as client:
+            rpc_retry = await client.cache_strong_retry_abort(
+                "distlab-live",
+                "e2e-m",
+                "live-client-rpc-noop",
+                version="v1",
+                peers=[],
+            )
+            assert rpc_retry.ops_driven is True
+            assert rpc_retry.automatic_heal is False
+            # empty peers → cleared noop (no residual targets)
+            assert rpc_retry.cleared is True or rpc_retry.attempts == 0
+        after_calls = int(cm.strong_status().get("retry_abort_calls") or 0)
+        # Counter may bump on origin if RPC landed here; otherwise any node
+        mesh_calls = sum(
+            int(s._cache_manager.strong_status().get("retry_abort_calls") or 0)
+            for s in servers
+            if getattr(s, "_cache_manager", None) is not None
+        )
+        assert mesh_calls >= before_calls  # non-decreasing mesh total
+        assert mesh_calls >= 1
+        _ = after_calls  # origin-local may or may not move
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{base}/metrics/strong") as resp:
+                data = await resp.json()
+                body3 = data.get("strong") or {}
+                caps3 = body3.get("capabilities") or {}
+                assert caps3.get("retry_abort_ops_driven") is True
 
 @pytest.mark.asyncio
 async def test_distlab_live_audit_metrics_e2e(

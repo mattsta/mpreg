@@ -249,7 +249,8 @@ uv run mpreg-example run ops_cli_tour
 
 Prom honesty gauges (process-local, not WAN SLO): `mpreg_strong_cap_*`,
 `mpreg_shared_audit_cap_*` (get/delete quorum and SIEM/BFT always 0;
-`mpreg_strong_cap_cft_only` / `mpreg_strong_cap_abort_best_effort` always 1).
+`mpreg_strong_cap_cft_only` / `mpreg_strong_cap_abort_best_effort` always 1;
+`mpreg_strong_cap_retry_abort_ops_driven` always 1 — honesty, not auto-heal).
 Abort series: `mpreg_strong_aborts_peer_ok_total` /
 `mpreg_strong_aborts_peer_fail_total` (CFT best-effort; not residual-free under
 partial-commit+lost-abort). Pending TTL is **not** residual GC

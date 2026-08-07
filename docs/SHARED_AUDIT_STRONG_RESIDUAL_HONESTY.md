@@ -636,3 +636,30 @@ T46 adds optional routing pin for ops retry:
 Still **not** claimed: locs = quorum membership; automatic heal; BFT/WAN.
 
 Plan: `docs/plans/DISTLAB_T46_CLIENT_LOCS_RETRY_PLAN.md`.
+
+## Phase 35 — Live prom cap + client RPC metrics (2026-08-06)
+
+T47 extends live metrics e2e:
+
+* Scrape asserts `mpreg_strong_cap_retry_abort_ops_driven{…} 1`
+* Client `cache_strong_retry_abort` noop on live mesh after put
+* `/metrics/strong` capabilities.retry_abort_ops_driven remains true
+* Test: `tests/testing/test_distlab_live.py::test_distlab_live_strong_metrics_e2e`
+
+Still **not** claimed: cap gauge is a heal toggle; empty-peers noop is residual
+clear (see T44); WAN/Elle/BFT/fsync.
+
+Plan: `docs/plans/DISTLAB_T47_LIVE_CAP_CLIENT_RPC_METRICS_PLAN.md`.
+
+## Phase 36 — OpenAPI platform cache RPC catalog (2026-08-06)
+
+T48 documents platform cache FQNs in monitoring OpenAPI components:
+
+* Schema `PlatformCacheRpcCatalog` (get/put/invalidate/strong_retry_abort)
+* Honesty enums: `ops_driven=true`, `automatic_heal=false`, `cft_best_effort=true`
+* Tag `platform-rpc`; `components.x-mpreg-platform-rpc.cache`
+* Wire FQNs over RPC plane — **not** HTTP invoke paths
+
+Still **not** claimed: OpenAPI catalog is an invoke API; auto-heal; BFT/WAN.
+
+Plan: `docs/plans/DISTLAB_T48_OPENAPI_PLATFORM_CACHE_RPC_PLAN.md`.
