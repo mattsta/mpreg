@@ -104,7 +104,7 @@ Living plan: [PROJECT_PLAN.md](./PROJECT_PLAN.md) · Friction: [API_FRICTION.md]
 | `global_edge_control_plane` | L4    | product     | Hub + US/EU edges + timeline                    | fabric, monitoring        |
 | `multi_pop_edge_mesh`       | L4    | product     | Hub + US/EU/AP edges (second world tour)        | fabric, monitoring        |
 | `shared_audit_mesh`         | L2    | product     | Cluster G-Set shared mgmt audit visibility      | ops, audit, gossip        |
-| `cache_strong_quorum`       | L2    | product     | Majority-commit STRONG put + residual-free 1015 | cache                     |
+| `cache_strong_quorum`       | L2    | product     | Majority-commit STRONG put + CFT residual honesty | cache                   |
 
 ## Legacy → unified mapping
 

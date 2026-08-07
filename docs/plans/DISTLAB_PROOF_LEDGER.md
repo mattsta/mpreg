@@ -80,6 +80,10 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T34 purge prune | `purge_expired_pending` → orphan backup GC | product |
 | T34 Hypothesis GC | `test_cft_orphan_backups_bounded_under_repeated_residual` | product |
 | T35 design doc | CFT residual-free invariant qualified in design doc | honesty |
+| T36 abort_fail peers | `last_abort_fail_peers`, quorum_info.abort_fail_peers | product ops |
+| T36 DistLab CFT peers | `strong.cft_partial_commit_lost_abort` asserts n1 ∈ fail peers | honesty |
+| T36 client/catalog honesty | client guide, APP/FEATURE catalogs, design alt table | honesty |
+| T36 doctor/monitor peers | abort_fail_peers on doctor detail + monitor table | support ops |
 
 ## Non-claims (do not market)
 
@@ -89,6 +93,8 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 - Shared audit ≠ SIEM / infinite retention / BFT
 - CFT only — Byzantine COMMIT lies are `not_bft`
 - Partial peer COMMIT apply + lost ABORT may leave peer L1 (ABORT best-effort)
+- `abort_fail_peers` / `last_abort_fail_peers` are CFT residual candidates only
+  (not residual-free proof, not automatic residual heal)
 
 ## Gate commands
 
@@ -111,5 +117,6 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t29_residuals.py tests/chaos/test_t30_residuals.py \
   tests/chaos/test_t31_residuals.py tests/chaos/test_t32_residuals.py \
   tests/chaos/test_t33_residuals.py tests/chaos/test_t34_residuals.py \
-  tests/chaos/test_t35_residuals.py tests/test_config_check_cli.py -q
+  tests/chaos/test_t35_residuals.py tests/chaos/test_t36_residuals.py \
+  tests/test_config_check_cli.py -q
 ```

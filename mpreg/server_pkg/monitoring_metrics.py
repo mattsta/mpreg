@@ -111,8 +111,37 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
                 st = cm.strong_status()
                 if isinstance(st, dict) and "capabilities" in st:
                     base["capabilities"] = dict(st["capabilities"] or {})
+                # T36: surface abort-fail peers at top level for doctor/monitor
+                if isinstance(st, dict):
+                    if "last_abort_fail_peers" in st:
+                        base["last_abort_fail_peers"] = list(
+                            st.get("last_abort_fail_peers") or []
+                        )
+                    if "last_abort_fail_op_id" in st:
+                        base["last_abort_fail_op_id"] = str(
+                            st.get("last_abort_fail_op_id") or ""
+                        )
+                    if "recent_abort_fails" in st:
+                        base["recent_abort_fails"] = list(
+                            st.get("recent_abort_fails") or []
+                        )
             except Exception:  # noqa: BLE001
                 pass
+        # Fallback from coordinator block when status path skipped fields
+        coord = base.get("coordinator") or {}
+        if isinstance(coord, dict):
+            base.setdefault(
+                "last_abort_fail_peers",
+                list(coord.get("last_abort_fail_peers") or []),
+            )
+            base.setdefault(
+                "last_abort_fail_op_id",
+                str(coord.get("last_abort_fail_op_id") or ""),
+            )
+            base.setdefault(
+                "recent_abort_fails",
+                list(coord.get("recent_abort_fails") or []),
+            )
     elif be is not None and hasattr(be, "pending_count"):
         try:
             base["pending_count"] = int(be.pending_count())

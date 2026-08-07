@@ -321,6 +321,16 @@ class GlobalCacheManager(ManagedObject):
                 "abort_attempts": getattr(coord, "abort_attempts", None),
                 "aborts_peer_ok": int(getattr(coord, "aborts_peer_ok", 0) or 0),
                 "aborts_peer_fail": int(getattr(coord, "aborts_peer_fail", 0) or 0),
+                # T36: CFT residual candidates (ops only; not residual-free proof)
+                "last_abort_fail_peers": list(
+                    getattr(coord, "last_abort_fail_peers", None) or []
+                ),
+                "last_abort_fail_op_id": str(
+                    getattr(coord, "last_abort_fail_op_id", "") or ""
+                ),
+                "recent_abort_fails": list(
+                    getattr(coord, "recent_abort_fails", None) or []
+                )[-8:],
             }
             # Prefer live coordinator totals when GCM counters lag (direct coord use)
             live_ok = int(getattr(coord, "aborts_peer_ok", 0) or 0)
@@ -379,6 +389,16 @@ class GlobalCacheManager(ManagedObject):
             },
             "aborts_peer_ok": int(c.get("aborts_peer_ok", 0)),
             "aborts_peer_fail": int(c.get("aborts_peer_fail", 0)),
+            # T36: last peers that exhausted ABORT (CFT residual candidates)
+            "last_abort_fail_peers": list(
+                (snap.get("coordinator") or {}).get("last_abort_fail_peers") or []
+            ),
+            "last_abort_fail_op_id": str(
+                (snap.get("coordinator") or {}).get("last_abort_fail_op_id") or ""
+            ),
+            "recent_abort_fails": list(
+                (snap.get("coordinator") or {}).get("recent_abort_fails") or []
+            ),
         }
 
     def _enqueue_replication(

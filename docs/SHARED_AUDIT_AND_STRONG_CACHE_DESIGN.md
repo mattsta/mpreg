@@ -908,7 +908,7 @@ Land **minimal counters in enablement PR (S3b)**; expand histograms in S4.
 
 | Alternative                                                      | Pros                                                  | Cons                                             | Verdict        |
 | ---------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------ | -------------- |
-| **Commit-barrier majority via ServerCacheTransport RR (chosen)** | Matches “committed” word; residual-free with rollback | 2 RTT                                            | **v1**         |
+| **Commit-barrier majority via ServerCacheTransport RR (chosen)** | Matches “committed” word; residual-free when ABORT delivered (CFT best-effort) | 2 RTT                                            | **v1**         |
 | Prepare-barrier only                                             | Faster                                                | Weaker than STRONG name                          | Rejected       |
 | Single-phase visible prepare + delete abort                      | One barrier                                           | Dirty get windows; harder COR-01 spirit on peers | Rejected       |
 | Raft value log                                                   | Ordering                                              | Bloat                                            | Rejected       |

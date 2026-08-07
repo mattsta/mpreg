@@ -257,7 +257,8 @@ partial-commit+lost-abort). Pending TTL is **not** residual GC
 `strong.cft_partial_commit_lost_abort`, `strong.cft_residual_healed_by_lww`,
 `strong.cft_residual_survives_pending_purge`, `strong.cft_orphan_backup_gc`
 (in strong-core / ci-core). Monitor table shows `cft=` / `abort_be=` /
-`abort_fail=` / `ttl_gc=` / `visible=` / `backups=` / `pruned=`.
+`abort_fail=` / `abort_fail_peers=` / `ttl_gc=` / `visible=` / `backups=` /
+`pruned=`. `abort_fail_peers` lists CFT residual candidates (ops only).
 Prom also exposes `mpreg_strong_visible`, `mpreg_strong_backups`,
 `mpreg_strong_backups_pruned_total` (process-local; not residual-free proof).
 
@@ -281,7 +282,7 @@ OpenAPI: `GET $MPREG_MONITORING_URL/openapi.json` → `StrongMetricsResponse` /
 | Cross-cluster path | `multi_region_shop`             | Federated RPC with bridging config   |
 | Slow mesh          | raise timeouts in client policy | Structured timeout errors, not hangs |
 | Shared audit lag   | `shared_audit_mesh`             | Eventual G-Set visibility, not SIEM  |
-| STRONG quorum loss | `cache_strong_quorum`           | `1015` residual-free; not WAN SLA    |
+| STRONG quorum loss | `cache_strong_quorum`           | `1015` when ABORT delivered; CFT residual possible; not WAN SLA |
 | Full test pressure | concurrent runner + `ulimit`    | See testing docs                     |
 
 For chaos injection, prefer `mpreg.testing.faults.FaultInjector` in curriculum

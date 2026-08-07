@@ -464,3 +464,25 @@ DistLab + claims.yaml).
 Plan: `docs/plans/DISTLAB_T35_DESIGN_DOC_CFT_HONESTY_PLAN.md`.
 
 Still **not** claimed: residual-free under lost ABORT; WAN/Elle/BFT/fsync.
+
+## Phase 24 — Abort-fail peer tracking + client honesty (2026-08-06)
+
+T36 surfaces **which peers** exhausted ABORT retries so operators can target
+LWW repair without overclaiming residual-free:
+
+* **Product:** `_abort_all` returns fail peers; `last_abort_fail_peers` /
+  `last_abort_fail_op_id` / bounded `recent_abort_fails` on coordinator;
+  failed put `quorum_info.abort_fail_peers` +
+  `abort_best_effort_residual_candidates`.
+* **Ops:** `strong_status` / metrics / doctor / `monitor strong` table expose
+  peer list; OpenAPI documents fields.
+* **DistLab:** `strong.cft_partial_commit_lost_abort` asserts residual peer ∈
+  `abort_fail_peers`.
+* **Docs:** client guide, APP/FEATURE catalogs, registry blurb, design
+  alternatives table, ARCHITECTURE — CFT-qualified residual wording (no
+  unqualified "residual-free failures").
+
+Plan: `docs/plans/DISTLAB_T36_ABORT_FAIL_PEER_TRACKING_PLAN.md`.
+
+Still **not** claimed: residual-free under lost ABORT; automatic residual
+heal; WAN/Elle/BFT/fsync.

@@ -574,6 +574,17 @@ def _strong_cft_partial_commit_lost_abort() -> Scenario:
         # Abort failure counter should have moved (best-effort attempts exhausted)
         coord = sut.coords["n0"]
         assert int(getattr(coord, "aborts_peer_fail", 0) or 0) >= 1
+        # T36: residual peer must appear in abort_fail_peers diagnostics
+        fail_peers = list(getattr(coord, "last_abort_fail_peers", None) or [])
+        assert "n1" in fail_peers, (
+            f"expected n1 in last_abort_fail_peers, got {fail_peers!r}"
+        )
+        assert str(getattr(coord, "last_abort_fail_op_id", "") or "") == oid
+        qi = res.quorum_info or {}
+        assert "n1" in list(qi.get("abort_fail_peers") or []), (
+            f"quorum_info.abort_fail_peers missing n1: {qi!r}"
+        )
+        assert qi.get("abort_best_effort_residual_candidates") is True
 
     return Scenario(
         name="strong.cft_partial_commit_lost_abort",

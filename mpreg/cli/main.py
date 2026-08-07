@@ -129,6 +129,7 @@ def evaluate_strong_doctor_payload(
             f"gets_ref={counters.get('gets_refused', 0)} "
             f"dels_ref={counters.get('deletes_refused', 0)} "
             f"abort_fail={counters.get('aborts_peer_fail', 0)} "
+            f"abort_fail_peers={body.get('last_abort_fail_peers') or (body.get('coordinator') or {}).get('last_abort_fail_peers') or []} "
             f"visible={body.get('visible_count', 0)} "
             f"backups={body.get('backups_count', 0)} "
             f"pruned={body.get('backups_pruned_total', 0)}"
@@ -3867,8 +3868,11 @@ def monitor_strong(url: str | None, use_mgmt: bool, output_format: str) -> None:
                             f"gets_refused={counters.get('gets_refused', 0)} "
                             f"deletes_refused={counters.get('deletes_refused', 0)} "
                             f"abort_fail={counters.get('aborts_peer_fail', 0)} "
+                            f"abort_fail_peers="
+                            f"{body.get('last_abort_fail_peers') or (body.get('coordinator') or {}).get('last_abort_fail_peers') or []} "
                             "[dim](not WAN SLA; get/delete quorum is v1.1; "
-                            "ABORT best-effort CFT; pending TTL ≠ residual GC)[/dim]"
+                            "ABORT best-effort CFT; pending TTL ≠ residual GC; "
+                            "abort_fail_peers = CFT residual candidates)[/dim]"
                         )
                 emit(payload, output_format=output_format, table_title="STRONG")
 

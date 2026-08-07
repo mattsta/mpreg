@@ -113,6 +113,27 @@ def _strong_metrics_schema() -> dict[str, Any]:
                         "minimum": 0,
                         "description": "Pre-commit backups for live visible/pending ops.",
                     },
+                    "last_abort_fail_peers": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": (
+                            "Peers that exhausted ABORT retries on the last "
+                            "failed put (CFT residual candidates; ops only — "
+                            "not residual-free proof, not auto-heal)."
+                        ),
+                    },
+                    "last_abort_fail_op_id": {
+                        "type": "string",
+                        "description": "op_id associated with last_abort_fail_peers.",
+                    },
+                    "recent_abort_fails": {
+                        "type": "array",
+                        "description": (
+                            "Bounded ring of recent abort-fail events "
+                            "({op_id, peers, ts, key}); process-local."
+                        ),
+                        "items": {"type": "object"},
+                    },
                     "backups_pruned_total": {
                         "type": "integer",
                         "minimum": 0,

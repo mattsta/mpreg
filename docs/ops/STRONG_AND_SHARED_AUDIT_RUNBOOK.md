@@ -91,10 +91,17 @@ drops uncommitted prepares. DistLab `strong.cft_partial_commit_lost_abort` and
 `strong.cft_residual_survives_pending_purge` document this — **not** claimed
 residual-free. Watch `mpreg_strong_aborts_peer_fail_total`.
 
+**Abort-fail peers (T36 ops):** JSON `last_abort_fail_peers` /
+`last_abort_fail_op_id` / `recent_abort_fails` and failed-put
+`quorum_info.abort_fail_peers` list peers that exhausted ABORT retries —
+**CFT residual candidates** for targeted LWW repair, not auto-heal and not
+residual-free proof. Monitor table prints `abort_fail_peers=…`.
+
 **LWW heal (not reliable ABORT):** a later successful majority put for the same
 key can overwrite stale peer L1 (`strong.cft_residual_healed_by_lww`). That is
 ordinary LWW, not guaranteed ABORT delivery. Monitor table shows
-`cft=` / `abort_be=` / `abort_fail=` on `monitor strong --format table`.
+`cft=` / `abort_be=` / `abort_fail=` / `abort_fail_peers=` on
+`monitor strong --format table`.
 
 Presets: `strong-core` and `ci-core` include the CFT honesty scenarios.
 
@@ -112,7 +119,8 @@ Presets: `strong-core` and `ci-core` include the CFT honesty scenarios.
 
 - **1012 UNSUPPORTED_CONSISTENCY** — STRONG disabled / coordinator unbound **or**
   STRONG **get** / **delete** (design refuse; quorum paths are v1.1).
-- **1015+ quorum codes** — insufficient prepares/commits; residual-free ABORT path.
+- **1015+ quorum codes** — insufficient prepares/commits; ABORT path is
+  residual-free when delivered (CFT best-effort; see `abort_fail_peers`).
 - Rising `puts_fail` / `refused_disabled` / `gets_refused` / `deletes_refused`.
 - Pending not draining — check peer mesh, timeouts, purge task.
 

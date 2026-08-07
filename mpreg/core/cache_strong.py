@@ -1,8 +1,10 @@
 """ConsistencyLevel.STRONG majority-commit put coordinator.
 
-Residual-free: failed puts leave no visible L1 for ``op_id`` on origin or
-replicas in the frozen replica set R. Success requires Q COMMIT_ACKs with
-origin-commit-last by default.
+Residual-free is a **CFT best-effort** claim: when ABORT is delivered, failed
+puts leave no visible L1 for ``op_id`` on origin or replicas in the frozen
+replica set R. Partial peer COMMIT + lost ABORT may leave peer L1 (not
+residual-free). Success requires Q COMMIT_ACKs with origin-commit-last by
+default. See ``aborts_peer_fail`` / ``last_abort_fail_peers``.
 """
 
 from __future__ import annotations
@@ -10,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import time
 import uuid
+from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import IntEnum
@@ -389,6 +392,14 @@ class StrongPutCoordinator:
     abort_attempts: int = 3
     aborts_peer_ok: int = 0
     aborts_peer_fail: int = 0
+    # T36: last peers that exhausted ABORT retries (CFT residual candidates).
+    # Ops diagnostics only — not residual-free proof, not auto-heal.
+    last_abort_fail_peers: list[str] = field(default_factory=list)
+    last_abort_fail_op_id: str = ""
+    # Bounded ring of recent abort-fail events: {op_id, peers, ts}.
+    recent_abort_fails: deque[dict[str, Any]] = field(
+        default_factory=lambda: deque(maxlen=32)
+    )
 
     def select_replica_set(self, eligible: Sequence[str]) -> tuple[str, ...] | None:
         peers = list(dict.fromkeys(eligible))  # stable unique
@@ -462,12 +473,18 @@ class StrongPutCoordinator:
                 if oack.reason == "pending_full"
                 else int(StrongErrorCode.INSUFFICIENT_QUORUM)
             )
-            await self._abort_all(replica_set, contacted, oid, key, strong_version)
+            fail_peers = await self._abort_all(
+                replica_set, contacted, oid, key, strong_version
+            )
             return CacheOperationResult(
                 success=False,
                 error_message=f"prepare origin failed: {oack.reason}",
                 error_code=code,
                 operation_id=oid,
+                quorum_info=self._qi_with_abort_fails(
+                    {"replica_set": list(replica_set), "quorum": Q},
+                    fail_peers,
+                ),
             )
         prepare_ok.append(self.origin_id)
 
@@ -488,7 +505,9 @@ class StrongPutCoordinator:
                     prepare_ok.append(p)
 
         if len(prepare_ok) < Q:
-            await self._abort_all(replica_set, contacted, oid, key, strong_version)
+            fail_peers = await self._abort_all(
+                replica_set, contacted, oid, key, strong_version
+            )
             return CacheOperationResult(
                 success=False,
                 error_message=(
@@ -498,11 +517,14 @@ class StrongPutCoordinator:
                 if prepare_ok
                 else int(StrongErrorCode.INSUFFICIENT_QUORUM),
                 operation_id=oid,
-                quorum_info={
-                    "replica_set": list(replica_set),
-                    "quorum": Q,
-                    "prepare_acks": list(prepare_ok),
-                },
+                quorum_info=self._qi_with_abort_fails(
+                    {
+                        "replica_set": list(replica_set),
+                        "quorum": Q,
+                        "prepare_acks": list(prepare_ok),
+                    },
+                    fail_peers,
+                ),
             )
 
         commit_applied: list[str] = []
@@ -521,7 +543,7 @@ class StrongPutCoordinator:
                     commit_applied.append(p)
                 elif isinstance(res, CommitAck) and res.ok and not res.applied:
                     if res.reason == "lww_lost":
-                        await self._abort_all(
+                        fail_peers = await self._abort_all(
                             replica_set, contacted, oid, key, strong_version
                         )
                         return CacheOperationResult(
@@ -529,11 +551,21 @@ class StrongPutCoordinator:
                             error_message="STRONG_CONFLICT: lost LWW on peer",
                             error_code=int(StrongErrorCode.STRONG_CONFLICT),
                             operation_id=oid,
+                            quorum_info=self._qi_with_abort_fails(
+                                {
+                                    "replica_set": list(replica_set),
+                                    "quorum": Q,
+                                    "commit_acks": list(commit_applied),
+                                },
+                                fail_peers,
+                            ),
                         )
 
             need_peers = max(0, Q - 1)
             if len(commit_applied) < need_peers:
-                await self._abort_all(replica_set, contacted, oid, key, strong_version)
+                fail_peers = await self._abort_all(
+                    replica_set, contacted, oid, key, strong_version
+                )
                 return CacheOperationResult(
                     success=False,
                     error_message=(
@@ -542,16 +574,21 @@ class StrongPutCoordinator:
                     ),
                     error_code=int(StrongErrorCode.QUORUM_TIMEOUT),
                     operation_id=oid,
-                    quorum_info={
-                        "replica_set": list(replica_set),
-                        "quorum": Q,
-                        "commit_acks": list(commit_applied),
-                    },
+                    quorum_info=self._qi_with_abort_fails(
+                        {
+                            "replica_set": list(replica_set),
+                            "quorum": Q,
+                            "commit_acks": list(commit_applied),
+                        },
+                        fail_peers,
+                    ),
                 )
 
             ocommit = await self.local.commit(op_id=oid, key=key)
             if not ocommit.ok or not ocommit.applied:
-                await self._abort_all(replica_set, contacted, oid, key, strong_version)
+                fail_peers = await self._abort_all(
+                    replica_set, contacted, oid, key, strong_version
+                )
                 code = (
                     int(StrongErrorCode.STRONG_CONFLICT)
                     if ocommit.reason == "lww_lost"
@@ -562,27 +599,55 @@ class StrongPutCoordinator:
                     error_message=f"origin commit failed: {ocommit.reason}",
                     error_code=code,
                     operation_id=oid,
+                    quorum_info=self._qi_with_abort_fails(
+                        {
+                            "replica_set": list(replica_set),
+                            "quorum": Q,
+                            "commit_acks": list(commit_applied),
+                        },
+                        fail_peers,
+                    ),
                 )
             commit_applied.append(self.origin_id)
         else:
             ocommit = await self.local.commit(op_id=oid, key=key)
             if not ocommit.ok or not ocommit.applied:
-                await self._abort_all(replica_set, contacted, oid, key, strong_version)
+                fail_peers = await self._abort_all(
+                    replica_set, contacted, oid, key, strong_version
+                )
                 return CacheOperationResult(
                     success=False,
                     error_message=f"origin commit failed: {ocommit.reason}",
                     error_code=int(StrongErrorCode.QUORUM_TIMEOUT),
                     operation_id=oid,
+                    quorum_info=self._qi_with_abort_fails(
+                        {
+                            "replica_set": list(replica_set),
+                            "quorum": Q,
+                            "commit_acks": list(commit_applied),
+                        },
+                        fail_peers,
+                    ),
                 )
             commit_applied.append(self.origin_id)
 
         if len(commit_applied) < Q:
-            await self._abort_all(replica_set, contacted, oid, key, strong_version)
+            fail_peers = await self._abort_all(
+                replica_set, contacted, oid, key, strong_version
+            )
             return CacheOperationResult(
                 success=False,
                 error_message=f"commit quorum failed {len(commit_applied)}/{Q}",
                 error_code=int(StrongErrorCode.QUORUM_TIMEOUT),
                 operation_id=oid,
+                quorum_info=self._qi_with_abort_fails(
+                    {
+                        "replica_set": list(replica_set),
+                        "quorum": Q,
+                        "commit_acks": list(commit_applied),
+                    },
+                    fail_peers,
+                ),
             )
 
         # Residual-free on non-committers: peers that prepared but did not apply
@@ -674,12 +739,20 @@ class StrongPutCoordinator:
         op_id: str,
         key: GlobalCacheKey,
         strong_version: StrongVersion,
-    ) -> None:
+    ) -> list[str]:
+        """Best-effort ABORT all contacted peers; return peers that still failed.
+
+        Failed peers are CFT residual *candidates* (may hold L1 if they applied
+        COMMIT). Not residual-free proof. Empty list when all ABORTs delivered
+        or no peers contacted.
+        """
         targets = set(replica_set) | set(contacted)
         await self.local.abort(op_id=op_id, key=key)
         peers = [p for p in targets if p != self.origin_id]
         if not peers:
-            return
+            self.last_abort_fail_peers = []
+            self.last_abort_fail_op_id = op_id
+            return []
         # Best-effort multi-attempt ABORT (CFT). Track last-attempt failures.
         attempts = max(1, int(self.abort_attempts))
         pending = set(peers)
@@ -703,8 +776,34 @@ class StrongPutCoordinator:
             pending = still
             if pending and attempt + 1 < attempts:
                 await asyncio.sleep(0)  # yield between attempts
-        for _p in pending:
+        failed = sorted(pending)
+        for _p in failed:
             self.aborts_peer_fail += 1
+        self.last_abort_fail_peers = list(failed)
+        self.last_abort_fail_op_id = op_id
+        if failed:
+            self.recent_abort_fails.append(
+                {
+                    "op_id": op_id,
+                    "peers": list(failed),
+                    "ts": time.time(),
+                    "key": f"{key.namespace}/{key.identifier}",
+                }
+            )
+        return failed
+
+    def _qi_with_abort_fails(
+        self,
+        base: dict[str, Any],
+        abort_fail_peers: Sequence[str] | None,
+    ) -> dict[str, Any]:
+        """Attach abort_fail_peers to quorum_info (ops; CFT residual candidates)."""
+        out = dict(base)
+        peers = list(abort_fail_peers or [])
+        out["abort_fail_peers"] = peers
+        # Honest flag: non-empty means ABORT exhausted for those peers.
+        out["abort_best_effort_residual_candidates"] = bool(peers)
+        return out
 
     async def _abort_peer(
         self,

@@ -522,7 +522,7 @@ APPS: tuple[ExampleApp, ...] = (
         "cache_strong_quorum",
         "Cache STRONG Quorum",
         AppLevel.L2,
-        "Majority-commit ConsistencyLevel.STRONG put + residual-free 1015.",
+        "Majority-commit ConsistencyLevel.STRONG put + CFT residual honesty.",
         ("cache",),
     ),
     _app(
