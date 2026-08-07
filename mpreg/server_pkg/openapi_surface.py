@@ -134,6 +134,24 @@ def _strong_metrics_schema() -> dict[str, Any]:
                         ),
                         "items": {"type": "object"},
                     },
+                    "retry_abort_calls": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": (
+                            "Ops-driven strong_retry_abort invocations "
+                            "(not automatic background heal)."
+                        ),
+                    },
+                    "retry_abort_cleared": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "retry_abort runs that cleared all targeted peers.",
+                    },
+                    "retry_abort_still_fail": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "retry_abort runs that still had fail peers (CFT).",
+                    },
                     "backups_pruned_total": {
                         "type": "integer",
                         "minimum": 0,

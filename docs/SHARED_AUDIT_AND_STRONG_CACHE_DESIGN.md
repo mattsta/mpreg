@@ -636,7 +636,12 @@ or a successful LWW put overwrites it. Pending TTL does **not** clear residual L
 after COMMIT apply (pending is already gone). DistLab
 `strong.cft_partial_commit_lost_abort` documents this; counters
 `aborts_peer_fail` / caps `abort_best_effort` / `pending_ttl_clears_residual_l1=false`
-expose it. This is **not** BFT and **not** claimed residual-free under lost ABORT.
+expose it. Ops surface `abort_fail_peers` / `last_abort_fail_peers`; after network
+recovery, `StrongPutCoordinator.retry_abort` /
+`GlobalCacheManager.strong_retry_abort` re-delivers ABORT best-effort
+(`strong.cft_retry_abort_clears_residual`) — **ops-driven**, not automatic
+background heal. This is **not** BFT and **not** claimed residual-free under
+lost ABORT.
 
 **Commit ordering rule (prefer origin-commit-last):**
 

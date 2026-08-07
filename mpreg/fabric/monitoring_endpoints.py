@@ -2587,6 +2587,39 @@ class FederationMonitoringSystem:
                         f"mpreg_strong_aborts_peer_fail_total{{{labels}}} "
                         f"{int(counters.get('aborts_peer_fail', 0) or 0)}"
                     )
+                    # T39: ops-driven retry_abort counters (not automatic heal)
+                    lines.append(
+                        "# HELP mpreg_strong_retry_abort_calls_total "
+                        "Ops-driven strong_retry_abort invocations (CFT best-effort; "
+                        "not automatic background heal)."
+                    )
+                    lines.append("# TYPE mpreg_strong_retry_abort_calls_total counter")
+                    lines.append(
+                        f"mpreg_strong_retry_abort_calls_total{{{labels}}} "
+                        f"{int(counters.get('retry_abort_calls', 0) or strong.get('retry_abort_calls', 0) or 0)}"
+                    )
+                    lines.append(
+                        "# HELP mpreg_strong_retry_abort_cleared_total "
+                        "retry_abort runs that cleared all targeted residual candidates."
+                    )
+                    lines.append(
+                        "# TYPE mpreg_strong_retry_abort_cleared_total counter"
+                    )
+                    lines.append(
+                        f"mpreg_strong_retry_abort_cleared_total{{{labels}}} "
+                        f"{int(counters.get('retry_abort_cleared', 0) or strong.get('retry_abort_cleared', 0) or 0)}"
+                    )
+                    lines.append(
+                        "# HELP mpreg_strong_retry_abort_still_fail_total "
+                        "retry_abort runs that still had abort_fail peers (CFT)."
+                    )
+                    lines.append(
+                        "# TYPE mpreg_strong_retry_abort_still_fail_total counter"
+                    )
+                    lines.append(
+                        f"mpreg_strong_retry_abort_still_fail_total{{{labels}}} "
+                        f"{int(counters.get('retry_abort_still_fail', 0) or strong.get('retry_abort_still_fail', 0) or 0)}"
+                    )
                     lines.append(
                         "# HELP mpreg_strong_pending Pending prepare entries on local backend."
                     )

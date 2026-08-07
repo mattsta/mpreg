@@ -63,6 +63,9 @@ Prometheus series (process-local; **not** WAN SLO):
 | `mpreg_strong_cap_local_ryw_after_put` | 1 when RYW via EVENTUAL |
 | `mpreg_strong_aborts_peer_ok_total` | Successful peer ABORT deliveries |
 | `mpreg_strong_aborts_peer_fail_total` | Failed peer ABORT (CFT; may leave peer L1) |
+| `mpreg_strong_retry_abort_calls_total` | Ops-driven `strong_retry_abort` invocations |
+| `mpreg_strong_retry_abort_cleared_total` | retry_abort runs that cleared all targets |
+| `mpreg_strong_retry_abort_still_fail_total` | retry_abort runs still failing (CFT) |
 | `mpreg_strong_cap_cft_only` | **Always 1** — not BFT |
 | `mpreg_strong_cap_abort_best_effort` | **Always 1** — lost ABORT CFT limit |
 | `mpreg_strong_cap_pending_ttl_clears_residual_l1` | **Always 0** — purge ≠ residual GC |

@@ -518,3 +518,17 @@ Still **not** claimed: automatic background heal; HTTP mgmt mutation for
 retry; residual-free under lost ABORT; WAN/Elle/BFT/fsync.
 
 Plan: `docs/plans/DISTLAB_T38_GCM_RETRY_ABORT_DOCS_PLAN.md`.
+
+## Phase 27 — retry_abort prom/doctor/OpenAPI (2026-08-06)
+
+T39 closes the ops loop for retry counters:
+
+* Prom: `mpreg_strong_retry_abort_{calls,cleared,still_fail}_total`
+* Doctor / `monitor strong`: `retry_abort=` / `retry_cleared=`
+* OpenAPI schema + runbook metric table
+* Design doc CFT exception documents ops-driven retry path
+
+Still **not** claimed: automatic heal; residual-free under lost ABORT;
+WAN/Elle/BFT/fsync.
+
+Plan: `docs/plans/DISTLAB_T39_RETRY_ABORT_OPS_SURFACE_PLAN.md`.

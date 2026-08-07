@@ -251,6 +251,7 @@ encapsulation:
       - tests/chaos/test_t36_residuals.py
       - tests/chaos/test_t37_residuals.py
       - tests/chaos/test_t38_residuals.py
+      - tests/chaos/test_t39_residuals.py
       - tests/invariants/test_cache_strong_properties.py
       - tests/invariants/test_cache_strong_history.py
       - tests/integration/test_cache_strong_quorum.py

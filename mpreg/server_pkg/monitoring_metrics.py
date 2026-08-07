@@ -125,6 +125,16 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
                         base["recent_abort_fails"] = list(
                             st.get("recent_abort_fails") or []
                         )
+                    # T39: retry_abort ops counters on metrics payload
+                    for k in (
+                        "retry_abort_calls",
+                        "retry_abort_cleared",
+                        "retry_abort_still_fail",
+                    ):
+                        if k in st:
+                            base[k] = int(st.get(k) or 0)
+                            if isinstance(base.get("counters"), dict):
+                                base["counters"][k] = int(st.get(k) or 0)
             except Exception:  # noqa: BLE001
                 pass
         # Fallback from coordinator block when status path skipped fields
@@ -142,6 +152,16 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
                 "recent_abort_fails",
                 list(coord.get("recent_abort_fails") or []),
             )
+        # Ensure retry counters present (0 default) for ops honesty
+        ctr = base.get("counters")
+        if isinstance(ctr, dict):
+            for k in (
+                "retry_abort_calls",
+                "retry_abort_cleared",
+                "retry_abort_still_fail",
+            ):
+                ctr.setdefault(k, int(base.get(k) or 0))
+                base.setdefault(k, int(ctr.get(k) or 0))
     elif be is not None and hasattr(be, "pending_count"):
         try:
             base["pending_count"] = int(be.pending_count())

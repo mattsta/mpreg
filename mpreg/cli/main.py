@@ -130,6 +130,8 @@ def evaluate_strong_doctor_payload(
             f"dels_ref={counters.get('deletes_refused', 0)} "
             f"abort_fail={counters.get('aborts_peer_fail', 0)} "
             f"abort_fail_peers={body.get('last_abort_fail_peers') or (body.get('coordinator') or {}).get('last_abort_fail_peers') or []} "
+            f"retry_abort={counters.get('retry_abort_calls', body.get('retry_abort_calls', 0))} "
+            f"retry_cleared={counters.get('retry_abort_cleared', body.get('retry_abort_cleared', 0))} "
             f"visible={body.get('visible_count', 0)} "
             f"backups={body.get('backups_count', 0)} "
             f"pruned={body.get('backups_pruned_total', 0)}"
@@ -3870,9 +3872,12 @@ def monitor_strong(url: str | None, use_mgmt: bool, output_format: str) -> None:
                             f"abort_fail={counters.get('aborts_peer_fail', 0)} "
                             f"abort_fail_peers="
                             f"{body.get('last_abort_fail_peers') or (body.get('coordinator') or {}).get('last_abort_fail_peers') or []} "
+                            f"retry_abort={counters.get('retry_abort_calls', body.get('retry_abort_calls', 0))} "
+                            f"retry_cleared={counters.get('retry_abort_cleared', body.get('retry_abort_cleared', 0))} "
                             "[dim](not WAN SLA; get/delete quorum is v1.1; "
                             "ABORT best-effort CFT; pending TTL ≠ residual GC; "
-                            "abort_fail_peers = CFT residual candidates)[/dim]"
+                            "abort_fail_peers = CFT residual candidates; "
+                            "retry_abort = ops-driven not auto-heal)[/dim]"
                         )
                 emit(payload, output_format=output_format, table_title="STRONG")
 
