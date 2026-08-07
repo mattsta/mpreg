@@ -26,6 +26,8 @@ uv run mpreg-example run cache_strong_quorum
 - 3-node majority-commit put succeeds; value readable on committers
 - Insufficient peers path returns `1015` with no dirty residual
 - GCM attach path still refuse-closed when coordinator/peers not production-wired
+- STRONG **get** / **delete** always `1012`; EVENTUAL get RYW after STRONG put
+- `strong_status.capabilities` denies `get_quorum` / `delete_quorum`
 - Feature tag: `cache.strong`
 
 ## API drill-down

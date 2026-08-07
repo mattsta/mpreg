@@ -33,9 +33,34 @@ uv run mpreg doctor --url "$MPREG_MONITORING_URL" --strong
 
 HTTP:
 
-- `GET /metrics/strong` — counters, pending, latency ring (p50/p99 process-local)
+- `GET /metrics/strong` — counters, pending, latency ring (p50/p99 process-local), **capabilities**
 - `GET /mgmt/v1/strong` — same payload (mgmt alias)
-- `GET /metrics/prometheus` — `mpreg_strong_*` series
+- `GET /metrics/prometheus` — `mpreg_strong_*` series including refuse counters
+- OpenAPI: `uv run mpreg doctor` → `/openapi.json` schemas `StrongMetricsResponse`
+
+Prometheus series (process-local; **not** WAN SLO):
+
+| Series | Meaning |
+| --- | --- |
+| `mpreg_strong_enabled` | Coordinator bound (1/0) |
+| `mpreg_strong_puts_ok_total` | Successful majority-commit puts |
+| `mpreg_strong_puts_fail_total` | Failed puts (quorum/timeout/conflict) |
+| `mpreg_strong_refused_disabled_total` | Put refused — flag off / unbound (1012) |
+| `mpreg_strong_gets_refused_total` | Get refused — STRONG get not implemented (1012) |
+| `mpreg_strong_deletes_refused_total` | Delete refused — STRONG delete not implemented (1012) |
+| `mpreg_strong_pending` | Local pending prepare count |
+| `mpreg_strong_put_latency_p50_ms` / `_p99_ms` | Lab latency ring |
+
+### Capabilities (always honest in v1)
+
+| Flag | v1 value | Notes |
+| --- | --- | --- |
+| `put_majority_commit` | true when coordinator bound | Product path |
+| `get_quorum` | **false** | Quorum get is v1.1; always 1012 |
+| `delete_quorum` | **false** | Quorum delete is v1.1; always 1012 |
+| `local_ryw_after_put` | true | Use EVENTUAL/WEAK get after STRONG put |
+
+Doctor fails closed if metrics claim `get_quorum` or `delete_quorum`.
 
 ### Health values
 
@@ -45,13 +70,23 @@ HTTP:
 | `misconfigured` | flag on but coordinator unbound |
 | `degraded_pending` | pending_count > 64 |
 | `ok` | coordinator bound, pending healthy |
+| `unwired` | monitoring provider not attached |
 
 ### Failure modes
 
-- **1012 UNSUPPORTED_CONSISTENCY** — STRONG disabled / coordinator unbound.
+- **1012 UNSUPPORTED_CONSISTENCY** — STRONG disabled / coordinator unbound **or**
+  STRONG **get** / **delete** (design refuse; quorum paths are v1.1).
 - **1015+ quorum codes** — insufficient prepares/commits; residual-free ABORT path.
-- Rising `puts_fail` / `refused_disabled` on `/metrics/strong`.
+- Rising `puts_fail` / `refused_disabled` / `gets_refused` / `deletes_refused`.
 - Pending not draining — check peer mesh, timeouts, purge task.
+
+### Config check
+
+```bash
+uv run mpreg config-check path/to.toml --format json --explain
+# groups.strong_cache.capabilities.get_quorum == false
+# warnings when cache_strong_enabled without mon/cache
+```
 
 ## Shared audit (G-Set epidemic)
 
@@ -93,13 +128,23 @@ HTTP:
 
 ```bash
 uv run mpreg distlab list
+uv run mpreg distlab presets
+uv run mpreg distlab suite --preset smoke
 uv run mpreg distlab run strong.happy_3
+uv run mpreg distlab run strong.refuse_get_delete
 uv run mpreg distlab run strong.drop_abort
 uv run mpreg distlab run audit.partition_heal
 ```
 
 Live multi-process proofs live under `tests/testing/test_distlab_live.py`.
 Lab SLIs (`mpreg.testing.distlab.sli`) are **not** production WAN SLAs.
+
+Curriculum (in-process teaching apps):
+
+```bash
+uv run mpreg-example run cache_strong_quorum
+uv run mpreg-example run shared_audit_mesh
+```
 
 ## Non-claims
 

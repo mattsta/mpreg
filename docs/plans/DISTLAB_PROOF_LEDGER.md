@@ -35,6 +35,8 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T19 monitor summary | `mpreg monitor strong --format table` capabilities line | support ops |
 | T20 config-check groups | `test_config_check_*_honesty_warnings`, strong_cache/shared_audit groups | support ops |
 | T20 live doctor e2e | `test_distlab_live_doctor_strong_audit_e2e` | support ops |
+| T21 OpenAPI schemas | `test_t21_openapi_strong_schema_honesty` | support ops |
+| T21 curriculum refuse | `cache_strong_quorum` get/delete 1012 + RYW scenario | INV-CACHE-STRONG-01 teach |
 
 ## Non-claims (do not market)
 
@@ -57,5 +59,6 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/invariants/test_cache_strong*.py tests/invariants/test_shared_audit*.py \
   tests/test_strong_audit_monitoring_endpoints.py \
   tests/test_cli_strong_audit_monitor.py \
-  tests/chaos/test_t14_residuals.py::test_erg_t14_01_openapi_matches_route_table -q
+  tests/chaos/test_t14_residuals.py::test_erg_t14_01_openapi_matches_route_table \
+  tests/chaos/test_t21_residuals.py -q
 ```

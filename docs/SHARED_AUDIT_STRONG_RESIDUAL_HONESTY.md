@@ -231,3 +231,19 @@ T20 operator config + live doctor:
 Plan: `docs/plans/DISTLAB_T20_CONFIG_DOCTOR_E2E_PLAN.md`.
 
 Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete.
+
+## Phase 9 — OpenAPI honesty + curriculum refuse + runbook (2026-08-06)
+
+T21 machine-readable contract + teaching:
+
+* **OpenAPI:** `StrongMetricsResponse` / `SharedAuditMetricsResponse` schemas;
+  `capabilities.get_quorum` / `delete_quorum` enum `[false]`; path descriptions
+  name 1012 refuse + non-WAN / non-SIEM honesty; tags `strong` / `audit`.
+* **Curriculum:** `cache_strong_quorum` teaches STRONG get/delete 1012 + EVENTUAL
+  RYW + `strong_status.capabilities`.
+* **Runbook / SLO / OPERATE:** refuse counter series, presets, config-check,
+  curriculum entry points.
+
+Plan: `docs/plans/DISTLAB_T21_OPENAPI_CURRICULUM_RUNBOOK_PLAN.md`.
+
+Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete.

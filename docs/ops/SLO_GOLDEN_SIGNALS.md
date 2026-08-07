@@ -63,9 +63,26 @@ Fabric hops carry W3C `traceparent` in `MessageHeaders.metadata`. Correlate with
 ## CLI probes
 
 ```bash
-mpreg doctor
-mpreg monitor health --summary
-mpreg monitor decisions --limit 50 --format table
-mpreg monitor prometheus
-mpreg monitor status
+uv run mpreg doctor
+uv run mpreg monitor health --summary
+uv run mpreg monitor decisions --limit 50 --format table
+uv run mpreg monitor prometheus
+uv run mpreg monitor status
+uv run mpreg monitor strong --format table   # capabilities + refuse counters
+uv run mpreg monitor audit --format json
+uv run mpreg doctor --url "$MPREG_MONITORING_URL" --strong --audit
 ```
+
+## STRONG / shared audit (lab metrics — not WAN SLO)
+
+| Signal | Series / endpoint | Note |
+| --- | --- | --- |
+| STRONG puts | `mpreg_strong_puts_ok_total` / `_fail_total` | Process-local |
+| STRONG refuse | `mpreg_strong_*_refused_total` | 1012 paths (disabled/get/delete) |
+| STRONG pending | `mpreg_strong_pending` | >64 → degraded_pending |
+| STRONG latency | `mpreg_strong_put_latency_p99_ms` | **Lab ring only — not WAN SLA** |
+| Audit store | `mpreg_shared_audit_store_size` | Bounded G-Set |
+| Audit drops | `mpreg_shared_audit_publish_dropped_total` | degraded_drops |
+
+Do **not** page on STRONG p99 as a multi-region contract. See
+`docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md`.

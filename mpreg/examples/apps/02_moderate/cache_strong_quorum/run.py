@@ -141,8 +141,105 @@ async def main() -> None:
                 finally:
                     await gcm2.shutdown()
 
+            with scenario(
+                "STRONG get/delete always 1012; EVENTUAL RYW after put",
+                "cache.strong",
+                "cache.put_get",
+            ):
+                step("lab single-node GCM: put STRONG, get/delete STRONG refuse")
+                gcm3 = GlobalCacheManager(
+                    GlobalCacheConfiguration(
+                        enable_l2_persistent=False,
+                        enable_l3_distributed=False,
+                        enable_l4_federation=False,
+                        local_cluster_id="refuse-lab",
+                    )
+                )
+                be0 = StrongLocalBackend(node_id="origin")
+                tr0 = InProcessStrongTransport()
+                tr0.register(be0)
+                gcm3.attach_strong_coordinator(
+                    StrongPutCoordinator(
+                        origin_id="origin",
+                        local=be0,
+                        transport=tr0,
+                        lab_single_node=True,
+                        min_replicas=1,
+                        replica_factor=1,
+                    )
+                )
+                try:
+                    k3 = GlobalCacheKey(
+                        namespace="strong", identifier="ryw", version="v1"
+                    )
+                    put3 = await gcm3.put(
+                        k3,
+                        {"ryw": True},
+                        metadata=CacheMetadata(),
+                        options=CacheOptions(
+                            consistency_level=ConsistencyLevel.STRONG
+                        ),
+                    )
+                    ensure(put3.success, f"put failed: {put3.error_message}")
+                    bad_g = await gcm3.get(
+                        k3,
+                        options=CacheOptions(
+                            consistency_level=ConsistencyLevel.STRONG
+                        ),
+                    )
+                    ensure(not bad_g.success, "STRONG get must refuse")
+                    ensure(
+                        bad_g.error_code
+                        == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY),
+                        f"get code={bad_g.error_code}",
+                    )
+                    bad_d = await gcm3.delete(
+                        k3,
+                        options=CacheOptions(
+                            consistency_level=ConsistencyLevel.STRONG
+                        ),
+                    )
+                    ensure(not bad_d.success, "STRONG delete must refuse")
+                    ensure(
+                        bad_d.error_code
+                        == int(MpregErrorCode.UNSUPPORTED_CONSISTENCY),
+                        f"delete code={bad_d.error_code}",
+                    )
+                    ryw = await gcm3.get(k3)  # EVENTUAL/default
+                    ensure(
+                        ryw.success and ryw.entry is not None,
+                        "EVENTUAL RYW after STRONG put",
+                    )
+                    ensure(ryw.entry.value == {"ryw": True}, f"ryw={ryw.entry.value}")
+                    st = gcm3.strong_status()
+                    ensure(st["gets_refused"] >= 1, f"gets_refused={st}")
+                    ensure(st["deletes_refused"] >= 1, f"deletes_refused={st}")
+                    caps = st.get("capabilities") or {}
+                    ensure(caps.get("get_quorum") is False, "get_quorum must be false")
+                    ensure(
+                        caps.get("delete_quorum") is False,
+                        "delete_quorum must be false",
+                    )
+                    ensure(
+                        caps.get("put_majority_commit") is True,
+                        "put_majority_commit when bound",
+                    )
+                    ensure(
+                        caps.get("local_ryw_after_put") is True,
+                        "local_ryw_after_put",
+                    )
+                    ok(
+                        f"1012 refuse counters gets={st['gets_refused']} "
+                        f"dels={st['deletes_refused']}; EVENTUAL RYW ok"
+                    )
+                finally:
+                    await gcm3.shutdown()
+
             with scenario("non-claims", "cache.strong"):
-                step("no quorum get/delete; not WAN SLA; not BFT; not fsync durability")
+                step(
+                    "no quorum get/delete (always 1012); not WAN SLA; not BFT; "
+                    "not fsync durability; local RYW is EVENTUAL/WEAK get"
+                )
                 ok("honesty banners retained outside majority-commit put claim")
         finally:
             await gcm.shutdown()

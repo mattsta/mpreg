@@ -233,13 +233,16 @@ Operator surfaces (monitoring HTTP — not WAN SLA):
 
 ```bash
 export MPREG_MONITORING_URL=http://127.0.0.1:<mon-port>
-uv run mpreg monitor strong --url "$MPREG_MONITORING_URL"
+uv run mpreg monitor strong --url "$MPREG_MONITORING_URL" --format table
 uv run mpreg doctor --url "$MPREG_MONITORING_URL" --strong --audit
+uv run mpreg config-check mpreg/profiles/dev.toml --format json --explain
 uv run mpreg distlab suite --preset smoke
 uv run mpreg distlab suite --track T2 --limit 5
+uv run mpreg-example run cache_strong_quorum
 ```
 
 Runbook: `docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md`.
+OpenAPI: `GET $MPREG_MONITORING_URL/openapi.json` → `StrongMetricsResponse`.
 
 ### Correlation
 

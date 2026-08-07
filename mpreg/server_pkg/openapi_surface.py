@@ -9,6 +9,122 @@ from __future__ import annotations
 
 from typing import Any
 
+def _strong_metrics_schema() -> dict[str, Any]:
+    """JSON Schema for /metrics/strong and /mgmt/v1/strong payloads (honesty-first)."""
+    return {
+        "type": "object",
+        "description": (
+            "Process-local STRONG put metrics. Not a WAN SLA. "
+            "v1 is put-only: get_quorum and delete_quorum are always false."
+        ),
+        "properties": {
+            "status": {"type": "string", "example": "ok"},
+            "timestamp": {"type": "number"},
+            "strong": {
+                "type": "object",
+                "properties": {
+                    "enabled_flag": {"type": "boolean"},
+                    "coordinator_bound": {"type": "boolean"},
+                    "backend_present": {"type": "boolean"},
+                    "pending_count": {"type": "integer", "minimum": 0},
+                    "health": {
+                        "type": "string",
+                        "enum": [
+                            "disabled",
+                            "misconfigured",
+                            "degraded_pending",
+                            "ok",
+                            "unwired",
+                        ],
+                    },
+                    "counters": {
+                        "type": "object",
+                        "additionalProperties": {"type": "integer"},
+                        "description": (
+                            "Includes puts_ok, puts_fail, refused_disabled, "
+                            "gets_refused, deletes_refused (1012 refuse paths)."
+                        ),
+                    },
+                    "latency_ms": {
+                        "type": "object",
+                        "description": "Process-local put latency ring — not WAN SLO.",
+                        "properties": {
+                            "sample_count": {"type": "integer"},
+                            "p50_ms": {"type": "number"},
+                            "p99_ms": {"type": "number"},
+                            "max_ms": {"type": "number"},
+                            "avg_ms": {"type": "number"},
+                        },
+                    },
+                    "capabilities": {
+                        "type": "object",
+                        "description": (
+                            "Honest v1 product surface. get_quorum/delete_quorum "
+                            "must be false (quorum get/delete are v1.1 non-goals)."
+                        ),
+                        "properties": {
+                            "put_majority_commit": {"type": "boolean"},
+                            "get_quorum": {
+                                "type": "boolean",
+                                "enum": [False],
+                                "description": "Always false in v1 (refuse 1012).",
+                            },
+                            "delete_quorum": {
+                                "type": "boolean",
+                                "enum": [False],
+                                "description": "Always false in v1 (refuse 1012).",
+                            },
+                            "local_ryw_after_put": {"type": "boolean"},
+                        },
+                        "required": ["get_quorum", "delete_quorum"],
+                    },
+                    "coordinator": {"type": "object"},
+                    "settings": {"type": "object"},
+                },
+            },
+        },
+    }
+
+def _shared_audit_metrics_schema() -> dict[str, Any]:
+    """JSON Schema for /metrics/shared-audit (not SIEM / not BFT)."""
+    return {
+        "type": "object",
+        "description": (
+            "Shared audit G-Set epidemic metrics. Bounded watermark window — "
+            "not SIEM, not BFT, not infinite retention."
+        ),
+        "properties": {
+            "status": {"type": "string", "example": "ok"},
+            "timestamp": {"type": "number"},
+            "shared_audit": {
+                "type": "object",
+                "properties": {
+                    "enabled_flag": {"type": "boolean"},
+                    "store_present": {"type": "boolean"},
+                    "replicator_present": {"type": "boolean"},
+                    "store_size": {"type": "integer", "minimum": 0},
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "disabled",
+                            "misconfigured",
+                            "degraded_drops",
+                            "ok_no_peers",
+                            "ok",
+                            "unwired",
+                        ],
+                    },
+                    "counters": {
+                        "type": "object",
+                        "additionalProperties": {"type": "integer"},
+                    },
+                    "health": {"type": "object", "nullable": True},
+                    "settings": {"type": "object"},
+                },
+            },
+        },
+    }
+
 def build_monitoring_openapi() -> dict[str, Any]:
     """Return an OpenAPI 3.0 document for the monitoring HTTP server."""
     # When monitoring_auth_token is configured, mutations and metrics require bearer.
@@ -84,20 +200,65 @@ def build_monitoring_openapi() -> dict[str, Any]:
         "/metrics/strong": {
             "get": {
                 "summary": "STRONG majority-commit put metrics (process-local)",
-                "description": "Not a WAN SLA. Lab/process latency ring + put counters.",
-                "tags": ["metrics"],
+                "description": (
+                    "Not a WAN SLA. Process-local put counters + latency ring. "
+                    "v1 put-only MVP: STRONG get/delete always refuse 1012; "
+                    "capabilities.get_quorum and capabilities.delete_quorum are false. "
+                    "Prometheus: mpreg_strong_* including gets_refused/deletes_refused."
+                ),
+                "tags": ["metrics", "strong"],
+                "responses": {
+                    "200": {
+                        "description": "STRONG metrics envelope",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/StrongMetricsResponse"}
+                            }
+                        },
+                    }
+                },
             }
         },
         "/metrics/shared-audit": {
             "get": {
                 "summary": "Shared audit G-Set epidemic metrics",
-                "tags": ["metrics"],
+                "description": (
+                    "Bounded G-Set epidemic — not SIEM, not BFT, not infinite retention. "
+                    "Prometheus: mpreg_shared_audit_*."
+                ),
+                "tags": ["metrics", "audit"],
+                "responses": {
+                    "200": {
+                        "description": "Shared audit metrics envelope",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/SharedAuditMetricsResponse"
+                                }
+                            }
+                        },
+                    }
+                },
             }
         },
         "/mgmt/v1/strong": {
             "get": {
                 "summary": "STRONG cache put readiness snapshot",
-                "tags": ["mgmt"],
+                "description": (
+                    "Same payload shape as /metrics/strong (mgmt alias). "
+                    "Not WAN SLA; get/delete quorum are v1.1 non-goals."
+                ),
+                "tags": ["mgmt", "strong"],
+                "responses": {
+                    "200": {
+                        "description": "STRONG readiness / metrics",
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": "#/components/schemas/StrongMetricsResponse"}
+                            }
+                        },
+                    }
+                },
             }
         },
         "/discovery/summary": {
@@ -319,9 +480,31 @@ def build_monitoring_openapi() -> dict[str, Any]:
                     "type": "http",
                     "scheme": "bearer",
                 }
-            }
+            },
+            "schemas": {
+                "StrongMetricsResponse": _strong_metrics_schema(),
+                "SharedAuditMetricsResponse": _shared_audit_metrics_schema(),
+            },
         },
         "paths": paths,
+        "tags": [
+            {
+                "name": "strong",
+                "description": (
+                    "ConsistencyLevel.STRONG put majority-commit (flag-gated). "
+                    "Not WAN SLA, not BFT, not fsync. Get/delete quorum v1.1."
+                ),
+            },
+            {
+                "name": "audit",
+                "description": (
+                    "Shared mgmt audit G-Set epidemic. Not SIEM, not BFT."
+                ),
+            },
+            {"name": "metrics", "description": "Process metrics endpoints"},
+            {"name": "mgmt", "description": "Management read/write models"},
+            {"name": "health", "description": "Liveness and readiness"},
+        ],
     }
 
 def monitoring_route_table() -> list[tuple[str, str]]:
