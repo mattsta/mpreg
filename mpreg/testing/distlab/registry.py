@@ -208,6 +208,7 @@ SUITE_PRESETS: dict[str, tuple[str, ...]] = {
         "strong.cft_partial_commit_lost_abort",
         "strong.cft_residual_healed_by_lww",
         "strong.cft_residual_survives_pending_purge",
+        "strong.cft_orphan_backup_gc",
     ),
     "audit-core": (
         "audit.multi_origin",

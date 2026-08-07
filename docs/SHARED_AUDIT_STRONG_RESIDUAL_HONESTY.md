@@ -379,3 +379,17 @@ Plan: `docs/plans/DISTLAB_T29_CFT_RESIDUAL_TTL_HONESTY_PLAN.md`.
 
 Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM;
 residual-free under partial-commit+lost-abort; pending TTL as residual GC.
+
+## Phase 18 — Orphan pre-commit backup GC (2026-08-06)
+
+T30 product fix discovered by CFT residual soak:
+
+* **Bug:** COMMIT apply stored `pre_commit_backup` under `op_id`; lost ABORT never
+  popped it → unbounded `_backups` growth across repeated residuals / LWW heal.
+* **Fix:** `_prune_orphan_backups` on commit/abort keeps only backups for live
+  visible or pending op_ids. Residual L1 itself is unchanged (still CFT).
+* **Proof:** DistLab `strong.cft_orphan_backup_gc` + unit uncommit-still-works.
+
+Plan: `docs/plans/DISTLAB_T30_ORPHAN_BACKUP_GC_PLAN.md`.
+
+Still **not** claimed: residual-free under lost ABORT; automatic ABORT delivery.

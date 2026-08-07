@@ -589,6 +589,76 @@ def _strong_cft_partial_commit_lost_abort() -> Scenario:
         },
     )
 
+def _strong_cft_orphan_backup_gc() -> Scenario:
+    """T30 product: repeated CFT residual + LWW must not unbounded-grow backups.
+
+    Orphan pre-commit backups (op_id no longer visible/pending) are pruned on
+    commit/abort. Residual L1 itself is unchanged (still CFT limit).
+    """
+    from mpreg.core.cache_models import GlobalCacheKey
+    from mpreg.core.cache_strong import _entry_op_id
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+    from mpreg.testing.distlab.checker import NoOpenInvokeChecker
+
+    sut = StrongSUT.create(
+        5,
+        prepare_timeout_s=0.4,
+        commit_timeout_s=0.25,
+        pending_ttl_s=30.0,
+    )
+
+    async def body(history: History, s: object) -> None:
+        key = GlobalCacheKey(
+            namespace="distlab", identifier="obgc", version="v1"
+        )
+        # Five CFT residual paths on n1
+        sut.transport.drop_commit |= {"n2", "n3", "n4"}
+        sut.transport.drop_abort |= {"n1"}
+        for i in range(5):
+            res = await sut.put(
+                history,
+                process="c0",
+                origin="n0",
+                logical_key="obgc",
+                value={"i": i},
+            )
+            assert res.success is False
+        n1 = sut.backends["n1"]
+        # At most one live backup for the current residual op (plus none for empty)
+        assert n1.backups_count() <= 1, (
+            f"orphan backups not pruned: {n1.backups_count()}"
+        )
+        ent = n1.get_visible(key)
+        assert ent is not None  # residual still present
+        # LWW heal
+        sut.transport.drop_commit.clear()
+        sut.transport.drop_abort.clear()
+        ok = await sut.put(
+            history,
+            process="c0",
+            origin="n0",
+            logical_key="obgc",
+            value={"healed": True},
+        )
+        assert ok.success is True, ok.error_message
+        # After heal, only the success op may hold a backup
+        assert n1.backups_count() <= 1
+        assert n1.get_visible(key) is not None
+        assert _entry_op_id(n1.get_visible(key)) == ok.operation_id
+
+    return Scenario(
+        name="strong.cft_orphan_backup_gc",
+        setup=lambda: sut,
+        body=body,
+        checker=NoOpenInvokeChecker(),
+        meta={
+            "track": "T30",
+            "product_fix": True,
+            "cft_limit": True,
+            "fault": "orphan_backup_gc",
+        },
+    )
+
 def _strong_cft_residual_survives_pending_purge() -> Scenario:
     """T29 honesty: residual L1 survives pending TTL purge after COMMIT apply.
 
@@ -1251,6 +1321,13 @@ def register_builtins(registry=None) -> int:
             "T29",
             "CFT residual survives pending TTL purge (not residual GC)",
             ("strong", "cft_limit", "fault"),
+        ),
+        (
+            "strong.cft_orphan_backup_gc",
+            _strong_cft_orphan_backup_gc,
+            "T30",
+            "orphan pre-commit backup GC after CFT residual",
+            ("strong", "cft_limit", "product"),
         ),
         ("strong.nemesis_concurrent", _strong_nemesis, "T2", "nemesis concurrent", ("strong", "nemesis")),
         ("strong.interleaved_fault_success", _strong_interleaved, "T2", "fault then ok", ("strong", "fault")),

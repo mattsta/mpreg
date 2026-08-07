@@ -67,6 +67,7 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T29 DistLab TTL | `strong.cft_residual_survives_pending_purge` | honesty (not residual GC) |
 | T29 Hypothesis TTL | `test_cft_residual_survives_pending_purge` | honesty |
 | T29 visible/backups | GCM snapshot `visible_count` / `backups_count` | support ops |
+| T30 orphan backup GC | `_prune_orphan_backups`, `strong.cft_orphan_backup_gc` | product fix |
 
 ## Non-claims (do not market)
 
@@ -95,5 +96,6 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t23_residuals.py tests/chaos/test_t24_residuals.py \
   tests/chaos/test_t25_residuals.py tests/chaos/test_t26_residuals.py \
   tests/chaos/test_t27_residuals.py tests/chaos/test_t28_residuals.py \
-  tests/chaos/test_t29_residuals.py tests/test_config_check_cli.py -q
+  tests/chaos/test_t29_residuals.py tests/chaos/test_t30_residuals.py \
+  tests/test_config_check_cli.py -q
 ```

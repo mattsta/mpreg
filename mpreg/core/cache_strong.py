@@ -267,6 +267,8 @@ class StrongLocalBackend:
             self._pending.pop(op_id, None)
             if pending.pre_commit_backup is not None:
                 self._backups[op_id] = pending.pre_commit_backup
+            # Drop backups for ops no longer live (lost-ABORT CFT leak path).
+            self._prune_orphan_backups()
             apply_cb = self.on_visible_apply
             if apply_cb is not None:
                 try:
@@ -295,6 +297,7 @@ class StrongLocalBackend:
                 did_uncommit = True
             else:
                 self._backups.pop(op_id, None)
+            self._prune_orphan_backups()
             if did_uncommit:
                 uncommit_cb = self.on_visible_uncommit
                 if uncommit_cb is not None:
@@ -303,6 +306,20 @@ class StrongLocalBackend:
                     except Exception:  # noqa: BLE001
                         pass
             return True
+
+    def _prune_orphan_backups(self) -> int:
+        """Remove pre-commit backups whose op_id is no longer live.
+
+        A backup is live only while its op is the visible ``_key_op`` value or
+        still pending. Lost ABORT after COMMIT otherwise retained backups
+        forever (CFT resource leak). Late ABORT for a non-visible op already
+        no-ops uncommit — pruning is equivalent and safe.
+        """
+        live: set[str] = set(self._key_op.values()) | set(self._pending.keys())
+        dead = [oid for oid in self._backups if oid not in live]
+        for oid in dead:
+            del self._backups[oid]
+        return len(dead)
 
     def get_visible(self, key: GlobalCacheKey) -> GlobalCacheEntry | None:
         return self._visible.get(self._key_str(key))
