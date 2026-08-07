@@ -704,3 +704,35 @@ async def test_distlab_live_doctor_strong_audit_e2e(
                     assert acaps.get("gset_epidemic") is True
                     assert acaps.get("siem") is False
                     assert acaps.get("bft") is False
+
+                # T26: coexistence prom scrape — both strong + audit cap gauges honest
+                async with session.get(f"{base}/metrics/prometheus") as resp:
+                    assert resp.status == 200
+                    text = await resp.text()
+                    assert "mpreg_strong_cap_get_quorum" in text
+                    assert "mpreg_strong_cap_delete_quorum" in text
+                    assert "mpreg_strong_cap_put_majority_commit" in text
+                    assert "mpreg_shared_audit_cap_gset_epidemic" in text
+                    assert "mpreg_shared_audit_cap_siem" in text
+                    assert "mpreg_shared_audit_cap_bft" in text
+                    for line in text.splitlines():
+                        if line.startswith("mpreg_strong_cap_get_quorum{"):
+                            assert line.rstrip().endswith(" 0")
+                        if line.startswith("mpreg_strong_cap_delete_quorum{"):
+                            assert line.rstrip().endswith(" 0")
+                        if line.startswith("mpreg_strong_cap_put_majority_commit{"):
+                            assert line.rstrip().endswith(" 1")
+                        if line.startswith("mpreg_shared_audit_cap_siem{"):
+                            assert line.rstrip().endswith(" 0")
+                        if line.startswith("mpreg_shared_audit_cap_bft{"):
+                            assert line.rstrip().endswith(" 0")
+                        if line.startswith("mpreg_shared_audit_cap_gset_epidemic{"):
+                            assert line.rstrip().endswith(" 1")
+                        if line.startswith(
+                            "mpreg_shared_audit_cap_infinite_retention{"
+                        ):
+                            assert line.rstrip().endswith(" 0")
+                        if line.startswith(
+                            "mpreg_shared_audit_cap_linearizable_cluster_ops{"
+                        ):
+                            assert line.rstrip().endswith(" 0")

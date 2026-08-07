@@ -309,3 +309,16 @@ T25 closes scrape + CI operator path:
 Plan: `docs/plans/DISTLAB_T25_LIVE_PROM_CAPS_CI_PRESET_PLAN.md`.
 
 Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM.
+
+## Phase 14 — Coexistence live prom caps + OPERATE polish (2026-08-06)
+
+T26 same-process STRONG+audit honesty scrape:
+
+* **Live doctor e2e:** after put + refuse + drain, Prometheus text includes
+  both `mpreg_strong_cap_*` and `mpreg_shared_audit_cap_*` with honest 0/1.
+* **OPERATE:** ci-core preset, monitor audit table, curriculum trio, OpenAPI
+  SharedAuditMetricsResponse pointer.
+
+Plan: `docs/plans/DISTLAB_T26_COEXISTENCE_PROM_CAPS_PLAN.md`.
+
+Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM.

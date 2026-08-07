@@ -236,15 +236,23 @@ Operator surfaces (monitoring HTTP — not WAN SLA):
 ```bash
 export MPREG_MONITORING_URL=http://127.0.0.1:<mon-port>
 uv run mpreg monitor strong --url "$MPREG_MONITORING_URL" --format table
+uv run mpreg monitor audit --url "$MPREG_MONITORING_URL" --format table
 uv run mpreg doctor --url "$MPREG_MONITORING_URL" --strong --audit
 uv run mpreg config-check mpreg/profiles/dev.toml --format json --explain
 uv run mpreg distlab suite --preset smoke
+uv run mpreg distlab suite --preset ci-core   # smoke ∪ strong-core ∪ audit-core
 uv run mpreg distlab suite --track T2 --limit 5
 uv run mpreg-example run cache_strong_quorum
+uv run mpreg-example run shared_audit_mesh
+uv run mpreg-example run ops_cli_tour
 ```
 
+Prom honesty gauges (process-local, not WAN SLO): `mpreg_strong_cap_*`,
+`mpreg_shared_audit_cap_*` (get/delete quorum and SIEM/BFT always 0).
+
 Runbook: `docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md`.
-OpenAPI: `GET $MPREG_MONITORING_URL/openapi.json` → `StrongMetricsResponse`.
+OpenAPI: `GET $MPREG_MONITORING_URL/openapi.json` → `StrongMetricsResponse` /
+`SharedAuditMetricsResponse`.
 
 ### Correlation
 

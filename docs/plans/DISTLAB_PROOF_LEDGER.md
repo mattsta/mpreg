@@ -51,6 +51,7 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T25 live prom strong caps | `test_distlab_live_strong_metrics_e2e` cap gauges 0/1 | support ops |
 | T25 live prom audit caps | `test_distlab_live_audit_metrics_e2e` cap gauges 0/1 | support ops |
 | T25 ci-core preset | `test_registry_run_suite_ci_core_preset`, `resolve_preset` | support |
+| T26 coexistence prom caps | `test_distlab_live_doctor_strong_audit_e2e` dual cap gauges | support ops |
 
 ## Non-claims (do not market)
 
@@ -76,5 +77,6 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t14_residuals.py::test_erg_t14_01_openapi_matches_route_table \
   tests/chaos/test_t21_residuals.py tests/chaos/test_t22_residuals.py \
   tests/chaos/test_t23_residuals.py tests/chaos/test_t24_residuals.py \
-  tests/chaos/test_t25_residuals.py tests/test_config_check_cli.py -q
+  tests/chaos/test_t25_residuals.py tests/chaos/test_t26_residuals.py \
+  tests/test_config_check_cli.py -q
 ```
