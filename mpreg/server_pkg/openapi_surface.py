@@ -538,7 +538,9 @@ def build_monitoring_openapi() -> dict[str, Any]:
                     "Not a WAN SLA. Process-local put counters + latency ring. "
                     "v1 put-only MVP: STRONG get/delete always refuse 1012; "
                     "capabilities.get_quorum and capabilities.delete_quorum are false. "
-                    "Prometheus: mpreg_strong_* including gets_refused/deletes_refused."
+                    "Prometheus: mpreg_strong_* including gets_refused/deletes_refused, "
+                    "mpreg_strong_abort_fail_peers (CFT residual candidate count; not "
+                    "auto-heal), and JSON residual_ops_hint (ops guidance string)."
                 ),
                 "tags": ["metrics", "strong"],
                 "responses": {

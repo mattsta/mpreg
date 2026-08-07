@@ -749,6 +749,20 @@ async def test_distlab_live_residual_ops_hint_enriched_e2e(
                     mbody.get("residual_ops_hint") or ""
                 )
 
+            # T79: prom residual-candidate gauge non-zero while residual present
+            async with session.get(f"{base}/metrics/prometheus") as presp:
+                assert presp.status == 200
+                ptext = await presp.text()
+                assert "mpreg_strong_abort_fail_peers" in ptext
+                saw = False
+                for line in ptext.splitlines():
+                    if line.startswith("mpreg_strong_abort_fail_peers{"):
+                        saw = True
+                        # value after labels
+                        val = line.rsplit(" ", 1)[-1]
+                        assert float(val) >= 1.0, line
+                assert saw, "missing mpreg_strong_abort_fail_peers sample"
+
         # Doctor path consumes the same scrape payload
         ok, detail = evaluate_strong_doctor_payload({"strong": body})
         assert ok is True

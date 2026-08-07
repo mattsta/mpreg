@@ -657,11 +657,14 @@ candidates; CLI template for `cache-strong-retry-abort` — not auto-heal; may
 fill ns/key from `recent_abort_fails`; helper
 `mpreg.core.cache_strong.format_residual_ops_hint`),
 `mpreg_strong_aborts_peer_*`, `mpreg_strong_visible` / `_backups` /
-`_backups_pruned_total`. DistLab guidance-only:
-`strong.cft_residual_ops_hint_enriched`. Non-claims: no WAN multi-region SLA,
-not BFT, not fsync disk durability, not STRONG get/delete MVP, not residual-free
-under lost ABORT, pending TTL ≠ residual GC, LWW heal ≠ reliable ABORT,
-`retry_abort` ≠ automatic heal, `residual_ops_hint` ≠ heal toggle.
+`_backups_pruned_total`, `mpreg_strong_abort_fail_peers` (count of
+`last_abort_fail_peers`; process-local CFT residual candidates). Info alert
+`MPREGStrongAbortFailPeersPresent` (5m) is ops guidance only. DistLab
+guidance-only: `strong.cft_residual_ops_hint_enriched`. Non-claims: no WAN
+multi-region SLA, not BFT, not fsync disk durability, not STRONG get/delete MVP,
+not residual-free under lost ABORT, pending TTL ≠ residual GC, LWW heal ≠
+reliable ABORT, `retry_abort` ≠ automatic heal, `residual_ops_hint` ≠ heal
+toggle, prom residual gauge/alert ≠ auto-heal.
 
 ```python
 # Flag off or unbound coordinator — fail closed, no local write

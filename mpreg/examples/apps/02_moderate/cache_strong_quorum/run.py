@@ -314,6 +314,33 @@ async def main() -> None:
                     "n1" in coord_cft.last_abort_fail_peers,
                     "last_abort_fail_peers missing n1",
                 )
+                # T78: residual_ops_hint on GCM status (ops guidance; not auto-heal)
+                gcm_hint = GlobalCacheManager(
+                    GlobalCacheConfiguration(
+                        enable_l2_persistent=False,
+                        enable_l3_distributed=False,
+                        enable_l4_federation=False,
+                        local_cluster_id="strong-lab-cft-hint",
+                    )
+                )
+                gcm_hint.attach_strong_coordinator(coord_cft)
+                try:
+                    st_hint = gcm_hint.strong_status()
+                    hop = st_hint.get("residual_ops_hint") or ""
+                    ensure(hop, f"expected residual_ops_hint: {st_hint!r}")
+                    ensure(
+                        "cache-strong-retry-abort" in hop,
+                        f"hint missing CLI: {hop}",
+                    )
+                    ensure("not auto-heal" in hop, f"hint missing honesty: {hop}")
+                    ensure("--peer n1" in hop, f"hint missing peer: {hop}")
+                    ensure(oid in hop or "--op-id" in hop, f"hint missing op: {hop}")
+                    step(
+                        "ERG: residual_ops_hint → cache-strong-retry-abort "
+                        "(ops-driven CFT; not auto-heal)"
+                    )
+                finally:
+                    await gcm_hint.shutdown()
                 # T37: retry_abort after drop_abort cleared (best-effort heal)
                 tr_cft.drop_abort.clear()
                 retry_out = await coord_cft.retry_abort(k_cft, oid)

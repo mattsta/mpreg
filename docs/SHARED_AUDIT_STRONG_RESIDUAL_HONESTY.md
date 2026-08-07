@@ -982,3 +982,39 @@ Still **not** claimed: alert is automatic heal; residual-free proof; WAN/BFT/SIE
 
 Plan: `docs/plans/DISTLAB_T75_PROM_RESIDUAL_ALERT_PLAN.md`.
 
+## Phase 64 — OpenAPI prom residual gauge (2026-08-06)
+
+T76: `/metrics/strong` OpenAPI description documents
+`mpreg_strong_abort_fail_peers` and `residual_ops_hint`.
+
+Still **not** claimed: OpenAPI is auto-heal; SIEM.
+
+Plan: `docs/plans/DISTLAB_T76_OPENAPI_PROM_RESIDUAL_PLAN.md`.
+
+## Phase 65 — Docs prom residual gauge (2026-08-06)
+
+T77: CACHING_SYSTEM + FEATURE_CATALOG document
+`mpreg_strong_abort_fail_peers` and `MPREGStrongAbortFailPeersPresent`.
+
+Still **not** claimed: docs are residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T77_DOCS_PROM_RESIDUAL_PLAN.md`.
+
+## Phase 66 — Curriculum residual_ops_hint assert (2026-08-06)
+
+T78: `cache_strong_quorum` after CFT residual asserts GCM `residual_ops_hint`
+includes CLI template + not auto-heal + peer.
+
+Still **not** claimed: curriculum is live auto-heal.
+
+Plan: `docs/plans/DISTLAB_T78_CURRICULUM_HINT_ASSERT_PLAN.md`.
+
+## Phase 67 — Live enriched hint + prom gauge (2026-08-06)
+
+T79: live enriched residual_ops_hint e2e asserts
+`mpreg_strong_abort_fail_peers >= 1` while residual present.
+
+Still **not** claimed: live seed is kernel drop; WAN; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T79_LIVE_ENRICHED_PROM_PLAN.md`.
+

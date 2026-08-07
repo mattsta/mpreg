@@ -147,6 +147,10 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T73 prom abort_fail_peers gauge | mpreg_strong_abort_fail_peers | support ops |
 | T74 Hypothesis doctor hint | residual peers⇒hint; dishonest caps fail | product |
 | T75 prom residual info alert | MPREGStrongAbortFailPeersPresent | support ops |
+| T76 OpenAPI prom residual | /metrics/strong desc abort_fail_peers gauge | support ops |
+| T77 docs prom residual | CACHING_SYSTEM + FEATURE_CATALOG gauge/alert | teach |
+| T78 curriculum residual_ops_hint | cache_strong_quorum GCM hint assert | teach |
+| T79 live enriched + prom gauge | enriched e2e abort_fail_peers >= 1 | support ops |
 
 ## Non-claims (do not market)
 
@@ -185,6 +189,10 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
   mesh, not automatic heal, not SIEM
 - `MPREGStrongAbortFailPeersPresent` info alert is ops guidance — not automatic
   heal, not residual-free proof, not WAN/BFT/SIEM
+- OpenAPI / docs prom residual gauge mentions are documentation — not auto-heal
+- Curriculum residual_ops_hint GCM assert is teachable guidance — not auto-heal
+- Live enriched e2e prom gauge >= 1 seeds coordinator fields — not kernel drop,
+  not WAN, not automatic heal
 
 ## Gate commands
 
@@ -222,6 +230,8 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t70_residuals.py tests/chaos/test_t71_residuals.py \
   tests/chaos/test_t72_residuals.py tests/chaos/test_t73_residuals.py \
   tests/chaos/test_t74_residuals.py tests/chaos/test_t75_residuals.py \
+  tests/chaos/test_t76_residuals.py tests/chaos/test_t77_residuals.py \
+  tests/chaos/test_t78_residuals.py tests/chaos/test_t79_residuals.py \
   tests/integration/test_cache_strong_live_mesh.py \
   tests/testing/test_distlab_live.py::test_distlab_live_strong_metrics_e2e \
   tests/test_config_check_cli.py tests/test_unified_client.py -q
