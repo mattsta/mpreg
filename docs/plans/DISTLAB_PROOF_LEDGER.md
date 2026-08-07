@@ -107,6 +107,8 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T44 live client RPC | `test_live_client_rpc_strong_retry_abort_clears_residual` | product |
 | T44 GCM counters | retry_abort_calls/cleared after live client RPC | support ops |
 | T44 self-target fix | retry_abort local.abort when peers includes self | product |
+| T45 honesty scan | product-doc banned residual-free/auto-heal phrases | honesty |
+| T45 ops_cli retry | cache-strong-retry-abort --help in ops_cli_tour | teach |
 
 ## Non-claims (do not market)
 
@@ -146,6 +148,7 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t39_residuals.py tests/chaos/test_t40_residuals.py \
   tests/chaos/test_t41_residuals.py tests/chaos/test_t42_residuals.py \
   tests/chaos/test_t43_residuals.py tests/chaos/test_t44_residuals.py \
+  tests/chaos/test_t45_residuals.py \
   tests/integration/test_cache_strong_live_mesh.py \
   tests/test_config_check_cli.py tests/test_unified_client.py -q
 ```

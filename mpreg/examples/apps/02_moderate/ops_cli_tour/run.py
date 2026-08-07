@@ -358,6 +358,34 @@ async def main() -> None:
                     ok("cache-put/get CLI plane")
 
                 with scenario(
+                    "client cache-strong-retry-abort CLI help (ops CFT)",
+                    "ops.cli_planes",
+                    "cache.strong",
+                ):
+                    # Help-only smoke: live residual clear is DistLab/T44 e2e
+                    help_r = await _invoke(
+                        ["client", "cache-strong-retry-abort", "--help"],
+                    )
+                    ensure(
+                        help_r.exit_code == 0,
+                        f"cache-strong-retry-abort --help failed: "
+                        f"{help_r.output[:300]}",
+                    )
+                    hout = help_r.output.lower()
+                    ensure(
+                        "--op-id" in hout or "op-id" in hout,
+                        f"missing --op-id: {help_r.output[:300]}",
+                    )
+                    ensure(
+                        "not automatic" in hout
+                        or "ops-driven" in hout
+                        or "cft" in hout
+                        or "best-effort" in hout,
+                        f"honesty missing in help: {help_r.output[:400]}",
+                    )
+                    ok("cache-strong-retry-abort CLI registered (ops-driven CFT)")
+
+                with scenario(
                     "client queue-send plane CLI",
                     "ops.cli_planes",
                     "queue.rpc_surface",

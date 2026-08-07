@@ -21,6 +21,8 @@ uv run mpreg-example run ops_cli_tour
 - `config-check` on dev profile
 - `examples list`
 - `client call` with `--locs`
+- `client cache-put` / `cache-get` plane CLI
+- `client cache-strong-retry-abort --help` (ops-driven CFT; not auto-heal)
 - `dns register` + `dns list`
 - `doctor` / discovery status against live URL
 - `monitor strong|audit --format table` capability honesty lines
@@ -30,6 +32,7 @@ uv run mpreg-example run ops_cli_tour
 
 - Not full interactive TTY UX.
 - DNS CLI flag names may evolve — app records friction if aliases needed.
+- CLI retry-abort help is not a live residual clear (see DistLab / live mesh e2e).
 
 ## Production exit ramp
 

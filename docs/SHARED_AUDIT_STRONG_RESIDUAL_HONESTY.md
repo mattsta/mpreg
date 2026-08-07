@@ -609,3 +609,17 @@ Still **not** claimed: automatic heal; residual-free under lost ABORT;
 WAN/Elle/BFT/fsync; kernel partition / kill -9 durability.
 
 Plan: `docs/plans/DISTLAB_T44_LIVE_CLIENT_RPC_RETRY_PLAN.md`.
+
+## Phase 33 — Product honesty scan + CLI curriculum (2026-08-06)
+
+T45 locks product-facing docs against reintroducing unqualified residual-free /
+auto-heal marketing, and teaches the T43 CLI in `ops_cli_tour`:
+
+* Residual scanner on client guide, CACHING_SYSTEM, runbook, design, curriculum
+* Banned phrases: `residual-free failures`, `automatic residual heal`, …
+* `ops_cli_tour`: `mpreg client cache-strong-retry-abort --help` honesty
+
+Still **not** claimed: scanner is full-corpus NLP; CLI help is live residual
+clear; automatic heal; residual-free under lost ABORT; WAN/Elle/BFT/fsync.
+
+Plan: `docs/plans/DISTLAB_T45_HONESTY_SCAN_CLI_CURRICULUM_PLAN.md`.
