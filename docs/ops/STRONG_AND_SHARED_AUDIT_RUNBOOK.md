@@ -50,6 +50,9 @@ Prometheus series (process-local; **not** WAN SLO):
 | `mpreg_strong_deletes_refused_total` | Delete refused — STRONG delete not implemented (1012) |
 | `mpreg_strong_pending` | Local pending prepare count |
 | `mpreg_strong_put_latency_p50_ms` / `_p99_ms` | Lab latency ring |
+| `mpreg_strong_cap_put_majority_commit` | 1 when put path available |
+| `mpreg_strong_cap_get_quorum` / `_delete_quorum` | **Always 0** in v1 |
+| `mpreg_strong_cap_local_ryw_after_put` | 1 when RYW via EVENTUAL |
 
 ### Capabilities (always honest in v1)
 
@@ -114,7 +117,9 @@ HTTP:
 
 - `GET /metrics/shared-audit` — store size, counters, replicator health, **capabilities**
 - `GET /mgmt/v1/audit?scope=cluster` — G-Set snapshot
-- Prometheus: `mpreg_shared_audit_*`
+- Prometheus: `mpreg_shared_audit_*` plus capability gauges
+  (`mpreg_shared_audit_cap_gset_epidemic`, `_siem`, `_bft`,
+  `_infinite_retention`, `_linearizable_cluster_ops` — dishonest caps always 0)
 - OpenAPI: `SharedAuditMetricsResponse` (capability enums false for SIEM/BFT/…)
 
 ```bash

@@ -513,6 +513,66 @@ async def main() -> None:
                     ok("admin drain→audit→clear CLI path")
 
                 with scenario(
+                    "monitor strong/audit table + doctor honesty",
+                    "ops.shared_audit",
+                    "cache.strong",
+                    "mon.metrics_snapshot",
+                ):
+                    mon_url = f"http://127.0.0.1:{mon_port}"
+                    env = {"MPREG_MONITORING_URL": mon_url}
+                    strong_m = await _invoke(
+                        ["monitor", "strong", "--format", "table"],
+                        env=env,
+                    )
+                    ensure(
+                        strong_m.exit_code == 0,
+                        f"monitor strong failed: {strong_m.output[:400]}",
+                    )
+                    sout = strong_m.output.lower()
+                    ensure(
+                        "get_quorum" in sout or "strong" in sout,
+                        f"strong table missing caps: {strong_m.output[:300]}",
+                    )
+                    ensure(
+                        "v1.1" in sout or "not wan" in sout or "get_quorum=false" in sout,
+                        f"strong honesty missing: {strong_m.output[:300]}",
+                    )
+                    audit_m = await _invoke(
+                        ["monitor", "audit", "--format", "table"],
+                        env=env,
+                    )
+                    ensure(
+                        audit_m.exit_code == 0,
+                        f"monitor audit failed: {audit_m.output[:400]}",
+                    )
+                    aout = audit_m.output.lower()
+                    ensure(
+                        "siem" in aout or "shared audit" in aout or "gset" in aout,
+                        f"audit table missing caps: {audit_m.output[:300]}",
+                    )
+                    ensure(
+                        "not siem" in aout or "bft" in aout or "siem=false" in aout,
+                        f"audit honesty missing: {audit_m.output[:300]}",
+                    )
+                    doc = await _invoke(
+                        ["doctor", "--url", mon_url, "--strong", "--audit"],
+                        env=env,
+                    )
+                    # doctor may WARN on optional planes; exit 0 preferred
+                    ensure(
+                        doc.exit_code in (0, 1),
+                        f"doctor crash: {doc.output[:500]}",
+                    )
+                    dout = doc.output.lower()
+                    ensure(
+                        "strong" in dout or "shared_audit" in dout or "metrics" in dout,
+                        f"doctor missing strong/audit: {doc.output[:400]}",
+                    )
+                    ok(
+                        f"monitor strong/audit table + doctor exit={doc.exit_code}"
+                    )
+
+                with scenario(
                     "ops CLI latency probe annotations",
                     "ops.cli_call",
                     "mon.metrics_snapshot",

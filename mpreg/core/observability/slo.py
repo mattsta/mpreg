@@ -92,4 +92,58 @@ def prometheus_alert_rules_yaml() -> str:
           severity: warning
         annotations:
           summary: "Gossip pending queue dropping messages (storm loss)"
+
+  # STRONG / shared-audit lab signals — process-local; NOT WAN multi-region SLOs.
+  # Keep in sync with mpreg/ops/prometheus_alerts.yml
+  - name: mpreg_strong_shared_audit
+    rules:
+      - alert: MPREGStrongPendingElevated
+        expr: mpreg_strong_pending > 64
+        for: 5m
+        labels:
+          severity: warning
+          scope: lab_process_local
+        annotations:
+          summary: "STRONG pending prepares elevated (process-local)"
+          description: "Lab/process signal only — not a WAN multi-region SLA."
+      - alert: MPREGSharedAuditPublishDrops
+        expr: increase(mpreg_shared_audit_publish_dropped_total[10m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+          scope: lab_process_local
+        annotations:
+          summary: "Shared audit publish drops (bounded G-Set, not SIEM)"
+      - alert: MPREGStrongCapGetQuorumClaimed
+        expr: mpreg_strong_cap_get_quorum > 0
+        for: 0m
+        labels:
+          severity: critical
+          scope: honesty
+        annotations:
+          summary: "STRONG dishonestly claims get_quorum (must be 0 in v1)"
+      - alert: MPREGStrongCapDeleteQuorumClaimed
+        expr: mpreg_strong_cap_delete_quorum > 0
+        for: 0m
+        labels:
+          severity: critical
+          scope: honesty
+        annotations:
+          summary: "STRONG dishonestly claims delete_quorum (must be 0 in v1)"
+      - alert: MPREGSharedAuditCapSiemClaimed
+        expr: mpreg_shared_audit_cap_siem > 0
+        for: 0m
+        labels:
+          severity: critical
+          scope: honesty
+        annotations:
+          summary: "Shared audit dishonestly claims SIEM capability"
+      - alert: MPREGSharedAuditCapBftClaimed
+        expr: mpreg_shared_audit_cap_bft > 0
+        for: 0m
+        labels:
+          severity: critical
+          scope: honesty
+        annotations:
+          summary: "Shared audit dishonestly claims BFT capability"
 """

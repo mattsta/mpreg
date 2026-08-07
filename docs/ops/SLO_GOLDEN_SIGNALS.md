@@ -84,6 +84,12 @@ uv run mpreg doctor --url "$MPREG_MONITORING_URL" --strong --audit
 | Audit store | `mpreg_shared_audit_store_size` | Bounded G-Set |
 | Audit drops | `mpreg_shared_audit_publish_dropped_total` | degraded_drops |
 | Audit caps | `/metrics/shared-audit` `capabilities.*` | siem/bft/… always false |
+| Cap gauges | `mpreg_strong_cap_*` / `mpreg_shared_audit_cap_*` | 0/1 honesty ads |
+
+Honesty fail-closed alerts (packaged `mpreg/ops/prometheus_alerts.yml` group
+`mpreg_strong_shared_audit`): fire if `mpreg_strong_cap_get_quorum` or
+`mpreg_shared_audit_cap_siem` (etc.) ever scrape **> 0**. Lab pending/drop
+alerts are process-local — **not** WAN SLOs.
 
 Do **not** page on STRONG p99 as a multi-region contract. See
 `docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md`.

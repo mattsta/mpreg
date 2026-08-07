@@ -2594,6 +2594,34 @@ class FederationMonitoringSystem:
                             f"mpreg_strong_put_latency_p50_ms{{{labels}}} "
                             f"{float(lat.get('p50_ms', 0.0) or 0.0):.3f}"
                         )
+                    # Capability honesty gauges (v1 put-only MVP; always 0 for get/delete quorum)
+                    caps = strong.get("capabilities") or {}
+                    cap_specs = (
+                        (
+                            "mpreg_strong_cap_put_majority_commit",
+                            "1 if STRONG put majority-commit is available.",
+                            bool(caps.get("put_majority_commit")),
+                        ),
+                        (
+                            "mpreg_strong_cap_get_quorum",
+                            "Always 0 in v1 (STRONG get quorum is v1.1 non-goal).",
+                            bool(caps.get("get_quorum")),
+                        ),
+                        (
+                            "mpreg_strong_cap_delete_quorum",
+                            "Always 0 in v1 (STRONG delete quorum is v1.1 non-goal).",
+                            bool(caps.get("delete_quorum")),
+                        ),
+                        (
+                            "mpreg_strong_cap_local_ryw_after_put",
+                            "1 if local RYW via EVENTUAL/WEAK get after STRONG put.",
+                            bool(caps.get("local_ryw_after_put", True)),
+                        ),
+                    )
+                    for mname, help_s, val in cap_specs:
+                        lines.append(f"# HELP {mname} {help_s}")
+                        lines.append(f"# TYPE {mname} gauge")
+                        lines.append(f"{mname}{{{labels}}} {1 if val else 0}")
             except Exception as exc:  # noqa: BLE001
                 logger.debug("Prometheus strong metrics unavailable: {}", exc)
 
@@ -2640,6 +2668,39 @@ class FederationMonitoringSystem:
                                 f"mpreg_shared_audit_{cname}_total{{{labels}}} "
                                 f"{int(counters.get(cname, 0) or 0)}"
                             )
+                    # Capability honesty gauges (never SIEM/BFT/infinite retention)
+                    acaps = audit.get("capabilities") or {}
+                    acap_specs = (
+                        (
+                            "mpreg_shared_audit_cap_gset_epidemic",
+                            "1 if shared-audit G-Set epidemic is active.",
+                            bool(acaps.get("gset_epidemic")),
+                        ),
+                        (
+                            "mpreg_shared_audit_cap_siem",
+                            "Always 0 — shared audit is not a SIEM.",
+                            bool(acaps.get("siem")),
+                        ),
+                        (
+                            "mpreg_shared_audit_cap_bft",
+                            "Always 0 — CFT gossip only, not BFT.",
+                            bool(acaps.get("bft")),
+                        ),
+                        (
+                            "mpreg_shared_audit_cap_infinite_retention",
+                            "Always 0 — bounded watermark window.",
+                            bool(acaps.get("infinite_retention")),
+                        ),
+                        (
+                            "mpreg_shared_audit_cap_linearizable_cluster_ops",
+                            "Always 0 — audit visibility is not linearizable ops.",
+                            bool(acaps.get("linearizable_cluster_ops")),
+                        ),
+                    )
+                    for mname, help_s, val in acap_specs:
+                        lines.append(f"# HELP {mname} {help_s}")
+                        lines.append(f"# TYPE {mname} gauge")
+                        lines.append(f"{mname}{{{labels}}} {1 if val else 0}")
             except Exception as exc:  # noqa: BLE001
                 logger.debug("Prometheus shared audit metrics unavailable: {}", exc)
 

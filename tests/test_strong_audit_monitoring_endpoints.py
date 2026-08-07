@@ -98,6 +98,25 @@ async def test_strong_and_audit_monitoring_routes(
                 assert "mpreg_strong_gets_refused_total" in text
                 assert "mpreg_strong_deletes_refused_total" in text
                 assert "mpreg_shared_audit_enabled" in text
+                # T24: capability honesty gauges (0 for get/delete quorum + SIEM/BFT)
+                assert "mpreg_strong_cap_get_quorum" in text
+                assert "mpreg_strong_cap_delete_quorum" in text
+                assert "mpreg_strong_cap_put_majority_commit" in text
+                assert "mpreg_shared_audit_cap_siem" in text
+                assert "mpreg_shared_audit_cap_bft" in text
+                assert "mpreg_shared_audit_cap_gset_epidemic" in text
+                # Values must be 0 for dishonest-if-true flags when disabled
+                assert "mpreg_strong_cap_get_quorum{" in text
+                # Parse simple 0 samples for honesty gauges
+                for line in text.splitlines():
+                    if line.startswith("mpreg_strong_cap_get_quorum{"):
+                        assert line.rstrip().endswith(" 0")
+                    if line.startswith("mpreg_strong_cap_delete_quorum{"):
+                        assert line.rstrip().endswith(" 0")
+                    if line.startswith("mpreg_shared_audit_cap_siem{"):
+                        assert line.rstrip().endswith(" 0")
+                    if line.startswith("mpreg_shared_audit_cap_bft{"):
+                        assert line.rstrip().endswith(" 0")
 
             async with session.get(f"{base}/endpoints") as resp:
                 assert resp.status == 200

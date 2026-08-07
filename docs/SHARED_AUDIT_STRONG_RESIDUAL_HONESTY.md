@@ -280,3 +280,19 @@ T23 closes the honesty loop across config → live HTTP → doctor:
 Plan: `docs/plans/DISTLAB_T23_LIVE_AUDIT_CAPS_CONFIG_PLAN.md`.
 
 Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM.
+
+## Phase 12 — Prometheus capability gauges + ops CLI honesty (2026-08-06)
+
+T24 scrapable honesty + operator teaching:
+
+* **Prom:** `mpreg_strong_cap_*` and `mpreg_shared_audit_cap_*` 0/1 gauges;
+  get/delete quorum and SIEM/BFT/… always 0.
+* **Alerts:** `mpreg/ops/prometheus_alerts.yml` group `mpreg_strong_shared_audit`
+  (pending/drops lab warnings + honesty fail-closed criticals); mirrored in
+  `prometheus_alert_rules_yaml()`.
+* **Curriculum:** `ops_cli_tour` teaches `monitor strong|audit --format table`
+  and `doctor --strong --audit`.
+
+Plan: `docs/plans/DISTLAB_T24_PROM_CAPS_OPS_CLI_PLAN.md`.
+
+Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM.

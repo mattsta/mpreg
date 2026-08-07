@@ -44,3 +44,67 @@ groups:
           severity: warning
         annotations:
           summary: "Gossip pending queue dropping messages (storm loss)"
+
+  # STRONG / shared-audit lab signals — process-local; NOT WAN multi-region SLOs.
+  # Capability gauges (mpreg_*_cap_*) are honesty advertisements (0/1), not alerts.
+  - name: mpreg_strong_shared_audit
+    rules:
+      - alert: MPREGStrongPendingElevated
+        expr: mpreg_strong_pending > 64
+        for: 5m
+        labels:
+          severity: warning
+          scope: lab_process_local
+        annotations:
+          summary: "STRONG pending prepares elevated (process-local)"
+          description: >-
+            pending={{ $value }} on {{ $labels.cluster_id }}. Lab/process signal only —
+            not a WAN multi-region SLA. See docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md.
+      - alert: MPREGSharedAuditPublishDrops
+        expr: increase(mpreg_shared_audit_publish_dropped_total[10m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+          scope: lab_process_local
+        annotations:
+          summary: "Shared audit publish drops (bounded G-Set, not SIEM)"
+          description: >-
+            publish_dropped increased on {{ $labels.cluster_id }}. Not a SIEM backlog
+            alert; epidemic outbound pressure only. Not BFT / not infinite retention.
+      - alert: MPREGStrongCapGetQuorumClaimed
+        # Fail-closed if a scrape ever advertises get quorum (v1 must be 0).
+        expr: mpreg_strong_cap_get_quorum > 0
+        for: 0m
+        labels:
+          severity: critical
+          scope: honesty
+        annotations:
+          summary: "STRONG dishonestly claims get_quorum (must be 0 in v1)"
+          description: "v1 put-only MVP — get quorum is v1.1. Investigate metrics builder."
+      - alert: MPREGStrongCapDeleteQuorumClaimed
+        expr: mpreg_strong_cap_delete_quorum > 0
+        for: 0m
+        labels:
+          severity: critical
+          scope: honesty
+        annotations:
+          summary: "STRONG dishonestly claims delete_quorum (must be 0 in v1)"
+          description: "v1 put-only MVP — delete quorum is v1.1. Investigate metrics builder."
+      - alert: MPREGSharedAuditCapSiemClaimed
+        expr: mpreg_shared_audit_cap_siem > 0
+        for: 0m
+        labels:
+          severity: critical
+          scope: honesty
+        annotations:
+          summary: "Shared audit dishonestly claims SIEM capability"
+          description: "Shared audit is a bounded G-Set epidemic — never a SIEM."
+      - alert: MPREGSharedAuditCapBftClaimed
+        expr: mpreg_shared_audit_cap_bft > 0
+        for: 0m
+        labels:
+          severity: critical
+          scope: honesty
+        annotations:
+          summary: "Shared audit dishonestly claims BFT capability"
+          description: "CFT gossip only — not BFT."

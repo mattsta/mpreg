@@ -23,6 +23,8 @@ uv run mpreg-example run ops_cli_tour
 - `client call` with `--locs`
 - `dns register` + `dns list`
 - `doctor` / discovery status against live URL
+- `monitor strong|audit --format table` capability honesty lines
+- `doctor --strong --audit` against monitoring HTTP
 
 ## Non-claims
 
