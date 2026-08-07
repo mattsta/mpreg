@@ -187,6 +187,10 @@ encapsulation:
       gossip_eligible=false never leaves origin. Live multi-origin drain + late
       joiner backfill converge over real fabric gossip (same-host mesh).
       In-process partition/heal + duplicate DELTA + outbound drop counters proven.
+      Ops honesty: /metrics/shared-audit and config-check advertise capabilities
+      with gset_epidemic when enabled and always-false siem/bft/infinite_retention/
+      linearizable_cluster_ops/multi_tenant_beyond_cluster_id; doctor fails closed
+      on dishonest claims. Not SIEM, not BFT, not infinite retention.
     proof: [L1, L2, L4]
     tests:
       - tests/server_pkg/test_shared_audit_store.py

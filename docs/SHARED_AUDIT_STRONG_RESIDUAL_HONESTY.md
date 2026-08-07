@@ -265,3 +265,18 @@ T22 ops contract parity with STRONG honesty:
 Plan: `docs/plans/DISTLAB_T22_AUDIT_CAPABILITY_HONESTY_PLAN.md`.
 
 Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM.
+
+## Phase 11 — Live audit caps e2e + config-check parity (2026-08-06)
+
+T23 closes the honesty loop across config → live HTTP → doctor:
+
+* **config-check:** `shared_audit.capabilities` mirrors metrics (gset when on;
+  siem/bft/infinite_retention/linearizable_cluster_ops/
+  multi_tenant_beyond_cluster_id always false).
+* **Live e2e:** `/metrics/shared-audit` after multi-origin drain asserts
+  capability flags; doctor e2e runs `evaluate_shared_audit_doctor_payload`.
+* **claims.yaml:** INV-SHARED-AUDIT-01 documents ops honesty contract.
+
+Plan: `docs/plans/DISTLAB_T23_LIVE_AUDIT_CAPS_CONFIG_PLAN.md`.
+
+Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM.

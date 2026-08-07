@@ -85,7 +85,9 @@ Doctor fails closed if metrics claim `get_quorum` or `delete_quorum`.
 ```bash
 uv run mpreg config-check path/to.toml --format json --explain
 # groups.strong_cache.capabilities.get_quorum == false
+# groups.shared_audit.capabilities.siem == false (and bft / infinite_retention / …)
 # warnings when cache_strong_enabled without mon/cache
+# warnings when mgmt_audit_shared_enabled without path/mon
 ```
 
 ## Shared audit (G-Set epidemic)

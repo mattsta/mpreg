@@ -42,6 +42,9 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T22 OpenAPI audit caps | `test_t22_openapi_shared_audit_schema_capabilities` | support ops |
 | T22 curriculum audit | `shared_audit_mesh` metrics capabilities scenario | INV-SHARED-AUDIT-01 teach |
 | T22 audit-core preset | `test_registry_run_suite_audit_core_preset` | support |
+| T23 config-check audit caps | `test_t23_config_check_shared_audit_capabilities_parity` | support ops |
+| T23 live audit caps | `test_distlab_live_audit_metrics_e2e` capabilities asserts | support ops |
+| T23 live doctor audit eval | `test_distlab_live_doctor_strong_audit_e2e` evaluate_shared_audit | support ops |
 
 ## Non-claims (do not market)
 
@@ -65,5 +68,6 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/test_strong_audit_monitoring_endpoints.py \
   tests/test_cli_strong_audit_monitor.py \
   tests/chaos/test_t14_residuals.py::test_erg_t14_01_openapi_matches_route_table \
-  tests/chaos/test_t21_residuals.py tests/chaos/test_t22_residuals.py -q
+  tests/chaos/test_t21_residuals.py tests/chaos/test_t22_residuals.py \
+  tests/chaos/test_t23_residuals.py tests/test_config_check_cli.py -q
 ```

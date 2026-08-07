@@ -2038,6 +2038,17 @@ def config_check(
             "reconcile_interval_s": getattr(
                 settings, "mgmt_audit_shared_reconcile_interval_s", None
             ),
+            # Honesty: v1 G-Set epidemic (not SIEM/BFT/infinite retention)
+            "capabilities": {
+                "gset_epidemic": bool(
+                    getattr(settings, "mgmt_audit_shared_enabled", False)
+                ),
+                "siem": False,
+                "bft": False,
+                "infinite_retention": False,
+                "linearizable_cluster_ops": False,
+                "multi_tenant_beyond_cluster_id": False,
+            },
         },
         "persistence": (
             {
@@ -2233,7 +2244,9 @@ def config_check(
         "shared_audit": (
             "Shared mgmt audit G-Set epidemic (mgmt_audit_shared_enabled). "
             "Requires mgmt_audit_path for durable local JSONL. Bounded watermark "
-            "window — not SIEM, not BFT. Scrape /metrics/shared-audit when mon on."
+            "window — not SIEM, not BFT, not infinite retention, not linearizable "
+            "cluster ops. capabilities.siem/bft/… always false. "
+            "Scrape /metrics/shared-audit when mon on."
         ),
         "persistence": (
             "Unified persistence (memory|sqlite today). remote SQL/other stores backends "

@@ -532,6 +532,14 @@ async def test_distlab_live_audit_metrics_e2e(
                     counters = audit.get("counters") or {}
                     # At least some epidemic activity after multi-origin drain
                     assert isinstance(counters, dict)
+                    # T23: live capabilities honesty (parity with metrics builder)
+                    caps = audit.get("capabilities") or {}
+                    assert caps.get("gset_epidemic") is True
+                    assert caps.get("siem") is False
+                    assert caps.get("bft") is False
+                    assert caps.get("infinite_retention") is False
+                    assert caps.get("linearizable_cluster_ops") is False
+                    assert caps.get("multi_tenant_beyond_cluster_id") is False
 
                 async with session.get(f"{base}/metrics/prometheus") as resp:
                     assert resp.status == 200
@@ -645,6 +653,16 @@ async def test_distlab_live_doctor_strong_audit_e2e(
                 async with session.get(f"{base}/metrics/shared-audit") as resp:
                     assert resp.status == 200
                     data = await resp.json()
+                    from mpreg.cli.main import evaluate_shared_audit_doctor_payload
+
+                    aok, adetail = evaluate_shared_audit_doctor_payload(data)
+                    assert aok is True, adetail
+                    assert "siem=False" in adetail
+                    assert "gset=True" in adetail
                     audit = data.get("shared_audit") or {}
                     assert audit.get("enabled_flag") is True
                     assert audit.get("status") not in {"misconfigured", "critical"}
+                    acaps = audit.get("capabilities") or {}
+                    assert acaps.get("gset_epidemic") is True
+                    assert acaps.get("siem") is False
+                    assert acaps.get("bft") is False

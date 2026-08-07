@@ -104,6 +104,13 @@ monitoring_enabled = false
     assert result.exit_code in (0, 2)
     data = json.loads(result.output)
     assert data["groups"]["shared_audit"]["enabled"] is True
+    caps = data["groups"]["shared_audit"]["capabilities"]
+    assert caps["gset_epidemic"] is True
+    assert caps["siem"] is False
+    assert caps["bft"] is False
+    assert caps["infinite_retention"] is False
+    assert caps["linearizable_cluster_ops"] is False
+    assert caps["multi_tenant_beyond_cluster_id"] is False
     warns = " ".join(data["warnings"]).lower()
     assert "mgmt_audit_path" in warns or "jsonl" in warns
     assert "siem" in warns or "g-set" in warns or "bft" in warns
