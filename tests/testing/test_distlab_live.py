@@ -512,6 +512,27 @@ async def test_distlab_live_strong_metrics_e2e(
                 assert "backups_count" in body
                 assert "backups_pruned_total" in body
                 assert int(body.get("visible_count") or 0) >= 1  # successful put
+                # T39/T40: retry_abort counters present (0 until ops call)
+                assert "retry_abort_calls" in counters or "retry_abort_calls" in body
+                assert int(
+                    counters.get("retry_abort_calls", body.get("retry_abort_calls", 0))
+                    or 0
+                ) >= 0
+                assert "last_abort_fail_peers" in body
+            # T40: ops-driven retry_abort noop (no residual peers) still increments
+            retry_out = await cm.strong_retry_abort(
+                key, op_id="live-noop-retry", peers=[]
+            )
+            assert retry_out.get("cleared") is not False or retry_out.get("attempts") == 0
+            st2 = cm.strong_status()
+            assert int(st2.get("retry_abort_calls") or 0) >= 1
+            async with session.get(f"{base}/metrics/strong") as resp:
+                data = await resp.json()
+                body2 = data.get("strong") or {}
+                c2 = body2.get("counters") or {}
+                assert int(
+                    c2.get("retry_abort_calls", body2.get("retry_abort_calls", 0)) or 0
+                ) >= 1
             async with session.get(f"{base}/metrics/prometheus") as resp:
                 text = await resp.text()
                 assert "mpreg_strong_gets_refused_total" in text
@@ -525,6 +546,10 @@ async def test_distlab_live_strong_metrics_e2e(
                 assert "mpreg_strong_visible" in text
                 assert "mpreg_strong_backups" in text
                 assert "mpreg_strong_backups_pruned_total" in text
+                # T39/T40: retry_abort prom series
+                assert "mpreg_strong_retry_abort_calls_total" in text
+                assert "mpreg_strong_retry_abort_cleared_total" in text
+                assert "mpreg_strong_retry_abort_still_fail_total" in text
                 # Caps remain honest after refuse path
                 for line in text.splitlines():
                     if line.startswith("mpreg_strong_cap_get_quorum{"):

@@ -257,10 +257,12 @@ partial-commit+lost-abort). Pending TTL is **not** residual GC
 `strong.cft_partial_commit_lost_abort`, `strong.cft_residual_healed_by_lww`,
 `strong.cft_residual_survives_pending_purge`, `strong.cft_orphan_backup_gc`,
 `strong.cft_retry_abort_clears_residual` (in strong-core / ci-core). Monitor table shows `cft=` / `abort_be=` /
-`abort_fail=` / `abort_fail_peers=` / `ttl_gc=` / `visible=` / `backups=` /
-`pruned=`. `abort_fail_peers` lists CFT residual candidates (ops only).
-Prom also exposes `mpreg_strong_visible`, `mpreg_strong_backups`,
-`mpreg_strong_backups_pruned_total` (process-local; not residual-free proof).
+`abort_fail=` / `abort_fail_peers=` / `retry_abort=` / `retry_cleared=` /
+`ttl_gc=` / `visible=` / `backups=` / `pruned=`. `abort_fail_peers` lists CFT
+residual candidates (ops only). Prom also exposes `mpreg_strong_visible`,
+`mpreg_strong_backups`, `mpreg_strong_backups_pruned_total`,
+`mpreg_strong_retry_abort_{calls,cleared,still_fail}_total` (process-local;
+not residual-free proof; retry is ops-driven not auto-heal).
 
 Runbook: `docs/ops/STRONG_AND_SHARED_AUDIT_RUNBOOK.md`.
 OpenAPI: `GET $MPREG_MONITORING_URL/openapi.json` → `StrongMetricsResponse` /

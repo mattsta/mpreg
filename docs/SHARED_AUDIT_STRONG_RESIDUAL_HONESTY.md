@@ -532,3 +532,17 @@ Still **not** claimed: automatic heal; residual-free under lost ABORT;
 WAN/Elle/BFT/fsync.
 
 Plan: `docs/plans/DISTLAB_T39_RETRY_ABORT_OPS_SURFACE_PLAN.md`.
+
+## Phase 28 — Live e2e retry_abort counters (2026-08-06)
+
+T40 extends live same-host STRONG metrics e2e:
+
+* `/metrics/strong` includes `retry_abort_*` + `last_abort_fail_peers`
+* Live `strong_retry_abort` noop increments `retry_abort_calls`
+* Prometheus scrape includes `mpreg_strong_retry_abort_*_total`
+* OPERATE curriculum documents retry prom series + monitor fields
+
+Still **not** claimed: WAN residual injection; automatic heal; residual-free
+under lost ABORT; Elle/BFT/fsync.
+
+Plan: `docs/plans/DISTLAB_T40_LIVE_RETRY_ABORT_E2E_PLAN.md`.
