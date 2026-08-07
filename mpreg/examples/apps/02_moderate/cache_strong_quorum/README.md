@@ -16,9 +16,12 @@ CFT limit (not residual-free; not BFT).
 - Insufficient eligible peers → `1015 INSUFFICIENT_QUORUM` (residual-free).
 - **CFT:** partial COMMIT + lost ABORT may leave peer L1; pending TTL does **not**
   clear it; `quorum_info.abort_fail_peers` lists residual candidates; after
-  recovery `retry_abort` can clear residual when ABORT lands (ops-driven, not
-  automatic heal); later successful put can LWW-heal (not reliable ABORT).
-- Caps: `cft_only`, `abort_best_effort`, `pending_ttl_clears_residual_l1=false`.
+  recovery `retry_abort` / GCM `strong_retry_abort` / client RPC
+  `MPREGClient.cache_strong_retry_abort` (`mpreg.cache.strong_retry_abort`) can
+  clear residual when ABORT lands (ops-driven, not automatic heal); later
+  successful put can LWW-heal (not reliable ABORT).
+- Caps: `cft_only`, `abort_best_effort`, `pending_ttl_clears_residual_l1=false`,
+  `retry_abort_ops_driven=true`.
 - This app teaches the same coordinator core in-process
   (`InProcessStrongTransport`); production uses `ServerCacheTransport` RR.
 
@@ -45,8 +48,9 @@ uv run mpreg-example run cache_strong_quorum
 | Surface     | API                                                      |
 | ----------- | -------------------------------------------------------- |
 | Enum        | `ConsistencyLevel.STRONG` on `CacheOptions`              |
-| Coordinator | `StrongPutCoordinator.strong_put(...)`                   |
-| GCM         | `GlobalCacheManager.attach_strong_coordinator` / `put`   |
+| Coordinator | `StrongPutCoordinator.strong_put` / `retry_abort`        |
+| GCM         | `attach_strong_coordinator` / `put` / `strong_retry_abort` |
+| Client RPC  | `MPREGClient.cache_strong_retry_abort` → `mpreg.cache.strong_retry_abort` |
 | Codes       | `1012`, `1015`–`1018` (`MpregErrorCode`)                 |
 | Settings    | `cache_strong_enabled`, `cache_strong_min_replicas=3`, … |
 | Wire        | `CacheMessageKind.STRONG_*`                              |
@@ -60,6 +64,7 @@ uv run mpreg-example run cache_strong_quorum
 - Not residual-free under partial peer COMMIT apply + lost ABORT (CFT limit).
 - Pending TTL purge is **not** residual L1 GC after COMMIT apply.
 - LWW heal of a CFT residual is **not** reliable ABORT delivery.
+- `retry_abort` / client RPC is ops-driven CFT best-effort — not automatic heal.
 - `location_consistency.ConsistencyLevel.STRONG` remains a separate fail-closed plane.
 
 ## Production exit ramp

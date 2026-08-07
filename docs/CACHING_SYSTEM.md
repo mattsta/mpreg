@@ -640,9 +640,11 @@ in `strong-core` / `ci-core` (including `strong.cft_retry_abort_clears_residual`
 *candidates*). Coordinator / `strong_status` expose `last_abort_fail_peers` and
 bounded `recent_abort_fails`. After network recovery, call
 `GlobalCacheManager.strong_retry_abort(key, op_id, peers=…)` (or
-`StrongPutCoordinator.retry_abort`) to re-deliver ABORT — **ops-driven**, not
-automatic background heal. LWW success put remains an alternate overwrite path.
-Still not residual-free while ABORT is lost.
+`StrongPutCoordinator.retry_abort`, or client RPC
+`MPREGClient.cache_strong_retry_abort` / `mpreg.cache.strong_retry_abort`) to
+re-deliver ABORT — **ops-driven**, not automatic background heal. LWW success
+put remains an alternate overwrite path. Still not residual-free while ABORT
+is lost.
 
 Ops: `mpreg monitor strong` (`abort_fail_peers=`), `mpreg_strong_aborts_peer_*`,
 `mpreg_strong_visible` / `_backups` / `_backups_pruned_total`. Non-claims: no WAN

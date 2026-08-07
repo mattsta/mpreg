@@ -561,3 +561,21 @@ Still **not** claimed: automatic heal; residual-free under lost ABORT;
 WAN/Elle/BFT/fsync.
 
 Plan: `docs/plans/DISTLAB_T41_RETRY_OPS_DRIVEN_CAP_PLAN.md`.
+
+## Phase 30 — Client/RPC strong_retry_abort (2026-08-06)
+
+T42 exposes ops-driven retry on the platform RPC + client façade:
+
+* `PlatformRpc.CACHE_STRONG_RETRY_ABORT` (`mpreg.cache.strong_retry_abort`)
+* Plane handler → `GlobalCacheManager.strong_retry_abort`
+* `MPREGClient.cache_strong_retry_abort` + `StrongRetryAbortResult`
+  (`ops_driven=True`, `automatic_heal=False`, `cft_best_effort` on wire)
+* `CacheOpResult` promotes `operation_id` / `quorum_info` (abort_fail_peers)
+* `cache_put` RPC emits `operation_id` + `quorum_info` for STRONG failures
+* Docs: client guide, CACHING_SYSTEM, runbook, curriculum, OPERATE
+* Claims non_claim: RPC path is ops-driven CFT — not auto-heal / BFT / WAN
+
+Still **not** claimed: automatic heal; residual-free under lost ABORT;
+WAN/Elle/BFT/fsync. RPC path is CFT best-effort ops only.
+
+Plan: `docs/plans/DISTLAB_T42_CLIENT_RPC_RETRY_ABORT_PLAN.md`.

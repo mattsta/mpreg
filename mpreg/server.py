@@ -12287,6 +12287,13 @@ class MPREGServer:
 
         return await cache_invalidate(self, payload, **kwargs)
 
+    async def _rpc_cache_strong_retry_abort(
+        self, payload: object = None, **kwargs: object
+    ) -> dict[str, Any]:
+        from mpreg.server_pkg.plane_rpc import cache_strong_retry_abort
+
+        return await cache_strong_retry_abort(self, payload, **kwargs)
+
     def attach_cache_manager(self, cache_manager: Any) -> None:
         """Attach a cache manager to the monitoring system and RPC surface."""
         self._cache_manager = cache_manager

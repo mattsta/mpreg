@@ -87,6 +87,9 @@ class CacheOpResult:
     value: Any = None
     error_message: str | None = None
     error_code: int | None = None
+    # T42: STRONG put diagnostics (optional; ops residual candidates)
+    operation_id: str | None = None
+    quorum_info: dict[str, Any] | None = None
     raw: Any = None
 
     @classmethod
@@ -94,6 +97,8 @@ class CacheOpResult:
         if isinstance(raw, dict):
             # COR-T13-04 / ERG-T13-03: require explicit success; never infer from entry key
             success = bool(raw["success"]) if "success" in raw else False
+            qi = raw.get("quorum_info")
+            oid = raw.get("operation_id") or raw.get("op_id")
             return cls(
                 success=success,
                 value=raw.get(value_key, raw.get("entry", raw.get("data"))),
@@ -103,6 +108,8 @@ class CacheOpResult:
                     else (str(raw["error"]) if raw.get("error") is not None else None)
                 ),
                 error_code=_result_error_code(raw),
+                operation_id=str(oid) if oid is not None else None,
+                quorum_info=dict(qi) if isinstance(qi, dict) else None,
                 raw=raw,
             )
         if hasattr(raw, "success"):
@@ -112,14 +119,68 @@ class CacheOpResult:
                 if entry is not None
                 else getattr(raw, "value", None)
             )
+            qi = getattr(raw, "quorum_info", None)
+            oid = getattr(raw, "operation_id", None)
             return cls(
                 success=bool(raw.success),
                 value=value,
                 error_message=getattr(raw, "error_message", None),
                 error_code=_result_error_code(raw),
+                operation_id=str(oid) if oid is not None else None,
+                quorum_info=dict(qi) if isinstance(qi, dict) else None,
                 raw=raw,
             )
         return cls(success=False, value=None, raw=raw)
+
+@dataclass(slots=True)
+class StrongRetryAbortResult:
+    """Normalized result from ops-driven ``cache_strong_retry_abort`` RPC.
+
+    CFT best-effort only — not automatic residual heal, not BFT.
+    """
+
+    success: bool
+    cleared: bool = False
+    ok_peers: list[str] | None = None
+    fail_peers: list[str] | None = None
+    op_id: str | None = None
+    attempts: int = 0
+    error_message: str | None = None
+    error_code: int | None = None
+    ops_driven: bool = True
+    automatic_heal: bool = False
+    raw: Any = None
+
+    @classmethod
+    def from_raw(cls, raw: Any) -> StrongRetryAbortResult:
+        if isinstance(raw, dict):
+            success = bool(raw["success"]) if "success" in raw else False
+            return cls(
+                success=success,
+                cleared=bool(raw.get("cleared", success)),
+                ok_peers=list(raw.get("ok_peers") or []),
+                fail_peers=list(raw.get("fail_peers") or []),
+                op_id=(
+                    str(raw["op_id"])
+                    if raw.get("op_id") is not None
+                    else (
+                        str(raw["operation_id"])
+                        if raw.get("operation_id") is not None
+                        else None
+                    )
+                ),
+                attempts=int(raw.get("attempts") or 0),
+                error_message=(
+                    str(raw["error_message"])
+                    if raw.get("error_message") is not None
+                    else (str(raw["error"]) if raw.get("error") is not None else None)
+                ),
+                error_code=_result_error_code(raw),
+                ops_driven=bool(raw.get("ops_driven", True)),
+                automatic_heal=bool(raw.get("automatic_heal", False)),
+                raw=raw,
+            )
+        return cls(success=False, raw=raw)
 
 @dataclass(slots=True)
 class MPREGClient:
@@ -436,6 +497,36 @@ class MPREGClient:
             PlatformRpc.CACHE_INVALIDATE, {"pattern": pattern}, timeout=timeout
         )
         return CacheOpResult.from_raw(raw)
+
+    async def cache_strong_retry_abort(
+        self,
+        namespace: str,
+        identifier: str,
+        op_id: str,
+        *,
+        version: str | None = None,
+        peers: list[str] | None = None,
+        timeout: float | None = None,
+    ) -> StrongRetryAbortResult:
+        """Ops-driven CFT re-ABORT for residual candidates (not automatic heal).
+
+        Call after network recovery when a failed STRONG put listed peers in
+        ``quorum_info.abort_fail_peers`` / ``last_abort_fail_peers``. Still
+        best-effort CFT — not residual-free while ABORT is lost, not BFT.
+        """
+        body: dict[str, Any] = {
+            "namespace": namespace,
+            "identifier": identifier,
+            "op_id": op_id,
+        }
+        if version is not None:
+            body["version"] = version
+        if peers is not None:
+            body["peers"] = list(peers)
+        raw = await self.api.call(
+            PlatformRpc.CACHE_STRONG_RETRY_ABORT, body, timeout=timeout
+        )
+        return StrongRetryAbortResult.from_raw(raw)
 
     async def queue_ack(
         self,

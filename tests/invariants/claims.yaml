@@ -254,6 +254,7 @@ encapsulation:
       - tests/chaos/test_t39_residuals.py
       - tests/chaos/test_t40_residuals.py
       - tests/chaos/test_t41_residuals.py
+      - tests/chaos/test_t42_residuals.py
       - tests/invariants/test_cache_strong_properties.py
       - tests/invariants/test_cache_strong_history.py
       - tests/integration/test_cache_strong_quorum.py
@@ -290,6 +291,7 @@ non_claims:
   - "abort_fail_peers / last_abort_fail_peers list CFT residual candidates only — not residual-free proof and not automatic residual heal"
   - "retry_abort is ops-driven CFT best-effort re-ABORT — not automatic background heal, not residual-free while ABORT still lost, not BFT"
   - "retry_abort_ops_driven capability is honesty (always true) — not a toggle that enables automatic residual heal"
+  - "mpreg.cache.strong_retry_abort / MPREGClient.cache_strong_retry_abort is ops-driven CFT RPC — not automatic residual heal, not BFT, not WAN orchestration"
   - "Lying COMMIT_ACK applied bits can satisfy CFT quorum math without peer L1 apply — documented non_claim (not BFT)"
   - "mpreg.testing.distlab is Jepsen-inspired (history/checker/nemesis) — not Elle, not WAN geo generators, not a JVM Jepsen port"
   - "DistLab lab SLI budgets (p99/avg soak bounds) are same-host in-process — not production WAN latency SLAs"

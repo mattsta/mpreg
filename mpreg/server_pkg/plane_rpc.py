@@ -143,6 +143,12 @@ def register_cache_rpc_commands(server: Any) -> None:
         ["cache"],
         allow_platform=True,
     )
+    server.register_command(
+        PlatformRpc.CACHE_STRONG_RETRY_ABORT,
+        server._rpc_cache_strong_retry_abort,
+        ["cache"],
+        allow_platform=True,
+    )
     server._cache_rpc_registered = True
 
 async def queue_create(
@@ -413,6 +419,9 @@ async def cache_put(
     qi = getattr(result, "quorum_info", None)
     if qi is not None:
         out["quorum_info"] = qi
+    oid = getattr(result, "operation_id", None)
+    if oid is not None:
+        out["operation_id"] = str(oid)
     return out
 
 async def cache_invalidate(
@@ -437,3 +446,87 @@ async def cache_invalidate(
         "error_message": getattr(result, "error_message", None),
         "pattern": pattern,
     }
+
+async def cache_strong_retry_abort(
+    server: Any, payload: object = None, **kwargs: object
+) -> dict[str, Any]:
+    """Ops-driven CFT re-ABORT for residual candidates (not automatic heal).
+
+    Body: namespace, identifier, op_id, optional version, optional peers list.
+    Wraps ``GlobalCacheManager.strong_retry_abort``. Still CFT best-effort —
+    not residual-free while ABORT is lost, not BFT, not background heal.
+    """
+    from mpreg.core.namespace_policy import actor_context
+
+    body = rpc_payload_dict(payload)
+    if kwargs:
+        body.update({k: v for k, v in kwargs.items() if v is not None})
+    manager = getattr(server, "_cache_manager", None)
+    if manager is None:
+        return _plane_err("cache_manager_unavailable", code=PLANE_ERR_UNAVAILABLE)
+    if not hasattr(manager, "strong_retry_abort"):
+        return _plane_err(
+            "strong_retry_abort_unavailable",
+            code=PLANE_ERR_UNSUPPORTED_CONSISTENCY,
+        )
+    namespace = str(body.get("namespace") or "")
+    identifier = str(body.get("identifier") or body.get("key") or "")
+    op_id = str(body.get("op_id") or body.get("operation_id") or "")
+    if not namespace or not identifier:
+        return _plane_err(
+            "namespace_and_identifier_required", code=PLANE_ERR_INVALID_ARGUMENT
+        )
+    if not op_id:
+        return _plane_err("op_id_required", code=PLANE_ERR_INVALID_ARGUMENT)
+    from mpreg.core.cache_models import GlobalCacheKey
+
+    key = GlobalCacheKey(
+        namespace=namespace,
+        identifier=identifier,
+        version=str(body.get("version") or "v1.0.0"),
+    )
+    peers_raw = body.get("peers")
+    peers: list[str] | None
+    if peers_raw is None:
+        peers = None
+    elif isinstance(peers_raw, (list, tuple)):
+        peers = [str(p) for p in peers_raw if p]
+    else:
+        return _plane_err("peers_must_be_list", code=PLANE_ERR_INVALID_ARGUMENT)
+
+    cluster_id, tenant_id = rpc_actor_ids(server, body)
+    with actor_context(tenant_id=tenant_id, cluster_id=cluster_id):
+        out = await manager.strong_retry_abort(key, op_id, peers=peers)
+    if not isinstance(out, dict):
+        out = {"raw": out}
+    # Normalize success for client façades: cleared or empty fail_peers
+    cleared = bool(out.get("cleared"))
+    err = out.get("error")
+    result: dict[str, Any] = {
+        "success": cleared and not err,
+        "cleared": cleared,
+        "ok_peers": list(out.get("ok_peers") or []),
+        "fail_peers": list(out.get("fail_peers") or []),
+        "op_id": str(out.get("op_id") or op_id),
+        "attempts": int(out.get("attempts") or 0),
+        "namespace": namespace,
+        "identifier": identifier,
+        # Honesty: ops-driven CFT — not automatic residual heal
+        "ops_driven": True,
+        "cft_best_effort": True,
+        "automatic_heal": False,
+    }
+    if err:
+        result["error_message"] = str(err)
+        code = out.get("error_code")
+        if code is not None:
+            result["error_code"] = int(code)
+        else:
+            result["error_code"] = PLANE_ERR_UNSUPPORTED_CONSISTENCY
+    elif not cleared and list(out.get("fail_peers") or []):
+        result["success"] = False
+        result["error_message"] = (
+            "retry_abort_still_fail: CFT residual candidates remain "
+            f"(fail_peers={list(out.get('fail_peers') or [])})"
+        )
+    return result

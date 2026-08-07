@@ -97,6 +97,11 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T40 OPERATE retry | curriculum documents retry prom + monitor fields | teach |
 | T41 retry_ops cap | `retry_abort_ops_driven` + prom/doctor/alert | honesty |
 | T41 config-check | strong_cache.capabilities.retry_abort_ops_driven | support ops |
+| T42 RPC retry | `mpreg.cache.strong_retry_abort` plane handler | product |
+| T42 client retry | `MPREGClient.cache_strong_retry_abort` | product |
+| T42 CacheOpResult | operation_id + quorum_info on façade | product |
+| T42 cache_put wire | operation_id + quorum_info on STRONG put RPC | product |
+| T42 honesty | client guide + curriculum + claims non_claim | honesty |
 
 ## Non-claims (do not market)
 
@@ -134,6 +139,6 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t35_residuals.py tests/chaos/test_t36_residuals.py \
   tests/chaos/test_t37_residuals.py tests/chaos/test_t38_residuals.py \
   tests/chaos/test_t39_residuals.py tests/chaos/test_t40_residuals.py \
-  tests/chaos/test_t41_residuals.py \
-  tests/test_config_check_cli.py -q
+  tests/chaos/test_t41_residuals.py tests/chaos/test_t42_residuals.py \
+  tests/test_config_check_cli.py tests/test_unified_client.py -q
 ```

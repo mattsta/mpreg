@@ -90,6 +90,8 @@ class PlatformRpc:
     CACHE_GET: Final = f"{NS_CACHE}.get"
     CACHE_PUT: Final = f"{NS_CACHE}.put"
     CACHE_INVALIDATE: Final = f"{NS_CACHE}.invalidate"
+    # T42: ops-driven CFT residual re-ABORT (not automatic heal)
+    CACHE_STRONG_RETRY_ABORT: Final = f"{NS_CACHE}.strong_retry_abort"
 
 @dataclass(frozen=True, slots=True)
 class RpcNameContext:

@@ -25,6 +25,7 @@ from .unified_client import (
     CacheOpResult,
     MPREGClient,
     QueueSendResult,
+    StrongRetryAbortResult,
     UnifiedMPREGClient,
 )
 
@@ -40,6 +41,7 @@ __all__ = [
     "MPREGPubSubExtendedClient",
     "QueueSendResult",
     "RpcExecutionMode",
+    "StrongRetryAbortResult",
     "SubscriptionCallback",
     "UnifiedMPREGClient",
     "call_with_policy",

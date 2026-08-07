@@ -955,20 +955,27 @@ endpoints.
 - Cache `ConsistencyLevel.STRONG` **put** is available when the server sets
   `cache_strong_enabled` (majority-commit barrier). Failed puts are
   **residual-free when ABORT is delivered** (CFT best-effort). Partial peer
-  COMMIT + lost ABORT may leave peer L1 — check `quorum_info.abort_fail_peers`
-  / `last_abort_fail_peers` (ops candidates, not auto-heal). After recovery,
-  `GlobalCacheManager.strong_retry_abort(key, op_id, peers=…)` re-delivers
-  ABORT best-effort (still CFT; not background heal). Pending TTL does **not**
-  clear residual L1. Default **off** → `1012 UNSUPPORTED_CONSISTENCY`.
-  STRONG **get** and **delete** always refuse with `1012`. Operational put
-  failures use **1015–1018** (`INSUFFICIENT_QUORUM`, `QUORUM_TIMEOUT`,
-  `STRONG_CONFLICT`, `STRONG_PENDING_FULL`). See `docs/CACHING_SYSTEM.md` and
-  claim `INV-CACHE-STRONG-01`. Curriculum: `cache_strong_quorum`.
+  COMMIT + lost ABORT may leave peer L1 — check `CacheOpResult.quorum_info`
+  (`abort_fail_peers`) / `last_abort_fail_peers` (ops candidates, not
+  auto-heal). `CacheOpResult.operation_id` carries the put `op_id` for
+  targeted repair. After recovery, re-deliver ABORT best-effort via:
+  * library: `GlobalCacheManager.strong_retry_abort(key, op_id, peers=…)`
+  * client RPC: `MPREGClient.cache_strong_retry_abort(ns, id, op_id, peers=…)`
+    → platform `mpreg.cache.strong_retry_abort` → `StrongRetryAbortResult`
+    (`cleared`, `ok_peers`/`fail_peers`, `ops_driven=True`,
+    `automatic_heal=False`)
+  Still CFT; not background heal. Pending TTL does **not** clear residual L1.
+  Default **off** → `1012 UNSUPPORTED_CONSISTENCY`. STRONG **get** and
+  **delete** always refuse with `1012`. Operational put failures use
+  **1015–1018** (`INSUFFICIENT_QUORUM`, `QUORUM_TIMEOUT`, `STRONG_CONFLICT`,
+  `STRONG_PENDING_FULL`). See `docs/CACHING_SYSTEM.md` and claim
+  `INV-CACHE-STRONG-01`. Curriculum: `cache_strong_quorum`.
 - `location_consistency.ConsistencyLevel.STRONG` remains fail-closed (separate
   plane; not the GlobalCacheManager product path).
 - `CacheOpResult` / `QueueSendResult` expose `error_code` (ERG-T13-03) so callers
   need not dig into `.raw` for plane refusals. Missing `success` on dict payloads
-  is fail-closed (`success=False`). STRONG results may also carry `quorum_info`.
+  is fail-closed (`success=False`). STRONG put results may also carry
+  `operation_id` and `quorum_info` (including `abort_fail_peers`).
 - Soft plane failures also carry stable codes: `1007` unavailable, `1008` invalid
   argument (ERG-T13-04).
 - Proof ledger: `tests/invariants/claims.yaml` (`non_claims` lists what is out of scope).

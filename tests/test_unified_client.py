@@ -6,7 +6,12 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from mpreg.client import CacheOpResult, MPREGClient, QueueSendResult
+from mpreg.client import (
+    CacheOpResult,
+    MPREGClient,
+    QueueSendResult,
+    StrongRetryAbortResult,
+)
 from mpreg.client.unified_client import UnifiedMPREGClient
 from mpreg.core.errors import MpregError, MpregErrorCode
 from mpreg.core.model import RPCCommand
@@ -19,6 +24,20 @@ def test_exports_and_aliases() -> None:
     assert r.success and r.message_id == "m1"
     c = CacheOpResult.from_raw({"success": True, "value": 42})
     assert c.success and c.value == 42
+    # T42: STRONG diagnostics + retry result types exported
+    c2 = CacheOpResult.from_raw(
+        {
+            "success": False,
+            "operation_id": "o1",
+            "quorum_info": {"abort_fail_peers": ["n1"]},
+        }
+    )
+    assert c2.operation_id == "o1"
+    assert c2.quorum_info and "n1" in c2.quorum_info["abort_fail_peers"]
+    sr = StrongRetryAbortResult.from_raw(
+        {"success": True, "cleared": True, "ok_peers": [], "fail_peers": []}
+    )
+    assert sr.cleared and sr.ops_driven and not sr.automatic_heal
 
 @pytest.mark.asyncio
 async def test_unified_client_composes_api() -> None:
