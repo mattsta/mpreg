@@ -734,6 +734,71 @@ def _strong_cft_residual_survives_pending_purge() -> Scenario:
         },
     )
 
+def _strong_cft_retry_abort_clears_residual() -> Scenario:
+    """T37 product: retry_abort after drop_abort cleared can clear residual L1.
+
+    Same CFT residual setup as partial-commit+lost-abort, then clear drop_abort
+    and call ``retry_abort`` for last_abort_fail_peers. Peer residual is cleared
+    when ABORT can land — still CFT best-effort, not automatic background heal.
+    """
+    from mpreg.core.cache_models import GlobalCacheKey
+    from mpreg.core.cache_strong import _entry_op_id
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+    from mpreg.testing.distlab.checker import NoOpenInvokeChecker
+
+    sut = StrongSUT.create(
+        5,
+        prepare_timeout_s=0.4,
+        commit_timeout_s=0.25,
+        pending_ttl_s=30.0,
+    )
+    sut.transport.drop_commit |= {"n2", "n3", "n4"}
+    sut.transport.drop_abort |= {"n1"}
+
+    async def body(history: History, s: object) -> None:
+        res = await sut.put(
+            history,
+            process="c0",
+            origin="n0",
+            logical_key="retry",
+            value={"stale": True},
+        )
+        assert res.success is False
+        oid = res.operation_id or ""
+        key = GlobalCacheKey(
+            namespace="distlab", identifier="retry", version="v1"
+        )
+        n1 = sut.backends["n1"]
+        assert n1.get_visible(key) is not None
+        assert _entry_op_id(n1.get_visible(key)) == oid
+        coord = sut.coords["n0"]
+        assert "n1" in list(coord.last_abort_fail_peers)
+        # Network recovers — ABORT can land
+        sut.transport.drop_abort.clear()
+        sut.transport.drop_commit.clear()
+        out = await coord.retry_abort(key, oid)
+        assert out.get("cleared") is True, out
+        assert "n1" in list(out.get("ok_peers") or [])
+        assert list(out.get("fail_peers") or []) == []
+        assert coord.last_abort_fail_peers == []
+        ent = n1.get_visible(key)
+        assert ent is None or _entry_op_id(ent) != oid, (
+            f"retry_abort must clear residual op_id on n1 (got {ent!r})"
+        )
+
+    return Scenario(
+        name="strong.cft_retry_abort_clears_residual",
+        setup=lambda: sut,
+        body=body,
+        checker=NoOpenInvokeChecker(),
+        meta={
+            "track": "T37",
+            "product_fix": True,
+            "cft_limit": True,
+            "fault": "retry_abort_after_lost_abort",
+        },
+    )
+
 def _strong_cft_residual_healed_by_lww() -> Scenario:
     """T28 honesty: later successful put can LWW-overwrite a CFT residual L1.
 
@@ -1332,6 +1397,13 @@ def register_builtins(registry=None) -> int:
             "T29",
             "CFT residual survives pending TTL purge (not residual GC)",
             ("strong", "cft_limit", "fault"),
+        ),
+        (
+            "strong.cft_retry_abort_clears_residual",
+            _strong_cft_retry_abort_clears_residual,
+            "T37",
+            "retry_abort clears CFT residual when ABORT can land",
+            ("strong", "cft_limit", "product"),
         ),
         (
             "strong.cft_orphan_backup_gc",

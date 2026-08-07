@@ -255,8 +255,8 @@ Abort series: `mpreg_strong_aborts_peer_ok_total` /
 partial-commit+lost-abort). Pending TTL is **not** residual GC
 (`mpreg_strong_cap_pending_ttl_clears_residual_l1` always 0). CFT DistLab:
 `strong.cft_partial_commit_lost_abort`, `strong.cft_residual_healed_by_lww`,
-`strong.cft_residual_survives_pending_purge`, `strong.cft_orphan_backup_gc`
-(in strong-core / ci-core). Monitor table shows `cft=` / `abort_be=` /
+`strong.cft_residual_survives_pending_purge`, `strong.cft_orphan_backup_gc`,
+`strong.cft_retry_abort_clears_residual` (in strong-core / ci-core). Monitor table shows `cft=` / `abort_be=` /
 `abort_fail=` / `abort_fail_peers=` / `ttl_gc=` / `visible=` / `backups=` /
 `pruned=`. `abort_fail_peers` lists CFT residual candidates (ops only).
 Prom also exposes `mpreg_strong_visible`, `mpreg_strong_backups`,

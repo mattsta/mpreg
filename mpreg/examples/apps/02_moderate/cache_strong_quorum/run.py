@@ -306,7 +306,31 @@ async def main() -> None:
                     "pending TTL must not clear residual L1",
                 )
                 ensure(coord_cft.aborts_peer_fail >= 1, "aborts_peer_fail moved")
-                # LWW heal (not reliable ABORT)
+                fail_peers = list(
+                    (fail.quorum_info or {}).get("abort_fail_peers") or []
+                )
+                ensure("n1" in fail_peers, f"abort_fail_peers missing n1: {fail_peers}")
+                ensure(
+                    "n1" in coord_cft.last_abort_fail_peers,
+                    "last_abort_fail_peers missing n1",
+                )
+                # T37: retry_abort after drop_abort cleared (best-effort heal)
+                tr_cft.drop_abort.clear()
+                retry_out = await coord_cft.retry_abort(k_cft, oid)
+                ensure(retry_out.get("cleared") is True, f"retry_abort: {retry_out}")
+                n1_cleared = be_cft["n1"].get_visible(k_cft)
+                ensure(
+                    n1_cleared is None or _entry_op_id(n1_cleared) != oid,
+                    "retry_abort must clear residual when ABORT can land",
+                )
+                ensure(coord_cft.last_abort_fail_peers == [], "fail peers cleared")
+                # Seed a fresh residual then LWW heal (not reliable ABORT)
+                tr_cft.drop_commit |= {"n2", "n3", "n4"}
+                tr_cft.drop_abort |= {"n1"}
+                fail2 = await coord_cft.strong_put(
+                    k_cft, {"stale2": True}, eligible_peers=list(be_cft)
+                )
+                ensure(not fail2.success, "second residual put must fail")
                 tr_cft.drop_commit.clear()
                 tr_cft.drop_abort.clear()
                 heal = await coord_cft.strong_put(
@@ -326,7 +350,7 @@ async def main() -> None:
                     "orphan backups pruned after heal",
                 )
                 ok(
-                    f"CFT residual documented then LWW-healed; "
+                    f"CFT residual → retry_abort clear → LWW heal path; "
                     f"abort_fail={coord_cft.aborts_peer_fail} "
                     f"pruned={be_cft['n1'].backups_pruned_total}"
                 )
@@ -336,7 +360,8 @@ async def main() -> None:
                     "no quorum get/delete (always 1012); not WAN SLA; not BFT; "
                     "not fsync durability; local RYW is EVENTUAL/WEAK get; "
                     "ABORT best-effort (CFT residual possible); pending TTL ≠ "
-                    "residual GC; LWW heal is not reliable ABORT"
+                    "residual GC; LWW heal is not reliable ABORT; "
+                    "retry_abort is ops best-effort (not automatic heal, not BFT)"
                 )
                 ok("honesty banners retained outside majority-commit put claim")
         finally:

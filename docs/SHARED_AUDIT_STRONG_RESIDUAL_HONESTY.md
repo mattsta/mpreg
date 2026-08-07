@@ -486,3 +486,20 @@ Plan: `docs/plans/DISTLAB_T36_ABORT_FAIL_PEER_TRACKING_PLAN.md`.
 
 Still **not** claimed: residual-free under lost ABORT; automatic residual
 heal; WAN/Elle/BFT/fsync.
+
+## Phase 25 — retry_abort residual candidates (2026-08-06)
+
+T37 adds best-effort **re-ABORT** for peers listed after exhausted ABORT:
+
+* **Product:** `StrongPutCoordinator.retry_abort(key, op_id, peers=…)` —
+  multi-attempt peer ABORT; updates `last_abort_fail_peers` / counters.
+* **DistLab:** `strong.cft_retry_abort_clears_residual` (network recovers →
+  residual cleared); in strong-core / ci-core.
+* **Curriculum:** `cache_strong_quorum` teaches abort_fail_peers + retry_abort
+  then LWW heal path; ops_cli asserts `abort_fail_peers=` on monitor table.
+* **Hypothesis:** `test_cft_retry_abort_clears_residual_after_heal`.
+
+Still **not** claimed: automatic background heal; residual-free while ABORT
+still lost; BFT; WAN/Elle/fsync. Retry is ops-driven CFT best-effort only.
+
+Plan: `docs/plans/DISTLAB_T37_RETRY_ABORT_RESIDUAL_PLAN.md`.

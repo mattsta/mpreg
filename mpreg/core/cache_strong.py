@@ -805,6 +805,95 @@ class StrongPutCoordinator:
         out["abort_best_effort_residual_candidates"] = bool(peers)
         return out
 
+    async def retry_abort(
+        self,
+        key: GlobalCacheKey,
+        op_id: str,
+        *,
+        peers: Sequence[str] | None = None,
+        strong_version: StrongVersion | None = None,
+    ) -> dict[str, Any]:
+        """Best-effort re-ABORT to residual-candidate peers (CFT; not auto-heal).
+
+        Intended after network recovery when ``last_abort_fail_peers`` / failed
+        put ``quorum_info.abort_fail_peers`` listed peers that exhausted ABORT
+        retries. Still **not** residual-free under continued loss; not BFT.
+
+        Returns ``{ok_peers, fail_peers, op_id, attempts}``. Updates
+        ``last_abort_fail_peers`` to peers that still fail after this retry.
+        """
+        oid = str(op_id or "")
+        if not oid:
+            return {
+                "ok_peers": [],
+                "fail_peers": [],
+                "op_id": "",
+                "attempts": 0,
+                "error": "op_id required",
+            }
+        target = list(peers) if peers is not None else list(self.last_abort_fail_peers)
+        # Never ABORT self via peer path; origin local abort is separate.
+        target = [p for p in dict.fromkeys(target) if p and p != self.origin_id]
+        if not target:
+            self.last_abort_fail_peers = []
+            self.last_abort_fail_op_id = oid
+            return {
+                "ok_peers": [],
+                "fail_peers": [],
+                "op_id": oid,
+                "attempts": 0,
+            }
+        sv = strong_version or StrongVersion(
+            logical_ts=0, origin_node=self.origin_id, op_id=oid
+        )
+        attempts = max(1, int(self.abort_attempts))
+        pending = set(target)
+        ok_peers: list[str] = []
+        for attempt in range(attempts):
+            if not pending:
+                break
+            results = await asyncio.gather(
+                *[
+                    self._abort_peer(p, oid, key, sv, _count=False)
+                    for p in pending
+                ],
+                return_exceptions=True,
+            )
+            still: set[str] = set()
+            for p, res in zip(list(pending), results, strict=True):
+                if res is True:
+                    self.aborts_peer_ok += 1
+                    ok_peers.append(p)
+                else:
+                    still.add(p)
+            pending = still
+            if pending and attempt + 1 < attempts:
+                await asyncio.sleep(0)
+        failed = sorted(pending)
+        for _p in failed:
+            self.aborts_peer_fail += 1
+        self.last_abort_fail_peers = list(failed)
+        self.last_abort_fail_op_id = oid
+        if failed:
+            self.recent_abort_fails.append(
+                {
+                    "op_id": oid,
+                    "peers": list(failed),
+                    "ts": time.time(),
+                    "key": f"{key.namespace}/{key.identifier}",
+                    "retry": True,
+                }
+            )
+        # Also clear local residual if any (origin usually already clean)
+        await self.local.abort(op_id=oid, key=key)
+        return {
+            "ok_peers": sorted(set(ok_peers)),
+            "fail_peers": failed,
+            "op_id": oid,
+            "attempts": attempts,
+            "cleared": not failed,
+        }
+
     async def _abort_peer(
         self,
         peer_id: str,

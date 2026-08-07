@@ -94,8 +94,15 @@ residual-free. Watch `mpreg_strong_aborts_peer_fail_total`.
 **Abort-fail peers (T36 ops):** JSON `last_abort_fail_peers` /
 `last_abort_fail_op_id` / `recent_abort_fails` and failed-put
 `quorum_info.abort_fail_peers` list peers that exhausted ABORT retries —
-**CFT residual candidates** for targeted LWW repair, not auto-heal and not
+**CFT residual candidates** for targeted repair, not auto-heal and not
 residual-free proof. Monitor table prints `abort_fail_peers=…`.
+
+**retry_abort (T37 ops):** after network recovery, call
+`StrongPutCoordinator.retry_abort(key, op_id, peers=last_abort_fail_peers)`
+(library/API) to re-deliver ABORT. DistLab
+`strong.cft_retry_abort_clears_residual` proves clear when ABORT can land.
+Still CFT best-effort — fails while peers drop ABORT; not background heal.
+LWW success put remains an alternate overwrite path.
 
 **LWW heal (not reliable ABORT):** a later successful majority put for the same
 key can overwrite stale peer L1 (`strong.cft_residual_healed_by_lww`). That is

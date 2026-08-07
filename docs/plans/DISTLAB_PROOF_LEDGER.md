@@ -84,6 +84,10 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T36 DistLab CFT peers | `strong.cft_partial_commit_lost_abort` asserts n1 ∈ fail peers | honesty |
 | T36 client/catalog honesty | client guide, APP/FEATURE catalogs, design alt table | honesty |
 | T36 doctor/monitor peers | abort_fail_peers on doctor detail + monitor table | support ops |
+| T37 retry_abort | `StrongPutCoordinator.retry_abort` clears residual when ABORT lands | product |
+| T37 DistLab retry | `strong.cft_retry_abort_clears_residual` + strong-core/ci-core | product |
+| T37 Hypothesis retry | `test_cft_retry_abort_clears_residual_after_heal` | product |
+| T37 curriculum | `cache_strong_quorum` retry_abort + LWW; ops_cli abort_fail_peers | teach |
 
 ## Non-claims (do not market)
 
@@ -95,6 +99,7 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 - Partial peer COMMIT apply + lost ABORT may leave peer L1 (ABORT best-effort)
 - `abort_fail_peers` / `last_abort_fail_peers` are CFT residual candidates only
   (not residual-free proof, not automatic residual heal)
+- `retry_abort` is ops-driven CFT best-effort — not automatic background heal
 
 ## Gate commands
 
@@ -118,5 +123,6 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t31_residuals.py tests/chaos/test_t32_residuals.py \
   tests/chaos/test_t33_residuals.py tests/chaos/test_t34_residuals.py \
   tests/chaos/test_t35_residuals.py tests/chaos/test_t36_residuals.py \
+  tests/chaos/test_t37_residuals.py \
   tests/test_config_check_cli.py -q
 ```
