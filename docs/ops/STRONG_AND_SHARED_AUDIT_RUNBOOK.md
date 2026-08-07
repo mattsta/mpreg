@@ -117,6 +117,8 @@ non-empty, `mpreg doctor --check-strong` detail and `mpreg monitor strong
 at `cache-strong-retry-abort` (still CFT; not auto-heal; not doctor-fail).
 JSON field `residual_ops_hint` on `/metrics/strong` and GCM `strong_status`
 carries the same string (empty when no candidates) for automation scrape.
+When `recent_abort_fails` records a matching `key` (`namespace/id`), the hint
+fills `--namespace` / `--key` (process-local best-effort; not SIEM).
 
 DistLab `strong.cft_retry_abort_clears_residual` proves clear when ABORT can
 land; `strong.cft_retry_abort_self_target` proves `peers=[self]` local.abort

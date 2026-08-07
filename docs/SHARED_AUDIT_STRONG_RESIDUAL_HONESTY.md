@@ -802,3 +802,17 @@ before rebuilding from peers/op_id — presentation consistency with metrics JSO
 Still **not** claimed: preference is SIEM; auto-heal.
 
 Plan: `docs/plans/DISTLAB_T58_DOCTOR_PREFER_HINT_PLAN.md`.
+
+## Phase 47 — residual_ops_hint key enrichment (2026-08-06)
+
+T59 fills `--namespace` / `--key` in the ops hint when
+`recent_abort_fails[].key` matches `last_abort_fail_op_id` (`ns/id` form):
+
+* `format_residual_ops_hint(..., recent_abort_fails=…)`
+* GCM `strong_status`, `build_strong_metrics`, doctor rebuild path
+* Prefer enriched string over placeholder server hints
+
+Still **not** claimed: process-local recent ring is durable audit/SIEM;
+automatic heal; multi-tenant isolation beyond cluster_id.
+
+Plan: `docs/plans/DISTLAB_T59_HINT_KEY_ENRICH_PLAN.md`.

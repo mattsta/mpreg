@@ -130,6 +130,7 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T56 strong-core membership | registry gate for retry_abort ops scenarios | honesty |
 | T57 live residual_ops_hint | live metrics e2e field present + empty after clean put | support ops |
 | T58 doctor prefer hint | strong_residual_ops_hint uses server string first | support ops |
+| T59 hint key enrich | residual_ops_hint fills ns/key from recent_abort_fails | support ops |
 
 ## Non-claims (do not market)
 
@@ -148,6 +149,8 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
   automatic heal, not SIEM orchestration, not residual-free proof
 - `residual_ops_hint` JSON field is the same guidance string — not a heal
   toggle, not SIEM, not residual-free proof
+- Key enrichment from `recent_abort_fails` is process-local best-effort — not
+  durable audit log, not SIEM, not multi-tenant isolation proof
 
 ## Gate commands
 

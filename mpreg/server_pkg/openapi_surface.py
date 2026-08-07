@@ -140,6 +140,8 @@ def _strong_metrics_schema() -> dict[str, Any]:
                         "description": (
                             "Operator remediation when abort_fail peers are "
                             "non-empty (points at cache-strong-retry-abort). "
+                            "May fill --namespace/--key from recent_abort_fails "
+                            "key field when available (process-local). "
                             "Empty string when no residual candidates. "
                             "CFT best-effort guidance — not automatic heal, "
                             "not residual-free proof, not SIEM/BFT."

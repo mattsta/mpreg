@@ -216,27 +216,32 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
         base["health"] = "degraded_pending"
     else:
         base["health"] = "ok"
-    # T53: machine-readable residual ops remediation (empty when no candidates)
+    # T53/T59: machine-readable residual ops remediation (empty when no candidates)
     try:
         from mpreg.core.cache_strong import format_residual_ops_hint
 
         peers = list(base.get("last_abort_fail_peers") or [])
-        if not peers:
-            coord = base.get("coordinator") or {}
-            if isinstance(coord, dict):
-                peers = list(coord.get("last_abort_fail_peers") or [])
+        coord = base.get("coordinator") if isinstance(base.get("coordinator"), dict) else {}
+        if not peers and isinstance(coord, dict):
+            peers = list(coord.get("last_abort_fail_peers") or [])
         oid = str(base.get("last_abort_fail_op_id") or "")
-        if not oid:
-            coord = base.get("coordinator") or {}
-            if isinstance(coord, dict):
-                oid = str(coord.get("last_abort_fail_op_id") or "")
-        # Prefer GCM strong_status residual_ops_hint when already set
+        if not oid and isinstance(coord, dict):
+            oid = str(coord.get("last_abort_fail_op_id") or "")
+        recent = list(base.get("recent_abort_fails") or [])
+        if not recent and isinstance(coord, dict):
+            recent = list(coord.get("recent_abort_fails") or [])
         existing = base.get("residual_ops_hint")
-        if existing is None or existing == "":
-            # Also pull from status path if present on base from st
-            pass
-        hint = format_residual_ops_hint(peers, oid)
-        base["residual_ops_hint"] = hint
+        # Rebuild when empty, or when placeholders remain and we have key material
+        if not (isinstance(existing, str) and existing.strip()):
+            base["residual_ops_hint"] = format_residual_ops_hint(
+                peers, oid, recent_abort_fails=recent
+            )
+        elif "<ns>" in existing or "<id>" in existing:
+            enriched = format_residual_ops_hint(
+                peers, oid, recent_abort_fails=recent
+            )
+            if enriched and "<ns>" not in enriched:
+                base["residual_ops_hint"] = enriched
     except Exception:  # noqa: BLE001
         base.setdefault("residual_ops_hint", "")
     return base

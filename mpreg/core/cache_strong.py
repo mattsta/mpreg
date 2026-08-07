@@ -34,6 +34,16 @@ class StrongErrorCode(IntEnum):
     STRONG_CONFLICT = 1017
     STRONG_PENDING_FULL = 1018
 
+def _split_abort_fail_key(key_blob: str | None) -> tuple[str, str]:
+    """Parse ``namespace/identifier`` from recent_abort_fails key field."""
+    raw = str(key_blob or "").strip()
+    if not raw or "/" not in raw:
+        return "<ns>", "<id>"
+    ns, _, rest = raw.partition("/")
+    ns = ns.strip() or "<ns>"
+    kid = rest.strip() or "<id>"
+    return ns, kid
+
 def format_residual_ops_hint(
     peers: Sequence[str] | None,
     op_id: str | None = None,
@@ -41,11 +51,14 @@ def format_residual_ops_hint(
     namespace: str = "<ns>",
     key_id: str = "<id>",
     url_placeholder: str = "<ws>",
+    recent_abort_fails: Sequence[dict[str, Any]] | None = None,
 ) -> str:
     """Operator remediation string when CFT residual candidates are known.
 
     Empty when ``peers`` is empty. Points at
     ``mpreg client cache-strong-retry-abort`` after network recovery.
+    When ``recent_abort_fails`` is provided and matches ``op_id``, fills
+    ``--namespace`` / ``--key`` from the event's ``key`` field (``ns/id``).
     Still CFT best-effort — **not** automatic heal, residual-free proof, BFT,
     or SIEM orchestration.
     """
@@ -53,13 +66,32 @@ def format_residual_ops_hint(
     if not clean:
         return ""
     oid = str(op_id or "").strip()
+    ns = namespace
+    kid = key_id
+    # T59: enrich placeholders from matching recent_abort_fails event
+    if recent_abort_fails and (ns == "<ns>" or kid == "<id>"):
+        for evt in reversed(list(recent_abort_fails)):
+            if not isinstance(evt, dict):
+                continue
+            eoid = str(evt.get("op_id") or "").strip()
+            if oid and eoid and eoid != oid:
+                continue
+            ens, ekid = _split_abort_fail_key(evt.get("key"))  # type: ignore[arg-type]
+            if ns == "<ns>" and ens != "<ns>":
+                ns = ens
+            if kid == "<id>" and ekid != "<id>":
+                kid = ekid
+            if ns != "<ns>" and kid != "<id>":
+                break
+            if not oid and eoid:
+                oid = eoid
     oid_part = f" --op-id {oid}" if oid else " --op-id <op_id>"
     peer_parts = " ".join(f"--peer {p}" for p in clean)
     return (
         "hint: after network recovery, ops re-ABORT (not auto-heal): "
         f"uv run mpreg client cache-strong-retry-abort "
         f"--url {url_placeholder}{oid_part} "
-        f"--namespace {namespace} --key {key_id} {peer_parts} "
+        f"--namespace {ns} --key {kid} {peer_parts} "
         "(CFT best-effort; still fails while ABORT dropped)"
     )
 

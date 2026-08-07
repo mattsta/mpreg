@@ -265,6 +265,7 @@ encapsulation:
       - tests/chaos/test_t56_residuals.py
       - tests/chaos/test_t57_residuals.py
       - tests/chaos/test_t58_residuals.py
+      - tests/chaos/test_t59_residuals.py
       - tests/invariants/test_cache_strong_properties.py
       - tests/invariants/test_cache_strong_history.py
       - tests/integration/test_cache_strong_quorum.py
@@ -317,6 +318,7 @@ non_claims:
   - "strong-core/ci-core membership gate is DistLab preset coverage — not Jepsen/Elle/WAN, not residual-free product claim"
   - "Live residual_ops_hint scrape is same-host multi-process — not WAN SLA; empty hint is not residual-free under lost ABORT elsewhere"
   - "Doctor prefer server residual_ops_hint is presentation consistency — not SIEM orchestration, not automatic heal"
+  - "residual_ops_hint key enrichment from recent_abort_fails is process-local best-effort — not durable audit/SIEM, not multi-tenant isolation proof, not automatic heal"
   - "Lying COMMIT_ACK applied bits can satisfy CFT quorum math without peer L1 apply — documented non_claim (not BFT)"
   - "mpreg.testing.distlab is Jepsen-inspired (history/checker/nemesis) — not Elle, not WAN geo generators, not a JVM Jepsen port"
   - "DistLab lab SLI budgets (p99/avg soak bounds) are same-host in-process — not production WAN latency SLAs"

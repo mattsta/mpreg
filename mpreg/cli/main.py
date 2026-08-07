@@ -75,20 +75,31 @@ def _strong_abort_fail_op_id(body: dict[str, Any]) -> str:
 def strong_residual_ops_hint(body: dict[str, Any]) -> str:
     """Ops remediation hint when CFT residual candidates are present.
 
-    Prefers server-provided ``residual_ops_hint`` when non-empty (T53/T58);
-    otherwise builds via ``format_residual_ops_hint``. Still CFT best-effort —
+    Prefers server-provided ``residual_ops_hint`` when non-empty and already
+    enriched (T53/T58/T59); rebuilds via ``format_residual_ops_hint`` with
+    ``recent_abort_fails`` when placeholders remain. Still CFT best-effort —
     not automatic heal, not residual-free proof, not BFT. Empty when no
     abort_fail peers (no residual candidates known).
     """
-    existing = body.get("residual_ops_hint")
-    if isinstance(existing, str) and existing.strip():
-        return existing.strip()
     from mpreg.core.cache_strong import format_residual_ops_hint
 
-    return format_residual_ops_hint(
-        _strong_abort_fail_peers(body),
-        _strong_abort_fail_op_id(body),
-    )
+    existing = body.get("residual_ops_hint")
+    recent = list(body.get("recent_abort_fails") or [])
+    if not recent:
+        coord = body.get("coordinator") or {}
+        if isinstance(coord, dict):
+            recent = list(coord.get("recent_abort_fails") or [])
+    peers = _strong_abort_fail_peers(body)
+    oid = _strong_abort_fail_op_id(body)
+    built = format_residual_ops_hint(peers, oid, recent_abort_fails=recent)
+    if isinstance(existing, str) and existing.strip():
+        # Prefer server string unless it still has placeholders and we enriched
+        if ("<ns>" in existing or "<id>" in existing) and built and (
+            "<ns>" not in built
+        ):
+            return built
+        return existing.strip()
+    return built
 
 def evaluate_strong_doctor_payload(
     payload: dict[str, Any],

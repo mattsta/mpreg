@@ -462,13 +462,17 @@ class GlobalCacheManager(ManagedObject):
             "retry_abort_calls": int(c.get("retry_abort_calls", 0)),
             "retry_abort_cleared": int(c.get("retry_abort_cleared", 0)),
             "retry_abort_still_fail": int(c.get("retry_abort_still_fail", 0)),
-            # T53: machine-readable ops remediation (empty when no candidates)
+            # T53/T59: machine-readable ops remediation (empty when no candidates);
+            # enriches --namespace/--key from recent_abort_fails when available.
             "residual_ops_hint": format_residual_ops_hint(
                 list(
                     (snap.get("coordinator") or {}).get("last_abort_fail_peers") or []
                 ),
                 str(
                     (snap.get("coordinator") or {}).get("last_abort_fail_op_id") or ""
+                ),
+                recent_abort_fails=list(
+                    (snap.get("coordinator") or {}).get("recent_abort_fails") or []
                 ),
             ),
         }
