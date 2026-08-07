@@ -779,3 +779,26 @@ T56 locks DistLab preset membership for the full CFT retry_abort surface:
 Still **not** claimed: preset gate is Jepsen/WAN; residual-free product.
 
 Plan: `docs/plans/DISTLAB_T56_STRONG_CORE_MEMBERSHIP_PLAN.md`.
+
+## Phase 45 — Live residual_ops_hint scrape (2026-08-06)
+
+T57 extends live metrics e2e:
+
+* `/metrics/strong` always includes `residual_ops_hint` (string)
+* Empty after clean successful put (no residual candidates)
+* Still present after client RPC retry_abort path
+* Test: `test_distlab_live_strong_metrics_e2e`
+
+Still **not** claimed: same-host live is WAN; empty hint is residual-free under
+lost ABORT elsewhere; automatic heal.
+
+Plan: `docs/plans/DISTLAB_T57_LIVE_RESIDUAL_OPS_HINT_PLAN.md`.
+
+## Phase 46 — Doctor prefers server residual_ops_hint (2026-08-06)
+
+T58: `strong_residual_ops_hint` uses non-empty `body["residual_ops_hint"]`
+before rebuilding from peers/op_id — presentation consistency with metrics JSON.
+
+Still **not** claimed: preference is SIEM; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T58_DOCTOR_PREFER_HINT_PLAN.md`.

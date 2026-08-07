@@ -128,6 +128,8 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T54 Hypothesis GCM | `test_cft_gcm_retry_abort_clears_residual_after_heal` | product |
 | T55 curriculum ops loop | ops_cli_tour residual_ops_hint step + CACHING/design | teach |
 | T56 strong-core membership | registry gate for retry_abort ops scenarios | honesty |
+| T57 live residual_ops_hint | live metrics e2e field present + empty after clean put | support ops |
+| T58 doctor prefer hint | strong_residual_ops_hint uses server string first | support ops |
 
 ## Non-claims (do not market)
 

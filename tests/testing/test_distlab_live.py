@@ -519,6 +519,13 @@ async def test_distlab_live_strong_metrics_e2e(
                     or 0
                 ) >= 0
                 assert "last_abort_fail_peers" in body
+                # T57: residual_ops_hint always present; empty after clean put
+                assert "residual_ops_hint" in body
+                assert isinstance(body.get("residual_ops_hint"), str)
+                # No residual candidates after successful put → empty hint
+                assert body.get("residual_ops_hint") == "" or not list(
+                    body.get("last_abort_fail_peers") or []
+                )
             # T40: ops-driven retry_abort noop (no residual peers) still increments
             retry_out = await cm.strong_retry_abort(
                 key, op_id="live-noop-retry", peers=[]
@@ -604,6 +611,9 @@ async def test_distlab_live_strong_metrics_e2e(
                 body3 = data.get("strong") or {}
                 caps3 = body3.get("capabilities") or {}
                 assert caps3.get("retry_abort_ops_driven") is True
+                # T57: residual_ops_hint still present after client RPC path
+                assert "residual_ops_hint" in body3
+                assert isinstance(body3.get("residual_ops_hint"), str)
 
 @pytest.mark.asyncio
 async def test_distlab_live_audit_metrics_e2e(

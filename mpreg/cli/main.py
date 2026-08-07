@@ -75,10 +75,14 @@ def _strong_abort_fail_op_id(body: dict[str, Any]) -> str:
 def strong_residual_ops_hint(body: dict[str, Any]) -> str:
     """Ops remediation hint when CFT residual candidates are present.
 
-    Wraps ``format_residual_ops_hint`` for metrics/doctor payloads.
-    Still CFT best-effort — not automatic heal, not residual-free proof, not BFT.
-    Empty when no abort_fail peers (no residual candidates known).
+    Prefers server-provided ``residual_ops_hint`` when non-empty (T53/T58);
+    otherwise builds via ``format_residual_ops_hint``. Still CFT best-effort —
+    not automatic heal, not residual-free proof, not BFT. Empty when no
+    abort_fail peers (no residual candidates known).
     """
+    existing = body.get("residual_ops_hint")
+    if isinstance(existing, str) and existing.strip():
+        return existing.strip()
     from mpreg.core.cache_strong import format_residual_ops_hint
 
     return format_residual_ops_hint(
