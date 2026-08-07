@@ -933,6 +933,24 @@ async def test_distlab_live_doctor_strong_audit_e2e(
                     caps = strong.get("capabilities") or {}
                     assert caps.get("get_quorum") is False
                     assert caps.get("delete_quorum") is False
+                    # T72: residual_ops_hint always present after clean put (empty)
+                    assert "residual_ops_hint" in strong
+                    assert isinstance(strong.get("residual_ops_hint"), str)
+                    # Happy-path put should not leave residual candidates
+                    assert list(strong.get("last_abort_fail_peers") or []) == []
+                    assert (strong.get("residual_ops_hint") or "") == ""
+                    from mpreg.cli.main import strong_residual_ops_hint
+
+                    assert strong_residual_ops_hint(strong) == ""
+
+                # T72/T73: Prometheus residual-candidate gauge should be 0 after clean put
+                async with session.get(f"{base}/metrics/prometheus") as presp:
+                    assert presp.status == 200
+                    ptext = await presp.text()
+                    assert "mpreg_strong_abort_fail_peers" in ptext
+                    for line in ptext.splitlines():
+                        if line.startswith("mpreg_strong_abort_fail_peers{"):
+                            assert line.rstrip().endswith(" 0"), line
 
                 async with session.get(f"{base}/mgmt/v1/strong") as resp:
                     assert resp.status == 200

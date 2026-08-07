@@ -272,7 +272,7 @@ without clearing residual. Monitor table shows `cft=` / `abort_be=` /
 residual candidates (ops only). Prom also exposes `mpreg_strong_visible`,
 `mpreg_strong_backups`, `mpreg_strong_backups_pruned_total`,
 `mpreg_strong_retry_abort_{calls,cleared,still_fail}_total` (process-local;
-not residual-free proof; retry is ops-driven not auto-heal).
+not residual-free proof; retry is ops-driven not auto-heal). Prometheus gauge `mpreg_strong_abort_fail_peers` counts residual candidates (info alert `MPREGStrongAbortFailPeersPresent`; not auto-heal).
 Ops re-ABORT after recovery: library `strong_retry_abort`, client
 `MPREGClient.cache_strong_retry_abort` → platform RPC
 `mpreg.cache.strong_retry_abort`, or CLI

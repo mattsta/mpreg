@@ -2655,6 +2655,19 @@ class FederationMonitoringSystem:
                         f"mpreg_strong_backups_pruned_total{{{labels}}} "
                         f"{int(strong.get('backups_pruned_total', 0) or counters.get('backups_pruned', 0) or 0)}"
                     )
+                    # T73: count of CFT residual candidate peers (ops guidance only)
+                    fail_peers = strong.get("last_abort_fail_peers") or []
+                    if not isinstance(fail_peers, list):
+                        fail_peers = []
+                    lines.append(
+                        "# HELP mpreg_strong_abort_fail_peers Count of last_abort_fail_peers "
+                        "(CFT residual candidates; process-local; not residual-free proof; "
+                        "not automatic heal)."
+                    )
+                    lines.append("# TYPE mpreg_strong_abort_fail_peers gauge")
+                    lines.append(
+                        f"mpreg_strong_abort_fail_peers{{{labels}}} {len(fail_peers)}"
+                    )
                     if lat.get("sample_count"):
                         lines.append(
                             "# HELP mpreg_strong_put_latency_p99_ms Process-local p99 put latency (not WAN SLA)."

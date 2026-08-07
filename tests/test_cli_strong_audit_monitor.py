@@ -226,3 +226,107 @@ def test_doctor_shared_audit_evaluate_payload_honesty() -> None:
     )
     assert bad is False
     assert "dishonest" in bdetail
+
+def test_doctor_residual_hint_hypothesis() -> None:
+    """T74: property — residual peers ⇒ hint; empty peers ⇒ no CLI template."""
+    from hypothesis import given, settings, strategies as st
+
+    from mpreg.cli.main import (
+        evaluate_strong_doctor_payload,
+        strong_residual_ops_hint,
+    )
+
+    peer_st = st.lists(
+        st.text(
+            alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="-_"),
+            min_size=1,
+            max_size=8,
+        ).filter(lambda s: s.strip() != ""),
+        max_size=4,
+        unique=True,
+    )
+    oid_st = st.one_of(st.just(""), st.text(min_size=1, max_size=12).filter(str.strip))
+
+    @given(peers=peer_st, oid=oid_st)
+    @settings(max_examples=40, deadline=None)
+    def _prop(peers: list[str], oid: str) -> None:
+        body = {
+            "health": "ok",
+            "coordinator_bound": True,
+            "capabilities": {
+                "put_majority_commit": True,
+                "get_quorum": False,
+                "delete_quorum": False,
+                "local_ryw_after_put": True,
+                "cft_only": True,
+                "abort_best_effort": True,
+                "pending_ttl_clears_residual_l1": False,
+                "retry_abort_ops_driven": True,
+            },
+            "counters": {"puts_ok": 1, "aborts_peer_fail": 1 if peers else 0},
+            "last_abort_fail_peers": list(peers),
+            "last_abort_fail_op_id": oid,
+        }
+        hint = strong_residual_ops_hint(body)
+        ok, detail = evaluate_strong_doctor_payload({"strong": body})
+        assert ok is True
+        if peers:
+            assert hint
+            assert "cache-strong-retry-abort" in hint
+            assert "not auto-heal" in hint
+            assert "cache-strong-retry-abort" in detail
+            if oid.strip():
+                assert f"--op-id {oid.strip()}" in hint
+            for p in peers:
+                assert f"--peer {p}" in hint
+        else:
+            assert hint == ""
+            assert "cache-strong-retry-abort" not in detail
+
+    _prop()
+
+def test_doctor_dishonest_caps_hypothesis() -> None:
+    """T74: property — dishonest get/delete quorum always fails doctor."""
+    from hypothesis import given, settings, strategies as st
+
+    from mpreg.cli.main import evaluate_strong_doctor_payload
+
+    @given(
+        get_q=st.booleans(),
+        del_q=st.booleans(),
+        cft=st.booleans(),
+        abort_be=st.booleans(),
+        ttl_gc=st.booleans(),
+        retry_ops=st.booleans(),
+    )
+    @settings(max_examples=32, deadline=None)
+    def _prop(
+        get_q: bool,
+        del_q: bool,
+        cft: bool,
+        abort_be: bool,
+        ttl_gc: bool,
+        retry_ops: bool,
+    ) -> None:
+        body = {
+            "health": "ok",
+            "capabilities": {
+                "get_quorum": get_q,
+                "delete_quorum": del_q,
+                "cft_only": cft,
+                "abort_best_effort": abort_be,
+                "pending_ttl_clears_residual_l1": ttl_gc,
+                "retry_abort_ops_driven": retry_ops,
+            },
+            "counters": {},
+        }
+        ok, detail = evaluate_strong_doctor_payload({"strong": body})
+        dishonest = get_q or del_q or (not cft) or (not abort_be) or ttl_gc or (not retry_ops)
+        if dishonest:
+            assert ok is False
+            assert "dishonest" in detail
+        else:
+            assert ok is True
+
+    _prop()
+

@@ -116,6 +116,8 @@ non-empty, `mpreg doctor --check-strong` detail and `mpreg monitor strong
 --format table` print `abort_fail_op_id=` and an ops remediation hint pointing
 at `cache-strong-retry-abort` (still CFT; not auto-heal; not doctor-fail).
 JSON field `residual_ops_hint` on `/metrics/strong` and GCM `strong_status`
+
+Prometheus gauge `mpreg_strong_abort_fail_peers` = `len(last_abort_fail_peers)` (CFT residual candidates; process-local). Info alert `MPREGStrongAbortFailPeersPresent` (5m) is ops guidance only — not automatic heal.
 carries the same string (empty when no candidates) for automation scrape.
 When `recent_abort_fails` records a matching `key` (`namespace/id`), the hint
 fills `--namespace` / `--key` (process-local best-effort; not SIEM).

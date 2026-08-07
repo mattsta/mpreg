@@ -943,3 +943,42 @@ Still **not** claimed: doctor JSON field is auto-heal; SIEM; residual-free proof
 
 Plan: `docs/plans/DISTLAB_T71_DOCTOR_JSON_HINT_PLAN.md`.
 
+## Phase 60 — Live doctor residual_ops_hint present (2026-08-06)
+
+T72: live doctor e2e asserts `/metrics/strong` always includes
+`residual_ops_hint` (empty after clean put) and Prometheus
+`mpreg_strong_abort_fail_peers` is 0 on the happy path.
+
+Still **not** claimed: empty hint is residual-free under lost ABORT elsewhere;
+WAN; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T72_LIVE_DOCTOR_HINT_PLAN.md`.
+
+## Phase 61 — Prometheus abort_fail_peers gauge (2026-08-06)
+
+T73: `mpreg_strong_abort_fail_peers` gauge = `len(last_abort_fail_peers)`.
+HELP documents CFT residual candidates — not residual-free proof, not auto-heal.
+
+Still **not** claimed: gauge is residual-free proof; auto-heal; WAN SLO.
+
+Plan: `docs/plans/DISTLAB_T73_PROM_ABORT_FAIL_PEERS_PLAN.md`.
+
+## Phase 62 — Hypothesis doctor residual hint (2026-08-06)
+
+T74: property tests — residual peers ⇒ hint with CLI template; empty peers ⇒
+no template; dishonest get/delete/cft/abort/ttl/retry caps fail closed.
+
+Still **not** claimed: pure unit properties are live mesh; auto-heal; SIEM.
+
+Plan: `docs/plans/DISTLAB_T74_HYPOTHESIS_DOCTOR_HINT_PLAN.md`.
+
+## Phase 63 — Prometheus residual-candidate info alert (2026-08-06)
+
+T75: `MPREGStrongAbortFailPeersPresent` (severity info, lab_process_local)
+when `mpreg_strong_abort_fail_peers > 0` for 5m. Annotations point operators
+at residual_ops_hint / cache-strong-retry-abort.
+
+Still **not** claimed: alert is automatic heal; residual-free proof; WAN/BFT/SIEM.
+
+Plan: `docs/plans/DISTLAB_T75_PROM_RESIDUAL_ALERT_PLAN.md`.
+

@@ -102,6 +102,8 @@ async def test_strong_and_audit_monitoring_routes(
                 assert "mpreg_strong_cap_get_quorum" in text
                 assert "mpreg_strong_cap_delete_quorum" in text
                 assert "mpreg_strong_cap_put_majority_commit" in text
+                # T73: residual-candidate peer count gauge (ops guidance; not auto-heal)
+                assert "mpreg_strong_abort_fail_peers" in text
                 assert "mpreg_shared_audit_cap_siem" in text
                 assert "mpreg_shared_audit_cap_bft" in text
                 assert "mpreg_shared_audit_cap_gset_epidemic" in text

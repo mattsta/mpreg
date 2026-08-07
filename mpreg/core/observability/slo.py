@@ -154,6 +154,18 @@ def prometheus_alert_rules_yaml() -> str:
           scope: honesty
         annotations:
           summary: "STRONG dishonestly claims pending TTL clears residual L1"
+      - alert: MPREGStrongAbortFailPeersPresent
+        expr: mpreg_strong_abort_fail_peers > 0
+        for: 5m
+        labels:
+          severity: info
+          scope: lab_process_local
+        annotations:
+          summary: "STRONG CFT residual candidates present (ops guidance)"
+          description: >
+            last_abort_fail_peers non-empty — scrape residual_ops_hint and run
+            cache-strong-retry-abort after recovery. Not automatic heal, not
+            residual-free proof, not WAN/BFT/SIEM.
       - alert: MPREGStrongCapRetryAbortOpsDrivenMissing
         expr: mpreg_strong_cap_retry_abort_ops_driven == 0
         for: 0m

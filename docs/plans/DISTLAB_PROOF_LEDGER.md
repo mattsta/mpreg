@@ -143,6 +143,10 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T69 config-check pytest hint | test_config_check_explain residual_ops_hint | support ops |
 | T70 APP_CATALOG ops_cli hint | ops_cli_tour product + residual_ops_hint | teach |
 | T71 doctor JSON residual_ops_hint | doctor strong rows residual_ops_hint field | support ops |
+| T72 live doctor residual_ops_hint | live doctor e2e empty hint + prom gauge 0 | support ops |
+| T73 prom abort_fail_peers gauge | mpreg_strong_abort_fail_peers | support ops |
+| T74 Hypothesis doctor hint | residual peers⇒hint; dishonest caps fail | product |
+| T75 prom residual info alert | MPREGStrongAbortFailPeersPresent | support ops |
 
 ## Non-claims (do not market)
 
@@ -175,6 +179,12 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
   residual-free product claim
 - Doctor JSON `residual_ops_hint` field is the same guidance string — not a heal
   toggle, not SIEM orchestration, not residual-free proof
+- `mpreg_strong_abort_fail_peers` gauge is CFT residual candidate count — not
+  residual-free proof, not automatic heal, not WAN SLO
+- Hypothesis doctor residual hint properties are pure unit checks — not live
+  mesh, not automatic heal, not SIEM
+- `MPREGStrongAbortFailPeersPresent` info alert is ops guidance — not automatic
+  heal, not residual-free proof, not WAN/BFT/SIEM
 
 ## Gate commands
 
@@ -210,6 +220,8 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t66_residuals.py tests/chaos/test_t67_residuals.py \
   tests/chaos/test_t68_residuals.py tests/chaos/test_t69_residuals.py \
   tests/chaos/test_t70_residuals.py tests/chaos/test_t71_residuals.py \
+  tests/chaos/test_t72_residuals.py tests/chaos/test_t73_residuals.py \
+  tests/chaos/test_t74_residuals.py tests/chaos/test_t75_residuals.py \
   tests/integration/test_cache_strong_live_mesh.py \
   tests/testing/test_distlab_live.py::test_distlab_live_strong_metrics_e2e \
   tests/test_config_check_cli.py tests/test_unified_client.py -q

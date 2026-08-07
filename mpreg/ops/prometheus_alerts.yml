@@ -119,6 +119,15 @@ groups:
           scope: honesty
         annotations:
           summary: "STRONG dishonestly claims pending TTL clears residual L1"
+      - alert: MPREGStrongAbortFailPeersPresent
+        expr: mpreg_strong_abort_fail_peers > 0
+        for: 5m
+        labels:
+          severity: info
+          scope: lab_process_local
+        annotations:
+          summary: "STRONG CFT residual candidates present (ops guidance)"
+          description: "Use residual_ops_hint / cache-strong-retry-abort after recovery. Not auto-heal."
           description: >-
             purge_expired_pending only drops uncommitted prepares — not residual L1 after COMMIT apply.
       - alert: MPREGStrongCapRetryAbortOpsDrivenMissing
