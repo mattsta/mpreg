@@ -696,3 +696,34 @@ Still **not** claimed: in-process property is kernel partition / kill -9 / WAN;
 automatic background heal; residual-free under continued ABORT loss.
 
 Plan: `docs/plans/DISTLAB_T50_HYPOTHESIS_SELF_TARGET_PLAN.md`.
+
+## Phase 39 — Doctor op_id + residual ops hint (2026-08-06)
+
+T51 closes the operator loop from metrics → remediation:
+
+* `evaluate_strong_doctor_payload` prints `abort_fail_op_id=`
+* When `abort_fail_peers` non-empty, appends ops hint:
+  `uv run mpreg client cache-strong-retry-abort … --op-id … --peer …`
+  with explicit “not auto-heal” / CFT best-effort wording
+* `monitor strong` table/plain shows op_id + same yellow hint
+* Helpers: `strong_residual_ops_hint`, `_strong_abort_fail_peers/op_id`
+  (resolve top-level or nested coordinator)
+
+Still **not** claimed: hint is automatic heal; doctor fail on residual
+candidates (still ok=True — CFT honesty); SIEM; BFT/WAN.
+
+Plan: `docs/plans/DISTLAB_T51_DOCTOR_OP_ID_HINT_PLAN.md`.
+
+## Phase 40 — DistLab GCM.strong_retry_abort (2026-08-06)
+
+T52 first-class DistLab coverage of the product library surface:
+
+* `strong.cft_gcm_retry_abort_clears_residual` — CFT residual → clear drops →
+  `GlobalCacheManager.strong_retry_abort` → residual cleared +
+  `retry_abort_calls` / `retry_abort_cleared` ≥ 1
+* In `strong-core` / `ci-core`
+* Complements curriculum GCM path (T49) with registry-runnable scenario
+
+Still **not** claimed: GCM path is auto-heal; BFT; WAN; SIEM.
+
+Plan: `docs/plans/DISTLAB_T52_DISTLAB_GCM_RETRY_PLAN.md`.

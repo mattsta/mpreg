@@ -212,6 +212,8 @@ SUITE_PRESETS: dict[str, tuple[str, ...]] = {
         "strong.cft_retry_abort_clears_residual",
         # T49: RPC fan-in self-target (peers=[self] local.abort)
         "strong.cft_retry_abort_self_target",
+        # T52: product library surface GlobalCacheManager.strong_retry_abort
+        "strong.cft_gcm_retry_abort_clears_residual",
     ),
     "audit-core": (
         "audit.multi_origin",

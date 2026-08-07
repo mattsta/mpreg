@@ -111,9 +111,15 @@ residual-free proof. Monitor table prints `abort_fail_peers=…`.
   --namespace NS --key ID --op-id OID [--peer PEER…] [--loc cache] [--json]`
   (`--loc` pins resource routing; unpinned may land on any `cache` node)
 
+**Doctor / monitor residual hint (T51):** when `last_abort_fail_peers` is
+non-empty, `mpreg doctor --check-strong` detail and `mpreg monitor strong
+--format table` print `abort_fail_op_id=` and an ops remediation hint pointing
+at `cache-strong-retry-abort` (still CFT; not auto-heal; not doctor-fail).
+
 DistLab `strong.cft_retry_abort_clears_residual` proves clear when ABORT can
 land; `strong.cft_retry_abort_self_target` proves `peers=[self]` local.abort
-when RPC lands on the residual peer (both in strong-core / ci-core). Live mesh:
+when RPC lands on the residual peer; `strong.cft_gcm_retry_abort_clears_residual`
+proves the GCM library surface (all in strong-core / ci-core). Live mesh:
 `test_live_client_rpc_strong_retry_abort_clears_residual` (client RPC over
 `ServerCacheTransport`). Still CFT best-effort — fails while peers drop ABORT;
 not background heal. LWW success put remains an alternate overwrite path.

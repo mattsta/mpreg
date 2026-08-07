@@ -58,6 +58,40 @@ from .output import add_format_option, emit
 
 console = Console()
 
+def _strong_abort_fail_peers(body: dict[str, Any]) -> list[str]:
+    """Extract last_abort_fail_peers from metrics body or nested coordinator."""
+    peers = body.get("last_abort_fail_peers")
+    if peers is None:
+        peers = (body.get("coordinator") or {}).get("last_abort_fail_peers")
+    return list(peers or [])
+
+def _strong_abort_fail_op_id(body: dict[str, Any]) -> str:
+    """Extract last_abort_fail_op_id from metrics body or nested coordinator."""
+    oid = body.get("last_abort_fail_op_id")
+    if oid is None or oid == "":
+        oid = (body.get("coordinator") or {}).get("last_abort_fail_op_id")
+    return str(oid or "")
+
+def strong_residual_ops_hint(body: dict[str, Any]) -> str:
+    """Ops remediation hint when CFT residual candidates are present.
+
+    Points operators at ``cache-strong-retry-abort`` after network recovery.
+    Still CFT best-effort — not automatic heal, not residual-free proof, not BFT.
+    Empty when no abort_fail peers (no residual candidates known).
+    """
+    peers = _strong_abort_fail_peers(body)
+    if not peers:
+        return ""
+    oid = _strong_abort_fail_op_id(body)
+    oid_part = f" --op-id {oid}" if oid else " --op-id <op_id>"
+    peer_parts = " ".join(f"--peer {p}" for p in peers)
+    return (
+        "hint: after network recovery, ops re-ABORT (not auto-heal): "
+        f"uv run mpreg client cache-strong-retry-abort --url <ws>{oid_part} "
+        f"--namespace <ns> --key <id> {peer_parts} "
+        "(CFT best-effort; still fails while ABORT dropped)"
+    )
+
 def evaluate_strong_doctor_payload(
     payload: dict[str, Any],
 ) -> tuple[bool, str]:
@@ -120,31 +154,36 @@ def evaluate_strong_doctor_payload(
                 f"deletes_refused={counters.get('deletes_refused', 0)}"
             ),
         )
-    return (
-        True,
-        (
-            f"strong health={health or 'n/a'} "
-            f"bound={body.get('coordinator_bound')} "
-            f"put_q={caps.get('put_majority_commit')} "
-            f"get_q={caps.get('get_quorum', False)} "
-            f"del_q={caps.get('delete_quorum', False)} "
-            f"ryw={caps.get('local_ryw_after_put')} "
-            f"cft={caps.get('cft_only', True)} "
-            f"abort_be={caps.get('abort_best_effort', True)} "
-            f"ttl_gc={caps.get('pending_ttl_clears_residual_l1', False)} "
-            f"retry_ops={caps.get('retry_abort_ops_driven', True)} "
-            f"puts_ok={counters.get('puts_ok', 0)} "
-            f"gets_ref={counters.get('gets_refused', 0)} "
-            f"dels_ref={counters.get('deletes_refused', 0)} "
-            f"abort_fail={counters.get('aborts_peer_fail', 0)} "
-            f"abort_fail_peers={body.get('last_abort_fail_peers') or (body.get('coordinator') or {}).get('last_abort_fail_peers') or []} "
-            f"retry_abort={counters.get('retry_abort_calls', body.get('retry_abort_calls', 0))} "
-            f"retry_cleared={counters.get('retry_abort_cleared', body.get('retry_abort_cleared', 0))} "
-            f"visible={body.get('visible_count', 0)} "
-            f"backups={body.get('backups_count', 0)} "
-            f"pruned={body.get('backups_pruned_total', 0)}"
-        ),
+    fail_peers = _strong_abort_fail_peers(body)
+    fail_oid = _strong_abort_fail_op_id(body)
+    detail = (
+        f"strong health={health or 'n/a'} "
+        f"bound={body.get('coordinator_bound')} "
+        f"put_q={caps.get('put_majority_commit')} "
+        f"get_q={caps.get('get_quorum', False)} "
+        f"del_q={caps.get('delete_quorum', False)} "
+        f"ryw={caps.get('local_ryw_after_put')} "
+        f"cft={caps.get('cft_only', True)} "
+        f"abort_be={caps.get('abort_best_effort', True)} "
+        f"ttl_gc={caps.get('pending_ttl_clears_residual_l1', False)} "
+        f"retry_ops={caps.get('retry_abort_ops_driven', True)} "
+        f"puts_ok={counters.get('puts_ok', 0)} "
+        f"gets_ref={counters.get('gets_refused', 0)} "
+        f"dels_ref={counters.get('deletes_refused', 0)} "
+        f"abort_fail={counters.get('aborts_peer_fail', 0)} "
+        f"abort_fail_peers={fail_peers} "
+        f"abort_fail_op_id={fail_oid or '-'} "
+        f"retry_abort={counters.get('retry_abort_calls', body.get('retry_abort_calls', 0))} "
+        f"retry_cleared={counters.get('retry_abort_cleared', body.get('retry_abort_cleared', 0))} "
+        f"visible={body.get('visible_count', 0)} "
+        f"backups={body.get('backups_count', 0)} "
+        f"pruned={body.get('backups_pruned_total', 0)}"
     )
+    # T51: ops remediation when residual candidates present (not auto-heal)
+    hint = strong_residual_ops_hint(body)
+    if hint:
+        detail = f"{detail} | {hint}"
+    return True, detail
 
 # Capability keys that must never be true in v1 shared-audit metrics.
 _AUDIT_DISHONEST_CAPS = (
@@ -3971,6 +4010,8 @@ def monitor_strong(url: str | None, use_mgmt: bool, output_format: str) -> None:
                     if isinstance(body, dict):
                         caps = body.get("capabilities") or {}
                         counters = body.get("counters") or {}
+                        fail_peers = _strong_abort_fail_peers(body)
+                        fail_oid = _strong_abort_fail_op_id(body)
                         console.print(
                             "[bold]STRONG[/bold] "
                             f"health={body.get('health')} "
@@ -3992,8 +4033,8 @@ def monitor_strong(url: str | None, use_mgmt: bool, output_format: str) -> None:
                             f"gets_refused={counters.get('gets_refused', 0)} "
                             f"deletes_refused={counters.get('deletes_refused', 0)} "
                             f"abort_fail={counters.get('aborts_peer_fail', 0)} "
-                            f"abort_fail_peers="
-                            f"{body.get('last_abort_fail_peers') or (body.get('coordinator') or {}).get('last_abort_fail_peers') or []} "
+                            f"abort_fail_peers={fail_peers} "
+                            f"abort_fail_op_id={fail_oid or '-'} "
                             f"retry_abort={counters.get('retry_abort_calls', body.get('retry_abort_calls', 0))} "
                             f"retry_cleared={counters.get('retry_abort_cleared', body.get('retry_abort_cleared', 0))} "
                             "[dim](not WAN SLA; get/delete quorum is v1.1; "
@@ -4001,6 +4042,10 @@ def monitor_strong(url: str | None, use_mgmt: bool, output_format: str) -> None:
                             "abort_fail_peers = CFT residual candidates; "
                             "retry_abort = ops-driven not auto-heal)[/dim]"
                         )
+                        # T51: remediation hint when residual candidates present
+                        hint = strong_residual_ops_hint(body)
+                        if hint:
+                            console.print(f"[yellow]{hint}[/yellow]")
                 emit(payload, output_format=output_format, table_title="STRONG")
 
     run_coro(_strong())

@@ -119,6 +119,10 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T49 ops_surfaces meta | clears-residual meta lists full ops stack | honesty |
 | T50 Hypothesis self-target | `test_cft_retry_abort_self_target_clears_local` | product |
 | T50 residual gate | `test_t49_residuals` + `test_t50_residuals` | honesty |
+| T51 doctor op_id | `abort_fail_op_id=` on evaluate_strong_doctor_payload | support ops |
+| T51 residual ops hint | `strong_residual_ops_hint` → cache-strong-retry-abort | support ops |
+| T51 monitor table | abort_fail_op_id + yellow hint on residual candidates | support ops |
+| T52 DistLab GCM retry | `strong.cft_gcm_retry_abort_clears_residual` + strong-core | product |
 
 ## Non-claims (do not market)
 
@@ -133,6 +137,8 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 - `retry_abort` is ops-driven CFT best-effort — not automatic background heal
 - Self-target `peers=[self]` is RPC fan-in local.abort correctness — not
   automatic residual heal, not BFT, not WAN
+- Doctor/monitor residual ops hint is operator guidance after recovery — not
+  automatic heal, not SIEM orchestration, not residual-free proof
 
 ## Gate commands
 

@@ -868,6 +868,89 @@ def _strong_cft_retry_abort_self_target() -> Scenario:
         },
     )
 
+def _strong_cft_gcm_retry_abort_clears_residual() -> Scenario:
+    """T52: GCM.strong_retry_abort clears residual (product library surface).
+
+    Same CFT residual setup as coordinator retry_abort, then clear drops and
+    call through GlobalCacheManager — counters retry_abort_calls/cleared move.
+    Still ops-driven CFT, not automatic heal.
+    """
+    from mpreg.core.cache_models import GlobalCacheKey
+    from mpreg.core.cache_strong import _entry_op_id
+    from mpreg.core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+    from mpreg.testing.distlab.checker import NoOpenInvokeChecker
+
+    sut = StrongSUT.create(
+        5,
+        prepare_timeout_s=0.4,
+        commit_timeout_s=0.25,
+        pending_ttl_s=30.0,
+    )
+    sut.transport.drop_commit |= {"n2", "n3", "n4"}
+    sut.transport.drop_abort |= {"n1"}
+
+    async def body(history: History, s: object) -> None:
+        res = await sut.put(
+            history,
+            process="c0",
+            origin="n0",
+            logical_key="gcm-retry",
+            value={"stale": True},
+        )
+        assert res.success is False
+        oid = res.operation_id or ""
+        key = GlobalCacheKey(
+            namespace="distlab", identifier="gcm-retry", version="v1"
+        )
+        n1 = sut.backends["n1"]
+        assert n1.get_visible(key) is not None
+        assert _entry_op_id(n1.get_visible(key)) == oid
+        coord = sut.coords["n0"]
+        assert "n1" in list(coord.last_abort_fail_peers)
+        sut.transport.drop_abort.clear()
+        sut.transport.drop_commit.clear()
+        gcm = GlobalCacheManager(
+            GlobalCacheConfiguration(
+                enable_l2_persistent=False,
+                enable_l3_distributed=False,
+                enable_l4_federation=False,
+                local_cluster_id="distlab-gcm-retry",
+            )
+        )
+        gcm.attach_strong_coordinator(coord)
+        try:
+            out = await gcm.strong_retry_abort(key, oid, peers=["n1"])
+            assert out.get("cleared") is True, out
+            assert "n1" in list(out.get("ok_peers") or [])
+            st = gcm.strong_status()
+            assert int(st.get("retry_abort_calls") or 0) >= 1
+            assert int(st.get("retry_abort_cleared") or 0) >= 1
+            ent = n1.get_visible(key)
+            assert ent is None or _entry_op_id(ent) != oid
+            assert coord.last_abort_fail_peers == []
+        finally:
+            await gcm.shutdown()
+
+    return Scenario(
+        name="strong.cft_gcm_retry_abort_clears_residual",
+        setup=lambda: sut,
+        body=body,
+        checker=NoOpenInvokeChecker(),
+        meta={
+            "track": "T52",
+            "product_fix": True,
+            "cft_limit": True,
+            "fault": "gcm_retry_abort_after_lost_abort",
+            "ops_driven": True,
+            "not_automatic_heal": True,
+            "ops_surfaces": (
+                "GlobalCacheManager.strong_retry_abort",
+                "StrongPutCoordinator.retry_abort",
+            ),
+        },
+    )
+
 def _strong_cft_residual_healed_by_lww() -> Scenario:
     """T28 honesty: later successful put can LWW-overwrite a CFT residual L1.
 
@@ -1479,6 +1562,13 @@ def register_builtins(registry=None) -> int:
             _strong_cft_retry_abort_self_target,
             "T49",
             "retry_abort peers=[self] clears local residual (RPC fan-in)",
+            ("strong", "cft_limit", "product", "ops_driven"),
+        ),
+        (
+            "strong.cft_gcm_retry_abort_clears_residual",
+            _strong_cft_gcm_retry_abort_clears_residual,
+            "T52",
+            "GCM.strong_retry_abort clears residual + counters",
             ("strong", "cft_limit", "product", "ops_driven"),
         ),
         (

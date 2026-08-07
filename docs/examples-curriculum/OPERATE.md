@@ -258,8 +258,11 @@ partial-commit+lost-abort). Pending TTL is **not** residual GC
 `strong.cft_partial_commit_lost_abort`, `strong.cft_residual_healed_by_lww`,
 `strong.cft_residual_survives_pending_purge`, `strong.cft_orphan_backup_gc`,
 `strong.cft_retry_abort_clears_residual`,
-`strong.cft_retry_abort_self_target` (RPC fan-in peers=[self]; both in
-strong-core / ci-core). Monitor table shows `cft=` / `abort_be=` /
+`strong.cft_retry_abort_self_target` (RPC fan-in peers=[self]),
+`strong.cft_gcm_retry_abort_clears_residual` (GCM library surface; all in
+strong-core / ci-core). Doctor/monitor show `abort_fail_op_id=` and an ops
+hint → `cache-strong-retry-abort` when residual candidates present (not
+auto-heal). Monitor table shows `cft=` / `abort_be=` /
 `abort_fail=` / `abort_fail_peers=` / `retry_abort=` / `retry_cleared=` /
 `ttl_gc=` / `visible=` / `backups=` / `pruned=`. `abort_fail_peers` lists CFT
 residual candidates (ops only). Prom also exposes `mpreg_strong_visible`,
