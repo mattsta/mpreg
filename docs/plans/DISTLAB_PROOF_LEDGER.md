@@ -151,6 +151,10 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T77 docs prom residual | CACHING_SYSTEM + FEATURE_CATALOG gauge/alert | teach |
 | T78 curriculum residual_ops_hint | cache_strong_quorum GCM hint assert | teach |
 | T79 live enriched + prom gauge | enriched e2e abort_fail_peers >= 1 | support ops |
+| T80 abort_fail_peer_count | count_abort_fail_peers + metrics/OpenAPI/GCM | product |
+| T81 DistLab peer count | hint_enriched abort_fail_peer_count | product |
+| T82 ops_cli doctor JSON hint | doctor --strong --format json residual_ops_hint | teach |
+| T83 client guide peer count | MPREG_CLIENT_GUIDE gauge + doctor JSON | teach |
 
 ## Non-claims (do not market)
 
@@ -193,6 +197,10 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 - Curriculum residual_ops_hint GCM assert is teachable guidance — not auto-heal
 - Live enriched e2e prom gauge >= 1 seeds coordinator fields — not kernel drop,
   not WAN, not automatic heal
+- `count_abort_fail_peers` / `abort_fail_peer_count` are process-local ops
+  signals — not residual-free proof, not automatic heal, not WAN SLO
+- ops_cli doctor JSON residual_ops_hint assert is teachable — not auto-heal
+- Client guide peer-count docs are guidance — not residual-free product claim
 
 ## Gate commands
 
@@ -232,6 +240,8 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t74_residuals.py tests/chaos/test_t75_residuals.py \
   tests/chaos/test_t76_residuals.py tests/chaos/test_t77_residuals.py \
   tests/chaos/test_t78_residuals.py tests/chaos/test_t79_residuals.py \
+  tests/chaos/test_t80_residuals.py tests/chaos/test_t81_residuals.py \
+  tests/chaos/test_t82_residuals.py tests/chaos/test_t83_residuals.py \
   tests/integration/test_cache_strong_live_mesh.py \
   tests/testing/test_distlab_live.py::test_distlab_live_strong_metrics_e2e \
   tests/test_config_check_cli.py tests/test_unified_client.py -q

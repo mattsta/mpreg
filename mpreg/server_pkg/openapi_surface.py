@@ -131,6 +131,15 @@ def _strong_metrics_schema() -> dict[str, Any]:
                             "not residual-free proof, not auto-heal)."
                         ),
                     },
+                    "abort_fail_peer_count": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": (
+                            "len(last_abort_fail_peers) — same value as Prometheus "
+                            "mpreg_strong_abort_fail_peers. CFT residual candidate "
+                            "count; process-local; not residual-free proof; not auto-heal."
+                        ),
+                    },
                     "last_abort_fail_op_id": {
                         "type": "string",
                         "description": "op_id associated with last_abort_fail_peers.",

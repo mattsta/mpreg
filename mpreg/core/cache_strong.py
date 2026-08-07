@@ -44,6 +44,30 @@ def _split_abort_fail_key(key_blob: str | None) -> tuple[str, str]:
     kid = rest.strip() or "<id>"
     return ns, kid
 
+def count_abort_fail_peers(
+    peers: Sequence[str] | None = None,
+    *,
+    body: dict[str, Any] | None = None,
+) -> int:
+    """Count CFT residual candidate peers for ops gauges / doctor JSON.
+
+    Prefers explicit ``peers``; otherwise reads ``last_abort_fail_peers`` from
+    ``body`` or nested ``coordinator``. Empty / missing → 0. Process-local
+    ops signal only — **not** residual-free proof, automatic heal, BFT, or WAN.
+    """
+    if peers is not None:
+        return len([p for p in dict.fromkeys(list(peers)) if p])
+    if not isinstance(body, dict):
+        return 0
+    raw = body.get("last_abort_fail_peers")
+    if raw is None:
+        coord = body.get("coordinator") or {}
+        if isinstance(coord, dict):
+            raw = coord.get("last_abort_fail_peers")
+    if not isinstance(raw, (list, tuple)):
+        return 0
+    return len([p for p in dict.fromkeys(list(raw)) if p])
+
 def format_residual_ops_hint(
     peers: Sequence[str] | None,
     op_id: str | None = None,

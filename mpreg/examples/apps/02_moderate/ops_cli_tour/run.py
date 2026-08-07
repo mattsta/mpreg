@@ -638,6 +638,63 @@ async def main() -> None:
                         "strong" in dout or "shared_audit" in dout or "metrics" in dout,
                         f"doctor missing strong/audit: {doc.output[:400]}",
                     )
+                    # T82: doctor JSON includes residual_ops_hint on strong checks
+                    doc_j = await _invoke(
+                        [
+                            "doctor",
+                            "--url",
+                            mon_url,
+                            "--strong",
+                            "--format",
+                            "json",
+                        ],
+                        env=env,
+                    )
+                    ensure(
+                        doc_j.exit_code in (0, 1),
+                        f"doctor json crash: {doc_j.output[:500]}",
+                    )
+                    import json as _json
+
+                    raw = doc_j.output
+                    brace = raw.find("{")
+                    ensure(brace >= 0, f"doctor json missing object: {raw[:200]}")
+                    depth = 0
+                    end = None
+                    for i, ch in enumerate(raw[brace:], start=brace):
+                        if ch == "{":
+                            depth += 1
+                        elif ch == "}":
+                            depth -= 1
+                            if depth == 0:
+                                end = i + 1
+                                break
+                    ensure(end is not None, "doctor json unbalanced")
+                    ddata = _json.loads(raw[brace:end])
+                    checks = ddata.get("checks") or []
+                    strong_rows = [
+                        c
+                        for c in checks
+                        if isinstance(c, dict)
+                        and c.get("check") in ("metrics_strong", "mgmt_strong")
+                    ]
+                    ensure(
+                        strong_rows,
+                        f"doctor json missing strong checks: {checks!r}",
+                    )
+                    for row in strong_rows:
+                        ensure(
+                            "residual_ops_hint" in row,
+                            f"strong row missing residual_ops_hint: {row!r}",
+                        )
+                        ensure(
+                            isinstance(row.get("residual_ops_hint"), str),
+                            f"residual_ops_hint not str: {row!r}",
+                        )
+                    step(
+                        "ERG: doctor --strong --format json → residual_ops_hint "
+                        "on metrics_strong/mgmt_strong (empty when clean; not auto-heal)"
+                    )
                     ok(
                         f"monitor strong/audit table + doctor exit={doc.exit_code}"
                     )

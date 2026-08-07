@@ -1018,3 +1018,40 @@ Still **not** claimed: live seed is kernel drop; WAN; auto-heal.
 
 Plan: `docs/plans/DISTLAB_T79_LIVE_ENRICHED_PROM_PLAN.md`.
 
+## Phase 68 — abort_fail_peer_count helper + metrics (2026-08-06)
+
+T80: `count_abort_fail_peers` shared helper; JSON `abort_fail_peer_count` on
+`/metrics/strong` and GCM `strong_status`; Prometheus gauge uses the helper;
+OpenAPI documents the field.
+
+Still **not** claimed: count is residual-free proof; auto-heal; WAN SLO.
+
+Plan: `docs/plans/DISTLAB_T80_ABORT_FAIL_PEER_COUNT_PLAN.md`.
+
+## Phase 69 — DistLab abort_fail_peer_count (2026-08-06)
+
+T81: `strong.cft_residual_ops_hint_enriched` asserts `abort_fail_peer_count >= 1`
+and equals `len(last_abort_fail_peers)`.
+
+Still **not** claimed: scenario clears residual; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T81_DISTLAB_PEER_COUNT_PLAN.md`.
+
+## Phase 70 — ops_cli doctor JSON residual_ops_hint (2026-08-06)
+
+T82: `ops_cli_tour` runs `mpreg doctor --strong --format json` and asserts
+`residual_ops_hint` key on `metrics_strong` / `mgmt_strong` rows.
+
+Still **not** claimed: curriculum is auto-heal; SIEM.
+
+Plan: `docs/plans/DISTLAB_T82_OPS_CLI_DOCTOR_JSON_HINT_PLAN.md`.
+
+## Phase 71 — Client guide peer count + doctor JSON (2026-08-06)
+
+T83: MPREG_CLIENT_GUIDE documents `mpreg_strong_abort_fail_peers` /
+`abort_fail_peer_count` and doctor JSON `residual_ops_hint`.
+
+Still **not** claimed: docs are residual-free product claim.
+
+Plan: `docs/plans/DISTLAB_T83_CLIENT_GUIDE_PEER_COUNT_PLAN.md`.
+

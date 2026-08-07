@@ -1011,6 +1011,11 @@ def _strong_cft_residual_ops_hint_enriched() -> Scenario:
             assert oid in hint
             assert "--peer n1" in hint
             assert "not auto-heal" in hint
+            # T80/T81: numeric peer count mirrors Prometheus gauge
+            assert int(st.get("abort_fail_peer_count") or 0) >= 1
+            assert int(st.get("abort_fail_peer_count") or 0) == len(
+                list(st.get("last_abort_fail_peers") or [])
+            )
             # Residual still present — hint is guidance, not heal
             assert n1.get_visible(key) is not None
             assert _entry_op_id(n1.get_visible(key)) == oid

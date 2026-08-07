@@ -455,6 +455,20 @@ class GlobalCacheManager(ManagedObject):
             "last_abort_fail_op_id": str(
                 (snap.get("coordinator") or {}).get("last_abort_fail_op_id") or ""
             ),
+            "abort_fail_peer_count": len(
+                [
+                    p
+                    for p in dict.fromkeys(
+                        list(
+                            (snap.get("coordinator") or {}).get(
+                                "last_abort_fail_peers"
+                            )
+                            or []
+                        )
+                    )
+                    if p
+                ]
+            ),
             "recent_abort_fails": list(
                 (snap.get("coordinator") or {}).get("recent_abort_fails") or []
             ),

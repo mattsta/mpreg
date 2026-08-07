@@ -330,3 +330,19 @@ def test_doctor_dishonest_caps_hypothesis() -> None:
 
     _prop()
 
+def test_count_abort_fail_peers_helper() -> None:
+    """T80: count_abort_fail_peers dedupes and reads nested coordinator."""
+    from mpreg.core.cache_strong import count_abort_fail_peers
+
+    assert count_abort_fail_peers([]) == 0
+    assert count_abort_fail_peers(None) == 0
+    assert count_abort_fail_peers(["n1", "n1", "n2"]) == 2
+    assert count_abort_fail_peers(body={"last_abort_fail_peers": ["a", "b"]}) == 2
+    assert (
+        count_abort_fail_peers(
+            body={"coordinator": {"last_abort_fail_peers": ["x"]}}
+        )
+        == 1
+    )
+    assert count_abort_fail_peers(body={}) == 0
+
