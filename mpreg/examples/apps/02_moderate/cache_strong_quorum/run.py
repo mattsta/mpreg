@@ -228,17 +228,115 @@ async def main() -> None:
                         caps.get("local_ryw_after_put") is True,
                         "local_ryw_after_put",
                     )
+                    # T33: CFT / abort / TTL honesty caps
+                    ensure(caps.get("cft_only") is True, "cft_only must be true")
+                    ensure(
+                        caps.get("abort_best_effort") is True,
+                        "abort_best_effort must be true",
+                    )
+                    ensure(
+                        caps.get("pending_ttl_clears_residual_l1") is False,
+                        "pending_ttl must not claim residual GC",
+                    )
                     ok(
                         f"1012 refuse counters gets={st['gets_refused']} "
-                        f"dels={st['deletes_refused']}; EVENTUAL RYW ok"
+                        f"dels={st['deletes_refused']}; EVENTUAL RYW ok; "
+                        f"cft={caps.get('cft_only')} abort_be="
+                        f"{caps.get('abort_best_effort')}"
                     )
                 finally:
                     await gcm3.shutdown()
 
+            with scenario(
+                "CFT residual: partial COMMIT + lost ABORT (not residual-free)",
+                "cache.strong",
+            ):
+                from mpreg.core.cache_strong import _entry_op_id
+
+                step(
+                    "n=5 Q=3: only n1 applies peer COMMIT; drop ABORT → peer L1 "
+                    "residual; origin residual-free; pending purge does not clear"
+                )
+                tr_cft = InProcessStrongTransport()
+                be_cft = {
+                    f"n{i}": StrongLocalBackend(node_id=f"n{i}") for i in range(5)
+                }
+                for be in be_cft.values():
+                    tr_cft.register(be)
+                tr_cft.drop_commit |= {"n2", "n3", "n4"}
+                tr_cft.drop_abort |= {"n1"}
+                coord_cft = StrongPutCoordinator(
+                    origin_id="n0",
+                    local=be_cft["n0"],
+                    transport=tr_cft,
+                    replica_factor=5,
+                    min_replicas=5,
+                    prepare_timeout_s=0.4,
+                    commit_timeout_s=0.25,
+                    pending_ttl_s=0.05,
+                    abort_attempts=3,
+                )
+                k_cft = GlobalCacheKey(
+                    namespace="strong", identifier="cft", version="v1"
+                )
+                fail = await coord_cft.strong_put(
+                    k_cft, {"stale": True}, eligible_peers=list(be_cft)
+                )
+                ensure(not fail.success, "put must fail without peer commit quorum")
+                oid = fail.operation_id or ""
+                o_ent = be_cft["n0"].get_visible(k_cft)
+                ensure(
+                    o_ent is None or _entry_op_id(o_ent) != oid,
+                    "origin must be residual-free",
+                )
+                n1_ent = be_cft["n1"].get_visible(k_cft)
+                ensure(
+                    n1_ent is not None and _entry_op_id(n1_ent) == oid,
+                    "expected CFT residual on n1 after partial commit + lost abort",
+                )
+                ensure(be_cft["n1"].pending_count() == 0, "pending already cleared")
+                await asyncio.sleep(0.08)
+                ensure(
+                    be_cft["n1"].purge_expired_pending() == 0,
+                    "no pending to purge",
+                )
+                n1_after = be_cft["n1"].get_visible(k_cft)
+                ensure(
+                    n1_after is not None and _entry_op_id(n1_after) == oid,
+                    "pending TTL must not clear residual L1",
+                )
+                ensure(coord_cft.aborts_peer_fail >= 1, "aborts_peer_fail moved")
+                # LWW heal (not reliable ABORT)
+                tr_cft.drop_commit.clear()
+                tr_cft.drop_abort.clear()
+                heal = await coord_cft.strong_put(
+                    k_cft, {"healed": True}, eligible_peers=list(be_cft)
+                )
+                ensure(heal.success, f"LWW heal put failed: {heal.error_message}")
+                for nid, be in be_cft.items():
+                    ent = be.get_visible(k_cft)
+                    ensure(ent is not None, f"{nid} missing healed")
+                    ensure(
+                        _entry_op_id(ent) == heal.operation_id,
+                        f"{nid} still residual",
+                    )
+                    ensure(ent.value == {"healed": True}, f"{nid} value")
+                ensure(
+                    be_cft["n1"].backups_count() <= 1,
+                    "orphan backups pruned after heal",
+                )
+                ok(
+                    f"CFT residual documented then LWW-healed; "
+                    f"abort_fail={coord_cft.aborts_peer_fail} "
+                    f"pruned={be_cft['n1'].backups_pruned_total}"
+                )
+
             with scenario("non-claims", "cache.strong"):
                 step(
                     "no quorum get/delete (always 1012); not WAN SLA; not BFT; "
-                    "not fsync durability; local RYW is EVENTUAL/WEAK get"
+                    "not fsync durability; local RYW is EVENTUAL/WEAK get; "
+                    "ABORT best-effort (CFT residual possible); pending TTL ≠ "
+                    "residual GC; LWW heal is not reliable ABORT"
                 )
                 ok("honesty banners retained outside majority-commit put claim")
         finally:

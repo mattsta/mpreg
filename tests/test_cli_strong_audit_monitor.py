@@ -65,6 +65,7 @@ def test_doctor_strong_evaluate_payload_honesty() -> None:
     assert "gets_ref=1" in detail
     assert "cft=True" in detail
     assert "abort_be=True" in detail
+    assert "ttl_gc=False" in detail
 
     bad, bdetail = evaluate_strong_doctor_payload(
         {

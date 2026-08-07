@@ -124,10 +124,14 @@ def evaluate_strong_doctor_payload(
             f"ryw={caps.get('local_ryw_after_put')} "
             f"cft={caps.get('cft_only', True)} "
             f"abort_be={caps.get('abort_best_effort', True)} "
+            f"ttl_gc={caps.get('pending_ttl_clears_residual_l1', False)} "
             f"puts_ok={counters.get('puts_ok', 0)} "
             f"gets_ref={counters.get('gets_refused', 0)} "
             f"dels_ref={counters.get('deletes_refused', 0)} "
-            f"abort_fail={counters.get('aborts_peer_fail', 0)}"
+            f"abort_fail={counters.get('aborts_peer_fail', 0)} "
+            f"visible={body.get('visible_count', 0)} "
+            f"backups={body.get('backups_count', 0)} "
+            f"pruned={body.get('backups_pruned_total', 0)}"
         ),
     )
 

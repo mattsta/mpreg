@@ -4,14 +4,19 @@
 
 EVENTUAL L3 gossip is fire-and-forget. Callers that need a **majority-commit
 put** enable `cache_strong_enabled` and use `ConsistencyLevel.STRONG`. Failures
-must leave **no visible residual** for that `op_id` on any replica in \(R\).
+**aim** to leave **no visible residual** for that `op_id` on any replica in \(R\)
+under CFT best-effort ABORT. Partial peer COMMIT + lost ABORT is a documented
+CFT limit (not residual-free; not BFT).
 
 ## Lesson
 
 - `StrongPutCoordinator`: PREPARE (pending invisible) → majority COMMIT_ACK →
-  **origin-commit-last**; ABORT uncommits peer+origin L1 on failure.
+  **origin-commit-last**; ABORT uncommits peer+origin L1 on failure (best-effort).
 - Flag off / unbound coordinator → `1012 UNSUPPORTED_CONSISTENCY` (no local write).
 - Insufficient eligible peers → `1015 INSUFFICIENT_QUORUM` (residual-free).
+- **CFT:** partial COMMIT + lost ABORT may leave peer L1; pending TTL does **not**
+  clear it; later successful put can LWW-heal (not reliable ABORT).
+- Caps: `cft_only`, `abort_best_effort`, `pending_ttl_clears_residual_l1=false`.
 - This app teaches the same coordinator core in-process
   (`InProcessStrongTransport`); production uses `ServerCacheTransport` RR.
 
@@ -27,7 +32,9 @@ uv run mpreg-example run cache_strong_quorum
 - Insufficient peers path returns `1015` with no dirty residual
 - GCM attach path still refuse-closed when coordinator/peers not production-wired
 - STRONG **get** / **delete** always `1012`; EVENTUAL get RYW after STRONG put
-- `strong_status.capabilities` denies `get_quorum` / `delete_quorum`
+- `strong_status.capabilities` denies `get_quorum` / `delete_quorum`; asserts
+  `cft_only` / `abort_best_effort` / `pending_ttl_clears_residual_l1=false`
+- CFT residual demo (partial COMMIT + lost ABORT) then LWW heal
 - Feature tag: `cache.strong`
 
 ## API drill-down
@@ -47,6 +54,9 @@ uv run mpreg-example run cache_strong_quorum
 - No STRONG **get** / quorum read MVP (always `1012`).
 - No STRONG **delete** MVP (`1012`).
 - Not WAN multi-region SLA, not BFT, not fsync/disk durability across replicas.
+- Not residual-free under partial peer COMMIT apply + lost ABORT (CFT limit).
+- Pending TTL purge is **not** residual L1 GC after COMMIT apply.
+- LWW heal of a CFT residual is **not** reliable ABORT delivery.
 - `location_consistency.ConsistencyLevel.STRONG` remains a separate fail-closed plane.
 
 ## Production exit ramp

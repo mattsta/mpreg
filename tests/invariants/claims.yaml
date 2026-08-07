@@ -220,6 +220,11 @@ encapsulation:
       checker (not Jepsen). Adversarial ACK / handler fuzz fail-closed (not BFT).
       STRONG get/delete always refuse 1012 (quorum get/delete v1.1); local RYW
       after put uses EVENTUAL/WEAK get. capabilities flags deny get/delete quorum.
+      CFT only: ABORT is best-effort (aborts_peer_ok/fail); partial peer COMMIT +
+      lost ABORT may leave peer L1 (not residual-free). pending_ttl_clears_residual_l1
+      is false — purge_expired_pending does not uncommit residual L1. Orphan
+      pre-commit backups are GC'd; residual L1 itself is not. LWW success put can
+      overwrite residual (not reliable ABORT). Caps: cft_only, abort_best_effort.
     proof: [L1, L2, L4]
     tests:
       - tests/core/test_cache_strong.py
@@ -230,6 +235,13 @@ encapsulation:
       - tests/chaos/test_t9_residuals.py
       - tests/chaos/test_strong_chaos_stress.py
       - tests/chaos/harness_strong_audit.py
+      - tests/chaos/test_t27_residuals.py
+      - tests/chaos/test_t28_residuals.py
+      - tests/chaos/test_t29_residuals.py
+      - tests/chaos/test_t30_residuals.py
+      - tests/chaos/test_t31_residuals.py
+      - tests/chaos/test_t32_residuals.py
+      - tests/chaos/test_t33_residuals.py
       - tests/invariants/test_cache_strong_properties.py
       - tests/invariants/test_cache_strong_history.py
       - tests/integration/test_cache_strong_quorum.py
@@ -242,6 +254,7 @@ encapsulation:
       - tests/testing/test_distlab_sli.py
       - tests/server_pkg/test_strong_audit_metrics.py
       - tests/test_strong_audit_monitoring_endpoints.py
+      - tests/examples_apps/test_curriculum_apps.py
 
 non_claims:
   - "Atomic multi-store fabric snapshot save (catalog+keys single blob); restore has COR-10 rollback on key failure"
@@ -258,6 +271,10 @@ non_claims:
   - "Bounded single-key STRONG history checker is not Jepsen/Elle WAN linearizability"
   - "Adversarial STRONG peer tests prove fail-closed ACKs only — not Byzantine fault tolerance under a quorum of liars"
   - "STRONG pending TTL purge is best-effort wall-clock GC — not Byzantine time sync or crash-restart durability"
+  - "STRONG pending TTL purge does not clear residual L1 after COMMIT apply (pending already gone; not residual GC)"
+  - "Partial peer COMMIT apply + lost ABORT may leave peer L1 — ABORT best-effort CFT limit (not residual-free, not BFT)"
+  - "LWW overwrite of a CFT residual peer L1 is ordinary majority success put — not reliable ABORT delivery"
+  - "Orphan pre-commit backup GC drops backups only — not residual L1 clear"
   - "Lying COMMIT_ACK applied bits can satisfy CFT quorum math without peer L1 apply — documented non_claim (not BFT)"
   - "mpreg.testing.distlab is Jepsen-inspired (history/checker/nemesis) — not Elle, not WAN geo generators, not a JVM Jepsen port"
   - "DistLab lab SLI budgets (p99/avg soak bounds) are same-host in-process — not production WAN latency SLAs"

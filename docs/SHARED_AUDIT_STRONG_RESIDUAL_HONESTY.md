@@ -426,3 +426,17 @@ T32 makes T29/T30 ops signals scrapable:
 Plan: `docs/plans/DISTLAB_T32_BACKUP_VISIBLE_PROM_CONFIG_PLAN.md`.
 
 Still **not** claimed: residual-free under lost ABORT; WAN/Elle/BFT/fsync.
+
+## Phase 21 — Curriculum + claims CFT honesty (2026-08-06)
+
+T33 teaches the CFT boundary in the primary STRONG curriculum and claims map:
+
+* **Curriculum:** `cache_strong_quorum` CFT residual + LWW heal scenario; caps
+  assert; README non-claims for lost ABORT / TTL / LWW≠ABORT.
+* **claims.yaml:** INV-CACHE-STRONG-01 text + non_claims for CFT residual, TTL,
+  LWW heal, orphan backup GC; proof tests T27–T33 + curriculum.
+* **Doctor:** detail includes `ttl_gc=` / `visible=` / `backups=` / `pruned=`.
+
+Plan: `docs/plans/DISTLAB_T33_CURRICULUM_CLAIMS_CFT_PLAN.md`.
+
+Still **not** claimed: residual-free under lost ABORT; WAN/Elle/BFT/fsync.
