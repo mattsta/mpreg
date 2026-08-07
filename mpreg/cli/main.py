@@ -81,6 +81,19 @@ def evaluate_strong_doctor_payload(
             False,
             "strong dishonest capabilities (get_quorum/delete_quorum claimed)",
         )
+    # T27: when caps present, cft_only / abort_best_effort must not be false
+    # (v1 is CFT + best-effort ABORT only — never claim residual-free BFT abort).
+    if caps and caps.get("cft_only") is False:
+        return (
+            False,
+            "strong dishonest capabilities (cft_only=false; v1 is CFT-only)",
+        )
+    if caps and caps.get("abort_best_effort") is False:
+        return (
+            False,
+            "strong dishonest capabilities "
+            "(abort_best_effort=false; lost ABORT is a CFT limit)",
+        )
     if health in {"misconfigured", "critical"}:
         return False, f"strong health={health}"
     if health == "disabled":
@@ -102,9 +115,12 @@ def evaluate_strong_doctor_payload(
             f"get_q={caps.get('get_quorum', False)} "
             f"del_q={caps.get('delete_quorum', False)} "
             f"ryw={caps.get('local_ryw_after_put')} "
+            f"cft={caps.get('cft_only', True)} "
+            f"abort_be={caps.get('abort_best_effort', True)} "
             f"puts_ok={counters.get('puts_ok', 0)} "
             f"gets_ref={counters.get('gets_refused', 0)} "
-            f"dels_ref={counters.get('deletes_refused', 0)}"
+            f"dels_ref={counters.get('deletes_refused', 0)} "
+            f"abort_fail={counters.get('aborts_peer_fail', 0)}"
         ),
     )
 
@@ -2026,6 +2042,8 @@ def config_check(
                 "get_quorum": False,
                 "delete_quorum": False,
                 "local_ryw_after_put": True,
+                "cft_only": True,
+                "abort_best_effort": True,
             },
         },
         "shared_audit": {
@@ -2238,8 +2256,10 @@ def config_check(
         "strong_cache": (
             "Flag-gated ConsistencyLevel.STRONG put majority-commit "
             "(cache_strong_enabled). Default off → 1012. Put-only MVP: get/delete "
-            "always refuse 1012; local RYW via EVENTUAL/WEAK get. Not WAN SLA, "
-            "not BFT, not fsync. See docs/CACHING_SYSTEM.md and residual honesty."
+            "always refuse 1012; local RYW via EVENTUAL/WEAK get. CFT only: "
+            "ABORT is best-effort (aborts_peer_fail may leave peer L1 until "
+            "repair). Not WAN SLA, not BFT, not fsync. "
+            "See docs/CACHING_SYSTEM.md and residual honesty."
         ),
         "shared_audit": (
             "Shared mgmt audit G-Set epidemic (mgmt_audit_shared_enabled). "

@@ -530,6 +530,65 @@ def _strong_not_bft_lie_commit() -> Scenario:
         meta={"track": "T3", "not_bft": True},
     )
 
+def _strong_cft_partial_commit_lost_abort() -> Scenario:
+    """T27 honesty: partial peer COMMIT + lost ABORT can leave peer L1.
+
+    n=5, Q=3, need_peers=2. Only n1 receives COMMIT; put fails. ABORT to n1 is
+    dropped so uncommit never lands. Documents CFT best-effort ABORT limit —
+    **not** residual-free (not BFT). Origin remains residual-free.
+    """
+    from mpreg.core.cache_models import GlobalCacheKey
+    from mpreg.core.cache_strong import _entry_op_id
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+    from mpreg.testing.distlab.checker import NoOpenInvokeChecker
+
+    sut = StrongSUT.create(
+        5,
+        prepare_timeout_s=0.4,
+        commit_timeout_s=0.25,
+        pending_ttl_s=30.0,
+    )
+    # Only n1 can apply COMMIT; n2–n4 drop → need_peers=2 not met → fail
+    sut.transport.drop_commit |= {"n2", "n3", "n4"}
+    # Lost ABORT on the peer that did apply COMMIT
+    sut.transport.drop_abort |= {"n1"}
+
+    async def body(history: History, s: object) -> None:
+        res = await sut.put(
+            history, process="c0", origin="n0", logical_key="cft", value={"cft": 1}
+        )
+        assert res.success is False, "put must fail without peer commit quorum"
+        oid = res.operation_id or ""
+        key = GlobalCacheKey(
+            namespace="distlab", identifier="cft", version="v1"
+        )
+        # Origin residual-free (local abort always runs)
+        o_ent = sut.backends["n0"].get_visible(key)
+        assert o_ent is None or _entry_op_id(o_ent) != oid
+        # Peer n1 may still hold L1 — CFT limit (document, do not "fix")
+        n1_ent = sut.backends["n1"].get_visible(key)
+        assert n1_ent is not None and _entry_op_id(n1_ent) == oid, (
+            "expected CFT residual on n1 after partial commit + lost abort "
+            f"(got {n1_ent!r})"
+        )
+        # Abort failure counter should have moved (best-effort attempts exhausted)
+        coord = sut.coords["n0"]
+        assert int(getattr(coord, "aborts_peer_fail", 0) or 0) >= 1
+
+    return Scenario(
+        name="strong.cft_partial_commit_lost_abort",
+        setup=lambda: sut,
+        body=body,
+        # Structural only — residual-free is intentionally NOT claimed
+        checker=NoOpenInvokeChecker(),
+        meta={
+            "track": "T27",
+            "cft_limit": True,
+            "not_residual_free": True,
+            "fault": "partial_commit_lost_abort",
+        },
+    )
+
 def _strong_soak_n(n_puts: int) -> Scenario:
     import time
 
@@ -1035,6 +1094,13 @@ def register_builtins(registry=None) -> int:
         ("strong.lie_prepare", _strong_lie_prepare, "T3", "lie prepare residual", ("strong", "adv")),
         ("strong.lie_commit_single_peer", _strong_lie_commit_single, "T3", "single peer COMMIT lie", ("strong", "adv")),
         ("strong.not_bft_lie_commit_both", _strong_not_bft_lie_commit, "T3", "BFT boundary demo", ("strong", "not_bft")),
+        (
+            "strong.cft_partial_commit_lost_abort",
+            _strong_cft_partial_commit_lost_abort,
+            "T27",
+            "CFT limit: partial COMMIT + lost ABORT peer L1",
+            ("strong", "cft_limit", "fault"),
+        ),
         ("strong.nemesis_concurrent", _strong_nemesis, "T2", "nemesis concurrent", ("strong", "nemesis")),
         ("strong.interleaved_fault_success", _strong_interleaved, "T2", "fault then ok", ("strong", "fault")),
         ("strong.duplicate_commit", _strong_duplicate_commit, "T2", "dup commit", ("strong", "fault")),

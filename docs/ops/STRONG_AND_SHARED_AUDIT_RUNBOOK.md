@@ -53,6 +53,10 @@ Prometheus series (process-local; **not** WAN SLO):
 | `mpreg_strong_cap_put_majority_commit` | 1 when put path available |
 | `mpreg_strong_cap_get_quorum` / `_delete_quorum` | **Always 0** in v1 |
 | `mpreg_strong_cap_local_ryw_after_put` | 1 when RYW via EVENTUAL |
+| `mpreg_strong_aborts_peer_ok_total` | Successful peer ABORT deliveries |
+| `mpreg_strong_aborts_peer_fail_total` | Failed peer ABORT (CFT; may leave peer L1) |
+| `mpreg_strong_cap_cft_only` | **Always 1** — not BFT |
+| `mpreg_strong_cap_abort_best_effort` | **Always 1** — lost ABORT CFT limit |
 
 ### Capabilities (always honest in v1)
 
@@ -62,8 +66,16 @@ Prometheus series (process-local; **not** WAN SLO):
 | `get_quorum` | **false** | Quorum get is v1.1; always 1012 |
 | `delete_quorum` | **false** | Quorum delete is v1.1; always 1012 |
 | `local_ryw_after_put` | true | Use EVENTUAL/WEAK get after STRONG put |
+| `cft_only` | **true** | Not BFT |
+| `abort_best_effort` | **true** | Lost ABORT may leave peer L1 until repair |
 
-Doctor fails closed if metrics claim `get_quorum` or `delete_quorum`.
+Doctor fails closed if metrics claim `get_quorum` or `delete_quorum`, or if
+`cft_only` / `abort_best_effort` are advertised as false.
+
+**CFT limit:** if a peer applies COMMIT but ABORT is lost and the put fails,
+that peer may retain L1 for `op_id` until pending TTL / later repair. DistLab
+`strong.cft_partial_commit_lost_abort` documents this — it is **not** claimed
+residual-free. Watch `mpreg_strong_aborts_peer_fail_total`.
 
 ### Health values
 

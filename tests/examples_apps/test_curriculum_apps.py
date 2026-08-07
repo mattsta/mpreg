@@ -74,6 +74,8 @@ _TIMEOUT_S: dict[str, float] = {
     "hello_queue": 30.0,
     "hello_dns": 90.0,
     "ops_cli_tour": 120.0,
+    "cache_strong_quorum": 60.0,
+    "shared_audit_mesh": 30.0,
     "chaos_transport": 30.0,
     "rpc_deadline_budget": 90.0,
     "notification_fanout": 30.0,

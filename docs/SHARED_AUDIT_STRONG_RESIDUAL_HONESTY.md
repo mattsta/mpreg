@@ -322,3 +322,24 @@ T26 same-process STRONG+audit honesty scrape:
 Plan: `docs/plans/DISTLAB_T26_COEXISTENCE_PROM_CAPS_PLAN.md`.
 
 Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM.
+
+## Phase 15 — CFT residual honesty + abort metrics (2026-08-06)
+
+T27 measures and documents the CFT ABORT best-effort boundary:
+
+* **Product:** coordinator multi-attempt ABORT (`abort_attempts=3`) with
+  `aborts_peer_ok` / `aborts_peer_fail` counters; GCM/metrics/prom surface them.
+* **Capabilities:** `cft_only=true`, `abort_best_effort=true` on strong_status /
+  OpenAPI / config-check.
+* **Doctor / alerts:** fails closed if `cft_only` or `abort_best_effort` is false;
+  prom honesty alerts `MPREGStrongCapCftOnlyMissing` /
+  `MPREGStrongCapAbortBestEffortMissing`.
+* **DistLab:** `strong.cft_partial_commit_lost_abort` proves peer L1 can remain
+  after partial COMMIT + lost ABORT (not residual-free; not a product bug).
+* **Hypothesis:** property that documents the same CFT residual on a commit peer.
+* **Curriculum:** focused live runs of `cache_strong_quorum` + `shared_audit_mesh`.
+
+Plan: `docs/plans/DISTLAB_T27_CFT_RESIDUAL_ABORT_METRICS_PLAN.md`.
+
+Still **not** claimed: WAN SLA, Elle, BFT, fsync, STRONG quorum get/delete, SIEM;
+residual-free under partial-commit+lost-abort.

@@ -48,11 +48,14 @@ def test_doctor_strong_evaluate_payload_honesty() -> None:
                     "get_quorum": False,
                     "delete_quorum": False,
                     "local_ryw_after_put": True,
+                    "cft_only": True,
+                    "abort_best_effort": True,
                 },
                 "counters": {
                     "puts_ok": 3,
                     "gets_refused": 1,
                     "deletes_refused": 2,
+                    "aborts_peer_fail": 0,
                 },
             }
         }
@@ -60,6 +63,8 @@ def test_doctor_strong_evaluate_payload_honesty() -> None:
     assert ok is True
     assert "get_q=False" in detail
     assert "gets_ref=1" in detail
+    assert "cft=True" in detail
+    assert "abort_be=True" in detail
 
     bad, bdetail = evaluate_strong_doctor_payload(
         {
@@ -72,6 +77,38 @@ def test_doctor_strong_evaluate_payload_honesty() -> None:
     )
     assert bad is False
     assert "dishonest" in bdetail
+
+    cft_bad, cft_d = evaluate_strong_doctor_payload(
+        {
+            "strong": {
+                "health": "ok",
+                "capabilities": {
+                    "get_quorum": False,
+                    "cft_only": False,
+                    "abort_best_effort": True,
+                },
+                "counters": {},
+            }
+        }
+    )
+    assert cft_bad is False
+    assert "cft_only" in cft_d
+
+    abort_bad, abort_d = evaluate_strong_doctor_payload(
+        {
+            "strong": {
+                "health": "ok",
+                "capabilities": {
+                    "get_quorum": False,
+                    "cft_only": True,
+                    "abort_best_effort": False,
+                },
+                "counters": {},
+            }
+        }
+    )
+    assert abort_bad is False
+    assert "abort_best_effort" in abort_d
 
     dis_ok, dis_d = evaluate_strong_doctor_payload(
         {"strong": {"health": "disabled", "capabilities": {}, "counters": {}}}

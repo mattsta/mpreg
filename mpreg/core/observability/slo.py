@@ -130,6 +130,22 @@ def prometheus_alert_rules_yaml() -> str:
           scope: honesty
         annotations:
           summary: "STRONG dishonestly claims delete_quorum (must be 0 in v1)"
+      - alert: MPREGStrongCapCftOnlyMissing
+        expr: mpreg_strong_cap_cft_only == 0
+        for: 0m
+        labels:
+          severity: critical
+          scope: honesty
+        annotations:
+          summary: "STRONG dishonestly omits cft_only (must be 1 in v1)"
+      - alert: MPREGStrongCapAbortBestEffortMissing
+        expr: mpreg_strong_cap_abort_best_effort == 0
+        for: 0m
+        labels:
+          severity: critical
+          scope: honesty
+        annotations:
+          summary: "STRONG dishonestly claims reliable ABORT (must stay best-effort)"
       - alert: MPREGSharedAuditCapSiemClaimed
         expr: mpreg_shared_audit_cap_siem > 0
         for: 0m

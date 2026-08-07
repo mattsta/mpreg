@@ -42,7 +42,8 @@ def _strong_metrics_schema() -> dict[str, Any]:
                         "additionalProperties": {"type": "integer"},
                         "description": (
                             "Includes puts_ok, puts_fail, refused_disabled, "
-                            "gets_refused, deletes_refused (1012 refuse paths)."
+                            "gets_refused, deletes_refused (1012 refuse paths), "
+                            "aborts_peer_ok, aborts_peer_fail (CFT best-effort ABORT)."
                         ),
                     },
                     "latency_ms": {
@@ -60,7 +61,8 @@ def _strong_metrics_schema() -> dict[str, Any]:
                         "type": "object",
                         "description": (
                             "Honest v1 product surface. get_quorum/delete_quorum "
-                            "must be false (quorum get/delete are v1.1 non-goals)."
+                            "must be false (quorum get/delete are v1.1 non-goals). "
+                            "cft_only and abort_best_effort are always true."
                         ),
                         "properties": {
                             "put_majority_commit": {"type": "boolean"},
@@ -75,6 +77,19 @@ def _strong_metrics_schema() -> dict[str, Any]:
                                 "description": "Always false in v1 (refuse 1012).",
                             },
                             "local_ryw_after_put": {"type": "boolean"},
+                            "cft_only": {
+                                "type": "boolean",
+                                "enum": [True],
+                                "description": "Always true — not BFT.",
+                            },
+                            "abort_best_effort": {
+                                "type": "boolean",
+                                "enum": [True],
+                                "description": (
+                                    "Always true — lost ABORT may leave peer L1 "
+                                    "until repair (CFT limit)."
+                                ),
+                            },
                         },
                         "required": ["get_quorum", "delete_quorum"],
                     },

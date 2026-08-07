@@ -231,12 +231,25 @@ class GlobalCacheManager(ManagedObject):
             except Exception:  # noqa: BLE001
                 pass
 
+        # Snapshot abort counters before put so we can attribute deltas
+        prev_ok = int(getattr(coord, "aborts_peer_ok", 0) or 0)
+        prev_fail = int(getattr(coord, "aborts_peer_fail", 0) or 0)
         t0 = time.perf_counter()
         result = await coord.strong_put(
             key, value, metadata=metadata, eligible_peers=eligible
         )
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
         self._record_strong_latency(elapsed_ms)
+        # Pull CFT abort best-effort counters from coordinator
+        try:
+            d_ok = int(getattr(coord, "aborts_peer_ok", 0) or 0) - prev_ok
+            d_fail = int(getattr(coord, "aborts_peer_fail", 0) or 0) - prev_fail
+            if d_ok > 0:
+                self._strong_metrics["aborts_peer_ok"] += d_ok
+            if d_fail > 0:
+                self._strong_metrics["aborts_peer_fail"] += d_fail
+        except Exception:  # noqa: BLE001
+            pass
         if result.success and result.entry is not None:
             # Apply visible entry into real L1 only after quorum success
             self._put_to_l1(result.entry)
@@ -287,7 +300,17 @@ class GlobalCacheManager(ManagedObject):
                 "commit_timeout_s": getattr(coord, "commit_timeout_s", None),
                 "pending_ttl_s": getattr(coord, "pending_ttl_s", None),
                 "lab_single_node": bool(getattr(coord, "lab_single_node", False)),
+                "abort_attempts": getattr(coord, "abort_attempts", None),
+                "aborts_peer_ok": int(getattr(coord, "aborts_peer_ok", 0) or 0),
+                "aborts_peer_fail": int(getattr(coord, "aborts_peer_fail", 0) or 0),
             }
+            # Prefer live coordinator totals when GCM counters lag (direct coord use)
+            live_ok = int(getattr(coord, "aborts_peer_ok", 0) or 0)
+            live_fail = int(getattr(coord, "aborts_peer_fail", 0) or 0)
+            if live_ok > int(self._strong_metrics.get("aborts_peer_ok", 0)):
+                self._strong_metrics["aborts_peer_ok"] = live_ok
+            if live_fail > int(self._strong_metrics.get("aborts_peer_fail", 0)):
+                self._strong_metrics["aborts_peer_fail"] = live_fail
         return {
             "enabled": coord is not None,
             "pending_count": pending,
@@ -314,7 +337,11 @@ class GlobalCacheManager(ManagedObject):
                 "get_quorum": False,  # v1.1
                 "delete_quorum": False,  # v1.1
                 "local_ryw_after_put": True,
+                "cft_only": True,  # not BFT
+                "abort_best_effort": True,  # lost ABORT may leave peer L1
             },
+            "aborts_peer_ok": int(c.get("aborts_peer_ok", 0)),
+            "aborts_peer_fail": int(c.get("aborts_peer_fail", 0)),
         }
 
     def _enqueue_replication(

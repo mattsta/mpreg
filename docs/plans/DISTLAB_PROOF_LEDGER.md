@@ -52,6 +52,12 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T25 live prom audit caps | `test_distlab_live_audit_metrics_e2e` cap gauges 0/1 | support ops |
 | T25 ci-core preset | `test_registry_run_suite_ci_core_preset`, `resolve_preset` | support |
 | T26 coexistence prom caps | `test_distlab_live_doctor_strong_audit_e2e` dual cap gauges | support ops |
+| T27 abort counters | `aborts_peer_ok/fail`, prom series, GCM status | support ops CFT |
+| T27 CFT DistLab | `strong.cft_partial_commit_lost_abort` | honesty (not residual-free) |
+| T27 CFT Hypothesis | `test_cft_partial_commit_plus_lost_abort_leaves_peer_l1` | honesty CFT limit |
+| T27 curriculum honesty | `test_t27_curriculum_honesty_apps_main` | teach |
+| T27 doctor CFT | `evaluate_strong_doctor_payload` fails closed on `cft_only`/`abort_best_effort` false | support ops |
+| T27 prom CFT alerts | `MPREGStrongCapCftOnlyMissing`, `MPREGStrongCapAbortBestEffortMissing` | support ops |
 
 ## Non-claims (do not market)
 
@@ -60,6 +66,7 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 - STRONG put-only MVP (get/delete not majority)
 - Shared audit ≠ SIEM / infinite retention / BFT
 - CFT only — Byzantine COMMIT lies are `not_bft`
+- Partial peer COMMIT apply + lost ABORT may leave peer L1 (ABORT best-effort)
 
 ## Gate commands
 
@@ -78,5 +85,5 @@ uv run pytest tests/testing/ tests/server_pkg/test_shared_audit*.py \
   tests/chaos/test_t21_residuals.py tests/chaos/test_t22_residuals.py \
   tests/chaos/test_t23_residuals.py tests/chaos/test_t24_residuals.py \
   tests/chaos/test_t25_residuals.py tests/chaos/test_t26_residuals.py \
-  tests/test_config_check_cli.py -q
+  tests/chaos/test_t27_residuals.py tests/test_config_check_cli.py -q
 ```

@@ -2570,6 +2570,23 @@ class FederationMonitoringSystem:
                         f"{int(counters.get('deletes_refused', 0) or 0)}"
                     )
                     lines.append(
+                        "# HELP mpreg_strong_aborts_peer_ok_total Successful peer ABORT deliveries (CFT best-effort)."
+                    )
+                    lines.append("# TYPE mpreg_strong_aborts_peer_ok_total counter")
+                    lines.append(
+                        f"mpreg_strong_aborts_peer_ok_total{{{labels}}} "
+                        f"{int(counters.get('aborts_peer_ok', 0) or 0)}"
+                    )
+                    lines.append(
+                        "# HELP mpreg_strong_aborts_peer_fail_total Failed peer ABORT deliveries "
+                        "(lost ABORT; may leave peer L1 until repair — not BFT)."
+                    )
+                    lines.append("# TYPE mpreg_strong_aborts_peer_fail_total counter")
+                    lines.append(
+                        f"mpreg_strong_aborts_peer_fail_total{{{labels}}} "
+                        f"{int(counters.get('aborts_peer_fail', 0) or 0)}"
+                    )
+                    lines.append(
                         "# HELP mpreg_strong_pending Pending prepare entries on local backend."
                     )
                     lines.append("# TYPE mpreg_strong_pending gauge")
@@ -2616,6 +2633,16 @@ class FederationMonitoringSystem:
                             "mpreg_strong_cap_local_ryw_after_put",
                             "1 if local RYW via EVENTUAL/WEAK get after STRONG put.",
                             bool(caps.get("local_ryw_after_put", True)),
+                        ),
+                        (
+                            "mpreg_strong_cap_cft_only",
+                            "Always 1 — STRONG is CFT only (not BFT).",
+                            bool(caps.get("cft_only", True)),
+                        ),
+                        (
+                            "mpreg_strong_cap_abort_best_effort",
+                            "Always 1 — ABORT delivery is best-effort (lost ABORT CFT limit).",
+                            bool(caps.get("abort_best_effort", True)),
                         ),
                     )
                     for mname, help_s, val in cap_specs:

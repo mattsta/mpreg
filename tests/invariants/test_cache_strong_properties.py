@@ -550,6 +550,47 @@ async def test_minority_commit_drop_success_pending_free_after_abort_drop_gc(
         assert be.pending_count() == 0, f"pending on {be.node_id}"
 
 @pytest.mark.asyncio
+@given(n=st.integers(min_value=5, max_value=7))
+@settings(
+    max_examples=12,
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow, HealthCheck.function_scoped_fixture],
+)
+async def test_cft_partial_commit_plus_lost_abort_leaves_peer_l1(n: int) -> None:
+    """T27 honesty: when one peer applies COMMIT but ABORT is lost and put fails,
+    that peer may retain L1 for op_id. Origin stays residual-free.
+
+    This is the documented CFT best-effort ABORT limit — **not** a product bug
+    and **not** claimed residual-free (not BFT).
+    """
+    peers = [f"n{i}" for i in range(n)]
+    non_origin = peers[1:]
+    # Allow exactly one peer to commit; drop the rest so need_peers fails
+    commit_peer = non_origin[0]
+    dc = frozenset(non_origin[1:])
+    da = frozenset({commit_peer})
+    coord, _t, backends = _cluster(
+        n,
+        drop_commit=dc,
+        drop_abort=da,
+        min_replicas=n,
+        prepare_timeout_s=0.3,
+        commit_timeout_s=0.25,
+        pending_ttl_s=30.0,
+    )
+    key = _key(f"cft-{n}")
+    res = await coord.strong_put(key, {"cft": n}, eligible_peers=peers)
+    assert res.success is False
+    oid = res.operation_id or ""
+    # Origin residual-free
+    o_ent = backends["n0"].get_visible(key)
+    assert o_ent is None or _entry_op_id(o_ent) != oid
+    # CFT residual on the peer that committed then lost ABORT
+    peer_ent = backends[commit_peer].get_visible(key)
+    assert peer_ent is not None and _entry_op_id(peer_ent) == oid
+    assert coord.aborts_peer_fail >= 1
+
+@pytest.mark.asyncio
 @given(val=st.integers())
 @settings(max_examples=15, deadline=None)
 async def test_strong_get_delete_refuse_1012_property(val: int) -> None:

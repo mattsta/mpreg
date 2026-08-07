@@ -128,6 +128,8 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
             "get_quorum": False,  # v1.1
             "delete_quorum": False,  # v1.1
             "local_ryw_after_put": True,
+            "cft_only": True,
+            "abort_best_effort": True,
         }
     # Simple health hint for doctor
     if not enabled_flag:

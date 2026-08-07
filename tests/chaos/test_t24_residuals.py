@@ -22,6 +22,8 @@ def test_t24_prometheus_alerts_include_honesty_rules() -> None:
     assert "mpreg_strong_shared_audit" in text
     assert "MPREGStrongCapGetQuorumClaimed" in text
     assert "MPREGStrongCapDeleteQuorumClaimed" in text
+    assert "MPREGStrongCapCftOnlyMissing" in text
+    assert "MPREGStrongCapAbortBestEffortMissing" in text
     assert "MPREGSharedAuditCapSiemClaimed" in text
     assert "MPREGSharedAuditCapBftClaimed" in text
     assert "MPREGStrongPendingElevated" in text
@@ -29,6 +31,8 @@ def test_t24_prometheus_alerts_include_honesty_rules() -> None:
     assert "WAN" in text or "wan" in text.lower()
     assert "SIEM" in text or "siem" in text.lower()
     assert "mpreg_strong_cap_get_quorum" in text
+    assert "mpreg_strong_cap_cft_only" in text
+    assert "mpreg_strong_cap_abort_best_effort" in text
     assert "mpreg_shared_audit_cap_siem" in text
 
 def test_t24_openapi_still_matches_route_table() -> None:
@@ -40,4 +44,6 @@ def test_t24_slo_helper_includes_honesty_group() -> None:
     yml = prometheus_alert_rules_yaml()
     assert "mpreg_strong_shared_audit" in yml
     assert "mpreg_strong_cap_get_quorum" in yml
+    assert "mpreg_strong_cap_cft_only" in yml
+    assert "mpreg_strong_cap_abort_best_effort" in yml
     assert "mpreg_shared_audit_cap_siem" in yml

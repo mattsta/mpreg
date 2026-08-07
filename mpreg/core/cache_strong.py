@@ -322,7 +322,13 @@ class StrongLocalBackend:
 
 @dataclass(slots=True)
 class StrongPutCoordinator:
-    """Coordinates residual-free majority-commit STRONG puts."""
+    """Coordinates residual-free majority-commit STRONG puts.
+
+    Residual-free is a **CFT best-effort** claim: ABORT is retried but not
+    guaranteed delivered. Partial peer COMMIT apply + lost ABORT can leave
+    peer L1 until pending TTL / later repair — not BFT, not fsync recovery.
+    Counters ``aborts_peer_ok`` / ``aborts_peer_fail`` expose that boundary.
+    """
 
     origin_id: str
     local: StrongLocalBackend
@@ -336,6 +342,10 @@ class StrongPutCoordinator:
     commit_timeout_s: float = 2.0
     pending_ttl_s: float = 30.0
     origin_commit_last: bool = True
+    # Best-effort ABORT delivery attempts per peer (CFT; not BFT reliable abort).
+    abort_attempts: int = 3
+    aborts_peer_ok: int = 0
+    aborts_peer_fail: int = 0
 
     def select_replica_set(self, eligible: Sequence[str]) -> tuple[str, ...] | None:
         peers = list(dict.fromkeys(eligible))  # stable unique
@@ -624,15 +634,34 @@ class StrongPutCoordinator:
     ) -> None:
         targets = set(replica_set) | set(contacted)
         await self.local.abort(op_id=op_id, key=key)
-        for _ in range(2):  # retry once
-            await asyncio.gather(
+        peers = [p for p in targets if p != self.origin_id]
+        if not peers:
+            return
+        # Best-effort multi-attempt ABORT (CFT). Track last-attempt failures.
+        attempts = max(1, int(self.abort_attempts))
+        pending = set(peers)
+        for attempt in range(attempts):
+            if not pending:
+                break
+            results = await asyncio.gather(
                 *[
-                    self._abort_peer(p, op_id, key, strong_version)
-                    for p in targets
-                    if p != self.origin_id
+                    self._abort_peer(p, op_id, key, strong_version, _count=False)
+                    for p in pending
                 ],
                 return_exceptions=True,
             )
+            still: set[str] = set()
+            for p, res in zip(list(pending), results, strict=True):
+                ok = res is True
+                if ok:
+                    self.aborts_peer_ok += 1
+                else:
+                    still.add(p)
+            pending = still
+            if pending and attempt + 1 < attempts:
+                await asyncio.sleep(0)  # yield between attempts
+        for _p in pending:
+            self.aborts_peer_fail += 1
 
     async def _abort_peer(
         self,
@@ -640,9 +669,11 @@ class StrongPutCoordinator:
         op_id: str,
         key: GlobalCacheKey,
         strong_version: StrongVersion,
+        *,
+        _count: bool = True,
     ) -> bool:
         try:
-            return await asyncio.wait_for(
+            ok = await asyncio.wait_for(
                 self.transport.strong_abort(
                     peer_id,
                     op_id=op_id,
@@ -653,7 +684,16 @@ class StrongPutCoordinator:
                 ),
                 timeout=self.commit_timeout_s,
             )
+            ok_b = bool(ok)
+            if _count:
+                if ok_b:
+                    self.aborts_peer_ok += 1
+                else:
+                    self.aborts_peer_fail += 1
+            return ok_b
         except Exception:  # noqa: BLE001
+            if _count:
+                self.aborts_peer_fail += 1
             return False
 
 @dataclass(slots=True)
