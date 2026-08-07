@@ -280,6 +280,7 @@ def test_strong_core_includes_retry_abort_ops_scenarios() -> None:
         "strong.cft_retry_abort_clears_residual",
         "strong.cft_retry_abort_self_target",
         "strong.cft_gcm_retry_abort_clears_residual",
+        "strong.cft_residual_ops_hint_enriched",
         "strong.cft_partial_commit_lost_abort",
         "strong.cft_residual_healed_by_lww",
         "strong.cft_residual_survives_pending_purge",

@@ -263,7 +263,9 @@ partial-commit+lost-abort). Pending TTL is **not** residual GC
 strong-core / ci-core). Doctor/monitor show `abort_fail_op_id=` and an ops
 hint → `cache-strong-retry-abort` when residual candidates present;
 JSON `residual_ops_hint` on `/metrics/strong` carries the same string
-(empty when none; not auto-heal). Monitor table shows `cft=` / `abort_be=` /
+(empty when none; not auto-heal; may fill ns/key from `recent_abort_fails`).
+DistLab `strong.cft_residual_ops_hint_enriched` proves the guidance surface
+without clearing residual. Monitor table shows `cft=` / `abort_be=` /
 `abort_fail=` / `abort_fail_peers=` / `retry_abort=` / `retry_cleared=` /
 `ttl_gc=` / `visible=` / `backups=` / `pruned=`. `abort_fail_peers` lists CFT
 residual candidates (ops only). Prom also exposes `mpreg_strong_visible`,

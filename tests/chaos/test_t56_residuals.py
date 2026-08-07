@@ -13,6 +13,7 @@ def test_t56_strong_core_retry_abort_membership() -> None:
         "strong.cft_retry_abort_clears_residual",
         "strong.cft_retry_abort_self_target",
         "strong.cft_gcm_retry_abort_clears_residual",
+        "strong.cft_residual_ops_hint_enriched",
     }
     for preset in ("strong-core", "ci-core"):
         names = set(resolve_preset(preset))

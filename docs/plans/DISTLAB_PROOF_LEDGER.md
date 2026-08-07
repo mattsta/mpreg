@@ -131,6 +131,9 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
 | T57 live residual_ops_hint | live metrics e2e field present + empty after clean put | support ops |
 | T58 doctor prefer hint | strong_residual_ops_hint uses server string first | support ops |
 | T59 hint key enrich | residual_ops_hint fills ns/key from recent_abort_fails | support ops |
+| T60 live enriched hint | `test_distlab_live_residual_ops_hint_enriched_e2e` | support ops |
+| T61 OpenAPI hint example | residual_ops_hint + recent_abort_fails examples | support ops |
+| T62 DistLab hint enriched | `strong.cft_residual_ops_hint_enriched` + strong-core | product |
 
 ## Non-claims (do not market)
 
@@ -151,6 +154,10 @@ same-host multi-process**, not WAN / Elle / BFT / fsync.
   toggle, not SIEM, not residual-free proof
 - Key enrichment from `recent_abort_fails` is process-local best-effort — not
   durable audit log, not SIEM, not multi-tenant isolation proof
+- Live enriched-hint e2e seeds coordinator abort-fail diagnostics + peer
+  prepare/commit residual — not kernel drop injectors, not WAN, not auto-heal
+- DistLab `strong.cft_residual_ops_hint_enriched` proves guidance only — does
+  not clear residual
 
 ## Gate commands
 

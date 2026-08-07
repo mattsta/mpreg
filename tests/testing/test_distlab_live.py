@@ -616,6 +616,148 @@ async def test_distlab_live_strong_metrics_e2e(
                 assert isinstance(body3.get("residual_ops_hint"), str)
 
 @pytest.mark.asyncio
+async def test_distlab_live_residual_ops_hint_enriched_e2e(
+    test_context: AsyncTestContext,
+) -> None:
+    """T60: live scrape non-empty residual_ops_hint after CFT residual seed.
+
+    Seeds peer L1 residual (prepare+commit) and origin coordinator abort-fail
+    diagnostics (same shape as exhausted ABORT). Scrapes /metrics/strong for
+    enriched residual_ops_hint (ns/key/op_id/peer). Still CFT ops guidance —
+    not automatic heal, not WAN, not kernel partition proof.
+    """
+    import time
+
+    import aiohttp
+
+    from mpreg.cli.main import evaluate_strong_doctor_payload, strong_residual_ops_hint
+    from mpreg.core.cache_models import CacheMetadata, GlobalCacheKey
+    from mpreg.core.cache_strong import StrongVersion, _entry_op_id
+
+    with port_range_context(6, "servers") as ports:
+        sp, mp = ports[0:3], ports[3:6]
+        url0 = f"ws://127.0.0.1:{sp[0]}"
+
+        def _settings(port: int, mon: int, name: str, peers=None):
+            from mpreg.core.config import MPREGSettings
+
+            return MPREGSettings(
+                host="127.0.0.1",
+                port=port,
+                name=name,
+                cluster_id="distlab-hint-e2e",
+                resources={f"r-{name}"},
+                peers=peers or [],
+                log_level="ERROR",
+                gossip_interval=0.25,
+                monitoring_enabled=True,
+                monitoring_port=mon,
+                enable_default_cache=True,
+                cache_strong_enabled=True,
+                cache_strong_replica_factor=3,
+                cache_strong_min_replicas=3,
+                cache_strong_prepare_timeout_s=1.5,
+                cache_strong_commit_timeout_s=1.5,
+            )
+
+        servers = [
+            MPREGServer(_settings(sp[0], mp[0], "H0")),
+            MPREGServer(_settings(sp[1], mp[1], "H1", peers=[url0])),
+            MPREGServer(_settings(sp[2], mp[2], "H2", peers=[url0])),
+        ]
+        test_context.servers.extend(servers)
+        tasks = [asyncio.create_task(s.server()) for s in servers]
+        test_context.tasks.extend(tasks)
+        await asyncio.sleep(1.2)
+        await wait_cache_peers(servers)
+
+        origin = servers[0]
+        peer = servers[1]
+        key = GlobalCacheKey(
+            namespace="hint-live", identifier="sku-enriched", version="v1"
+        )
+        oid = "t60-residual-op-id"
+        replica = tuple(s.cluster.local_url for s in servers)
+        sv = StrongVersion(
+            logical_ts=1, origin_node=origin.cluster.local_url, op_id=oid
+        )
+        be = peer._strong_local_backend
+        pack = await be.prepare(
+            key=key,
+            value={"stale": True, "t60": 1},
+            metadata=CacheMetadata(),
+            strong_version=sv,
+            replica_set=replica,
+            quorum=2,
+            ttl_s=60.0,
+        )
+        assert pack.ok, getattr(pack, "reason", pack)
+        cack = await be.commit(op_id=oid, key=key)
+        assert cack.ok and cack.applied
+        residual = be.get_visible(key)
+        assert residual is not None and _entry_op_id(residual) == oid
+
+        # Origin coordinator diagnostics (same fields exhausted-ABORT leaves)
+        cm = origin._cache_manager
+        coord = cm._strong_coordinator
+        assert coord is not None
+        peer_id = peer.cluster.local_url
+        coord.last_abort_fail_peers = [peer_id]
+        coord.last_abort_fail_op_id = oid
+        coord.recent_abort_fails.append(
+            {
+                "op_id": oid,
+                "peers": [peer_id],
+                "ts": time.time(),
+                "key": f"{key.namespace}/{key.identifier}",
+            }
+        )
+        # GCM status must surface enriched hint before HTTP scrape
+        st = cm.strong_status()
+        assert "n1" not in str(st.get("last_abort_fail_peers"))  # live urls
+        assert peer_id in list(st.get("last_abort_fail_peers") or [])
+        hint_st = st.get("residual_ops_hint") or ""
+        assert "cache-strong-retry-abort" in hint_st
+        assert "--namespace hint-live" in hint_st
+        assert "--key sku-enriched" in hint_st
+        assert oid in hint_st
+        assert "not auto-heal" in hint_st
+
+        mon_port = origin._monitoring_system.monitoring_port
+        base = f"http://127.0.0.1:{mon_port}"
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{base}/metrics/strong") as resp:
+                assert resp.status == 200
+                data = await resp.json()
+                body = data.get("strong") or data
+                hint = body.get("residual_ops_hint") or ""
+                assert hint, f"expected non-empty residual_ops_hint: {body!r}"
+                assert "cache-strong-retry-abort" in hint
+                assert "--namespace hint-live" in hint
+                assert "--key sku-enriched" in hint
+                assert f"--op-id {oid}" in hint or oid in hint
+                assert peer_id in hint or "--peer" in hint
+                assert "not auto-heal" in hint
+                assert oid == (body.get("last_abort_fail_op_id") or "")
+                assert peer_id in list(body.get("last_abort_fail_peers") or [])
+
+            async with session.get(f"{base}/mgmt/v1/strong") as resp:
+                assert resp.status == 200
+                mgmt = await resp.json()
+                mbody = mgmt.get("strong") or mgmt
+                assert "cache-strong-retry-abort" in (
+                    mbody.get("residual_ops_hint") or ""
+                )
+
+        # Doctor path consumes the same scrape payload
+        ok, detail = evaluate_strong_doctor_payload({"strong": body})
+        assert ok is True
+        assert "cache-strong-retry-abort" in detail
+        assert "hint-live" in detail or "sku-enriched" in detail
+        # Prefer server hint string
+        assert strong_residual_ops_hint(body) == hint
+
+@pytest.mark.asyncio
 async def test_distlab_live_audit_metrics_e2e(
     test_context: AsyncTestContext,
 ) -> None:

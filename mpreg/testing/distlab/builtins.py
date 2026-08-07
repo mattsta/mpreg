@@ -951,6 +951,91 @@ def _strong_cft_gcm_retry_abort_clears_residual() -> Scenario:
         },
     )
 
+def _strong_cft_residual_ops_hint_enriched() -> Scenario:
+    """T62: after CFT residual, GCM residual_ops_hint fills ns/key/op_id/peer.
+
+    Does **not** clear the residual — proves ops guidance surface only.
+    Still CFT; not automatic heal.
+    """
+    from mpreg.core.cache_models import GlobalCacheKey
+    from mpreg.core.cache_strong import _entry_op_id
+    from mpreg.core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
+    from mpreg.testing.distlab.adapters.strong import StrongSUT
+    from mpreg.testing.distlab.checker import NoOpenInvokeChecker
+
+    sut = StrongSUT.create(
+        5,
+        prepare_timeout_s=0.4,
+        commit_timeout_s=0.25,
+        pending_ttl_s=30.0,
+    )
+    sut.transport.drop_commit |= {"n2", "n3", "n4"}
+    sut.transport.drop_abort |= {"n1"}
+
+    async def body(history: History, s: object) -> None:
+        res = await sut.put(
+            history,
+            process="c0",
+            origin="n0",
+            logical_key="hint-key",
+            value={"stale": True},
+        )
+        assert res.success is False
+        oid = res.operation_id or ""
+        key = GlobalCacheKey(
+            namespace="distlab", identifier="hint-key", version="v1"
+        )
+        n1 = sut.backends["n1"]
+        assert n1.get_visible(key) is not None
+        assert _entry_op_id(n1.get_visible(key)) == oid
+        coord = sut.coords["n0"]
+        assert "n1" in list(coord.last_abort_fail_peers)
+        assert str(coord.last_abort_fail_op_id) == oid
+        assert len(coord.recent_abort_fails) >= 1
+        gcm = GlobalCacheManager(
+            GlobalCacheConfiguration(
+                enable_l2_persistent=False,
+                enable_l3_distributed=False,
+                enable_l4_federation=False,
+                local_cluster_id="distlab-hint",
+            )
+        )
+        gcm.attach_strong_coordinator(coord)
+        try:
+            st = gcm.strong_status()
+            hint = st.get("residual_ops_hint") or ""
+            assert hint, f"expected non-empty residual_ops_hint: {st!r}"
+            assert "cache-strong-retry-abort" in hint
+            assert "--namespace distlab" in hint
+            assert "--key hint-key" in hint
+            assert oid in hint
+            assert "--peer n1" in hint
+            assert "not auto-heal" in hint
+            # Residual still present — hint is guidance, not heal
+            assert n1.get_visible(key) is not None
+            assert _entry_op_id(n1.get_visible(key)) == oid
+        finally:
+            await gcm.shutdown()
+
+    return Scenario(
+        name="strong.cft_residual_ops_hint_enriched",
+        setup=lambda: sut,
+        body=body,
+        checker=NoOpenInvokeChecker(),
+        meta={
+            "track": "T62",
+            "product_fix": True,
+            "cft_limit": True,
+            "fault": "residual_ops_hint_after_lost_abort",
+            "ops_driven": True,
+            "not_automatic_heal": True,
+            "ops_surfaces": (
+                "GlobalCacheManager.strong_status.residual_ops_hint",
+                "format_residual_ops_hint",
+            ),
+        },
+    )
+
 def _strong_cft_residual_healed_by_lww() -> Scenario:
     """T28 honesty: later successful put can LWW-overwrite a CFT residual L1.
 
@@ -1569,6 +1654,13 @@ def register_builtins(registry=None) -> int:
             _strong_cft_gcm_retry_abort_clears_residual,
             "T52",
             "GCM.strong_retry_abort clears residual + counters",
+            ("strong", "cft_limit", "product", "ops_driven"),
+        ),
+        (
+            "strong.cft_residual_ops_hint_enriched",
+            _strong_cft_residual_ops_hint_enriched,
+            "T62",
+            "GCM residual_ops_hint fills ns/key after CFT residual",
             ("strong", "cft_limit", "product", "ops_driven"),
         ),
         (

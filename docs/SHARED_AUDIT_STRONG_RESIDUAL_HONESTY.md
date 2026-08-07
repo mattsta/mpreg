@@ -816,3 +816,40 @@ Still **not** claimed: process-local recent ring is durable audit/SIEM;
 automatic heal; multi-tenant isolation beyond cluster_id.
 
 Plan: `docs/plans/DISTLAB_T59_HINT_KEY_ENRICH_PLAN.md`.
+
+## Phase 48 — Live enriched residual_ops_hint e2e (2026-08-06)
+
+T60 live mesh proves non-empty enriched hint on scrape:
+
+* Seed peer residual (prepare+commit) + origin coordinator abort-fail diagnostics
+* `/metrics/strong` and `/mgmt/v1/strong` include
+  `residual_ops_hint` with ns/key/op_id/peer + not auto-heal
+* Doctor evaluation consumes the same payload
+* Test: `test_distlab_live_residual_ops_hint_enriched_e2e`
+
+Still **not** claimed: coordinator field seed is kernel drop/WAN; automatic
+heal; residual-free under lost ABORT without ops action.
+
+Plan: `docs/plans/DISTLAB_T60_LIVE_ENRICHED_HINT_PLAN.md`.
+
+## Phase 49 — OpenAPI residual_ops_hint example (2026-08-06)
+
+T61 documents a populated hint example and `recent_abort_fails` item shape
+(`key: namespace/identifier`) in monitoring OpenAPI.
+
+Still **not** claimed: OpenAPI example is an invoke API; SIEM; auto-heal.
+
+Plan: `docs/plans/DISTLAB_T61_OPENAPI_HINT_EXAMPLE_PLAN.md`.
+
+## Phase 50 — DistLab residual_ops_hint enrichment (2026-08-06)
+
+T62 first-class DistLab scenario:
+
+* `strong.cft_residual_ops_hint_enriched` — CFT residual remains; GCM status
+  hint fills `--namespace distlab --key hint-key --peer n1`
+* In `strong-core` / `ci-core`
+* Guidance only — does not call retry_abort
+
+Still **not** claimed: scenario clears residual; auto-heal; BFT/WAN.
+
+Plan: `docs/plans/DISTLAB_T62_DISTLAB_HINT_ENRICHED_PLAN.md`.

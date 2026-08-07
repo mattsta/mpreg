@@ -214,6 +214,8 @@ SUITE_PRESETS: dict[str, tuple[str, ...]] = {
         "strong.cft_retry_abort_self_target",
         # T52: product library surface GlobalCacheManager.strong_retry_abort
         "strong.cft_gcm_retry_abort_clears_residual",
+        # T62: residual_ops_hint enrichment (guidance only; does not clear)
+        "strong.cft_residual_ops_hint_enriched",
     ),
     "audit-core": (
         "audit.multi_origin",

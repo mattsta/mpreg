@@ -146,6 +146,15 @@ def _strong_metrics_schema() -> dict[str, Any]:
                             "CFT best-effort guidance — not automatic heal, "
                             "not residual-free proof, not SIEM/BFT."
                         ),
+                        # T61: populated example (empty string is the clean-put case)
+                        "example": (
+                            "hint: after network recovery, ops re-ABORT "
+                            "(not auto-heal): uv run mpreg client "
+                            "cache-strong-retry-abort --url <ws> "
+                            "--op-id op-abc123 --namespace orders "
+                            "--key cart-42 --peer ws://127.0.0.1:9001 "
+                            "(CFT best-effort; still fails while ABORT dropped)"
+                        ),
                     },
                     "recent_abort_fails": {
                         "type": "array",
@@ -153,7 +162,31 @@ def _strong_metrics_schema() -> dict[str, Any]:
                             "Bounded ring of recent abort-fail events "
                             "({op_id, peers, ts, key}); process-local."
                         ),
-                        "items": {"type": "object"},
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "op_id": {"type": "string"},
+                                "peers": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                                "ts": {"type": "number"},
+                                "key": {
+                                    "type": "string",
+                                    "description": "namespace/identifier",
+                                    "example": "orders/cart-42",
+                                },
+                                "retry": {"type": "boolean"},
+                            },
+                        },
+                        "example": [
+                            {
+                                "op_id": "op-abc123",
+                                "peers": ["ws://127.0.0.1:9001"],
+                                "ts": 1720000000.0,
+                                "key": "orders/cart-42",
+                            }
+                        ],
                     },
                     "retry_abort_calls": {
                         "type": "integer",

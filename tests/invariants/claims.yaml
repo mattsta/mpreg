@@ -266,6 +266,9 @@ encapsulation:
       - tests/chaos/test_t57_residuals.py
       - tests/chaos/test_t58_residuals.py
       - tests/chaos/test_t59_residuals.py
+      - tests/chaos/test_t60_residuals.py
+      - tests/chaos/test_t61_residuals.py
+      - tests/chaos/test_t62_residuals.py
       - tests/invariants/test_cache_strong_properties.py
       - tests/invariants/test_cache_strong_history.py
       - tests/integration/test_cache_strong_quorum.py
@@ -319,6 +322,9 @@ non_claims:
   - "Live residual_ops_hint scrape is same-host multi-process — not WAN SLA; empty hint is not residual-free under lost ABORT elsewhere"
   - "Doctor prefer server residual_ops_hint is presentation consistency — not SIEM orchestration, not automatic heal"
   - "residual_ops_hint key enrichment from recent_abort_fails is process-local best-effort — not durable audit/SIEM, not multi-tenant isolation proof, not automatic heal"
+  - "Live residual_ops_hint enriched e2e seeds coordinator abort-fail diagnostics + peer prepare/commit residual — not kernel drop injectors, not WAN, not automatic heal"
+  - "OpenAPI residual_ops_hint example is documentation of wire/metrics shape — not HTTP invoke, not SIEM, not auto-heal"
+  - "DistLab strong.cft_residual_ops_hint_enriched proves guidance surface only — does not clear residual, not automatic heal, not BFT/WAN"
   - "Lying COMMIT_ACK applied bits can satisfy CFT quorum math without peer L1 apply — documented non_claim (not BFT)"
   - "mpreg.testing.distlab is Jepsen-inspired (history/checker/nemesis) — not Elle, not WAN geo generators, not a JVM Jepsen port"
   - "DistLab lab SLI budgets (p99/avg soak bounds) are same-host in-process — not production WAN latency SLAs"

@@ -119,6 +119,9 @@ JSON field `residual_ops_hint` on `/metrics/strong` and GCM `strong_status`
 carries the same string (empty when no candidates) for automation scrape.
 When `recent_abort_fails` records a matching `key` (`namespace/id`), the hint
 fills `--namespace` / `--key` (process-local best-effort; not SIEM).
+Live e2e: `test_distlab_live_residual_ops_hint_enriched_e2e`. DistLab:
+`strong.cft_residual_ops_hint_enriched` (strong-core / ci-core; guidance only).
+OpenAPI example on `residual_ops_hint` shows a populated CLI template.
 
 DistLab `strong.cft_retry_abort_clears_residual` proves clear when ABORT can
 land; `strong.cft_retry_abort_self_target` proves `peers=[self]` local.abort
