@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -20,6 +21,8 @@ from mpreg.testing.distlab import (
 )
 from mpreg.testing.distlab.generator import AuditBurst
 from mpreg.testing.distlab.registry import ScenarioRegistry
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_registry_list_after_builtins() -> None:
@@ -105,7 +108,7 @@ def test_cli_list_and_run_via_mpreg_entry() -> None:
         ["uv", "run", "mpreg", "distlab", "list"],
         capture_output=True,
         text=True,
-        cwd="/Users/matt/repos/mpreg",
+        cwd=PROJECT_ROOT,
         timeout=90,
         check=False,
     )
@@ -116,7 +119,7 @@ def test_cli_list_and_run_via_mpreg_entry() -> None:
         ["uv", "run", "mpreg", "distlab", "run", "strong.happy_3", "--json"],
         capture_output=True,
         text=True,
-        cwd="/Users/matt/repos/mpreg",
+        cwd=PROJECT_ROOT,
         timeout=120,
         check=False,
     )
@@ -131,7 +134,7 @@ def test_cli_help_mentions_non_claims() -> None:
         ["uv", "run", "mpreg", "distlab", "--help"],
         capture_output=True,
         text=True,
-        cwd="/Users/matt/repos/mpreg",
+        cwd=PROJECT_ROOT,
         timeout=60,
         check=False,
     )
@@ -147,7 +150,7 @@ def test_python_m_distlab_is_blocked() -> None:
         [sys.executable, "-m", "mpreg.testing.distlab", "list"],
         capture_output=True,
         text=True,
-        cwd="/Users/matt/repos/mpreg",
+        cwd=PROJECT_ROOT,
         timeout=30,
         check=False,
     )
@@ -344,7 +347,7 @@ def test_cli_smoke_preset_via_mpreg_entry() -> None:
         ["uv", "run", "mpreg", "distlab", "presets", "--json"],
         capture_output=True,
         text=True,
-        cwd="/Users/matt/repos/mpreg",
+        cwd=PROJECT_ROOT,
         timeout=90,
         check=False,
     )
@@ -356,7 +359,7 @@ def test_cli_smoke_preset_via_mpreg_entry() -> None:
         ["uv", "run", "mpreg", "distlab", "suite", "--preset", "smoke", "--json"],
         capture_output=True,
         text=True,
-        cwd="/Users/matt/repos/mpreg",
+        cwd=PROJECT_ROOT,
         timeout=180,
         check=False,
     )

@@ -9,7 +9,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-sys.path.insert(0, "/Users/matt/repos/mpreg")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from mpreg.datastructures.production_raft_implementation import RaftState
 from tests.test_production_raft_integration import (

@@ -372,9 +372,7 @@ class RaftSUT:
         from mpreg.datastructures.raft_task_manager import drain_retained_tasks
 
         for node in list(self.nodes.values()):
-            with contextlib.suppress(
-                TimeoutError, asyncio.CancelledError, Exception
-            ):
+            with contextlib.suppress(TimeoutError, asyncio.CancelledError, Exception):
                 await asyncio.wait_for(node.stop(), timeout=3.0)
         with contextlib.suppress(TimeoutError, asyncio.CancelledError, Exception):
             await drain_retained_tasks(timeout=2.0)

@@ -9,7 +9,7 @@ import tempfile
 import time
 from pathlib import Path
 
-sys.path.insert(0, "/Users/matt/repos/mpreg")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 import contextlib
 

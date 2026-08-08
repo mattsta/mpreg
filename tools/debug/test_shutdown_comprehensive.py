@@ -5,8 +5,9 @@ Comprehensive test for all shutdown improvements.
 
 import asyncio
 import sys
+from pathlib import Path
 
-sys.path.insert(0, "/Users/matt/repos/mpreg")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from mpreg.datastructures.raft_task_manager import RaftTaskManager
 

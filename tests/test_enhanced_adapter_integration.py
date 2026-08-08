@@ -538,9 +538,7 @@ class TestEnhancedMultiProtocolAdapterIntegration:
                     # Record success against the adapter's monitored endpoint.
                     conn_id = f"test_conn_{i}"
                     if conn_id not in adapter.connection_monitors:
-                        monitor = create_connection_health_monitor(
-                            conn_id, adapter_tcp
-                        )
+                        monitor = create_connection_health_monitor(conn_id, adapter_tcp)
                         adapter.connection_monitors[conn_id] = monitor
                         if adapter_tcp in adapter.health_aggregators:
                             adapter.health_aggregators[

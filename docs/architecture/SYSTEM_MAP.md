@@ -1,7 +1,7 @@
 # System Map — MPREG Product Composition
 
 **Authority for:** package layout, boot path, data/control planes, Raft placement.  
-**Code root:** `/Users/matt/repos/mpreg` (paths below are repo-relative).
+**Code root:** the repository root (paths below are repo-relative).
 
 ---
 

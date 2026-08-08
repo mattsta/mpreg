@@ -65,7 +65,8 @@ Philosophy: `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md`.
 Markers registered: `slow`, `integration`, `unit`, `chaos`, `property`,
 `performance`, `federation`, `example_*` (`pyproject.toml`).  
 Live Raft: `tests/test_live_raft_integration.py` is `@pytest.mark.integration`
-+ `@pytest.mark.slow`. Deselect with `-m "not slow"` for fast loops.
+
+- `@pytest.mark.slow`. Deselect with `-m "not slow"` for fast loops.
 
 Claims ledger: `tests/invariants/claims.yaml` (includes large `non_claims`).
 

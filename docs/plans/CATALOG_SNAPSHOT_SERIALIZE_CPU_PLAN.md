@@ -9,15 +9,15 @@ session plan (also summarized below).
 
 ## Already landed (do not re-do)
 
-| Commit | Fix |
-| --- | --- |
-| `dd2c900` | `native_codec` + fingerprint / size bounds |
-| `d589df6` | discovery-delta backlog off |
-| `187fdbf` | gossip fingerprint; update_id coalesce |
-| `429e656` | try-first orjson (no eager coerce) |
-| `1c1730f` | skip discovery materialize with zero subscribers |
-| `76a4a6f` | PERF-03 `serialize_model` (narrow) |
-| peer-set coalesce | `CatalogSnapshotDispatchState` |
+| Commit            | Fix                                              |
+| ----------------- | ------------------------------------------------ |
+| `dd2c900`         | `native_codec` + fingerprint / size bounds       |
+| `d589df6`         | discovery-delta backlog off                      |
+| `187fdbf`         | gossip fingerprint; update_id coalesce           |
+| `429e656`         | try-first orjson (no eager coerce)               |
+| `1c1730f`         | skip discovery materialize with zero subscribers |
+| `76a4a6f`         | PERF-03 `serialize_model` (narrow)               |
+| peer-set coalesce | `CatalogSnapshotDispatchState`                   |
 
 ## Still broken (until this plan)
 

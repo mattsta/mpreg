@@ -4,8 +4,6 @@
 
 Do you need results? Everywhere? Guaranteed? Then you need to MPREG!
 
-> **Honesty banner (0.3.x Production Snapshot / Hardening):** Raft in MPREG is **CFT**, not BFT. `EXACTLY_ONCE` delivery remains refuse-by-default (`1011`). Cache `ConsistencyLevel.STRONG` is a **flag-gated majority-commit put** (`cache_strong_enabled`; default off → `1012`); STRONG get/delete and the location-consistency plane stay refuse. Multi-node shared audit is flag-gated (`mgmt_audit_shared_enabled`). Prefer `MPREGClient`, shipped profiles (`mpreg/profiles/`), `docs/MPREG_CLIENT_GUIDE.md`, and `tests/invariants/claims.yaml`. Public release gate: `docs/RELEASE_0_3_PRODUCTION_SNAPSHOT_ARCHITECTURE.md`, `SECURITY.md`, `bash scripts/release_gate.sh`. Throughput is **hardware- and topology-dependent** (see `docs/ops/PERF_BASELINE.md`) — not a WAN SLA.
-
 ## What is it?
 
 `mpreg` allows you to define a distributed cluster multi-call function topology across multiple processes or servers so you can run your requests against one cluster endpoint and automatically receive results from your data anywhere in the cluster.
@@ -247,7 +245,7 @@ This quad tuple of `(name, function, args, dataset)` actually simplifies your wo
 
 ## Complete System Showcase
 
-MPREG has grown into a comprehensive distributed platform with multiple integrated systems working together (CFT Raft; see honesty banner):
+MPREG has grown into a comprehensive distributed platform with multiple integrated systems working together:
 
 ### 🌐 Topic Exchange (AMQP-Style Pub/Sub)
 
@@ -729,7 +727,7 @@ uv run mpreg topology
 **⚠️ Critical for Developers Working with Federation**:
 
 - **[Federation Architecture & Fault Tolerance](docs/FEDERATION_ARCHITECTURE_AND_FAULT_TOLERANCE.md)** - Complete technical documentation of the federation system, including CFT Raft behavior, queue delivery, and critical edge cases (not BFT)
-- **[Byzantine Fault Detection Debug Guide](docs/BYZANTINE_FAULT_DETECTION_DEBUG_GUIDE.md)** - Historical debug note: queue “Byzantine detection” is **not** BFT (see honesty banner in that doc)
+- **[Byzantine Fault Detection Debug Guide](docs/BYZANTINE_FAULT_DETECTION_DEBUG_GUIDE.md)** - Historical debug note: queue “Byzantine detection” is **not** BFT
 - **[Federation Developer Quick Reference](docs/FEDERATION_DEVELOPER_QUICK_REFERENCE.md)** - Quick reference guide for developers working with the federation system
 
 These documents detail fragile components, edge cases, and architectural decisions discovered through deep debugging sessions. **Essential reading** before modifying federation or consensus code.

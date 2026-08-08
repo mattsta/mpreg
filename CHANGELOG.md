@@ -37,14 +37,14 @@ phase 2; full-tree ruff/mypy zero; PR CI does not yet run 3× full `-n auto`.
 
 ### Artifacts
 
-| Artifact     | Path                                                       |
-| ------------ | ---------------------------------------------------------- |
-| Architecture | `docs/architecture/` (RAFT, VALIDATION, DISTLAB_RAFT_GAP)  |
-| Master plan  | `docs/plans/UNIFIED_CORRECTNESS_MASTER_PLAN.md`            |
-| Burndown     | `docs/plans/UNIFIED_CORRECTNESS_BURNDOWN.md`               |
-| Proof ledger | `docs/plans/UNIFIED_CORRECTNESS_PROOF_LEDGER.md`           |
-| Catalog plan | `docs/plans/CATALOG_SNAPSHOT_SERIALIZE_CPU_PLAN.md`        |
-| Gate         | `bash scripts/release_gate.sh` (+ `ci_raft.sh`)            |
+| Artifact     | Path                                                      |
+| ------------ | --------------------------------------------------------- |
+| Architecture | `docs/architecture/` (RAFT, VALIDATION, DISTLAB_RAFT_GAP) |
+| Master plan  | `docs/plans/UNIFIED_CORRECTNESS_MASTER_PLAN.md`           |
+| Burndown     | `docs/plans/UNIFIED_CORRECTNESS_BURNDOWN.md`              |
+| Proof ledger | `docs/plans/UNIFIED_CORRECTNESS_PROOF_LEDGER.md`          |
+| Catalog plan | `docs/plans/CATALOG_SNAPSHOT_SERIALIZE_CPU_PLAN.md`       |
+| Gate         | `bash scripts/release_gate.sh` (+ `ci_raft.sh`)           |
 
 ---
 

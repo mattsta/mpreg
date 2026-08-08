@@ -18,7 +18,7 @@ os.environ["PYTEST_XDIST_WORKER"] = "gw5"  # Simulate the failing worker
 
 import sys
 
-sys.path.insert(0, "/Users/matt/repos/mpreg")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from tests.test_production_raft_integration import TestProductionRaftIntegration
 
