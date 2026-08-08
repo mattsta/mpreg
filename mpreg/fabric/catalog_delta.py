@@ -62,12 +62,20 @@ class RoutingCatalogDelta:
     nodes: tuple[NodeDescriptor, ...] = ()
     node_removals: tuple[NodeKey, ...] = ()
 
-    def to_dict(self) -> JsonDict:
+    def to_dict(self, *, include_rpc_spec: bool = True) -> JsonDict:
+        """Serialize delta for wire/persistence.
+
+        Pass ``include_rpc_spec=False`` on summary-mode gossip/snapshots so
+        stored full specs are not re-materialized on every peer send.
+        """
         return {
             "update_id": self.update_id,
             "cluster_id": self.cluster_id,
             "sent_at": float(self.sent_at),
-            "functions": [entry.to_dict() for entry in self.functions],
+            "functions": [
+                entry.to_dict(include_rpc_spec=include_rpc_spec)
+                for entry in self.functions
+            ],
             "function_removals": [key.to_dict() for key in self.function_removals],
             "topics": [entry.to_dict() for entry in self.topics],
             "topic_removals": list(self.topic_removals),
@@ -380,4 +388,12 @@ class RoutingCatalogApplier:
 
         # COR-T11-08: remember only after successful mutations + observers
         self._commit_update_id(uid, applied_at)
+        # Advance catalog revision when any entry was added/removed so snapshot
+        # fan-out can content-address with catalog-rev:{cluster}:{generation}.
+        if any(
+            counts.get(key, 0) > 0
+            for key in counts
+            if not str(key).startswith("skipped_")
+        ):
+            self.catalog.bump_generation()
         return counts

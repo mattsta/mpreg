@@ -61,9 +61,21 @@ def endpoint_scope_rank(scope: str | None) -> int:
 
 
 def _normalize_tags(tags: object) -> frozenset[str]:
+    """Normalize tag collections to ``frozenset[str]``.
+
+    Fast path: already a ``frozenset`` of non-empty ``str`` is returned as-is
+    (gossip deserialize + ``__post_init__`` both call this; avoid double rebuild).
+    """
     if tags is None:
         return frozenset()
     if isinstance(tags, frozenset):
+        if not tags:
+            return tags
+        for tag in tags:
+            if not isinstance(tag, str) or not tag:
+                break
+        else:
+            return tags
         return frozenset(str(tag) for tag in tags if tag)
     if isinstance(tags, (list, tuple, set)):
         return frozenset(str(tag) for tag in tags if tag)
@@ -276,7 +288,12 @@ class FunctionEndpoint:
         timestamp = now if now is not None else time.time()
         return timestamp > (self.advertised_at + self.ttl_seconds)
 
-    def to_dict(self) -> JsonDict:
+    def to_dict(self, *, include_rpc_spec: bool = True) -> JsonDict:
+        """Serialize endpoint for wire or persistence.
+
+        ``include_rpc_spec=False`` keeps ``rpc_summary`` + ``spec_digest`` but
+        omits the full nested ``rpc_spec`` tree (summary gossip / snapshot path).
+        """
         payload: JsonDict = {
             "identity": self.identity.to_dict(),
             "resources": sorted(self.resources),
@@ -289,7 +306,7 @@ class FunctionEndpoint:
         }
         if self.rpc_summary is not None:
             payload["rpc_summary"] = self.rpc_summary.to_dict()
-        if self.rpc_spec is not None:
+        if include_rpc_spec and self.rpc_spec is not None:
             payload["rpc_spec"] = self.rpc_spec.to_dict()
         if self.spec_digest is not None:
             payload["spec_digest"] = self.spec_digest
@@ -1282,9 +1299,16 @@ class RoutingCatalog:
     caches: CacheCatalog = field(default_factory=CacheCatalog)
     cache_profiles: CacheProfileCatalog = field(default_factory=CacheProfileCatalog)
     nodes: NodeCatalog = field(default_factory=NodeCatalog)
+    # Monotonic revision for serialize-once snapshot fan-out / stable update_id.
+    generation: int = 0
+
+    def bump_generation(self) -> int:
+        """Advance catalog revision after a successful mutation."""
+        self.generation = int(self.generation) + 1
+        return self.generation
 
     def prune_expired(self, now: Timestamp | None = None) -> dict[str, int]:
-        return {
+        counts = {
             "functions": self.functions.prune_expired(now),
             "topics": self.topics.prune_expired(now),
             "queues": self.queues.prune_expired(now),
@@ -1293,6 +1317,9 @@ class RoutingCatalog:
             "cache_profiles": self.cache_profiles.prune_expired(now),
             "nodes": self.nodes.prune_expired(now),
         }
+        if any(counts.values()):
+            self.bump_generation()
+        return counts
 
     def to_dict(self, *, now: Timestamp | None = None) -> JsonDict:
         timestamp = now if now is not None else time.time()

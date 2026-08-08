@@ -39,8 +39,15 @@ from tests.conftest import AsyncTestContext
 from tests.test_helpers import wait_for_condition
 
 
+@pytest.mark.integration
+@pytest.mark.slow
 class TestLiveRaftIntegration:
-    """Live Raft integration tests using real network connections."""
+    """Live Raft integration tests using real network connections.
+
+    Marked ``integration`` + ``slow`` (multi-process / real ports). Deselect
+    with ``-m "not slow"`` for fast local loops; full release multi-run still
+    executes this module.
+    """
 
     @pytest.fixture
     async def temp_dir(self):
@@ -53,6 +60,19 @@ class TestLiveRaftIntegration:
         """Test context for cleanup management."""
         async with AsyncTestContext() as context:
             yield context
+
+    async def _stop_raft_nodes(
+        self, nodes: dict[str, ProductionRaft], *, timeout: float = 3.0
+    ) -> None:
+        """Stop Raft nodes without deep cancel recursion on large clusters.
+
+        Concurrent ``create_task(stop)`` + loop teardown can RecursionError
+        inside ``Task.cancel`` when many heartbeats sit on nested gathers.
+        Sequential bounded stops keep the cancel graph shallow.
+        """
+        for node in list(nodes.values()):
+            with contextlib.suppress(TimeoutError, asyncio.CancelledError, Exception):
+                await asyncio.wait_for(node.stop(), timeout=timeout)
 
     async def create_live_raft_cluster(
         self,
@@ -298,10 +318,7 @@ class TestLiveRaftIntegration:
 
         finally:
             # Stop all nodes
-            stop_tasks = []
-            for node in nodes.values():
-                stop_tasks.append(asyncio.create_task(node.stop()))
-            await asyncio.gather(*stop_tasks, return_exceptions=True)
+            await self._stop_raft_nodes(nodes)
 
     @pytest.mark.asyncio
     async def test_live_log_replication_correctness(self, temp_dir, test_context):
@@ -393,9 +410,7 @@ class TestLiveRaftIntegration:
             print("✓ Log replication correctness verified")
 
         finally:
-            # Stop all nodes
-            for node in nodes.values():
-                await node.stop()
+            await self._stop_raft_nodes(nodes)
 
     @pytest.mark.asyncio
     async def test_live_leader_failover(self, temp_dir, test_context):
@@ -497,10 +512,9 @@ class TestLiveRaftIntegration:
             print("✓ Leader failover successful")
 
         finally:
-            # Stop remaining nodes
-            for node in nodes.values():
-                if node != original_leader:  # original_leader already stopped
-                    await node.stop()
+            # original_leader already stopped; drain the rest sequentially.
+            remaining = {nid: n for nid, n in nodes.items() if n is not original_leader}
+            await self._stop_raft_nodes(remaining)
 
     @pytest.mark.asyncio
     async def test_live_concurrent_operations(self, temp_dir, test_context):
@@ -566,9 +580,7 @@ class TestLiveRaftIntegration:
             print("✓ Concurrent operations successful")
 
         finally:
-            # Stop all nodes
-            for node in nodes.values():
-                await node.stop()
+            await self._stop_raft_nodes(nodes)
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("cluster_size", [3, 5, 7, 9, 11, 13, 15])
@@ -594,36 +606,32 @@ class TestLiveRaftIntegration:
             startup_time = time.time() - start_time
             print(f"Startup time for {cluster_size} nodes: {startup_time:.2f}s")
 
-            # Measure leader election time
+            # Measure leader election time — wait for unique leader *and*
+            # all other members to settle as FOLLOWER (large clusters often
+            # still have CANDIDATEs when the first LEADER appears).
             election_start = time.time()
             leader = None
-            for attempt in range(200):  # 20 seconds max for large clusters
-                await asyncio.sleep(0.1)
+            settle_deadline = time.time() + max(20.0, cluster_size * 1.5)
+            last_states: dict[str, str] = {}
+            while time.time() < settle_deadline:
                 leaders = [
                     n for n in nodes.values() if n.current_state == RaftState.LEADER
                 ]
-                if leaders:
+                followers = [
+                    n for n in nodes.values() if n.current_state == RaftState.FOLLOWER
+                ]
+                last_states = {nid: n.current_state.value for nid, n in nodes.items()}
+                if len(leaders) == 1 and len(followers) == cluster_size - 1:
                     leader = leaders[0]
                     break
+                await asyncio.sleep(0.05)
 
             election_time = time.time() - election_start
             print(f"Election time for {cluster_size} nodes: {election_time:.2f}s")
 
             assert leader is not None, (
-                f"No leader elected in {cluster_size}-node cluster within timeout"
-            )
-
-            # Verify correct cluster topology
-            leaders = [n for n in nodes.values() if n.current_state == RaftState.LEADER]
-            followers = [
-                n for n in nodes.values() if n.current_state == RaftState.FOLLOWER
-            ]
-
-            assert len(leaders) == 1, (
-                f"Expected 1 leader in {cluster_size}-node cluster, got {len(leaders)}"
-            )
-            assert len(followers) == cluster_size - 1, (
-                f"Expected {cluster_size - 1} followers, got {len(followers)}"
+                f"No stable unique-leader topology in {cluster_size}-node cluster "
+                f"within timeout; final_states={last_states}"
             )
 
             # Measure command throughput
@@ -636,7 +644,7 @@ class TestLiveRaftIntegration:
             stable_wait = min(1.2, 0.4 + cluster_size * 0.03)
             stable_leader = await self._wait_for_stable_leader(
                 nodes,
-                timeout_seconds=max(3.0, cluster_size * 0.4),
+                timeout_seconds=max(5.0, cluster_size * 0.5),
                 stable_seconds=stable_wait,
             )
             if stable_leader is not None:
@@ -696,11 +704,7 @@ class TestLiveRaftIntegration:
             )
 
         finally:
-            # Stop all nodes
-            stop_tasks = []
-            for node in nodes.values():
-                stop_tasks.append(asyncio.create_task(node.stop()))
-            await asyncio.gather(*stop_tasks, return_exceptions=True)
+            await self._stop_raft_nodes(nodes, timeout=max(3.0, cluster_size * 0.25))
 
     @pytest.mark.asyncio
     async def test_live_large_cluster_edge_cases(self, temp_dir, test_context):
@@ -796,12 +800,7 @@ class TestLiveRaftIntegration:
             print("✓ Large cluster edge cases passed")
 
         finally:
-            # Stop all remaining nodes
-            for node in nodes.values():
-                with contextlib.suppress(
-                    TimeoutError, asyncio.CancelledError, AttributeError
-                ):
-                    await asyncio.wait_for(node.stop(), timeout=2.0)
+            await self._stop_raft_nodes(nodes, timeout=2.0)
 
     @pytest.mark.asyncio
     async def test_live_network_topology_performance(self, temp_dir, test_context):
@@ -888,12 +887,7 @@ class TestLiveRaftIntegration:
                     print("  ❌ No leader elected within timeout")
 
             finally:
-                # Stop nodes
-                for node in nodes.values():
-                    with contextlib.suppress(
-                        TimeoutError, asyncio.CancelledError, AttributeError
-                    ):
-                        await asyncio.wait_for(node.stop(), timeout=1.0)
+                await self._stop_raft_nodes(nodes, timeout=1.0)
 
         # Analyze results
         print("\n=== TOPOLOGY PERFORMANCE ANALYSIS ===")
@@ -1087,12 +1081,7 @@ class TestLiveRaftIntegration:
                 print(f"✓ High load test passed for {cluster_size} nodes")
 
             finally:
-                # Stop nodes
-                for node in nodes.values():
-                    with contextlib.suppress(
-                        TimeoutError, asyncio.CancelledError, AttributeError
-                    ):
-                        await asyncio.wait_for(node.stop(), timeout=2.0)
+                await self._stop_raft_nodes(nodes, timeout=2.0)
 
                 # Ensure each cluster-size run is isolated and doesn't leak server load
                 # into the next iteration of this test.

@@ -200,6 +200,7 @@ SUITE_PRESETS: dict[str, tuple[str, ...]] = {
         "strong.drop_abort",
         "strong.refuse_get_delete",
         "audit.multi_origin",
+        "raft.elect_3",
     ),
     "strong-core": (
         "strong.happy_3",
@@ -229,6 +230,13 @@ SUITE_PRESETS: dict[str, tuple[str, ...]] = {
         "audit.duplicate_idempotent",
         "audit.ineligible_local",
     ),
+    "raft-core": (
+        "raft.elect_3",
+        "raft.elect_5",
+        "raft.partition_majority",
+        "raft.partition_heal",
+        "raft.leader_stepdown_reelect",
+    ),
     # Placeholder so list_presets / unknown-check know the name; expanded below.
     "ci-core": (),
 }
@@ -237,14 +245,14 @@ SUITE_PRESETS: dict[str, tuple[str, ...]] = {
 def resolve_preset(name: str) -> list[str]:
     """Return scenario names for a suite preset (empty if unknown).
 
-    ``ci-core`` is the ordered union of smoke + strong-core + audit-core
-    (deduplicated, first-seen wins) for a single CI/operator gate.
+    ``ci-core`` is the ordered union of smoke + strong-core + audit-core +
+    raft-core (deduplicated, first-seen wins) for a single CI/operator gate.
     """
     key = (name or "").strip().lower()
     if key == "ci-core":
         seen: set[str] = set()
         out: list[str] = []
-        for part in ("smoke", "strong-core", "audit-core"):
+        for part in ("smoke", "strong-core", "audit-core", "raft-core"):
             for n in SUITE_PRESETS.get(part, ()):
                 if n not in seen:
                     seen.add(n)

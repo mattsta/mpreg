@@ -3,9 +3,9 @@
 Jepsen-inspired history + checker + nemesis + scenario runner, packaged inside
 the platform so the platform can test itself. Honest scope:
 
-* **Is:** append-only histories, pluggable checkers, fault nemesis, STRONG and
-  shared-audit adapters, scenario suites, generators, registry, live helpers,
-  FaultInjector integration.
+* **Is:** append-only histories, pluggable checkers, fault nemesis, STRONG,
+  shared-audit, and ProductionRaft adapters, scenario suites, generators,
+  registry, live helpers, FaultInjector integration.
 * **Is not:** Elle linearizability, WAN geo generators, JVM Jepsen port,
   Byzantine fault tolerance proofs, kernel/iptables partitions.
 
@@ -13,7 +13,7 @@ Import::
 
     from mpreg.testing.distlab import (
         History, Scenario, Nemesis, default_strong_checkers, StrongSUT,
-        get_registry, ensure_builtins,
+        default_raft_checkers, RaftSUT, get_registry, ensure_builtins,
     )
 
 CLI (pyproject entry point only — never ``python -m``)::
@@ -21,6 +21,7 @@ CLI (pyproject entry point only — never ``python -m``)::
     uv run mpreg distlab list
     uv run mpreg distlab catalog
     uv run mpreg distlab run strong.happy_3
+    uv run mpreg distlab run raft.elect_3
 """
 
 from __future__ import annotations
@@ -32,9 +33,12 @@ from mpreg.testing.distlab.checker import (
     GSetConvergenceChecker,
     LWWRegisterChecker,
     NoOpenInvokeChecker,
+    RaftSmAgreementChecker,
     ReplicaAgreementChecker,
     ResidualFreeChecker,
+    UniqueLeaderChecker,
     default_audit_checkers,
+    default_raft_checkers,
     default_strong_checkers,
 )
 from mpreg.testing.distlab.generator import (
@@ -95,6 +99,8 @@ __all__ = [
     "NullNemesisTarget",
     "OpKind",
     "OpStatus",
+    "RaftSUT",
+    "RaftSmAgreementChecker",
     "RandomFaultPlan",
     "ReplicaAgreementChecker",
     "ResidualFreeChecker",
@@ -105,8 +111,10 @@ __all__ = [
     "SequentialPuts",
     "SliBudget",
     "StrongSUT",
+    "UniqueLeaderChecker",
     "WallTimer",
     "default_audit_checkers",
+    "default_raft_checkers",
     "default_strong_checkers",
     "ensure_builtins",
     "get_registry",
@@ -125,6 +133,10 @@ def __getattr__(name: str) -> object:
         from mpreg.testing.distlab.adapters.audit import AuditSUT
 
         return AuditSUT
+    if name == "RaftSUT":
+        from mpreg.testing.distlab.adapters.raft import RaftSUT
+
+        return RaftSUT
     if name == "LiveStrongSUT":
         from mpreg.testing.distlab.live import LiveStrongSUT
 

@@ -344,7 +344,10 @@ class WebSocketListener(TransportListener):
 
         if self._server:
             self._server.close()
-            await self._server.wait_closed()
+            # Bound wait_closed so mesh teardown cannot hang forever when
+            # peer handlers are still draining. Remaining sockets are dropped.
+            with contextlib.suppress(TimeoutError, asyncio.CancelledError):
+                await asyncio.wait_for(self._server.wait_closed(), timeout=3.0)
             self._server = None
 
         self._accept_queue = None

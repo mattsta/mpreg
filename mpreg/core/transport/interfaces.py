@@ -57,12 +57,19 @@ class TransportError(Exception):
     """Base exception for transport-related errors."""
 
 
-class TransportConnectionError(TransportError):
-    """Raised when transport connection fails."""
+class TransportConnectionError(TransportError, ConnectionError):
+    """Raised when transport connection fails.
+
+    Also a :class:`ConnectionError` so :data:`mpreg.core.errors.OPERATIONAL_EXCEPTIONS`
+    catches closed/peer-gone failures without a circular import on the transport package.
+    """
 
 
-class TransportTimeoutError(TransportError):
-    """Raised when transport operation times out."""
+class TransportTimeoutError(TransportError, TimeoutError):
+    """Raised when transport operation times out.
+
+    Also a :class:`TimeoutError` so operational catch-groups treat it as expected.
+    """
 
 
 @dataclass(frozen=True, slots=True)

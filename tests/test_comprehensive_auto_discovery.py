@@ -29,7 +29,7 @@ from mpreg.core.port_allocator import get_port_allocator
 from mpreg.datastructures.function_identity import FunctionSelector, VersionConstraint
 from mpreg.fabric.index import FunctionQuery
 from mpreg.server import MPREGServer
-from tests.conftest import AsyncTestContext
+from tests.conftest import AsyncTestContext, shutdown_servers_sequential
 from tests.test_helpers import wait_for_condition
 
 
@@ -380,10 +380,7 @@ class AutoDiscoveryTestHelpers:
         print(f"\n{topology} {len(ports)}-Node Result: {status}")
 
         # Cleanup servers before returning to avoid socket leaks in large clusters.
-        await asyncio.gather(
-            *(server.shutdown_async() for server in servers),
-            return_exceptions=True,
-        )
+        await shutdown_servers_sequential(servers)
         new_tasks = test_context.tasks[tasks_start:]
         if new_tasks:
             await asyncio.wait(new_tasks, timeout=max(5.0, len(new_tasks) * 0.5))

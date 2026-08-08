@@ -396,171 +396,171 @@ class TestEnhancedMultiProtocolAdapterIntegration:
             assert adapter.correlation_tracker is None  # Should be None when disabled
 
     @pytest.mark.asyncio
-    async def test_correlation_tracking_end_to_end(self, test_context, port_pair):
-        """Test correlation tracking end-to-end with live transport."""
-        port1, port2 = port_pair
+    async def test_correlation_tracking_end_to_end(self, test_context):
+        """Test correlation tracking end-to-end with live transport.
 
-        # Start live TCP echo server
+        Contiguous base-port window (adapter TCP = base+2) + dedicated echo port.
+        """
+        import struct
+
+        from mpreg.core.port_allocator import port_range_context
         from mpreg.core.transport import TransportConfig
+        from mpreg.core.transport.tcp_transport import MESSAGE_HEADER_SIZE
 
-        config = TransportConfig()
-        listener = TransportFactory.create_listener("tcp", "127.0.0.1", port2, config)
-        await listener.start()
+        config = TransportConfig(
+            read_timeout=5.0, write_timeout=5.0, connect_timeout=5.0
+        )
 
-        async def echo_server():
+        async def _echo_handler(
+            reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        ) -> None:
             try:
-                transport = await listener.accept()
-                data = await transport.receive()
-                await transport.send(data)
-                await transport.disconnect()
-            except Exception as e:  # noqa: BLE001
-                print(f"Echo server error: {e}")
+                header = await reader.readexactly(MESSAGE_HEADER_SIZE)
+                (length,) = struct.unpack(">I", header)
+                body = await reader.readexactly(length)
+                writer.write(header + body)
+                await writer.drain()
+            finally:
+                writer.close()
+                with contextlib.suppress(Exception):
+                    await writer.wait_closed()
 
-        echo_task = asyncio.create_task(echo_server())
-
-        try:
-            adapter = create_enhanced_multi_protocol_adapter(
-                base_port=port1,
-                enable_correlation_tracking=True,
-                correlation_timeout_ms=5000.0,
+        with port_range_context(4, "testing") as ports:
+            base_port, _, _, echo_port = ports
+            server = await asyncio.start_server(
+                _echo_handler, "127.0.0.1", echo_port, reuse_address=True
             )
-
-            # Start adapter to get real endpoints
-            await adapter.start([TransportProtocol.TCP])
-
-            # We need to modify the send method to use our echo server
-            # For this test, we'll modify the endpoint dynamically
-            tcp_endpoint = f"tcp://127.0.0.1:{port2}"
-
-            # Create direct transport for testing
-            from mpreg.core.transport import TransportConfig
-
-            test_transport = TransportFactory.create(tcp_endpoint, TransportConfig())
-            await test_transport.connect()
-
-            # Test basic transport
-            await test_transport.send(b"correlation_test_data")
-            response = await test_transport.receive()
-            await test_transport.disconnect()
-
-            # Verify basic transport worked
-            assert response == b"correlation_test_data"
-
-            # Verify correlation tracker exists and is functional
-            if adapter.correlation_tracker:
-                # Test correlation tracking separately
-                corr_id = adapter.correlation_tracker.start_correlation()
-                assert corr_id is not None
-
-                result = adapter.correlation_tracker.complete_correlation(
-                    corr_id,
-                    response_data=response,
-                    endpoint=tcp_endpoint,
-                    connection_id="test_conn",
-                    success=True,
+            adapter = None
+            try:
+                adapter = create_enhanced_multi_protocol_adapter(
+                    base_port=base_port,
+                    enable_correlation_tracking=True,
+                    correlation_timeout_ms=5000.0,
                 )
-                assert result.success is True
+                await adapter.start([TransportProtocol.TCP])
+                tcp_endpoint = f"tcp://127.0.0.1:{echo_port}"
 
-            await asyncio.wait_for(echo_task, timeout=1.0)
+                test_transport = TransportFactory.create(tcp_endpoint, config)
+                await test_transport.connect()
+                try:
+                    await test_transport.send(b"correlation_test_data")
+                    response = await test_transport.receive()
+                finally:
+                    with contextlib.suppress(Exception):
+                        await test_transport.disconnect()
 
-        finally:
-            await listener.stop()
-            if not echo_task.done():
-                echo_task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await echo_task
+                assert response == b"correlation_test_data"
+
+                if adapter.correlation_tracker:
+                    corr_id = adapter.correlation_tracker.start_correlation()
+                    assert corr_id is not None
+                    result = adapter.correlation_tracker.complete_correlation(
+                        corr_id,
+                        response_data=response,
+                        endpoint=tcp_endpoint,
+                        connection_id="test_conn",
+                        success=True,
+                    )
+                    assert result.success is True
+            finally:
+                if adapter is not None:
+                    with contextlib.suppress(Exception):
+                        await adapter.stop()
+                server.close()
+                with contextlib.suppress(TimeoutError, asyncio.CancelledError):
+                    await asyncio.wait_for(server.wait_closed(), timeout=2.0)
 
     @pytest.mark.asyncio
-    async def test_health_monitoring_integration(self, test_context, port_pair):
-        """Test health monitoring integration with live operations."""
-        port1, port2 = port_pair
+    async def test_health_monitoring_integration(self, test_context):
+        """Test health monitoring integration with live operations.
 
-        # Start live TCP echo server
+        Reserves a contiguous base-port window so adapter TCP (base+2) cannot
+        collide under xdist. Echo uses a direct start_server callback on a
+        separate reserved port (no accept-queue race).
+        """
+        import struct
+
+        from mpreg.core.port_allocator import port_range_context
         from mpreg.core.transport import TransportConfig
+        from mpreg.core.transport.enhanced_health import (
+            create_connection_health_monitor,
+        )
+        from mpreg.core.transport.tcp_transport import MESSAGE_HEADER_SIZE
 
-        config = TransportConfig()
-        listener = TransportFactory.create_listener("tcp", "127.0.0.1", port2, config)
-        await listener.start()
+        config = TransportConfig(
+            read_timeout=5.0, write_timeout=5.0, connect_timeout=5.0
+        )
 
-        async def echo_server():
+        async def _echo_handler(
+            reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+        ) -> None:
             try:
-                for _ in range(3):  # Handle multiple connections
-                    transport = await listener.accept()
-                    data = await transport.receive()
-                    await transport.send(data)
-                    await transport.disconnect()
-            except Exception as e:  # noqa: BLE001
-                print(f"Echo server error: {e}")
+                header = await reader.readexactly(MESSAGE_HEADER_SIZE)
+                (length,) = struct.unpack(">I", header)
+                body = await reader.readexactly(length)
+                writer.write(header + body)
+                await writer.drain()
+            finally:
+                writer.close()
+                with contextlib.suppress(Exception):
+                    await writer.wait_closed()
 
-        echo_task = asyncio.create_task(echo_server())
-
-        try:
-            adapter = create_enhanced_multi_protocol_adapter(
-                base_port=port1,
-                enable_health_monitoring=True,
+        # 4 ports: base..base+2 for adapter offsets, base+3 for echo peer.
+        with port_range_context(4, "testing") as ports:
+            base_port, _, _, echo_port = ports
+            server = await asyncio.start_server(
+                _echo_handler, "127.0.0.1", echo_port, reuse_address=True
             )
-
-            # Start adapter to get real endpoints
-            await adapter.start([TransportProtocol.TCP])
-
-            # We need to modify for our echo server
-            tcp_endpoint = f"tcp://127.0.0.1:{port2}"
-
-            # Perform multiple successful operations using direct transport
-            from mpreg.core.transport import TransportConfig
-
-            for i in range(3):
-                test_transport = TransportFactory.create(
-                    tcp_endpoint, TransportConfig()
+            adapter = None
+            try:
+                adapter = create_enhanced_multi_protocol_adapter(
+                    base_port=base_port,
+                    enable_health_monitoring=True,
                 )
-                await test_transport.connect()
+                await adapter.start([TransportProtocol.TCP])
+                # Adapter's own TCP endpoint (health_aggregators key).
+                adapter_tcp = adapter.endpoints.get("tcp")
+                assert adapter_tcp is not None
+                echo_endpoint = f"tcp://127.0.0.1:{echo_port}"
 
-                test_data = f"health_test_data_{i}".encode()
-                await test_transport.send(test_data)
-                response = await test_transport.receive()
-                await test_transport.disconnect()
+                for i in range(3):
+                    test_transport = TransportFactory.create(echo_endpoint, config)
+                    await test_transport.connect()
+                    try:
+                        test_data = f"health_test_data_{i}".encode()
+                        await test_transport.send(test_data)
+                        response = await test_transport.receive()
+                        assert response == test_data
+                    finally:
+                        with contextlib.suppress(Exception):
+                            await test_transport.disconnect()
 
-                assert response == test_data
-
-                # Record operation in health monitoring manually
-                if tcp_endpoint in adapter.health_aggregators:
-                    # Get or create connection monitor for health tracking
+                    # Record success against the adapter's monitored endpoint.
                     conn_id = f"test_conn_{i}"
                     if conn_id not in adapter.connection_monitors:
-                        from mpreg.core.transport.enhanced_health import (
-                            create_connection_health_monitor,
-                        )
-
                         monitor = create_connection_health_monitor(
-                            conn_id, tcp_endpoint
+                            conn_id, adapter_tcp
                         )
                         adapter.connection_monitors[conn_id] = monitor
-                        adapter.health_aggregators[tcp_endpoint].add_connection_monitor(
-                            monitor
-                        )
-
-                    # Record successful operation
+                        if adapter_tcp in adapter.health_aggregators:
+                            adapter.health_aggregators[
+                                adapter_tcp
+                            ].add_connection_monitor(monitor)
                     adapter.connection_monitors[conn_id].record_operation(10.0, True)
 
-            # Check health monitoring if we have an aggregator
-            if tcp_endpoint in adapter.health_aggregators:
-                health_aggregator = adapter.health_aggregators[tcp_endpoint]
-                health_snapshot = health_aggregator.get_transport_health_snapshot()
-
-                # Should have good health due to successful operations
-                assert health_snapshot.overall_health_score >= 0.0  # Basic check
-                # Check basic health attributes (connection_count may not exist)
+                assert adapter_tcp in adapter.health_aggregators
+                health_snapshot = adapter.health_aggregators[
+                    adapter_tcp
+                ].get_transport_health_snapshot()
                 assert hasattr(health_snapshot, "overall_health_score")
                 assert health_snapshot.overall_health_score >= 0.0
-
-            await asyncio.wait_for(echo_task, timeout=2.0)
-
-        finally:
-            await listener.stop()
-            if not echo_task.done():
-                echo_task.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await echo_task
+            finally:
+                if adapter is not None:
+                    with contextlib.suppress(Exception):
+                        await adapter.stop()
+                server.close()
+                with contextlib.suppress(TimeoutError, asyncio.CancelledError):
+                    await asyncio.wait_for(server.wait_closed(), timeout=2.0)
 
 
 if __name__ == "__main__":

@@ -1,19 +1,12 @@
-"""H4: package version is 0.3.1."""
+"""H4: 0.3.1 Production Hardening historical artifacts remain in tree.
+
+Package version has moved forward (see test_u8_version_032); this file locks
+the 0.3.1 CHANGELOG section and claims so the hardening story stays auditable.
+"""
 
 from pathlib import Path
 
-import mpreg
-
 ROOT = Path(__file__).resolve().parents[2]
-
-
-def test_h4_pyproject_version_031() -> None:
-    text = (ROOT / "pyproject.toml").read_text()
-    assert 'version = "0.3.1"' in text
-
-
-def test_h4_package_version() -> None:
-    assert mpreg.__version__ == "0.3.1"
 
 
 def test_h4_changelog_031() -> None:

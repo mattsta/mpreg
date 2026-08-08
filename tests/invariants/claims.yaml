@@ -106,6 +106,12 @@ raft:
     tests:
       - tests/invariants/test_raft_prevote_minority.py
     notes: "U1 ProductionRaft pre_vote_enabled default True; RequestVote.pre_vote path"
+  - id: INV-C9
+    claim: "DistLab first-class Raft elect/partition/heal scenarios pass under ProductionRaft lab adapter"
+    proof: [L2]
+    tests:
+      - tests/testing/test_distlab_raft_scenarios.py
+    notes: "RaftSUT + raft-core preset; ci_raft.sh + ci_distlab_core.sh; not Fabric/live wire"
   - id: INV-C8
     claim: "crash restart recovers committed log prefix and majority last_applied/SM re-apply"
     proof: [L1, L2]
@@ -417,11 +423,42 @@ release_0_3_1:
     tests:
       - tests/release/test_h3_support_md.py
   - id: REL-0.3.1-PACKAGE
-    claim: "package version 0.3.1 with dynamic package-smoke version check"
+    claim: "0.3.1 shipped package version and dynamic package-smoke version check (historical; current version is 0.3.2)"
     proof: [L2]
     support_only: true
     tests:
       - tests/release/test_h4_version_031.py
+
+release_0_3_2:
+  - id: REL-0.3.2-PACKAGE
+    claim: "package version 0.3.2 with CHANGELOG Unified Correctness closeout"
+    proof: [L2]
+    support_only: true
+    tests:
+      - tests/release/test_u8_version_032.py
+      - tests/release/test_r4_version.py
+  - id: REL-0.3.2-RAFT-TASK-LIFECYCLE
+    claim: "Raft stop/cancel never leaves asyncio tasks pending-destroy; retain-until-done + multi-run gate"
+    proof: [L2, L4]
+    tests:
+      - tests/test_raft_no_pending_destroy.py
+      - tests/test_raft_task_manager.py
+  - id: REL-0.3.2-DISTLAB-RAFT
+    claim: "DistLab first-class Raft elect/partition/heal scenarios in ci_raft and raft-core preset"
+    proof: [L2, L4]
+    tests:
+      - tests/testing/test_distlab_raft_scenarios.py
+  - id: REL-0.3.2-CATALOG-SERIALIZE-ONCE
+    claim: "Catalog snapshot fanout uses serialize-once shared wire build"
+    proof: [L2]
+    tests:
+      - tests/test_catalog_snapshot_serialize.py
+  - id: REL-0.3.2-FULL-SUITE-MULTIRUN
+    claim: "Local 3× full pytest tests/ -n auto green with 0 pending-destroy (ledger evidence; not PR CI)"
+    proof: [L4]
+    support_only: true
+    tests:
+      - tests/release/test_u8_version_032.py
 
 non_claims:
   - "Atomic multi-store fabric snapshot save (catalog+keys single blob); restore has COR-10 rollback on key failure"
@@ -564,6 +601,9 @@ non_claims:
   - "scripts/release_gate.sh green is snapshot quality bar — not enterprise feature-complete claim"
 
   - "0.3.1 Production Hardening does not claim full-tree ruff or mypy zero debt"
+  - "0.3.2 Unified Correctness closeout does not claim Jepsen/BFT/WAN or formal model-check"
+  - "0.3.2 multi-run full suite evidence is local ledger proof — not enforced on every PR CI job"
+  - "0.3.2 does not claim binary/msgpack wire backend (native_codec phase 2)"
 
   - "SUPPORT.md is community guidance — not a commercial support SLA"
 
@@ -592,3 +632,4 @@ support_only:
   - tests/release/test_h2_lint_bar.py
   - tests/release/test_h3_support_md.py
   - tests/release/test_h4_version_031.py
+  - tests/release/test_u8_version_032.py

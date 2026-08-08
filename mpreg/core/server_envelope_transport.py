@@ -46,6 +46,11 @@ class ServerEnvelopeTransport:
         return tuple(sorted(peers))
 
     async def send_envelope(self, peer_id: NodeId, envelope: BaseModel) -> bool:
+        data = self.serializer.serialize_model(envelope)
+        return await self.send_bytes(peer_id, data)
+
+    async def send_bytes(self, peer_id: NodeId, data: bytes) -> bool:
+        """Send pre-encoded envelope bytes (serialize-once / send-many)."""
         connection = self._active_connections().get(peer_id)
         breaker = self._circuit_breaker_for(peer_id)
         if connection is None or not connection.is_connected:
@@ -65,7 +70,6 @@ class ServerEnvelopeTransport:
             # A fresh connected transport indicates recovery and should clear stale OPEN state.
             breaker.reset()
 
-        data = self.serializer.serialize(envelope.model_dump())
         try:
             await connection.send(data)
         except OPERATIONAL_EXCEPTIONS:

@@ -1280,6 +1280,12 @@ class GlobalCacheManager(ManagedObject):
         if self.cache_protocol is not None:
             await self.cache_protocol.shutdown()
 
+        # Drop L2 handles. Do **not** close ``_persistence_registry`` — the
+        # registry is owned by the caller (server / test fixture) and may be
+        # shared across managers; closing it here breaks round-trip reopen.
+        self._l2_store = None
+        self.l2_cache.clear()
+
         cache_log.info("Global cache manager shutdown complete")
 
     def shutdown_sync(self) -> None:

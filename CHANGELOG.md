@@ -1,5 +1,53 @@
 # CHANGELOG
 
+## [0.3.2] - 2026-08-07 — Unified Correctness Closeout
+
+Patch release locking **Raft task lifecycle**, **DistLab first-class Raft**,
+**catalog snapshot serialize-once**, and **multi-run full-suite proof** after
+0.3.1 Production Hardening.
+
+### Highlights
+
+- **No pending-destroy** — `RaftTaskManager` retain-until-done bag; cancel+await
+  (shielded) drains; re-entrant `ProductionRaft.stop`; heartbeat/replication
+  gather settles siblings; DistLab/mock `_deliver` retains sibling tasks.
+  Hard gate: `tests/test_raft_no_pending_destroy.py`.
+- **DistLab Raft** — `RaftSUT` adapter, elect/partition/heal scenarios, checkers;
+  `ci_raft.sh` + `raft-core` preset; gap doc closed.
+- **Catalog snapshot CPU** — serialize-once / send-many shared wire build;
+  generation-stable `update_id`; proof tests under
+  `tests/test_catalog_snapshot_serialize.py`.
+- **Marker hygiene** — live Raft marked `integration`+`slow`; README markers
+  registered (`property`, `performance`, `federation`).
+- **Server supervisor LCE** — fabric snapshot restore, pubsub notify, shared-audit
+  peer paths use `log_caught_exception`.
+- **Validation** — 3× full `pytest tests/ -n auto` green (**3382 passed**,
+  0× pending-destroy, 0× never-retrieved, **0 warnings**) recorded in proof
+  ledger (`full_zero_lock_*`).
+- **Teardown / warning hygiene** — safe `MPREGServer.__del__`; pytest never
+  closes asyncio loop under runners; DistLab Raft drain; bounded listener
+  `wait_closed`; mesh shutdown settle; BlockchainStore explicit sqlite close;
+  adapter health/correlation contiguous ports; L2 drop without closing shared
+  PersistenceRegistry; documented CPython selector GC `filterwarnings`.
+
+### Still deferred (honest non-claims)
+
+Jepsen / BFT / WAN adversarial suites; formal model-check; binary/msgpack wire
+phase 2; full-tree ruff/mypy zero; PR CI does not yet run 3× full `-n auto`.
+
+### Artifacts
+
+| Artifact     | Path                                                       |
+| ------------ | ---------------------------------------------------------- |
+| Architecture | `docs/architecture/` (RAFT, VALIDATION, DISTLAB_RAFT_GAP)  |
+| Master plan  | `docs/plans/UNIFIED_CORRECTNESS_MASTER_PLAN.md`            |
+| Burndown     | `docs/plans/UNIFIED_CORRECTNESS_BURNDOWN.md`               |
+| Proof ledger | `docs/plans/UNIFIED_CORRECTNESS_PROOF_LEDGER.md`           |
+| Catalog plan | `docs/plans/CATALOG_SNAPSHOT_SERIALIZE_CPU_PLAN.md`        |
+| Gate         | `bash scripts/release_gate.sh` (+ `ci_raft.sh`)            |
+
+---
+
 ## [0.3.1] - 2026-08-07 — Production Hardening
 
 Patch release raising the **quality floor** after the 0.3.0 Production Snapshot.

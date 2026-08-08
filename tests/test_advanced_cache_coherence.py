@@ -1162,7 +1162,7 @@ class TestCacheNamespaceLeader:
             await leader.step_down("")
 
         with pytest.raises(ValueError, match="Namespace cannot be empty"):
-            leader.force_leader_election("")
+            await leader.force_leader_election("")
 
 
 class TestCacheCorruptionError:

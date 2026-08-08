@@ -63,11 +63,21 @@ def test_categories_partition_operational() -> None:
 
 
 def test_is_expected_failure_classifies() -> None:
+    from mpreg.core.transport.interfaces import (
+        TransportConnectionError,
+        TransportTimeoutError,
+    )
+
     assert is_expected_failure(TimeoutError("t"))
     assert is_expected_failure(ConnectionError("c"))
     assert is_expected_failure(ValueError("v"))
     assert is_expected_failure(KeyError("k"))
     assert is_expected_failure(RuntimeError("r"))
+    # Transport errors subclass ConnectionError / TimeoutError (operational).
+    assert is_expected_failure(TransportConnectionError("WebSocket connection closed"))
+    assert is_expected_failure(TransportTimeoutError("read timed out"))
+    assert isinstance(TransportConnectionError("x"), ConnectionError)
+    assert isinstance(TransportTimeoutError("x"), TimeoutError)
     # Unknown programmer/fault classes are not "expected conditions"
     assert not is_expected_failure(AttributeError("a"))
     assert not is_expected_failure(ArithmeticError("z"))
@@ -121,7 +131,20 @@ def test_with_operational_dedupes() -> None:
 
 
 def test_operational_catch_matches_isinstance() -> None:
-    for cls in (OSError, TimeoutError, ConnectionError, ValueError, RuntimeError):
+    from mpreg.core.transport.interfaces import (
+        TransportConnectionError,
+        TransportTimeoutError,
+    )
+
+    for cls in (
+        OSError,
+        TimeoutError,
+        ConnectionError,
+        ValueError,
+        RuntimeError,
+        TransportConnectionError,
+        TransportTimeoutError,
+    ):
         try:
             raise cls("x")
         except OPERATIONAL_EXCEPTIONS as exc:

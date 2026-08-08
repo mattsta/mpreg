@@ -9,14 +9,18 @@ def test_t25_ci_core_preset_is_deduped_union() -> None:
     smoke = set(SUITE_PRESETS["smoke"])
     strong = set(SUITE_PRESETS["strong-core"])
     audit = set(SUITE_PRESETS["audit-core"])
+    raft = set(SUITE_PRESETS["raft-core"])
     names = resolve_preset("ci-core")
-    assert set(names) == smoke | strong | audit
+    # ci-core = ordered union of smoke ∪ strong-core ∪ audit-core ∪ raft-core
+    assert set(names) == smoke | strong | audit | raft
     assert len(names) == len(set(names))
-    # Order: smoke first, then strong-only, then audit-only
+    # Order: smoke first, then strong-only, then audit-only, then raft-only
     assert names[0] == SUITE_PRESETS["smoke"][0]
-    # Refuse + digest both present for honesty coverage
+    # Refuse + digest + raft elect present for honesty coverage
     assert "strong.refuse_get_delete" in names
     assert "audit.digest_repair" in names
+    assert "raft.elect_3" in names
+    assert "raft.partition_heal" in names
 
 
 def test_t25_unknown_preset_empty() -> None:

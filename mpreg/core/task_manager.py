@@ -69,8 +69,13 @@ class TaskManager:
             )
 
     async def shutdown(self, timeout: float = 5.0) -> None:
-        """Shutdown all managed tasks gracefully."""
-        if self._shutdown_requested:
+        """Shutdown all managed tasks gracefully.
+
+        Invariant: after return, every previously tracked task is ``done()``.
+        Never clear the strong-ref set while a task is still pending — that
+        triggers CPython ``Task was destroyed but it is pending!``.
+        """
+        if self._shutdown_requested and not self.tasks:
             return
 
         self._shutdown_requested = True
@@ -81,42 +86,64 @@ class TaskManager:
 
         task_log.info(f"[{self.name}] Shutting down {len(self.tasks)} background tasks")
 
-        # Cancel all tasks
-        for task in self.tasks:
-            if not task.done():
-                task.cancel()
+        current = asyncio.current_task()
+        pending_tasks = [t for t in self.tasks if not t.done() and t is not current]
 
-        # Give tasks a moment to respond to cancellation
-        await asyncio.sleep(0.1)
+        for task in pending_tasks:
+            task.cancel()
 
-        # Wait for cancellation with timeout
-        if self.tasks:
+        if pending_tasks:
+
+            async def _drain() -> None:
+                await asyncio.gather(*pending_tasks, return_exceptions=True)
+
             try:
-                # Use wait instead of gather to handle already-done tasks better
-                pending_tasks = [task for task in self.tasks if not task.done()]
-                if pending_tasks:
-                    _done, pending = await asyncio.wait(
-                        pending_tasks,
-                        timeout=timeout,
-                        return_when=asyncio.ALL_COMPLETED,
-                    )
-
-                    # Force cancel any remaining pending tasks
-                    for task in pending:
+                await asyncio.wait_for(_drain(), timeout=timeout)
+            except TimeoutError:
+                still = [t for t in pending_tasks if not t.done()]
+                for task in still:
+                    if not task.cancelled():
                         task.cancel()
-                        task_log.warning(
-                            f"[{self.name}] Force-cancelled task: {task.get_name()}"
-                        )
-
-                    # Wait a bit more for force-cancelled tasks to finish
-                    if pending:
-                        await asyncio.sleep(0.1)
-
+                    task_log.warning(
+                        f"[{self.name}] Force-cancelled task: {task.get_name()}"
+                    )
+                try:
+                    await asyncio.shield(_drain())
+                except asyncio.CancelledError:
+                    await _drain()
+            except asyncio.CancelledError:
+                still = [t for t in pending_tasks if not t.done()]
+                for task in still:
+                    if not task.cancelled():
+                        task.cancel()
+                try:
+                    await asyncio.shield(_drain())
+                except asyncio.CancelledError:
+                    await _drain()
+                # Re-raise only after settlement.
+                leftover = [t for t in self.tasks if not t.done() and t is not current]
+                if not leftover:
+                    self.tasks.clear()
+                raise
             except OPERATIONAL_EXCEPTIONS as e:
                 task_log.warning(f"[{self.name}] Error during task shutdown: {e}")
+                still = [t for t in pending_tasks if not t.done()]
+                if still:
+                    for task in still:
+                        if not task.cancelled():
+                            task.cancel()
+                    await asyncio.gather(*still, return_exceptions=True)
 
-        # Clear tasks regardless of whether they completed successfully
-        self.tasks.clear()
+        # Only drop refs for tasks that are fully settled.
+        unfinished = [t for t in self.tasks if not t.done() and t is not current]
+        if unfinished:
+            task_log.error(
+                f"[{self.name}] {len(unfinished)} tasks still unfinished after "
+                "shutdown drain — retaining refs"
+            )
+            self.tasks = set(unfinished)
+        else:
+            self.tasks.clear()
         task_log.info(f"[{self.name}] Task shutdown complete")
 
     def cancel_all(self) -> None:

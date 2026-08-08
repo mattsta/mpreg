@@ -541,12 +541,19 @@ uv run pytest tests/integration/ -n 15         # Integration tests with 15 worke
 ### 🏃‍♂️ **Test Categories**
 
 ```bash
-# Run specific test categories
+# Run specific test categories (registered markers in pyproject.toml)
 uv run pytest -m "unit"              # Unit tests only
 uv run pytest -m "integration"       # Integration tests only
-uv run pytest -m "property"          # Property-based tests only
-uv run pytest -m "performance"       # Performance tests only
-uv run pytest -m "federation"        # Federation system tests
+uv run pytest -m "slow"              # Slow / multi-process (e.g. live Raft)
+uv run pytest -m "not slow"          # Fast local loop (skips live Raft, etc.)
+uv run pytest -m "property"          # Property-based / Hypothesis (when marked)
+uv run pytest -m "performance"       # Performance / benchmark-style (when marked)
+uv run pytest -m "federation"        # Multi-cluster federation (when marked)
+uv run pytest -m "chaos"             # Cross-plane chaos scenarios
+# Path-based alternatives (always work regardless of markers):
+uv run pytest tests/property_tests/ -q
+uv run pytest tests/performance/ -q
+uv run pytest tests/test_live_raft_integration.py -q
 ```
 
 ## Quick Demo Running

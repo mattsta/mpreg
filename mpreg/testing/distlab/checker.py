@@ -396,6 +396,124 @@ def default_audit_checkers(*, min_ids: int = 0) -> CompositeChecker:
     )
 
 
+@dataclass(slots=True)
+class UniqueLeaderChecker:
+    """Exactly one live leader in the Raft snapshot (or zero if allow_none).
+
+    ``state`` must expose ``leader_count() -> int`` and optionally ``leaders()``.
+    """
+
+    name: str = "unique_leader"
+    allow_none: bool = False
+    require_one: bool = True
+
+    def check(self, history: History, *, state: Any = None) -> CheckResult:
+        violations: list[CheckViolation] = []
+        if state is None or not hasattr(state, "leader_count"):
+            return CheckResult(name=self.name, ok=True, stats={"skipped": "no_state"})
+        n = int(state.leader_count())
+        leaders = list(state.leaders()) if hasattr(state, "leaders") else []
+        if self.require_one and n != 1:
+            if self.allow_none and n == 0:
+                pass
+            else:
+                violations.append(
+                    CheckViolation(
+                        checker=self.name,
+                        message=f"expected exactly 1 leader, found {n}",
+                        evidence={"leaders": leaders, "count": n},
+                    )
+                )
+        elif n > 1:
+            violations.append(
+                CheckViolation(
+                    checker=self.name,
+                    message=f"split brain: {n} leaders",
+                    evidence={"leaders": leaders},
+                )
+            )
+        return CheckResult(
+            name=self.name,
+            ok=not violations,
+            violations=violations,
+            stats={"leader_count": n, "leaders": leaders},
+        )
+
+
+@dataclass(slots=True)
+class RaftSmAgreementChecker:
+    """Committed SM keys from successful PUTs must not diverge across nodes.
+
+    For each key with a successful PUT, non-null SM values across nodes must
+    agree. Does not claim full linearizability or catch-up of partitioned nodes
+    that never received the commit.
+    """
+
+    name: str = "raft_sm_agreement"
+    key: str | None = None
+    require_all_present: bool = False
+
+    def check(self, history: History, *, state: Any = None) -> CheckResult:
+        violations: list[CheckViolation] = []
+        if state is None or not hasattr(state, "sm_value"):
+            return CheckResult(name=self.name, ok=True, stats={"skipped": "no_state"})
+        keys = (
+            [self.key]
+            if self.key
+            else sorted(
+                {
+                    e.key
+                    for e in history.snapshot()
+                    if e.key and e.kind is OpKind.PUT and e.status is OpStatus.OK
+                }
+            )
+        )
+        for key in keys:
+            if key is None:
+                continue
+            views = state.sm_value(key)  # dict[node -> value|None]
+            present = {nid: v for nid, v in views.items() if v is not None}
+            if self.require_all_present and len(present) != len(views):
+                violations.append(
+                    CheckViolation(
+                        checker=self.name,
+                        message=f"not all nodes have key {key}",
+                        evidence={"views": {k: _safe(v) for k, v in views.items()}},
+                    )
+                )
+            if len(present) >= 2:
+                vals = list(present.values())
+                first = vals[0]
+                if any(v != first for v in vals[1:]):
+                    violations.append(
+                        CheckViolation(
+                            checker=self.name,
+                            message=f"SM diverged on key {key}",
+                            evidence={"views": {k: _safe(v) for k, v in views.items()}},
+                        )
+                    )
+        return CheckResult(
+            name=self.name,
+            ok=not violations,
+            violations=violations,
+            stats={"keys": len([k for k in keys if k])},
+        )
+
+
+def default_raft_checkers(
+    *,
+    key: str | None = None,
+    require_unique_leader: bool = True,
+    require_all_sm: bool = False,
+) -> CompositeChecker:
+    """Default Raft DistLab checkers (history closed + unique leader + SM)."""
+    checkers: list[Checker] = [NoOpenInvokeChecker()]
+    if require_unique_leader:
+        checkers.append(UniqueLeaderChecker(require_one=True))
+    checkers.append(RaftSmAgreementChecker(key=key, require_all_present=require_all_sm))
+    return CompositeChecker(name="raft_default", checkers=checkers)
+
+
 def _safe(v: Any) -> Any:
     try:
         hash(v)

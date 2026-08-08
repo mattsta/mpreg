@@ -720,7 +720,9 @@ class TCPListener(TransportListener):
 
         if self._server:
             self._server.close()
-            await self._server.wait_closed()
+            # Bound wait so mesh teardown cannot hang on draining handlers.
+            with contextlib.suppress(TimeoutError, asyncio.CancelledError):
+                await asyncio.wait_for(self._server.wait_closed(), timeout=3.0)
             self._server = None
 
         self._accept_queue = None

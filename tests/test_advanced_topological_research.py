@@ -44,7 +44,7 @@ from mpreg.datastructures.federated_types import (
 
 pytestmark = pytest.mark.slow
 from mpreg.server import MPREGServer
-from tests.conftest import AsyncTestContext
+from tests.conftest import AsyncTestContext, shutdown_servers_sequential
 
 
 @dataclass
@@ -961,10 +961,7 @@ class TestAdvancedTopologicalResearch:
                 print(f"     Success rate: {propagation_success_rate:.2%}")
 
                 # Explicitly shutdown this cluster before next iteration.
-                await asyncio.gather(
-                    *(server.shutdown_async() for server in servers),
-                    return_exceptions=True,
-                )
+                await shutdown_servers_sequential(servers)
                 new_tasks = test_context.tasks[tasks_start:]
                 if new_tasks:
                     await asyncio.wait(
@@ -1252,10 +1249,7 @@ class TestAdvancedTopologicalResearch:
         print("✅ Multi-layer federation cascade research completed")
 
         # Explicit cleanup to avoid socket leaks from layered clusters.
-        await asyncio.gather(
-            *(server.shutdown_async() for server in all_layer_servers),
-            return_exceptions=True,
-        )
+        await shutdown_servers_sequential(all_layer_servers)
         for task in list(test_context.tasks):
             if not task.done():
                 task.cancel()
@@ -1441,10 +1435,7 @@ class TestAdvancedTopologicalResearch:
         print("✅ Dynamic mesh reconfiguration research completed")
 
         # Explicit cleanup to avoid leaking connections in this test.
-        await asyncio.gather(
-            *(server.shutdown_async() for server in servers),
-            return_exceptions=True,
-        )
+        await shutdown_servers_sequential(servers)
         for task in list(test_context.tasks):
             if not task.done():
                 task.cancel()
@@ -2247,10 +2238,7 @@ class TestAdvancedTopologicalResearch:
         )
 
         # Explicitly shutdown to avoid socket leaks in this long-running topology test.
-        await asyncio.gather(
-            *(server.shutdown_async() for server in all_servers),
-            return_exceptions=True,
-        )
+        await shutdown_servers_sequential(all_servers)
         pending_tasks = list(test_context.tasks)
         if pending_tasks:
             await asyncio.wait(
@@ -2578,10 +2566,7 @@ class TestAdvancedTopologicalResearch:
         print("✅ Cross-datacenter federation with latency simulation completed")
 
         # Explicit cleanup to avoid leaked sockets in cross-datacenter topology.
-        await asyncio.gather(
-            *(server.shutdown_async() for server in all_servers),
-            return_exceptions=True,
-        )
+        await shutdown_servers_sequential(all_servers)
         pending_tasks = list(test_context.tasks)
         if pending_tasks:
             await asyncio.wait(
@@ -3891,10 +3876,7 @@ class TestAdvancedTopologicalResearch:
         print("✅ Planet-scale federation benchmarking suite completed")
 
         # Explicit cleanup to prevent socket leaks in planet-scale topology.
-        await asyncio.gather(
-            *(server.shutdown_async() for server in all_servers),
-            return_exceptions=True,
-        )
+        await shutdown_servers_sequential(all_servers)
         for task in list(test_context.tasks):
             if not task.done():
                 task.cancel()

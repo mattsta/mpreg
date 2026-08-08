@@ -30,7 +30,8 @@ class BlockchainStore:
         return conn
 
     def initialize(self) -> None:
-        with self._connect() as conn:
+        conn = self._connect()
+        try:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS chains (
@@ -54,13 +55,19 @@ class BlockchainStore:
                 )
                 """
             )
+            conn.commit()
+        finally:
+            conn.close()
 
     def has_chain(self, chain_id: str) -> bool:
-        with self._connect() as conn:
+        conn = self._connect()
+        try:
             row = conn.execute(
                 "SELECT 1 FROM chains WHERE chain_id = ? LIMIT 1", (chain_id,)
             ).fetchone()
             return row is not None
+        finally:
+            conn.close()
 
     def save_chain(self, blockchain: Blockchain) -> None:
         payload = blockchain.to_dict()
@@ -68,7 +75,8 @@ class BlockchainStore:
         crypto_config = dumps_text(payload.get("crypto_config", {}))
         created_at = blockchain.genesis_block.timestamp
 
-        with self._connect() as conn:
+        conn = self._connect()
+        try:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO chains (chain_id, consensus_config, crypto_config, created_at)
@@ -96,9 +104,13 @@ class BlockchainStore:
                         block_json,
                     ),
                 )
+            conn.commit()
+        finally:
+            conn.close()
 
     def append_block(self, chain_id: str, block: Block) -> None:
-        with self._connect() as conn:
+        conn = self._connect()
+        try:
             row = conn.execute(
                 "SELECT MAX(height) FROM blocks WHERE chain_id = ?",
                 (chain_id,),
@@ -108,7 +120,10 @@ class BlockchainStore:
                 raise ValueError(
                     f"Block height mismatch: expected {expected_height}, got {block.height}"
                 )
-            if not self.has_chain(chain_id):
+            exists = conn.execute(
+                "SELECT 1 FROM chains WHERE chain_id = ? LIMIT 1", (chain_id,)
+            ).fetchone()
+            if exists is None:
                 consensus_config = dumps_text(
                     {
                         "consensus_type": ConsensusType.PROOF_OF_AUTHORITY.value,
@@ -148,9 +163,13 @@ class BlockchainStore:
                     block_json,
                 ),
             )
+            conn.commit()
+        finally:
+            conn.close()
 
     def load_chain(self, chain_id: str) -> Blockchain:
-        with self._connect() as conn:
+        conn = self._connect()
+        try:
             row = conn.execute(
                 "SELECT consensus_config, crypto_config FROM chains WHERE chain_id = ?",
                 (chain_id,),
@@ -200,6 +219,8 @@ class BlockchainStore:
                 consensus_config=consensus_config,
                 crypto_config=crypto_config,
             )
+        finally:
+            conn.close()
 
     def validate_chain(self, chain_id: str) -> bool:
         chain = self.load_chain(chain_id)

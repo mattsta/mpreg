@@ -88,7 +88,7 @@ from .fabric.membership import (
 try:
     __version__ = _pkg_version("mpreg")
 except PackageNotFoundError:  # pragma: no cover - editable/source tree fallback
-    __version__ = "0.3.1"
+    __version__ = "0.3.2"
 
 __author__ = "Matt Stancliff"
 __license__ = "Apache-2.0"

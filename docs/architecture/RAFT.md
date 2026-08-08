@@ -199,6 +199,8 @@ Docs that claim pre-vote (`server_pkg/consensus.md`) must match implementation a
 | Piece                                   | Location                                                                                   |
 | --------------------------------------- | ------------------------------------------------------------------------------------------ |
 | `MockNetwork` + `NetworkAwareTransport` | `tests/test_production_raft_integration.py`                                                |
+| DistLab `RaftSUT` + `RaftLabNetwork`    | `mpreg/testing/distlab/adapters/raft.py` (first-class lab track)                           |
+| DistLab scenarios                       | `raft.elect_*`, `raft.partition_*`, `raft.leader_stepdown_reelect` via builtins            |
 | Delivery                                | sibling `asyncio.create_task` + shield (avoid cancel recursion)                            |
 | Time                                    | **wall clock** — no virtual clock                                                          |
 | xdist scale                             | `get_concurrency_factor()` → 4.0 under xdist worker                                        |
@@ -207,6 +209,7 @@ Docs that claim pre-vote (`server_pkg/consensus.md`) must match implementation a
 | Timer semantics                         | `test_raft_election_timer_semantics.py`                                                    |
 | Invariants INV-C\*                      | `tests/invariants/test_raft_*.py`                                                          |
 | Claims                                  | `tests/invariants/claims.yaml` INV-C\*                                                     |
+| DistLab gap note                        | `docs/architecture/DISTLAB_RAFT_GAP.md` (closed)                                           |
 
 ### Known force-state sites (must be eliminated in Plan A)
 

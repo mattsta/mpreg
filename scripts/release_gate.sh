@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# R7: full 0.3.0 production snapshot gate
+# R7: full production release gate (current: 0.3.2 Unified Correctness)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
-echo "======== MPREG 0.3.0 release_gate ========"
+echo "======== MPREG 0.3.2 release_gate ========"
 bash "$ROOT/scripts/ci_lint.sh"
 bash "$ROOT/scripts/ci_typecheck.sh"
 bash "$ROOT/scripts/ci_unit_fast.sh"

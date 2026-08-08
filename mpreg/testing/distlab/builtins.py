@@ -5,6 +5,7 @@ from __future__ import annotations
 from mpreg.testing.distlab.checker import (
     NoOpenInvokeChecker,
     default_audit_checkers,
+    default_raft_checkers,
     default_strong_checkers,
 )
 from mpreg.testing.distlab.generator import AuditBurst, ConcurrentPuts, SequentialPuts
@@ -1606,6 +1607,208 @@ def _reg_expired_commit() -> Scenario:
     )
 
 
+# ---------------------------------------------------------------------------
+# Raft (ProductionRaft) scenarios — first-class DistLab track
+# ---------------------------------------------------------------------------
+
+
+def _raft_elect(n: int) -> Scenario:
+    """N-node election + single command replication."""
+    from mpreg.testing.distlab.adapters.raft import RaftSUT
+
+    sut = RaftSUT.create(n)
+
+    async def setup() -> object:
+        await sut.start()
+        return sut
+
+    async def body(history: History, s: object) -> None:
+        leader = await sut.wait_for_leader()
+        history.ok(
+            "c0",
+            OpKind.BARRIER,
+            meta={"event": "leader_elected", "leader": leader.node_id},
+        )
+        res = await sut.put(history, process="c0", key="elect", value=n, leader=leader)
+        assert res is not None, "submit_command failed after election"
+        await sut.wait_sm_key("elect", n, among=sut.peer_ids)
+
+    async def teardown(_s: object) -> None:
+        await sut.stop()
+
+    return Scenario(
+        name=f"raft.elect_{n}",
+        setup=setup,
+        body=body,
+        teardown=teardown,
+        checker=default_raft_checkers(key="elect", require_all_sm=True),
+        meta={"n": n, "track": "raft", "fault": "none"},
+    )
+
+
+def _raft_partition_majority() -> Scenario:
+    """Minority partition cannot elect; majority retains/elects leader."""
+    import asyncio
+
+    from mpreg.testing.distlab.adapters.raft import RaftSUT
+
+    sut = RaftSUT.create(3)
+
+    async def setup() -> object:
+        await sut.start()
+        return sut
+
+    async def body(history: History, s: object) -> None:
+        leader = await sut.wait_for_leader()
+        history.ok(
+            "c0",
+            OpKind.BARRIER,
+            meta={"event": "leader_elected", "leader": leader.node_id},
+        )
+        # Isolate n0 alone; majority {n1,n2} should still have a leader.
+        sut.partition_groups([{"n0"}, {"n1", "n2"}])
+        history.ok(
+            "c0",
+            OpKind.FAULT,
+            meta={"event": "partition", "groups": [["n0"], ["n1", "n2"]]},
+        )
+        maj = await sut.wait_for_leader(among=["n1", "n2"])
+        res = await sut.put(
+            history,
+            process="c0",
+            key="pm",
+            value=1,
+            leader=maj,
+            among=["n1", "n2"],
+        )
+        assert res is not None, "majority put must succeed"
+        await sut.wait_sm_key("pm", 1, among=["n1", "n2"])
+        # Minority alone must not form a second leader long-term.
+        await asyncio.sleep(sut.config.election_timeout_max * 2)
+        snap = sut.snapshot_state()
+        maj_leaders = [nid for nid in ("n1", "n2") if nid in snap.leaders()]
+        assert len(maj_leaders) == 1, f"majority leaders={maj_leaders}"
+        assert "n0" not in snap.leaders(), "minority must not be leader"
+
+    async def teardown(_s: object) -> None:
+        await sut.stop()
+
+    return Scenario(
+        name="raft.partition_majority",
+        setup=setup,
+        body=body,
+        teardown=teardown,
+        # Under partition, unique *cluster-wide* leader is still one (majority).
+        checker=default_raft_checkers(
+            key="pm", require_unique_leader=True, require_all_sm=False
+        ),
+        meta={"track": "raft", "fault": "partition_majority"},
+    )
+
+
+def _raft_partition_heal() -> Scenario:
+    """Partition, majority commits, heal, full cluster converges."""
+    from mpreg.testing.distlab.adapters.raft import RaftSUT
+
+    sut = RaftSUT.create(3)
+
+    async def setup() -> object:
+        await sut.start()
+        return sut
+
+    async def body(history: History, s: object) -> None:
+        await sut.wait_for_leader()
+        sut.partition_groups([{"n0"}, {"n1", "n2"}])
+        history.ok(
+            "c0",
+            OpKind.FAULT,
+            meta={"event": "partition", "groups": [["n0"], ["n1", "n2"]]},
+        )
+        maj = await sut.wait_for_leader(among=["n1", "n2"])
+        res = await sut.put(
+            history,
+            process="c0",
+            key="heal",
+            value="yes",
+            leader=maj,
+            among=["n1", "n2"],
+        )
+        assert res is not None
+        await sut.wait_sm_key("heal", "yes", among=["n1", "n2"])
+        sut.heal()
+        history.ok("c0", OpKind.HEAL, meta={"event": "heal"})
+        # Full cluster unique leader + catch-up
+        await sut.wait_for_leader()
+        await sut.wait_sm_key("heal", "yes", among=sut.peer_ids, timeout_seconds=5.0)
+        res2 = await sut.put(history, process="c0", key="post", value=2)
+        assert res2 is not None
+        await sut.wait_sm_key("post", 2, among=sut.peer_ids)
+
+    async def teardown(_s: object) -> None:
+        await sut.stop()
+
+    return Scenario(
+        name="raft.partition_heal",
+        setup=setup,
+        body=body,
+        teardown=teardown,
+        checker=default_raft_checkers(
+            key=None, require_unique_leader=True, require_all_sm=True
+        ),
+        meta={"track": "raft", "fault": "partition_heal"},
+    )
+
+
+def _raft_leader_stepdown_reelect() -> Scenario:
+    """Stop leader; remaining majority elects a new leader and commits."""
+    from mpreg.testing.distlab.adapters.raft import RaftSUT
+
+    sut = RaftSUT.create(3)
+
+    async def setup() -> object:
+        await sut.start()
+        return sut
+
+    async def body(history: History, s: object) -> None:
+        leader = await sut.wait_for_leader()
+        lid = leader.node_id
+        await sut.put(history, process="c0", key="before", value=1, leader=leader)
+        await leader.stop()
+        history.ok(
+            "c0",
+            OpKind.FAULT,
+            meta={"event": "leader_stop", "node": lid},
+        )
+        remaining = [p for p in sut.peer_ids if p != lid]
+        new_leader = await sut.wait_for_leader(among=remaining)
+        assert new_leader.node_id != lid
+        res = await sut.put(
+            history,
+            process="c0",
+            key="after",
+            value=2,
+            leader=new_leader,
+            among=remaining,
+        )
+        assert res is not None
+        await sut.wait_sm_key("after", 2, among=remaining)
+
+    async def teardown(_s: object) -> None:
+        await sut.stop()
+
+    return Scenario(
+        name="raft.leader_stepdown_reelect",
+        setup=setup,
+        body=body,
+        teardown=teardown,
+        # Stopped leader is not LEADER; remaining has exactly one.
+        checker=default_raft_checkers(
+            key=None, require_unique_leader=True, require_all_sm=False
+        ),
+        meta={"track": "raft", "fault": "leader_stop"},
+    )
+
+
 def register_builtins(registry=None) -> int:
     """Idempotent registration of all built-in scenarios. Returns count.
 
@@ -1907,6 +2110,42 @@ def register_builtins(registry=None) -> int:
             ("audit",),
         ),
         ("audit.nemesis", _audit_nemesis, "T4", "nemesis audit", ("audit", "nemesis")),
+        # Raft first-class DistLab track
+        (
+            "raft.elect_3",
+            lambda: _raft_elect(3),
+            "raft",
+            "3-node election + replicate",
+            ("raft", "happy"),
+        ),
+        (
+            "raft.elect_5",
+            lambda: _raft_elect(5),
+            "raft",
+            "5-node election + replicate",
+            ("raft", "happy"),
+        ),
+        (
+            "raft.partition_majority",
+            _raft_partition_majority,
+            "raft",
+            "majority partition elects; minority cannot",
+            ("raft", "fault"),
+        ),
+        (
+            "raft.partition_heal",
+            _raft_partition_heal,
+            "raft",
+            "partition commit then heal converge",
+            ("raft", "fault"),
+        ),
+        (
+            "raft.leader_stepdown_reelect",
+            _raft_leader_stepdown_reelect,
+            "raft",
+            "stop leader; majority re-elects",
+            ("raft", "fault"),
+        ),
     ]
     for name, factory, track, desc, tags in specs:
         if name in reg.list():

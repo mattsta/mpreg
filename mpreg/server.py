@@ -1993,25 +1993,28 @@ class MPREGServer:
                 loop.create_task(_runner())
 
     def __del__(self) -> None:
-        if self._auto_allocated_monitoring_port is not None:
-            try:
-                from .core.port_allocator import release_port
+        # object.__new__(MPREGServer) test stubs never run __init__/__post_init__,
+        # so auto-allocated port fields may be missing. getattr keeps __del__ safe.
+        # Never import here: interpreter shutdown sets sys.meta_path=None.
+        release = None
+        with contextlib.suppress(Exception):
+            from .core import port_allocator as _pa
 
-                release_port(self._auto_allocated_monitoring_port)
-            except OPERATIONAL_EXCEPTIONS:
-                pass
-            finally:
-                self._auto_allocated_monitoring_port = None
-
-        if self._auto_allocated_port is not None:
-            try:
-                from .core.port_allocator import release_port
-
-                release_port(self._auto_allocated_port)
-            except OPERATIONAL_EXCEPTIONS:
-                pass
-            finally:
-                self._auto_allocated_port = None
+            release = getattr(_pa, "release_port", None)
+        for attr in (
+            "_auto_allocated_monitoring_port",
+            "_auto_allocated_port",
+            "_auto_allocated_dns_udp_port",
+            "_auto_allocated_dns_tcp_port",
+        ):
+            port = getattr(self, attr, None)
+            if port is None:
+                continue
+            if release is not None:
+                with contextlib.suppress(Exception):
+                    release(port)
+            with contextlib.suppress(Exception):
+                object.__setattr__(self, attr, None)
 
     def _initialize_discovery_resolver(self) -> None:
         if not self.settings.discovery_resolver_mode:
@@ -3297,9 +3300,9 @@ class MPREGServer:
                 self._fabric_control_plane.broadcaster.publisher.publish(delta)
             )
         )
-        # Push a direct snapshot to currently connected peers so newly
-        # registered functions do not rely solely on eventual gossip cycles.
-        self._schedule_catalog_snapshots_for_existing_peers()
+        # Delta gossip only. Full catalog snapshots are anti-entropy on
+        # connect / control-plane start — not on every local registration
+        # (that was O(peers × catalog) CPU under register storms).
 
     def _publish_fabric_service_update(self, registration: ServiceRegistration) -> None:
         if not self._fabric_control_plane:
@@ -4529,10 +4532,11 @@ class MPREGServer:
                     counts,
                 )
         except Exception as exc:
-            logger.warning(
-                "[{}] Fabric catalog snapshot restore failed: {}",
-                self.settings.name,
+            log_caught_exception(
+                logger,
+                f"[{self.settings.name}] Fabric catalog snapshot restore failed",
                 exc,
+                level="warning",
             )
             if fail_closed:
                 raise RuntimeError(
@@ -4553,10 +4557,11 @@ class MPREGServer:
                         restored,
                     )
             except Exception as exc:
-                logger.warning(
-                    "[{}] Fabric route key snapshot restore failed: {}",
-                    self.settings.name,
+                log_caught_exception(
+                    logger,
+                    f"[{self.settings.name}] Fabric route key snapshot restore failed",
                     exc,
+                    level="warning",
                 )
                 if fail_closed:
                     # COR-10: roll back catalog so fail-closed boot does not leave
@@ -8992,7 +8997,7 @@ class MPREGServer:
             while not self._shutdown_event.is_set():
                 if not dispatch.pending_peers:
                     return
-                # Coalesce bursty registration updates into one snapshot pass.
+                # Coalesce bursty peer-connect updates into one snapshot pass.
                 await asyncio.sleep(0)
                 peer_batch = tuple(sorted(dispatch.pending_peers))
                 dispatch.pending_peers.clear()
@@ -9010,8 +9015,33 @@ class MPREGServer:
                         dispatch.enqueued_events,
                         dispatch.peers_flushed,
                     )
-                for peer_url in peer_batch:
-                    await self._send_catalog_snapshot_to_peer(peer_url)
+                # Serialize-once / send-many: one catalog body + one wire encode
+                # per flush generation, then cheap bytes fan-out to each peer.
+                built = self._build_shared_catalog_snapshot_wire()
+                if built is None:
+                    continue
+                wire_bytes, update_id, generation = built
+                for index, peer_url in enumerate(peer_batch):
+                    await self._send_shared_catalog_snapshot_bytes(peer_url, wire_bytes)
+                    # Yield the event loop on large fan-out so snapshot CPU
+                    # cannot starve heartbeats / RPC under multi-peer mesh.
+                    if index > 0 and index % 8 == 0:
+                        await asyncio.sleep(0)
+                if CATALOG_SNAPSHOT_DIAG_ENABLED:
+                    logger.error(
+                        "[DIAG_CATALOG_SNAPSHOT] action=flush_done "
+                        "node={} update_id={} generation={} wire_bytes={} "
+                        "payload_builds={} to_dict_calls={} wire_encodes={} "
+                        "bytes_sends={}",
+                        self.settings.name,
+                        update_id,
+                        generation,
+                        len(wire_bytes),
+                        dispatch.payload_builds,
+                        dispatch.to_dict_calls,
+                        dispatch.wire_encodes,
+                        dispatch.bytes_sends,
+                    )
         finally:
             dispatch.flush_task = None
 
@@ -9097,25 +9127,48 @@ class MPREGServer:
             ttl=0,
             max_hops=0,
         )
-        await self._fabric_gossip_transport.send_message(peer_url, message)
-
-    async def _send_catalog_snapshot_to_peer(self, peer_url: str) -> None:
-        if (
-            not self._fabric_control_plane
-            or not self._fabric_gossip_transport
-            or peer_url == self.cluster.local_url
-        ):
+        try:
+            await self._fabric_gossip_transport.send_message(peer_url, message)
+        except TransportConnectionError:
+            # Peer gone mid-snapshot (common on teardown / churn) — drop quietly.
             return
-        import uuid
 
+    def _catalog_snapshot_include_rpc_spec(self) -> bool:
+        """Full rpc_spec on wire only when share policy mode is ``full``."""
+        policy = getattr(self, "_rpc_spec_share_policy", None)
+        if policy is None:
+            return False
+        return str(getattr(policy, "mode", "summary") or "summary").strip().lower() == (
+            "full"
+        )
+
+    def _build_shared_catalog_snapshot_wire(
+        self,
+    ) -> tuple[bytes, str, int] | None:
+        """Build one catalog snapshot body + wire bytes for the current generation.
+
+        Direct snapshots use ttl=0 / max_hops=0, so identical bytes to every
+        peer in a flush batch are correct. Applier dedups on stable
+        ``catalog-rev:{cluster}:{generation}`` update_id.
+        """
+        if not self._fabric_control_plane or not self._fabric_gossip_transport:
+            return None
+
+        from mpreg.core.model import FabricGossipEnvelope
         from mpreg.fabric.catalog_delta import RoutingCatalogDelta
         from mpreg.fabric.gossip import GossipMessage, GossipMessageType
 
+        dispatch = self._catalog_snapshot_dispatch
         now = time.time()
         catalog = self._fabric_control_plane.catalog
+        generation = int(catalog.generation)
+        cluster_id = self.settings.cluster_id
+        update_id = f"catalog-rev:{cluster_id}:{generation}"
+
+        dispatch.payload_builds += 1
         delta = RoutingCatalogDelta(
-            update_id=f"catalog-snapshot:{uuid.uuid4()}",
-            cluster_id=self.settings.cluster_id,
+            update_id=update_id,
+            cluster_id=cluster_id,
             sent_at=now,
             functions=catalog.functions.entries(now=now),
             topics=tuple(catalog.topics.entries(now=now)),
@@ -9123,6 +9176,8 @@ class MPREGServer:
             caches=tuple(catalog.caches.entries(now=now)),
             cache_profiles=tuple(catalog.cache_profiles.entries(now=now)),
             nodes=tuple(catalog.nodes.entries(now=now)),
+            # Peer snapshots historically omitted services; keep that until a
+            # deliberate include + convergence test lands.
         )
         if not (
             delta.functions
@@ -9132,27 +9187,18 @@ class MPREGServer:
             or delta.cache_profiles
             or delta.nodes
         ):
-            return
-        delta_payload = delta.to_dict()
-        if CATALOG_SNAPSHOT_DIAG_ENABLED:
-            payload_size_bytes = len(self.serializer.serialize(delta_payload))
-            logger.error(
-                "[DIAG_CATALOG_SNAPSHOT] action=send "
-                "node={} peer={} functions={} topics={} queues={} "
-                "caches={} cache_profiles={} nodes={} payload_bytes={}",
-                self.settings.name,
-                peer_url,
-                len(delta.functions),
-                len(delta.topics),
-                len(delta.queues),
-                len(delta.caches),
-                len(delta.cache_profiles),
-                len(delta.nodes),
-                payload_size_bytes,
-            )
+            return None
+
+        include_rpc_spec = self._catalog_snapshot_include_rpc_spec()
+        dispatch.to_dict_calls += 1
+        delta_payload = delta.to_dict(include_rpc_spec=include_rpc_spec)
+
         gossip = self._fabric_control_plane.gossip
+        # Shared message_id for ttl=0 direct fan-out: content-addressed body,
+        # not per-peer UUID (per-peer ids defeated apply dedup and forced
+        # N full encodes).
         message = GossipMessage(
-            message_id=f"{gossip.node_id}:snapshot:{uuid.uuid4()}",
+            message_id=f"{gossip.node_id}:snapshot:{update_id}",
             message_type=GossipMessageType.CATALOG_UPDATE,
             sender_id=gossip.node_id,
             payload=delta_payload,
@@ -9161,7 +9207,82 @@ class MPREGServer:
             ttl=0,
             max_hops=0,
         )
-        await self._fabric_gossip_transport.send_message(peer_url, message)
+        gossip_payload = message.to_dict()
+        transport = self._fabric_gossip_transport
+        if getattr(transport, "require_hmac", False) and getattr(
+            transport, "hmac_secret", None
+        ):
+            from mpreg.fabric.gossip_signatures import sign_gossip_payload
+
+            gossip_payload = sign_gossip_payload(
+                gossip_payload,
+                transport.hmac_secret,  # type: ignore[arg-type]
+            )
+        envelope = FabricGossipEnvelope(payload=gossip_payload)
+        dispatch.wire_encodes += 1
+        wire_bytes = self.serializer.serialize_model(envelope)
+        dispatch.last_wire_bytes = len(wire_bytes)
+        dispatch.last_update_id = update_id
+        dispatch.last_generation = generation
+        if CATALOG_SNAPSHOT_DIAG_ENABLED:
+            logger.error(
+                "[DIAG_CATALOG_SNAPSHOT] action=build "
+                "node={} update_id={} generation={} functions={} topics={} "
+                "queues={} caches={} cache_profiles={} nodes={} "
+                "include_rpc_spec={} wire_bytes={}",
+                self.settings.name,
+                update_id,
+                generation,
+                len(delta.functions),
+                len(delta.topics),
+                len(delta.queues),
+                len(delta.caches),
+                len(delta.cache_profiles),
+                len(delta.nodes),
+                include_rpc_spec,
+                len(wire_bytes),
+            )
+        return wire_bytes, update_id, generation
+
+    async def _send_shared_catalog_snapshot_bytes(
+        self, peer_url: str, wire_bytes: bytes
+    ) -> None:
+        if (
+            not self._fabric_gossip_transport
+            or peer_url == self.cluster.local_url
+            or not wire_bytes
+        ):
+            return
+        dispatch = self._catalog_snapshot_dispatch
+        try:
+            send = getattr(self._fabric_gossip_transport, "send_preencoded", None)
+            if callable(send):
+                await send(peer_url, wire_bytes)
+            else:
+                await self._fabric_gossip_transport.send_bytes(peer_url, wire_bytes)
+            dispatch.bytes_sends += 1
+        except TransportConnectionError:
+            # Peer gone mid-snapshot (common on teardown / churn) — drop quietly.
+            return
+
+    async def _send_catalog_snapshot_to_peer(self, peer_url: str) -> None:
+        """Send one peer a catalog snapshot (builds shared wire if needed).
+
+        Prefer :meth:`_flush_catalog_snapshots` for multi-peer batches so the
+        catalog body is encoded once. This entry point remains for single-peer
+        call sites and tests.
+        """
+        if (
+            not self._fabric_control_plane
+            or not self._fabric_gossip_transport
+            or peer_url == self.cluster.local_url
+        ):
+            return
+        built = self._build_shared_catalog_snapshot_wire()
+        if built is None:
+            return
+        wire_bytes, _update_id, _generation = built
+        await self._send_shared_catalog_snapshot_bytes(peer_url, wire_bytes)
 
     def _get_all_peer_connections(self) -> dict[str, Connection]:
         connections = dict(self.peer_connections)
@@ -9428,11 +9549,50 @@ class MPREGServer:
         )
 
     def _track_background_task(self, task: asyncio.Task[Any]) -> None:
-        """Track background tasks for shutdown cleanup."""
+        """Track background tasks for shutdown cleanup.
+
+        Done-callback **retrieves** task exceptions so closed-WS / operational
+        failures never surface as ``Task exception was never retrieved``.
+        """
         if self._shutdown_event.is_set():
             task.cancel()
         self._background_tasks.add(task)
-        task.add_done_callback(self._background_tasks.discard)
+        task.add_done_callback(self._on_background_task_done)
+
+    def _on_background_task_done(self, task: asyncio.Task[Any]) -> None:
+        self._background_tasks.discard(task)
+        if task.cancelled():
+            return
+        try:
+            exc = task.exception()
+        except asyncio.CancelledError, asyncio.InvalidStateError:
+            return
+        if exc is None:
+            return
+        # Closed peers during teardown are expected; do not dump stacks.
+        if isinstance(exc, TransportConnectionError):
+            logger.debug(
+                "[{}] Background task ended (connection closed): {}",
+                self.settings.name,
+                exc,
+            )
+            return
+        from mpreg.core.errors import is_expected_failure, log_caught_exception
+
+        if is_expected_failure(exc):
+            log_caught_exception(
+                logger,
+                f"[{self.settings.name}] Background task operational failure",
+                exc,
+                level="debug" if self._shutdown_event.is_set() else "warning",
+            )
+            return
+        log_caught_exception(
+            logger,
+            f"[{self.settings.name}] Background task failed unexpectedly",
+            exc,
+            expected=False,
+        )
 
     def _register_default_commands(self) -> None:
         """Register platform builtins under ``mpreg.*`` FQNs (namespace deny root)."""
@@ -10537,7 +10697,12 @@ class MPREGServer:
                 f"Sent notification to client {client_id} for subscription {subscription_id}"
             )
         except Exception as e:  # noqa: BLE001 — delivery path must cleanup on any send failure
-            logger.error(f"Failed to send notification to client {client_id}: {e}")
+            log_caught_exception(
+                logger,
+                f"Failed to send notification to client {client_id}",
+                e,
+                level="error",
+            )
             # OBS-01: count server-side delivery drops so Prom is not decorative.
             self._metrics_tracker.record_notification_drop()
             # Clean up dead client connection
@@ -12127,7 +12292,22 @@ class MPREGServer:
                     for url, conn in conns.items()
                     if url and getattr(conn, "is_connected", False)
                 )
-            except Exception:  # noqa: BLE001
+            except OPERATIONAL_EXCEPTIONS as exc:
+                log_caught_exception(
+                    logger,
+                    f"[{self.settings.name}] shared-audit peer list failed",
+                    exc,
+                    level="debug",
+                )
+                return []
+            except Exception as exc:  # noqa: BLE001 — never break epidemic peer enum
+                log_caught_exception(
+                    logger,
+                    f"[{self.settings.name}] shared-audit peer list unexpected failure",
+                    exc,
+                    level="warning",
+                    expected=False,
+                )
                 return []
 
         async def _send(peer_id: str, message: object) -> bool:
@@ -12136,7 +12316,22 @@ class MPREGServer:
                 return False
             try:
                 return bool(await transport.send_message(peer_id, message))
-            except Exception:  # noqa: BLE001
+            except OPERATIONAL_EXCEPTIONS as exc:
+                log_caught_exception(
+                    logger,
+                    f"[{self.settings.name}] shared-audit send to {peer_id} failed",
+                    exc,
+                    level="debug",
+                )
+                return False
+            except Exception as exc:  # noqa: BLE001 — epidemic send must fail closed
+                log_caught_exception(
+                    logger,
+                    f"[{self.settings.name}] shared-audit send to {peer_id} unexpected",
+                    exc,
+                    level="warning",
+                    expected=False,
+                )
                 return False
 
         fat = FabricSharedAuditTransport(

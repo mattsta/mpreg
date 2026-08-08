@@ -27,6 +27,11 @@ from mpreg.core.model import MPREGException, RPCError
 #     conditions expressed as exceptions*, not unknown faults. Log with
 #     ``logger.error`` / ``logger.warning`` (message only — no stack dump).
 #
+#     TransportConnectionError / TransportTimeoutError subclass ConnectionError
+#     and TimeoutError respectively (see transport.interfaces), so they are
+#     caught by OPERATIONAL_EXCEPTIONS without importing transport here (avoids
+#     factory ↔ errors circular import).
+#
 # CONDITION_EXCEPTIONS
 #     Explicit validation / control-flow failures (bad args, missing key,
 #     RuntimeError used as a typed failure). Usually message-only logging.

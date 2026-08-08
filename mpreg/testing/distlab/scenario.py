@@ -67,52 +67,58 @@ class Scenario:
             self.nemesis.history = self.history
             self.nemesis.start()
 
+        result: ScenarioResult | None = None
         try:
-            if self.clients:
-                n = self.concurrency or len(self.clients)
-                # Round-robin client fns if concurrency > len
-                fns = list(self.clients)
-                tasks = [
-                    asyncio.create_task(fns[i % len(fns)](self.history, i))
-                    for i in range(n)
-                ]
-                await asyncio.gather(*tasks)
+            try:
+                if self.clients:
+                    n = self.concurrency or len(self.clients)
+                    # Round-robin client fns if concurrency > len
+                    fns = list(self.clients)
+                    tasks = [
+                        asyncio.create_task(fns[i % len(fns)](self.history, i))
+                        for i in range(n)
+                    ]
+                    await asyncio.gather(*tasks)
 
-            if self.body is not None:
-                await self.body(self.history, sut)
+                if self.body is not None:
+                    await self.body(self.history, sut)
+            finally:
+                if self.nemesis is not None:
+                    await self.nemesis.stop()
+
+            # Snapshot + checkers only after a successful body (body errors
+            # propagate after teardown below).
+            state = None
+            if sut is not None and hasattr(sut, "snapshot_state"):
+                state = sut.snapshot_state()
+            elif sut is not None:
+                state = sut
+
+            checker = self.checker or CompositeChecker(name="empty", checkers=[])
+            check = checker.check(self.history, state=state)
+            duration = time.time() - t0
+            meta = dict(self.meta)
+            # T17: operator/debug taxonomy from history (not WAN SLA)
+            with contextlib.suppress(Exception):
+                meta.setdefault("error_codes", self.history.error_code_counts())
+                meta.setdefault("outcomes", self.history.outcome_counts())
+            result = ScenarioResult(
+                name=self.name,
+                ok=check.ok,
+                duration_s=duration,
+                history_len=len(self.history),
+                check=check,
+                nemesis_actions=self.nemesis.action_count if self.nemesis else 0,
+                meta=meta,
+            )
         finally:
-            if self.nemesis is not None:
-                await self.nemesis.stop()
+            # Always teardown so Raft/network resources cannot leak on body fail.
+            if self.teardown is not None:
+                maybe = self.teardown(sut)
+                if asyncio.iscoroutine(maybe):
+                    await maybe
 
-        state = None
-        if sut is not None and hasattr(sut, "snapshot_state"):
-            state = sut.snapshot_state()
-        elif sut is not None:
-            state = sut
-
-        checker = self.checker or CompositeChecker(name="empty", checkers=[])
-        check = checker.check(self.history, state=state)
-        duration = time.time() - t0
-        meta = dict(self.meta)
-        # T17: operator/debug taxonomy from history (not WAN SLA)
-        with contextlib.suppress(Exception):
-            meta.setdefault("error_codes", self.history.error_code_counts())
-            meta.setdefault("outcomes", self.history.outcome_counts())
-        result = ScenarioResult(
-            name=self.name,
-            ok=check.ok,
-            duration_s=duration,
-            history_len=len(self.history),
-            check=check,
-            nemesis_actions=self.nemesis.action_count if self.nemesis else 0,
-            meta=meta,
-        )
-
-        if self.teardown is not None:
-            maybe = self.teardown(sut)
-            if asyncio.iscoroutine(maybe):
-                await maybe
-
+        assert result is not None
         if self.strict and not result.ok:
             result.raise_if_failed()
         return result

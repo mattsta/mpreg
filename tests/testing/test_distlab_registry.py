@@ -227,6 +227,7 @@ async def test_registry_run_suite_smoke_preset() -> None:
     assert "strong.happy_3" in selected
     assert "strong.refuse_get_delete" in selected
     assert "audit.multi_origin" in selected
+    assert "raft.elect_3" in selected
     assert all("not_bft" not in n for n in selected)
     report = await reg.run_suite(preset="smoke", fail_fast=True)
     assert report["preset"] == "smoke"
@@ -262,7 +263,7 @@ async def test_registry_run_suite_audit_core_preset() -> None:
 
 @pytest.mark.asyncio
 async def test_registry_run_suite_ci_core_preset() -> None:
-    """T25: ci-core = ordered union of smoke ∪ strong-core ∪ audit-core."""
+    """T25: ci-core = ordered union of smoke ∪ strong ∪ audit ∪ raft-core."""
     from mpreg.testing.distlab.builtins import ensure_builtins
     from mpreg.testing.distlab.registry import (
         SUITE_PRESETS,
@@ -277,12 +278,16 @@ async def test_registry_run_suite_ci_core_preset() -> None:
     assert "strong.happy_5" in names
     assert "strong.refuse_get_delete" in names
     assert "audit.digest_repair" in names
-    # Dedup: happy_3 appears once
+    assert "raft.elect_3" in names
+    assert "raft.partition_heal" in names
+    # Dedup: happy_3 / elect_3 appear once
     assert names.count("strong.happy_3") == 1
     assert names.count("audit.multi_origin") == 1
+    assert names.count("raft.elect_3") == 1
     # Union size >= max of parts
     assert len(names) >= len(SUITE_PRESETS["strong-core"])
     assert len(names) >= len(SUITE_PRESETS["audit-core"])
+    assert len(names) >= len(SUITE_PRESETS["raft-core"])
 
     reg = get_registry()
     report = await reg.run_suite(preset="ci-core", fail_fast=True)

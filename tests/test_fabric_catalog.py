@@ -259,6 +259,17 @@ def test_node_descriptor_round_trip_with_transport_endpoints() -> None:
     assert round_trip == node
 
 
+def test_normalize_tags_frozenset_str_is_identity() -> None:
+    """Gossip deserialize + __post_init__ both normalize; pure str frozenset is free."""
+    from mpreg.fabric.catalog import _normalize_tags
+
+    tags = frozenset({"a", "b"})
+    assert _normalize_tags(tags) is tags
+    assert _normalize_tags(None) == frozenset()
+    assert _normalize_tags(["x", "y", ""]) == frozenset({"x", "y"})
+    assert _normalize_tags(frozenset({1, 2})) == frozenset({"1", "2"})
+
+
 def test_routing_catalog_prune_expired() -> None:
     catalog = RoutingCatalog()
     node = NodeDescriptor(

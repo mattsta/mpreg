@@ -20,6 +20,7 @@ microfixing without reading the relevant map.
 | [EXCEPTION_LOGGING.md](EXCEPTION_LOGGING.md) | Error taxonomy, dual-catch, adoption gaps                                      |
 | [VALIDATION.md](VALIDATION.md)               | CI gates, test taxonomy, what is / is not proven                               |
 | [OBSERVABILITY.md](OBSERVABILITY.md)         | Operator + test/debug surfaces (status, diag, metrics)                         |
+| [DISTLAB_RAFT_GAP.md](DISTLAB_RAFT_GAP.md)   | DistLab Raft track (closed): scenarios, CI wire, non-claims                    |
 
 ## Related canonical docs (do not duplicate)
 

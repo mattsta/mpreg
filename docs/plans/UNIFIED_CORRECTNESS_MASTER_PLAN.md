@@ -2,7 +2,7 @@
 
 | Field            | Value                                                                                                                                                                                                         |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Status**       | **Active — core tracks complete; residual U5.6/U6.2/U7.4**                                                                                                                                                    |
+| **Status**       | **Complete — 0.3.2 Unified Correctness closeout**                                                                                                                                                             |
 | **Date**         | 2026-08-07                                                                                                                                                                                                    |
 | **Architecture** | `docs/architecture/`                                                                                                                                                                                          |
 | **Burndown**     | `docs/plans/UNIFIED_CORRECTNESS_BURNDOWN.md`                                                                                                                                                                  |

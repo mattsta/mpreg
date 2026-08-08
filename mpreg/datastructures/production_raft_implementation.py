@@ -125,6 +125,10 @@ class ElectionCoordinator:
     election_timeout_max: float = field(default=0.25, init=False)
     timeout_bias_seconds: float = field(default=0.0, init=False)
     last_wait_timeout: float = field(default=0.0, init=False)
+    # Strong refs for degraded path (no task_manager) so stop can drain them.
+    _unmanaged_election_tasks: set[asyncio.Task[Any]] = field(
+        default_factory=set, init=False, repr=False
+    )
 
     def configure_timeouts(
         self, *, election_timeout_min: float, election_timeout_max: float
@@ -271,7 +275,9 @@ class ElectionCoordinator:
                     self.election_start_time = current_time
 
                     try:
-                        # Tracked task when TaskManager is available; else bare create_task.
+                        # Always track election callbacks so stop() can cancel+await
+                        # them. Bare create_task left "Task was destroyed but it is
+                        # pending" on cluster teardown under xdist.
                         if self.task_manager is not None:
                             await self.task_manager.create_task(
                                 "core",
@@ -280,9 +286,31 @@ class ElectionCoordinator:
                                 election_callback,
                             )
                         else:
-                            asyncio.create_task(
-                                self._election_callback_wrapper(election_callback)
+                            from mpreg.datastructures.raft_task_manager import (
+                                _retain_task,
                             )
+
+                            task = asyncio.create_task(
+                                self._election_callback_wrapper(election_callback),
+                                name=f"{node_id}_election_callback_unmanaged",
+                            )
+                            self._unmanaged_election_tasks.add(task)
+                            # Module retain bag survives GC of coordinator.
+                            _retain_task(task)
+
+                            def _drop(t: asyncio.Task[Any]) -> None:
+                                self._unmanaged_election_tasks.discard(t)
+                                if t.cancelled():
+                                    return
+                                try:
+                                    t.exception()
+                                except (
+                                    asyncio.CancelledError,
+                                    asyncio.InvalidStateError,
+                                ):
+                                    return
+
+                            task.add_done_callback(_drop)
                         if RAFT_DIAG_ENABLED:
                             raft_log.warning(
                                 "[DIAG_RAFT] node={} action=election_callback_scheduled "
@@ -742,22 +770,40 @@ class ProductionRaft(ProductionRaftRPCs):
         Task cancellation intentionally runs *outside* state_lock. Holding the
         lock while awaiting heartbeat/election cancel deadlocks when those
         tasks need the same lock (or when cancel targets the current task).
+
+        Re-entrant: if a prior ``wait_for(stop)`` aborted after flipping
+        ``_stopped`` but before tasks settled, a later ``stop()`` still drains
+        unfinished work. Never leave heartbeat/election tasks pending-destroy.
         """
         raft_log.debug(f"[{self.node_id}] stop() called")
-        if self._stopped:
-            return
+        already = self._stopped
         self._stopped = True
         try:
-            raft_log.info(f"Stopping Raft node {self.node_id}")
+            if not already:
+                raft_log.info(f"Stopping Raft node {self.node_id}")
 
-            # Flip role first so loops exit without needing cancel alone.
-            async with self.state_lock:
-                self.current_state = RaftState.FOLLOWER
-                self.current_leader = None
-                self.leader_volatile_state = None
-                self.election_coordinator.election_in_progress = False
-                self.votes_received.clear()
-                self._pending_task_ops.clear()
+                # Flip role first so loops exit without needing cancel alone.
+                async with self.state_lock:
+                    self.current_state = RaftState.FOLLOWER
+                    self.current_leader = None
+                    self.leader_volatile_state = None
+                    self.election_coordinator.election_in_progress = False
+                    self.votes_received.clear()
+                    self._pending_task_ops.clear()
+            else:
+                # Resume incomplete stop (e.g. prior attempt was wait_for-cancelled).
+                leftover = self.task_manager.count_unfinished_tasks()
+                unmanaged = [
+                    t
+                    for t in self.election_coordinator._unmanaged_election_tasks
+                    if not t.done()
+                ]
+                if leftover == 0 and not unmanaged:
+                    return
+                raft_log.warning(
+                    f"[{self.node_id}] Resuming incomplete stop "
+                    f"(unfinished={leftover}, unmanaged={len(unmanaged)})"
+                )
 
             # Cancel background tasks without holding state_lock.
             raft_log.debug(f"[{self.node_id}] Stopping background tasks")
@@ -769,6 +815,24 @@ class ProductionRaft(ProductionRaftRPCs):
 
             raft_log.info(f"Raft node {self.node_id} stopped")
 
+        except asyncio.CancelledError:
+            # Outer cancel must not strand tasks. Best-effort force settle.
+            try:
+                await asyncio.shield(self.task_manager.force_cleanup_all())
+            except asyncio.CancelledError:
+                try:
+                    await self.task_manager.force_cleanup_all()
+                except Exception as cleanup_exc:  # noqa: BLE001
+                    raft_log.error(
+                        f"[{self.node_id}] force_cleanup during cancelled stop "
+                        f"failed: {cleanup_exc}"
+                    )
+            except Exception as cleanup_exc:  # noqa: BLE001
+                raft_log.error(
+                    f"[{self.node_id}] force_cleanup during cancelled stop failed: "
+                    f"{cleanup_exc}"
+                )
+            raise
         except Exception as e:
             raft_log.error(f"[{self.node_id}] Error stopping Raft node: {e}")
             import traceback
@@ -1638,18 +1702,27 @@ class ProductionRaft(ProductionRaftRPCs):
                 replication_coros.append(self._replicate_to_follower(member_id))
 
         if replication_coros:
+            # Use return_exceptions so a single follower failure does not
+            # cancel siblings mid-flight; on heartbeat CancelledError the
+            # gather still settles every child before we re-raise.
             try:
-                # Execute all replication coroutines concurrently
-                await asyncio.gather(*replication_coros)
+                results = await asyncio.gather(
+                    *replication_coros, return_exceptions=True
+                )
             except asyncio.CancelledError:
-                # Heartbeat cancelled - stop replication immediately
+                # Heartbeat cancelled during concurrent replication.
+                # gather(return_exceptions=True) normally does not raise
+                # CancelledError from children; this is the parent cancel.
                 raft_log.debug(
                     f"[{self.node_id}] Heartbeat cancelled during concurrent replication"
                 )
                 raise
-            except OPERATIONAL_EXCEPTIONS as e:
-                # Log error - asyncio.gather will propagate the first exception
-                raft_log.warning(f"Failed during concurrent replication: {e}")
+            for result in results:
+                if isinstance(result, asyncio.CancelledError):
+                    # Parent was cancelled; propagate after siblings settled.
+                    raise result
+                if isinstance(result, Exception):
+                    raft_log.warning(f"Failed during concurrent replication: {result}")
 
         # Update commit index after all replications complete
         # This ensures match_index values are consistent
@@ -1673,9 +1746,21 @@ class ProductionRaft(ProductionRaftRPCs):
 
             if commit_propagation_coros:
                 try:
-                    await asyncio.gather(*commit_propagation_coros)
-                except OPERATIONAL_EXCEPTIONS as e:
-                    raft_log.warning(f"Failed during commit_index propagation: {e}")
+                    results = await asyncio.gather(
+                        *commit_propagation_coros, return_exceptions=True
+                    )
+                except asyncio.CancelledError:
+                    raft_log.debug(
+                        f"[{self.node_id}] Heartbeat cancelled during commit propagation"
+                    )
+                    raise
+                for result in results:
+                    if isinstance(result, asyncio.CancelledError):
+                        raise result
+                    if isinstance(result, Exception):
+                        raft_log.warning(
+                            f"Failed during commit_index propagation: {result}"
+                        )
 
     async def _replicate_to_follower(self, follower_id: str) -> None:
         """Replicate log entries to a specific follower."""
@@ -1923,14 +2008,48 @@ class ProductionRaft(ProductionRaftRPCs):
             )
 
     async def _stop_background_tasks(self) -> None:
-        """Stop all background tasks using centralized task manager."""
+        """Stop all background tasks using centralized task manager.
+
+        Invariant: after return, every managed asyncio.Task is done() so the
+        interpreter cannot emit ``Task was destroyed but it is pending!``.
+        """
         raft_log.debug(f"[{self.node_id}] _stop_background_tasks called")
 
         # CLEAN ARCHITECTURE: Stop centralized coordinator
         await self.election_coordinator.stop_coordinator()
 
+        # Drain any unmanaged election callbacks (degraded path without manager).
+        unmanaged = self.election_coordinator._unmanaged_election_tasks
+        pending = [t for t in list(unmanaged) if not t.done()]
+        for t in pending:
+            t.cancel()
+        if pending:
+
+            async def _drain_unmanaged() -> None:
+                await asyncio.gather(*pending, return_exceptions=True)
+
+            try:
+                await asyncio.shield(_drain_unmanaged())
+            except asyncio.CancelledError:
+                await _drain_unmanaged()
+                # Do not re-raise yet — still stop managed tasks below.
+        unmanaged.clear()
+
         # IMPROVED: Use centralized task manager for proper shutdown control
-        await self.task_manager.stop_all_tasks(timeout=2.0)
+        try:
+            await self.task_manager.stop_all_tasks(timeout=2.0)
+        except asyncio.CancelledError:
+            # Outer wait_for(stop) cancelled us — force-settle then re-raise.
+            await self.task_manager.force_cleanup_all()
+            raise
+
+        leftover = self.task_manager.count_unfinished_tasks()
+        if leftover:
+            raft_log.error(
+                f"[{self.node_id}] {leftover} Raft tasks still unfinished after "
+                "stop_all_tasks — force cleanup"
+            )
+            await self.task_manager.force_cleanup_all()
 
     async def _start_heartbeat(self) -> None:
         """Start heartbeat for leader using task manager."""
@@ -1969,6 +2088,9 @@ class ProductionRaft(ProductionRaftRPCs):
 
         except asyncio.CancelledError:
             raft_log.debug("Heartbeat task cancelled")
+            # Re-raise so the task settles as Cancelled; swallowing leaves odd
+            # states for waiters that expect CancelledError propagation.
+            raise
         except Exception as e:  # noqa: BLE001 — heartbeat loop must not die silently
             log_caught_exception(raft_log, "Error in heartbeat loop", e)
 

@@ -816,17 +816,15 @@ class CacheNamespaceLeader:
         # query all namespaces from the leader election system
         return {}
 
-    def force_leader_election(self, namespace: str) -> None:
+    async def force_leader_election(self, namespace: str) -> None:
         """
         Force a new leader election for the given namespace.
 
-        Args:
-            namespace: Cache namespace to force election for
+        Awaits step-down so callers never orphan a bare ``create_task``
+        (``Task was destroyed but it is pending`` on teardown).
         """
         if not namespace:
             raise ValueError("Namespace cannot be empty")
 
         # Step down and let natural election occur
-        import asyncio
-
-        asyncio.create_task(self.step_down(namespace))
+        await self.step_down(namespace)

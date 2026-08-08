@@ -148,21 +148,27 @@ class VectorClock:
         if not isinstance(other, VectorClock):
             raise TypeError(f"Can only update with VectorClock, got {type(other)}")
 
-        # Get all unique node IDs
-        all_node_ids = {entry.node_id for entry in self._entries} | {
-            entry.node_id for entry in other._entries
+        # O(|self| + |other|) dict merge — avoid O(n²) get_timestamp scans.
+        # Hot path: gossip handle_received_message merges clocks every message.
+        if not other._entries:
+            return self
+        if not self._entries:
+            return other
+
+        merged: dict[VectorClockNodeId, VectorClockTimestamp] = {
+            entry.node_id: entry.timestamp for entry in self._entries
         }
+        for entry in other._entries:
+            current = merged.get(entry.node_id)
+            if current is None or entry.timestamp > current:
+                merged[entry.node_id] = entry.timestamp
 
-        new_entries = set()
-        for node_id in all_node_ids:
-            self_timestamp = self.get_timestamp(node_id)
-            other_timestamp = other.get_timestamp(node_id)
-            max_timestamp = max(self_timestamp, other_timestamp)
-
-            # Include all timestamps (including 0)
-            new_entries.add(ClockEntry(node_id=node_id, timestamp=max_timestamp))
-
-        return VectorClock(_entries=frozenset(new_entries))
+        return VectorClock(
+            _entries=frozenset(
+                ClockEntry(node_id=node_id, timestamp=timestamp)
+                for node_id, timestamp in merged.items()
+            )
+        )
 
     def merge(self, other: VectorClock) -> VectorClock:
         """Alias for update() for backward compatibility."""

@@ -59,13 +59,26 @@ class DepartedPeer:
 
 @dataclass(slots=True)
 class CatalogSnapshotDispatchState:
-    """Track coalesced catalog snapshot dispatch across rapid update bursts."""
+    """Track coalesced catalog snapshot dispatch across rapid update bursts.
+
+    Counters ``payload_builds`` / ``to_dict_calls`` / ``wire_encodes`` /
+    ``bytes_sends`` exist so tests can prove serialize-once-send-many:
+    one flush batch must build the catalog body once, not once per peer.
+    """
 
     pending_peers: set[str] = field(default_factory=set)
     flush_task: asyncio.Task[None] | None = None
     enqueued_events: int = 0
     flush_batches: int = 0
     peers_flushed: int = 0
+    # Serialize-once instrumentation (tests + diag).
+    payload_builds: int = 0
+    to_dict_calls: int = 0
+    wire_encodes: int = 0
+    bytes_sends: int = 0
+    last_wire_bytes: int = 0
+    last_update_id: str | None = None
+    last_generation: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

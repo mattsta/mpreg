@@ -1,6 +1,6 @@
 [project]
 name = "mpreg"
-version = "0.3.1"
+version = "0.3.2"
 description = "Matt’s Protocol for Results Everywhere Guaranteed"
 authors = [{ name = "Matt Stancliff", email = "matt@genges.com" }]
 requires-python = " >=3.11,<4"
@@ -66,6 +66,7 @@ dev = [
     "hypothesis>=6.136.0",
     "networkx>=3.5",
     "types-networkx>=3.5.0.20250712",
+    "py-spy>=0.4.2",
 ]
 
 [build-system]
@@ -101,6 +102,9 @@ markers = [
     "integration: marks tests as integration tests",
     "unit: marks tests as unit tests",
     "chaos: cross-plane chaos scenarios (DS validation)",
+    "property: property-based / Hypothesis tests",
+    "performance: performance / benchmark-style tests",
+    "federation: multi-cluster federation tests",
     "example_apps: curriculum example apps (live servers, real workloads)",
     "example_smoke: curriculum smoke-bundle apps (CI-friendly)",
     "example_suite: full curriculum suite apps",
@@ -114,7 +118,15 @@ python_functions = ["test_*"]
 addopts = [
     "--tb=short",           # Shorter traceback format
     "--strict-markers",     # Strict marker enforcement
-    "--disable-warnings",   # Disable warnings during test runs
+]
+# Known interpreter/runtime races during large-mesh GC teardown (not product leaks).
+# BlockchainStore/socket product paths close explicitly; residual noise is CPython
+# _SelectorTransport.__del__ ↔ Server._detach after waiters cleared.
+filterwarnings = [
+    "ignore:Exception ignored in.*gc_cumulative_time:pytest.PytestUnraisableExceptionWarning",
+    "ignore:.*_SelectorTransport\\.__del__.*:pytest.PytestUnraisableExceptionWarning",
+    "ignore:unclosed transport <_SelectorSocketTransport:ResourceWarning",
+    "ignore:unclosed <socket\\.socket:ResourceWarning",
 ]
 
 [tool.mypy]

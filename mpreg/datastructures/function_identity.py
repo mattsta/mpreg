@@ -29,6 +29,11 @@ class SemanticVersion:
         return cls(numbers[0], numbers[1], numbers[2])
 
     def __str__(self) -> str:
+        # Hot path: FunctionIdentity.to_dict → str(version) on every gossip send.
+        return f"{self.major}.{self.minor}.{self.patch}"
+
+    def to_wire(self) -> str:
+        """Wire form without going through ``str()`` dispatch."""
         return f"{self.major}.{self.minor}.{self.patch}"
 
     def to_dict(self) -> dict[str, int]:
@@ -132,11 +137,13 @@ class VersionConstraint:
 
     def to_dict(self) -> dict[str, str | bool | None]:
         return {
-            "min_version": str(self.min_version) if self.min_version else None,
-            "max_version": str(self.max_version) if self.max_version else None,
+            "min_version": self.min_version.to_wire() if self.min_version else None,
+            "max_version": self.max_version.to_wire() if self.max_version else None,
             "include_min": self.include_min,
             "include_max": self.include_max,
-            "exact_version": str(self.exact_version) if self.exact_version else None,
+            "exact_version": (
+                self.exact_version.to_wire() if self.exact_version else None
+            ),
         }
 
     @classmethod
@@ -166,7 +173,7 @@ class FunctionIdentity:
         return {
             "name": self.name,
             "function_id": self.function_id,
-            "version": str(self.version),
+            "version": self.version.to_wire(),
         }
 
     @classmethod

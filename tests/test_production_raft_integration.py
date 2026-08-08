@@ -159,8 +159,17 @@ class NetworkAwareTransport:
         self.network = network
 
     async def _deliver(self, handler_coro, timeout: float = 5.0):
-        """Run handler as a sibling task and await its result."""
+        """Run handler as a sibling task and await its result.
+
+        Sibling tasks (not nested awaits) avoid RecursionError on cancel into
+        deep ``_fut_waiter`` chains. Every path still **settles** the sibling
+        (cancel + await) so GC never sees a pending task. Retain bag holds a
+        strong ref until done in case the waiter is cancelled mid-flight.
+        """
+        from mpreg.datastructures.raft_task_manager import _retain_task
+
         task = asyncio.create_task(handler_coro)
+        _retain_task(task)
         try:
             return await asyncio.wait_for(asyncio.shield(task), timeout=timeout)
         except TimeoutError:
@@ -169,13 +178,16 @@ class NetworkAwareTransport:
                 await task
             return None
         except asyncio.CancelledError:
-            # Caller cancelled: leave handler running briefly so it can finish
-            # under its own task (avoids cascading cancel into deep chains).
-            # Best-effort cancel if still pending after a tick.
             if not task.done():
                 task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await task
             raise
         except OPERATIONAL_EXCEPTIONS:
+            if not task.done():
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await task
             return None
 
     async def send_request_vote(

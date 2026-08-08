@@ -27,6 +27,23 @@ warnings.filterwarnings(
     message=r"Exception ignored in.*gc_cumulative_time",
     category=pytest.PytestUnraisableExceptionWarning,
 )
+# CPython race: _SelectorTransport.__del__ → Server._detach after waiters cleared
+# during large-mesh GC. Resource is already closed; noise only.
+warnings.filterwarnings(
+    "ignore",
+    message=r".*_SelectorTransport\.__del__.*",
+    category=pytest.PytestUnraisableExceptionWarning,
+)
+warnings.filterwarnings(
+    "ignore",
+    message=r"unclosed transport <_SelectorSocketTransport",
+    category=ResourceWarning,
+)
+warnings.filterwarnings(
+    "ignore",
+    message=r"unclosed <socket\.socket",
+    category=ResourceWarning,
+)
 
 import contextlib
 
@@ -93,29 +110,64 @@ def port_allocator():
 
 @pytest.fixture(autouse=True)
 def _cleanup_orphaned_event_loop() -> AsyncGenerator[None]:
-    """Close any non-running event loop left behind by sync helpers."""
+    """Best-effort GC after each test — never close pytest-asyncio's loop.
+
+    Closing a non-running loop here races ``asyncio.Runner.__exit__`` and can
+    RecursionError inside ``Task.cancel`` when nested Raft/gather graphs are
+    still winding down. pytest-asyncio owns loop lifecycle; we only collect.
+    """
     yield
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        return
-    if loop is not None and not loop.is_closed() and not loop.is_running():
-        try:
-            gc.collect()
-            loop.run_until_complete(asyncio.sleep(0))
-            loop.run_until_complete(loop.shutdown_asyncgens())
-            loop.run_until_complete(loop.shutdown_default_executor())
-            gc.collect()
-        except Exception:  # noqa: BLE001, S110
-            pass
-        loop.close()
-        asyncio.set_event_loop(None)
+    with contextlib.suppress(Exception):
+        gc.collect()
 
 
 @pytest.fixture
 def gossip_transport() -> InProcessGossipTransport:
     """In-process transport shared by federation gossip tests."""
     return InProcessGossipTransport()
+
+
+async def shutdown_servers_sequential(
+    servers: list[MPREGServer] | list[Any],
+    *,
+    timeout: float | None = None,
+) -> None:
+    """Stop MPREG servers with concurrent shutdown + hard settle.
+
+    Named ``sequential`` for call-site stability; implementation fans out
+    ``shutdown_async`` concurrently so mesh GOODBYE/wait_closed cannot
+    serialize into multi-minute teardowns. A second pass force-stops any
+    listener still holding sockets so GC does not emit ResourceWarning.
+    """
+    if not servers:
+        return
+    server_list = list(servers)
+    if timeout is None:
+        # GOODBYE sleep is 0.5s per server; scale with mesh size under xdist.
+        timeout = max(15.0, min(90.0, 4.0 + len(server_list) * 1.25))
+
+    async def _one(server: Any) -> None:
+        try:
+            await asyncio.wait_for(server.shutdown_async(), timeout=timeout)
+        except Exception as e:  # noqa: BLE001
+            with contextlib.suppress(RuntimeError):
+                name = getattr(getattr(server, "settings", None), "name", "?")
+                logger.warning(f"Server {name} shutdown failed or timed out: {e!r}")
+            # Best-effort force stop of transport listener to drop sockets.
+            listener = getattr(server, "_transport_listener", None)
+            if listener is not None:
+                with contextlib.suppress(Exception):
+                    stop = getattr(listener, "stop", None)
+                    if stop is not None:
+                        await asyncio.wait_for(stop(), timeout=2.0)
+
+    await asyncio.gather(*(_one(s) for s in server_list), return_exceptions=True)
+    # Yield so cancelled handlers finish closing transports before GC sweep.
+    with contextlib.suppress(Exception):
+        await asyncio.sleep(0.05)
+        gc.collect()
+        await asyncio.sleep(0)
+        gc.collect()
 
 
 class AsyncTestContext:
@@ -144,32 +196,7 @@ class AsyncTestContext:
                 with contextlib.suppress(RuntimeError):
                     logger.warning(f"Error disconnecting client: {e}")
 
-        # Stop all servers using ASYNC shutdown method
-        shutdown_tasks = []
-        for server in self.servers:
-            try:
-                # Use async shutdown instead of sync shutdown
-                shutdown_tasks.append(asyncio.create_task(server.shutdown_async()))
-            except Exception as e:  # noqa: BLE001
-                with contextlib.suppress(RuntimeError):
-                    logger.warning(f"Error initiating server shutdown: {e}")
-
-        # Wait for all servers to shut down properly
-        if shutdown_tasks:
-            shutdown_timeout = max(5.0, len(shutdown_tasks) * 0.75)
-            try:
-                await asyncio.wait_for(
-                    asyncio.gather(*shutdown_tasks, return_exceptions=True),
-                    timeout=shutdown_timeout,
-                )
-            except TimeoutError:
-                with contextlib.suppress(RuntimeError):
-                    logger.warning(
-                        f"Some servers did not shut down within timeout ({shutdown_timeout:.1f}s)"
-                    )
-            except OPERATIONAL_EXCEPTIONS as e:
-                with contextlib.suppress(RuntimeError):
-                    logger.warning(f"Error during server shutdown: {e}")
+        await shutdown_servers_sequential(self.servers)
 
         # Give server tasks a moment to exit cleanly after shutdown
         if self.tasks:

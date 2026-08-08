@@ -37,3 +37,7 @@ class ServerGossipTransport(ServerEnvelopeTransport, GossipTransport):
             payload = sign_gossip_payload(payload, self.hmac_secret)
         envelope = FabricGossipEnvelope(payload=payload)
         return await self.send_envelope(peer_id, envelope)
+
+    async def send_preencoded(self, peer_id: NodeId, data: bytes) -> bool:
+        """Fan-out identical pre-encoded gossip envelope bytes to one peer."""
+        return await self.send_bytes(peer_id, data)
