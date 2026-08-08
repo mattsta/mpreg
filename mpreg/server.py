@@ -4577,7 +4577,9 @@ class MPREGServer:
                         )
                         self._fabric_snapshot_last_restored_counts = {}
                         self._fabric_snapshot_last_route_keys_restored = None
-                    except OPERATIONAL_EXCEPTIONS as rollback_exc:  # pragma: no cover - best effort
+                    except (
+                        OPERATIONAL_EXCEPTIONS
+                    ) as rollback_exc:  # pragma: no cover - best effort
                         logger.warning(
                             "[{}] Catalog rollback after route-key restore failure: {}",
                             self.settings.name,

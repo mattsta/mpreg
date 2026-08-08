@@ -201,9 +201,12 @@ class ProductionRaftRPCs:
 
                     last_log_term = self._last_log_term()
                     last_log_index = self._last_log_index()
-                    candidate_log_up_to_date = request.last_log_term > last_log_term or (
-                        request.last_log_term == last_log_term
-                        and request.last_log_index >= last_log_index
+                    candidate_log_up_to_date = (
+                        request.last_log_term > last_log_term
+                        or (
+                            request.last_log_term == last_log_term
+                            and request.last_log_index >= last_log_index
+                        )
                     )
                     # Pre-vote ignores voted_for (no real vote committed yet).
                     vote_granted = bool(candidate_log_up_to_date)
@@ -422,9 +425,7 @@ class ProductionRaftRPCs:
                             )
 
                     except OPERATIONAL_EXCEPTIONS as e:
-                        log_caught_exception(
-                            rpc_log, "Error processing log entries", e
-                        )
+                        log_caught_exception(rpc_log, "Error processing log entries", e)
                         success = False
 
                 # Rule 5: Update commit index (absolute last index, never bare len)
@@ -665,9 +666,7 @@ class ProductionRaftRPCs:
             log_caught_exception(rpc_log, "Error applying snapshot", e)
             raise
         except Exception as e:
-            log_caught_exception(
-                rpc_log, "Error applying snapshot", e, expected=False
-            )
+            log_caught_exception(rpc_log, "Error applying snapshot", e, expected=False)
             raise
 
     def _update_exponential_average(

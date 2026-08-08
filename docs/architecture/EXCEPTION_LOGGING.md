@@ -18,20 +18,20 @@ BaseException
     └── everything else         ← unknown; must carry stack
 ```
 
-| Symbol | Role |
-|--------|------|
-| `with_operational(*extra)` | Compose operational + domain types |
-| `is_expected_failure(exc)` | Auto-classify for log verbosity |
-| `log_caught_exception(log, msg, exc, *, expected=None, level=…)` | Message-only vs stack |
-| `map_exception(exc)` | **Wire** axis → `MpregError` (not log severity) |
+| Symbol                                                           | Role                                            |
+| ---------------------------------------------------------------- | ----------------------------------------------- |
+| `with_operational(*extra)`                                       | Compose operational + domain types              |
+| `is_expected_failure(exc)`                                       | Auto-classify for log verbosity                 |
+| `log_caught_exception(log, msg, exc, *, expected=None, level=…)` | Message-only vs stack                           |
+| `map_exception(exc)`                                             | **Wire** axis → `MpregError` (not log severity) |
 
 ### Target log policy
 
-| Class | Log | Stack |
-|-------|-----|-------|
-| Expected / condition | `error`/`warning` message | **No** |
+| Class                          | Log                                    | Stack   |
+| ------------------------------ | -------------------------------------- | ------- |
+| Expected / condition           | `error`/`warning` message              | **No**  |
 | Unknown absorbed by supervisor | `exception` / loguru `opt(exception=)` | **Yes** |
-| Fatal | stack + re-raise | Yes |
+| Fatal                          | stack + re-raise                       | Yes     |
 
 There is **no** L0–L3 ladder for exceptions in code (curriculum L0–L4 is unrelated).
 
@@ -71,21 +71,21 @@ raise
 
 ## 4. Adoption map (approx, production `mpreg/`)
 
-| Primitive | Sites |
-|-----------|-------|
-| `log_caught_exception` | **~25** (server dual-catch, `global_cache`, Raft impl) |
-| `OPERATIONAL_EXCEPTIONS` catch | **~400+** |
-| `with_operational` | **~2** live |
-| `map_exception` | **~20** (client + rpc_responses) |
-| fabric `log_caught_exception` | **0** |
+| Primitive                      | Sites                                                  |
+| ------------------------------ | ------------------------------------------------------ |
+| `log_caught_exception`         | **~25** (server dual-catch, `global_cache`, Raft impl) |
+| `OPERATIONAL_EXCEPTIONS` catch | **~400+**                                              |
+| `with_operational`             | **~2** live                                            |
+| `map_exception`                | **~20** (client + rpc_responses)                       |
+| fabric `log_caught_exception`  | **0**                                                  |
 
-| Package | Dominant gap |
-|---------|----------------|
-| fabric | OPERATIONAL catch + `logger.error(f…{e})` — **no LCE** |
-| core (non-cache) | same |
-| server non-RPC | OPERATIONAL heavy; LCE only on gold RPC paths |
-| Raft impl | LCE on key loops; rpcs/storage still ad-hoc |
-| client | map+raise (correct for libraries) |
+| Package          | Dominant gap                                           |
+| ---------------- | ------------------------------------------------------ |
+| fabric           | OPERATIONAL catch + `logger.error(f…{e})` — **no LCE** |
+| core (non-cache) | same                                                   |
+| server non-RPC   | OPERATIONAL heavy; LCE only on gold RPC paths          |
+| Raft impl        | LCE on key loops; rpcs/storage still ad-hoc            |
+| client           | map+raise (correct for libraries)                      |
 
 **Two systems:** operator logging taxonomy vs wire `MpregError` taxonomy. They meet at RPC boundaries.
 
@@ -101,8 +101,8 @@ raise
 
 ## 6. Architectural rules for the program
 
-1. Catch-set and `log_caught_exception` ship **together**.  
-2. Promote server dual-catch as supervisor template.  
-3. Do not overload `map_exception` for log severity.  
-4. Metrics/scrape BLE001 walls may stay wide but must LCE when they log.  
+1. Catch-set and `log_caught_exception` ship **together**.
+2. Promote server dual-catch as supervisor template.
+3. Do not overload `map_exception` for log severity.
+4. Metrics/scrape BLE001 walls may stay wide but must LCE when they log.
 5. CONDITION types (`RuntimeError`/`ValueError`) are soft by default; domain bugs should use types outside CONDITION or `expected=False`.

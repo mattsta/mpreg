@@ -27,7 +27,7 @@ class _FakeLog:
         if args:
             try:
                 msg = msg % args
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 msg = f"{msg} {args}"
         self.errors.append(str(msg))
 
@@ -43,7 +43,10 @@ class _FakeLog:
         class _Opt:
             def error(self, msg: str, *args: object) -> None:
                 parent.opt_errors.append(
-                    (exception if isinstance(exception, BaseException) else None, str(msg))
+                    (
+                        exception if isinstance(exception, BaseException) else None,
+                        str(msg),
+                    )
                 )
                 parent.errors.append(str(msg))
 

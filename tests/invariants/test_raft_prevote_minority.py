@@ -72,7 +72,7 @@ async def test_minority_term_growth_bounded_with_prevote() -> None:
         # do not campaign). Allow a small slack for races at partition cut.
         assert minority_growth < 8, (
             f"unbounded term thrash under pre-vote: before={term_before} after={terms_after} "
-            f"pre_votes={[ (n.node_id, n.metrics.pre_votes_started, n.metrics.pre_votes_failed, n.metrics.pre_votes_passed) for n in nodes.values() ]}"
+            f"pre_votes={[(n.node_id, n.metrics.pre_votes_started, n.metrics.pre_votes_failed, n.metrics.pre_votes_passed) for n in nodes.values()]}"
         )
 
         # Majority terms should not explode either
@@ -80,9 +80,7 @@ async def test_minority_term_growth_bounded_with_prevote() -> None:
         assert majority_growth < 15, f"majority term explosion: {terms_after}"
 
         # At least one minority node should have attempted pre-vote
-        minority_pre = sum(
-            nodes[k].metrics.pre_votes_started for k in ("a", "b")
-        )
+        minority_pre = sum(nodes[k].metrics.pre_votes_started for k in ("a", "b"))
         assert minority_pre >= 1, "expected minority pre-vote attempts"
 
         for n in nodes.values():

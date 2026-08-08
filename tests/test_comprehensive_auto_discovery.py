@@ -879,7 +879,9 @@ class TestAutoDiscoveryFunctionPropagation(AutoDiscoveryTestHelpers):
                 try:
                     result = await client._client.request([rpc_command])
                     return "test_result" in result, None
-                except OPERATIONAL_EXCEPTIONS as exc:  # pragma: no cover - best effort retry
+                except (
+                    OPERATIONAL_EXCEPTIONS
+                ) as exc:  # pragma: no cover - best effort retry
                     last_exc = exc
                     await asyncio.sleep(0.1)
             return False, last_exc

@@ -533,7 +533,9 @@ class GlobalCacheManager(ManagedObject):
                     self.config.persistent_cache_dir,
                 )
             except OPERATIONAL_EXCEPTIONS as e:
-                log_caught_exception(cache_log, "Failed to initialize persistent cache", e)
+                log_caught_exception(
+                    cache_log, "Failed to initialize persistent cache", e
+                )
                 self.config.enable_l2_persistent = False
             return
 
@@ -544,7 +546,9 @@ class GlobalCacheManager(ManagedObject):
             self._l2_store = CacheL2Store(store=kv_store, serializer=JsonSerializer())
             cache_log.info("Initialized persistence-backed L2 cache store")
         except OPERATIONAL_EXCEPTIONS as e:
-            log_caught_exception(cache_log, "Failed to initialize persistence-backed cache", e)
+            log_caught_exception(
+                cache_log, "Failed to initialize persistence-backed cache", e
+            )
             self.config.enable_l2_persistent = False
 
     def _start_background_tasks(self) -> None:
@@ -704,7 +708,9 @@ class GlobalCacheManager(ManagedObject):
                 )
 
             except OPERATIONAL_EXCEPTIONS as e:
-                log_caught_exception(cache_log, f"Cache get operation failed for {key}", e)
+                log_caught_exception(
+                    cache_log, f"Cache get operation failed for {key}", e
+                )
                 return CacheOperationResult(
                     success=False, error_message=f"Cache operation error: {e}"
                 )
@@ -799,7 +805,9 @@ class GlobalCacheManager(ManagedObject):
                 )
 
             except OPERATIONAL_EXCEPTIONS as e:
-                log_caught_exception(cache_log, f"Cache put operation failed for {key}", e)
+                log_caught_exception(
+                    cache_log, f"Cache put operation failed for {key}", e
+                )
                 return CacheOperationResult(
                     success=False, error_message=f"Cache put error: {e}"
                 )
@@ -877,7 +885,9 @@ class GlobalCacheManager(ManagedObject):
                 )
 
             except OPERATIONAL_EXCEPTIONS as e:
-                log_caught_exception(cache_log, f"Cache delete operation failed for {key}", e)
+                log_caught_exception(
+                    cache_log, f"Cache delete operation failed for {key}", e
+                )
                 return CacheOperationResult(
                     success=False, error_message=f"Cache delete error: {e}"
                 )
@@ -990,7 +1000,9 @@ class GlobalCacheManager(ManagedObject):
             )
 
         except OPERATIONAL_EXCEPTIONS as e:
-            log_caught_exception(cache_log, f"Cache invalidation failed for pattern {pattern}", e)
+            log_caught_exception(
+                cache_log, f"Cache invalidation failed for pattern {pattern}", e
+            )
             return CacheOperationResult(
                 success=False, error_message=f"Cache invalidation error: {e}"
             )

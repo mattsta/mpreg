@@ -86,7 +86,9 @@ async def test_lost_election_does_not_fabricate_leader_contact():
         )
         assert attempted >= 1
         assert n0.metrics.elections_won == 0
-        assert n0.persistent_state.current_term == 0 or n0.metrics.elections_started >= 1
+        assert (
+            n0.persistent_state.current_term == 0 or n0.metrics.elections_started >= 1
+        )
     finally:
         for n in nodes.values():
             await n.stop()
@@ -95,9 +97,7 @@ async def test_lost_election_does_not_fabricate_leader_contact():
 @pytest.mark.asyncio
 async def test_become_leader_records_leader_contact():
     """Winning an election legitimately notes contact via become_leader."""
-    nodes, _ = _make_cluster(
-        3, election_min=0.10, election_max=0.18, heartbeat=0.025
-    )
+    nodes, _ = _make_cluster(3, election_min=0.10, election_max=0.18, heartbeat=0.025)
     try:
         for n in nodes.values():
             await n.start()
@@ -151,7 +151,9 @@ async def test_failed_election_retries_after_partition_heals():
             await asyncio.sleep(0.05)
         else:
             detail = [s.to_dict() for s in (n.get_status() for n in nodes.values())]
-            raise AssertionError(f"cluster did not converge on leader contact: {detail}")
+            raise AssertionError(
+                f"cluster did not converge on leader contact: {detail}"
+            )
     finally:
         for n in nodes.values():
             await n.stop()
@@ -182,9 +184,7 @@ async def test_wait_for_leader_reports_status_on_timeout():
 @pytest.mark.asyncio
 async def test_cluster_elects_leader_under_tight_timeouts():
     """Tight timeout bands still elect a unique leader via production wait API."""
-    nodes, _ = _make_cluster(
-        3, election_min=0.08, election_max=0.14, heartbeat=0.02
-    )
+    nodes, _ = _make_cluster(3, election_min=0.08, election_max=0.14, heartbeat=0.02)
     try:
         for n in nodes.values():
             await n.start()

@@ -302,9 +302,7 @@ class ElectionCoordinator:
             raft_log.debug(f"[{node_id}] Election coordinator cancelled")
             raise
         except Exception as e:  # noqa: BLE001 — coordinator must log and exit cleanly
-            log_caught_exception(
-                raft_log, f"[{node_id}] Election coordinator error", e
-            )
+            log_caught_exception(raft_log, f"[{node_id}] Election coordinator error", e)
         finally:
             raft_log.debug(f"[{node_id}] Election coordinator loop ended")
             # Ensure we're not marked as in progress
@@ -999,9 +997,7 @@ class ProductionRaft(ProductionRaftRPCs):
         if term is not None or voted_for is not None:
             self.persistent_state = PersistentState(
                 current_term=(
-                    term
-                    if term is not None
-                    else self.persistent_state.current_term
+                    term if term is not None else self.persistent_state.current_term
                 ),
                 voted_for=(
                     voted_for

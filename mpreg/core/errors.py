@@ -171,7 +171,6 @@ def dual_catch_log(
     log_caught_exception(log, message, exc, level=level)
 
 
-
 class MpregErrorCode(IntEnum):
     """Stable public error codes (do not renumber existing members)."""
 
