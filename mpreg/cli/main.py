@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.native_codec import dumps_pretty_text, load_path, loads_text
 
 """
@@ -384,7 +385,7 @@ def call(
     def _parse_arg(value: str) -> Any:
         try:
             return loads_text(value)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return value
 
     async def _call():
@@ -418,7 +419,7 @@ def client_queue_send(
     def _parse(value: str) -> Any:
         try:
             return loads_text(value)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return value
 
     async def _run() -> None:
@@ -467,7 +468,7 @@ def client_cache_put(
     def _parse(v: str) -> Any:
         try:
             return loads_text(v)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return v
 
     async def _run() -> None:
@@ -671,7 +672,7 @@ def client_publish(url: str | None, topic: str, payload: str) -> None:
     def _parse(v: str) -> Any:
         try:
             return loads_text(v)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return v
 
     async def _run() -> None:
@@ -771,7 +772,7 @@ def _parse_metadata_items(items: tuple[str, ...]) -> dict[str, MetadataValue]:
                     metadata[key] = parsed
                 else:
                     metadata[key] = str(parsed)
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 metadata[key] = value
         else:
             metadata[item] = True
@@ -1082,7 +1083,7 @@ def namespace_policy_validate(url: str | None, rules_file: str, actor: str | Non
     if not url:
         raise click.UsageError("Provide --url or set MPREG_URL.")
 
-    with open(rules_file, encoding="utf-8") as handle:
+    with Path(rules_file).open(encoding="utf-8") as handle:
         rules = loads_text(handle.read())
 
     async def _validate():
@@ -1137,7 +1138,7 @@ def namespace_policy_apply(
     if not url:
         raise click.UsageError("Provide --url or set MPREG_URL.")
 
-    with open(rules_file, encoding="utf-8") as handle:
+    with Path(rules_file).open(encoding="utf-8") as handle:
         rules = loads_text(handle.read())
 
     async def _apply():
@@ -1577,9 +1578,11 @@ def report_namespace_health(
 
     async def _report() -> None:
         base_url = url.rstrip("/")
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"{base_url}/discovery/summary") as response:
-                payload = await response.json()
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(f"{base_url}/discovery/summary") as response,
+        ):
+            payload = await response.json()
         summary_export = payload.get("summary_export", {})
         entries = summary_export.get("per_namespace", [])
         if not isinstance(entries, list):
@@ -1662,9 +1665,11 @@ def report_export_lag(url: str | None, output: str) -> None:
 
     async def _report() -> None:
         base_url = url.rstrip("/")
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"{base_url}/discovery/lag") as response:
-                payload = await response.json()
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(f"{base_url}/discovery/lag") as response,
+        ):
+            payload = await response.json()
         lag = payload.get("lag", {})
         if output == "json":
             console.print(lag)
@@ -2755,23 +2760,25 @@ def admin_detach(
     async def _run() -> None:
         base = _admin_base_url(url)
         body = {"peer_url": peer_url, "actor": actor, "reason": reason}
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
+        async with (
+            aiohttp.ClientSession() as session,
+            session.post(
                 f"{base}/mgmt/v1/peers/detach",
                 json=body,
                 headers=_admin_headers(token),
-            ) as resp:
-                data = await resp.json(content_type=None)
-                if as_json:
-                    console.print(data)
-                else:
-                    console.print(
-                        f"[{'green' if resp.status == 200 and data.get('applied') else 'red'}]"
-                        f"HTTP {resp.status} detach applied={data.get('applied')} "
-                        f"peer={peer_url}[/]"
-                    )
-                if resp.status >= 400 or data.get("applied") is False:
-                    raise SystemExit(1)
+            ) as resp,
+        ):
+            data = await resp.json(content_type=None)
+            if as_json:
+                console.print(data)
+            else:
+                console.print(
+                    f"[{'green' if resp.status == 200 and data.get('applied') else 'red'}]"
+                    f"HTTP {resp.status} detach applied={data.get('applied')} "
+                    f"peer={peer_url}[/]"
+                )
+            if resp.status >= 400 or data.get("applied") is False:
+                raise SystemExit(1)
 
     run_coro(_run())
 
@@ -3671,13 +3678,15 @@ def health_endpoint(
             endpoint = f"{base_url}/health/clusters/{cluster}"
         else:
             endpoint = f"{base_url}/health/summary" if summary else f"{base_url}/health"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(endpoint) as response:
-                payload = await response.json()
-                if response.status != 200:
-                    emit(payload, output_format=output_format, table_title="Health")
-                    return
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(endpoint) as response,
+        ):
+            payload = await response.json()
+            if response.status != 200:
                 emit(payload, output_format=output_format, table_title="Health")
+                return
+            emit(payload, output_format=output_format, table_title="Health")
 
     run_coro(_health_endpoint())
 
@@ -3734,14 +3743,16 @@ def metrics_watch(
                     console.print(
                         f"[bold blue]📊 Fabric Metrics Monitor - {time.time():.0f}[/bold blue]"
                     )
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(endpoint) as response:
-                            payload = await response.json()
-                            emit(
-                                payload,
-                                output_format=output_format,
-                                table_title="Metrics",
-                            )
+                    async with (
+                        aiohttp.ClientSession() as session,
+                        session.get(endpoint) as response,
+                    ):
+                        payload = await response.json()
+                        emit(
+                            payload,
+                            output_format=output_format,
+                            table_title="Metrics",
+                        )
                     await asyncio.sleep(interval)
             except KeyboardInterrupt:
                 console.print("\n[yellow]⚠️ Metrics monitoring stopped[/yellow]")
@@ -3806,7 +3817,7 @@ def status(
             return "n/a"
         try:
             return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(raw)))
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return str(raw)
 
     def _summarize_transport(snapshot_payload: Mapping[str, object]) -> dict[str, int]:
@@ -3819,7 +3830,7 @@ def status(
             score = entry.get("overall_health_score", 0.0)
             try:
                 score_val = float(score)
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 score_val = 0.0
             if score_val >= 0.9:
                 healthy += 1
@@ -3958,12 +3969,12 @@ def monitor_decisions(
         if correlation_id:
             params.append(f"correlation_id={correlation_id}")
         endpoint = f"{monitoring_url.rstrip('/')}/routing/decisions?" + "&".join(params)
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(endpoint) as response:
-                payload = await response.json(content_type=None)
-                emit(
-                    payload, output_format=output_format, table_title="Route decisions"
-                )
+        async with (
+            aiohttp.ClientSession(headers=headers) as session,
+            session.get(endpoint) as response,
+        ):
+            payload = await response.json(content_type=None)
+            emit(payload, output_format=output_format, table_title="Route decisions")
 
     run_coro(_run())
 
@@ -4004,15 +4015,15 @@ def route_trace(
         if avoid:
             params["avoid"] = ",".join(avoid)
         endpoint = f"{monitoring_url.rstrip('/')}/routing/trace"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(endpoint, params=params) as response:
-                payload = await response.json()
-                if response.status != 200:
-                    emit(
-                        payload, output_format=output_format, table_title="Route trace"
-                    )
-                    return
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(endpoint, params=params) as response,
+        ):
+            payload = await response.json()
+            if response.status != 200:
                 emit(payload, output_format=output_format, table_title="Route trace")
+                return
+            emit(payload, output_format=output_format, table_title="Route trace")
 
     run_coro(_route_trace())
 
@@ -4036,13 +4047,15 @@ def link_state(url: str | None, output_format: str) -> None:
             )
             return
         endpoint = f"{monitoring_url.rstrip('/')}/routing/link-state"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(endpoint) as response:
-                payload = await response.json()
-                if response.status != 200:
-                    emit(payload, output_format=output_format, table_title="Link state")
-                    return
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(endpoint) as response,
+        ):
+            payload = await response.json()
+            if response.status != 200:
                 emit(payload, output_format=output_format, table_title="Link state")
+                return
+            emit(payload, output_format=output_format, table_title="Link state")
 
     run_coro(_link_state())
 
@@ -4066,21 +4079,23 @@ def transport_endpoints(url: str | None, output_format: str) -> None:
             )
             return
         endpoint = f"{monitoring_url.rstrip('/')}/transport/endpoints"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(endpoint) as response:
-                payload = await response.json()
-                if response.status != 200:
-                    emit(
-                        payload,
-                        output_format=output_format,
-                        table_title="Transport endpoints",
-                    )
-                    return
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(endpoint) as response,
+        ):
+            payload = await response.json()
+            if response.status != 200:
                 emit(
                     payload,
                     output_format=output_format,
                     table_title="Transport endpoints",
                 )
+                return
+            emit(
+                payload,
+                output_format=output_format,
+                table_title="Transport endpoints",
+            )
 
     run_coro(_transport_endpoints())
 
@@ -4122,13 +4137,15 @@ def monitor_metrics(system: str, url: str | None, output_format: str) -> None:
             "federation": "/metrics",
         }
         endpoint = f"{monitoring_url.rstrip('/')}{endpoint_map[system]}"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(endpoint) as response:
-                payload = await response.json()
-                if response.status != 200:
-                    emit(payload, output_format=output_format, table_title="Metrics")
-                    return
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(endpoint) as response,
+        ):
+            payload = await response.json()
+            if response.status != 200:
                 emit(payload, output_format=output_format, table_title="Metrics")
+                return
+            emit(payload, output_format=output_format, table_title="Metrics")
 
     run_coro(_metrics())
 
@@ -4160,12 +4177,14 @@ def monitor_prometheus(url: str | None, token: str | None) -> None:
         if token:
             headers["Authorization"] = f"Bearer {token}"
         endpoint = f"{monitoring_url.rstrip('/')}/metrics/prometheus"
-        async with aiohttp.ClientSession(headers=headers) as session:
-            async with session.get(endpoint) as response:
-                text_body = await response.text()
-                if response.status != 200:
-                    console.print(f"[red]HTTP {response.status}[/red]")
-                console.print(text_body)
+        async with (
+            aiohttp.ClientSession(headers=headers) as session,
+            session.get(endpoint) as response,
+        ):
+            text_body = await response.text()
+            if response.status != 200:
+                console.print(f"[red]HTTP {response.status}[/red]")
+            console.print(text_body)
 
     run_coro(_prom())
 
@@ -4189,15 +4208,15 @@ def persistence(url: str | None, output_format: str) -> None:
             )
             return
         endpoint = f"{monitoring_url.rstrip('/')}/metrics/persistence"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(endpoint) as response:
-                payload = await response.json()
-                if response.status != 200:
-                    emit(
-                        payload, output_format=output_format, table_title="Persistence"
-                    )
-                    return
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(endpoint) as response,
+        ):
+            payload = await response.json()
+            if response.status != 200:
                 emit(payload, output_format=output_format, table_title="Persistence")
+                return
+            emit(payload, output_format=output_format, table_title="Persistence")
 
     run_coro(_persistence())
 
@@ -4228,74 +4247,76 @@ def monitor_strong(url: str | None, use_mgmt: bool, output_format: str) -> None:
             return
         path = "/mgmt/v1/strong" if use_mgmt else "/metrics/strong"
         endpoint = f"{monitoring_url.rstrip('/')}{path}"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(endpoint) as response:
-                payload = await response.json()
-                # Human summary for table/plain: capabilities honesty + refuse counters
-                fmt = (output_format or "json").lower()
-                body: dict[str, Any] | None = None
-                if isinstance(payload, dict):
-                    raw_body = (
-                        payload.get("strong")
-                        if isinstance(payload.get("strong"), dict)
-                        else payload
-                    )
-                    if isinstance(raw_body, dict):
-                        body = raw_body
-                if fmt in {"table", "plain"} and body is not None:
-                    caps = body.get("capabilities") or {}
-                    counters = body.get("counters") or {}
-                    fail_peers = _strong_abort_fail_peers(body)
-                    fail_oid = _strong_abort_fail_op_id(body)
-                    console.print(
-                        "[bold]STRONG[/bold] "
-                        f"health={body.get('health')} "
-                        f"bound={body.get('coordinator_bound')} "
-                        f"pending={body.get('pending_count', 0)} "
-                        f"visible={body.get('visible_count', 0)} "
-                        f"backups={body.get('backups_count', 0)} "
-                        f"pruned={body.get('backups_pruned_total', 0)} | "
-                        f"caps put={caps.get('put_majority_commit')} "
-                        f"get_quorum={caps.get('get_quorum', False)} "
-                        f"delete_quorum={caps.get('delete_quorum', False)} "
-                        f"ryw={caps.get('local_ryw_after_put')} "
-                        f"cft={caps.get('cft_only', True)} "
-                        f"abort_be={caps.get('abort_best_effort', True)} "
-                        f"ttl_gc={caps.get('pending_ttl_clears_residual_l1', False)} "
-                        f"retry_ops={caps.get('retry_abort_ops_driven', True)} | "
-                        f"puts_ok={counters.get('puts_ok', 0)} "
-                        f"puts_fail={counters.get('puts_fail', 0)} "
-                        f"gets_refused={counters.get('gets_refused', 0)} "
-                        f"deletes_refused={counters.get('deletes_refused', 0)} "
-                        f"abort_fail={counters.get('aborts_peer_fail', 0)} "
-                        f"abort_fail_peers={fail_peers} "
-                        f"abort_fail_peer_count={_strong_abort_fail_peer_count(body)} "
-                        f"abort_fail_op_id={fail_oid or '-'} "
-                        f"retry_abort={counters.get('retry_abort_calls', body.get('retry_abort_calls', 0))} "
-                        f"retry_cleared={counters.get('retry_abort_cleared', body.get('retry_abort_cleared', 0))} "
-                        "[dim](not WAN SLA; get/delete quorum is v1.1; "
-                        "ABORT best-effort CFT; pending TTL ≠ residual GC; "
-                        "abort_fail_peers = CFT residual candidates; "
-                        "abort_fail_peer_count mirrors prom gauge; "
-                        "retry_abort = ops-driven not auto-heal)[/dim]"
-                    )
-                    # T51: remediation hint when residual candidates present
-                    hint = strong_residual_ops_hint(body)
-                    if hint:
-                        console.print(f"[yellow]{hint}[/yellow]")
-                # T130: JSON output always carries residual field keys (same types
-                # as doctor JSON /metrics/strong) even if a server build omitted them.
-                if fmt == "json" and body is not None and isinstance(payload, dict):
-                    residual = strong_doctor_json_residual_fields(body)
-                    target = (
-                        payload["strong"]
-                        if isinstance(payload.get("strong"), dict)
-                        else payload
-                    )
-                    if isinstance(target, dict):
-                        for key, val in residual.items():
-                            target.setdefault(key, val)
-                emit(payload, output_format=output_format, table_title="STRONG")
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(endpoint) as response,
+        ):
+            payload = await response.json()
+            # Human summary for table/plain: capabilities honesty + refuse counters
+            fmt = (output_format or "json").lower()
+            body: dict[str, Any] | None = None
+            if isinstance(payload, dict):
+                raw_body = (
+                    payload.get("strong")
+                    if isinstance(payload.get("strong"), dict)
+                    else payload
+                )
+                if isinstance(raw_body, dict):
+                    body = raw_body
+            if fmt in {"table", "plain"} and body is not None:
+                caps = body.get("capabilities") or {}
+                counters = body.get("counters") or {}
+                fail_peers = _strong_abort_fail_peers(body)
+                fail_oid = _strong_abort_fail_op_id(body)
+                console.print(
+                    "[bold]STRONG[/bold] "
+                    f"health={body.get('health')} "
+                    f"bound={body.get('coordinator_bound')} "
+                    f"pending={body.get('pending_count', 0)} "
+                    f"visible={body.get('visible_count', 0)} "
+                    f"backups={body.get('backups_count', 0)} "
+                    f"pruned={body.get('backups_pruned_total', 0)} | "
+                    f"caps put={caps.get('put_majority_commit')} "
+                    f"get_quorum={caps.get('get_quorum', False)} "
+                    f"delete_quorum={caps.get('delete_quorum', False)} "
+                    f"ryw={caps.get('local_ryw_after_put')} "
+                    f"cft={caps.get('cft_only', True)} "
+                    f"abort_be={caps.get('abort_best_effort', True)} "
+                    f"ttl_gc={caps.get('pending_ttl_clears_residual_l1', False)} "
+                    f"retry_ops={caps.get('retry_abort_ops_driven', True)} | "
+                    f"puts_ok={counters.get('puts_ok', 0)} "
+                    f"puts_fail={counters.get('puts_fail', 0)} "
+                    f"gets_refused={counters.get('gets_refused', 0)} "
+                    f"deletes_refused={counters.get('deletes_refused', 0)} "
+                    f"abort_fail={counters.get('aborts_peer_fail', 0)} "
+                    f"abort_fail_peers={fail_peers} "
+                    f"abort_fail_peer_count={_strong_abort_fail_peer_count(body)} "
+                    f"abort_fail_op_id={fail_oid or '-'} "
+                    f"retry_abort={counters.get('retry_abort_calls', body.get('retry_abort_calls', 0))} "
+                    f"retry_cleared={counters.get('retry_abort_cleared', body.get('retry_abort_cleared', 0))} "
+                    "[dim](not WAN SLA; get/delete quorum is v1.1; "
+                    "ABORT best-effort CFT; pending TTL ≠ residual GC; "
+                    "abort_fail_peers = CFT residual candidates; "
+                    "abort_fail_peer_count mirrors prom gauge; "
+                    "retry_abort = ops-driven not auto-heal)[/dim]"
+                )
+                # T51: remediation hint when residual candidates present
+                hint = strong_residual_ops_hint(body)
+                if hint:
+                    console.print(f"[yellow]{hint}[/yellow]")
+            # T130: JSON output always carries residual field keys (same types
+            # as doctor JSON /metrics/strong) even if a server build omitted them.
+            if fmt == "json" and body is not None and isinstance(payload, dict):
+                residual = strong_doctor_json_residual_fields(body)
+                target = (
+                    payload["strong"]
+                    if isinstance(payload.get("strong"), dict)
+                    else payload
+                )
+                if isinstance(target, dict):
+                    for key, val in residual.items():
+                        target.setdefault(key, val)
+            emit(payload, output_format=output_format, table_title="STRONG")
 
     run_coro(_strong())
 
@@ -4319,35 +4340,37 @@ def monitor_audit(url: str | None, output_format: str) -> None:
             )
             return
         endpoint = f"{monitoring_url.rstrip('/')}/metrics/shared-audit"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(endpoint) as response:
-                payload = await response.json()
-                # Human summary for table/plain: capabilities honesty
-                fmt = (output_format or "json").lower()
-                if fmt in {"table", "plain"} and isinstance(payload, dict):
-                    body = (
-                        payload.get("shared_audit")
-                        if isinstance(payload.get("shared_audit"), dict)
-                        else payload
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(endpoint) as response,
+        ):
+            payload = await response.json()
+            # Human summary for table/plain: capabilities honesty
+            fmt = (output_format or "json").lower()
+            if fmt in {"table", "plain"} and isinstance(payload, dict):
+                body = (
+                    payload.get("shared_audit")
+                    if isinstance(payload.get("shared_audit"), dict)
+                    else payload
+                )
+                if isinstance(body, dict):
+                    caps = body.get("capabilities") or {}
+                    counters = body.get("counters") or {}
+                    console.print(
+                        "[bold]Shared audit[/bold] "
+                        f"status={body.get('status')} "
+                        f"store={body.get('store_size', 0)} "
+                        f"flag={body.get('enabled_flag')} | "
+                        f"caps gset={caps.get('gset_epidemic')} "
+                        f"siem={caps.get('siem', False)} "
+                        f"bft={caps.get('bft', False)} "
+                        f"inf_ret={caps.get('infinite_retention', False)} "
+                        f"lin_ops={caps.get('linearizable_cluster_ops', False)} | "
+                        f"deltas_recv={counters.get('deltas_recv', 0)} "
+                        f"drops={counters.get('publish_dropped', 0)} "
+                        "[dim](not SIEM; not BFT; bounded watermark)[/dim]"
                     )
-                    if isinstance(body, dict):
-                        caps = body.get("capabilities") or {}
-                        counters = body.get("counters") or {}
-                        console.print(
-                            "[bold]Shared audit[/bold] "
-                            f"status={body.get('status')} "
-                            f"store={body.get('store_size', 0)} "
-                            f"flag={body.get('enabled_flag')} | "
-                            f"caps gset={caps.get('gset_epidemic')} "
-                            f"siem={caps.get('siem', False)} "
-                            f"bft={caps.get('bft', False)} "
-                            f"inf_ret={caps.get('infinite_retention', False)} "
-                            f"lin_ops={caps.get('linearizable_cluster_ops', False)} | "
-                            f"deltas_recv={counters.get('deltas_recv', 0)} "
-                            f"drops={counters.get('publish_dropped', 0)} "
-                            "[dim](not SIEM; not BFT; bounded watermark)[/dim]"
-                        )
-                emit(payload, output_format=output_format, table_title="Shared audit")
+            emit(payload, output_format=output_format, table_title="Shared audit")
 
     run_coro(_audit())
 
@@ -4371,15 +4394,15 @@ def dns_metrics(url: str | None, output_format: str) -> None:
             )
             return
         endpoint = f"{monitoring_url.rstrip('/')}/dns/metrics"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(endpoint) as response:
-                payload = await response.json()
-                if response.status != 200:
-                    emit(
-                        payload, output_format=output_format, table_title="DNS metrics"
-                    )
-                    return
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(endpoint) as response,
+        ):
+            payload = await response.json()
+            if response.status != 200:
                 emit(payload, output_format=output_format, table_title="DNS metrics")
+                return
+            emit(payload, output_format=output_format, table_title="DNS metrics")
 
     run_coro(_dns_metrics())
 
@@ -4452,14 +4475,16 @@ def persistence_watch(interval: int, url: str | None, output_format: str) -> Non
                 console.print(
                     f"[bold blue]💾 Persistence Snapshots - {time.time():.0f}[/bold blue]"
                 )
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(endpoint) as response:
-                        payload = await response.json()
-                        emit(
-                            payload,
-                            output_format=output_format,
-                            table_title="Persistence",
-                        )
+                async with (
+                    aiohttp.ClientSession() as session,
+                    session.get(endpoint) as response,
+                ):
+                    payload = await response.json()
+                    emit(
+                        payload,
+                        output_format=output_format,
+                        table_title="Persistence",
+                    )
                 await asyncio.sleep(interval)
         except KeyboardInterrupt:
             console.print("\n[yellow]⚠️ Persistence monitoring stopped[/yellow]")
@@ -4486,13 +4511,15 @@ def endpoints(url: str | None, output_format: str) -> None:
             )
             return
         endpoint = f"{monitoring_url.rstrip('/')}/endpoints"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(endpoint) as response:
-                payload = await response.json()
-                if response.status != 200:
-                    emit(payload, output_format=output_format, table_title="Endpoints")
-                    return
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(endpoint) as response,
+        ):
+            payload = await response.json()
+            if response.status != 200:
                 emit(payload, output_format=output_format, table_title="Endpoints")
+                return
+            emit(payload, output_format=output_format, table_title="Endpoints")
 
     run_coro(_endpoints())
 
@@ -4586,7 +4613,7 @@ def generate(output_path: str):
     from pathlib import Path
 
     output_file = Path(output_path)
-    with open(output_file, "w") as f:
+    with Path(output_file).open("w") as f:
         f.write(dumps_pretty_text(discovery_config))
 
     console.print(
@@ -4625,7 +4652,7 @@ def show(config_path: str, key: str | None):
     from rich.syntax import Syntax
 
     try:
-        with open(config_path) as f:
+        with Path(config_path).open() as f:
             config_data = loads_text(f.read())
 
         if key:
@@ -4650,7 +4677,7 @@ def show(config_path: str, key: str | None):
             )
             console.print(panel)
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         console.print(f"[red]❌ Error reading configuration: {e}[/red]")
 
 
@@ -4686,7 +4713,7 @@ def main():
     except KeyboardInterrupt:
         console.print("\n[yellow]⚠️ Operation cancelled by user[/yellow]")
         sys.exit(1)
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         console.print(f"[red]❌ Unexpected error: {e}[/red]")
         if "--verbose" in sys.argv or "-v" in sys.argv:
             import traceback

@@ -285,7 +285,7 @@ class TestPropertyBasedRPCTopologies:
                 f"✓ Linear chain on {topology['topology_type']} topology: {len(commands)} steps"
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"✗ Linear chain failed on {topology['topology_type']} topology: {e}")
             # Don't fail the test - document the limitation
 
@@ -443,7 +443,7 @@ class TestPropertyBasedRPCTopologies:
             )
             print(f"  Result: {sync_result}")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"✗ Parallel execution failed: {e}")
             # Document limitation rather than failing
 
@@ -551,7 +551,7 @@ class TestPropertyBasedRPCTopologies:
 
             print(f"✓ Dependency chain: {len(commands)} commands resolved successfully")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"✗ Dependency chain failed: {e}")
             # Document rather than fail
 
@@ -682,7 +682,7 @@ class TestPropertyBasedFieldAccess:
                 )
                 print("✓ Field access completed (final results only)")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"✗ Field access failed: {e}")
 
         print("✓ Field access property test completed")

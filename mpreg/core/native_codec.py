@@ -32,6 +32,8 @@ from typing import Any, Protocol, runtime_checkable
 
 import orjson
 
+from .errors import OPERATIONAL_EXCEPTIONS
+
 # ---------------------------------------------------------------------------
 # Bounds — stats / fingerprints must stay O(1)-ish under catalog fan-out
 # ---------------------------------------------------------------------------
@@ -68,7 +70,7 @@ def _stable_sequence(items: Any) -> list[Any]:
     """Deterministic list for set/frozenset (canonical digests)."""
     try:
         return sorted(items, key=lambda item: (type(item).__name__, repr(item)))
-    except Exception:
+    except OPERATIONAL_EXCEPTIONS:
         return list(items)
 
 
@@ -381,7 +383,7 @@ def estimate_size_bytes(value: Any) -> int:
                     if items + len(stack) >= _SIZE_MAX_ITEMS:
                         break
                     stack.append((getattr(current, field_name), depth + 1))
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 pass
             continue
 
@@ -484,13 +486,12 @@ def _feed_fingerprint(hasher: Any, payload: Any) -> None:
         items = 0
         try:
             keys = sorted(payload.keys(), key=lambda k: str(k))
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             keys = list(payload.keys())
-        for key in keys:
-            if items >= _FP_MAX_ITEMS:
+        for items, key in enumerate(keys, start=1):
+            if items > _FP_MAX_ITEMS:
                 hasher.update(b"...")
                 break
-            items += 1
             key_text = key if isinstance(key, str) else str(key)
             hasher.update(key_text.encode("utf-8", errors="ignore")[:64])
             _feed_fingerprint_bounded(hasher, payload[key], depth=1)
@@ -520,7 +521,7 @@ def _feed_fingerprint(hasher: Any, payload: Any) -> None:
             for field_name in payload.__dataclass_fields__:  # type: ignore[union-attr]
                 hasher.update(field_name.encode("ascii", errors="ignore"))
                 _feed_fingerprint_bounded(hasher, getattr(payload, field_name), depth=1)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             pass
         return
 
@@ -541,7 +542,7 @@ def _feed_fingerprint_bounded(hasher: Any, value: Any, *, depth: int) -> None:
         # Only sketch a few keys at nested depth.
         try:
             keys = list(value.keys())[:8]
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             keys = []
         for key in keys:
             key_text = key if isinstance(key, str) else str(key)

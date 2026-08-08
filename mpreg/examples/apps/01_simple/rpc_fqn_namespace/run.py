@@ -16,6 +16,7 @@ from mpreg.core.rpc_naming import (
     qualify_rpc_name,
 )
 from mpreg.examples.apps._shared.runtime import (
+    EXAMPLE_RUN_EXCEPTIONS,
     app_run,
     ensure,
     ok,
@@ -213,7 +214,7 @@ async def main() -> None:
                         try:
                             peers = await client.list_peers()
                             step(f"platform list_peers ok type={type(peers).__name__}")
-                        except Exception as exc:
+                        except EXAMPLE_RUN_EXCEPTIONS as exc:
                             # list_peers may still work; if not, note honestly
                             step(f"platform call path: {type(exc).__name__}: {exc}")
                         ok("bound client: bare under orders.*; outside denied")
@@ -231,7 +232,7 @@ async def main() -> None:
                             await client.call(
                                 "add", 1, 1, locs=frozenset(["cpu"]), timeout=3.0
                             )
-                        except Exception as exc:
+                        except EXAMPLE_RUN_EXCEPTIONS as exc:
                             missed = True
                             step(
                                 f"other.add miss (expected): "

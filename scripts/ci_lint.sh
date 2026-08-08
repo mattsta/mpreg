@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
-# H2: lint gate
-# - E9 critical on full tree
-# - I/F401/UP035 on mpreg (kept clean via autofix)
-# - Full project rules on release-gate surface
+# H2: lint gate — full-tree ruff (project rules)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 if command -v uv >/dev/null 2>&1; then
-  RUN=(uv run)
+  RUN=(uv tool run)
 else
   RUN=()
 fi
-echo "== ci_lint: E9 critical (mpreg + tests) =="
-"${RUN[@]}" ruff check mpreg tests --select E9
-echo "== ci_lint: mpreg I/F401/UP035 =="
-"${RUN[@]}" ruff check mpreg --select I,F401,UP035
-echo "== ci_lint: release surface (full project rules) =="
-"${RUN[@]}" ruff check tests/release/ tests/test_config_check_cli.py
+echo "== ci_lint: full-tree ruff check =="
+# Prefer uv tool run ruff (matches local tooling); fall back to uv run
+if command -v uv >/dev/null 2>&1; then
+  uv tool run ruff check mpreg tests tools
+else
+  ruff check mpreg tests tools
+fi
 echo "ci_lint OK"

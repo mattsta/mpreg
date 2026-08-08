@@ -7,6 +7,7 @@ import sys
 from mpreg.core.advanced_cache_ops import AdvancedCacheOperations
 from mpreg.core.cache_pubsub_integration import CachePubSubIntegration
 from mpreg.core.caching import CacheConfiguration
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.global_cache import GlobalCacheConfiguration, GlobalCacheManager
 from mpreg.core.topic_exchange import TopicExchange
 
@@ -62,7 +63,7 @@ async def debug_cache_setup():
 
         print("🎉 Debug completed successfully - no hanging detected!")
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"❌ Error during debug: {e}")
         import traceback
 
@@ -76,6 +77,6 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("❌ Script was interrupted (possible hang)")
         sys.exit(1)
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)

@@ -30,9 +30,15 @@ from typing import Any, Protocol, runtime_checkable
 from loguru import logger
 
 from .production_raft import (
+    AppendEntriesRequest,
+    AppendEntriesResponse,
+    InstallSnapshotRequest,
+    InstallSnapshotResponse,
     RaftState,
     RaftStorageProtocol,
     RaftTransportProtocol,
+    RequestVoteRequest,
+    RequestVoteResponse,
     StateMachineProtocol,
 )
 from .production_raft_implementation import ProductionRaft, RaftConfiguration
@@ -248,13 +254,21 @@ class LeaderElection(Protocol):
 
 
 class _NullRaftTransport:
-    async def send_request_vote(self, target, request):
+    """No-op transport for single-node / test leader election setups."""
+
+    async def send_request_vote(
+        self, target: str, request: RequestVoteRequest
+    ) -> RequestVoteResponse | None:
         return None
 
-    async def send_append_entries(self, target, request):
+    async def send_append_entries(
+        self, target: str, request: AppendEntriesRequest
+    ) -> AppendEntriesResponse | None:
         return None
 
-    async def send_install_snapshot(self, target, request):
+    async def send_install_snapshot(
+        self, target: str, request: InstallSnapshotRequest
+    ) -> InstallSnapshotResponse | None:
         return None
 
 
@@ -358,7 +372,14 @@ class RaftBasedLeaderElection:
             if leader:
                 return leader
             await asyncio.sleep(0.05)
-        return self._raft.current_leader or self.node_id
+        leader = self._raft.current_leader
+        if leader is not None:
+            return leader
+        # node_id is set in _ensure_started; fall back to cluster_id
+        node_id = self.node_id
+        if node_id is not None:
+            return node_id
+        return self.cluster_id
 
     async def get_current_leader(self, namespace: str) -> ClusterId | None:
         if not namespace:

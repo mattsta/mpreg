@@ -51,7 +51,7 @@ async def test_m2_deadline_miss_rate_bounded() -> None:
 
         try:
             await call_with_policy(slow, policy)
-        except Exception:
+        except Exception:  # noqa: BLE001
             misses += 1
     # Soft-RT must fail closed on slow ops
     assert misses == total

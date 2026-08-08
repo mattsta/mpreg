@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 # ERG-T13-04: stable plane façade error codes (see mpreg/core/error_codes.json).
 PLANE_ERR_UNAVAILABLE = 1007  # UNAVAILABLE
 PLANE_ERR_INVALID_ARGUMENT = 1008  # INVALID_ARGUMENT
@@ -64,7 +66,7 @@ def rpc_actor_ids(server: Any, body: dict[str, Any]) -> tuple[str, str | None]:
         from mpreg.server import _current_rpc_actor_context
 
         ctx = _current_rpc_actor_context.get()
-    except Exception:
+    except OPERATIONAL_EXCEPTIONS:
         ctx = None
     if not isinstance(ctx, dict):
         ctx = getattr(server, "_rpc_actor_context", None)
@@ -394,7 +396,7 @@ async def cache_put(
                 opts = CacheOptions(
                     consistency_level=ConsistencyLevel(str(raw_cl).lower())
                 )
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return {
                 "success": False,
                 "error_message": f"invalid_consistency_level:{raw_cl}",

@@ -82,6 +82,7 @@ if __name__ == "__main__":
                 timeout=30,
                 capture_output=True,
                 text=True,
+                check=False,
             )
 
             if result.returncode == 0:

@@ -76,12 +76,11 @@ async def test_decisions_http_endpoint(server_cluster_ports: list[int]) -> None:
         await mon.start()
         try:
             url = f"http://127.0.0.1:{monitoring_port}/routing/decisions?limit=10"
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as resp:
-                    assert resp.status == 200
-                    data = await resp.json()
-                    assert data["decisions"]
-                    assert data["decisions"][0]["message_id"] == "mid-1"
+            async with aiohttp.ClientSession() as session, session.get(url) as resp:
+                assert resp.status == 200
+                data = await resp.json()
+                assert data["decisions"]
+                assert data["decisions"][0]["message_id"] == "mid-1"
         finally:
             await mon.stop()
     finally:

@@ -8,6 +8,7 @@ from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 from mpreg.core.port_allocator import port_range_context
 from mpreg.examples.apps._shared.runtime import (
+    EXAMPLE_RUN_EXCEPTIONS,
     app_run,
     ensure,
     ok,
@@ -148,7 +149,7 @@ async def main() -> None:
                         )
                         step(f"cross-cluster eu ping → {eu_ping!r}")
                         ok(f"regional RPC us={us_ping} eu={eu_ping}")
-                    except Exception as exc:
+                    except EXAMPLE_RUN_EXCEPTIONS as exc:
                         step(
                             f"cross-cluster eu not routed (honest): "
                             f"{type(exc).__name__}: {exc}"
@@ -173,7 +174,7 @@ async def main() -> None:
                             target_cluster="eu-west-no-bridge",
                             timeout=3.0,
                         )
-                    except Exception as exc:
+                    except EXAMPLE_RUN_EXCEPTIONS as exc:
                         failed = True
                         detail = f"{type(exc).__name__}: {exc}"
                         step(f"expected route miss: {detail}")

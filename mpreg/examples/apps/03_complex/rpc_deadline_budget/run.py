@@ -10,6 +10,7 @@ from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 from mpreg.core.port_allocator import port_range_context
 from mpreg.examples.apps._shared.runtime import (
+    EXAMPLE_RUN_EXCEPTIONS,
     app_run,
     ensure,
     ok,
@@ -119,7 +120,7 @@ async def main() -> None:
                                 locs=frozenset(["work"]),
                                 timeout=0.35,
                             )
-                        except Exception as exc:
+                        except EXAMPLE_RUN_EXCEPTIONS as exc:
                             failed = True
                             step(f"expected timeout/fail: {type(exc).__name__}: {exc}")
                     elapsed = time.monotonic() - t0

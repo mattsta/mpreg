@@ -8,6 +8,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 from tests.port_allocator import get_port_allocator
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 
 def simulate_xdist_worker(worker_id: str, port_count: int):
     """Simulate what a pytest-xdist worker does."""
@@ -35,7 +37,7 @@ def simulate_xdist_worker(worker_id: str, port_count: int):
         print(f"   🧹 Worker {worker_id}: Released all ports")
         return True
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         duration = time.time() - start_time
         print(f"   ❌ Worker {worker_id}: FAILED after {duration:.2f}s - {e}")
         return False
@@ -81,7 +83,7 @@ def test_concurrent_allocation():
             try:
                 success = future.result(timeout=30)  # 30 second timeout per worker
                 results[worker_id] = success
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 print(f"   ❌ Worker {worker_id}: TIMEOUT or ERROR: {e}")
                 results[worker_id] = False
 
@@ -121,7 +123,7 @@ def test_different_port_counts():
                 try:
                     success = future.result(timeout=15)
                     results.append(success)
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     print(f"   ❌ Worker {i}: TIMEOUT: {e}")
                     results.append(False)
 

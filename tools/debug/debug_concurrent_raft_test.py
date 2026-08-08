@@ -9,6 +9,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 sys.path.insert(0, "/Users/matt/repos/mpreg")
 
 from mpreg.datastructures.production_raft_implementation import RaftState
@@ -102,7 +104,7 @@ async def run_single_test(test_id: str, delay: float = 0.0):
                     "applied_count": applied_count,
                 }
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             print(f"[{test_id}] ❌ Exception: {e}")
             return {"test_id": test_id, "success": False, "error": str(e)}
         finally:

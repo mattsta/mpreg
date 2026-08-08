@@ -14,8 +14,12 @@ from mpreg.core.monitoring.unified_monitoring import (
     UnifiedSystemMonitor,
 )
 from mpreg.core.port_allocator import port_range_context
-from mpreg.core.transport.interfaces import SecurityConfig, TransportConfig
+from mpreg.core.transport.interfaces import (
+    SecurityConfig,
+    TransportConfig,
+)
 from mpreg.examples.apps._shared.runtime import (
+    EXAMPLE_RUN_EXCEPTIONS,
     app_run,
     ensure,
     ok,
@@ -89,12 +93,14 @@ async def main() -> None:
                         "client.auth",
                         "tx.security",
                     ):
-                        async with aiohttp.ClientSession() as session:
-                            async with session.get(f"{base}/health") as resp:
-                                ensure(
-                                    resp.status == 401,
-                                    f"expected 401 without token got {resp.status}",
-                                )
+                        async with (
+                            aiohttp.ClientSession() as session,
+                            session.get(f"{base}/health") as resp,
+                        ):
+                            ensure(
+                                resp.status == 401,
+                                f"expected 401 without token got {resp.status}",
+                            )
                         ok("GET /health → 401 without bearer")
 
                     with scenario(
@@ -103,15 +109,15 @@ async def main() -> None:
                         "mon.health",
                     ):
                         headers = {"Authorization": f"Bearer {token}"}
-                        async with aiohttp.ClientSession() as session:
-                            async with session.get(
-                                f"{base}/health", headers=headers
-                            ) as resp:
-                                ensure(
-                                    resp.status == 200,
-                                    f"bearer health expected 200 got {resp.status}",
-                                )
-                                body = await resp.text()
+                        async with (
+                            aiohttp.ClientSession() as session,
+                            session.get(f"{base}/health", headers=headers) as resp,
+                        ):
+                            ensure(
+                                resp.status == 200,
+                                f"bearer health expected 200 got {resp.status}",
+                            )
+                            body = await resp.text()
                         ok(f"Bearer health 200 body_len={len(body)}")
 
                     with scenario(
@@ -119,14 +125,14 @@ async def main() -> None:
                         "client.auth",
                     ):
                         headers = {"X-MPREG-Monitoring-Token": token}
-                        async with aiohttp.ClientSession() as session:
-                            async with session.get(
-                                f"{base}/health", headers=headers
-                            ) as resp:
-                                ensure(
-                                    resp.status == 200,
-                                    f"header health expected 200 got {resp.status}",
-                                )
+                        async with (
+                            aiohttp.ClientSession() as session,
+                            session.get(f"{base}/health", headers=headers) as resp,
+                        ):
+                            ensure(
+                                resp.status == 200,
+                                f"header health expected 200 got {resp.status}",
+                            )
                         ok("X-MPREG-Monitoring-Token accepted")
 
                     with scenario(
@@ -136,15 +142,17 @@ async def main() -> None:
                     ):
                         rejected = False
                         try:
-                            async with asyncio.timeout(3.0):
-                                async with MPREGClientAPI(url) as client:
-                                    await client.call(
-                                        "ping",
-                                        "noauth",
-                                        locs=frozenset(["compute"]),
-                                        timeout=2.0,
-                                    )
-                        except (Exception, asyncio.CancelledError, TimeoutError) as exc:
+                            async with (
+                                asyncio.timeout(3.0),
+                                MPREGClientAPI(url) as client,
+                            ):
+                                await client.call(
+                                    "ping",
+                                    "noauth",
+                                    locs=frozenset(["compute"]),
+                                    timeout=2.0,
+                                )
+                        except EXAMPLE_RUN_EXCEPTIONS as exc:
                             rejected = True
                             step(f"unauthenticated WS rejected: {type(exc).__name__}")
                         ensure(
@@ -178,14 +186,14 @@ async def main() -> None:
                         "client.auth",
                     ):
                         headers = {"Authorization": "Bearer wrong-token"}
-                        async with aiohttp.ClientSession() as session:
-                            async with session.get(
-                                f"{base}/health", headers=headers
-                            ) as resp:
-                                ensure(
-                                    resp.status == 401,
-                                    f"wrong token expected 401 got {resp.status}",
-                                )
+                        async with (
+                            aiohttp.ClientSession() as session,
+                            session.get(f"{base}/health", headers=headers) as resp,
+                        ):
+                            ensure(
+                                resp.status == 401,
+                                f"wrong token expected 401 got {resp.status}",
+                            )
                         ok("wrong bearer rejected")
                         step(
                             "mTLS local-cert path: see tls_dev_handshake (Phase J F12)"

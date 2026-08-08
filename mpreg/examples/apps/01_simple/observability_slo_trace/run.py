@@ -89,15 +89,15 @@ async def main() -> None:
         with scenario("bind_current_trace contextvar", "mon.trace_context"):
             parent = generate_traceparent()
             ensure(get_current_traceparent() is None, "pre-bind dirty")
-            with probe.measure("trace.bind"):
-                with bind_current_trace(parent, tracestate="vendor=1"):
-                    ensure(get_current_traceparent() == parent, "bind failed")
-                    injected = inject_trace_metadata({"hop": "1"})
-                    ensure(injected[TRACEPARENT_KEY] == parent, "inject ignored bind")
-                    ensure(
-                        injected.get(TRACESTATE_KEY) == "vendor=1", "tracestate miss"
-                    )
-                    ensure(injected.get("hop") == "1", "payload clobbered")
+            with (
+                probe.measure("trace.bind"),
+                bind_current_trace(parent, tracestate="vendor=1"),
+            ):
+                ensure(get_current_traceparent() == parent, "bind failed")
+                injected = inject_trace_metadata({"hop": "1"})
+                ensure(injected[TRACEPARENT_KEY] == parent, "inject ignored bind")
+                ensure(injected.get(TRACESTATE_KEY) == "vendor=1", "tracestate miss")
+                ensure(injected.get("hop") == "1", "payload clobbered")
             ensure(get_current_traceparent() is None, "unbind failed")
             ok("bind/unbind + inject")
 

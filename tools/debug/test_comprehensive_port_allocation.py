@@ -14,6 +14,8 @@ import os
 import sys
 import tempfile
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 # Simulate different worker environments
 WORKER_SCENARIOS = [
     ("master", "master"),
@@ -93,7 +95,7 @@ def test_worker_scenario(worker_id: str, expected_id: str):
                                 )
                                 all_ranges_valid = False
 
-                        except Exception as e:
+                        except OPERATIONAL_EXCEPTIONS as e:
                             print(
                                 f"    ❌ ERROR: Failed to allocate {category} port: {e}"
                             )
@@ -108,7 +110,7 @@ def test_worker_scenario(worker_id: str, expected_id: str):
                         for port in bulk_ports:
                             allocator.release_port(port)
 
-                    except Exception as e:
+                    except OPERATIONAL_EXCEPTIONS as e:
                         print(f"    ❌ ERROR: Bulk allocation failed: {e}")
                         all_ranges_valid = False
 
@@ -116,7 +118,7 @@ def test_worker_scenario(worker_id: str, expected_id: str):
                     for port in allocated_ports.values():
                         allocator.release_port(port)
 
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     print(f"    ❌ ERROR: General allocation test failed: {e}")
                     all_ranges_valid = False
 
@@ -175,7 +177,7 @@ def test_high_capacity_usage():
                     for port in worker_ports:
                         allocator.release_port(port)
 
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     print(f"    ❌ Worker {worker_id}: Failed to allocate ports: {e}")
 
         finally:

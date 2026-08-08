@@ -18,6 +18,7 @@ echo "== ci_unit_fast =="
   tests/test_strong_audit_monitoring_endpoints.py \
   tests/test_unified_client.py \
   tests/test_client_trace_metadata.py \
+  tests/test_type_annotation_runtime_contracts.py \
   tests/release/ \
   -m "not slow and not chaos and not example_suite and not example_apps" \
   -q --tb=line

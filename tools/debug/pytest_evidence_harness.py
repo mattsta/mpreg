@@ -33,6 +33,8 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 type NodeId = str
 type RunOrdinal = int
 type Seconds = float
@@ -248,7 +250,7 @@ def _load_manifest(path: Path) -> HarnessManifest:
         raise ValueError(f"Manifest file not found: {path}")
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
-        raise ValueError("Manifest must be a JSON object")
+        raise TypeError("Manifest must be a JSON object")
 
     raw_preset = payload.get("preset")
     preset = str(raw_preset) if raw_preset is not None else None
@@ -260,7 +262,7 @@ def _load_manifest(path: Path) -> HarnessManifest:
     if raw_tests is None:
         raw_tests = []
     if not isinstance(raw_tests, list):
-        raise ValueError("Manifest 'tests' must be a list of node IDs")
+        raise TypeError("Manifest 'tests' must be a list of node IDs")
     tests = tuple(str(nodeid) for nodeid in raw_tests if str(nodeid).strip())
 
     raw_run_mode = payload.get("run_mode", DEFAULT_RUN_MODE)
@@ -288,14 +290,14 @@ def _load_manifest(path: Path) -> HarnessManifest:
     if raw_pytest_args is None:
         raw_pytest_args = []
     if not isinstance(raw_pytest_args, list):
-        raise ValueError("Manifest 'pytest_args' must be a list of strings")
+        raise TypeError("Manifest 'pytest_args' must be a list of strings")
     pytest_args = tuple(str(value) for value in raw_pytest_args)
 
     raw_env_entries = payload.get("env_overrides", payload.get("env", []))
     if raw_env_entries is None:
         raw_env_entries = []
     if not isinstance(raw_env_entries, list):
-        raise ValueError("Manifest 'env_overrides' must be a list of KEY=VALUE strings")
+        raise TypeError("Manifest 'env_overrides' must be a list of KEY=VALUE strings")
     env_overrides = _parse_env_entries(tuple(str(value) for value in raw_env_entries))
 
     stop_on_failure = bool(payload.get("stop_on_failure", False))
@@ -397,7 +399,7 @@ def _terminate_process_group(
             process.terminate()
     except ProcessLookupError:
         return
-    except Exception:
+    except OPERATIONAL_EXCEPTIONS:
         pass
     try:
         process.wait(timeout=grace_seconds)
@@ -413,7 +415,7 @@ def _terminate_process_group(
             process.kill()
     except ProcessLookupError:
         return
-    except Exception:
+    except OPERATIONAL_EXCEPTIONS:
         pass
 
 

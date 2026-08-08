@@ -8,6 +8,7 @@ equivalence for the G-Set visibility claim.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import tempfile
 from pathlib import Path
 
@@ -114,10 +115,8 @@ async def test_three_node_server_boot_shared_store_and_local_publish() -> None:
                 pass
         finally:
             for s in servers:
-                try:
+                with contextlib.suppress(Exception):
                     await s.shutdown()
-                except Exception:  # noqa: BLE001
-                    pass
             for t in tasks:
                 t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)

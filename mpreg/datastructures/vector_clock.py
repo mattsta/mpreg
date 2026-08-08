@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
 
 from .type_aliases import (
     JsonDict,
@@ -17,24 +18,26 @@ from .type_aliases import (
     VectorClockTimestamp,
 )
 
+if TYPE_CHECKING:
+    from hypothesis import strategies as st
+else:
 
-class _LazySt:
-    """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
+    class _LazySt:
+        """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
 
-    _mod: object | None = None
+        _mod: Any | None = None
 
-    def _load(self) -> object:
-        if self._mod is None:
-            from hypothesis import strategies as st
+        def _load(self) -> Any:
+            if self._mod is None:
+                from hypothesis import strategies as st_mod
 
-            object.__setattr__(self, "_mod", st)
-        return self._mod  # type: ignore[return-value]
+                self._mod = st_mod
+            return self._mod
 
-    def __getattr__(self, name: str) -> object:
-        return getattr(self._load(), name)
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self._load(), name)
 
-
-st = _LazySt()
+    st = _LazySt()  # type: ignore[assignment]
 
 
 @dataclass(frozen=True, slots=True)
@@ -324,7 +327,7 @@ def vector_clock_strategy(
         )
 
         @st.composite
-        def build_from_node_ids(draw):
+        def build_from_node_ids(draw: Any) -> VectorClock:
             selected_nodes = draw(unique_node_ids)
             entries = []
             for node_id in selected_nodes:
@@ -336,7 +339,7 @@ def vector_clock_strategy(
     else:
         # Generate random unique node IDs
         @st.composite
-        def build_with_unique_nodes(draw):
+        def build_with_unique_nodes(draw: Any) -> VectorClock:
             num_entries = draw(st.integers(min_value=0, max_value=max_entries))
             node_ids = draw(
                 st.lists(
@@ -371,7 +374,7 @@ def ordered_vector_clocks_strategy() -> st.SearchStrategy[
     node_ids = ["node1", "node2", "node3"]
 
     @st.composite
-    def generate_ordered_pair(draw):
+    def generate_ordered_pair(draw: Any) -> tuple[VectorClock, VectorClock]:
         # Generate first clock - ensure unique node IDs
         num_entries = draw(st.integers(min_value=0, max_value=3))
         selected_nodes = draw(

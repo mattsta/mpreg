@@ -123,7 +123,7 @@ class TestFederatedRPCPerformance:
             )
             assert success, "Function should be reachable after propagation"
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"❌ Latency test failed: {e}")
             pytest.fail(f"Latency test failed: {e}")
 
@@ -440,7 +440,7 @@ class TestFederatedRPCPerformance:
                         f"❌ Test {test_id}: Node {source_node} → Node {target_node} FAILED"
                     )
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 connectivity_tests.append(False)
                 print(
                     f"❌ Test {test_id}: Node {source_node} → Node {target_node} ERROR: {e}"
@@ -563,7 +563,7 @@ class TestFederatedRPCPerformance:
                 try:
                     await client.connect()
                     return
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001
                     last_error = exc
                     await asyncio.sleep(0.5)
             raise AssertionError(

@@ -168,46 +168,47 @@ class TestFederationPubSubIntegration:
                     remote_messages.append(message.topic)
                     remote_ready.set()
 
-                async with MPREGPubSubExtendedClient(server1_url) as client1:
-                    async with MPREGPubSubExtendedClient(server2_url) as client2:
-                        await client1.subscribe(
-                            patterns=["local.*"],
-                            callback=local_callback,
-                            get_backlog=False,
+                async with (
+                    MPREGPubSubExtendedClient(server1_url) as client1,
+                    MPREGPubSubExtendedClient(server2_url) as client2,
+                ):
+                    await client1.subscribe(
+                        patterns=["local.*"],
+                        callback=local_callback,
+                        get_backlog=False,
+                    )
+                    await client2.subscribe(
+                        patterns=["federation.*"],
+                        callback=remote_callback,
+                        get_backlog=False,
+                    )
+
+                    def remote_subscription_gossiped() -> bool:
+                        if not server1._fabric_control_plane:
+                            return False
+                        matches = server1._fabric_control_plane.index.match_topics(
+                            TopicQuery(topic="federation.message")
                         )
-                        await client2.subscribe(
-                            patterns=["federation.*"],
-                            callback=remote_callback,
-                            get_backlog=False,
+                        return any(
+                            sub.node_id != server1.cluster.local_url for sub in matches
                         )
 
-                        def remote_subscription_gossiped() -> bool:
-                            if not server1._fabric_control_plane:
-                                return False
-                            matches = server1._fabric_control_plane.index.match_topics(
-                                TopicQuery(topic="federation.message")
-                            )
-                            return any(
-                                sub.node_id != server1.cluster.local_url
-                                for sub in matches
-                            )
+                    await wait_for_condition(
+                        remote_subscription_gossiped,
+                        timeout=10.0,
+                        interval=0.2,
+                        error_message="Remote federation subscription not gossiped",
+                    )
 
-                        await wait_for_condition(
-                            remote_subscription_gossiped,
-                            timeout=10.0,
-                            interval=0.2,
-                            error_message="Remote federation subscription not gossiped",
-                        )
+                    await client1.publish(
+                        "local.message", {"type": "local", "cluster": 1}
+                    )
+                    await client1.publish(
+                        "federation.message",
+                        {"type": "federation", "cluster": 1},
+                    )
 
-                        await client1.publish(
-                            "local.message", {"type": "local", "cluster": 1}
-                        )
-                        await client1.publish(
-                            "federation.message",
-                            {"type": "federation", "cluster": 1},
-                        )
-
-                        await asyncio.wait_for(remote_ready.wait(), timeout=5.0)
+                    await asyncio.wait_for(remote_ready.wait(), timeout=5.0)
 
                 assert local_messages == ["local.message"]
                 assert remote_messages == ["federation.message"]

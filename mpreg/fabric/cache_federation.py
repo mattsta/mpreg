@@ -34,6 +34,7 @@ from mpreg.core.cache_models import (
     GlobalCacheKey,
 )
 from mpreg.core.cache_protocol import CacheKeyMessage, CacheMetadataMessage
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.serialization import JsonSerializer
 from mpreg.datastructures.type_aliases import NodeId
 
@@ -445,7 +446,7 @@ class FabricCacheProtocol:
 
             return success
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             fabric_cache_log.error(f"Error handling cache federation message: {e}")
             self.statistics.operations_rejected += 1
             return False
@@ -473,7 +474,7 @@ class FabricCacheProtocol:
                 )
                 return False
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             fabric_cache_log.error(
                 f"Error processing cache operation {message.operation_type}: {e}"
             )
@@ -580,7 +581,7 @@ class FabricCacheProtocol:
             fabric_cache_log.debug(f"Cache QUERY responded with {len(matches)} entries")
             return True
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             fabric_cache_log.error(f"Cache QUERY handling failed: {e}")
             return False
 
@@ -641,7 +642,7 @@ class FabricCacheProtocol:
                     f"No handler for conflict resolution strategy: {conflict.resolution_strategy}"
                 )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             fabric_cache_log.error(f"Error handling cache conflict: {e}")
 
     def _resolve_by_timestamp(self, conflict: CacheConflict) -> GlobalCacheEntry | None:
@@ -768,7 +769,7 @@ class FabricCacheProtocol:
             fabric_cache_log.debug(f"Synchronized cache state with peer {peer_node}")
             return True
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             fabric_cache_log.error(
                 f"Error synchronizing cache state with {peer_node}: {e}"
             )
@@ -824,7 +825,7 @@ class FabricCacheProtocol:
                         f"Gossiped {len(operations_to_send)} cache operations"
                     )
 
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 fabric_cache_log.error(f"Gossip worker error: {e}")
 
     async def _anti_entropy_worker(self) -> None:
@@ -842,7 +843,7 @@ class FabricCacheProtocol:
                     await self.sync_cache_state(peer)
                     self.statistics.anti_entropy_runs += 1
 
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 fabric_cache_log.error(f"Anti-entropy worker error: {e}")
 
     def create_cache_digest(self) -> CacheDigest:

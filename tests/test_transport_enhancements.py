@@ -428,7 +428,7 @@ class TestTransportEnhancementIntegration:
                         mock_transport.send.side_effect = Exception("Connection failed")
                         await mock_transport.send(b"data")
                         breaker.record_failure()
-                except Exception:
+                except Exception:  # noqa: BLE001
                     breaker.record_failure()
             else:
                 # Circuit is open, skip operation

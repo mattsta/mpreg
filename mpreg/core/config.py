@@ -348,7 +348,7 @@ class MPREGSettings:
         if isinstance(payload, dict) and isinstance(payload.get("mpreg"), dict):
             payload = payload["mpreg"]
         if not isinstance(payload, dict):
-            raise ValueError("Settings JSON must be an object")
+            raise TypeError("Settings JSON must be an object")
         return cls.from_dict(payload)
 
     @classmethod
@@ -357,7 +357,7 @@ class MPREGSettings:
         if isinstance(payload, dict) and isinstance(payload.get("mpreg"), dict):
             payload = payload["mpreg"]
         if not isinstance(payload, dict):
-            raise ValueError("Settings TOML must be a table")
+            raise TypeError("Settings TOML must be a table")
         return cls.from_dict(payload)
 
     @classmethod
@@ -379,7 +379,7 @@ class MPREGSettings:
         if isinstance(payload, PersistenceConfig):
             return payload
         if not isinstance(payload, dict):
-            raise ValueError("persistence_config must be a mapping")
+            raise TypeError("persistence_config must be a mapping")
 
         mode_value = payload.get("mode", PersistenceMode.MEMORY.value)
         mode = (
@@ -407,7 +407,7 @@ class MPREGSettings:
         if isinstance(payload, RouteSecurityConfig):
             return payload
         if not isinstance(payload, dict):
-            raise ValueError("fabric_route_security_config must be a mapping")
+            raise TypeError("fabric_route_security_config must be a mapping")
         return RouteSecurityConfig(
             require_signatures=bool(payload.get("require_signatures", False)),
             allow_unsigned=bool(payload.get("allow_unsigned", True)),

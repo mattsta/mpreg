@@ -9,6 +9,8 @@ import asyncio
 import sys
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -46,7 +48,7 @@ async def test_fixture_shutdown_sequence():
             try:
                 # The fixtures call shutdown_async() DIRECTLY without shutdown() first
                 shutdown_tasks.append(asyncio.create_task(srv.shutdown_async()))
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 print(f"Error initiating server shutdown: {e}")
 
         # Wait for all servers to shut down properly
@@ -58,7 +60,7 @@ async def test_fixture_shutdown_sequence():
                 print("✅ All servers shut down within timeout")
             except TimeoutError:
                 print("⚠️  Some servers did not shut down within timeout")
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 print(f"⚠️  Error during server shutdown: {e}")
 
         # Cancel remaining tasks (this is also from conftest.py)
@@ -75,7 +77,7 @@ async def test_fixture_shutdown_sequence():
                 print("✅ All tasks completed/cancelled within timeout")
             except TimeoutError:
                 print("⚠️  Some tasks did not complete within timeout")
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 print(f"⚠️  Error during task cleanup: {e}")
 
         # Check final state
@@ -91,7 +93,7 @@ async def test_fixture_shutdown_sequence():
             print("❌ FAILURE: Incomplete shutdown")
             return False
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"❌ Test failed: {e}")
         import traceback
 
@@ -107,7 +109,7 @@ if __name__ == "__main__":
         else:
             print("\n❌ FIXTURE SHUTDOWN TEST FAILED!")
             sys.exit(1)
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"\n❌ TEST SCRIPT FAILED: {e}")
         import traceback
 

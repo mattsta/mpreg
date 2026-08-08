@@ -107,6 +107,7 @@ def test_cli_list_and_run_via_mpreg_entry() -> None:
         text=True,
         cwd="/Users/matt/repos/mpreg",
         timeout=90,
+        check=False,
     )
     assert list_p.returncode == 0, list_p.stderr
     assert "strong.happy_3" in list_p.stdout
@@ -117,6 +118,7 @@ def test_cli_list_and_run_via_mpreg_entry() -> None:
         text=True,
         cwd="/Users/matt/repos/mpreg",
         timeout=120,
+        check=False,
     )
     assert run_p.returncode == 0, run_p.stderr + run_p.stdout
     data = json.loads(run_p.stdout)
@@ -131,6 +133,7 @@ def test_cli_help_mentions_non_claims() -> None:
         text=True,
         cwd="/Users/matt/repos/mpreg",
         timeout=60,
+        check=False,
     )
     assert p.returncode == 0
     out = p.stdout + p.stderr
@@ -146,6 +149,7 @@ def test_python_m_distlab_is_blocked() -> None:
         text=True,
         cwd="/Users/matt/repos/mpreg",
         timeout=30,
+        check=False,
     )
     assert p.returncode == 2
     assert "not supported" in (p.stderr + p.stdout).lower() or "mpreg distlab" in (
@@ -337,6 +341,7 @@ def test_cli_smoke_preset_via_mpreg_entry() -> None:
         text=True,
         cwd="/Users/matt/repos/mpreg",
         timeout=90,
+        check=False,
     )
     assert list_p.returncode == 0, list_p.stderr
     presets = json.loads(list_p.stdout)
@@ -348,6 +353,7 @@ def test_cli_smoke_preset_via_mpreg_entry() -> None:
         text=True,
         cwd="/Users/matt/repos/mpreg",
         timeout=180,
+        check=False,
     )
     assert run_p.returncode == 0, run_p.stderr + run_p.stdout
     data = json.loads(run_p.stdout)

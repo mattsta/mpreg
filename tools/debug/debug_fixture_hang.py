@@ -55,6 +55,7 @@ if __name__ == "__main__":
             "--tb=short",
         ],
         timeout=30,
+        check=False,
     )
 
     if result.returncode == 0:
@@ -71,6 +72,7 @@ if __name__ == "__main__":
                 "--tb=short",
             ],
             timeout=30,
+            check=False,
         )
 
         if result2.returncode == 0:

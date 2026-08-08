@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections import OrderedDict
+from typing import ClassVar
 
 import pytest
 
@@ -203,9 +204,9 @@ def test_status_fingerprint_dedup_on_server_method() -> None:
 
     # Avoid slots/__del__ of real MPREGServer — bind the method onto a plain object.
     class _S:
-        peer_status: dict = {}
-        _peer_instance_ids: dict = {}
-        _departed_peers: dict = {}
+        peer_status: ClassVar[dict] = {}
+        _peer_instance_ids: ClassVar[dict] = {}
+        _departed_peers: ClassVar[dict] = {}
         _status_announcement_tracker = None
 
         def _is_peer_departed(self, *a, **k):

@@ -13,6 +13,8 @@ from statistics import mean
 
 from hierarchical_federation_probe import ProbeConfig, _run_probe
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 type RunIndex = int
 type Seconds = float
 
@@ -68,7 +70,7 @@ def _configure_runtime_logging() -> None:
     logging.getLogger("asyncio").setLevel(logging.ERROR)
     try:
         from loguru import logger as loguru_logger
-    except Exception:
+    except OPERATIONAL_EXCEPTIONS:
         return
     loguru_logger.remove()
     loguru_logger.add(sys.stderr, level="ERROR")

@@ -10,6 +10,8 @@ import sys
 import warnings
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 # Suppress warnings to see only task destruction warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -53,7 +55,7 @@ async def stress_test_server_cleanup(server_id: int):
         # Return whether cleanup was successful
         return len(server._background_tasks) == 0
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"Server {server_id} failed: {e}")
         return False
     finally:
@@ -123,7 +125,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n⚠️  Test interrupted by user")
         sys.exit(1)
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"\n❌ TEST SUITE FAILED: {e}")
         import traceback
 

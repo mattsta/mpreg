@@ -18,6 +18,7 @@ from typing import Any
 from loguru import logger
 
 from ..datastructures import MessageId
+from .errors import OPERATIONAL_EXCEPTIONS
 from .message_queue import (
     DeliveryGuarantee,
     DeliveryResult,
@@ -211,7 +212,7 @@ class MessageQueueManager(ManagedObject):
             queue_mgr_log.info(f"Created queue: {name}")
             return True
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             queue_mgr_log.error(f"Failed to create queue {name}: {e}")
             return False
 
@@ -248,7 +249,7 @@ class MessageQueueManager(ManagedObject):
             queue_mgr_log.info(f"Deleted queue: {name}")
             return True
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             queue_mgr_log.error(f"Failed to delete queue {name}: {e}")
             return False
 
@@ -305,7 +306,7 @@ class MessageQueueManager(ManagedObject):
 
             return result
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             queue_mgr_log.error(f"Failed to send message to queue {queue_name}: {e}")
             return DeliveryResult(
                 success=False,
@@ -346,7 +347,7 @@ class MessageQueueManager(ManagedObject):
 
             return subscription_id
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             queue_mgr_log.error(f"Failed to subscribe to queue {queue_name}: {e}")
             return None
 
@@ -362,7 +363,7 @@ class MessageQueueManager(ManagedObject):
                 return True
             return False
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             queue_mgr_log.error(f"Failed to unsubscribe from queue {queue_name}: {e}")
             return False
 
@@ -377,7 +378,7 @@ class MessageQueueManager(ManagedObject):
             queue = self.queues[queue_name]
             return await queue.acknowledge_message(message_id, subscriber_id)
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             queue_mgr_log.error(
                 f"Failed to acknowledge message in queue {queue_name}: {e}"
             )
@@ -549,7 +550,7 @@ class MessageQueueManager(ManagedObject):
             queue_mgr_log.debug(f"Published message to topic exchange: {topic}")
             return True
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             queue_mgr_log.error(f"Failed to publish to topic exchange: {e}")
             return False
 
@@ -582,7 +583,7 @@ class MessageQueueManager(ManagedObject):
             )
             return True
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             queue_mgr_log.error(f"Failed to set up topic routing: {e}")
             return False
 

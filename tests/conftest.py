@@ -1,3 +1,7 @@
+import types
+
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 """Pytest configuration and fixtures for MPREG testing.
 
 This module provides comprehensive async fixtures for setting up and tearing down
@@ -102,7 +106,7 @@ def _cleanup_orphaned_event_loop() -> AsyncGenerator[None]:
             loop.run_until_complete(loop.shutdown_asyncgens())
             loop.run_until_complete(loop.shutdown_default_executor())
             gc.collect()
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
         loop.close()
         asyncio.set_event_loop(None)
@@ -125,18 +129,20 @@ class AsyncTestContext:
     async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         """Ensure all resources are cleaned up properly."""
         # Disconnect all clients first
         for client in self.clients:
             try:
                 await client.disconnect()
-            except Exception as e:
-                try:
+            except Exception as e:  # noqa: BLE001
+                with contextlib.suppress(RuntimeError):
                     logger.warning(f"Error disconnecting client: {e}")
-                except RuntimeError:
-                    # Event loop closed during logging
-                    pass
 
         # Stop all servers using ASYNC shutdown method
         shutdown_tasks = []
@@ -144,7 +150,7 @@ class AsyncTestContext:
             try:
                 # Use async shutdown instead of sync shutdown
                 shutdown_tasks.append(asyncio.create_task(server.shutdown_async()))
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 with contextlib.suppress(RuntimeError):
                     logger.warning(f"Error initiating server shutdown: {e}")
 
@@ -161,17 +167,23 @@ class AsyncTestContext:
                     logger.warning(
                         f"Some servers did not shut down within timeout ({shutdown_timeout:.1f}s)"
                     )
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 with contextlib.suppress(RuntimeError):
                     logger.warning(f"Error during server shutdown: {e}")
 
         # Give server tasks a moment to exit cleanly after shutdown
         if self.tasks:
-            try:
+            with contextlib.suppress(
+                OSError,
+                TimeoutError,
+                ConnectionError,
+                RuntimeError,
+                ValueError,
+                TypeError,
+                KeyError,
+            ):
                 grace_period = max(1.0, min(5.0, len(self.tasks) * 0.1))
                 await asyncio.wait(self.tasks, timeout=grace_period)
-            except Exception:
-                pass
 
         # Cancel remaining tracked tasks
         if self.tasks:
@@ -180,11 +192,8 @@ class AsyncTestContext:
                     task.cancel()
 
         # Give tasks time to respond to cancellation
-        try:
+        with contextlib.suppress(RuntimeError):
             await asyncio.sleep(0.3)
-        except RuntimeError:
-            # Event loop might be closed
-            pass
 
         # Wait for all tracked tasks to complete with timeout
         if self.tasks:
@@ -199,23 +208,17 @@ class AsyncTestContext:
                     logger.warning(
                         f"Some tasks did not complete within timeout during cleanup ({task_timeout:.1f}s)"
                     )
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 with contextlib.suppress(RuntimeError):
                     logger.warning(f"Error during task cleanup: {e}")
 
         # Additional cleanup delay to ensure all async operations complete
-        try:
+        with contextlib.suppress(RuntimeError):
             await asyncio.sleep(0.2)
-        except RuntimeError:
-            # Event loop closed, skip final delay
-            pass
 
         # NEW: Verify no leaked tasks
-        try:
+        with contextlib.suppress(RuntimeError):
             await self._check_for_leaked_tasks()
-        except RuntimeError:
-            # Event loop closed, skip leak check
-            pass
 
         # Clear all collections
         self.servers.clear()

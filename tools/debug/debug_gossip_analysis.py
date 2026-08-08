@@ -13,6 +13,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.server import Cluster, MPREGServer
 
 
@@ -313,7 +314,7 @@ async def debug_gossip_protocol(num_nodes: int = 10):
     for server in servers:
         try:
             await server.shutdown_async()
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             print(f"Shutdown error: {e}")
 
     # Cancel remaining tasks

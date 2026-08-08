@@ -428,7 +428,9 @@ class TestErrorHandlingExamples:
         client = await client_factory(single_server.settings.port)
 
         # This should raise a proper exception
-        with pytest.raises(Exception):  # Will be CommandNotFoundException
+        from mpreg.core.errors import MpregError
+
+        with pytest.raises(MpregError):
             await client.call("nonexistent_function", "some args")
 
     async def test_timeout_handling(

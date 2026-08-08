@@ -6,6 +6,7 @@ DEBUG: Compare pytest vs direct execution to find the difference
 import asyncio
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.server import MPREGServer
 
 
@@ -51,7 +52,7 @@ async def test_simple_cluster_direct():
     for server in servers:
         try:
             await server.shutdown_async()
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             print(f"Shutdown error: {e}")
 
     print("✅ DIRECT TEST COMPLETED")

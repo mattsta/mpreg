@@ -12,6 +12,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.core.model import RPCCommand
 from mpreg.core.port_allocator import port_range_context
 from mpreg.examples.apps._shared.runtime import (
+    EXAMPLE_RUN_EXCEPTIONS,
     app_run,
     ensure,
     get_probe,
@@ -125,7 +126,7 @@ async def main() -> None:
                             )
                             step(f"rpc_describe type={type(desc).__name__}")
                             ok("rpc_describe ok")
-                        except Exception as exc:
+                        except EXAMPLE_RUN_EXCEPTIONS as exc:
                             step(f"rpc_describe optional path: {type(exc).__name__}")
                         try:
                             report = await probe.measure_await(
@@ -133,7 +134,7 @@ async def main() -> None:
                             )
                             step(f"rpc_report type={type(report).__name__}")
                             ok("rpc_report ok")
-                        except Exception as exc:
+                        except EXAMPLE_RUN_EXCEPTIONS as exc:
                             step(f"rpc_report optional path: {type(exc).__name__}")
                         ok(f"discovery surfaces exercised list={type(listed).__name__}")
 

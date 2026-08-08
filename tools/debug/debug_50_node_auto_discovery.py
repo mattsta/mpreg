@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.server import MPREGServer
 
 
@@ -260,7 +261,7 @@ class AutoDiscoveryAnalyzer:
         for i, server in enumerate(servers):
             try:
                 await server.shutdown_async()
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 if i < 5:  # Only report first few errors
                     print(f"Shutdown error {i}: {e}")
 

@@ -4,6 +4,8 @@ import base64
 import re
 from dataclasses import dataclass
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 
 def normalize_zone(zone: str) -> str:
     return zone.strip().strip(".").lower()
@@ -37,7 +39,7 @@ def decode_node_id(label: str) -> str | None:
         padding = "=" * ((8 - len(data) % 8) % 8)
         try:
             decoded = base64.b32decode(data + padding, casefold=True)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return None
         try:
             return decoded.decode("utf-8")

@@ -115,7 +115,7 @@ class TestFederationSystemIntegration:
             assert False, (
                 "Cross-federation function call should have failed with strict isolation"
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             # This is expected - Beta's functions should not be discoverable
             # The error should be CommandNotFoundException or similar indicating function not found
             error_str = str(e)
@@ -246,7 +246,7 @@ class TestFederationSystemIntegration:
             else:
                 print("⚠️ Cross-federation bridging not yet fully implemented")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(
                 f"⚠️ Cross-federation execution failed (expected during development): {e}"
             )
@@ -269,7 +269,7 @@ class TestFederationSystemIntegration:
                 )
             else:
                 print("✅ Unauthorized federation properly blocked")
-        except Exception:
+        except Exception:  # noqa: BLE001
             print("✅ Unauthorized federation properly blocked")
 
         # Verify federation metrics
@@ -367,7 +367,7 @@ class TestFederationSystemIntegration:
             else:
                 print("⚠️ Cross-federation execution not yet fully implemented")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(
                 f"⚠️ Cross-federation execution failed (expected during development): {e}"
             )

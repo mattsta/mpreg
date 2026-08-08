@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+import contextlib
+
 """
 Regression test to ensure task recursion bug doesn't reoccur.
 
@@ -161,10 +162,8 @@ class TestTaskRecursionRegression:
             finally:
                 # Clean shutdown
                 for node in nodes.values():
-                    try:
+                    with contextlib.suppress(TimeoutError):
                         await asyncio.wait_for(node.stop(), timeout=2.0)
-                    except TimeoutError:
-                        pass  # Some nodes may timeout, that's ok for this test
 
     @pytest.mark.asyncio
     async def test_concurrent_node_operations(self):

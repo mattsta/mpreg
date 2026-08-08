@@ -23,6 +23,7 @@ import pytest
 
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.model import MPREGException, RPCCommand
 from mpreg.core.port_allocator import get_port_allocator
 from mpreg.datastructures.function_identity import FunctionSelector, VersionConstraint
@@ -798,7 +799,7 @@ class TestAutoDiscoveryFunctionPropagation(AutoDiscoveryTestHelpers):
                     f"Node {i}: {'✅ HAS' if has_function else '❌ MISSING'} propagation_test"
                 )
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 propagation_results.append(False)
                 print(f"Node {i}: ❌ ERROR accessing function: {e}")
 
@@ -878,7 +879,7 @@ class TestAutoDiscoveryFunctionPropagation(AutoDiscoveryTestHelpers):
                 try:
                     result = await client._client.request([rpc_command])
                     return "test_result" in result, None
-                except Exception as exc:  # pragma: no cover - best effort retry
+                except OPERATIONAL_EXCEPTIONS as exc:  # pragma: no cover - best effort retry
                     last_exc = exc
                     await asyncio.sleep(0.1)
             return False, last_exc

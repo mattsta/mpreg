@@ -11,6 +11,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 # Set up environment for high concurrency testing
 os.environ["PYTEST_XDIST_WORKER"] = "gw0"  # Simulate pytest-xdist worker
 
@@ -68,7 +70,7 @@ async def debug_split_brain_test():
                 successes.append(success_result)
                 print(f"✅ RUN {run + 1}: SUCCESS in {elapsed:.2f}s")
 
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 elapsed = time.time() - start_time
 
                 # Get full traceback for better debugging

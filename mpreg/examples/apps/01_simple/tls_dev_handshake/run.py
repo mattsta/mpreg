@@ -9,8 +9,12 @@ from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 from mpreg.core.dev_certs import generate_dev_tls_material
 from mpreg.core.port_allocator import port_range_context
-from mpreg.core.transport.interfaces import SecurityConfig, TransportConfig
+from mpreg.core.transport.interfaces import (
+    SecurityConfig,
+    TransportConfig,
+)
 from mpreg.examples.apps._shared.runtime import (
+    EXAMPLE_RUN_EXCEPTIONS,
     app_run,
     ensure,
     ok,
@@ -113,7 +117,7 @@ async def main() -> None:
                                         locs=frozenset(["secure"]),
                                         timeout=2.0,
                                     )
-                        except (Exception, asyncio.CancelledError, TimeoutError) as exc:
+                        except EXAMPLE_RUN_EXCEPTIONS as exc:
                             rejected = True
                             step(f"ws to tls port failed: {type(exc).__name__}")
                         ensure(rejected, "plain ws must not speak TLS server")

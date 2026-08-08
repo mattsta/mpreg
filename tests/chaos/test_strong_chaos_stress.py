@@ -77,7 +77,7 @@ async def test_heal_after_partition_allows_put() -> None:
     mesh.transport.heal()
     good = await strong_put_on(mesh, "n0", k, "yes")
     assert good.success is True
-    assert_backends_agree(mesh.backends, k) == "yes"
+    assert assert_backends_agree(mesh.backends, k) == "yes"
     assert_no_pending(mesh.backends)
 
 
@@ -108,7 +108,7 @@ async def test_duplicate_commit_idempotent() -> None:
     k = key("stress", "dup")
     res = await strong_put_on(mesh, "n0", k, "dup")
     assert res.success is True
-    assert_backends_agree(mesh.backends, k) == "dup"
+    assert assert_backends_agree(mesh.backends, k) == "dup"
     assert_no_pending(mesh.backends)
 
 

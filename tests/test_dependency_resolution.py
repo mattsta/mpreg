@@ -69,7 +69,7 @@ async def two_server_cluster():
         for server in servers:
             try:
                 await server.shutdown_async()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Error shutting down server: {e}")
 
         # Cancel all tasks
@@ -158,7 +158,7 @@ async def field_access_cluster():
         for server in servers:
             try:
                 await server.shutdown_async()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Error shutting down server: {e}")
 
         # Cancel all tasks

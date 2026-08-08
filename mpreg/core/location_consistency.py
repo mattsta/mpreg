@@ -32,6 +32,7 @@ from loguru import logger
 from ..datastructures.vector_clock import VectorClock
 from .advanced_cache_ops import AdvancedCacheOperations
 from .cache_pubsub_integration import CachePubSubIntegration
+from .errors import OPERATIONAL_EXCEPTIONS
 from .global_cache import GlobalCacheKey, GlobalCacheManager
 from .model import PubSubMessage
 
@@ -489,7 +490,7 @@ class LocationConsistencyManager:
 
             self.stats["replications_received"] += 1
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Failed to handle replication message: {e}")
 
     def _select_replication_targets(self, key: GlobalCacheKey) -> frozenset[str]:
@@ -671,7 +672,7 @@ class LocationConsistencyManager:
 
                 except TimeoutError:
                     continue
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     logger.error(f"Error in replication processor: {e}")
 
         except asyncio.CancelledError:
@@ -703,7 +704,7 @@ class LocationConsistencyManager:
 
             self.stats["replications_sent"] += 1
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Failed to process replication operation: {e}")
 
     async def _send_replication_message(self, operation: ReplicationOperation) -> None:
@@ -815,7 +816,7 @@ class LocationConsistencyManager:
             # Also store in underlying cache
             await self.cache_manager.put(key, entry_data["value"])
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Failed to handle replicate message: {e}")
 
     async def _handle_invalidate_message(self, payload: dict[str, Any]) -> None:
@@ -956,5 +957,5 @@ class LocationConsistencyManager:
 
             logger.info("Location consistency manager shut down successfully")
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error during location consistency manager shutdown: {e}")

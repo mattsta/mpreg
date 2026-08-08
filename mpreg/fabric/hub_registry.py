@@ -32,6 +32,7 @@ from weakref import WeakSet
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.fabric.federation_graph import GeographicCoordinate
 
 from ..core.statistics import (
@@ -474,14 +475,14 @@ class HubRegistry:
         for protocol in self.discovery_protocols.values():
             try:
                 await protocol.announce_hub(hub_info)
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Failed to announce hub {hub_id}: {e}")
 
         # Notify callbacks
         for callback in self.hub_registered_callbacks:
             try:
                 await callback(hub_info)
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Hub registration callback failed: {e}")
 
         logger.info(
@@ -522,14 +523,14 @@ class HubRegistry:
         for protocol in self.discovery_protocols.values():
             try:
                 await protocol.withdraw_hub(hub_id)
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Failed to withdraw hub {hub_id}: {e}")
 
         # Notify callbacks
         for callback in self.hub_deregistered_callbacks:
             try:
                 await callback(hub_info)
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Hub deregistration callback failed: {e}")
 
         logger.info(f"Deregistered hub {hub_id}")
@@ -643,7 +644,7 @@ class HubRegistry:
                 for callback in self.hub_failed_callbacks:
                     try:
                         await callback(hub_info)
-                    except Exception as e:
+                    except OPERATIONAL_EXCEPTIONS as e:
                         logger.error(f"Hub failure callback failed: {e}")
 
         return True
@@ -656,7 +657,7 @@ class HubRegistry:
                 await asyncio.sleep(self.heartbeat_interval)
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Heartbeat monitoring error: {e}")
                 await asyncio.sleep(self.heartbeat_interval)
 
@@ -668,7 +669,7 @@ class HubRegistry:
                 await asyncio.sleep(self.cleanup_interval)
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Cleanup error: {e}")
                 await asyncio.sleep(self.cleanup_interval)
 
@@ -680,7 +681,7 @@ class HubRegistry:
                 await asyncio.sleep(60.0)  # Announce every minute
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Discovery announcement error: {e}")
                 await asyncio.sleep(60.0)
 
@@ -702,7 +703,7 @@ class HubRegistry:
             for callback in self.hub_failed_callbacks:
                 try:
                     await callback(hub_info)
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     logger.error(f"Hub failure callback failed: {e}")
 
     async def _cleanup_expired_registrations(self) -> None:
@@ -733,7 +734,7 @@ class HubRegistry:
             for hub_info in healthy_hubs:
                 try:
                     await protocol.announce_hub(hub_info)
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     logger.error(f"Failed to announce hub {hub_info.hub_id}: {e}")
 
     def get_registry_statistics(self) -> RegistryStatistics:
@@ -1074,7 +1075,7 @@ class HubHealthMonitor:
                 await asyncio.sleep(self.monitoring_interval)
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Hub health monitoring error: {e}")
                 await asyncio.sleep(self.monitoring_interval)
 
@@ -1086,7 +1087,7 @@ class HubHealthMonitor:
                 await asyncio.sleep(60.0)  # Check for failovers every minute
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Hub failover error: {e}")
                 await asyncio.sleep(60.0)
 
@@ -1198,7 +1199,7 @@ class HubHealthMonitor:
                     logger.error(
                         f"Failed to reassign cluster {cluster_id} from failed hub {hub_id}"
                     )
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Error reassigning cluster {cluster_id}: {e}")
 
         # Reset failure count

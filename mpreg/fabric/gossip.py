@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.fabric.catalog_delta import RoutingCatalogApplier, RoutingCatalogDelta
 from mpreg.fabric.link_state import LinkStateUpdate
 from mpreg.fabric.route_control import RouteAnnouncement, RouteWithdrawal
@@ -933,7 +934,7 @@ class GossipProtocol:
 
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Error in gossip cycle: {e}")
                 await asyncio.sleep(1.0)
 
@@ -945,7 +946,7 @@ class GossipProtocol:
                 await asyncio.sleep(30.0)  # Cleanup every 30 seconds
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Error in cleanup loop: {e}")
                 await asyncio.sleep(30.0)
 
@@ -957,7 +958,7 @@ class GossipProtocol:
                 await asyncio.sleep(60.0)  # Sync every minute
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Error in state sync loop: {e}")
                 await asyncio.sleep(60.0)
 
@@ -1024,7 +1025,7 @@ class GossipProtocol:
                 )
                 messages_sent += sent_count
                 bandwidth_used += sent_count * 1024  # Estimate 1KB per message
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(f"Failed to send messages to {target_id}: {e}")
 
         # Update statistics
@@ -1175,7 +1176,7 @@ class GossipProtocol:
                 if delivered:
                     sent_count += 1
 
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     f"Failed to send message {message.message_id} to {target_id}: {e}"
                 )
@@ -1217,7 +1218,7 @@ class GossipProtocol:
                 state_update = await provider()
                 if state_update:
                     await self._create_state_update_message(state_update)
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(f"Failed to get state update from provider: {e}")
 
     def next_sequence_number(self) -> int:
@@ -1367,7 +1368,7 @@ class GossipProtocol:
                     )
                     if not delivered:
                         failed_peers.add(peer_id)
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     logger.warning(
                         f"Failed to broadcast catalog update to {peer_id}: {e}"
                     )
@@ -1532,7 +1533,7 @@ class GossipProtocol:
                 logger.warning(
                     f"Invalid consensus proposal payload type: {type(message.payload)}"
                 )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error handling consensus proposal: {e}")
 
     async def _handle_consensus_vote(self, message: GossipMessage) -> None:
@@ -1564,7 +1565,7 @@ class GossipProtocol:
                 logger.warning(
                     f"Invalid consensus vote payload type: {type(message.payload)}"
                 )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error handling consensus vote: {e}")
 
     async def _handle_catalog_update(self, message: GossipMessage) -> bool:

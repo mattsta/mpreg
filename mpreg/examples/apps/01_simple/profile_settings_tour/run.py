@@ -6,7 +6,14 @@ import asyncio
 from pathlib import Path
 
 from mpreg.core.config import MPREGSettings
-from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
+from mpreg.examples.apps._shared.runtime import (
+    EXAMPLE_RUN_EXCEPTIONS,
+    app_run,
+    ensure,
+    ok,
+    scenario,
+    step,
+)
 
 
 def _profiles_dir() -> Path:
@@ -76,7 +83,7 @@ async def main() -> None:
             failed = False
             try:
                 MPREGSettings.from_path(str(PROFILES / "does-not-exist.toml"))
-            except Exception as exc:
+            except EXAMPLE_RUN_EXCEPTIONS as exc:
                 failed = True
                 step(f"expected error: {type(exc).__name__}: {exc}")
             ensure(failed, "missing profile should raise")

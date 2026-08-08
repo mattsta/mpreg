@@ -20,6 +20,7 @@ from loguru import logger
 
 from mpreg.core.native_codec import estimate_size_bytes
 
+from .errors import OPERATIONAL_EXCEPTIONS
 from .task_manager import ManagedObject
 
 cache_store_log = logger
@@ -612,7 +613,7 @@ class SmartCacheManager[T](ManagedObject):
 
                 except asyncio.CancelledError:
                     break
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     cache_store_log.error(f"Error in cache cleanup: {e}")
                     # If event loop is gone, break the loop
                     if "no running event loop" in str(
@@ -621,7 +622,7 @@ class SmartCacheManager[T](ManagedObject):
                         break
         except asyncio.CancelledError:
             cache_store_log.debug("Cache cleanup task cancelled")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             cache_store_log.error(f"Cache cleanup task fatal error: {e}")
         finally:
             cache_store_log.debug("Cache cleanup task stopped")
@@ -1010,7 +1011,7 @@ class SmartCacheManager[T](ManagedObject):
                 from pympler import asizeof
 
                 return int(asizeof.asizeof(value))
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 cache_store_log.warning(
                     f"Failed to calculate accurate size with pympler: {e}"
                 )
@@ -1035,7 +1036,7 @@ class SmartCacheManager[T](ManagedObject):
                         task.cancel()
                 self._task_manager.tasks.clear()
                 self._task_manager._shutdown_requested = True
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             cache_store_log.warning(f"Error during sync task cancellation: {e}")
 
         self.clear()

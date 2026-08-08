@@ -13,6 +13,8 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 type Seconds = float
 type Percent = float
 type NodeId = str
@@ -173,7 +175,7 @@ def _run_once(config: ProbeConfig, run_index: int, session_dir: Path) -> RunResu
                 os.killpg(proc.pid, 15)
             except ProcessLookupError:
                 pass
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 pass
             try:
                 proc.wait(timeout=5.0)
@@ -182,7 +184,7 @@ def _run_once(config: ProbeConfig, run_index: int, session_dir: Path) -> RunResu
                     os.killpg(proc.pid, 9)
                 except ProcessLookupError:
                     pass
-                except Exception:
+                except OPERATIONAL_EXCEPTIONS:
                     pass
             exit_code = proc.returncode
 

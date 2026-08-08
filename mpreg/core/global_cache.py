@@ -24,6 +24,7 @@ from typing import Any, TypeVar
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS, log_caught_exception
 from mpreg.fabric.cache_federation import FabricCacheProtocol
 
 from .cache_models import (
@@ -228,7 +229,7 @@ class GlobalCacheManager(ManagedObject):
         out = await coord.retry_abort(
             key, op_id, peers=list(peers) if peers is not None else None
         )
-        try:
+        with contextlib.suppress(Exception):
             d_ok = int(getattr(coord, "aborts_peer_ok", 0) or 0) - prev_ok
             d_fail = int(getattr(coord, "aborts_peer_fail", 0) or 0) - prev_fail
             if d_ok > 0:
@@ -240,8 +241,6 @@ class GlobalCacheManager(ManagedObject):
                 self._strong_metrics["retry_abort_cleared"] += 1
             else:
                 self._strong_metrics["retry_abort_still_fail"] += 1
-        except Exception:  # noqa: BLE001
-            pass
         return dict(out) if isinstance(out, dict) else {"raw": out}
 
     async def _strong_put(
@@ -271,20 +270,16 @@ class GlobalCacheManager(ManagedObject):
         # Eligible peers: origin + fabric cache SYNC peers when transport present
         eligible: list[str] = [str(coord.origin_id)]
         if self.cache_protocol is not None:
-            try:
+            with contextlib.suppress(Exception):
                 peers = self.cache_protocol.peer_ids()
                 eligible.extend(str(p) for p in peers if str(p) not in eligible)
-            except Exception:  # noqa: BLE001
-                pass
         # Also accept transport peer_ids if protocol thin
         transport = getattr(coord, "transport", None)
         if transport is not None and hasattr(transport, "peer_ids"):
-            try:
+            with contextlib.suppress(Exception):
                 for p in transport.peer_ids(exclude=None):
                     if str(p) not in eligible:
                         eligible.append(str(p))
-            except Exception:  # noqa: BLE001
-                pass
 
         # Snapshot abort counters before put so we can attribute deltas
         prev_ok = int(getattr(coord, "aborts_peer_ok", 0) or 0)
@@ -296,15 +291,13 @@ class GlobalCacheManager(ManagedObject):
         elapsed_ms = (time.perf_counter() - t0) * 1000.0
         self._record_strong_latency(elapsed_ms)
         # Pull CFT abort best-effort counters from coordinator
-        try:
+        with contextlib.suppress(Exception):
             d_ok = int(getattr(coord, "aborts_peer_ok", 0) or 0) - prev_ok
             d_fail = int(getattr(coord, "aborts_peer_fail", 0) or 0) - prev_fail
             if d_ok > 0:
                 self._strong_metrics["aborts_peer_ok"] += d_ok
             if d_fail > 0:
                 self._strong_metrics["aborts_peer_fail"] += d_fail
-        except Exception:  # noqa: BLE001
-            pass
         if result.success and result.entry is not None:
             # Apply visible entry into real L1 only after quorum success
             self._put_to_l1(result.entry)
@@ -490,16 +483,12 @@ class GlobalCacheManager(ManagedObject):
         """Enqueue replication work; drop-oldest when the bounded queue is full."""
         item = (op, key, entry)
         q = self.pending_replications
-        try:
+        with contextlib.suppress(asyncio.QueueFull):
             q.put_nowait(item)
             return
-        except asyncio.QueueFull:
-            pass
-        try:
+        with contextlib.suppress(asyncio.QueueEmpty):
             q.get_nowait()
             self._note_replication_drop()
-        except asyncio.QueueEmpty:
-            pass
         try:
             q.put_nowait(item)
         except asyncio.QueueFull:
@@ -543,8 +532,8 @@ class GlobalCacheManager(ManagedObject):
                     "Initialized in-memory L2 cache with persistent dir {}",
                     self.config.persistent_cache_dir,
                 )
-            except Exception as e:
-                cache_log.error(f"Failed to initialize persistent cache: {e}")
+            except OPERATIONAL_EXCEPTIONS as e:
+                log_caught_exception(cache_log, "Failed to initialize persistent cache", e)
                 self.config.enable_l2_persistent = False
             return
 
@@ -554,8 +543,8 @@ class GlobalCacheManager(ManagedObject):
             kv_store = self._persistence_registry.key_value_store("cache.l2")
             self._l2_store = CacheL2Store(store=kv_store, serializer=JsonSerializer())
             cache_log.info("Initialized persistence-backed L2 cache store")
-        except Exception as e:
-            cache_log.error(f"Failed to initialize persistence-backed cache: {e}")
+        except OPERATIONAL_EXCEPTIONS as e:
+            log_caught_exception(cache_log, "Failed to initialize persistence-backed cache", e)
             self.config.enable_l2_persistent = False
 
     def _start_background_tasks(self) -> None:
@@ -714,8 +703,8 @@ class GlobalCacheManager(ManagedObject):
                     success=False, error_message="Cache miss across all levels"
                 )
 
-            except Exception as e:
-                cache_log.error(f"Cache get operation failed for {key}: {e}")
+            except OPERATIONAL_EXCEPTIONS as e:
+                log_caught_exception(cache_log, f"Cache get operation failed for {key}", e)
                 return CacheOperationResult(
                     success=False, error_message=f"Cache operation error: {e}"
                 )
@@ -809,8 +798,8 @@ class GlobalCacheManager(ManagedObject):
                     ),
                 )
 
-            except Exception as e:
-                cache_log.error(f"Cache put operation failed for {key}: {e}")
+            except OPERATIONAL_EXCEPTIONS as e:
+                log_caught_exception(cache_log, f"Cache put operation failed for {key}", e)
                 return CacheOperationResult(
                     success=False, error_message=f"Cache put error: {e}"
                 )
@@ -887,8 +876,8 @@ class GlobalCacheManager(ManagedObject):
                     cache_level=deleted_levels[0] if deleted_levels else None,
                 )
 
-            except Exception as e:
-                cache_log.error(f"Cache delete operation failed for {key}: {e}")
+            except OPERATIONAL_EXCEPTIONS as e:
+                log_caught_exception(cache_log, f"Cache delete operation failed for {key}", e)
                 return CacheOperationResult(
                     success=False, error_message=f"Cache delete error: {e}"
                 )
@@ -1000,8 +989,8 @@ class GlobalCacheManager(ManagedObject):
                 success=True, error_message=f"Invalidated {invalidated_count} entries"
             )
 
-        except Exception as e:
-            cache_log.error(f"Cache invalidation failed for pattern {pattern}: {e}")
+        except OPERATIONAL_EXCEPTIONS as e:
+            log_caught_exception(cache_log, f"Cache invalidation failed for pattern {pattern}", e)
             return CacheOperationResult(
                 success=False, error_message=f"Cache invalidation error: {e}"
             )
@@ -1149,8 +1138,8 @@ class GlobalCacheManager(ManagedObject):
 
                 except TimeoutError:
                     continue
-                except Exception as e:
-                    cache_log.error(f"Replication worker error: {e}")
+                except OPERATIONAL_EXCEPTIONS as e:
+                    log_caught_exception(cache_log, "Replication worker error", e)
                     # If event loop is gone, break the loop
                     if "no running event loop" in str(
                         e
@@ -1159,8 +1148,8 @@ class GlobalCacheManager(ManagedObject):
                     await asyncio.sleep(1.0)
         except asyncio.CancelledError:
             cache_log.debug("Replication worker cancelled")
-        except Exception as e:
-            cache_log.error(f"Replication worker fatal error: {e}")
+        except OPERATIONAL_EXCEPTIONS as e:
+            log_caught_exception(cache_log, "Replication worker fatal error", e)
         finally:
             cache_log.debug("Replication worker stopped")
 
@@ -1185,8 +1174,8 @@ class GlobalCacheManager(ManagedObject):
                             f"Cleaned up {len(expired_keys)} expired L2 cache entries"
                         )
 
-                except Exception as e:
-                    cache_log.error(f"Cleanup worker error: {e}")
+                except OPERATIONAL_EXCEPTIONS as e:
+                    log_caught_exception(cache_log, "Cleanup worker error", e)
                     # If event loop is gone, break the loop
                     if "no running event loop" in str(
                         e
@@ -1194,8 +1183,8 @@ class GlobalCacheManager(ManagedObject):
                         break
         except asyncio.CancelledError:
             cache_log.debug("Cleanup worker cancelled")
-        except Exception as e:
-            cache_log.error(f"Cleanup worker fatal error: {e}")
+        except OPERATIONAL_EXCEPTIONS as e:
+            log_caught_exception(cache_log, "Cleanup worker fatal error", e)
         finally:
             cache_log.debug("Cleanup worker stopped")
 
@@ -1209,8 +1198,8 @@ class GlobalCacheManager(ManagedObject):
                     if peer_ids:
                         await self.cache_protocol.sync_cache_state(peer_ids[0])
 
-            except Exception as e:
-                cache_log.error(f"Cache sync worker error: {e}")
+            except OPERATIONAL_EXCEPTIONS as e:
+                log_caught_exception(cache_log, "Cache sync worker error", e)
 
     async def _handle_replication(
         self, key: GlobalCacheKey, entry: GlobalCacheEntry
@@ -1292,7 +1281,7 @@ class GlobalCacheManager(ManagedObject):
                         task.cancel()
                 self._task_manager.tasks.clear()
                 self._task_manager._shutdown_requested = True
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             cache_log.warning(f"Error during sync task cancellation: {e}")
 
         # Shutdown L1 cache synchronously

@@ -8,6 +8,8 @@ import time
 import pytest
 from tests.port_allocator import get_port_allocator
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 
 @pytest.fixture
 def debug_large_cluster_ports():
@@ -41,7 +43,7 @@ def debug_large_cluster_ports():
             allocator.release_port(port)
             if i % 10 == 0:
                 print(f"   Released {i + 1}/{len(ports)} ports...")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             print(f"   Warning: Failed to release port {port}: {e}")
 
     print(f"   ✅ Cleanup completed in {time.time() - cleanup_start:.2f}s")
@@ -77,6 +79,7 @@ if __name__ == "__main__":
             timeout=60,
             capture_output=True,
             text=True,
+            check=False,
         )
 
         print("STDOUT:")

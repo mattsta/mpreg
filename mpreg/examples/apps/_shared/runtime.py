@@ -12,6 +12,8 @@ from dataclasses import dataclass, field
 from typing import TypeVar
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import MpregError, with_operational
+from mpreg.core.transport.interfaces import TransportConnectionError
 from mpreg.examples.apps._shared.obs import ExampleProbe
 from mpreg.examples.showcase_utils import (
     ServerHandle,
@@ -29,6 +31,15 @@ _ACTIVE_PROBE: ExampleProbe | None = None
 
 class ExampleFailed(RuntimeError):
     """Raised when an example assertion or invariant fails."""
+
+
+# Curriculum apps: one failure surface — do not re-list OSError/… at every site.
+EXAMPLE_RUN_EXCEPTIONS: tuple[type[BaseException], ...] = with_operational(
+    AssertionError,
+    asyncio.CancelledError,
+    MpregError,
+    TransportConnectionError,
+)
 
 
 def ensure(condition: bool, message: str) -> None:
@@ -99,7 +110,6 @@ def scenario(name: str, *feature_ids: str) -> Iterator[None]:
     under ``scenario.<sanitized_name>`` so every app produces latency/throughput
     surfaces even without explicit ``probe.measure`` calls.
     """
-    global _ACTIVE_STATS
     print()
     print(f"  ┌─ scenario: {name}")
     for fid in feature_ids:
@@ -232,7 +242,7 @@ async def run_app_main(
             duration_s=time.monotonic() - started,
             error=str(exc),
         )
-    except Exception as exc:
+    except EXAMPLE_RUN_EXCEPTIONS as exc:
         tb = traceback.format_exc(limit=8)
         return RunReport(
             app_id=app_id,

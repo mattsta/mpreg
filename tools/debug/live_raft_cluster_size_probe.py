@@ -9,6 +9,7 @@ import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.datastructures.production_raft import RaftState
 from mpreg.datastructures.production_raft_implementation import ProductionRaft
 from tests.conftest import AsyncTestContext
@@ -145,7 +146,7 @@ async def _stop_nodes(nodes: dict[NodeId, ProductionRaft]) -> None:
             continue
         except asyncio.CancelledError:
             continue
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             continue
 
 
@@ -215,7 +216,7 @@ async def _run_probe(config: ProbeConfig) -> ProbeReport:
                                 command_error = "submit_command returned None"
                         except TimeoutError:
                             command_error = "submit_command timeout"
-                        except Exception as exc:
+                        except OPERATIONAL_EXCEPTIONS as exc:
                             command_error = f"{type(exc).__name__}: {exc}"
 
                         command_results.append(

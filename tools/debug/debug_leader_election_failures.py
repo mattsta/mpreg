@@ -11,6 +11,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 # Set up environment for high concurrency testing
 os.environ["PYTEST_XDIST_WORKER"] = "gw5"  # Simulate the failing worker
 
@@ -58,7 +60,7 @@ async def debug_leader_election():
                 results.append(result)
                 print(f"✅ RUN {run + 1}: SUCCESS in {election_time:.2f}s")
 
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 election_time = time.time() - start_time
 
                 result = ElectionResult(

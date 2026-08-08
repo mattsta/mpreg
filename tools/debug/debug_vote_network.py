@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 sys.path.append(".")
 
 from mpreg.datastructures.production_raft import RequestVoteRequest, RequestVoteResponse
@@ -132,7 +134,7 @@ class DeepDebugTransport(NetworkAwareTransport):
 
             return response
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             error = f"RPC call failed: {e}"
             print(f"💥 RPC ERROR: {error}")
             debug_msg.error = error

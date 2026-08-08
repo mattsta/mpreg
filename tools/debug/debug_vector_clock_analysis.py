@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.datastructures.vector_clock import VectorClock
 from mpreg.server import Cluster, MPREGServer
 
@@ -389,7 +390,7 @@ async def debug_vector_clock_gossip(num_nodes: int = 10, analysis_duration: int 
     for server in servers:
         try:
             await server.shutdown_async()
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             print(f"Shutdown error: {e}")
 
     # Cancel remaining tasks

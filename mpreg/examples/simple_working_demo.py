@@ -1,6 +1,6 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
-#!/usr/bin/env python3
 """Simple working demo that uses the modern tiered examples."""
 
 import asyncio

@@ -200,7 +200,7 @@ class TestFederationCLI:
             config_file = Path(output_path)
             assert config_file.exists()
 
-            with open(config_file) as f:
+            with Path(config_file).open() as f:
                 config = json.load(f)
 
             # Check required structure

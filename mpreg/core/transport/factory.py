@@ -19,6 +19,7 @@ from loguru import logger
 
 from mpreg.datastructures.type_aliases import PortNumber
 
+from ..errors import OPERATIONAL_EXCEPTIONS
 from ..port_allocator import allocate_port, release_port
 from .adapter_registry import (
     ProtocolPortAssignment,
@@ -656,7 +657,7 @@ class MultiProtocolAdapter:
                     transport = await listener.accept()
                     # Handle connection in background task
                     asyncio.create_task(self._handle_connection(protocol, transport))
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     # Log error but continue accepting
                     logger.warning(
                         "Error accepting {} connection: {}",
@@ -685,7 +686,7 @@ class MultiProtocolAdapter:
         try:
             if self.connection_handler:
                 await self.connection_handler(protocol, transport)
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.warning(
                 "Error handling {} connection: {}",
                 protocol.value,

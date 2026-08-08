@@ -65,6 +65,7 @@ def deserialize_request_vote(data: dict[str, Any]) -> RequestVoteRequest:
         candidate_id=str(data["candidate_id"]),
         last_log_index=int(data["last_log_index"]),
         last_log_term=int(data["last_log_term"]),
+        pre_vote=bool(data.get("pre_vote", False)),
     )
 
 

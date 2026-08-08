@@ -1,6 +1,6 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
-#!/usr/bin/env python3
 """Tier 2: Two-system integrations in realistic workflows."""
 
 import asyncio

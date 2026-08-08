@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.datastructures.type_aliases import ClusterId, DurationSeconds, Timestamp
 
 from .gossip import GossipMessage, GossipMessageType, GossipProtocol
@@ -36,7 +37,7 @@ class RouteKeyAnnouncer:
             while True:
                 try:
                     await self.announce_once(now=time.time())
-                except Exception as exc:
+                except OPERATIONAL_EXCEPTIONS as exc:
                     logger.warning(
                         "[{}] Route key announcement failed: {}",
                         self.local_cluster,

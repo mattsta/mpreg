@@ -1,6 +1,6 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
-#!/usr/bin/env python3
 """Quick demonstration of MPREG's modern example tiers.
 
 Run with: uv run python mpreg/examples/quick_demo.py

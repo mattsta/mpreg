@@ -14,6 +14,8 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 type Pid = int
 type NodeId = str
 type Seconds = float
@@ -138,7 +140,7 @@ def _parse_env_overrides(raw_entries: object) -> tuple[EnvOverride, ...]:
     if raw_entries is None:
         return ()
     if not isinstance(raw_entries, list):
-        raise ValueError("Manifest 'env_overrides' must be a list of KEY=VALUE strings")
+        raise TypeError("Manifest 'env_overrides' must be a list of KEY=VALUE strings")
     overrides: list[EnvOverride] = []
     for raw_entry in raw_entries:
         entry = str(raw_entry).strip()
@@ -157,12 +159,12 @@ def _parse_env_overrides(raw_entries: object) -> tuple[EnvOverride, ...]:
 def _load_manifest(path: Path) -> ManifestConfig:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
-        raise ValueError("Manifest must be a JSON object")
+        raise TypeError("Manifest must be a JSON object")
 
     run_full_suite = bool(payload.get("run_full_suite", False))
     raw_tests = payload.get("tests", [])
     if not isinstance(raw_tests, list):
-        raise ValueError("Manifest 'tests' must be a list")
+        raise TypeError("Manifest 'tests' must be a list")
     tests = tuple(str(nodeid) for nodeid in raw_tests if str(nodeid).strip())
     if not run_full_suite and not tests:
         raise ValueError("Manifest includes no tests and run_full_suite is false")
@@ -171,7 +173,7 @@ def _load_manifest(path: Path) -> ManifestConfig:
     if raw_pytest_args is None:
         raw_pytest_args = []
     if not isinstance(raw_pytest_args, list):
-        raise ValueError("Manifest 'pytest_args' must be a list")
+        raise TypeError("Manifest 'pytest_args' must be a list")
     pytest_args = tuple(str(value) for value in raw_pytest_args)
 
     raw_timeout = payload.get("timeout_seconds", 0.0)
@@ -315,7 +317,7 @@ def _terminate_group(process: subprocess.Popen[str]) -> None:
         os.killpg(process.pid, signal.SIGTERM)
     except ProcessLookupError:
         return
-    except Exception:
+    except OPERATIONAL_EXCEPTIONS:
         pass
     try:
         process.wait(timeout=5.0)
@@ -328,7 +330,7 @@ def _terminate_group(process: subprocess.Popen[str]) -> None:
         os.killpg(process.pid, signal.SIGKILL)
     except ProcessLookupError:
         return
-    except Exception:
+    except OPERATIONAL_EXCEPTIONS:
         pass
 
 

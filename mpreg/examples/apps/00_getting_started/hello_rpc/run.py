@@ -9,6 +9,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.core.model import RPCCommand
 from mpreg.core.port_allocator import port_range_context
 from mpreg.examples.apps._shared.runtime import (
+    EXAMPLE_RUN_EXCEPTIONS,
     app_run,
     ensure,
     get_probe,
@@ -143,7 +144,7 @@ async def main() -> None:
                             step(
                                 "locs miss did not raise (implementation may broaden match)"
                             )
-                        except Exception as exc:
+                        except EXAMPLE_RUN_EXCEPTIONS as exc:
                             ok(f"locs miss fail-closed: {type(exc).__name__}")
 
                     with scenario(

@@ -12,6 +12,7 @@ Provides comprehensive command-line interface for managing fabric federated clus
 
 from __future__ import annotations
 
+import asyncio
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -24,6 +25,7 @@ from rich.syntax import Syntax
 from rich.table import Table
 from rich.tree import Tree
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.native_codec import JSONDecodeError, dumps_pretty_text, loads_text
 
 from ..core.statistics import CLIDiscoveredCluster
@@ -84,8 +86,9 @@ class FederationCLI:
             # Load from configuration file
             config_file = Path(config_path)
             if config_file.exists():
-                with open(config_file) as f:
-                    config_data = loads_text(f.read())
+                config_data = loads_text(
+                    await asyncio.to_thread(config_file.read_text, encoding="utf-8")
+                )
 
                 # Check if auto-discovery is configured
                 auto_discovery_config = config_data.get("auto_discovery", {})
@@ -118,7 +121,7 @@ class FederationCLI:
                         discovered_clusters.append(
                             CLIDiscoveredCluster.from_discovered_cluster(cluster)
                         )
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     self.console.print(f"[yellow]⚠️ Discovery error: {e}[/yellow]")
 
         if not discovered_clusters:
@@ -187,7 +190,7 @@ class FederationCLI:
                     discovered_clusters.append(
                         CLIDiscoveredCluster.from_discovered_cluster(cluster)
                     )
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 self.console.print(f"[yellow]⚠️ Auto-discovery error: {e}[/yellow]")
 
         return discovered_clusters
@@ -307,7 +310,7 @@ class FederationCLI:
             )
             return True
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             self.console.print(
                 f"[red]❌ Failed to register cluster {cluster_id}: {e}[/red]"
             )
@@ -334,7 +337,7 @@ class FederationCLI:
             )
             return True
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             self.console.print(
                 f"[red]❌ Failed to unregister cluster {cluster_id}: {e}[/red]"
             )
@@ -362,18 +365,16 @@ class FederationCLI:
             TextColumn("[progress.description]{task.description}"),
             console=self.console,
         ) as progress:
-            for cluster_id in clusters_to_check:
-                task = progress.add_task(
-                    f"Checking health: {cluster_id}...", total=None
-                )
+            for check_id in clusters_to_check:
+                task = progress.add_task(f"Checking health: {check_id}...", total=None)
 
                 try:
-                    if cluster_id in self.resilience_systems:
-                        resilience = self.resilience_systems[cluster_id]
+                    if check_id in self.resilience_systems:
+                        resilience = self.resilience_systems[check_id]
                         health_summary = resilience.health_monitor.get_health_summary()
                         resilience_metrics = resilience.get_resilience_summary()
 
-                        health_results[cluster_id] = {
+                        health_results[check_id] = {
                             "health_summary": health_summary,
                             "resilience_metrics": resilience_metrics,
                             "status": "healthy"
@@ -382,22 +383,22 @@ class FederationCLI:
                         }
                     else:
                         # Basic registration-only health
-                        cluster = self.clusters[cluster_id]
-                        health_results[cluster_id] = {
+                        cluster = self.clusters[check_id]
+                        health_results[check_id] = {
                             "status": "registered",
                             "server_url": cluster.server_url,
                             "bridge_url": cluster.cluster_identity.bridge_url,
                             "region": cluster.cluster_identity.region,
                         }
 
-                    progress.update(task, description=f"✅ {cluster_id} checked")
+                    progress.update(task, description=f"✅ {check_id} checked")
 
-                except Exception as e:
-                    health_results[cluster_id] = {
+                except OPERATIONAL_EXCEPTIONS as e:
+                    health_results[check_id] = {
                         "status": "error",
                         "error": str(e),
                     }
-                    progress.update(task, description=f"❌ {cluster_id} failed")
+                    progress.update(task, description=f"❌ {check_id} failed")
 
         return health_results
 
@@ -511,7 +512,7 @@ class FederationCLI:
         }
 
         output_file = Path(output_path)
-        with open(output_file, "w") as f:
+        with Path(output_file).open("w") as f:
             f.write(dumps_pretty_text(config_template))
 
         self.console.print(
@@ -519,7 +520,7 @@ class FederationCLI:
         )
 
         # Display the template
-        with open(output_file) as f:
+        with Path(output_file).open() as f:
             config_syntax = Syntax(f.read(), "json", theme="monokai", line_numbers=True)
 
         panel = Panel(
@@ -543,8 +544,9 @@ class FederationCLI:
             return False
 
         try:
-            with open(config_file) as f:
-                config = loads_text(f.read())
+            config = loads_text(
+                await asyncio.to_thread(config_file.read_text, encoding="utf-8")
+            )
 
             validation_results = []
 
@@ -611,7 +613,7 @@ class FederationCLI:
         except JSONDecodeError as e:
             self.console.print(f"[red]❌ Invalid JSON in configuration file: {e}[/red]")
             return False
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             self.console.print(f"[red]❌ Error validating configuration: {e}[/red]")
             return False
 
@@ -628,8 +630,9 @@ class FederationCLI:
         )
 
         try:
-            with open(config_path) as f:
-                config = loads_text(f.read())
+            config = loads_text(
+                await asyncio.to_thread(Path(config_path).read_text, encoding="utf-8")
+            )
 
             clusters = config.get("clusters", [])
             federation_config = config.get("federation", {})
@@ -664,7 +667,7 @@ class FederationCLI:
                             description=f"{'✅' if success else '❌'} {cluster_id}",
                         )
 
-                    except Exception as e:
+                    except OPERATIONAL_EXCEPTIONS as e:
                         deployment_results.append((cluster_id, False))
                         progress.update(
                             task, description=f"❌ {cluster_id} failed: {e}"
@@ -697,7 +700,7 @@ class FederationCLI:
                 )
                 return False
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             self.console.print(f"[red]❌ Deployment failed: {e}[/red]")
             return False
 
@@ -760,7 +763,7 @@ class FederationCLI:
                     progress.update(
                         task, description=f"✅ {cluster_id} resilience disabled"
                     )
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     progress.update(
                         task, description=f"❌ {cluster_id} resilience error: {e}"
                     )
@@ -773,7 +776,7 @@ class FederationCLI:
                 try:
                     del self.clusters[cluster_id]
                     progress.update(task, description=f"✅ {cluster_id} disabled")
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     progress.update(task, description=f"❌ {cluster_id} error: {e}")
 
         self.console.print("[green]✅ Cleanup completed[/green]")

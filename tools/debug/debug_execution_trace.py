@@ -3,6 +3,8 @@
 import asyncio
 import sys
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 sys.path.append(".")
 
 from mpreg.client.client_api import MPREGClientAPI
@@ -129,7 +131,7 @@ async def debug_execution_trace():
             else:
                 print("❌ ERROR: converged_analysis not found in results")
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"❌ ERROR: {e}")
         import traceback
 

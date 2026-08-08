@@ -1,3 +1,5 @@
+import contextlib
+
 """
 Comprehensive tests for WebSocket transport implementation.
 
@@ -443,10 +445,8 @@ class TestWebSocketTransportErrorHandling:
             large_message = b"X" * (1024 * 1024)  # 1MB
 
             # This might timeout depending on system buffer sizes
-            try:
+            with contextlib.suppress(TransportTimeoutError):
                 await client.send(large_message)
-            except TransportTimeoutError:
-                pass  # Expected for this test
 
             # Cleanup
             await client.disconnect()
@@ -503,10 +503,8 @@ class TestWebSocketTransportErrorHandling:
             server_transport = await asyncio.wait_for(server_task, timeout=2.0)
 
             # Ping might timeout with very short timeout
-            try:
+            with contextlib.suppress(TransportTimeoutError):
                 await client.ping()
-            except TransportTimeoutError:
-                pass  # Expected for very short timeouts
 
             # Cleanup
             await client.disconnect()

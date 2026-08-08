@@ -10,6 +10,8 @@ import asyncio
 import sys
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -99,7 +101,7 @@ if __name__ == "__main__":
         else:
             print("\n❌ TEST FAILED - TASK CLEANUP ISSUE DETECTED")
             sys.exit(1)
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"\n❌ TEST FAILED WITH EXCEPTION: {e}")
         import traceback
 

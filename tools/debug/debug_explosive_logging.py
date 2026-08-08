@@ -15,6 +15,7 @@ import time
 from tests.port_allocator import PortAllocator
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.server import MPREGServer
 
 
@@ -135,7 +136,7 @@ class LogExplosionDetector:
             print(f"   ✅ SUCCESS: {total_connections} connections, {setup_time:.0f}ms")
             return result
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             error_time = (time.time() - start_time) * 1000
             print(f"   ❌ FAILED: {e}")
 

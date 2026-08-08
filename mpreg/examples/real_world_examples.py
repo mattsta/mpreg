@@ -1,6 +1,6 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
-#!/usr/bin/env python3
 """Real-world examples demonstrating MPREG's practical applications.
 
 Run with: uv run python mpreg/examples/real_world_examples.py

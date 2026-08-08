@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TextIO
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 DEFAULT_STATE_DIR = Path(".local/test-state")
 DEFAULT_PROFILE_DIR = Path(".local/hang-profile")
 DEFAULT_PYSPY = Path(
@@ -136,7 +138,7 @@ def enable_faulthandler(stream: TextIO | None = None) -> None:
     target = stream or sys.stderr
     try:
         faulthandler.enable(file=target, all_threads=True)
-    except Exception:
+    except OPERATIONAL_EXCEPTIONS:
         return
     if not hasattr(signal, "SIGUSR1"):
         return
@@ -152,13 +154,13 @@ def enable_faulthandler(stream: TextIO | None = None) -> None:
                 faulthandler.dump_traceback(file=fh, all_threads=True)
             # Also mirror to stderr for live suite logs.
             faulthandler.dump_traceback(file=target, all_threads=True)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             with contextlib.suppress(Exception):
                 faulthandler.dump_traceback(file=target, all_threads=True)
 
     try:
         signal.signal(signal.SIGUSR1, _dump_to_state)
-    except Exception:
+    except OPERATIONAL_EXCEPTIONS:
         with contextlib.suppress(Exception):
             faulthandler.register(signal.SIGUSR1, file=target, all_threads=True)
 

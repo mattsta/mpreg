@@ -44,6 +44,7 @@ from typing import Any
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.fabric.federation_graph import GeographicCoordinate
 
 from .consensus import ConsensusManager
@@ -432,7 +433,7 @@ class MembershipProtocol:
                 await asyncio.sleep(self.probe_interval)
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Error in probe loop: {e}")
                 await asyncio.sleep(self.probe_interval)
 
@@ -444,7 +445,7 @@ class MembershipProtocol:
                 await asyncio.sleep(5.0)  # Check suspicions every 5 seconds
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Error in suspicion loop: {e}")
                 await asyncio.sleep(5.0)
 
@@ -456,7 +457,7 @@ class MembershipProtocol:
                 await asyncio.sleep(30.0)  # Cleanup every 30 seconds
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Error in cleanup loop: {e}")
                 await asyncio.sleep(30.0)
 

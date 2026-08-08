@@ -30,6 +30,8 @@ from typing import Any, Protocol
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 from ..core.statistics import (
     AlertsSummary,
     ClusterPerformanceSummary,
@@ -311,7 +313,7 @@ class PerformanceMetricsService:
                 await asyncio.sleep(self.collection_interval)
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 metrics_log.error(f"Error in metrics collection loop: {e}")
                 await asyncio.sleep(5.0)  # Brief pause before retry
 
@@ -335,7 +337,7 @@ class PerformanceMetricsService:
                 for cluster_id in cluster_ids:
                     metrics = await collector.collect_metrics(cluster_id)
                     await self._update_cluster_metrics(metrics)
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 metrics_log.error(
                     f"Error collecting from {type(collector).__name__}: {e}"
                 )
@@ -693,7 +695,7 @@ class PerformanceMetricsService:
                     await callback(alert)
                 else:
                     callback(alert)
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 metrics_log.error(f"Error in alert callback: {e}")
 
     def resolve_alert(self, alert_id: str) -> bool:

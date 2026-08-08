@@ -23,6 +23,8 @@ from typing import Any
 
 from mpreg.datastructures.type_aliases import ClusterId, CorrelationId
 
+from .errors import OPERATIONAL_EXCEPTIONS
+
 # Topic taxonomy type aliases
 type TopicNamespaceString = str
 type TopicComponent = str
@@ -647,5 +649,5 @@ class TopicTemplateEngine:
 
         except KeyError as e:
             return False, "", f"Missing template parameter: {e}"
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             return False, "", f"Template generation error: {e}"

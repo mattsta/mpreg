@@ -1,6 +1,6 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
-#!/usr/bin/env python3
 """Tier 3: Full system expansion demo across all systems.
 
 Scenario: Multi-stage intake pipeline with caching, pub/sub notifications,

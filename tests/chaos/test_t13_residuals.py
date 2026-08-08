@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 
 import pytest
@@ -103,7 +104,7 @@ def test_cor_t13_01_explicit_true_still_works() -> None:
 @pytest.mark.asyncio
 async def test_cor_t13_02_snapshot_chunk_max_ids_evicts() -> None:
     node = _make_node("f1")
-    node.current_state = RaftState.FOLLOWER
+    node.testing_set_state(RaftState.FOLLOWER)
     node.persistent_state = PersistentState(
         current_term=1, voted_for=None, log_entries=[]
     )
@@ -134,7 +135,7 @@ async def test_cor_t13_02_snapshot_chunk_max_ids_evicts() -> None:
 @pytest.mark.asyncio
 async def test_cor_t13_02_snapshot_chunk_max_bytes_refuses() -> None:
     node = _make_node("f1")
-    node.current_state = RaftState.FOLLOWER
+    node.testing_set_state(RaftState.FOLLOWER)
     node.persistent_state = PersistentState(
         current_term=1, voted_for=None, log_entries=[]
     )
@@ -156,7 +157,7 @@ async def test_cor_t13_02_snapshot_chunk_max_bytes_refuses() -> None:
 @pytest.mark.asyncio
 async def test_cor_t13_02_snapshot_chunk_ttl_prune() -> None:
     node = _make_node("f1")
-    node.current_state = RaftState.FOLLOWER
+    node.testing_set_state(RaftState.FOLLOWER)
     node.persistent_state = PersistentState(
         current_term=1, voted_for=None, log_entries=[]
     )
@@ -172,7 +173,7 @@ async def test_cor_t13_02_snapshot_chunk_ttl_prune() -> None:
     )
     assert (await node.handle_install_snapshot(req)).success is True
     assert len(node.snapshot_chunks) == 1
-    time.sleep(0.02)
+    await asyncio.sleep(0.02)
     node._snapshot_chunk_prune_stale()
     assert len(node.snapshot_chunks) == 0
     assert node.snapshot_chunk_aborts >= 1
@@ -365,7 +366,7 @@ async def test_perf_t13_05_priority_uses_id_map() -> None:
 @pytest.mark.asyncio
 async def test_perf_t13_02_log_append_reuses_list_object() -> None:
     node = _make_node("L")
-    node.current_state = RaftState.LEADER
+    node.testing_set_state(RaftState.LEADER)
     from mpreg.datastructures.production_raft import LeaderVolatileState
 
     node.persistent_state = PersistentState(

@@ -11,6 +11,7 @@ from loguru import logger
 
 from mpreg.datastructures.type_aliases import TenantId
 
+from .errors import OPERATIONAL_EXCEPTIONS, with_operational
 from .transport.factory import TransportFactory
 from .transport.interfaces import (
     TransportConfig,
@@ -125,7 +126,7 @@ class Connection:
                     soft_limit,
                 )
                 await asyncio.sleep(0.5)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             pass
 
         for attempt in range(self.max_retries + 1):
@@ -159,7 +160,7 @@ class Connection:
             except asyncio.CancelledError:
                 self._transport = None
                 raise
-            except (TransportError, Exception) as exc:
+            except with_operational(TransportError) as exc:
                 logger.debug(
                     "[{}] Connection attempt failed (attempt {}/{}): {}",
                     self.url,
@@ -205,7 +206,7 @@ class Connection:
                 )
             except TimeoutError, asyncio.CancelledError:
                 pass
-            except Exception as exc:
+            except OPERATIONAL_EXCEPTIONS as exc:
                 logger.debug("[{}] Error during disconnect: {}", self.url, exc)
             finally:
                 self._transport = None

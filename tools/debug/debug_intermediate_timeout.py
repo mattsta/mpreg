@@ -9,6 +9,7 @@ import logging
 
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.model import RPCCommand, RPCRequest
 from mpreg.server import MPREGServer
 
@@ -89,7 +90,7 @@ async def test_minimal_intermediate_results():
 
         await client.disconnect()
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"Error: {e}")
         import traceback
 

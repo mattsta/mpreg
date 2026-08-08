@@ -105,7 +105,7 @@ async def five_node_cluster():
         for server in servers:
             try:
                 await server.shutdown_async()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Error shutting down server: {e}")
 
         # Cancel all tasks
@@ -364,7 +364,9 @@ class TestAdvancedClusterScenarios:
             assert result["model"] == "TestModel"
 
             # Test that requests to non-existent resources fail gracefully
-            with pytest.raises(Exception):  # Should timeout or error gracefully
+            from mpreg.core.errors import MpregError
+
+            with pytest.raises(MpregError):  # timeout or command/route error
                 await client.call(
                     "nonexistent_function",
                     "arg",

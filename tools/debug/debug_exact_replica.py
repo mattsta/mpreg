@@ -56,6 +56,7 @@ if __name__ == "__main__":
             timeout=60,
             capture_output=True,
             text=True,
+            check=False,
         )
 
         print("STDOUT:")

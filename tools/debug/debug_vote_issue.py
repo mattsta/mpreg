@@ -10,6 +10,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 sys.path.append(".")
 
 from tests.test_production_raft_integration import (
@@ -149,7 +151,7 @@ async def focused_vote_debug():
                                     print(f"   Vote granted: {response.vote_granted}")
                                 else:
                                     print("   ❌ No response received!")
-                            except Exception as e:
+                            except OPERATIONAL_EXCEPTIONS as e:
                                 print(f"   💥 Request failed: {e}")
 
                     break
@@ -196,7 +198,7 @@ async def focused_vote_debug():
 
         except TimeoutError:
             print("⏰ DEBUG SESSION TIMED OUT")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             print(f"💥 DEBUG ERROR: {e}")
             import traceback
 

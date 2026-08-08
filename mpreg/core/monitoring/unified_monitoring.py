@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+import types
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from enum import Enum
@@ -34,6 +35,8 @@ from mpreg.core.transport.enhanced_health import (
     TransportHealthSnapshot,
 )
 from mpreg.datastructures.type_aliases import CorrelationId
+
+from ..errors import OPERATIONAL_EXCEPTIONS
 
 # Type aliases for monitoring semantics
 type SystemName = str
@@ -593,7 +596,7 @@ class UnifiedSystemMonitor:
 
         try:
             return await monitor.get_system_metrics()
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.warning(f"Failed to collect {system_type.value} metrics: {e}")
             return None
 
@@ -612,7 +615,7 @@ class UnifiedSystemMonitor:
         for endpoint, aggregator in health_aggregators.items():
             try:
                 snapshots[endpoint] = aggregator.get_transport_health_snapshot()
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.debug(f"Failed to collect transport health for {endpoint}: {e}")
 
         return snapshots
@@ -849,12 +852,12 @@ class UnifiedSystemMonitor:
                             f"(score: {metrics.overall_health_score:.3f})"
                         )
 
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     logger.error(f"Error collecting unified metrics: {e}")
 
         except asyncio.CancelledError:
             logger.info("Metrics collection task cancelled")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Metrics collection task error: {e}")
 
     async def _correlation_cleanup_task(self) -> None:
@@ -902,12 +905,12 @@ class UnifiedSystemMonitor:
                             f"Cleaned up {len(expired_correlations)} expired correlations and {len(expired_tracking_ids)} expired tracking IDs"
                         )
 
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     logger.error(f"Error during correlation cleanup: {e}")
 
         except asyncio.CancelledError:
             logger.info("Correlation cleanup task cancelled")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Correlation cleanup task error: {e}")
 
     async def _health_monitoring_task(self) -> None:
@@ -956,17 +959,17 @@ class UnifiedSystemMonitor:
                                     tracking_id=health_tracking_id,
                                 )
 
-                            except Exception as e:
+                            except OPERATIONAL_EXCEPTIONS as e:
                                 logger.warning(
                                     f"Health check failed for {system_type.value}: {e}"
                                 )
 
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     logger.error(f"Error during health monitoring: {e}")
 
         except asyncio.CancelledError:
             logger.info("Health monitoring task cancelled")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Health monitoring task error: {e}")
 
     async def __aenter__(self) -> Self:
@@ -974,7 +977,12 @@ class UnifiedSystemMonitor:
         await self.start()
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         """Async context manager exit."""
         await self.stop()
 

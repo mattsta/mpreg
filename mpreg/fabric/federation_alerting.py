@@ -27,6 +27,7 @@ from typing import Any, Protocol
 import aiohttp
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.native_codec import JSONDecodeError, loads_text
 from mpreg.fabric.performance_metrics import AlertSeverity, PerformanceAlert
 
@@ -578,7 +579,7 @@ class FederationAlertingService:
             self.stats.total_sent += 1
             return updated_delivery
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(
                 f"Failed to send notification via {channel.backend.value}: {e}"
             )
@@ -796,7 +797,7 @@ class ConsoleNotificationBackend:
                 response_message="Printed to console",
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             return NotificationDelivery(
                 delivery_id=f"console_failed_{int(time.time())}_{channel.channel_id}",
                 channel_id=channel.channel_id,
@@ -897,7 +898,7 @@ class WebhookNotificationBackend:
                     response_message=response_text[:500],  # Truncate long responses
                 )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             return NotificationDelivery(
                 delivery_id=f"webhook_failed_{int(time.time())}_{channel.channel_id}",
                 channel_id=channel.channel_id,
@@ -1026,7 +1027,7 @@ class SlackNotificationBackend:
                     response_message=response_text,
                 )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             return NotificationDelivery(
                 delivery_id=f"slack_failed_{int(time.time())}_{channel.channel_id}",
                 channel_id=channel.channel_id,
@@ -1157,7 +1158,7 @@ class EmailNotificationBackend:
                 response_code=200,
                 response_message="Email sent",
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             return NotificationDelivery(
                 delivery_id=f"email_failed_{int(time.time())}_{channel.channel_id}",
                 channel_id=channel.channel_id,

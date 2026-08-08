@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from pathlib import Path
+
 """
 LOGGING DEBUG: Trace EXACTLY where pytest execution hangs
 """
@@ -396,7 +398,7 @@ if __name__ == "__main__":
     print("🔬 Running debug version with detailed logging...")
 
     # Clear previous log
-    with open("pytest_execution_trace.log", "w") as f:
+    with Path("pytest_execution_trace.log").open("w") as f:
         f.write("PYTEST EXECUTION TRACE LOG\n")
         f.write("=" * 50 + "\n")
 
@@ -413,6 +415,7 @@ if __name__ == "__main__":
             timeout=120,
             capture_output=True,
             text=True,
+            check=False,
         )
 
         print("STDOUT:")

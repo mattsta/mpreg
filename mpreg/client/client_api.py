@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import types
 from dataclasses import dataclass, field, replace
 from typing import Any, Self, TypeVar
 
@@ -678,5 +679,10 @@ class MPREGClientAPI:
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         await self.disconnect()

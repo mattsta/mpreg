@@ -24,6 +24,7 @@ from typing import Any
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.message_queue import DeliveryGuarantee as QueueDeliveryGuarantee
 from mpreg.core.task_manager import ManagedObject
 from mpreg.datastructures.type_aliases import ClusterId, QueueName, Timestamp
@@ -674,7 +675,7 @@ class FabricQueueDeliveryCoordinator(ManagedObject):
 
         try:
             payload = queue_consensus_message_from_dict(message.payload)
-        except Exception as exc:
+        except OPERATIONAL_EXCEPTIONS as exc:
             fabric_queue_log.warning(
                 "[{}] Invalid queue consensus payload: {}",
                 self.cluster_id,
@@ -769,7 +770,7 @@ class FabricQueueDeliveryCoordinator(ManagedObject):
                     byzantine_fault_threshold=consensus_round.byzantine_fault_threshold,
                 )
                 await self._send_consensus_request(request)
-        except Exception as exc:
+        except OPERATIONAL_EXCEPTIONS as exc:
             fabric_queue_log.error(
                 "[{}] Failed to initiate queue consensus: {}",
                 self.cluster_id,

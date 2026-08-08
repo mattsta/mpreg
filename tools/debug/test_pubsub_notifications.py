@@ -10,6 +10,7 @@ import time
 
 from mpreg.client.pubsub_client import MPREGPubSubExtendedClient
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.server import MPREGServer
 
 
@@ -101,7 +102,7 @@ async def test_basic_pubsub_notifications():
             print(f"❌ FAILURE: Expected 2 messages, got {len(received_messages)}")
             return False
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"❌ ERROR: {e}")
         import traceback
 
@@ -110,11 +111,8 @@ async def test_basic_pubsub_notifications():
 
     finally:
         # Cleanup
-        try:
+        with contextlib.suppress(ConnectionError, asyncio.CancelledError):
             await client.disconnect()
-        except ConnectionError, asyncio.CancelledError:
-            # Client disconnection errors during cleanup are expected
-            pass
         server_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await server_task

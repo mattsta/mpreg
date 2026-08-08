@@ -5,6 +5,7 @@ import asyncio
 import contextlib
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.model import GoodbyeReason
 from mpreg.server import MPREGServer
 from tests.test_helpers import TestPortManager
@@ -143,7 +144,7 @@ async def debug_gossip_blocking():
             await server1.shutdown_async()
             await server2_new.shutdown_async()
             await server3.shutdown_async()
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             print(f"Error during cleanup: {e}")
 
         for task in [server1_task, server2_new_task, server3_task]:

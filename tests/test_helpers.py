@@ -1,3 +1,5 @@
+from pathlib import Path
+
 """
 Test helper utilities for MPREG testing.
 
@@ -209,7 +211,6 @@ def create_test_ssl_context() -> ssl.SSLContext:
     try:
         import datetime
         import ipaddress
-        import os
         import tempfile
 
         try:
@@ -287,14 +288,14 @@ def create_test_ssl_context() -> ssl.SSLContext:
         context.load_cert_chain(cert_path, key_path)
 
         # Clean up temporary files
-        os.unlink(cert_path)
-        os.unlink(key_path)
+        Path(cert_path).unlink()
+        Path(key_path).unlink()
 
     except ImportError:
         # Fallback if cryptography is not available
         # Just return a basic context that allows self-signed certs
         pass
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         # If anything goes wrong with cert generation, just use basic context
         pass
 
@@ -338,21 +339,21 @@ class AsyncObjectManager:
         for obj in reversed(self._shutdownable_objects):
             try:
                 await obj.shutdown()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Warning: Failed to shutdown {type(obj).__name__}: {e}")
 
         # Then stop objects with stop method
         for stoppable_obj in reversed(self._stoppable_objects):
             try:
                 await stoppable_obj.stop()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Warning: Failed to stop {type(stoppable_obj).__name__}: {e}")
 
         # Finally close objects with close method
         for closeable_obj in reversed(self._closeable_objects):
             try:
                 await closeable_obj.close()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Warning: Failed to close {type(closeable_obj).__name__}: {e}")
 
     def clear(self) -> None:

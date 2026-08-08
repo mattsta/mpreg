@@ -18,6 +18,7 @@ from dataclasses import dataclass
 
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.port_allocator import PortAllocator
 from mpreg.datastructures.type_aliases import EndpointScope
 from mpreg.server import MPREGServer
@@ -106,7 +107,7 @@ async def _query_loop(
                     await client.summary_query(
                         namespace="svc.market", scope=summary_scope
                     )
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 results.error_count += 1
             await asyncio.sleep(interval_seconds)
 

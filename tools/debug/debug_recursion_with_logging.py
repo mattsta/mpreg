@@ -8,6 +8,8 @@ import logging
 import tempfile
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 # Set up detailed logging
 logging.basicConfig(
     level=logging.DEBUG,
@@ -54,7 +56,7 @@ async def debug_with_comprehensive_logging():
             for node_id, node in nodes.items():
                 print(f"{node_id}: {node.current_state.value}")
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             print(f"Exception during test: {e}")
             import traceback
 
@@ -68,7 +70,7 @@ async def debug_with_comprehensive_logging():
                     print(f"Stopped {node_id}")
                 except TimeoutError:
                     print(f"Timeout stopping {node_id}")
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     print(f"Error stopping {node_id}: {e}")
 
 

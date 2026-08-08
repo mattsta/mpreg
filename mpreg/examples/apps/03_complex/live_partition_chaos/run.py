@@ -96,20 +96,22 @@ async def main() -> None:
                     )
                 ensure(out_a == "a:hi", f"ping_a {out_a!r}")
                 ensure(out_b == "b:hi", f"ping_b {out_b!r}")
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(f"{base_a}/ready") as resp:
-                        body = await resp.json(content_type=None)
-                        ensure(
-                            resp.status == 200,
-                            f"/ready expected 200 got {resp.status} {body}",
-                        )
-                        ensure(
-                            body.get("draining") is False
-                            or body.get("draining") is None
-                            or body.get("ready") is True
-                            or resp.status == 200,
-                            f"ready body {body}",
-                        )
+                async with (
+                    aiohttp.ClientSession() as session,
+                    session.get(f"{base_a}/ready") as resp,
+                ):
+                    body = await resp.json(content_type=None)
+                    ensure(
+                        resp.status == 200,
+                        f"/ready expected 200 got {resp.status} {body}",
+                    )
+                    ensure(
+                        body.get("draining") is False
+                        or body.get("draining") is None
+                        or body.get("ready") is True
+                        or resp.status == 200,
+                        f"ready body {body}",
+                    )
                 ok(f"mesh RPC + /ready ok body_keys={sorted(body)[:8]}")
 
             with scenario(
@@ -192,28 +194,30 @@ async def main() -> None:
                 "chaos.partition",
                 "disco.list_peers",
             ):
-                async with aiohttp.ClientSession() as session:
-                    async with session.post(
+                async with (
+                    aiohttp.ClientSession() as session,
+                    session.post(
                         f"{base_a}/mgmt/v1/peers/detach",
                         json={
                             "peer_url": url_b,
                             "actor": "curriculum",
                             "reason": "live_detach",
                         },
-                    ) as resp:
-                        data = await resp.json(content_type=None)
-                        step(f"detach status={resp.status} body={data}")
-                        ensure(
-                            resp.status == 200,
-                            f"detach HTTP {resp.status} {data}",
-                        )
-                        # applied may be True even if peer already idle
-                        ensure(
-                            data.get("applied") is True
-                            or data.get("error") is None
-                            or "detail" in data,
-                            f"detach unexpected {data}",
-                        )
+                    ) as resp,
+                ):
+                    data = await resp.json(content_type=None)
+                    step(f"detach status={resp.status} body={data}")
+                    ensure(
+                        resp.status == 200,
+                        f"detach HTTP {resp.status} {data}",
+                    )
+                    # applied may be True even if peer already idle
+                    ensure(
+                        data.get("applied") is True
+                        or data.get("error") is None
+                        or "detail" in data,
+                        f"detach unexpected {data}",
+                    )
                 ok(f"detach response applied={data.get('applied')}")
 
             with scenario(
@@ -245,29 +249,29 @@ async def main() -> None:
                 "ops.mgmt_audit",
             ):
                 step(f"mgmt_audit_path={audit_path}")
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(
+                async with (
+                    aiohttp.ClientSession() as session,
+                    session.get(
                         f"{base_a}/mgmt/v1/audit",
                         params={"limit": "20"},
-                    ) as resp:
-                        body = await resp.json(content_type=None)
-                        ensure(resp.status == 200, f"audit HTTP {resp.status}")
-                        mutations = body.get("mutations") or body.get("entries") or []
-                        ensure(
-                            isinstance(mutations, list) and len(mutations) >= 1,
-                            f"expected audit mutations, got {body}",
-                        )
-                        events = {
-                            str(m.get("event"))
-                            for m in mutations
-                            if isinstance(m, dict)
-                        }
-                        step(f"audit events={sorted(events)} n={len(mutations)}")
-                        ensure(
-                            any("drain" in e.lower() for e in events)
-                            or any("drain" in str(m).lower() for m in mutations),
-                            f"no drain event in {events}",
-                        )
+                    ) as resp,
+                ):
+                    body = await resp.json(content_type=None)
+                    ensure(resp.status == 200, f"audit HTTP {resp.status}")
+                    mutations = body.get("mutations") or body.get("entries") or []
+                    ensure(
+                        isinstance(mutations, list) and len(mutations) >= 1,
+                        f"expected audit mutations, got {body}",
+                    )
+                    events = {
+                        str(m.get("event")) for m in mutations if isinstance(m, dict)
+                    }
+                    step(f"audit events={sorted(events)} n={len(mutations)}")
+                    ensure(
+                        any("drain" in e.lower() for e in events)
+                        or any("drain" in str(m).lower() for m in mutations),
+                        f"no drain event in {events}",
+                    )
                 # JSONL file must have been appended
                 p = Path(audit_path)
                 ensure(p.is_file(), f"missing audit JSONL {p}")

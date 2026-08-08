@@ -610,9 +610,8 @@ class TestTrieProperties:
         if p_idx < len(pattern_segments):
             # Remaining pattern segments
             remaining = pattern_segments[p_idx:]
-            if len(remaining) == 1 and remaining[0] == "#":
-                return True  # Multi-wildcard can match zero segments
-            return False
+            # Multi-wildcard can match zero segments
+            return len(remaining) == 1 and remaining[0] == "#"
 
         return k_idx == len(key_segments)  # All key segments consumed
 
@@ -811,14 +810,14 @@ class TestTrieThreadSafety:
                 for _ in range(100):
                     result = trie.match_pattern("user.123.login")
                     results.append(result)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 exceptions.append(e)
 
         def writer():
             try:
                 for i in range(50):
                     trie.add_pattern(f"user.{i}.login", f"sub_{i}")
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 exceptions.append(e)
 
         # Start concurrent operations
@@ -1366,7 +1365,7 @@ class TestWildcardPatternExpansion:
                     if i % 10 == 0:
                         trie.remove_pattern(f"stress.{i}.pattern", f"value_{i}")
                     results.append(len(matches))
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 exceptions.append(e)
 
         threads = []

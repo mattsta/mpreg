@@ -1,3 +1,5 @@
+import contextlib
+
 """
 Comprehensive property-based tests for DAO datastructure.
 
@@ -708,12 +710,9 @@ class TestDaoStateMachine(RuleBasedStateMachine):
                     title=f"Proposal {self.proposal_counter}",
                     description=f"Test proposal number {self.proposal_counter}",
                 )
-                try:
+                with contextlib.suppress(ValueError):
                     self.dao = self.dao.create_proposal(proposer_id, proposal)
                     self.proposal_counter += 1
-                except ValueError:
-                    # Expected for invalid proposals or cooldown violations
-                    pass
 
     @rule(
         voter_index=st.integers(min_value=0, max_value=10),
@@ -731,11 +730,8 @@ class TestDaoStateMachine(RuleBasedStateMachine):
 
             if active_proposals:
                 proposal_id = active_proposals[0].proposal_id
-                try:
+                with contextlib.suppress(ValueError):
                     self.dao = self.dao.cast_vote(voter_id, proposal_id, vote_choice)
-                except ValueError:
-                    # Expected for duplicate votes or inactive proposals
-                    pass
 
     @invariant()
     def dao_integrity_maintained(self):

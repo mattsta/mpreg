@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from mpreg.core.message_queue import (
     DeliveryGuarantee,
@@ -15,6 +15,9 @@ from mpreg.core.message_queue import (
 )
 from mpreg.core.serialization import JsonSerializer
 from mpreg.datastructures.message_structures import MessageId
+
+if TYPE_CHECKING:
+    from mpreg.core.persistence.backend import SQLitePersistenceBackend
 
 
 @dataclass(frozen=True, slots=True)

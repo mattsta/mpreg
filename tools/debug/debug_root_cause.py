@@ -15,6 +15,7 @@ import time
 from tests.port_allocator import PortAllocator
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.server import MPREGServer
 
 
@@ -44,7 +45,7 @@ class RootCauseInvestigator:
                 for port in ports:
                     self.port_allocator.release_port(port)
 
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 print(f"   ❌ {size:3d} ports: FAILED - {e}")
                 return size
 
@@ -85,7 +86,7 @@ class RootCauseInvestigator:
                 for port in ports:
                     self.port_allocator.release_port(port)
 
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 print(f"   ❌ {size:3d} servers: FAILED - {e}")
                 return size
 
@@ -137,7 +138,7 @@ class RootCauseInvestigator:
                 for port in ports:
                     self.port_allocator.release_port(port)
 
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 print(f"   ❌ {size:3d} isolated servers: FAILED - {e}")
                 return size
 
@@ -204,7 +205,7 @@ class RootCauseInvestigator:
                 for port in ports:
                     self.port_allocator.release_port(port)
 
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 print(f"   ❌ {size:3d} star topology: FAILED - {e}")
                 return size
 

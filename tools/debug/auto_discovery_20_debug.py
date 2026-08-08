@@ -5,6 +5,7 @@ import socket
 import traceback
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.port_allocator import get_port_allocator
 from mpreg.server import MPREGServer
 
@@ -83,7 +84,7 @@ async def main() -> None:
                     sock.settimeout(0.3)
                     try:
                         sock.connect(("127.0.0.1", probe_port))
-                    except Exception as exc:
+                    except OPERATIONAL_EXCEPTIONS as exc:
                         print(
                             f"  Node {probe_idx} tcp connect failed on {probe_port}: {exc}"
                         )

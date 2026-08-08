@@ -30,6 +30,7 @@ from loguru import logger
 from sortedcontainers import SortedSet  # type: ignore
 
 from ..datastructures import MessageId
+from .errors import OPERATIONAL_EXCEPTIONS
 from .task_manager import ManagedObject
 from .topic_taxonomy import TopicValidator
 
@@ -488,7 +489,7 @@ class MessageQueue(ManagedObject):
 
             return DeliveryResult(success=True, message_id=message_id)
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             queue_log.error(f"Failed to send message: {e}")
             return DeliveryResult(
                 success=False, message_id=MessageId(), error_message=str(e)
@@ -594,7 +595,7 @@ class MessageQueue(ManagedObject):
                     try:
                         subscription.callback(message)
                         delivered_to.add(subscriber_id)
-                    except Exception as e:
+                    except OPERATIONAL_EXCEPTIONS as e:
                         queue_log.error(
                             f"Fire-and-forget delivery failed to {subscriber_id}: {e}"
                         )
@@ -611,7 +612,7 @@ class MessageQueue(ManagedObject):
                 failed_deliveries=failed_deliveries,
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             queue_log.error(f"Fire-and-forget delivery failed: {e}")
             return DeliveryResult(
                 success=False, message_id=message.id, error_message=str(e)
@@ -678,13 +679,13 @@ class MessageQueue(ManagedObject):
                     # Deliver the message
                     await self._deliver_message(message)
 
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     queue_log.error(f"Delivery worker error: {e}")
                     await asyncio.sleep(1.0)
 
         except asyncio.CancelledError:
             queue_log.debug("Delivery worker cancelled")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             queue_log.error(f"Delivery worker fatal error: {e}")
         finally:
             queue_log.debug("Delivery worker stopped")
@@ -708,13 +709,13 @@ class MessageQueue(ManagedObject):
                     for msg_id in expired_messages:
                         await self._handle_timeout(msg_id)
 
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     queue_log.error(f"Timeout worker error: {e}")
                     await asyncio.sleep(5.0)
 
         except asyncio.CancelledError:
             queue_log.debug("Timeout worker cancelled")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             queue_log.error(f"Timeout worker fatal error: {e}")
         finally:
             queue_log.debug("Timeout worker stopped")
@@ -774,13 +775,13 @@ class MessageQueue(ManagedObject):
 
                     queue_log.debug(f"Queue cleanup completed for {self.config.name}")
 
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     queue_log.error(f"Cleanup worker error: {e}")
                     await asyncio.sleep(60.0)
 
         except asyncio.CancelledError:
             queue_log.debug("Cleanup worker cancelled")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             queue_log.error(f"Cleanup worker fatal error: {e}")
         finally:
             queue_log.debug("Cleanup worker stopped")
@@ -860,7 +861,7 @@ class MessageQueue(ManagedObject):
                         if subscription.auto_acknowledge:
                             in_flight.acknowledged_by.add(subscriber_id)
 
-                    except Exception as e:
+                    except OPERATIONAL_EXCEPTIONS as e:
                         queue_log.error(f"Delivery failed to {subscriber_id}: {e}")
 
             if delivered_count == 0:
@@ -887,7 +888,7 @@ class MessageQueue(ManagedObject):
                 f"Delivered message {message.id} to {delivered_count} subscribers"
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             queue_log.error(f"Message delivery failed: {e}")
             await self._move_to_dead_letter_queue(message, str(e))
 

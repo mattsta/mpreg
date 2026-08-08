@@ -1,6 +1,6 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
-#!/usr/bin/env python3
 """Demo: unified persistence across queue + cache after restart."""
 
 import asyncio

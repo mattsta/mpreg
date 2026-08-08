@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import contextlib
+
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 """
 Test script to validate the federated RPC system implementation.
 
@@ -182,7 +186,7 @@ async def test_federated_rpc_system():
                 f"  ❌ FAILURE: Expected 'analysis' in result, got: {list(result.keys())}"
             )
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"  ❌ FAILURE: {type(e).__name__}: {e}")
 
     finally:
@@ -193,11 +197,8 @@ async def test_federated_rpc_system():
     for task in tasks:
         task.cancel()
 
-    try:
+    with contextlib.suppress(asyncio.CancelledError):
         await asyncio.gather(*tasks, return_exceptions=True)
-    except asyncio.CancelledError:
-        # Task cancellation during cleanup is expected
-        pass
 
     print("✅ Test complete!")
 

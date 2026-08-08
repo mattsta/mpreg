@@ -39,10 +39,10 @@ def _utc_now_iso() -> str:
 def _load_manifest_tests(manifest_path: Path) -> tuple[NodeId, ...]:
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
-        raise ValueError("Manifest must be a JSON object")
+        raise TypeError("Manifest must be a JSON object")
     raw_tests = payload.get("tests", [])
     if not isinstance(raw_tests, list):
-        raise ValueError("Manifest 'tests' must be a list")
+        raise TypeError("Manifest 'tests' must be a list")
     tests = tuple(str(nodeid) for nodeid in raw_tests if str(nodeid).strip())
     if not tests:
         raise ValueError("Manifest contains no tests")

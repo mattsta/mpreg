@@ -5,6 +5,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 
 def build_mgmt_v1_summary(server: Any) -> dict[str, Any]:
     """Return cluster/nodes/routes/catalog/health summaries for management APIs."""
@@ -67,20 +69,20 @@ def build_mgmt_v1_summary(server: Any) -> dict[str, Any]:
                 catalog_summary["functions"] = (
                     len(list(functions.entries())) if functions else 0
                 )
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 catalog_summary["functions"] = 0
             try:
                 catalog_summary["queues"] = len(list(queues.entries())) if queues else 0
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 catalog_summary["queues"] = 0
             try:
                 catalog_summary["topics"] = len(list(topics.entries())) if topics else 0
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 catalog_summary["topics"] = 0
             try:
                 if caches is not None and hasattr(caches, "entries"):
                     catalog_summary["caches"] = len(list(caches.entries()))
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 catalog_summary["caches"] = 0
 
         route_table = getattr(control, "route_table", None) or getattr(
@@ -94,7 +96,7 @@ def build_mgmt_v1_summary(server: Any) -> dict[str, Any]:
             elif raw is not None and hasattr(raw, "values"):
                 try:
                     entries = list(raw.values())
-                except Exception:
+                except OPERATIONAL_EXCEPTIONS:
                     entries = []
         for entry in entries[:200]:
             routes.append(

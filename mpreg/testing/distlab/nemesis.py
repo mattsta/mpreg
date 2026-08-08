@@ -234,10 +234,8 @@ class Nemesis:
 
         async def _loop() -> None:
             while not self._stopped:
-                try:
+                with contextlib.suppress(Exception):
                     self.step_once()
-                except Exception:  # noqa: BLE001
-                    pass
                 await asyncio.sleep(self.interval_s)
 
         try:
@@ -255,10 +253,8 @@ class Nemesis:
             with contextlib.suppress(asyncio.CancelledError):
                 await t
         # Always heal on stop so residual checks see a connected world
-        try:
+        with contextlib.suppress(Exception):
             self.target.heal_network()
             self.target.clear_fault_rates()
             for n in self.target.node_ids():
                 self.target.recover_node(n)
-        except Exception:  # noqa: BLE001
-            pass

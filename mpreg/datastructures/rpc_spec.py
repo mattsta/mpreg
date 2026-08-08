@@ -17,6 +17,8 @@ from typing import (
     get_type_hints,
 )
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 from .function_identity import FunctionIdentity, SemanticVersion
 from .type_aliases import (
     EndpointScope,
@@ -653,9 +655,9 @@ def _safe_type_hints(handler: Callable[..., Any]) -> dict[str, Any]:
     except TypeError:
         try:
             return get_type_hints(handler)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return dict(getattr(handler, "__annotations__", {}) or {})
-    except Exception:
+    except OPERATIONAL_EXCEPTIONS:
         return dict(getattr(handler, "__annotations__", {}) or {})
 
 

@@ -22,6 +22,8 @@
 
 ### Platform / fabric
 
+- **[architecture/](architecture/README.md) — Unified correctness maps (Raft, logging, validation)** · [master plan](plans/UNIFIED_CORRECTNESS_MASTER_PLAN.md)
+
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [FABRIC_ROUTE_POLICIES.md](FABRIC_ROUTE_POLICIES.md)
 - [FABRIC_LINK_STATE_ROUTING.md](FABRIC_LINK_STATE_ROUTING.md)

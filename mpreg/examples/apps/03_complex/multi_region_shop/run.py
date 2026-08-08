@@ -10,6 +10,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.core.model import RPCCommand
 from mpreg.core.port_allocator import port_range_context
 from mpreg.examples.apps._shared.runtime import (
+    EXAMPLE_RUN_EXCEPTIONS,
     app_run,
     ensure,
     ok,
@@ -92,7 +93,7 @@ async def main() -> None:
                         timeout_s=10.0,
                         what="fabric peer/function visibility",
                     )
-                except Exception:
+                except EXAMPLE_RUN_EXCEPTIONS:
                     await asyncio.sleep(0.5)
 
                 hub = f"ws://127.0.0.1:{ports[0]}"

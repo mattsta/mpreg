@@ -9,6 +9,7 @@ from mpreg.core.config import MPREGSettings
 from mpreg.core.port_allocator import port_range_context
 from mpreg.core.rpc_discovery import RpcDescribeRequest, RpcReportRequest
 from mpreg.examples.apps._shared.runtime import (
+    EXAMPLE_RUN_EXCEPTIONS,
     app_run,
     ensure,
     ok,
@@ -122,7 +123,7 @@ async def main() -> None:
                             listed = await client.rpc_list()
                             step(f"rpc_list type={type(listed).__name__}")
                             ok("rpc_list ok")
-                        except Exception as exc:
+                        except EXAMPLE_RUN_EXCEPTIONS as exc:
                             step(f"rpc_list: {type(exc).__name__}")
                             ok("rpc_list path exercised")
                     else:
@@ -140,7 +141,7 @@ async def main() -> None:
                         )
                         ensure(filtered is not None, "filtered None")
                         ok("function_name filter accepted")
-                    except Exception as exc:
+                    except EXAMPLE_RUN_EXCEPTIONS as exc:
                         step(f"filter: {type(exc).__name__}: {exc}")
                         ok("filter path exercised")
 

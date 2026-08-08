@@ -9,6 +9,7 @@ from typing import Protocol
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS, log_caught_exception
 from mpreg.datastructures.raft_codec import (
     deserialize_append_entries,
     deserialize_append_entries_response,
@@ -154,16 +155,20 @@ class FabricRaftTransport:
         if kind == RAFT_RPC_REQUEST_KIND:
             try:
                 request = FabricRaftRpcRequest.from_dict(message.payload)
-            except Exception as exc:
-                raft_log.warning("Invalid raft request payload: {}", exc)
+            except OPERATIONAL_EXCEPTIONS as exc:
+                log_caught_exception(
+                    raft_log, "Invalid raft request payload", exc, level="warning"
+                )
                 return False
             await self._handle_request(request, message, source_peer_url)
             return True
         if kind == RAFT_RPC_RESPONSE_KIND:
             try:
                 response = FabricRaftRpcResponse.from_dict(message.payload)
-            except Exception as exc:
-                raft_log.warning("Invalid raft response payload: {}", exc)
+            except OPERATIONAL_EXCEPTIONS as exc:
+                log_caught_exception(
+                    raft_log, "Invalid raft response payload", exc, level="warning"
+                )
                 return False
             await self._handle_response(response, message, source_peer_url)
             return True

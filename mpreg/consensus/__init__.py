@@ -8,9 +8,11 @@ See ``mpreg/server_pkg/consensus.md`` for the full capability matrix.
 
 from __future__ import annotations
 
+import contextlib
 import warnings
 from typing import Any
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.datastructures.production_raft import (
     LogEntry,
     LogEntryType,
@@ -64,7 +66,7 @@ def status_dict(node: ProductionRaft) -> dict[str, Any]:
     last_applied = 0
     voted_for: str | None = None
     last_log_index = 0
-    try:
+    with contextlib.suppress(Exception):
         term = int(node.persistent_state.current_term)
         voted_for = node.persistent_state.voted_for
         last_log_index = (
@@ -72,13 +74,9 @@ def status_dict(node: ProductionRaft) -> dict[str, Any]:
             if node.persistent_state.log_entries
             else 0
         )
-    except Exception:  # noqa: BLE001 - status must never raise for ops
-        pass
-    try:
+    with contextlib.suppress(Exception):
         commit_index = int(node.volatile_state.commit_index)
         last_applied = int(node.volatile_state.last_applied)
-    except Exception:  # noqa: BLE001
-        pass
     members = sorted(getattr(node, "cluster_members", ()) or ())
     metrics: dict[str, Any] = {}
     try:
@@ -93,10 +91,32 @@ def status_dict(node: ProductionRaft) -> dict[str, Any]:
                 metrics["log_size"] = int(
                     getattr(node, "_last_log_index", lambda: last_log_index)()
                 )
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 metrics.setdefault("log_size", last_log_index)
     except Exception:  # noqa: BLE001
         metrics = {}
+    # Prefer full get_status() when available (parity with RaftNodeStatus).
+    status_extra: dict[str, Any] = {}
+    with contextlib.suppress(Exception):
+        gs = getattr(node, "get_status", None)
+        if callable(gs):
+            st = gs()
+            td = st.to_dict() if hasattr(st, "to_dict") else {}
+            if isinstance(td, dict):
+                status_extra = {
+                    "time_since_leader_contact": td.get("time_since_leader_contact"),
+                    "elections_skipped_recent_contact": td.get(
+                        "elections_skipped_recent_contact"
+                    ),
+                    "elections_skipped_backoff": td.get("elections_skipped_backoff"),
+                    "pre_vote_enabled": td.get("pre_vote_enabled"),
+                    "pre_votes_started": td.get("pre_votes_started"),
+                    "pre_votes_passed": td.get("pre_votes_passed"),
+                    "pre_votes_failed": td.get("pre_votes_failed"),
+                    "coordinator_active": td.get("coordinator_active"),
+                    "election_in_progress": td.get("election_in_progress"),
+                }
+
     return {
         "node_id": getattr(node, "node_id", ""),
         "role": role,
@@ -111,6 +131,7 @@ def status_dict(node: ProductionRaft) -> dict[str, Any]:
         # OBS-T14-01: internal counters for Prom bridge / mgmt
         "metrics": metrics,
         "log_size": int(metrics.get("log_size") or last_log_index or 0),
+        **status_extra,
     }
 
 

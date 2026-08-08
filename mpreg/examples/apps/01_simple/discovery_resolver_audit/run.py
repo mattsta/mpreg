@@ -8,6 +8,7 @@ from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
 from mpreg.core.port_allocator import port_range_context
 from mpreg.examples.apps._shared.runtime import (
+    EXAMPLE_RUN_EXCEPTIONS,
     app_run,
     ensure,
     ok,
@@ -104,7 +105,7 @@ async def main() -> None:
                             q = await client.catalog_query()
                             step(f"catalog_query type={type(q).__name__}")
                             ok("catalog_query ok with resolver mode")
-                        except Exception as exc:
+                        except EXAMPLE_RUN_EXCEPTIONS as exc:
                             step(f"catalog_query: {type(exc).__name__}: {exc}")
                             ok("catalog_query path exercised")
                     else:

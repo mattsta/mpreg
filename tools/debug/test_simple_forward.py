@@ -10,6 +10,7 @@ import time
 from mpreg.fabric.federation_bridge import GraphAwareFederationBridge
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.model import PubSubMessage
 from mpreg.fabric.federation_optimized import ClusterIdentity
 from mpreg.server import MPREGServer
@@ -154,7 +155,7 @@ async def test_simple_forward():
         try:
             await bridge1._forward_message_to_all_clusters(test_message)
             print("  ✅ Manual forwarding completed")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             print(f"  ❌ Manual forwarding failed: {e}")
             import traceback
 

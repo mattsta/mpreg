@@ -22,6 +22,7 @@ import struct
 import time
 from collections.abc import AsyncIterable
 
+from ..errors import OPERATIONAL_EXCEPTIONS
 from .defaults import DEFAULT_MAX_MESSAGE_SIZE
 from .factory import ProtocolSpec, register_transport
 from .interfaces import (
@@ -314,7 +315,7 @@ class TCPTransport(TransportInterface):
         except ConnectionError, BrokenPipeError:
             self._connected = False
             raise TransportConnectionError("TCP connection closed")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             raise TransportError(f"TCP send error: {e}")
 
     async def receive(self) -> bytes:
@@ -369,7 +370,7 @@ class TCPTransport(TransportInterface):
             raise TransportConnectionError("TCP connection closed")
         except struct.error as e:
             raise TransportError(f"TCP protocol error: invalid header: {e}")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             raise TransportError(f"TCP receive error: {e}")
 
     async def send_stream(
@@ -427,7 +428,7 @@ class TCPTransport(TransportInterface):
         except ConnectionError, BrokenPipeError:
             self._connected = False
             raise TransportConnectionError("TCP connection closed")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             # Send error chunk to notify receiver
             try:
                 error_chunk = struct.pack(">II", 0, STREAM_FLAG_ERROR)
@@ -556,7 +557,7 @@ class TCPTransport(TransportInterface):
         except asyncio.IncompleteReadError:
             self._connected = False
             raise TransportConnectionError("TCP connection closed")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             raise TransportError(f"TCP stream receive error: {e}")
 
     async def _receive_stream_chunks(self) -> bytes:
@@ -649,7 +650,7 @@ class TCPTransport(TransportInterface):
             raise TransportTimeoutError("TCP ping timeout")
         except TransportError:
             raise
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             raise TransportError(f"TCP ping error: {e}")
 
 
@@ -745,7 +746,7 @@ class TCPListener(TransportListener):
             transport = _TCPServerTransport(reader, writer, self.config)
             return transport
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             raise TransportError(f"TCP accept failed: {e}")
 
     async def _handle_connection(
@@ -766,7 +767,7 @@ class TCPListener(TransportListener):
                     try:
                         _r, old_writer = old
                         old_writer.close()
-                    except Exception:
+                    except OPERATIONAL_EXCEPTIONS:
                         pass
                 except asyncio.QueueEmpty:
                     pass
@@ -859,7 +860,7 @@ class _TCPServerTransport(TransportInterface):
         except ConnectionError, BrokenPipeError:
             self._connected = False
             raise TransportConnectionError("TCP connection closed")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             raise TransportError(f"TCP send error: {e}")
 
     async def receive(self) -> bytes:
@@ -905,7 +906,7 @@ class _TCPServerTransport(TransportInterface):
             raise TransportConnectionError("TCP connection closed")
         except struct.error as e:
             raise TransportError(f"TCP protocol error: invalid header: {e}")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             raise TransportError(f"TCP receive error: {e}")
 
     async def ping(self) -> float:
@@ -934,7 +935,7 @@ class _TCPServerTransport(TransportInterface):
             raise TransportTimeoutError("TCP ping timeout")
         except TransportError:
             raise
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             raise TransportError(f"TCP ping error: {e}")
 
     async def send_stream(
@@ -974,7 +975,7 @@ class _TCPServerTransport(TransportInterface):
         except ConnectionError, BrokenPipeError:
             self._connected = False
             raise TransportConnectionError("TCP connection closed")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             # Send error chunk to notify receiver
             try:
                 error_chunk = struct.pack(">II", 0, STREAM_FLAG_ERROR)
@@ -1079,7 +1080,7 @@ class _TCPServerTransport(TransportInterface):
         except asyncio.IncompleteReadError:
             self._connected = False
             raise TransportConnectionError("TCP connection closed")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             raise TransportError(f"TCP stream receive error: {e}")
 
     async def _receive_stream_chunks(self) -> bytes:

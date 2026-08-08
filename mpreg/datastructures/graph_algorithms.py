@@ -197,8 +197,8 @@ class DijkstraAlgorithm:
     - Comprehensive statistics tracking
     """
 
-    def __init__(self, config: DijkstraConfig = DijkstraConfig()):
-        self.config = config
+    def __init__(self, config: DijkstraConfig | None = None):
+        self.config = config if config is not None else DijkstraConfig()
         self._reset_statistics()
 
     def find_shortest_path(
@@ -484,8 +484,8 @@ class AStarAlgorithm:
     - Comprehensive performance monitoring
     """
 
-    def __init__(self, config: AStarConfig = AStarConfig()):
-        self.config = config
+    def __init__(self, config: AStarConfig | None = None):
+        self.config = config if config is not None else AStarConfig()
         self._reset_statistics()
 
     def find_path_with_heuristic(

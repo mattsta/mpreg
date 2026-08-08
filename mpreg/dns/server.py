@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from dnslib import QTYPE, RCODE, DNSRecord
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.datastructures.type_aliases import JsonDict
 
 from .resolver import DnsResolver
@@ -117,7 +118,7 @@ class DnsGateway:
         started = time.time()
         try:
             request = DNSRecord.parse(data)
-        except Exception as exc:
+        except OPERATIONAL_EXCEPTIONS as exc:
             self._metrics.error_responses += 1
             self._metrics.last_error = str(exc)
             logger.debug(f"DNS parse failed: {exc}")
@@ -129,7 +130,7 @@ class DnsGateway:
         qname = str(question.qname).rstrip(".")
         try:
             qtype_name = str(QTYPE[question.qtype]).upper()
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             qtype_name = "A"
         result = self.resolver.resolve(qname, qtype_name)
         elapsed_ms = (time.time() - started) * 1000.0
@@ -172,7 +173,7 @@ class DnsGateway:
                 await writer.drain()
         except asyncio.IncompleteReadError:
             return
-        except Exception as exc:
+        except OPERATIONAL_EXCEPTIONS as exc:
             self._metrics.error_responses += 1
             self._metrics.last_error = str(exc)
             logger.debug(f"DNS TCP handler error: {exc}")

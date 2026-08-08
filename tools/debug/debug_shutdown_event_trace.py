@@ -9,6 +9,8 @@ import sys
 import time
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
@@ -193,7 +195,7 @@ async def debug_shutdown_event_trace():
 
         return True
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"ERROR: {e}")
         import traceback
 
@@ -216,7 +218,7 @@ if __name__ == "__main__":
         else:
             print("\n❌ DEBUG TRACE FAILED")
             sys.exit(1)
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"\n❌ SCRIPT FAILED: {e}")
         import traceback
 

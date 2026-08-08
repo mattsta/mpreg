@@ -237,13 +237,13 @@ async def live_consensus_cluster(
         for consensus_manager in consensus_managers:
             try:
                 await consensus_manager.stop()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.warning(f"Error stopping consensus manager: {e}")
 
         for gossip_protocol in gossip_protocols:
             try:
                 await gossip_protocol.stop()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 logger.warning(f"Error stopping gossip protocol: {e}")
 
 

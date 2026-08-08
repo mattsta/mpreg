@@ -10,6 +10,7 @@ from mpreg.core.cluster_map import CatalogQueryRequest, ClusterMapRequest
 from mpreg.core.config import MPREGSettings
 from mpreg.core.port_allocator import port_range_context
 from mpreg.examples.apps._shared.runtime import (
+    EXAMPLE_RUN_EXCEPTIONS,
     app_run,
     ensure,
     ok,
@@ -150,7 +151,7 @@ async def main() -> None:
                         ensure(summary is not None, "summary None")
                         step(f"summary type={type(summary).__name__}")
                         ok(f"summary_query → {type(summary).__name__}")
-                    except Exception as exc:
+                    except EXAMPLE_RUN_EXCEPTIONS as exc:
                         # Some builds require discovery export; surface honesty
                         step(f"summary_query: {type(exc).__name__}: {exc}")
                         ok("summary_query callable (export may be off — non-fatal)")

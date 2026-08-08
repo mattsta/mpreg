@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import time
 
 from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
 from mpreg.fabric.federation_optimized import CircuitBreaker
@@ -56,7 +55,7 @@ async def main() -> None:
             cb.record_failure()
             cb.record_failure()
             ensure(cb.state == "open", "should be open")
-            time.sleep(0.2)
+            await asyncio.sleep(0.2)
             ensure(cb.can_execute() is True, "should enter half_open")
             ensure(cb.state == "half_open", f"state={cb.state}")
             cb.record_success()
@@ -78,7 +77,7 @@ async def main() -> None:
             )
             cb.record_failure()
             ensure(cb.state == "open", "open")
-            time.sleep(0.12)
+            await asyncio.sleep(0.12)
             ensure(cb.can_execute() is True, "half_open probe")
             before = cb.current_timeout
             cb.record_failure()

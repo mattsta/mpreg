@@ -18,7 +18,12 @@ from typing import Any
 import ulid
 from loguru import logger
 
-from mpreg.core.errors import MpregError, MpregErrorCode, map_exception
+from mpreg.core.errors import (
+    OPERATIONAL_EXCEPTIONS,
+    MpregError,
+    MpregErrorCode,
+    map_exception,
+)
 
 from ..core.model import (
     PubSubAck,
@@ -92,7 +97,7 @@ class MPREGPubSubClient:
         for subscription_id in list(self.subscriptions.keys()):
             try:
                 await self.unsubscribe(subscription_id)
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 pubsub_log.warning(f"Error unsubscribing from {subscription_id}: {e}")
 
         # Cancel notification handler
@@ -263,7 +268,7 @@ class MPREGPubSubClient:
             # Clean up reply subscription
             try:
                 await self.unsubscribe(reply_subscription)
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 pubsub_log.warning(f"Error cleaning up reply subscription: {e}")
 
     async def subscribe(
@@ -379,7 +384,7 @@ class MPREGPubSubClient:
 
             return False
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             pubsub_log.error(f"Error unsubscribing from {subscription_id}: {e}")
             return False
 
@@ -401,7 +406,7 @@ class MPREGPubSubClient:
 
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 pubsub_log.error(f"Error in notification handler: {e}")
                 await asyncio.sleep(0.1)  # Brief pause before retrying
 
@@ -439,7 +444,7 @@ class MPREGPubSubClient:
             # Sync callable: offload to thread pool.
             task = asyncio.create_task(_run_sync())
             task.add_done_callback(_done)
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             pubsub_log.error(f"Error scheduling subscription callback: {e}")
 
     def list_subscriptions(self) -> list[SubscriptionInfo]:

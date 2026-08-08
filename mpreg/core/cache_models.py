@@ -17,6 +17,7 @@ from typing import Any
 from loguru import logger
 
 from .caching import CacheKey as LocalCacheKey
+from .errors import OPERATIONAL_EXCEPTIONS
 from .serialization import JsonSerializer
 
 
@@ -196,7 +197,7 @@ class GlobalCacheEntry:
             serialized = serializer.serialize(self.value)
             current_checksum = hashlib.sha256(serialized).hexdigest()[:16]
             return current_checksum == self.checksum
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.warning("Cache integrity check failed for {}: {}", self.key, e)
             return False
 

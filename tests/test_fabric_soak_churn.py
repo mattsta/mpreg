@@ -106,7 +106,7 @@ async def _await_routing_ready(client: MPREGClientAPI, *, timeout: float = 8.0) 
                 function_id=FUNCTION_ID,
                 version_constraint=VERSION_CONSTRAINT,
             )
-        except Exception:
+        except Exception:  # noqa: BLE001
             result = None
         if isinstance(result, str):
             return

@@ -20,6 +20,7 @@ from typing import Protocol
 from loguru import logger
 
 from ..datastructures.type_aliases import NodeURL
+from .errors import OPERATIONAL_EXCEPTIONS
 
 event_log = logger
 
@@ -126,7 +127,7 @@ class ConnectionEventBus:
                 else:
                     event_log.warning(f"Unknown event type: {event.event_type}")
 
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 event_log.error(
                     f"Error notifying subscriber {type(subscriber).__name__}: {e}"
                 )

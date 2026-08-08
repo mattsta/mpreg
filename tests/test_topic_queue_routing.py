@@ -668,7 +668,7 @@ class TestTopicQueueRoutingPropertyBased:
                 if routing_strategy == RoutingStrategy.FANOUT_ALL:
                     assert len(result.routed_queues) == num_queues
 
-            except Exception:
+            except Exception:  # noqa: BLE001, S110
                 # Some strategies might not be fully implemented yet
                 pass
 

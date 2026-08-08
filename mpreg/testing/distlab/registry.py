@@ -38,15 +38,19 @@ class ScenarioRegistry:
             "tags": list(tags),
         }
 
-    def list(self) -> list[str]:
+    def list_names(self) -> list[str]:
         return sorted(self._factories)
+
+    def list(self) -> list[str]:
+        """Public alias for :meth:`list_names` (keeps CLI/tests stable)."""
+        return self.list_names()
 
     def meta(self, name: str) -> dict[str, Any]:
         return dict(self._meta.get(name) or {})
 
     def get(self, name: str) -> ScenarioFactory:
         if name not in self._factories:
-            raise KeyError(f"unknown scenario {name!r}; known={self.list()}")
+            raise KeyError(f"unknown scenario {name!r}; known={self.list_names()}")
         return self._factories[name]
 
     async def build(self, name: str) -> Scenario:
@@ -64,7 +68,7 @@ class ScenarioRegistry:
 
     def catalog(self) -> list[dict[str, Any]]:
         out = []
-        for n in self.list():
+        for n in self.list_names():
             m = self.meta(n)
             out.append({"name": n, **m})
         return out
@@ -100,10 +104,10 @@ class ScenarioRegistry:
                 if n in known:
                     chosen.append(n)
                 elif not skip_unknown:
-                    raise KeyError(f"unknown scenario {n!r}; known={self.list()}")
+                    raise KeyError(f"unknown scenario {n!r}; known={self.list_names()}")
         else:
             chosen = []
-            for n in self.list():
+            for n in self.list_names():
                 m = self.meta(n)
                 if track and m.get("track") != track:
                     continue

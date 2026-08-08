@@ -15,6 +15,8 @@ from mpreg.core.transport.circuit_breaker import (
 )
 from mpreg.datastructures.type_aliases import NodeId
 
+from .errors import OPERATIONAL_EXCEPTIONS
+
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from mpreg.core.connection import Connection
     from mpreg.server import MPREGServer
@@ -66,7 +68,7 @@ class ServerEnvelopeTransport:
         data = self.serializer.serialize(envelope.model_dump())
         try:
             await connection.send(data)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             if breaker:
                 breaker.record_failure()
             return False

@@ -53,6 +53,8 @@ from mpreg.datastructures.type_aliases import (
     TopicName,
 )
 
+from .errors import OPERATIONAL_EXCEPTIONS
+
 # Type aliases for topic queue routing
 type TopicQueueRoutingId = str
 type ConsumerGroupId = str
@@ -431,79 +433,75 @@ class TopicQueueRouter:
         start_time = time.time()
         routing_id = f"tqr-{ulid.new()!s}"
 
-        try:
-            # Route to matching queues
-            matching_queues = await self.route_message_to_queues(topic, message)
+        # Route to matching queues
+        matching_queues = await self.route_message_to_queues(topic, message)
+
+        if not matching_queues:
+            if self.config.fallback_to_direct_routing:
+                # Try direct queue name as fallback
+                matching_queues = [topic] if await self._queue_exists(topic) else []
 
             if not matching_queues:
-                if self.config.fallback_to_direct_routing:
-                    # Try direct queue name as fallback
-                    matching_queues = [topic] if await self._queue_exists(topic) else []
+                # failed_routes already bumped by route_message_to_queues (F21)
+                raise ValueError(f"No queues found for topic pattern: {topic}")
 
-                if not matching_queues:
-                    # failed_routes already bumped by route_message_to_queues (F21)
-                    raise ValueError(f"No queues found for topic pattern: {topic}")
+        # Apply routing strategy
+        strategy = routing_strategy or self.config.default_routing_strategy
+        selected_queues = await self._apply_routing_strategy(
+            matching_queues, strategy, topic, message
+        )
 
-            # Apply routing strategy
-            strategy = routing_strategy or self.config.default_routing_strategy
-            selected_queues = await self._apply_routing_strategy(
-                matching_queues, strategy, topic, message
-            )
+        # Create queued message
+        queued_message = QueuedMessage(
+            id=MessageId(source_node="topic-router"),
+            topic=topic,
+            payload=message,
+            delivery_guarantee=delivery_guarantee,
+            headers={"routing_id": routing_id},
+        )
 
-            # Create queued message
-            queued_message = QueuedMessage(
-                id=MessageId(source_node="topic-router"),
-                topic=topic,
-                payload=message,
-                delivery_guarantee=delivery_guarantee,
-                headers={"routing_id": routing_id},
-            )
-
-            # Send to selected queues
-            send_results = []
-            send_failed = False
-            for queue_name in selected_queues:
-                try:
-                    result = await self.message_queue_manager.send_message(
-                        queue_name, topic, message, delivery_guarantee
-                    )
-                    send_results.append(result)
-                except Exception as e:
-                    send_failed = True
-                    # Handle per-queue failures based on failure action
-                    await self._handle_routing_failure(queue_name, topic, message, e)
-
-            if send_failed and not send_results:
-                self.stats = dataclass_replace(
-                    self.stats, failed_routes=self.stats.failed_routes + 1
+        # Send to selected queues
+        send_results = []
+        send_failed = False
+        for queue_name in selected_queues:
+            try:
+                result = await self.message_queue_manager.send_message(
+                    queue_name, topic, message, delivery_guarantee
                 )
+                send_results.append(result)
+            except OPERATIONAL_EXCEPTIONS as e:
+                send_failed = True
+                # Handle per-queue failures based on failure action
+                await self._handle_routing_failure(queue_name, topic, message, e)
 
-            # Create routing metadata
-            routing_latency_ms = (time.time() - start_time) * 1000.0
-            routing_metadata = TopicRoutingMetadata(
-                routing_id=routing_id,
-                matched_patterns=await self._get_matched_patterns(topic),
-                selected_queues=selected_queues,
-                routing_strategy=strategy,
-                routing_latency_ms=routing_latency_ms,
-                pattern_match_count=len(matching_queues),
-                timestamp=time.time_ns(),
+        if send_failed and not send_results:
+            self.stats = dataclass_replace(
+                self.stats, failed_routes=self.stats.failed_routes + 1
             )
 
-            # successful_routes already bumped in route_message_to_queues (F21);
-            # only track strategy usage here to avoid double-count.
-            self._update_strategy_usage_stats(strategy)
+        # Create routing metadata
+        routing_latency_ms = (time.time() - start_time) * 1000.0
+        routing_metadata = TopicRoutingMetadata(
+            routing_id=routing_id,
+            matched_patterns=await self._get_matched_patterns(topic),
+            selected_queues=selected_queues,
+            routing_strategy=strategy,
+            routing_latency_ms=routing_latency_ms,
+            pattern_match_count=len(matching_queues),
+            timestamp=time.time_ns(),
+        )
 
-            return TopicQueueMessage(
-                topic=topic,
-                original_queue=None,
-                routed_queues=selected_queues,
-                routing_metadata=routing_metadata,
-                message=queued_message,
-            )
+        # successful_routes already bumped in route_message_to_queues (F21);
+        # only track strategy usage here to avoid double-count.
+        self._update_strategy_usage_stats(strategy)
 
-        except Exception:
-            raise
+        return TopicQueueMessage(
+            topic=topic,
+            original_queue=None,
+            routed_queues=selected_queues,
+            routing_metadata=routing_metadata,
+            message=queued_message,
+        )
 
     async def get_routing_statistics(self) -> TopicQueueRoutingStats:
         """Get comprehensive routing performance statistics."""
@@ -569,7 +567,7 @@ class TopicQueueRouter:
             # This would need to be implemented based on MessageQueueManager interface
             # For now, assume queue exists if it's in our registered patterns
             return queue_name in self.queue_patterns
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return False
 
     async def _get_matched_patterns(self, topic: TopicName) -> list[PatternString]:

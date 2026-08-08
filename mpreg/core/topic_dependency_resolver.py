@@ -39,6 +39,8 @@ from mpreg.core.topic_taxonomy import TopicTemplateEngine
 from mpreg.datastructures.type_aliases import CorrelationId
 from mpreg.fabric.message import MessageType
 
+from .errors import OPERATIONAL_EXCEPTIONS
+
 # Enhanced RPC dependency type aliases
 type DependencyId = str
 type DependencyFieldPath = str
@@ -448,7 +450,7 @@ class TopicDependencyResolver:
 
             return subscription
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             # Log error and continue - don't fail entire dependency setup
             logger.warning(
                 "Failed to create subscription for dependency {}: {}",
@@ -483,7 +485,7 @@ class TopicDependencyResolver:
                 # Process dependency resolution
                 await self._process_dependency_resolution(resolution_event)
 
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 # Handle callback error
                 error_event = DependencyResolutionEvent(
                     dependency_id=dep_spec.dependency_id,
@@ -595,7 +597,7 @@ class TopicDependencyResolver:
                     # Remove subscription callback
                     self.subscription_callbacks.pop(subscription.subscription_id, None)
                     dependencies_to_remove.append(dep_id)
-                except Exception:
+                except OPERATIONAL_EXCEPTIONS:
                     cleanup_success = False
 
         # Remove dependency subscriptions

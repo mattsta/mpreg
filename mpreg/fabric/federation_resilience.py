@@ -28,6 +28,8 @@ from typing import Any
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 from ..core.statistics import (
     CircuitBreakerState,
     ClusterHealthInfo,
@@ -332,7 +334,7 @@ class FederationHealthMonitor:
 
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Error monitoring cluster {cluster_id}: {e}")
                 await asyncio.sleep(self.health_config.check_interval_seconds)
 
@@ -354,7 +356,7 @@ class FederationHealthMonitor:
                 ),
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             return HealthCheckResult(
                 cluster_id=cluster_id,
                 status=HealthStatus.CRITICAL.value,
@@ -449,7 +451,7 @@ class FederationHealthMonitor:
             for callback in self.alert_callbacks:
                 try:
                     callback(cluster_id, health_metrics.status, alert_data)
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     logger.error(f"Error calling alert callback: {e}")
 
     def _calculate_check_interval(self, health_metrics: ClusterHealthMetrics) -> float:
@@ -497,7 +499,7 @@ class FederationHealthMonitor:
 
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Error assessing global health: {e}")
                 await asyncio.sleep(60.0)
 
@@ -532,7 +534,7 @@ class FederationHealthMonitor:
 
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Error analyzing performance trends: {e}")
                 await asyncio.sleep(300.0)
 
@@ -673,7 +675,7 @@ class FederationAutoRecovery:
                     for callback in self.recovery_callbacks:
                         try:
                             callback(cluster_id, strategy, success)
-                        except Exception as e:
+                        except OPERATIONAL_EXCEPTIONS as e:
                             logger.error(f"Error calling recovery callback: {e}")
 
                     # Remove from recovery list if successful
@@ -685,7 +687,7 @@ class FederationAutoRecovery:
 
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Error in recovery coordination: {e}")
                 await asyncio.sleep(30.0)
 
@@ -708,7 +710,7 @@ class FederationAutoRecovery:
                 logger.warning(f"Unknown recovery strategy: {strategy}")
                 return False
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(
                 f"Error executing {strategy.value} recovery for {cluster_id}: {e}"
             )

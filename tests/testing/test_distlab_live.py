@@ -169,7 +169,7 @@ async def test_distlab_live_strong_peer_loss_residual(
 async def test_distlab_live_audit_multi_origin(
     test_context: AsyncTestContext,
 ) -> None:
-    with tempfile.TemporaryDirectory() as td:
+    with tempfile.TemporaryDirectory() as td:  # noqa: SIM117
         with port_range_context(6, "servers") as ports:
             # 3 server + 3 mon ports interleaved
             sp, mp = ports[0:3], ports[3:6]
@@ -195,7 +195,7 @@ async def test_distlab_live_audit_multi_origin(
 async def test_distlab_live_coexistence_strong_audit(
     test_context: AsyncTestContext,
 ) -> None:
-    with tempfile.TemporaryDirectory() as td:
+    with tempfile.TemporaryDirectory() as td:  # noqa: SIM117
         with port_range_context(6, "servers") as ports:
             sp, mp = ports[0:3], ports[3:6]
             url0 = f"ws://127.0.0.1:{sp[0]}"
@@ -340,7 +340,7 @@ async def test_distlab_live_audit_late_joiner(
     test_context: AsyncTestContext,
 ) -> None:
     """T13: late joiner converges to cluster G-Set after anti-entropy."""
-    with tempfile.TemporaryDirectory() as td:
+    with tempfile.TemporaryDirectory() as td:  # noqa: SIM117
         with port_range_context(8, "servers") as ports:
             sp, mp = ports[0:4], ports[4:8]
             url0 = f"ws://127.0.0.1:{sp[0]}"
@@ -614,7 +614,7 @@ async def test_distlab_live_strong_metrics_e2e(
         assert mesh_calls >= 1
         _ = after_calls  # origin-local may or may not move
 
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession() as session:  # noqa: SIM117
             async with session.get(f"{base}/metrics/strong") as resp:
                 data = await resp.json()
                 body3 = data.get("strong") or {}
@@ -808,7 +808,7 @@ async def test_distlab_live_audit_metrics_e2e(
     """T18: live shared-audit publish → scrape /metrics/shared-audit + prom."""
     import aiohttp
 
-    with tempfile.TemporaryDirectory() as td:
+    with tempfile.TemporaryDirectory() as td:  # noqa: SIM117
         with port_range_context(6, "servers") as ports:
             sp, mp = ports[0:3], ports[3:6]
             url0 = f"ws://127.0.0.1:{sp[0]}"
@@ -892,7 +892,7 @@ async def test_distlab_live_doctor_strong_audit_e2e(
     """
     import aiohttp
 
-    with tempfile.TemporaryDirectory() as td:
+    with tempfile.TemporaryDirectory() as td:  # noqa: SIM117
         with port_range_context(4, "servers") as ports:
             sp, mp = ports[0:2], ports[2:4]
             url0 = f"ws://127.0.0.1:{sp[0]}"

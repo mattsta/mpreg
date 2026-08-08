@@ -10,6 +10,7 @@ import asyncio
 import contextlib
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.server import MPREGServer
 
 
@@ -203,7 +204,7 @@ async def run_comprehensive_autodiscovery_tests():
             results.append(result)
             if result.success:
                 passed += 1
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             print(f"❌ ERROR in {cluster_size}-node {topology}: {e}")
             # Create a failed result instead of None
             failed_result = AutoDiscoveryTestResult(cluster_size, topology)

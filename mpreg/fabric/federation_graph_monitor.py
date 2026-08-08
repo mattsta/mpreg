@@ -25,6 +25,7 @@ from enum import Enum
 from threading import RLock
 from typing import Protocol
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.fabric.federation_graph import (
     FederationGraph,
     FederationGraphEdge,
@@ -170,7 +171,7 @@ class GraphMetricsCollector:
             try:
                 await self._collect_all_metrics()
                 await asyncio.sleep(self.collection_interval)
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 self.collection_errors += 1
                 # Log error but continue collecting
                 await asyncio.sleep(self.collection_interval)
@@ -212,7 +213,7 @@ class GraphMetricsCollector:
                 if metric.is_recent() and metric.is_reliable():
                     self._store_metric(metric)
                     self._apply_node_metric(metric)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             self.collection_errors += 1
 
     async def _collect_edge_metrics(
@@ -225,7 +226,7 @@ class GraphMetricsCollector:
                 if metric.is_recent() and metric.is_reliable():
                     self._store_metric(metric)
                     self._apply_edge_metric(metric)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             self.collection_errors += 1
 
     def _store_metric(self, metric: GraphMetric) -> None:
@@ -612,7 +613,7 @@ class GraphOptimizer:
             try:
                 await self._run_optimization_cycle()
                 await asyncio.sleep(self.optimization_interval)
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 # Log error but continue optimizing
                 await asyncio.sleep(self.optimization_interval)
 
@@ -758,7 +759,7 @@ class GraphOptimizer:
                 return await self._add_redundancy(suggestion)
             else:
                 return False
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return False
 
     async def _add_redundant_connection(

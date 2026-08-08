@@ -293,13 +293,13 @@ async def test_concurrent_servers(test_context):
                             assert result == "hello"
                         last_error = None
                         break
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001
                         last_error = e
                         await asyncio.sleep(0.2)
                 if last_error is not None:
                     pytest.fail(f"Server on port {port} not responsive: {last_error}")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             pytest.fail(f"Error in concurrent server test: {e}")
 
 

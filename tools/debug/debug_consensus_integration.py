@@ -12,6 +12,7 @@ import time
 from loguru import logger
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.datastructures.vector_clock import VectorClock
 from mpreg.fabric.consensus import StateType, StateValue
 from mpreg.server import MPREGServer
@@ -136,7 +137,7 @@ async def debug_consensus_integration():
         try:
             await server1.shutdown_async()
             await server2.shutdown_async()
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.warning(f"Shutdown error: {e}")
 
 

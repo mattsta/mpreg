@@ -78,7 +78,7 @@ def _leader_with_snapshot_base(
     node_id: str = "L", follower: str = "f1"
 ) -> ProductionRaft:
     node = _make_node(node_id, {node_id, follower})
-    node.current_state = RaftState.LEADER
+    node.testing_set_state(RaftState.LEADER)
     node.persistent_state = PersistentState(
         current_term=3, voted_for=node_id, log_entries=[]
     )

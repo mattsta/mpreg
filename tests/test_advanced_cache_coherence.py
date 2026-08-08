@@ -1218,7 +1218,7 @@ class TestAdvancedCacheCoherencePropertyBased:
             assert restored_key.tree_version == cache_key.tree_version
             assert restored_key.merkle_proof == cache_key.merkle_proof
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             pytest.fail(f"Merkle-aware key serialization failed: {e}")
 
     @given(conflict_resolution_strategy_strategy())
@@ -1243,7 +1243,7 @@ class TestAdvancedCacheCoherencePropertyBased:
             # Verify merkle verification flag is boolean
             assert isinstance(strategy.merkle_verification_required, bool)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             pytest.fail(f"Conflict resolution strategy validation failed: {e}")
 
     @given(conflict_resolution_context_strategy())
@@ -1269,7 +1269,7 @@ class TestAdvancedCacheCoherencePropertyBased:
             # Verify available clusters is a frozenset
             assert isinstance(context.available_clusters, frozenset)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             pytest.fail(f"Conflict resolution context validation failed: {e}")
 
 

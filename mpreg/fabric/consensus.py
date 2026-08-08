@@ -29,6 +29,8 @@ from typing import Any
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 from ..core.statistics import (
     ConflictSummary,
     ConsensusInfo,
@@ -291,7 +293,7 @@ class ConflictResolver:
                         conflict.conflicting_values
                     )
                     strategy_used = ConflictResolutionStrategy.CUSTOM_RESOLVER
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     logger.warning(
                         f"Custom resolver failed for {conflict.state_key}: {e}, falling back to default"
                     )
@@ -646,7 +648,7 @@ class ConsensusManager:
         if self.node_count_provider:
             try:
                 total_nodes = max(total_nodes, int(self.node_count_provider()))
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(f"Failed to get node count for consensus: {e}")
         required_votes = max(1, int(total_nodes * consensus_threshold))
 
@@ -776,7 +778,7 @@ class ConsensusManager:
 
             self.consensus_stats["proposals_evaluated"] += 1
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error handling proposal message: {e}")
 
     async def handle_vote_message(self, vote_data: dict[str, Any]) -> None:
@@ -836,7 +838,7 @@ class ConsensusManager:
                 else:
                     logger.debug(f"Received vote for unknown proposal: {proposal_id}")
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error handling vote message: {e}")
 
     async def _evaluate_proposal(self, proposal_data: dict[str, Any]) -> bool:
@@ -858,7 +860,7 @@ class ConsensusManager:
             if state_key and proposed_value:
                 return True
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.warning(f"Error evaluating proposal: {e}")
 
         return False
@@ -977,7 +979,7 @@ class ConsensusManager:
         try:
             # Use the callback to broadcast the vote data
             await self.message_broadcast_callback(vote_data)
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error broadcasting vote via callback: {e}")
 
     async def _proposal_cleanup_loop(self) -> None:
@@ -988,7 +990,7 @@ class ConsensusManager:
                 await asyncio.sleep(10.0)  # Cleanup every 10 seconds
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Error in proposal cleanup loop: {e}")
                 await asyncio.sleep(10.0)
 

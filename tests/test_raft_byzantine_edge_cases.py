@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+import contextlib
+
 """
 Raft Byzantine Fault Tolerance and Network Edge Case Tests.
 
@@ -227,7 +228,7 @@ class ByzantineNetworkTransport:
             response = self.network.simulate_byzantine_response(response, target)
 
             return response
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     async def send_append_entries(self, target: str, request):
@@ -272,7 +273,7 @@ class ByzantineNetworkTransport:
                 )
 
             return response
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     async def send_install_snapshot(self, target: str, request):
@@ -299,7 +300,7 @@ class ByzantineNetworkTransport:
         target_node = self.network.nodes[target]
         try:
             return await target_node.handle_install_snapshot(request)
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
 
@@ -817,10 +818,10 @@ class TestRaftByzantineEdgeCases:
             # Stop remaining nodes
             for node in nodes.values():
                 if node not in failed_nodes:
-                    try:
+                    with contextlib.suppress(
+                        TimeoutError, asyncio.CancelledError, AttributeError
+                    ):
                         await asyncio.wait_for(node.stop(), timeout=2.0)
-                    except TimeoutError, asyncio.CancelledError, AttributeError:
-                        pass  # Node shutdown errors during cleanup are expected
 
     @pytest.mark.asyncio
     async def test_message_loss_and_corruption_resilience(self, temp_dir):

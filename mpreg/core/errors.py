@@ -13,6 +13,164 @@ from typing import Any, Final
 
 from mpreg.core.model import MPREGException, RPCError
 
+# ---------------------------------------------------------------------------
+# Exception categories + operator-correct logging
+# ---------------------------------------------------------------------------
+# BLE001 forbids bare ``except Exception``. Do **not** paste a 7-type tuple at
+# every call site. Use the shared groups below — and log with the matching
+# severity so operators can tell "expected failure mode" from "bug".
+#
+# Categories
+# ~~~~~~~~~~
+# EXPECTED_EXCEPTIONS
+#     True operational conditions: I/O, network, timeouts. These are *error
+#     conditions expressed as exceptions*, not unknown faults. Log with
+#     ``logger.error`` / ``logger.warning`` (message only — no stack dump).
+#
+# CONDITION_EXCEPTIONS
+#     Explicit validation / control-flow failures (bad args, missing key,
+#     RuntimeError used as a typed failure). Usually message-only logging.
+#     If a site treats these as programmer bugs, pass ``expected=False`` to
+#     :func:`log_caught_exception`.
+#
+# OPERATIONAL_EXCEPTIONS
+#     Catch-group for boundary handlers that degrade/continue:
+#     ``EXPECTED_EXCEPTIONS + CONDITION_EXCEPTIONS``. Prefer this over bare
+#     ``Exception``. After catching, call :func:`log_caught_exception` (or
+#     dual-catch EXPECTED then ``Exception`` with ``logger.exception``).
+#
+# Unknown / unexpected
+#     Anything else that a supervisor still absorbs **must** use
+#     ``logger.exception(...)`` (or :func:`log_caught_exception` with
+#     ``expected=False``) so the stack reaches operators. Prefer re-raising
+#     when the process cannot safely continue.
+#
+# Public RPC surfaces still use :class:`MpregError` + :func:`map_exception`.
+# Never put CancelledError / KeyboardInterrupt / SystemExit in these tuples.
+# ---------------------------------------------------------------------------
+
+EXPECTED_EXCEPTIONS: tuple[type[BaseException], ...] = (
+    OSError,  # includes many socket/file failures; ConnectionError is separate below
+    TimeoutError,
+    ConnectionError,
+)
+
+CONDITION_EXCEPTIONS: tuple[type[BaseException], ...] = (
+    ValueError,
+    TypeError,
+    KeyError,
+    RuntimeError,
+)
+
+OPERATIONAL_EXCEPTIONS: tuple[type[BaseException], ...] = (
+    *EXPECTED_EXCEPTIONS,
+    *CONDITION_EXCEPTIONS,
+)
+
+
+def with_operational(
+    *extra: type[BaseException],
+) -> tuple[type[BaseException], ...]:
+    """Compose :data:`OPERATIONAL_EXCEPTIONS` with call-site-specific types.
+
+    Use when a boundary must also catch domain errors without re-listing the
+    operational set::
+
+        except with_operational(TransportError, MpregError) as exc:
+            log_caught_exception(logger, "boundary failed", exc)
+    """
+    if not extra:
+        return OPERATIONAL_EXCEPTIONS
+    seen: set[type[BaseException]] = set()
+    out: list[type[BaseException]] = []
+    for cls in (*OPERATIONAL_EXCEPTIONS, *extra):
+        if cls in seen:
+            continue
+        seen.add(cls)
+        out.append(cls)
+    return tuple(out)
+
+
+def is_expected_failure(exc: BaseException) -> bool:
+    """True when *exc* is an ordinary operational/condition failure (no bug dump)."""
+    if isinstance(exc, (*EXPECTED_EXCEPTIONS, *CONDITION_EXCEPTIONS)):
+        return True
+    # Structured app errors are intentional wire/control outcomes.
+    return type(exc).__name__ == "MpregError" or isinstance(exc, MPREGException)
+
+
+def log_caught_exception(
+    log: Any,
+    message: str,
+    exc: BaseException | None = None,
+    *,
+    expected: bool | None = None,
+    level: str = "error",
+) -> None:
+    """Log a caught exception with operator-correct verbosity.
+
+    * **expected** (default: auto via :func:`is_expected_failure`):
+      message-only ``error`` / ``warning`` — no stack trace.
+    * **unexpected** (``expected=False``, or auto-classify miss):
+      ``log.exception(...)`` — **includes stack trace** (loguru/stdlib).
+
+    Call this from ``except`` handlers instead of ad-hoc ``log.error(f"...{e}")``
+    so unknown faults never silently lose their traceback.
+    """
+    import sys
+
+    active: BaseException | None = exc if exc is not None else sys.exc_info()[1]
+    if expected is None:
+        expected = bool(active is not None and is_expected_failure(active))
+
+    # Never let logging itself take down a supervisor.
+    try:
+        if expected:
+            text = f"{message}: {active}" if active is not None else message
+            if level == "warning" and hasattr(log, "warning"):
+                log.warning(text)
+            elif level == "debug" and hasattr(log, "debug"):
+                log.debug(text)
+            elif level == "info" and hasattr(log, "info"):
+                log.info(text)
+            else:
+                log.error(text)
+            return
+
+        # Unexpected path — prefer stack-bearing exception() API.
+        if hasattr(log, "opt") and callable(log.opt) and active is not None:
+            # loguru: attach exception even if we were re-bound.
+            log.opt(exception=active).error(message)
+        elif hasattr(log, "exception") and callable(log.exception):
+            log.exception(message)
+        else:
+            log.error("%s: %r", message, active)
+    except OPERATIONAL_EXCEPTIONS:
+        pass
+
+
+def dual_catch_log(
+    log: Any,
+    message: str,
+    exc: BaseException,
+    *,
+    level: str = "error",
+) -> None:
+    """Log *exc* with the dual-catch severity policy (operator template).
+
+    Equivalent to calling :func:`log_caught_exception` with auto-classification.
+    Prefer the explicit dual-arm pattern at RPC boundaries::
+
+        except OPERATIONAL_EXCEPTIONS as exc:
+            log_caught_exception(log, message, exc)
+        except Exception as exc:
+            log_caught_exception(log, message, exc, expected=False)
+
+    Use this helper when a single ``except Exception`` arm must still classify.
+    """
+    log_caught_exception(log, message, exc, level=level)
+
+
 
 class MpregErrorCode(IntEnum):
     """Stable public error codes (do not renumber existing members)."""

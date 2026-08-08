@@ -89,7 +89,7 @@ class TestFederationMonitoringEndpoints:
         # Verify server is running
         base_url = f"http://{settings.host}:{monitoring_port}"
 
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession() as session:  # noqa: SIM117
             # Test basic connectivity
             async with session.get(f"{base_url}/") as response:
                 assert response.status == 200
@@ -669,7 +669,7 @@ class TestFederationMonitoringEndpoints:
         base_url = f"http://{settings.host}:{monitoring_port}"
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession() as session:  # noqa: SIM117
                 async with session.get(f"{base_url}/topology") as response:
                     assert response.status == 200
                     data = await response.json()
@@ -725,7 +725,7 @@ class TestFederationMonitoringEndpoints:
         base_url = f"http://{settings.host}:{monitoring_port}"
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession() as session:  # noqa: SIM117
                 # Test /config endpoint
                 async with session.get(f"{base_url}/config") as response:
                     assert response.status == 200
@@ -1020,7 +1020,7 @@ class TestFederationMonitoringEndpoints:
         base_url = f"http://{settings.host}:{monitoring_port}"
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession() as session:  # noqa: SIM117
                 async with session.get(f"{base_url}/routing/link-state") as response:
                     assert response.status == 200
                     data = await response.json()

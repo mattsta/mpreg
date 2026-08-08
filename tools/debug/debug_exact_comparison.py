@@ -155,7 +155,7 @@ async def main():
         print("  2. Server creation timing/batching")
         print("  3. AsyncTestContext overhead")
         print("  4. Helper method differences")
-    elif both_success := manual_success and pytest_success:
+    elif _both_success := manual_success and pytest_success:
         print("\n✅ BOTH WORK - The issue may be intermittent or environment-specific")
     else:
         print("\n⚠️  BOTH FAIL - Issue may be fundamental")

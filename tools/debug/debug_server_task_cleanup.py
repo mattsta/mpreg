@@ -11,6 +11,8 @@ import sys
 import warnings
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 # Suppress specific warnings during testing
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -97,7 +99,7 @@ async def test_server_task_cleanup():
         print()
         print("✅ SERVER TASK CLEANUP TEST COMPLETED")
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"❌ Test failed with error: {e}")
         import traceback
 
@@ -108,7 +110,7 @@ async def test_server_task_cleanup():
         try:
             server.shutdown()
             await server.shutdown_async()
-        except Exception as cleanup_error:
+        except OPERATIONAL_EXCEPTIONS as cleanup_error:
             print(f"⚠️  Cleanup error: {cleanup_error}")
 
 
@@ -155,7 +157,7 @@ async def test_multiple_server_cycles():
                     f"  ❌ Cycle {cycle + 1}: {len(server._background_tasks)} tasks remain"
                 )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             print(f"  ❌ Cycle {cycle + 1}: Error - {e}")
 
     print("\n✅ MULTIPLE CYCLES TEST COMPLETED")
@@ -171,7 +173,7 @@ if __name__ == "__main__":
         asyncio.run(test_multiple_server_cycles())
     except KeyboardInterrupt:
         print("\n⚠️  Test interrupted by user")
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"\n❌ Test suite failed: {e}")
         import traceback
 

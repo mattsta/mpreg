@@ -10,6 +10,7 @@ import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.datastructures.production_raft import RaftState
 from mpreg.datastructures.production_raft_implementation import ProductionRaft
 from tests.conftest import AsyncTestContext
@@ -237,7 +238,7 @@ async def _run_cluster_probe(
                                 local_none_result_count += 1
                         except TimeoutError:
                             local_timeout_count += 1
-                        except Exception:
+                        except OPERATIONAL_EXCEPTIONS:
                             local_exception_count += 1
                         finally:
                             duration = time.monotonic() - started_at
@@ -385,7 +386,7 @@ async def _run_cluster_probe(
                         continue
                     except asyncio.CancelledError:
                         continue
-                    except Exception:
+                    except OPERATIONAL_EXCEPTIONS:
                         continue
 
 

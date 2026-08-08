@@ -15,6 +15,7 @@ from typing import Any, Protocol
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.topic_taxonomy import TopicValidator
 from mpreg.datastructures.function_identity import FunctionSelector, VersionConstraint
 from mpreg.datastructures.type_aliases import (
@@ -25,7 +26,7 @@ from mpreg.datastructures.type_aliases import (
     RouteCostScore,
 )
 
-from .catalog import CacheRole
+from .catalog import CacheRole, CacheRoleEntry, QueueEndpoint
 from .engine import ClusterRoutePlan, ClusterRouteReason, RoutingEngine
 from .index import CacheQuery, FunctionQuery, QueueQuery, RoutingIndex
 from .message import (
@@ -483,7 +484,7 @@ class FabricRouter:
                     traceparent=extract_traceparent(message.headers.metadata),
                 )
             )
-        except Exception:  # never break routing for observability
+        except OPERATIONAL_EXCEPTIONS:  # never break routing for observability
             router_log.opt(lazy=True).debug("route decision log record failed")
 
     def _unsupported_delivery_result(
@@ -1004,7 +1005,7 @@ class FabricRouter:
         if isinstance(payload, dict) and payload.get("kind") == FABRIC_RPC_REQUEST_KIND:
             try:
                 return FabricRPCRequest.from_dict(payload)
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 return None
         return None
 

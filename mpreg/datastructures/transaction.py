@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .blockchain_crypto import (
     derive_public_key,
@@ -37,24 +37,26 @@ from .blockchain_types import (
     generate_transaction_id,
 )
 
+if TYPE_CHECKING:
+    from hypothesis import strategies as st
+else:
 
-class _LazySt:
-    """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
+    class _LazySt:
+        """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
 
-    _mod: object | None = None
+        _mod: Any | None = None
 
-    def _load(self) -> object:
-        if self._mod is None:
-            from hypothesis import strategies as st
+        def _load(self) -> Any:
+            if self._mod is None:
+                from hypothesis import strategies as st_mod
 
-            object.__setattr__(self, "_mod", st)
-        return self._mod  # type: ignore[return-value]
+                self._mod = st_mod
+            return self._mod
 
-    def __getattr__(self, name: str) -> object:
-        return getattr(self._load(), name)
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self._load(), name)
 
-
-st = _LazySt()
+    st = _LazySt()  # type: ignore[assignment]
 
 
 @dataclass(frozen=True, slots=True)

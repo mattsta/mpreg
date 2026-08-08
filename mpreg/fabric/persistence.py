@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.native_codec import canonical_dumps, loads
 from mpreg.core.persistence.kv_store import KeyValueStore
 from mpreg.datastructures.type_aliases import JsonDict
@@ -57,7 +58,7 @@ class FabricSnapshotStore:
             return None
         try:
             payload = loads(raw)
-        except Exception as exc:
+        except OPERATIONAL_EXCEPTIONS as exc:
             logger.warning("Fabric snapshot decode failed for {}: {}", key, exc)
             return None
         if not isinstance(payload, dict):

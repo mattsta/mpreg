@@ -8,6 +8,7 @@ import contextlib
 
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.server import MPREGServer
 
 
@@ -100,7 +101,7 @@ async def test_linear_chain_propagation():
 
         print(f"✅ SUCCESS: Function call result: {result}")
         success = True
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"❌ FAILED: Function call error: {e}")
         success = False
 

@@ -34,6 +34,8 @@ from mpreg.core.topic_taxonomy import TopicTemplateEngine
 from mpreg.datastructures.type_aliases import CorrelationId
 from mpreg.fabric.message import RoutingPriority
 
+from .errors import OPERATIONAL_EXCEPTIONS
+
 # Enhanced RPC type aliases following MPREG conventions
 type RPCRequestId = str
 type RPCCommandId = str
@@ -486,7 +488,7 @@ class RPCTopicSubscriptionManager:
                 # Remove from active subscriptions
                 self.active_subscriptions.pop(subscription_id, None)
                 self.subscription_callbacks.pop(subscription_id, None)
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 cleanup_success = False
 
         # Remove request tracking

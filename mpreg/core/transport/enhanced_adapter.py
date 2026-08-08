@@ -21,6 +21,7 @@ from typing import Any, Self
 
 from loguru import logger
 
+from ..errors import OPERATIONAL_EXCEPTIONS
 from .circuit_breaker import CircuitBreaker, create_circuit_breaker
 from .correlation import create_correlation_tracker
 from .enhanced_health import (
@@ -489,7 +490,7 @@ class EnhancedMultiProtocolAdapter:
 
         except asyncio.CancelledError:
             logger.info("Correlation cleanup task cancelled")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Correlation cleanup task error: {e}")
 
     async def __aenter__(self) -> Self:

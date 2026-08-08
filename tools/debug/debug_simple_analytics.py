@@ -3,6 +3,8 @@
 import asyncio
 import sys
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 sys.path.append(".")
 
 from mpreg.client.client_api import MPREGClientAPI
@@ -22,7 +24,7 @@ async def test_simple_analytics():
             )
             print(f"Simple analytics result: {result}")
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"❌ Simple analytics failed: {e}")
         import traceback
 
@@ -56,7 +58,7 @@ async def test_dependency_resolution():
 
             print(f"2-step dependency result: {result}")
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"❌ 2-step dependency failed: {e}")
         import traceback
 
@@ -99,7 +101,7 @@ async def test_parallel_no_convergence():
 
             print(f"Parallel branches result: {result}")
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"❌ Parallel branches failed: {e}")
         import traceback
 
@@ -151,7 +153,7 @@ async def test_full_convergence():
 
             print(f"✅ Full convergence result: {result}")
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"❌ Full convergence failed: {e}")
         import traceback
 

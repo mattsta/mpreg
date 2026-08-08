@@ -12,6 +12,7 @@ from typing import Any
 from tests.port_allocator import get_port_allocator
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.server import MPREGServer
 from tests.conftest import AsyncTestContext
 
@@ -47,11 +48,7 @@ async def debug_multi_layer_federation():
 
             for cluster_idx, size in enumerate(config["cluster_sizes"]):
                 # Type check and convert size to int
-                if isinstance(size, int):
-                    cluster_size = size
-                else:
-                    # Cast to avoid mypy issue - we know this should be convertible
-                    cluster_size = int(str(size))
+                cluster_size = size if isinstance(size, int) else int(str(size))
                 cluster_ports = port_allocator.allocate_port_range(
                     cluster_size, "research"
                 )
@@ -138,7 +135,7 @@ async def debug_multi_layer_federation():
                             print(
                                 f"     ✅ Bridge: {current_hub.settings.name} ↔ {prev_hub.settings.name}"
                             )
-                        except Exception as e:
+                        except OPERATIONAL_EXCEPTIONS as e:
                             print(
                                 f"     ❌ Bridge failed: {current_hub.settings.name} -> {prev_hub.settings.name}: {e}"
                             )

@@ -25,6 +25,7 @@ from threading import RLock
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.fabric.federation_graph import GeographicCoordinate
 
 from ..core.statistics import (
@@ -422,7 +423,7 @@ class HubSelector:
                 and hub.load_metrics.get_utilization_score()
                 < self.routing_policy.max_load_threshold
             )
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             # If health check fails, assume hub is available for testing
             return True
 
@@ -456,7 +457,7 @@ class HubSelector:
             base_score = 1.0 - hub.load_metrics.get_utilization_score()
             if not hub.load_metrics.is_healthy():
                 base_score *= 0.1
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             base_score = 0.8  # Default score for testing
 
         # Geographic score
@@ -466,7 +467,7 @@ class HubSelector:
         # Load balance score
         try:
             load_score = 1.0 - hub.load_metrics.get_utilization_score()
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             load_score = 0.8  # Default score for testing
 
         # Capacity score
@@ -476,7 +477,7 @@ class HubSelector:
                 (hub.capabilities.max_clusters - hub.load_metrics.active_clusters)
                 / max(1, hub.capabilities.max_clusters),
             )
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             capacity_score = 0.8  # Default score for testing
 
         # Combine scores based on strategy
@@ -502,7 +503,7 @@ class HubSelector:
         # Base score from hub health and capacity
         try:
             base_score = 1.0 if hub.load_metrics.is_healthy() else 0.1
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             base_score = 0.8  # Default score for testing
 
         # Regional preference
@@ -520,7 +521,7 @@ class HubSelector:
         # Load balance score
         try:
             load_score = 1.0 - hub.load_metrics.get_utilization_score()
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             load_score = 0.8  # Default score for testing
 
         # Capacity score
@@ -530,7 +531,7 @@ class HubSelector:
                 (hub.capabilities.max_child_hubs - hub.load_metrics.active_child_hubs)
                 / max(1, hub.capabilities.max_child_hubs),
             )
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             capacity_score = 0.8  # Default score for testing
 
         # Combine scores based on strategy
@@ -556,13 +557,13 @@ class HubSelector:
         # Base score from hub health and capacity
         try:
             base_score = 1.0 if hub.load_metrics.is_healthy() else 0.1
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             base_score = 0.8  # Default score for testing
 
         # Load balance score
         try:
             load_score = 1.0 - hub.load_metrics.get_utilization_score()
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             load_score = 0.8  # Default score for testing
 
         # Capacity score
@@ -572,7 +573,7 @@ class HubSelector:
                 (hub.capabilities.max_child_hubs - hub.load_metrics.active_child_hubs)
                 / max(1, hub.capabilities.max_child_hubs),
             )
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             capacity_score = 0.8  # Default score for testing
 
         # Combine scores based on strategy

@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import contextlib
+
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 """
 Test fabric catalog propagation for PRE-CONNECTION function sharing.
 """
@@ -94,7 +98,7 @@ async def test_bidirectional_catalog_pre_connection():
             )
             print(f"✅ BIDIRECTIONAL CATALOG SUCCESS: {result}")
             success = result == "bidirectional_catalog_success: hello_world"
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             print(f"❌ BIDIRECTIONAL CATALOG FAILED: {type(e).__name__}: {e}")
             # Let's check what functions server2 actually knows about
             try:
@@ -102,7 +106,7 @@ async def test_bidirectional_catalog_pre_connection():
                     "echo", "/functions", locs=frozenset()
                 )
                 print(f"📋 Server2 available functions: {functions_result}")
-            except Exception as e2:
+            except OPERATIONAL_EXCEPTIONS as e2:
                 print(f"❌ Could not get function list: {e2}")
             success = False
 
@@ -113,11 +117,8 @@ async def test_bidirectional_catalog_pre_connection():
         task1.cancel()
         task2.cancel()
 
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await asyncio.gather(task1, task2, return_exceptions=True)
-        except asyncio.CancelledError:
-            # Task cancellation during cleanup is expected
-            pass
 
         return success
 

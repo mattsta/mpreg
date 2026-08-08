@@ -7,6 +7,8 @@ import time
 
 from tests.port_allocator import get_port_allocator
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 
 def test_port_allocation_performance():
     """Test how long it takes to allocate different numbers of ports."""
@@ -30,7 +32,7 @@ def test_port_allocation_performance():
             for port in ports:
                 allocator.release_port(port)
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             end_time = time.time()
             duration = end_time - start_time
             print(f"❌ FAILED: {e} (took {duration:.2f}s)")

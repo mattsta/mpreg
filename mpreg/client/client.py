@@ -16,6 +16,8 @@ from typing import Any
 import ulid
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 from ..core.model import (
     MPREGException,
     PubSubNotification,
@@ -196,7 +198,15 @@ class Client:
 
             # Ensure we got an RPCResponse
             if not isinstance(response, RPCResponse):
-                raise Exception(f"Expected RPCResponse, got {type(response)}")
+                from mpreg.core.errors import (
+                    MpregError,
+                    MpregErrorCode,
+                )
+
+                raise MpregError.of(
+                    MpregErrorCode.PROTOCOL,
+                    details=f"Expected RPCResponse, got {type(response)!r}",
+                )
         except TimeoutError as exc:
             client_log.error(
                 "[{}] Request timed out after {} seconds.", req.u, wait_timeout
@@ -382,7 +392,7 @@ class Client:
                                     "Received response for unknown request: {}",
                                     response.u,
                                 )
-                        except Exception:
+                        except OPERATIONAL_EXCEPTIONS:
                             # If it's not a valid RPC response, check if it's a raw ack
                             request_id = message_data.get("u") or message_data.get(
                                 "operation_id"
@@ -397,12 +407,12 @@ class Client:
                                     "Received unknown message type: {}", message_data
                                 )
 
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     client_log.error("Failed to process message: {}", e)
 
         except TransportError as e:
             client_log.error("Transport receive error: {}", e)
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             client_log.error("Error in response listener: {}", e)
         finally:
             # Cancel all pending requests

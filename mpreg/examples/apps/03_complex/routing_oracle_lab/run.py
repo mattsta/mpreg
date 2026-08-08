@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import asyncio
 
-from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
+from mpreg.examples.apps._shared.runtime import (
+    EXAMPLE_RUN_EXCEPTIONS,
+    app_run,
+    ensure,
+    ok,
+    scenario,
+    step,
+)
 from mpreg.testing.oracles import RaftOracle, RoutingOracle, RpcOracle, RpcStreamEvent
 
 
@@ -64,7 +71,7 @@ async def main() -> None:
             try:
                 # Friction F19: dual-leader raises on observe_role, not only assert_safe
                 raft.observe_role("n2", term=2, role="leader")
-            except Exception as exc:
+            except EXAMPLE_RUN_EXCEPTIONS as exc:
                 failed = True
                 step(f"expected unsafe on observe: {type(exc).__name__}: {exc}")
             ensure(failed, "dual leader should be unsafe")
@@ -80,7 +87,7 @@ async def main() -> None:
             bad = False
             try:
                 RpcOracle.assert_timeout_code(1)
-            except Exception:
+            except EXAMPLE_RUN_EXCEPTIONS:
                 bad = True
             ensure(bad, "wrong timeout code should fail")
             ev = RpcStreamEvent(kind="timeout", code=1006)

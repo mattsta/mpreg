@@ -318,7 +318,7 @@ class MockNetwork:
                 return await target_node.handle_install_snapshot(payload)
             else:
                 return None
-        except Exception:
+        except Exception:  # noqa: BLE001
             # Simulate network errors
             return None
 

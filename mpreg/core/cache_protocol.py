@@ -33,6 +33,7 @@ from .cache_models import (
     GlobalCacheKey,
     ReplicationStrategy,
 )
+from .errors import OPERATIONAL_EXCEPTIONS
 
 
 class CacheMessageRole(Enum):
@@ -978,7 +979,7 @@ class CacheProtocolHandler:
             response = self._create_response_from_result(request.u, result)
             return response.to_dict()
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             response = CacheResponseMessage(
                 u=message_data.get("u", ""),
                 status=CacheResponseStatus.ERROR.value,

@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS, log_caught_exception
+
 from .production_raft import (
     AppendEntriesRequest,
     AppendEntriesResponse,
@@ -40,6 +42,9 @@ class ProductionRaftRPCs:
         persistent_state: PersistentState
         current_state: RaftState
         last_heartbeat_time: float
+
+        def _note_leader_contact(self, *, source: str = "") -> None: ...
+
         storage: Any
         metrics: Any
         volatile_state: Any
@@ -145,17 +150,78 @@ class ProductionRaftRPCs:
         self, request: RequestVoteRequest
     ) -> RequestVoteResponse:
         """
-        Handle RequestVote RPC as specified in Raft paper.
+        Handle RequestVote RPC as specified in Raft paper (+ pre-vote).
 
         Receiver implementation:
-        1. Reply false if term < currentTerm
+        1. Reply false if term < currentTerm (real vote) or if pre-vote term
+           is not strictly greater than currentTerm when leader contact is fresh
         2. If votedFor is null or candidateId, and candidate's log is at least
            as up-to-date as receiver's log, grant vote
+        3. Pre-vote (request.pre_vote): evaluate grant without advancing term,
+           persisting voted_for, or stamping leader contact.
         """
         response: RequestVoteResponse | None = None
         try:
             async with self.state_lock:
                 self.metrics.votes_requested += 1
+                is_pre_vote = bool(getattr(request, "pre_vote", False))
+
+                # --- Pre-vote path: no persistent side effects ---
+                if is_pre_vote:
+                    current_term = self.persistent_state.current_term
+                    # Reject pre-votes for terms that cannot win a real election
+                    # against our current term (must be > currentTerm to campaign).
+                    if request.term <= current_term:
+                        rpc_log.debug(
+                            f"Rejecting pre-vote for {request.candidate_id}: "
+                            f"term {request.term} <= current {current_term}"
+                        )
+                        return RequestVoteResponse(
+                            term=current_term,
+                            vote_granted=False,
+                            voter_id=self.node_id,
+                        )
+
+                    # If we recently heard from a leader, refuse to encourage
+                    # disruptive candidates (core pre-vote safety property).
+                    import time as _time
+
+                    quiet = self.config.election_timeout_min
+                    last_hb = float(getattr(self, "last_heartbeat_time", 0.0) or 0.0)
+                    if last_hb > 0.0 and (_time.time() - last_hb) < quiet:
+                        rpc_log.debug(
+                            f"Rejecting pre-vote for {request.candidate_id}: "
+                            f"recent leader contact"
+                        )
+                        return RequestVoteResponse(
+                            term=current_term,
+                            vote_granted=False,
+                            voter_id=self.node_id,
+                        )
+
+                    last_log_term = self._last_log_term()
+                    last_log_index = self._last_log_index()
+                    candidate_log_up_to_date = request.last_log_term > last_log_term or (
+                        request.last_log_term == last_log_term
+                        and request.last_log_index >= last_log_index
+                    )
+                    # Pre-vote ignores voted_for (no real vote committed yet).
+                    vote_granted = bool(candidate_log_up_to_date)
+                    if vote_granted:
+                        rpc_log.debug(
+                            f"Granted pre-vote to {request.candidate_id} for "
+                            f"prospective term {request.term}"
+                        )
+                    else:
+                        rpc_log.debug(
+                            f"Rejecting pre-vote for {request.candidate_id}: "
+                            f"log not up-to-date"
+                        )
+                    return RequestVoteResponse(
+                        term=current_term,
+                        vote_granted=vote_granted,
+                        voter_id=self.node_id,
+                    )
 
                 # Rule 1: Reply false if term < currentTerm
                 if request.term < self.persistent_state.current_term:
@@ -208,7 +274,7 @@ class ProductionRaftRPCs:
                         await self.storage.save_persistent_state(self.persistent_state)
 
                         # Reset election timer since we granted a vote
-                        self.last_heartbeat_time = time.time()
+                        self._note_leader_contact(source="grant_vote")
 
                         rpc_log.info(
                             f"Granted vote to {request.candidate_id} for term {request.term}"
@@ -280,7 +346,7 @@ class ProductionRaftRPCs:
 
                 # Update current leader and reset election timer
                 self.current_leader = request.leader_id
-                self.last_heartbeat_time = time.time()
+                self._note_leader_contact(source="append_entries")
 
                 # Rule 2: COR-T11-01 absolute index consistency (snapshot-aware)
                 if request.prev_log_index > 0:
@@ -355,8 +421,10 @@ class ProductionRaftRPCs:
                                 f"Appended {len(request.entries)} entries from {request.leader_id}"
                             )
 
-                    except Exception as e:
-                        rpc_log.error(f"Error processing log entries: {e}")
+                    except OPERATIONAL_EXCEPTIONS as e:
+                        log_caught_exception(
+                            rpc_log, "Error processing log entries", e
+                        )
                         success = False
 
                 # Rule 5: Update commit index (absolute last index, never bare len)
@@ -433,7 +501,7 @@ class ProductionRaftRPCs:
 
         # Update leader and reset election timer
         self.current_leader = request.leader_id
-        self.last_heartbeat_time = time.time()
+        self._note_leader_contact(source="install_snapshot")
 
         # Handle snapshot chunks
         snapshot_id = (
@@ -547,8 +615,8 @@ class ProductionRaftRPCs:
                 success=True,
             )
 
-        except Exception as e:
-            rpc_log.error(f"Error installing snapshot: {e}")
+        except OPERATIONAL_EXCEPTIONS as e:
+            log_caught_exception(rpc_log, "Error installing snapshot", e)
             self._snapshot_chunk_drop(snapshot_id, reason="apply_or_persist_failed")
             self.installing_snapshot = False
             return InstallSnapshotResponse(
@@ -593,8 +661,13 @@ class ProductionRaftRPCs:
                 f"trimmed log to {len(remaining_entries)} entries"
             )
 
+        except OPERATIONAL_EXCEPTIONS as e:
+            log_caught_exception(rpc_log, "Error applying snapshot", e)
+            raise
         except Exception as e:
-            rpc_log.error(f"Error applying snapshot: {e}")
+            log_caught_exception(
+                rpc_log, "Error applying snapshot", e, expected=False
+            )
             raise
 
     def _update_exponential_average(

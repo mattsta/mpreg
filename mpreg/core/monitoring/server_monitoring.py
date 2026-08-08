@@ -5,6 +5,7 @@ from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from ..errors import OPERATIONAL_EXCEPTIONS
 from .unified_monitoring import (
     HealthScore,
     HealthStatus,
@@ -577,7 +578,7 @@ class ServerMetricsTracker:
             try:
                 for rec in log.recent(limit=256):
                     hops.append(int(getattr(rec, "hops_required", 0) or 0))
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 hops = []
             avg_hops = (sum(hops) / len(hops)) if hops else 0.0
             max_hops = max(hops) if hops else 0
@@ -592,7 +593,7 @@ class ServerMetricsTracker:
                 "avg_hops": round(float(avg_hops), 3),
                 "max_hops": int(max_hops),
             }
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return {
                 "decisions_total": 0,
                 "decisions_buffered": 0,

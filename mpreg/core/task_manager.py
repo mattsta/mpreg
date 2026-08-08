@@ -14,6 +14,8 @@ from typing import Any
 
 from loguru import logger
 
+from .errors import OPERATIONAL_EXCEPTIONS
+
 task_log = logger
 
 
@@ -110,7 +112,7 @@ class TaskManager:
                     if pending:
                         await asyncio.sleep(0.1)
 
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 task_log.warning(f"[{self.name}] Error during task shutdown: {e}")
 
         # Clear tasks regardless of whether they completed successfully

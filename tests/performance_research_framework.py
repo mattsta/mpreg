@@ -1,3 +1,5 @@
+from pathlib import Path
+
 """
 Performance Research Framework for MPREG Distributed Systems.
 
@@ -20,7 +22,7 @@ import statistics
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 import networkx as nx
@@ -412,7 +414,7 @@ class RealTimePerformanceMonitor:
             },
         }
 
-        with open(filename, "w") as f:
+        with Path(filename).open("w") as f:
             json.dump(export_data, f, indent=2)
 
         print(f"📊 Detailed performance metrics exported to {filename}")
@@ -609,13 +611,13 @@ class ScalabilityBenchmark:
         """Export benchmark results to JSON file."""
         export_data = {
             "metadata": {
-                "benchmark_timestamp": datetime.now().isoformat(),
+                "benchmark_timestamp": datetime.now(tz=UTC).isoformat(),
                 "total_configurations": len(self.benchmark_results),
             },
             "results": self.benchmark_results,
         }
 
-        with open(filename, "w") as f:
+        with Path(filename).open("w") as f:
             json.dump(export_data, f, indent=2)
 
         print(f"📊 Benchmark results exported to {filename}")

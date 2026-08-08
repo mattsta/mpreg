@@ -1,3 +1,5 @@
+import contextlib
+
 """
 Comprehensive Raft Safety Properties Verification Tests.
 
@@ -26,6 +28,7 @@ from mpreg.datastructures.production_raft import RaftState
 from mpreg.datastructures.production_raft_implementation import (
     ProductionRaft,
     RaftConfiguration,
+    RaftLeadershipError,
 )
 from mpreg.datastructures.raft_storage_adapters import RaftStorageFactory
 from tests.test_production_raft_integration import (
@@ -174,12 +177,14 @@ class TestRaftSafetyProperties:
         multiplier: float = 2.5,
         minimum: float = 1.0,
     ) -> float:
-        """Derive an election wait timeout from the active Raft configuration."""
-        max_election_timeout = max(
-            (node.config.election_timeout_max for node in nodes.values()),
-            default=minimum,
+        """Derive an election wait timeout from the production readiness budget."""
+        if not nodes:
+            return minimum
+        rounds = max(3.0, float(multiplier) * 2.0)
+        return max(
+            minimum,
+            ProductionRaft.leadership_deadline_for_nodes(nodes, rounds=rounds),
         )
-        return max(minimum, max_election_timeout * multiplier)
 
     async def _wait_for_single_leader(
         self,
@@ -188,31 +193,22 @@ class TestRaftSafetyProperties:
         timeout_seconds: float | None = None,
         poll_interval: float = 0.05,
     ) -> ProductionRaft:
-        """Wait until exactly one node is leader or fail with current states."""
-        timeout = (
-            timeout_seconds
-            if timeout_seconds is not None
-            else self._leader_wait_timeout_seconds(nodes)
-        )
-        deadline = asyncio.get_running_loop().time() + timeout
-        last_states: dict[str, str] = {}
-
-        while asyncio.get_running_loop().time() < deadline:
-            leaders = [
-                node
-                for node in nodes.values()
-                if node.current_state == RaftState.LEADER
-            ]
-            if len(leaders) == 1:
-                return leaders[0]
-            last_states = {
-                node_id: node.current_state.value for node_id, node in nodes.items()
-            }
-            await asyncio.sleep(poll_interval)
-
-        raise AssertionError(
-            f"Expected exactly one leader within {timeout:.2f}s; final_states={last_states}"
-        )
+        """Delegate to ProductionRaft.wait_for_leader (supported readiness API)."""
+        try:
+            return await ProductionRaft.wait_for_leader(
+                nodes,
+                timeout_seconds=timeout_seconds
+                if timeout_seconds is not None
+                else self._leader_wait_timeout_seconds(nodes),
+                poll_interval=poll_interval,
+            )
+        except RaftLeadershipError as exc:
+            detail = ", ".join(
+                f"{s.node_id}:{s.state}/t{s.term}/started={s.elections_started}"
+                f"/skip_contact={s.elections_skipped_recent_contact}"
+                for s in exc.statuses
+            )
+            raise AssertionError(f"{exc}; statuses=[{detail}]") from exc
 
     @pytest.mark.asyncio
     async def test_election_safety_single_leader_per_term(self, temp_dir):
@@ -935,7 +931,7 @@ class TestRaftSafetyProperties:
                 try:
                     await asyncio.wait_for(node.stop(), timeout=2.0)
                     print(f"🔍 DEBUG PARTITION: Stopped {node_id}")
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     print(f"🔍 DEBUG PARTITION: Error stopping {node_id}: {e}")
 
     @pytest.mark.asyncio
@@ -1023,10 +1019,10 @@ class TestRaftSafetyProperties:
 
         finally:
             for node in nodes.values():
-                try:
+                with contextlib.suppress(
+                    TimeoutError, asyncio.CancelledError, AttributeError
+                ):
                     await asyncio.wait_for(node.stop(), timeout=2.0)
-                except TimeoutError, asyncio.CancelledError, AttributeError:
-                    pass  # Some nodes may already be stopped or timeout during shutdown
 
     @pytest.mark.asyncio
     async def test_hypothesis_integration_comprehensive_safety(self, temp_dir):

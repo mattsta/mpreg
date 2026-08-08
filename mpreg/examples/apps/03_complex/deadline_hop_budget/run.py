@@ -6,7 +6,14 @@ import asyncio
 import time
 
 from mpreg.core.rpc_deadline import DeadlineBudget, decrement_deadline_headers
-from mpreg.examples.apps._shared.runtime import app_run, ensure, ok, scenario, step
+from mpreg.examples.apps._shared.runtime import (
+    EXAMPLE_RUN_EXCEPTIONS,
+    app_run,
+    ensure,
+    ok,
+    scenario,
+    step,
+)
 from mpreg.fabric.message import MessageHeaders
 
 
@@ -63,7 +70,7 @@ async def main() -> None:
             failed = False
             try:
                 b.raise_if_exhausted(details="demo hop")
-            except Exception as exc:
+            except EXAMPLE_RUN_EXCEPTIONS as exc:
                 failed = True
                 step(f"expected: {type(exc).__name__}: {exc}")
             ensure(failed, "exhausted must raise")

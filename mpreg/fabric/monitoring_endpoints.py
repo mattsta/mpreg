@@ -29,6 +29,7 @@ from typing import Any
 from aiohttp import web
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.fabric.federation_config import FederationConfig, FederationMode
 from mpreg.fabric.federation_graph import (
     FederationGraph,
@@ -464,7 +465,7 @@ class FederationMonitoringSystem:
             peer = ""
             try:
                 peer = str(request.remote or "")
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 peer = ""
             loopback = peer in {"127.0.0.1", "::1", "localhost"} or peer.startswith(
                 "127."
@@ -646,7 +647,7 @@ class FederationMonitoringSystem:
 
             logger.debug("Federation monitoring server stopped")
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error stopping federation monitoring server: {e}")
 
     # Health monitoring endpoints
@@ -701,7 +702,7 @@ class FederationMonitoringSystem:
             if tracker is not None and hasattr(tracker, "set_ready"):
                 tracker.set_ready(bool(ready))
             return web.json_response(body, status=200 if ready else 503)
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error("Error computing readiness: {}", e)
             return web.json_response(
                 {
@@ -760,7 +761,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error("Error getting federation health: {}", e)
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -800,7 +801,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting health summary: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -821,7 +822,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting cluster health: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -850,7 +851,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting cluster {cluster_id} health: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -904,7 +905,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting federation metrics: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -940,7 +941,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting performance metrics: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -957,7 +958,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting connection metrics: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -989,7 +990,7 @@ class FederationMonitoringSystem:
             return web.json_response(
                 {"status": "error", "message": f"Invalid parameter: {e}"}, status=400
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting metrics timeseries: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -1004,7 +1005,7 @@ class FederationMonitoringSystem:
                     "timestamp": time.time(),
                 }
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting unified metrics: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -1043,7 +1044,7 @@ class FederationMonitoringSystem:
                     "timestamp": time.time(),
                 }
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting transport metrics: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -1069,7 +1070,7 @@ class FederationMonitoringSystem:
                     "timestamp": time.time(),
                 }
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting persistence metrics: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -1103,7 +1104,7 @@ class FederationMonitoringSystem:
                     "timestamp": time.time(),
                 }
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting strong metrics: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -1136,7 +1137,7 @@ class FederationMonitoringSystem:
                     "timestamp": time.time(),
                 }
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting shared audit metrics: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -1166,7 +1167,7 @@ class FederationMonitoringSystem:
                     "timestamp": time.time(),
                 }
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting discovery summary status: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -1203,7 +1204,7 @@ class FederationMonitoringSystem:
                     "timestamp": time.time(),
                 }
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting discovery cache status: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -1229,7 +1230,7 @@ class FederationMonitoringSystem:
                     "timestamp": time.time(),
                 }
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting discovery policy status: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -1255,7 +1256,7 @@ class FederationMonitoringSystem:
                     "timestamp": time.time(),
                 }
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting discovery lag status: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -1281,7 +1282,7 @@ class FederationMonitoringSystem:
                     "timestamp": time.time(),
                 }
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting DNS metrics: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -1297,7 +1298,7 @@ class FederationMonitoringSystem:
                     "timestamp": time.time(),
                 }
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting transport endpoints: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -1321,7 +1322,7 @@ class FederationMonitoringSystem:
                     "timestamp": time.time(),
                 }
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting {system_name} metrics: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -1423,7 +1424,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting federation topology: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -1457,7 +1458,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting federation configuration: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -1767,12 +1768,12 @@ class FederationMonitoringSystem:
                     await self.performance_service.ingest_cluster_metrics(
                         cluster_metrics
                     )
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     logger.error(f"Error ingesting monitoring metrics: {e}")
 
         except asyncio.CancelledError:
             logger.debug("Monitoring metrics ingest loop cancelled")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Monitoring metrics ingest loop error: {e}")
 
     async def _collect_topology_snapshot(self) -> FederationTopologySnapshot:
@@ -2090,7 +2091,7 @@ class FederationMonitoringSystem:
     ) -> tuple[dict[str, Any] | None, web.Response | None]:
         try:
             body = await request.json()
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return None, web.json_response({"error": "invalid_json"}, status=400)
         if body is None:
             return {}, None
@@ -2266,7 +2267,7 @@ class FederationMonitoringSystem:
         """Dry-run namespace policy evaluation without applying changes."""
         try:
             body = await request.json()
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return web.json_response({"error": "invalid_json"}, status=400)
         if not isinstance(body, dict):
             return web.json_response({"error": "body_must_be_object"}, status=400)
@@ -2329,7 +2330,7 @@ class FederationMonitoringSystem:
         if callable(provider):
             try:
                 return provider()
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 return None
         return None
 
@@ -3205,7 +3206,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting topology graph: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -3225,7 +3226,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting topology paths: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -3249,7 +3250,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting topology analysis: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -3266,7 +3267,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting performance summary: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -3293,7 +3294,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting performance bottlenecks: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -3329,7 +3330,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting performance trends: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -3369,7 +3370,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting cluster performance for {cluster_id}: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -3391,7 +3392,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting active alerts: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -3410,7 +3411,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting alert history: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -3445,7 +3446,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error acknowledging alert: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -3467,7 +3468,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting federation policies: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -3490,7 +3491,7 @@ class FederationMonitoringSystem:
                 }
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error validating federation config: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -3519,7 +3520,7 @@ class FederationMonitoringSystem:
                     "timestamp": time.time(),
                 }
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error generating route trace: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -3547,7 +3548,7 @@ class FederationMonitoringSystem:
                 "timestamp": time.time(),
             }
             return web.json_response(body)
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting raft status: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
@@ -3567,7 +3568,7 @@ class FederationMonitoringSystem:
                     "timestamp": time.time(),
                 }
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error getting link-state status: {e}")
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 

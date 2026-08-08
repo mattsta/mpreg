@@ -32,6 +32,7 @@ import aiohttp
 from dnslib import QTYPE, DNSRecord
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.native_codec import loads_text
 
 from ..core.statistics import (
@@ -187,7 +188,7 @@ class DNSDiscoveryBackend(DiscoveryBackend):
                         parts = line.split()
                         if len(parts) >= 2:
                             resolvers.append((parts[1], 53))
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 pass
         return resolvers
 
@@ -288,7 +289,7 @@ class DNSDiscoveryBackend(DiscoveryBackend):
                         timeout=self.config.dns_timeout_seconds,
                     )
                     response = DNSRecord.parse(response_data)
-                except Exception as exc:
+                except OPERATIONAL_EXCEPTIONS as exc:
                     logger.warning(f"DNS SRV query failed ({host}:{port}): {exc}")
                     continue
                 records = self._srv_records_from_response(response)
@@ -331,7 +332,7 @@ class DNSDiscoveryBackend(DiscoveryBackend):
                 )
                 clusters.append(cluster)
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"DNS discovery failed: {e}")
 
         return clusters
@@ -353,7 +354,7 @@ class DNSDiscoveryBackend(DiscoveryBackend):
 
             socket.gethostbyname("example.com")
             return True
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return False
 
 
@@ -431,7 +432,7 @@ class ConsulDiscoveryBackend(DiscoveryBackend):
                 )
                 clusters.append(cluster)
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Consul discovery failed: {e}")
 
         return clusters
@@ -468,7 +469,7 @@ class ConsulDiscoveryBackend(DiscoveryBackend):
             logger.info(f"Registered cluster {cluster.cluster_id} with Consul")
             return True
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Failed to register cluster with Consul: {e}")
             return False
 
@@ -480,7 +481,7 @@ class ConsulDiscoveryBackend(DiscoveryBackend):
             logger.info(f"Unregistered cluster {cluster_id} from Consul")
             return True
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Failed to unregister cluster from Consul: {e}")
             return False
 
@@ -490,7 +491,7 @@ class ConsulDiscoveryBackend(DiscoveryBackend):
             client = await self._get_client()
             await client.status.leader()
             return True
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return False
 
 
@@ -529,7 +530,7 @@ class StaticConfigDiscoveryBackend(DiscoveryBackend):
                 )
                 clusters.append(cluster)
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Static config discovery failed: {e}")
 
         return clusters
@@ -552,7 +553,7 @@ class StaticConfigDiscoveryBackend(DiscoveryBackend):
         try:
             config_path = Path(self.config.static_config_path)
             return config_path.exists() and config_path.is_file()
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return False
 
 
@@ -599,7 +600,7 @@ class HTTPDiscoveryBackend(DiscoveryBackend):
                         f"HTTP discovery failed with status: {response.status}"
                     )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"HTTP discovery failed: {e}")
 
         return clusters
@@ -641,7 +642,7 @@ class HTTPDiscoveryBackend(DiscoveryBackend):
                     )
                 return success
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"HTTP registration failed: {e}")
             return False
 
@@ -670,7 +671,7 @@ class HTTPDiscoveryBackend(DiscoveryBackend):
                     )
                 return success
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"HTTP unregistration failed: {e}")
             return False
 
@@ -688,7 +689,7 @@ class HTTPDiscoveryBackend(DiscoveryBackend):
                 ) as response,
             ):
                 return response.status == 200
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return False
 
 
@@ -760,7 +761,7 @@ class AutoDiscoveryService:
                     logger.info(
                         f"Initialized {config.protocol.value} discovery backend"
                     )
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     logger.error(
                         f"Failed to initialize {config.protocol.value} backend: {e}"
                     )
@@ -857,21 +858,21 @@ class AutoDiscoveryService:
                     for discovered_callback in self.cluster_discovered_callbacks:
                         try:
                             discovered_callback(cluster)
-                        except Exception as e:
+                        except OPERATIONAL_EXCEPTIONS as e:
                             logger.error(f"Error in cluster discovered callback: {e}")
 
                 for cluster_id in lost_clusters:
                     for lost_callback in self.cluster_lost_callbacks:
                         try:
                             lost_callback(cluster_id)
-                        except Exception as e:
+                        except OPERATIONAL_EXCEPTIONS as e:
                             logger.error(f"Error in cluster lost callback: {e}")
 
                 logger.debug(
                     f"Discovery via {protocol.value}: {len(clusters)} clusters found"
                 )
 
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Discovery error for {protocol.value}: {e}")
                 self.discovery_stats[f"{protocol.value}_errors"] += 1
 
@@ -879,7 +880,7 @@ class AutoDiscoveryService:
                 for error_callback in self.discovery_error_callbacks:
                     try:
                         error_callback(e)
-                    except Exception as cb_error:
+                    except OPERATIONAL_EXCEPTIONS as cb_error:
                         logger.error(f"Error in discovery error callback: {cb_error}")
 
             # Wait for next discovery cycle
@@ -904,7 +905,7 @@ class AutoDiscoveryService:
                             self.discovery_stats[
                                 f"{protocol.value}_registration_failures"
                             ] += 1
-                    except Exception as e:
+                    except OPERATIONAL_EXCEPTIONS as e:
                         logger.error(f"Registration error for {protocol.value}: {e}")
                         self.discovery_stats[
                             f"{protocol.value}_registration_errors"
@@ -915,7 +916,7 @@ class AutoDiscoveryService:
                     min(c.registration_ttl / 2 for c in self.discovery_configs)
                 )
 
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Registration loop error: {e}")
                 await asyncio.sleep(30.0)
 
@@ -927,7 +928,7 @@ class AutoDiscoveryService:
         for protocol, backend in self.discovery_backends.items():
             try:
                 await backend.unregister_cluster(self.local_cluster.cluster_id)
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Error unregistering from {protocol.value}: {e}")
 
     def add_discovery_config(self, config: DiscoveryConfiguration) -> None:

@@ -32,6 +32,7 @@ from typing import Any
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.native_codec import dumps_pretty, dumps_text, load_path, loads_text
 
 try:
@@ -402,18 +403,20 @@ class FileBasedRaftStorage(BaseRaftStorage):
         """Atomically write JSON data to file."""
         temp_file = file_path.with_suffix(".tmp")
 
-        # Write to temporary file first
+        # Write to temporary file first (off event loop)
         blob = dumps_pretty(data)
-        with open(temp_file, "wb") as f:
-            f.write(blob)
-            if self.use_fsync:
-                f.flush()
-                import os
 
-                os.fsync(f.fileno())
+        def _write() -> None:
+            with Path(temp_file).open("wb") as f:
+                f.write(blob)
+                if self.use_fsync:
+                    f.flush()
+                    import os
 
-        # Atomic rename
-        temp_file.replace(file_path)
+                    os.fsync(f.fileno())
+            temp_file.replace(file_path)
+
+        await asyncio.to_thread(_write)
         self._storage_stats["files_written"] += 1
 
     async def save_persistent_state(self, state: PersistentState) -> None:
@@ -481,7 +484,7 @@ class FileBasedRaftStorage(BaseRaftStorage):
                 log_entries=log_entries,
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             storage_log.error(f"Error loading persistent state: {e}")
             return None
 
@@ -494,13 +497,16 @@ class FileBasedRaftStorage(BaseRaftStorage):
             / f"snapshot_{snapshot.last_included_index}_{snapshot.snapshot_id}.pkl"
         )
 
-        with open(snapshot_file, "wb") as f:
-            pickle.dump(snapshot, f)
-            if self.use_fsync:
-                f.flush()
-                import os
+        def _write_snapshot() -> None:
+            with Path(snapshot_file).open("wb") as f:
+                pickle.dump(snapshot, f)
+                if self.use_fsync:
+                    f.flush()
+                    import os
 
-                os.fsync(f.fileno())
+                    os.fsync(f.fileno())
+
+        await asyncio.to_thread(_write_snapshot)
 
         self._storage_stats["files_written"] += 1
         self._storage_stats["operations"] += 1
@@ -521,14 +527,18 @@ class FileBasedRaftStorage(BaseRaftStorage):
         latest_file = max(snapshot_files, key=get_index)
 
         try:
-            with open(latest_file, "rb") as f:
-                snapshot = pickle.load(f)
+
+            def _load() -> Any:
+                with Path(latest_file).open("rb") as f:
+                    return pickle.load(f)
+
+            snapshot = await asyncio.to_thread(_load)
 
             self._storage_stats["files_read"] += 1
             self._storage_stats["operations"] += 1
             return snapshot
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             storage_log.error(f"Error loading snapshot: {e}")
             return None
 

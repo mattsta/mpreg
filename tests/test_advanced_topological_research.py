@@ -1,3 +1,5 @@
+from pathlib import Path
+
 """
 Advanced Topological Research and Performance Analysis for MPREG Federated Systems.
 
@@ -1100,7 +1102,7 @@ class TestAdvancedTopologicalResearch:
                         print(
                             f"       ✓ Cluster {cluster_idx} Hub → Cluster {next_cluster_idx} Hub (within {config.name} layer)"
                         )
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001
                         print(f"       ✗ Cross-cluster bridge failed: {e}")
 
             # Create inter-layer federation bridges (connect to previous layer)
@@ -1128,7 +1130,7 @@ class TestAdvancedTopologicalResearch:
                         print(
                             f"       ✓ Layer {layer_idx} Hub {i} → Layer {layer_idx - 1} Hub {i}"
                         )
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001
                         print(f"       ✗ Layer bridge failed: {e}")
 
             # Wait for layer convergence
@@ -1136,8 +1138,8 @@ class TestAdvancedTopologicalResearch:
             layer_setup_time = (time.time() - layer_start) * 1000
 
             # Test function propagation within layer
-            def layer_test_function(data: str) -> str:
-                return f"{config.name} layer test: {data}"
+            def layer_test_function(data: str, *, _name: str = config.name) -> str:
+                return f"{_name} layer test: {data}"
 
             propagation_start = time.time()
             layer_servers[0].register_command(
@@ -1370,7 +1372,7 @@ class TestAdvancedTopologicalResearch:
             for peer_url, connection in list(server.peer_connections.items()):
                 try:
                     await connection.disconnect()
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     print(f"   ⚠️  Disconnect error: {e}")
 
         removal_time = (time.time() - removal_start) * 1000
@@ -1535,7 +1537,7 @@ class TestAdvancedTopologicalResearch:
                     print(
                         f"   ✓ Federation bridge: {leader_a.settings.name} ↔ {leader_b.settings.name}"
                     )
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     print(f"   ✗ Federation bridge failed: {e}")
 
         # Wait for initial convergence
@@ -1588,7 +1590,7 @@ class TestAdvancedTopologicalResearch:
                     print(
                         f"     🔌 Disconnected: {server.settings.name} → {peer_url.split(':')[-1]}"
                     )
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     print(f"     ⚠️  Disconnect error: {e}")
 
         (time.time() - failure_start) * 1000
@@ -1646,7 +1648,7 @@ class TestAdvancedTopologicalResearch:
             print(
                 f"   ✓ Recovery connection: {recovering_server.settings.name} → {regional_leader.settings.name}"
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"   ✗ Recovery connection failed: {e}")
 
         recovery_time = (time.time() - recovery_start) * 1000
@@ -1864,7 +1866,7 @@ class TestAdvancedTopologicalResearch:
                         bridge_success = await current_coord._establish_peer_connection(
                             target_url
                         )
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001
                         print(
                             f"     Bridge attempt {attempt + 1}/{retry_attempts} failed: {e}"
                         )
@@ -2385,7 +2387,7 @@ class TestAdvancedTopologicalResearch:
                     )
                     federation_bridges.append((dc_i, dc_j, simulated_latency))
 
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     print(f"   ✗ Federation bridge failed: {e}")
 
         # Wait for cross-datacenter convergence
@@ -2476,10 +2478,10 @@ class TestAdvancedTopologicalResearch:
         for dc_idx, leader in enumerate(datacenter_leaders):
             if dc_idx != 2:  # Skip Asia-Pacific (simulated partition)
 
-                def partition_test_func(data: str) -> str:
-                    return (
-                        f"Partition test from {datacenter_config[dc_idx].name}: {data}"
-                    )
+                def partition_test_func(
+                    data: str, *, _name: str = datacenter_config[dc_idx].name
+                ) -> str:
+                    return f"Partition test from {_name}: {data}"
 
                 func_name = f"partition_test_{dc_idx}"
                 leader.register_command(
@@ -2848,7 +2850,7 @@ class TestAdvancedTopologicalResearch:
                     await tier_coordinators[1]._establish_peer_connection(
                         f"ws://127.0.0.1:{tier_coordinators[2].settings.port}"
                     )
-                except Exception:
+                except Exception:  # noqa: BLE001, S110
                     pass
 
                 await asyncio.sleep(2.0)
@@ -2916,7 +2918,7 @@ class TestAdvancedTopologicalResearch:
                             await datacenter_leaders[i]._establish_peer_connection(
                                 f"ws://127.0.0.1:{datacenter_leaders[j].settings.port}"
                             )
-                        except Exception:
+                        except Exception:  # noqa: BLE001, S110
                             pass
 
                 await asyncio.sleep(2.0)
@@ -3222,8 +3224,10 @@ class TestAdvancedTopologicalResearch:
             partition_leader_idx = largest_partition[0]
             partition_leader = servers[partition_leader_idx]
 
-            def partition_test_function(data: str) -> str:
-                return f"Partition test from partition {largest_partition_idx}: {data}"
+            def partition_test_function(
+                data: str, *, _idx: int = largest_partition_idx
+            ) -> str:
+                return f"Partition test from partition {_idx}: {data}"
 
             function_name = f"partition_test_{scenario_idx}"
             partition_leader.register_command(
@@ -3261,7 +3265,7 @@ class TestAdvancedTopologicalResearch:
                             ):  # Limit to prevent overload
                                 recovery_connections_established += 1
 
-                        except Exception:
+                        except Exception:  # noqa: BLE001, S110
                             pass
 
             # Wait for recovery convergence
@@ -3272,8 +3276,10 @@ class TestAdvancedTopologicalResearch:
             print("      ✅ Verifying recovery effectiveness...")
 
             # Test post-recovery function propagation
-            def recovery_test_function(data: str) -> str:
-                return f"Recovery test for scenario {scenario_name}: {data}"
+            def recovery_test_function(
+                data: str, *, _scenario: str = scenario_name
+            ) -> str:
+                return f"Recovery test for scenario {_scenario}: {data}"
 
             recovery_function_name = f"recovery_test_{scenario_idx}"
             servers[0].register_command(
@@ -3345,8 +3351,10 @@ class TestAdvancedTopologicalResearch:
                 failed_nodes.append(failed_node_idx)
 
                 # Test system resilience after each failure
-                def cascade_test_function(data: str) -> str:
-                    return f"Cascade test round {failure_round}: {data}"
+                def cascade_test_function(
+                    data: str, *, _round: int = failure_round
+                ) -> str:
+                    return f"Cascade test round {_round}: {data}"
 
                 # Register on a non-failed node
                 active_nodes = [i for i in range(len(servers)) if i not in failed_nodes]
@@ -3615,7 +3623,7 @@ class TestAdvancedTopologicalResearch:
                             f"ws://127.0.0.1:{regional_leaders[j].settings.port}"
                         )
                         raft_bridges_established += 1
-                    except Exception as e:
+                    except Exception as e:  # noqa: BLE001
                         print(
                             f"       Warning: Bridge failed {regional_leaders[i].settings.name} -> {regional_leaders[j].settings.name}: {e}"
                         )
@@ -3668,7 +3676,7 @@ class TestAdvancedTopologicalResearch:
                         f"      ✅ Continental bridge established ({bridge_establishment_time:.0f}ms)"
                     )
 
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     print(f"      ✗ Continental bridge failed: {e}")
 
         bridge_time = (time.time() - bridge_start) * 1000
@@ -3694,7 +3702,12 @@ class TestAdvancedTopologicalResearch:
             continent_leader = continental_leaders[continent_idx]
 
             # Create continent-specific function using real datastructures
-            def make_planet_function(continent: str, idx: int):
+            def make_planet_function(
+                continent: str,
+                idx: int,
+                *,
+                _leader_name: str = continent_leader.settings.name,
+            ):
                 def planet_scale_function(
                     data: str, timestamp: int
                 ) -> PlanetScaleFunction:
@@ -3717,7 +3730,7 @@ class TestAdvancedTopologicalResearch:
                     return PlanetScaleFunction(
                         name=f"planet_scale_{idx}",
                         continent=continent,
-                        leader_name=continent_leader.settings.name,
+                        leader_name=_leader_name,
                         vector_clock=vector_clock_data,
                         merkle_verification=merkle_verification,
                         raft_consensus_ready=True,
@@ -4001,7 +4014,7 @@ class TestAdvancedTopologicalResearch:
                 print(
                     f"     🌉 Federation bridge: Subcluster {i} ↔ Subcluster {next_i}"
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"     ✗ Federation bridge failed: {e}")
 
         await asyncio.sleep(4.0)
@@ -4072,6 +4085,6 @@ def topology_builder(test_context: AsyncTestContext) -> AdvancedTopologyBuilder:
 # Export metrics collection for external analysis
 def export_performance_metrics(metrics_list: list[PerformanceMetrics], filename: str):
     """Export performance metrics to JSON for external analysis."""
-    with open(filename, "w") as f:
+    with Path(filename).open("w") as f:
         json.dump([asdict(m) for m in metrics_list], f, indent=2)
     print(f"📊 Performance metrics exported to {filename}")

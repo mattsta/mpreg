@@ -10,6 +10,7 @@ default. See ``aborts_peer_fail`` / ``last_abort_fail_peers``.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 import uuid
 from collections import deque
@@ -373,10 +374,8 @@ class StrongLocalBackend:
             self._prune_orphan_backups()
             apply_cb = self.on_visible_apply
             if apply_cb is not None:
-                try:
+                with contextlib.suppress(Exception):
                     apply_cb(entry)
-                except Exception:  # noqa: BLE001
-                    pass
             return CommitAck(self.node_id, True, applied=True)
 
     async def abort(self, *, op_id: str, key: GlobalCacheKey) -> bool:
@@ -403,10 +402,8 @@ class StrongLocalBackend:
             if did_uncommit:
                 uncommit_cb = self.on_visible_uncommit
                 if uncommit_cb is not None:
-                    try:
+                    with contextlib.suppress(Exception):
                         uncommit_cb(key, restored)
-                    except Exception:  # noqa: BLE001
-                        pass
             return True
 
     def _prune_orphan_backups(self) -> int:

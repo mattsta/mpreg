@@ -15,6 +15,7 @@ import time
 from tests.port_allocator import PortAllocator
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.server import MPREGServer
 
 
@@ -80,7 +81,7 @@ class FederationScalingTester:
                         await servers[i]._establish_peer_connection(
                             f"ws://127.0.0.1:{servers[0].settings.port}"
                         )
-                    except Exception as e:
+                    except OPERATIONAL_EXCEPTIONS as e:
                         connection_errors += 1
                         print(f"     ❌ Connection {i}->0 failed: {e}")
 
@@ -91,7 +92,7 @@ class FederationScalingTester:
                         await servers[i]._establish_peer_connection(
                             f"ws://127.0.0.1:{servers[i - 1].settings.port}"
                         )
-                    except Exception as e:
+                    except OPERATIONAL_EXCEPTIONS as e:
                         connection_errors += 1
                         print(f"     ❌ Connection {i}->{i - 1} failed: {e}")
 
@@ -103,7 +104,7 @@ class FederationScalingTester:
                             await servers[i]._establish_peer_connection(
                                 f"ws://127.0.0.1:{servers[j].settings.port}"
                             )
-                        except Exception as e:
+                        except OPERATIONAL_EXCEPTIONS as e:
                             connection_errors += 1
                             print(f"     ❌ Connection {i}<->{j} failed: {e}")
 
@@ -150,7 +151,7 @@ class FederationScalingTester:
             )
             return result
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             error_time = (time.time() - start_time) * 1000
             print(f"   ❌ FAILED: {e}")
 

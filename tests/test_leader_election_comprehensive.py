@@ -37,10 +37,16 @@ async def raft_instance_cleanup(
         yield raft
     finally:
         # Clean shutdown to prevent task destruction warnings
-        try:
+        with contextlib.suppress(
+            OSError,
+            TimeoutError,
+            ConnectionError,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            KeyError,
+        ):
             await raft.shutdown()
-        except Exception:
-            pass  # Ignore cleanup errors
 
 
 # Hypothesis strategies for leader election testing

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from typing import Any
 
 
@@ -109,7 +110,7 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
         base["latency_ms"] = dict(snap.get("latency_ms") or {})
         base["coordinator"] = dict(snap.get("coordinator") or {})
         if hasattr(cm, "strong_status"):
-            try:
+            with contextlib.suppress(Exception):
                 st = cm.strong_status()
                 if isinstance(st, dict) and "capabilities" in st:
                     base["capabilities"] = dict(st["capabilities"] or {})
@@ -142,8 +143,6 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
                         base["residual_ops_hint"] = str(
                             st.get("residual_ops_hint") or ""
                         )
-            except Exception:  # noqa: BLE001
-                pass
         # Fallback from coordinator block when status path skipped fields
         coord = base.get("coordinator") or {}
         if isinstance(coord, dict):
@@ -170,10 +169,8 @@ def build_strong_metrics(server: Any) -> dict[str, Any]:
                 ctr.setdefault(k, int(base.get(k) or 0))
                 base.setdefault(k, int(ctr.get(k) or 0))
     elif be is not None and hasattr(be, "pending_count"):
-        try:
+        with contextlib.suppress(Exception):
             base["pending_count"] = int(be.pending_count())
-        except Exception:  # noqa: BLE001
-            pass
         if hasattr(be, "visible_count"):
             try:
                 base["visible_count"] = int(be.visible_count())

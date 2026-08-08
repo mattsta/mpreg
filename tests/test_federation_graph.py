@@ -988,7 +988,7 @@ class TestPerformanceBenchmarks:
                     router.update_edge_metrics("node_0", "node_1", 15.0, 0.5)
                     router.update_node_metrics("node_0", 500.0, 0.9, 3.0)
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 errors.append(e)
 
         # Start multiple threads

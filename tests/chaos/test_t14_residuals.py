@@ -149,7 +149,7 @@ async def test_cor_t14_01_missing_done_does_not_apply_snapshot() -> None:
     await sm.apply_command("k=1", 1)
     snap = await sm.create_snapshot()
     node = _make_node("f1")
-    node.current_state = RaftState.FOLLOWER
+    node.testing_set_state(RaftState.FOLLOWER)
     node.persistent_state = PersistentState(
         current_term=1, voted_for=None, log_entries=[]
     )
@@ -199,7 +199,7 @@ def test_obs_t14_01_set_raft_bridge_prom_series() -> None:
 
 def test_obs_t14_01_status_dict_includes_metrics() -> None:
     node = _make_node("n1")
-    node.current_state = RaftState.FOLLOWER
+    node.testing_set_state(RaftState.FOLLOWER)
     node.persistent_state = PersistentState(
         current_term=4, voted_for=None, log_entries=[]
     )

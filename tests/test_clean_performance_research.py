@@ -130,7 +130,7 @@ class CleanPerformanceResearch:
                         f"ws://127.0.0.1:{next_hub_port}"
                     )
                     federation_connections.append((hub_port, next_hub_port))
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     print(f"   Warning: Federation connection failed: {e}")
 
         # 4. Wait for federation convergence

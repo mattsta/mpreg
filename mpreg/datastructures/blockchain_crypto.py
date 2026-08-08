@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ed25519
@@ -14,6 +15,9 @@ from cryptography.hazmat.primitives.serialization import (
 )
 
 from .blockchain_types import DigitalSignature, PrivateKey, PublicKey
+
+if TYPE_CHECKING:
+    from .transaction import Transaction
 
 SUPPORTED_SIGNATURE_ALGORITHMS = ("ed25519",)
 
@@ -47,7 +51,7 @@ class TransactionSigner:
         from .transaction import Transaction
 
         if not isinstance(transaction, Transaction):
-            raise ValueError("Expected Transaction to sign")
+            raise TypeError("Expected Transaction to sign")
         return transaction.sign(self.private_key, algorithm=self.algorithm)
 
 

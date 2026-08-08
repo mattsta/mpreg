@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 
 import pytest
 
@@ -73,7 +74,7 @@ async def test_cor_t11_01_post_snapshot_log_index_absolute() -> None:
             for i in range(1, 6)
         ],
     )
-    node.current_state = RaftState.FOLLOWER
+    node.testing_set_state(RaftState.FOLLOWER)
 
     req = InstallSnapshotRequest(
         term=2,
@@ -121,7 +122,7 @@ async def test_cor_t11_02_leader_single_apply() -> None:
     # submit path waits on waiter rather than calling apply_command again.
     node = _make_node("L")
     sm: TestableStateMachine = node.state_machine  # type: ignore[assignment]
-    node.current_state = RaftState.LEADER
+    node.testing_set_state(RaftState.LEADER)
     node.persistent_state = PersistentState(
         current_term=1, voted_for="L", log_entries=[]
     )
@@ -239,7 +240,7 @@ def test_obs_t11_01_02_03_metrics() -> None:
 def test_perf_t11_04_route_cache_ordered_dict() -> None:
     import mpreg.fabric.router as rmod
 
-    src = open(rmod.__file__).read()
+    src = Path(rmod.__file__).read_text(encoding="utf-8")
     assert "OrderedDict" in src
     assert "move_to_end" in src
     assert "PERF-T11-04" in src

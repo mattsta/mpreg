@@ -10,6 +10,7 @@ import logging
 from tests.port_allocator import PortAllocator
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.server import MPREGServer
 
 # Suppress all logging to see just our output
@@ -92,7 +93,7 @@ async def test_scalability_fix():
             print("❌ FAILURE: Cluster did not converge properly")
             return False
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"💥 ERROR: {e}")
         return False
 

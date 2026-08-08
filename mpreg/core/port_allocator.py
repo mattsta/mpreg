@@ -11,6 +11,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
+from typing import ClassVar
 
 from loguru import logger
 
@@ -29,7 +30,7 @@ class PortRange:
 class PortAllocator:
     """File-lock-based port allocator with worker-aware ranges."""
 
-    RANGES = {
+    RANGES: ClassVar[dict[str, PortRange]] = {
         "servers": PortRange(10000, 16000, "Main server ports (6000 ports)"),
         "clients": PortRange(16000, 20000, "Client connection ports (4000 ports)"),
         "federation": PortRange(20000, 24000, "Federation ports (4000 ports)"),

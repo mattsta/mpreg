@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from mpreg import consensus
 from mpreg.core import consensus_api
 
@@ -24,12 +26,12 @@ def test_status_dict_shape() -> None:
     class Fake:
         node_id = "n1"
         current_state = consensus.RaftState.FOLLOWER
-        cluster_members = {"n1", "n2"}
+        cluster_members: ClassVar[set[str]] = {"n1", "n2"}
 
         class PS:
             current_term = 3
             voted_for = None
-            log_entries: list = []
+            log_entries: ClassVar[list] = []
 
         class VS:
             commit_index = 0

@@ -26,7 +26,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 import ulid
 
@@ -52,23 +52,26 @@ CacheRegion = str
 Priority = float
 
 
-class _LazySt:
-    """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
+if TYPE_CHECKING:
+    from hypothesis import strategies as st
+else:
 
-    _mod: object | None = None
+    class _LazySt:
+        """Lazy hypothesis.strategies proxy so hypothesis stays a dev dependency."""
 
-    def _load(self) -> object:
-        if self._mod is None:
-            from hypothesis import strategies as st
+        _mod: Any | None = None
 
-            object.__setattr__(self, "_mod", st)
-        return self._mod  # type: ignore[return-value]
+        def _load(self) -> Any:
+            if self._mod is None:
+                from hypothesis import strategies as st_mod
 
-    def __getattr__(self, name: str) -> object:
-        return getattr(self._load(), name)
+                self._mod = st_mod
+            return self._mod
 
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self._load(), name)
 
-st = _LazySt()
+    st = _LazySt()  # type: ignore[assignment]
 
 
 class CacheCoherenceState(Enum):

@@ -33,6 +33,7 @@ from .advanced_cache_ops import (
     NamespaceOperation,
     NamespaceResult,
 )
+from .errors import OPERATIONAL_EXCEPTIONS
 from .global_cache import CacheOptions, GlobalCacheKey, GlobalCacheManager
 from .model import PubSubMessage, PubSubSubscription, TopicPattern
 from .task_manager import ManagedObject
@@ -275,7 +276,7 @@ class CachePubSubIntegration(ManagedObject):
 
             self.stats.notifications_sent += 1
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Failed to send cache event notification: {e}")
             self.stats.notifications_failed += 1
 
@@ -328,7 +329,7 @@ class CachePubSubIntegration(ManagedObject):
 
             return True
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.warning(f"Failed to evaluate notification condition: {e}")
             return False
 
@@ -407,7 +408,7 @@ class CachePubSubIntegration(ManagedObject):
                 except TimeoutError:
                     # Normal timeout, continue processing
                     continue
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     logger.error(f"Error in notification processor: {e}")
                     # If event loop is gone, break the loop
                     if "no running event loop" in str(e):
@@ -415,7 +416,7 @@ class CachePubSubIntegration(ManagedObject):
 
         except asyncio.CancelledError:
             logger.debug("Cache notification processor cancelled")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Notification processor error: {e}")
         finally:
             logger.debug("Cache notification processor stopped")
@@ -446,7 +447,7 @@ class CachePubSubIntegration(ManagedObject):
             # Note: These would be processed in the main message handler
             # For now, we set up the framework
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Failed to setup cache coordination subscriptions: {e}")
 
     async def handle_cache_coordination_message(self, message: PubSubMessage) -> None:
@@ -461,7 +462,7 @@ class CachePubSubIntegration(ManagedObject):
 
             self.stats.cache_operations_triggered += 1
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Failed to handle cache coordination message: {e}")
 
     async def _handle_invalidation_message(self, message: PubSubMessage) -> None:
@@ -488,7 +489,7 @@ class CachePubSubIntegration(ManagedObject):
                 await self.cache_manager.invalidate(pattern)
                 logger.info(f"Invalidated cache pattern via pub/sub: {pattern}")
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Failed to handle invalidation message: {e}")
 
     async def _handle_coordination_message(self, message: PubSubMessage) -> None:
@@ -504,7 +505,7 @@ class CachePubSubIntegration(ManagedObject):
             elif coordination_type == "consistency_check":
                 await self._handle_consistency_check(payload)
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Failed to handle coordination message: {e}")
 
     async def _handle_cache_warming(self, payload: dict[str, Any]) -> None:
@@ -588,7 +589,7 @@ class CachePubSubIntegration(ManagedObject):
             await super().shutdown()
             logger.info("Cache-PubSub integration shut down successfully")
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Error during cache-pub/sub integration shutdown: {e}")
 
 

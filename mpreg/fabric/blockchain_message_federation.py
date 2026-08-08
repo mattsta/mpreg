@@ -12,6 +12,8 @@ from typing import Any
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 from ..core.blockchain_ledger import BlockchainLedger
 from ..core.blockchain_message_queue import (
     BlockchainMessageQueue,
@@ -119,7 +121,7 @@ class HubMessageQueue:
 
         except UnsupportedDeliveryGuaranteeError:
             raise
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Hub {self.hub_id} federation message processing failed: {e}")
             return None
 
@@ -366,7 +368,7 @@ class FederationRouteManager:
                 f"Global policy {proposal_id} applied to {len(self.hub_queues)} hubs"
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Failed to execute global policy {proposal_id}: {e}")
 
     async def _apply_policy_to_hub(
@@ -503,7 +505,7 @@ class CrossRegionCoordinator:
 
         except UnsupportedDeliveryGuaranteeError:
             raise
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(
                 f"Cross-region coordination failed {source_region} -> {destination_region}: {e}"
             )
@@ -670,7 +672,7 @@ class BlockchainFederationBridge:
 
         except UnsupportedDeliveryGuaranteeError:
             raise
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(
                 f"Federated message send failed {sender_hub_id} -> {destination_hub_id}: {e}"
             )

@@ -240,6 +240,10 @@ class TransportInterface(ABC):
     async def disconnect(self) -> None:
         """Close transport connection gracefully."""
 
+    async def close(self) -> None:
+        """Alias for :meth:`disconnect` (aiohttp-style callers)."""
+        await self.disconnect()
+
     @abstractmethod
     async def send(self, data: bytes) -> None:
         """Send data over transport.

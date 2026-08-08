@@ -19,12 +19,12 @@ import contextlib
 import json
 import os
 import tempfile
-import time
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.datastructures.production_raft import (
     AppendEntriesRequest,
     AppendEntriesResponse,
@@ -37,6 +37,7 @@ from mpreg.datastructures.production_raft import (
 from mpreg.datastructures.production_raft_implementation import (
     ProductionRaft,
     RaftConfiguration,
+    RaftLeadershipError,
 )
 from mpreg.datastructures.raft_storage_adapters import (
     RaftStorageFactory,
@@ -174,7 +175,7 @@ class NetworkAwareTransport:
             if not task.done():
                 task.cancel()
             raise
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return None
 
     async def send_request_vote(
@@ -327,12 +328,19 @@ class TestProductionRaftIntegration:
         multiplier: float = 2.5,
         minimum: float = 1.0,
     ) -> float:
-        """Derive a leader-election wait timeout from live node configuration."""
-        max_election_timeout = max(
-            (node.config.election_timeout_max for node in nodes.values()),
-            default=minimum,
+        """Derive a leader-election wait timeout from live node configuration.
+
+        Prefer ProductionRaft.leadership_deadline_for_nodes; multiplier/minimum
+        remain for a few call sites that pass explicit scaled budgets.
+        """
+        if not nodes:
+            return minimum
+        # Map legacy multiplier onto election-round budget (~2.5x max ~= 3-6 rounds).
+        rounds = max(3.0, float(multiplier) * 2.0)
+        return max(
+            minimum,
+            ProductionRaft.leadership_deadline_for_nodes(nodes, rounds=rounds),
         )
-        return max(minimum, max_election_timeout * multiplier)
 
     async def _wait_for_single_leader(
         self,
@@ -341,31 +349,23 @@ class TestProductionRaftIntegration:
         timeout_seconds: float | None = None,
         poll_interval: float = 0.05,
     ) -> ProductionRaft:
-        """Wait for exactly one leader and return it with a deterministic timeout."""
-        timeout = (
-            timeout_seconds
-            if timeout_seconds is not None
-            else self._leader_wait_timeout_seconds(nodes)
-        )
-        deadline = time.time() + timeout
-        last_states: dict[str, str] = {}
-
-        while time.time() < deadline:
-            leaders = [
-                node
-                for node in nodes.values()
-                if node.current_state == RaftState.LEADER
-            ]
-            if len(leaders) == 1:
-                return leaders[0]
-            last_states = {
-                node_id: node.current_state.value for node_id, node in nodes.items()
-            }
-            await asyncio.sleep(poll_interval)
-
-        raise AssertionError(
-            f"Expected exactly one leader within {timeout:.2f}s; final_states={last_states}"
-        )
+        """Delegate to ProductionRaft.wait_for_leader (supported readiness API)."""
+        try:
+            return await ProductionRaft.wait_for_leader(
+                nodes,
+                timeout_seconds=timeout_seconds
+                if timeout_seconds is not None
+                else self._leader_wait_timeout_seconds(nodes),
+                poll_interval=poll_interval,
+            )
+        except RaftLeadershipError as exc:
+            # Preserve pytest-friendly assertion failures with status detail.
+            detail = ", ".join(
+                f"{s.node_id}:{s.state}/t{s.term}/started={s.elections_started}"
+                f"/skip_contact={s.elections_skipped_recent_contact}"
+                for s in exc.statuses
+            )
+            raise AssertionError(f"{exc}; statuses=[{detail}]") from exc
 
     @pytest.mark.asyncio
     async def test_single_node_cluster_basic_operations(self, temp_dir):
@@ -616,63 +616,24 @@ class TestProductionRaftIntegration:
             for node in nodes.values():
                 await node.start()
 
-            # Scale initial wait time with concurrency
-            concurrency_factor = get_concurrency_factor()
-            await asyncio.sleep(0.5 * concurrency_factor)
-
-            # Find initial leader
-            initial_leader = next(
-                node
-                for node in nodes.values()
-                if node.current_state == RaftState.LEADER
-            )
+            # Readiness via production wait API (config-derived deadline).
+            initial_leader = await self._wait_for_single_leader(nodes)
             initial_leader_id = initial_leader.node_id
 
             # Submit some commands to establish log entries
             await initial_leader.submit_command("before_failure=1")
-            await asyncio.sleep(0.1 * concurrency_factor)
+            # Allow one heartbeat interval for replication (not an election sleep).
+            await asyncio.sleep(initial_leader.config.heartbeat_interval * 2)
 
             # Simulate leader failure by stopping it
             await initial_leader.stop()
 
-            # Wait for new election with state-driven approach
-            remaining_nodes = [
-                node for node in nodes.values() if node.node_id != initial_leader_id
-            ]
-
-            import time
-
-            start_time = time.time()
-            # Scale timeout with concurrency to handle resource contention
-            max_wait = 2.0 * concurrency_factor  # Scale with concurrency
-
-            while time.time() - start_time < max_wait:
-                await asyncio.sleep(0.1)
-
-                leaders = [
-                    node
-                    for node in remaining_nodes
-                    if node.current_state == RaftState.LEADER
-                ]
-
-                if len(leaders) == 1:
-                    elapsed = time.time() - start_time
-                    print(f"New leader elected in {elapsed:.3f}s")
-                    break
-
-            # Verify new leader was elected from remaining nodes
-            leaders = [
-                node
-                for node in remaining_nodes
-                if node.current_state == RaftState.LEADER
-            ]
-
-            assert len(leaders) == 1, (
-                f"Expected 1 new leader after failure, found {len(leaders)}"
-            )
-
-            new_leader = leaders[0]
+            remaining = {
+                nid: node for nid, node in nodes.items() if nid != initial_leader_id
+            }
+            new_leader = await self._wait_for_single_leader(remaining)
             assert new_leader.node_id != initial_leader_id
+            remaining_nodes = list(remaining.values())
 
             # New leader should be able to accept commands
             result = await new_leader.submit_command("after_failure=2")
@@ -751,12 +712,8 @@ class TestProductionRaftIntegration:
             # ZERO TOLERANCE FOR FAILURES - extremely aggressive scaling
             base_wait = 3.0  # Increased base wait
             concurrency_factor = get_concurrency_factor()
-            if concurrency_factor > 1.0:
-                concurrency_factor = (
-                    8.0  # Extremely aggressive wait time for concurrent tests
-                )
-            else:
-                concurrency_factor = 2.0  # Even single-threaded gets more time
+            # Extremely aggressive wait when concurrent; still elevated for single-thread
+            concurrency_factor = 8.0 if concurrency_factor > 1.0 else 2.0
             max_wait = base_wait * concurrency_factor
             print(
                 f"Using max_wait={max_wait:.1f}s for partition detection (attempt {attempt + 1})"
@@ -833,12 +790,9 @@ class TestProductionRaftIntegration:
                     f"Node states: {[(n.node_id, n.current_state.value) for n in nodes.values()]}"
                 )
 
-                # Force all nodes to trigger new elections
+                # Real transition path + election trigger (never assign current_state)
                 for node in nodes.values():
-                    # Force to follower state and trigger new election
-                    node.current_state = RaftState.FOLLOWER
-                    node.current_leader = None
-                    node.election_coordinator.trigger_election()
+                    await node.reset_to_follower(trigger_election=True)
 
                 # Give extra time for re-election after forced reset
                 extra_wait_start = time.time()

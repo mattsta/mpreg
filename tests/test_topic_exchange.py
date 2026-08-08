@@ -535,33 +535,36 @@ class TestTopicExchange:
 
     def test_remote_topic_updates(self):
         """Test updating knowledge of remote topic servers."""
-        with topic_exchange_context() as (exchange, _):
-            with port_context("testing") as port_a, port_context("testing") as port_b:
-                remote_a = f"ws://remote1:{port_a}"
-                remote_b = f"ws://remote2:{port_b}"
-                # Create remote advertisements
-                advertisements = [
-                    TopicAdvertisement(
-                        server_url=remote_a,
-                        topics=("user.*.login", "system.#"),
-                        subscriber_count=5,
-                        last_activity=time.time(),
-                    ),
-                    TopicAdvertisement(
-                        server_url=remote_b,
-                        topics=("metrics.#", "logs.error"),
-                        subscriber_count=3,
-                        last_activity=time.time(),
-                    ),
-                ]
+        with (
+            topic_exchange_context() as (exchange, _),
+            port_context("testing") as port_a,
+            port_context("testing") as port_b,
+        ):
+            remote_a = f"ws://remote1:{port_a}"
+            remote_b = f"ws://remote2:{port_b}"
+            # Create remote advertisements
+            advertisements = [
+                TopicAdvertisement(
+                    server_url=remote_a,
+                    topics=("user.*.login", "system.#"),
+                    subscriber_count=5,
+                    last_activity=time.time(),
+                ),
+                TopicAdvertisement(
+                    server_url=remote_b,
+                    topics=("metrics.#", "logs.error"),
+                    subscriber_count=3,
+                    last_activity=time.time(),
+                ),
+            ]
 
-                # Update remote topics
-                exchange.update_remote_topics(advertisements)
+            # Update remote topics
+            exchange.update_remote_topics(advertisements)
 
-                # Check that remote servers are tracked
-                assert len(exchange.remote_topic_servers) == 4  # 4 unique patterns
-                assert remote_a in exchange.remote_topic_servers["user.*.login"]
-                assert remote_b in exchange.remote_topic_servers["metrics.#"]
+            # Check that remote servers are tracked
+            assert len(exchange.remote_topic_servers) == 4  # 4 unique patterns
+            assert remote_a in exchange.remote_topic_servers["user.*.login"]
+            assert remote_b in exchange.remote_topic_servers["metrics.#"]
 
     def test_exchange_statistics(self):
         """Test comprehensive exchange statistics."""

@@ -209,7 +209,7 @@ class TestFederationBoundaries:
 
             print(f"✗ Unexpected: Cross-federation communication succeeded: {result}")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"✓ Expected: Cross-federation communication failed: {e}")
 
         # Verify that Alpha can still execute its own functions

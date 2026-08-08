@@ -9,6 +9,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 sys.path.insert(0, "/Users/matt/repos/mpreg")
 
 from mpreg.datastructures.production_raft_implementation import RaftState
@@ -132,7 +134,7 @@ async def debug_follower_state_machine():
                                 )
                                 print(f"      Apply result: {result}")
                                 follower.metrics.commands_applied += 1
-                            except Exception as e:
+                            except OPERATIONAL_EXCEPTIONS as e:
                                 print(f"      Apply ERROR: {e}")
 
                         follower.volatile_state.last_applied = next_index

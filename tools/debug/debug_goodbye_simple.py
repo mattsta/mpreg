@@ -5,6 +5,7 @@ import asyncio
 import contextlib
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.model import GoodbyeReason
 from mpreg.server import MPREGServer
 from tests.test_helpers import TestPortManager
@@ -85,7 +86,7 @@ async def debug_goodbye_simple():
         try:
             await server1.shutdown_async()
             await server2.shutdown_async()
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             print(f"Error during cleanup: {e}")
 
         server1_task.cancel()

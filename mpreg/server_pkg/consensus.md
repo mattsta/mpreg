@@ -22,7 +22,7 @@ Use this matrix when integrating:
 | LEADER       | (heartbeat maintains)   | n/a (usually)       | if higher term → FOLLOWER    | → FOLLOWER              | n/a            |
 
 RPCs: RequestVote, AppendEntries, InstallSnapshot (catch-up).  
-Pre-vote (when enabled) runs before incrementing term.
+Pre-vote (default **on**, `RaftConfiguration.pre_vote_enabled`) probes peers with `RequestVote(pre_vote=True)` **before** incrementing term; grants do not persist `voted_for` or stamp leader contact. Disable only for experiments.
 
 ## Guidance
 

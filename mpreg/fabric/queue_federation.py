@@ -14,6 +14,7 @@ from typing import Any
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.message_queue import (
     DeliveryGuarantee as QueueDeliveryGuarantee,
 )
@@ -259,7 +260,7 @@ class FabricQueueFederationManager(ManagedObject):
     ) -> None:
         try:
             payload = queue_message_from_dict(message.payload)
-        except Exception as exc:
+        except OPERATIONAL_EXCEPTIONS as exc:
             logger.warning(
                 "[{}] Invalid queue federation payload: {}",
                 self.cluster_id,

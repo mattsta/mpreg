@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+import contextlib
+
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
+
 """Simple test to debug RPC execution issue."""
 
 import asyncio
@@ -62,7 +66,7 @@ async def debug_simple_rpc():
 
         print(f"✅ SUCCESS: {result}")
 
-    except Exception as e:
+    except OPERATIONAL_EXCEPTIONS as e:
         print(f"❌ FAILURE: {type(e).__name__}: {e}")
         import traceback
 
@@ -71,10 +75,8 @@ async def debug_simple_rpc():
     finally:
         await client.disconnect()
         server_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await server_task
-        except asyncio.CancelledError:
-            pass  # Server cancellation during cleanup is expected
 
 
 if __name__ == "__main__":

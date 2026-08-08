@@ -63,7 +63,7 @@ async def test_install_snapshot_restores_state_machine() -> None:
         voted_for=None,
         log_entries=[],
     )
-    node.current_state = RaftState.FOLLOWER
+    node.testing_set_state(RaftState.FOLLOWER)
 
     resp = await node.handle_install_snapshot(req)
     assert resp is not None
@@ -100,7 +100,7 @@ async def test_install_snapshot_failure_returns_success_false() -> None:
         voted_for=None,
         log_entries=[],
     )
-    node.current_state = RaftState.FOLLOWER
+    node.testing_set_state(RaftState.FOLLOWER)
     req = InstallSnapshotRequest(
         term=1,
         leader_id="l1",

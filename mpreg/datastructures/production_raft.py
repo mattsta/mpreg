@@ -46,6 +46,7 @@ from typing import Any, Protocol
 
 import ulid
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.native_codec import canonical_dumps
 
 
@@ -119,7 +120,7 @@ class LogEntry:
                 timestamp=self.timestamp,
             )
             return expected_entry.checksum == self.checksum
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return False
 
 
@@ -166,12 +167,19 @@ class RaftSnapshot:
 # RPC Message Types
 @dataclass(frozen=True, slots=True)
 class RequestVoteRequest:
-    """RequestVote RPC request as specified in Raft paper."""
+    """RequestVote RPC request as specified in Raft paper.
 
-    term: int  # Candidate's term
+    When ``pre_vote`` is True this is a *pre-vote* probe (Raft optimization):
+    the receiver evaluates whether it *would* grant a vote for ``term`` without
+    incrementing its term, persisting ``voted_for``, or stamping leader contact.
+    Pre-vote requests use ``term = currentTerm + 1`` of the prospective candidate.
+    """
+
+    term: int  # Candidate's term (or prospective term when pre_vote)
     candidate_id: str  # Candidate requesting vote
     last_log_index: int  # Index of candidate's last log entry
     last_log_term: int  # Term of candidate's last log entry
+    pre_vote: bool = False  # If True, do not persist vote or advance term
 
     def __post_init__(self) -> None:
         if self.term < 0:

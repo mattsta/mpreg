@@ -19,6 +19,8 @@ from urllib.parse import urlparse
 import ulid
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS, log_caught_exception
+
 # Populated after PlatformRpc import; see _LOCAL_ONLY_RPC_COMMANDS below.
 # Kept as module-level name for existing references; values are mpreg.* FQNs.
 
@@ -253,8 +255,6 @@ LOCAL_ONLY_RPC_COMMANDS: frozenset[str] = frozenset(
         PlatformRpc.SUMMARY_WATCH,
     }
 )
-from mpreg.core.model import PubSubSubscription
-
 from .core.rpc_registry import RpcRegistry
 from .core.rpc_spec_sharing import RpcSpecSharePolicy
 from .core.serialization import JsonSerializer
@@ -295,15 +295,22 @@ _current_rpc_actor_context: ContextVar[dict[str, Any] | None] = ContextVar(
 )
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from mpreg.datastructures.type_aliases import PortAssignmentCallback
+    from mpreg.datastructures.type_aliases import (
+        PortAssignmentCallback,
+        Timestamp,
+    )
     from mpreg.fabric.catalog import (
         CacheNodeProfile,
+        FunctionEndpoint,
         NodeDescriptor,
         RoutingCatalog,
         TransportEndpoint,
     )
+    from mpreg.fabric.catalog_policy import CatalogFilterPolicy
+    from mpreg.fabric.engine import ClusterRoutePlan, RoutingEngine
     from mpreg.fabric.index import RoutingIndex
     from mpreg.fabric.message import MessageHeaders, UnifiedMessage
+    from mpreg.fabric.peer_directory import PeerDirectory, PeerNeighbor
     from mpreg.fabric.route_control import RoutePolicy
     from mpreg.fabric.route_keys import RouteKeyRegistry
     from mpreg.fabric.route_policy_directory import RoutePolicyDirectory
@@ -311,6 +318,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
         RouteAnnouncementSigner,
         RouteSecurityConfig,
     )
+    from mpreg.fabric.router import FabricRouteResult, FabricRouteTarget
 
 ############################################
 #
@@ -576,7 +584,7 @@ class Cluster:
                 ids = {endpoint.node_id for endpoint in entries}
                 if ids:
                     return ids
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 pass
         directory = self.peer_directory
         if directory is not None:
@@ -587,6 +595,41 @@ class Cluster:
     def dead_peer_timeout(self) -> float:
         """Get dead peer timeout."""
         return self.config.dead_peer_timeout_seconds
+
+    def remove_server(self, server: Connection) -> None:
+        """Drop a dead peer connection from the cluster connection map.
+
+        Catalog/function state is fabric-owned; this only tears down the
+        transport entry and publishes a connection-lost event so observers
+        can react. Safe if the connection was already removed.
+        """
+        server_url = str(getattr(server, "url", "") or "")
+        removed_url = server_url
+        if server_url and self.peer_connections.get(server_url) is server:
+            self.peer_connections.pop(server_url, None)
+        else:
+            for url, conn in list(self.peer_connections.items()):
+                if conn is server:
+                    self.peer_connections.pop(url, None)
+                    removed_url = url
+                    break
+            else:
+                if server_url:
+                    # URL key present under a different connection object (stale)
+                    self.peer_connections.pop(server_url, None)
+        if not removed_url:
+            return
+        with contextlib.suppress(
+            OSError, RuntimeError, ValueError, TypeError, KeyError
+        ):
+            event = ConnectionEvent.lost(removed_url, self.local_url)
+            self.connection_event_bus.publish(event)
+        owner = self._server
+        if owner is not None:
+            with contextlib.suppress(Exception):
+                owner._remove_cache_fabric_peer(removed_url)
+            with contextlib.suppress(Exception):
+                owner._mark_peer_disconnected(removed_url)
 
     def _cluster_id_for_server(self, server_url: str) -> str | None:
         """Resolve cluster_id for a server URL, considering advertised URLs."""
@@ -927,7 +970,10 @@ class Cluster:
         )
         implementation = self.registry.resolve(selector)
         if not implementation:
-            from mpreg.core.errors import command_not_found, version_mismatch
+            from mpreg.core.errors import (
+                command_not_found,
+                version_mismatch,
+            )
 
             if rpc_command.version_constraint:
                 raise version_mismatch(
@@ -1174,7 +1220,7 @@ class Cluster:
                     approx_size,
                     rpc_step.fun,
                 )
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             pass
         return got
 
@@ -1518,6 +1564,9 @@ class Cluster:
 
                     # Optional: Stream to topic if configured
                     if request.intermediate_result_callback_topic:
+                        owner = self._server
+                        if owner is None or self.settings is None:
+                            continue
                         pubsub_message = PubSubMessage(
                             message_id=f"rpc_intermediate_{request.u}_{level_idx}",
                             topic=request.intermediate_result_callback_topic,
@@ -1526,11 +1575,11 @@ class Cluster:
                             headers={"event": "rpc.intermediate_result"},
                             timestamp=time.time(),
                         )
-                        notifications = self.topic_exchange.publish_message(
+                        notifications = owner.topic_exchange.publish_message(
                             pubsub_message
                         )
                         for notification in notifications:
-                            await self._send_notification_to_client(notification)
+                            await owner._send_notification_to_client(notification)
 
             return got
 
@@ -1610,6 +1659,7 @@ class MPREGServer:
     # PubSub client tracking
     pubsub_clients: dict[str, TransportInterface] = field(init=False)
     peer_status: dict[str, RPCServerStatus] = field(default_factory=dict)
+    _status_announcement_tracker: Any = field(init=False, default=None)
     subscription_to_client: dict[str, str] = field(init=False)
     # Federation management
     federation_manager: Any = field(init=False)  # FederationConnectionManager
@@ -1914,7 +1964,7 @@ class MPREGServer:
             return
         try:
             result = callback(port)
-        except Exception as exc:
+        except OPERATIONAL_EXCEPTIONS as exc:
             logger.warning("Port callback {} failed for {}: {}", label, port, exc)
             return
         if inspect.isawaitable(result):
@@ -1923,7 +1973,7 @@ class MPREGServer:
             except RuntimeError:
                 try:
                     asyncio.run(result)
-                except Exception as exc:
+                except OPERATIONAL_EXCEPTIONS as exc:
                     logger.warning(
                         "Async port callback {} failed for {}: {}", label, port, exc
                     )
@@ -1932,7 +1982,7 @@ class MPREGServer:
                 async def _runner() -> None:
                     try:
                         await result
-                    except Exception as exc:
+                    except OPERATIONAL_EXCEPTIONS as exc:
                         logger.warning(
                             "Async port callback {} failed for {}: {}",
                             label,
@@ -1948,7 +1998,7 @@ class MPREGServer:
                 from .core.port_allocator import release_port
 
                 release_port(self._auto_allocated_monitoring_port)
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 pass
             finally:
                 self._auto_allocated_monitoring_port = None
@@ -1958,7 +2008,7 @@ class MPREGServer:
                 from .core.port_allocator import release_port
 
                 release_port(self._auto_allocated_port)
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 pass
             finally:
                 self._auto_allocated_port = None
@@ -2147,7 +2197,7 @@ class MPREGServer:
             return
         try:
             delta = RoutingCatalogDelta.from_dict(delta_payload)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             resolver.record_invalid()
             return
         resolver.apply_delta(delta, now=time.time())
@@ -2192,7 +2242,7 @@ class MPREGServer:
                     )
                     return
             message = DiscoverySummaryMessage.from_dict(payload)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             resolver.record_invalid()
             return
         if not self._summary_resolver_allows_scope(message.scope):
@@ -2467,7 +2517,7 @@ class MPREGServer:
         try:
             node.on_snapshot_chunk_abort = _on_abort  # type: ignore[attr-defined]
             node.on_snapshot_chunk_bytes = _on_bytes  # type: ignore[attr-defined]
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             pass
 
     def register_raft_node(self, node: Any) -> None:
@@ -2541,7 +2591,7 @@ class MPREGServer:
 
             if self.settings.fabric_link_state_mode is LinkStateMode.DISABLED:
                 return frozenset()
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             return frozenset()
         if not self._fabric_control_plane:
             return frozenset()
@@ -2578,7 +2628,7 @@ class MPREGServer:
             from mpreg.core.transport.defaults import ConnectionType
 
             internal_type = ConnectionType.INTERNAL.value
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             internal_type = "internal"
         candidates = [
             endpoint
@@ -3749,7 +3799,7 @@ class MPREGServer:
                 try:
                     await connection.send(data)
                     return
-                except Exception:
+                except OPERATIONAL_EXCEPTIONS:
                     pass
             next_hop = None
 
@@ -3795,7 +3845,7 @@ class MPREGServer:
                 try:
                     await connection.send(data)
                     return
-                except Exception:
+                except OPERATIONAL_EXCEPTIONS:
                     pass
 
         if not next_hop:
@@ -3884,7 +3934,7 @@ class MPREGServer:
                         result=answer_payload,
                         routing_path=message.headers.routing_path,
                     )
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     await self._send_fabric_rpc_response(
                         request_id=payload.request_id,
                         reply_to=payload.reply_to,
@@ -4439,7 +4489,7 @@ class MPREGServer:
             while not self._shutdown_event.is_set():
                 try:
                     self._publish_discovery_summary()
-                except Exception as exc:
+                except OPERATIONAL_EXCEPTIONS as exc:
                     logger.warning(
                         "[{}] Summary export failed: {}",
                         self.settings.name,
@@ -4527,7 +4577,7 @@ class MPREGServer:
                         )
                         self._fabric_snapshot_last_restored_counts = {}
                         self._fabric_snapshot_last_route_keys_restored = None
-                    except Exception as rollback_exc:  # pragma: no cover - best effort
+                    except OPERATIONAL_EXCEPTIONS as rollback_exc:  # pragma: no cover - best effort
                         logger.warning(
                             "[{}] Catalog rollback after route-key restore failure: {}",
                             self.settings.name,
@@ -4561,7 +4611,7 @@ class MPREGServer:
                 self._fabric_control_plane.catalog, now=snapshot_time
             )
             self._fabric_snapshot_last_saved_at = snapshot_time
-        except Exception as exc:
+        except OPERATIONAL_EXCEPTIONS as exc:
             logger.warning(
                 "[{}] Fabric catalog snapshot save failed: {}",
                 self.settings.name,
@@ -4577,7 +4627,7 @@ class MPREGServer:
                 await store.save_route_keys(route_registry, now=snapshot_time)
                 if self._fabric_snapshot_last_saved_at is None:
                     self._fabric_snapshot_last_saved_at = snapshot_time
-            except Exception as exc:
+            except OPERATIONAL_EXCEPTIONS as exc:
                 logger.warning(
                     "[{}] Fabric route key snapshot save failed: {}",
                     self.settings.name,
@@ -4598,7 +4648,7 @@ class MPREGServer:
                 try:
                     refresh_now = time.time()
                     await self._announce_fabric_functions_if_due(now=refresh_now)
-                except Exception as exc:
+                except OPERATIONAL_EXCEPTIONS as exc:
                     logger.warning(
                         "[{}] Fabric catalog refresh failed: {}",
                         self.settings.name,
@@ -4606,7 +4656,7 @@ class MPREGServer:
                     )
                 try:
                     await self._announce_fabric_services_if_due(now=refresh_now)
-                except Exception as exc:
+                except OPERATIONAL_EXCEPTIONS as exc:
                     logger.warning(
                         "[{}] Fabric service refresh failed: {}",
                         self.settings.name,
@@ -4653,7 +4703,7 @@ class MPREGServer:
             while not self._shutdown_event.is_set():
                 try:
                     await self._announce_fabric_node()
-                except Exception as exc:
+                except OPERATIONAL_EXCEPTIONS as exc:
                     logger.warning(
                         "[{}] Fabric node refresh failed: {}",
                         self.settings.name,
@@ -4662,7 +4712,7 @@ class MPREGServer:
                 try:
                     if self._should_schedule_node_snapshot_batch():
                         self._schedule_node_snapshots_for_existing_peers_batch()
-                except Exception as exc:
+                except OPERATIONAL_EXCEPTIONS as exc:
                     logger.warning(
                         "[{}] Fabric node snapshot refresh failed: {}",
                         self.settings.name,
@@ -4783,7 +4833,7 @@ class MPREGServer:
             while not self._shutdown_event.is_set():
                 try:
                     await self._announce_fabric_topics()
-                except Exception as exc:
+                except OPERATIONAL_EXCEPTIONS as exc:
                     logger.warning(
                         "[{}] Fabric topic refresh failed: {}",
                         self.settings.name,
@@ -4824,7 +4874,7 @@ class MPREGServer:
                         self.settings.fabric_route_key_provider,
                         self.settings.fabric_route_key_registry,
                     )
-                except Exception as exc:
+                except OPERATIONAL_EXCEPTIONS as exc:
                     logger.warning(
                         "[{}] Fabric route key refresh failed: {}",
                         self.settings.name,
@@ -5084,13 +5134,11 @@ class MPREGServer:
                     cm = getattr(self, "_cache_manager", None)
                     if cm is None:
                         return
-                    try:
+                    with contextlib.suppress(Exception):
                         if restored is not None and hasattr(cm, "_put_to_l1"):
                             cm._put_to_l1(restored)
                         elif hasattr(cm, "l1_cache") and hasattr(key, "to_local_key"):
                             cm.l1_cache.evict(key.to_local_key())
-                    except Exception:  # noqa: BLE001
-                        pass
 
                 backend = StrongLocalBackend(
                     node_id=origin_id,
@@ -5223,7 +5271,7 @@ class MPREGServer:
                     await self.send_goodbye(GoodbyeReason.GRACEFUL_SHUTDOWN)
                     # Brief pause to let GOODBYE messages propagate
                     await asyncio.sleep(0.5)
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     f"[{self.settings.name}] Error sending GOODBYE during shutdown: {e}"
                 )
@@ -5240,14 +5288,14 @@ class MPREGServer:
                 if self._fabric_control_plane.link_state_announcer:
                     await self._fabric_control_plane.link_state_announcer.stop()
                 await self._fabric_control_plane.gossip.stop()
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     f"[{self.settings.name}] Error stopping fabric gossip: {e}"
                 )
 
         try:
             await self._save_fabric_snapshots()
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.warning(f"[{self.settings.name}] Error saving fabric snapshots: {e}")
 
         # CRITICAL: Close connections FIRST to allow tasks to exit gracefully
@@ -5258,7 +5306,7 @@ class MPREGServer:
         for connection in connections_to_close:
             try:
                 await connection.disconnect()
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(f"[{self.settings.name}] Error closing connection: {e}")
         self.peer_connections.clear()
         self._inbound_peer_connections.clear()
@@ -5269,7 +5317,7 @@ class MPREGServer:
             for client_id, transport in list(self.pubsub_clients.items()):
                 try:
                     await transport.disconnect()
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     logger.debug(
                         f"[{self.settings.name}] Error closing pubsub client {client_id}: {e}"
                     )
@@ -5280,7 +5328,7 @@ class MPREGServer:
         try:
             await self.consensus_manager.stop()
             logger.debug(f"[{self.settings.name}] Consensus manager stopped")
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.warning(
                 f"[{self.settings.name}] Error stopping consensus manager: {e}"
             )
@@ -5316,7 +5364,7 @@ class MPREGServer:
                         # Wait for cancelled tasks to complete
                         await asyncio.gather(*pending, return_exceptions=True)
 
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     logger.warning(
                         f"[{self.settings.name}] Error during task cleanup: {e}"
                     )
@@ -5338,7 +5386,7 @@ class MPREGServer:
         if self._cache_manager is not None:
             try:
                 await self._cache_manager.shutdown()
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     f"[{self.settings.name}] Error shutting down cache manager: {e}"
                 )
@@ -5346,7 +5394,7 @@ class MPREGServer:
         if self._fabric_queue_delivery is not None:
             try:
                 await self._fabric_queue_delivery.shutdown()
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     f"[{self.settings.name}] Error shutting down fabric queue delivery: {e}"
                 )
@@ -5356,7 +5404,7 @@ class MPREGServer:
                 await self._queue_manager.shutdown()
             except AttributeError:
                 pass
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     f"[{self.settings.name}] Error shutting down queue manager: {e}"
                 )
@@ -5364,7 +5412,7 @@ class MPREGServer:
         if self._persistence_registry is not None:
             try:
                 await self._persistence_registry.close()
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     f"[{self.settings.name}] Error shutting down persistence registry: {e}"
                 )
@@ -5374,7 +5422,7 @@ class MPREGServer:
             try:
                 await self._transport_listener.stop()
                 logger.debug(f"[{self.settings.name}] Closed transport listener")
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     f"[{self.settings.name}] Error closing transport listener: {e}"
                 )
@@ -5387,7 +5435,7 @@ class MPREGServer:
                 from .core.port_allocator import release_port
 
                 release_port(self._auto_allocated_monitoring_port)
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     f"[{self.settings.name}] Error releasing monitoring port: {e}"
                 )
@@ -5399,7 +5447,7 @@ class MPREGServer:
                 from .core.port_allocator import release_port
 
                 release_port(self._auto_allocated_port)
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     f"[{self.settings.name}] Error releasing server port: {e}"
                 )
@@ -6078,26 +6126,26 @@ class MPREGServer:
     def _delta_namespaces(self, delta: RoutingCatalogDelta) -> tuple[str, ...]:
         namespaces: set[str] = set()
 
-        for endpoint in delta.functions:
-            name = endpoint.identity.name
+        for fn_endpoint in delta.functions:
+            name = fn_endpoint.identity.name
             if "." in name:
                 namespaces.add(name.rsplit(".", 1)[0])
             elif name:
                 namespaces.add(name)
 
-        for endpoint in delta.queues:
-            name = endpoint.queue_name
+        for queue_endpoint in delta.queues:
+            name = queue_endpoint.queue_name
             if "." in name:
                 namespaces.add(name.rsplit(".", 1)[0])
             elif name:
                 namespaces.add(name)
 
-        for endpoint in delta.services:
-            name = endpoint.namespace or ""
+        for service_endpoint in delta.services:
+            name = service_endpoint.namespace or ""
             if name:
                 namespaces.add(name)
-            elif endpoint.name:
-                namespaces.add(endpoint.name)
+            elif service_endpoint.name:
+                namespaces.add(service_endpoint.name)
 
         for subscription in delta.topics:
             for pattern in subscription.patterns:
@@ -7761,7 +7809,7 @@ class MPREGServer:
                     response = RpcDescribeResponse.from_dict(
                         self._rpc_describe_local(local_request)
                     )
-                except Exception as exc:
+                except OPERATIONAL_EXCEPTIONS as exc:
                     errors.append(
                         RpcDescribeError(
                             node_id=node_id,
@@ -7814,7 +7862,7 @@ class MPREGServer:
                         )
                     )
                     return
-                except Exception as exc:
+                except OPERATIONAL_EXCEPTIONS as exc:
                     errors.append(
                         RpcDescribeError(
                             node_id=node_id,
@@ -8006,7 +8054,7 @@ class MPREGServer:
                     response = RpcDescribeResponse.from_dict(
                         self._rpc_describe_local(local_request)
                     )
-                except Exception as exc:
+                except OPERATIONAL_EXCEPTIONS as exc:
                     errors.append(
                         RpcDescribeError(
                             node_id=node_id,
@@ -8059,7 +8107,7 @@ class MPREGServer:
                         )
                     )
                     return
-                except Exception as exc:
+                except OPERATIONAL_EXCEPTIONS as exc:
                     errors.append(
                         RpcDescribeError(
                             node_id=node_id,
@@ -9130,7 +9178,7 @@ class MPREGServer:
                 logger.info(
                     f"[{self.settings.name}] Closed connection to peer {peer_url}"
                 )
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     f"[{self.settings.name}] Error closing connection to {peer_url}: {e}"
                 )
@@ -9266,7 +9314,7 @@ class MPREGServer:
             tracker.mark_seen(fingerprint, now)
             if tracker.announcement_count > 10_000:
                 tracker.cleanup_expired(now)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             pass
         self.peer_status[status.server_url] = status
         if status.instance_id:
@@ -9527,9 +9575,17 @@ class MPREGServer:
                     return protocol_response(
                         req.u, f"Unknown server message type: {req.server.what}"
                     )
-        except Exception:
-            # Catch any exceptions during server command processing and return an error response.
-            logger.exception("Error processing server command")
+        except OPERATIONAL_EXCEPTIONS as exc:
+            # Expected/condition failures: message log. Still return internal to client.
+            log_caught_exception(logger, "Error processing server command", exc)
+            from mpreg.server_pkg.rpc_responses import internal_response
+
+            return internal_response(req.u, f"{type(exc).__name__}: {exc}")
+        except Exception as exc:  # noqa: BLE001 — RPC boundary must not kill connection
+            # Unknown fault: full stack for operators.
+            log_caught_exception(
+                logger, "Error processing server command", exc, expected=False
+            )
             from mpreg.server_pkg.rpc_responses import internal_response
 
             return internal_response(req.u, traceback.format_exc())
@@ -9578,7 +9634,7 @@ class MPREGServer:
                     inbound_tp = extract_traceparent(meta)
                     if inbound_ts is None and meta.get("tracestate") is not None:
                         inbound_ts = str(meta["tracestate"])
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             inbound_tp = None
             inbound_ts = None
         # COR-05 / COR-T10-04: bind plane_rpc actor identity as task-local
@@ -9664,7 +9720,7 @@ class MPREGServer:
             h = getattr(req, "headers", None) or {}
             if isinstance(h, dict):
                 inbound_headers = dict(h)
-        except Exception:
+        except OPERATIONAL_EXCEPTIONS:
             inbound_headers = {}
         inbound_tp = getattr(req, "traceparent", None)
         inbound_ts = getattr(req, "tracestate", None)
@@ -9714,9 +9770,14 @@ class MPREGServer:
             if exc.rpc_error is not None:
                 error_code = getattr(exc.rpc_error, "code", None)
             return RPCResponse(r=None, error=exc.rpc_error, u=req.u, **trace_kw())
-        except Exception:
-            # Catch any exceptions during RPC execution and return an error response.
-            logger.exception("Error running RPC")
+        except OPERATIONAL_EXCEPTIONS as exc:
+            log_caught_exception(logger, "Error running RPC", exc)
+            from mpreg.server_pkg.rpc_responses import internal_response
+
+            error_code = "internal"
+            return internal_response(req.u, f"{type(exc).__name__}: {exc}")
+        except Exception as exc:  # noqa: BLE001 — RPC boundary must not kill connection
+            log_caught_exception(logger, "Error running RPC", exc, expected=False)
             from mpreg.server_pkg.rpc_responses import internal_response
 
             error_code = "internal"
@@ -9770,7 +9831,7 @@ class MPREGServer:
                     if tracker is not None and hasattr(tracker, "record_accept_reject"):
                         tracker.record_accept_reject(1)
                     with contextlib.suppress(Exception):
-                        await transport.close()
+                        await transport.disconnect()
                     return
             # PERF-T11-01: hard cap concurrent inbound connections
             max_in = int(getattr(self.settings, "max_inbound_connections", 0) or 0)
@@ -9779,7 +9840,7 @@ class MPREGServer:
                 if tracker is not None and hasattr(tracker, "record_accept_reject"):
                     tracker.record_accept_reject(1)
                 with contextlib.suppress(Exception):
-                    await transport.close()
+                    await transport.disconnect()
                 return
             self.clients.add(connection)
             while not self._shutdown_event.is_set():
@@ -9787,7 +9848,7 @@ class MPREGServer:
                     msg = await transport.receive()
                 except TransportConnectionError:
                     break
-                except Exception as exc:
+                except OPERATIONAL_EXCEPTIONS as exc:
                     logger.warning(
                         "[{}] Transport receive failed: {}",
                         peer_label,
@@ -10099,7 +10160,7 @@ class MPREGServer:
                         envelope = FabricMessageEnvelope.model_validate(parsed_msg)
                         try:
                             fabric_message = unified_message_from_dict(envelope.payload)
-                        except Exception as e:
+                        except OPERATIONAL_EXCEPTIONS as e:
                             logger.warning(
                                 "[{}] Invalid fabric message payload: {}",
                                 peer_label,
@@ -10398,7 +10459,7 @@ class MPREGServer:
                             self.serializer.serialize_model(response_model)
                         )
                         logger.debug("Response sent successfully")
-                    except Exception as exc:
+                    except OPERATIONAL_EXCEPTIONS as exc:
                         logger.debug(
                             "[{}] Client disconnected before reply delivery: {}",
                             peer_label,
@@ -10414,15 +10475,12 @@ class MPREGServer:
         finally:
             try:
                 await connection.disconnect()
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.debug(
                     f"[{self.settings.name}] Error closing inbound connection: {e}"
                 )
-            try:
+            with contextlib.suppress(KeyError):
                 self.clients.remove(connection)
-            except KeyError:
-                # Connection might have already been removed
-                pass
 
             if is_server_connection and peer_url:
                 self._drop_inbound_peer_connection(peer_url, connection)
@@ -10476,7 +10534,7 @@ class MPREGServer:
             logger.debug(
                 f"Sent notification to client {client_id} for subscription {subscription_id}"
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 — delivery path must cleanup on any send failure
             logger.error(f"Failed to send notification to client {client_id}: {e}")
             # OBS-01: count server-side delivery drops so Prom is not decorative.
             self._metrics_tracker.record_notification_drop()
@@ -10727,7 +10785,7 @@ class MPREGServer:
                 return True
             except asyncio.CancelledError:
                 raise
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 if snapshot is not None:
                     self._emit_peer_dial_diag(
                         snapshot=snapshot,
@@ -10921,7 +10979,7 @@ class MPREGServer:
                         envelope = FabricMessageEnvelope.model_validate(parsed_msg)
                         try:
                             fabric_message = unified_message_from_dict(envelope.payload)
-                        except Exception as e:
+                        except OPERATIONAL_EXCEPTIONS as e:
                             logger.warning(
                                 "Invalid fabric message from {}: {}",
                                 peer_url,
@@ -11012,7 +11070,7 @@ class MPREGServer:
                 except TimeoutError:
                     # Timeout is normal - just continue
                     continue
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     logger.warning(
                         "Error processing message from peer {}: {}",
                         peer_url,
@@ -11027,7 +11085,7 @@ class MPREGServer:
             )
             # Re-raise to properly handle cancellation
             raise
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(
                 "Fatal error in peer connection message handler for {}: {}",
                 peer_url,
@@ -11041,7 +11099,7 @@ class MPREGServer:
             try:
                 if connection.is_connected:
                     await connection.disconnect()
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.debug(
                     f"[{self.settings.name}] Error closing peer connection {peer_url}: {e}"
                 )
@@ -11144,7 +11202,7 @@ class MPREGServer:
                     await connection.send(message_bytes)
                 logger.debug(f"[{self.settings.name}] Sent GOODBYE to {peer_url}")
                 return True
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     f"[{self.settings.name}] Failed to send GOODBYE to {peer_url}: {e}"
                 )
@@ -11167,7 +11225,7 @@ class MPREGServer:
                     f"[{self.settings.name}] Sent GOODBYE to {peer_url} (temp)"
                 )
                 return True
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     f"[{self.settings.name}] Failed to send GOODBYE to {peer_url}: {e}"
                 )
@@ -11229,13 +11287,19 @@ class MPREGServer:
             candidates: list[tuple[str, str | None]] = []
             candidate_urls: set[str] = set()
 
-            def _add_candidate(peer_url: str, dial_url: str | None) -> None:
+            def _add_candidate(
+                peer_url: str,
+                dial_url: str | None,
+                *,
+                _urls: set[str] = candidate_urls,
+                _cands: list[tuple[str, str | None]] = candidates,
+            ) -> None:
                 if peer_url == self.cluster.local_url:
                     return
-                if peer_url in candidate_urls:
+                if peer_url in _urls:
                     return
-                candidate_urls.add(peer_url)
-                candidates.append((peer_url, dial_url))
+                _urls.add(peer_url)
+                _cands.append((peer_url, dial_url))
 
             for peer_url in sorted(seed_peers):
                 if self._shutdown_event.is_set():
@@ -11371,13 +11435,18 @@ class MPREGServer:
                 if dial_budget <= 0:
                     selected_candidates: list[tuple[str, str | None]] = []
                 else:
+                    _seed_peers = seed_peers
+                    _connected_ratio = connected_ratio
 
                     def _dial_priority(
                         candidate: tuple[str, str | None],
-                    ) -> tuple[int, int, int, float]:
+                        *,
+                        _seeds: set[str] = _seed_peers,
+                        _ratio: float = _connected_ratio,
+                    ) -> tuple[int, int, int, float, float]:
                         peer_url, _ = candidate
                         state = self._peer_dial_state_for(peer_url)
-                        is_seed_peer = peer_url in seed_peers
+                        is_seed_peer = peer_url in _seeds
                         has_success = state.last_success_at is not None
                         if is_seed_peer and not has_success:
                             seed_priority = 0
@@ -11386,7 +11455,7 @@ class MPREGServer:
                         else:
                             seed_priority = 2
                         unrecovered_priority = (
-                            0 if not has_success and connected_ratio < 0.7 else 1
+                            0 if not has_success and _ratio < 0.7 else 1
                         )
                         return (
                             seed_priority,
@@ -11404,24 +11473,35 @@ class MPREGServer:
                     selected_candidates = []
                 semaphore = asyncio.Semaphore(max(parallelism, 1))
 
-                async def _dial_candidate(peer_url: str, dial_url: str | None) -> None:
-                    async with semaphore:
+                _semaphore = semaphore
+                _peer_target_count = peer_target_count
+                _connected_ratio_dial = connected_ratio
+
+                async def _dial_candidate(
+                    peer_url: str,
+                    dial_url: str | None,
+                    *,
+                    _sem: asyncio.Semaphore = _semaphore,
+                    _target_count: int = _peer_target_count,
+                    _ratio: float = _connected_ratio_dial,
+                ) -> None:
+                    async with _sem:
                         self._peer_dial_state_for(peer_url).record_attempt(time.time())
                         success = await self._establish_peer_connection(
                             peer_url,
                             dial_url=dial_url,
                             fast_connect=True,
                             dial_context="peer_reconcile",
-                            peer_target_count=peer_target_count,
-                            connected_ratio_hint=connected_ratio,
+                            peer_target_count=_target_count,
+                            connected_ratio_hint=_ratio,
                             allow_inbound_reuse=False,
                         )
                         self._record_peer_dial_outcome(
                             peer_url=peer_url,
                             success=success,
                             now=time.time(),
-                            peer_target_count=peer_target_count,
-                            connected_ratio=connected_ratio,
+                            peer_target_count=_target_count,
+                            connected_ratio=_ratio,
                         )
 
                 await asyncio.gather(
@@ -11653,7 +11733,7 @@ class MPREGServer:
                     "Sent STATUS to {}",
                     peer_url,
                 )
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     "Failed to send STATUS to {}: {}",
                     peer_url,
@@ -11669,7 +11749,7 @@ class MPREGServer:
         status_data = self.serializer.serialize_model(status_message)
         try:
             await connection.send(status_data)
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.warning(
                 "Failed to send STATUS to {}: {}",
                 connection.url,
@@ -11939,7 +12019,7 @@ class MPREGServer:
         if self._dns_gateway is not None:
             try:
                 await self._dns_gateway.stop()
-            except Exception as exc:
+            except OPERATIONAL_EXCEPTIONS as exc:
                 logger.warning(
                     f"[{self.settings.name}] Error stopping DNS gateway: {exc}"
                 )
@@ -11949,7 +12029,7 @@ class MPREGServer:
 
             try:
                 release_port(self._auto_allocated_dns_udp_port)
-            except Exception as exc:
+            except OPERATIONAL_EXCEPTIONS as exc:
                 logger.warning(
                     f"[{self.settings.name}] Error releasing DNS UDP port: {exc}"
                 )
@@ -11959,7 +12039,7 @@ class MPREGServer:
 
             try:
                 release_port(self._auto_allocated_dns_tcp_port)
-            except Exception as exc:
+            except OPERATIONAL_EXCEPTIONS as exc:
                 logger.warning(
                     f"[{self.settings.name}] Error releasing DNS TCP port: {exc}"
                 )
@@ -12009,16 +12089,12 @@ class MPREGServer:
 
         async def _purge_loop() -> None:
             while True:
-                try:
-                    await asyncio.sleep(interval)
+                await asyncio.sleep(interval)
+                with contextlib.suppress(Exception):
                     be = getattr(self, "_strong_local_backend", None)
                     if be is None:
                         return
                     be.purge_expired_pending()
-                except asyncio.CancelledError:
-                    raise
-                except Exception:  # noqa: BLE001
-                    pass
 
         try:
             loop = asyncio.get_running_loop()
@@ -12452,7 +12528,7 @@ class MPREGServer:
                     "Sent consensus proposal to {}",
                     peer_url,
                 )
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     "Failed to send consensus proposal to {}: {}",
                     peer_url,
@@ -12530,7 +12606,7 @@ class MPREGServer:
                     "Sent consensus vote to {}",
                     peer_url,
                 )
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     "Failed to send consensus vote to {}: {}",
                     peer_url,
@@ -12664,14 +12740,11 @@ class MPREGServer:
             doc=doc,
             examples=examples or (),
         )
-        try:
-            if self._fabric_control_plane:
-                self._fabric_control_plane.catalog.functions.validate_identity(
-                    registration.spec.identity
-                )
-            self.registry.register(registration)
-        except ValueError:
-            raise
+        if self._fabric_control_plane:
+            self._fabric_control_plane.catalog.functions.validate_identity(
+                registration.spec.identity
+            )
+        self.registry.register(registration)
         self._publish_fabric_function_update(registration)
         # Catalog delta already published for this registration.
 
@@ -12803,7 +12876,7 @@ class MPREGServer:
             # Ensure background tasks are cancelled even if the server task is cancelled.
             try:
                 await asyncio.shield(self.shutdown_async())
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     f"[{self.settings.name}] Error during cancelled server shutdown: {e}"
                 )
@@ -12816,7 +12889,7 @@ class MPREGServer:
             await self._stop_dns_gateway()
             try:
                 await self.consensus_manager.stop()
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.warning(
                     f"[{self.settings.name}] Error stopping consensus manager in server shutdown: {e}"
                 )
@@ -12834,7 +12907,7 @@ class MPREGServer:
         while not self._shutdown_event.is_set():
             try:
                 transport = await listener.accept()
-            except Exception as exc:
+            except OPERATIONAL_EXCEPTIONS as exc:
                 if self._shutdown_event.is_set():
                     return
                 logger.warning(

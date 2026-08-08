@@ -61,6 +61,8 @@ from mpreg.datastructures.type_aliases import (
     TopicName,
 )
 
+from .errors import OPERATIONAL_EXCEPTIONS
+
 # Type aliases for enhanced queue operations
 type TopicQueueSubscriptionId = str
 type MessageProcessingResult = str
@@ -244,7 +246,7 @@ class TopicEnhancedMessageQueueManager:
                     # DeliveryResult always has message_id property
                     message_ids.append(str(result.message_id))
 
-                except Exception:
+                except OPERATIONAL_EXCEPTIONS:
                     self.error_counts["send_errors"] += 1
                     # Continue with other queues even if one fails
                     continue
@@ -272,7 +274,7 @@ class TopicEnhancedMessageQueueManager:
                 else f"No successful sends to {len(matched_queues)} queues",
             )
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             self.error_counts["routing_errors"] += 1
             return TopicQueueSendResult(
                 success=False,
@@ -352,7 +354,7 @@ class TopicEnhancedMessageQueueManager:
 
             return subscription
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             self.error_counts["subscription_errors"] += 1
             raise ValueError(f"Failed to create topic pattern subscription: {e}")
 
@@ -417,7 +419,7 @@ class TopicEnhancedMessageQueueManager:
                     delivery_guarantee=delivery_guarantee,
                 )
                 subscriptions.append(subscription)
-            except Exception:
+            except OPERATIONAL_EXCEPTIONS:
                 # Continue with other patterns even if one fails
                 continue
 

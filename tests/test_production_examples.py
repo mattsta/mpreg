@@ -122,7 +122,7 @@ async def production_cluster():
         for server in servers:
             try:
                 await server.shutdown_async()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Error shutting down server: {e}")
 
         # Cancel all tasks
@@ -582,7 +582,9 @@ class TestMicroserviceOrchestration:
                 assert result["valid"] is True
 
                 # Test with very short timeout (simulating circuit breaker)
-                with pytest.raises(Exception):
+                from mpreg.core.errors import MpregError
+
+                with pytest.raises(MpregError):
                     await client.call(
                         "generate_report",
                         "slow_report",

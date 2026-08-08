@@ -28,6 +28,7 @@ from websockets import (
 )
 from websockets.exceptions import ConnectionClosed, WebSocketException
 
+from ..errors import OPERATIONAL_EXCEPTIONS
 from .defaults import DEFAULT_MAX_MESSAGE_SIZE
 from .factory import ProtocolSpec, register_transport
 from .interfaces import (
@@ -369,7 +370,7 @@ class WebSocketListener(TransportListener):
             transport = _WebSocketServerTransport(websocket, self.config)
             return transport
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             raise TransportError(f"WebSocket accept failed: {e}")
 
     async def _handle_connection(self, websocket: ServerConnection) -> None:

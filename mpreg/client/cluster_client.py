@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import time
+import types
 from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass, field, replace
@@ -16,6 +17,7 @@ from mpreg.core.discovery_summary import (
     SummaryQueryRequest,
     SummaryQueryResponse,
 )
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.model import MPREGException, RPCCommand
 from mpreg.core.rpc_naming import (
     DEFAULT_USER_NAMESPACE,
@@ -24,7 +26,9 @@ from mpreg.core.rpc_naming import (
     qualify_rpc_name,
 )
 
+from .call_policy import ClientCallPolicy
 from .client import Client
+from .unified_client import MPREGClient
 
 cluster_client_log = logger
 
@@ -161,7 +165,12 @@ class MPREGClusterClient:
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         await self.disconnect()
 
     def plane_client(self, url: str | None = None) -> MPREGClient:
@@ -171,7 +180,6 @@ class MPREGClusterClient:
         first healthy seed. Prefer this over inventing multi-plane HA on RPC-only paths.
         Copies call policy is not HA across planes — document as single-endpoint.
         """
-        from mpreg.client.unified_client import MPREGClient
 
         target = url
         if not target:
@@ -236,7 +244,7 @@ class MPREGClusterClient:
                 if seed not in candidates:
                     candidates.append(seed)
 
-        last_error: Exception | None = None
+        last_error: BaseException | None = None
         saw_command_not_found = False
         map_refreshed_after_failure = False
         allow_summary_redirect = (
@@ -264,7 +272,7 @@ class MPREGClusterClient:
             if summary_result is not None:
                 return summary_result
         from mpreg.client.call_policy import ClientCallPolicy, call_with_policy
-        from mpreg.core.errors import MpregError, timeout_error
+        from mpreg.core.errors import OPERATIONAL_EXCEPTIONS, MpregError, timeout_error
 
         policy = self.call_policy
         # Shared wall deadline across endpoints (HA + soft-RT fail-closed).
@@ -283,6 +291,7 @@ class MPREGClusterClient:
             candidate_i += 1
             if attempts_used >= max(1, self.max_endpoint_attempts):
                 break
+            ep_timeout: float | None
             if deadline_mono is not None:
                 remaining = deadline_mono - time.monotonic()
                 if remaining <= 0:
@@ -293,7 +302,7 @@ class MPREGClusterClient:
                     remaining if timeout is None else min(float(timeout), remaining)
                 )
             else:
-                ep_timeout = timeout
+                ep_timeout = float(timeout) if timeout is not None else None
 
             # Prefer failover across endpoints over deep retry on one bad peer.
             # Budget remaining attempts across the outer loop.
@@ -342,7 +351,7 @@ class MPREGClusterClient:
 
                     try:
                         mapped = map_exception(exc)
-                    except Exception:
+                    except OPERATIONAL_EXCEPTIONS:
                         mapped = None
                 if isinstance(mapped, MpregError) and not mapped.retryable:
                     # Non-retryable structured errors should not rotate endpoints forever.
@@ -523,7 +532,7 @@ class MPREGClusterClient:
         async with self._lock:
             try:
                 snapshot = await self.cluster_map()
-            except Exception as exc:
+            except OPERATIONAL_EXCEPTIONS as exc:
                 cluster_client_log.warning("Cluster map refresh failed: {}", exc)
                 return
             endpoint_scores: dict[str, float] = {}
@@ -572,17 +581,17 @@ class MPREGClusterClient:
                 await self.refresh_cluster_map()
             except asyncio.CancelledError:
                 break
-            except Exception as exc:
+            except OPERATIONAL_EXCEPTIONS as exc:
                 cluster_client_log.warning("Cluster map refresh loop error: {}", exc)
 
     async def _connect_seed(self) -> None:
-        last_error: Exception | None = None
+        last_error: BaseException | None = None
         for url in self.seed_urls:
             try:
                 client = await self._ensure_client(url)
                 await self._ensure_connected(client)
                 return
-            except Exception as exc:
+            except OPERATIONAL_EXCEPTIONS as exc:
                 last_error = exc
                 cluster_client_log.warning(
                     "Seed connection failed for {}: {}", url, exc
@@ -762,7 +771,7 @@ class MPREGClusterClient:
             for seed in self.seed_urls:
                 if seed not in candidates:
                     candidates.append(seed)
-        last_error: Exception | None = None
+        last_error: BaseException | None = None
         for url in candidates:
             try:
                 return await self._call_on_url(
@@ -776,7 +785,7 @@ class MPREGClusterClient:
                     routing_topic=None,
                     timeout=5.0,
                 )
-            except Exception as exc:
+            except OPERATIONAL_EXCEPTIONS as exc:
                 last_error = exc
                 self._last_failure[url] = time.time()
                 await self._invalidate_client(url)
@@ -804,7 +813,7 @@ class MPREGClusterClient:
                 ingress_limit=self.summary_redirect_ingress_limit,
                 ingress_scope=self.summary_redirect_ingress_scope,
             )
-        except Exception as exc:
+        except OPERATIONAL_EXCEPTIONS as exc:
             cluster_client_log.warning(
                 "Summary redirect lookup failed for {}: {}", fun, exc
             )
@@ -827,7 +836,7 @@ class MPREGClusterClient:
                     ingress=response.ingress,
                     **kwargs,
                 )
-            except Exception as exc:
+            except OPERATIONAL_EXCEPTIONS as exc:
                 last_failure = summary.source_cluster or "unknown"
                 cluster_client_log.warning(
                     "Summary redirect failed for {} via {}: {}",

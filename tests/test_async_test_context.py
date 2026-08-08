@@ -38,7 +38,7 @@ class TestAsyncTestContextLeakDetection:
                 )
                 # Don't cancel it - let context detect it
                 # The context should automatically cancel it during cleanup
-        except Exception:
+        except Exception:  # noqa: BLE001
             # Test should not raise exceptions even with leaked tasks
             pytest.fail("AsyncTestContext should handle leaked tasks gracefully")
 

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Protocol
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.datastructures.type_aliases import ClusterId, HopCount, NodeId, Timestamp
 from mpreg.fabric.federation_planner import FabricForwardingPlan
 
@@ -105,7 +106,7 @@ class RoutingEngine:
                 if self.node_load_provider:
                     try:
                         load_score = self.node_load_provider(entry.node_id)
-                    except Exception:
+                    except OPERATIONAL_EXCEPTIONS:
                         load_score = None
                 score = float(load_score) if load_score is not None else 1000.0
                 return (

@@ -17,6 +17,7 @@ from dataclasses import dataclass
 
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.port_allocator import PortAllocator
 from mpreg.datastructures.type_aliases import EndpointScope
 from mpreg.server import MPREGServer
@@ -210,7 +211,7 @@ async def _run_client(
                     await client.catalog_query(
                         entry_type="functions", namespace="svc.market"
                     )
-            except Exception as exc:
+            except OPERATIONAL_EXCEPTIONS as exc:
                 ok = False
                 error = type(exc).__name__
             elapsed_ms = (time.perf_counter() - start) * 1000.0

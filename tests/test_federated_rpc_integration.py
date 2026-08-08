@@ -255,7 +255,7 @@ class TestFederatedRPCIntegration:
                 f"✅ Within hop limit (2 hops): {'SUCCESS' if within_limit_success else 'FAILED'}"
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             within_limit_success = False
             print(f"❌ Within hop limit failed: {e}")
 
@@ -281,7 +281,7 @@ class TestFederatedRPCIntegration:
                 f"🚫 Beyond hop limit (4 hops): {'UNEXPECTED SUCCESS' if beyond_limit_success else 'CORRECTLY FAILED'}"
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             beyond_limit_success = False
             print(f"✅ Beyond hop limit correctly failed: {str(e)[:100]}...")
 
@@ -777,7 +777,7 @@ class TestFederatedRPCComplexScenarios:
                         f"❌ Mesh test Node-{test_node + 1} → Node-{target_node + 1}: FAILED"
                     )
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 test_results.append(False)
                 print(
                     f"❌ Mesh test Node-{test_node + 1} → Node-{target_node + 1}: ERROR {e}"

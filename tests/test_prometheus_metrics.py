@@ -50,13 +50,12 @@ async def test_prometheus_endpoint_text_format(
         await mon.start()
         try:
             url = f"http://127.0.0.1:{monitoring_port}/metrics/prometheus"
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
-                    assert response.status == 200
-                    text = await response.text()
-                    assert "mpreg_info" in text
-                    assert "mpreg_monitoring_up" in text
-                    assert "text/plain" in response.headers.get("Content-Type", "")
+            async with aiohttp.ClientSession() as session, session.get(url) as response:
+                assert response.status == 200
+                text = await response.text()
+                assert "mpreg_info" in text
+                assert "mpreg_monitoring_up" in text
+                assert "text/plain" in response.headers.get("Content-Type", "")
         finally:
             await mon.stop()
     finally:
@@ -106,17 +105,16 @@ async def test_prometheus_exports_rpc_histograms_and_error_codes(
         await mon.start()
         try:
             url = f"http://127.0.0.1:{monitoring_port}/metrics/prometheus"
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as response:
-                    assert response.status == 200
-                    text = await response.text()
-                    assert "mpreg_rpc_requests_total" in text
-                    assert "mpreg_rpc_errors_total" in text
-                    assert "mpreg_rpc_errors_by_code_total" in text
-                    assert 'code="1006"' in text
-                    assert "mpreg_rpc_latency_ms_bucket" in text
-                    assert 'le="+Inf"' in text
-                    assert "mpreg_pubsub_requests_total" in text
+            async with aiohttp.ClientSession() as session, session.get(url) as response:
+                assert response.status == 200
+                text = await response.text()
+                assert "mpreg_rpc_requests_total" in text
+                assert "mpreg_rpc_errors_total" in text
+                assert "mpreg_rpc_errors_by_code_total" in text
+                assert 'code="1006"' in text
+                assert "mpreg_rpc_latency_ms_bucket" in text
+                assert 'le="+Inf"' in text
+                assert "mpreg_pubsub_requests_total" in text
         finally:
             await mon.stop()
     finally:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
@@ -94,11 +95,9 @@ class Scenario:
         duration = time.time() - t0
         meta = dict(self.meta)
         # T17: operator/debug taxonomy from history (not WAN SLA)
-        try:
+        with contextlib.suppress(Exception):
             meta.setdefault("error_codes", self.history.error_code_counts())
             meta.setdefault("outcomes", self.history.outcome_counts())
-        except Exception:  # noqa: BLE001
-            pass
         result = ScenarioResult(
             name=self.name,
             ok=check.ok,

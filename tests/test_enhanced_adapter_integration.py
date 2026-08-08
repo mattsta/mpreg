@@ -413,7 +413,7 @@ class TestEnhancedMultiProtocolAdapterIntegration:
                 data = await transport.receive()
                 await transport.send(data)
                 await transport.disconnect()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Echo server error: {e}")
 
         echo_task = asyncio.create_task(echo_server())
@@ -489,7 +489,7 @@ class TestEnhancedMultiProtocolAdapterIntegration:
                     data = await transport.receive()
                     await transport.send(data)
                     await transport.disconnect()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"Echo server error: {e}")
 
         echo_task = asyncio.create_task(echo_server())

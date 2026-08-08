@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+import contextlib
+
 """
 Live Raft Integration Tests with Real Network Connections.
 
@@ -797,10 +798,10 @@ class TestLiveRaftIntegration:
         finally:
             # Stop all remaining nodes
             for node in nodes.values():
-                try:
+                with contextlib.suppress(
+                    TimeoutError, asyncio.CancelledError, AttributeError
+                ):
                     await asyncio.wait_for(node.stop(), timeout=2.0)
-                except TimeoutError, asyncio.CancelledError, AttributeError:
-                    pass  # Some nodes may already be stopped or timeout during shutdown
 
     @pytest.mark.asyncio
     async def test_live_network_topology_performance(self, temp_dir, test_context):
@@ -889,10 +890,10 @@ class TestLiveRaftIntegration:
             finally:
                 # Stop nodes
                 for node in nodes.values():
-                    try:
+                    with contextlib.suppress(
+                        TimeoutError, asyncio.CancelledError, AttributeError
+                    ):
                         await asyncio.wait_for(node.stop(), timeout=1.0)
-                    except TimeoutError, asyncio.CancelledError, AttributeError:
-                        pass  # Node shutdown errors during cleanup are expected
 
         # Analyze results
         print("\n=== TOPOLOGY PERFORMANCE ANALYSIS ===")
@@ -944,10 +945,12 @@ class TestLiveRaftIntegration:
                 # Wait for leader
                 leader: ProductionRaft | None = None
 
-                def leader_ready() -> bool:
+                def leader_ready(*, _nodes=nodes) -> bool:
                     nonlocal leader
                     leaders = [
-                        n for n in nodes.values() if n.current_state == RaftState.LEADER
+                        n
+                        for n in _nodes.values()
+                        if n.current_state == RaftState.LEADER
                     ]
                     if leaders:
                         leader = leaders[0]
@@ -978,17 +981,22 @@ class TestLiveRaftIntegration:
                 concurrent_batches = cluster_size  # Scale with cluster size
                 commands_per_batch = 10
 
-                async def high_load_batch(batch_id: int):
+                async def high_load_batch(
+                    batch_id: int,
+                    *,
+                    _commands_per_batch: int = commands_per_batch,
+                    _nodes=nodes,
+                ):
                     """Submit a batch of commands concurrently."""
                     batch_results = []
-                    for i in range(commands_per_batch):
+                    for i in range(_commands_per_batch):
                         try:
                             attempt = 0
                             result = None
                             while attempt < 2:
                                 attempt += 1
                                 target = await self._current_leader(
-                                    nodes, timeout_seconds=1.0
+                                    _nodes, timeout_seconds=1.0
                                 )
                                 if not target:
                                     continue
@@ -1081,10 +1089,10 @@ class TestLiveRaftIntegration:
             finally:
                 # Stop nodes
                 for node in nodes.values():
-                    try:
+                    with contextlib.suppress(
+                        TimeoutError, asyncio.CancelledError, AttributeError
+                    ):
                         await asyncio.wait_for(node.stop(), timeout=2.0)
-                    except TimeoutError, asyncio.CancelledError, AttributeError:
-                        pass  # Node shutdown errors during cleanup are expected
 
                 # Ensure each cluster-size run is isolated and doesn't leak server load
                 # into the next iteration of this test.

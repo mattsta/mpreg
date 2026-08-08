@@ -167,7 +167,7 @@ class SharedAuditReplicator:
                 continue
             try:
                 rec = SharedAuditRecord.from_dict(raw)
-            except Exception:  # noqa: BLE001
+            except TypeError, ValueError, KeyError:
                 continue
             if not rec.gossip_eligible:
                 continue
@@ -327,17 +327,10 @@ class SharedAuditReplicator:
 
     async def _run(self) -> None:
         while not self._stopped:
-            try:
+            with contextlib.suppress(Exception):
                 await self._flush_outbound()
                 await self._exchange_digests()
-            except asyncio.CancelledError:
-                raise
-            except Exception:  # noqa: BLE001
-                pass
-            try:
-                await asyncio.sleep(self.reconcile_interval_s)
-            except asyncio.CancelledError:
-                raise
+            await asyncio.sleep(self.reconcile_interval_s)
 
     async def _flush_outbound(self) -> None:
         if not self._outbound:

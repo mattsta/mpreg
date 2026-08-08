@@ -35,6 +35,7 @@ from typing import Any, Protocol
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.fabric.federation_graph import (
     GeographicCoordinate,
 )
@@ -343,7 +344,7 @@ class FederationHub(ABC):
                 await asyncio.sleep(30.0)  # Check every 30 seconds
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Health monitoring error in hub {self.hub_id}: {e}")
                 await asyncio.sleep(30.0)
 
@@ -355,7 +356,7 @@ class FederationHub(ABC):
                 await asyncio.sleep(60.0)  # Aggregate every minute
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Aggregation error in hub {self.hub_id}: {e}")
                 await asyncio.sleep(60.0)
 
@@ -367,7 +368,7 @@ class FederationHub(ABC):
                 await asyncio.sleep(120.0)  # Balance every 2 minutes
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Load balancing error in hub {self.hub_id}: {e}")
                 await asyncio.sleep(120.0)
 
@@ -497,7 +498,7 @@ class FederationHub(ABC):
             # Route based on hub tier
             return await self._route_message_by_tier(message, routing_hint)
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Message routing error in hub {self.hub_id}: {e}")
             self.routing_stats["routing_errors"] += 1
             return False

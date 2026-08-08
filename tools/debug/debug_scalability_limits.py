@@ -18,6 +18,7 @@ import psutil
 from tests.port_allocator import PortAllocator
 
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.server import MPREGServer
 
 
@@ -80,7 +81,7 @@ class ScalabilityAnalyzer:
                     await servers[i]._establish_peer_connection(
                         f"ws://127.0.0.1:{servers[0].settings.port}"
                     )
-                except Exception as e:
+                except OPERATIONAL_EXCEPTIONS as e:
                     connection_errors += 1
                     print(f"     ⚠️  Connection error {i}: {e}")
 
@@ -118,7 +119,7 @@ class ScalabilityAnalyzer:
 
             return result
 
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             error_time = (time.time() - start_time) * 1000
 
             result = {
@@ -193,7 +194,7 @@ class ScalabilityAnalyzer:
             except KeyboardInterrupt:
                 print("\n⛔ Test interrupted by user")
                 break
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 print(f"   💥 Unexpected error at size {size}: {e}")
                 break
 

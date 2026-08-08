@@ -364,11 +364,8 @@ class TestEnhancedRPCProperties:
                 step_num = i + 1
                 cmd_name = f"step_{step_num}"
 
-                if i == 0:
-                    args = ("test_input",)
-                else:
-                    # Reference previous step
-                    args = (f"step_{i}",)
+                # First step uses literal input; later steps reference prior step name
+                args = ("test_input",) if i == 0 else (f"step_{i}",)
 
                 resources = (
                     ["cpu"] if i % 3 == 0 else ["memory"] if i % 3 == 1 else ["storage"]

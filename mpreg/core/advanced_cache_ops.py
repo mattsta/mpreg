@@ -30,6 +30,7 @@ from loguru import logger
 
 from .cache_interfaces import CacheManagerProtocol
 from .cache_models import CacheMetadata, CacheOptions, GlobalCacheKey
+from .errors import OPERATIONAL_EXCEPTIONS
 
 
 class AtomicOperation(Enum):
@@ -205,7 +206,7 @@ class AdvancedCacheOperations:
         async with self.operation_locks[lock_key]:
             try:
                 return await self._execute_atomic_operation(request, options)
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(f"Atomic operation failed for {request.key}: {e}")
                 return AtomicOperationResult(
                     success=False, error_message=f"Atomic operation error: {e}"
@@ -426,7 +427,7 @@ class AdvancedCacheOperations:
                     old_value=current_value,
                     error_message="Incompatible types for append/prepend",
                 )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             return AtomicOperationResult(
                 success=False,
                 old_value=current_value,
@@ -532,7 +533,7 @@ class AdvancedCacheOperations:
 
                 return await handler(operation, options)
 
-            except Exception as e:
+            except OPERATIONAL_EXCEPTIONS as e:
                 logger.error(
                     f"Data structure operation failed for {operation.key}: {e}"
                 )
@@ -989,7 +990,7 @@ class AdvancedCacheOperations:
                     success=False,
                     error_message=f"Unsupported namespace operation: {operation.operation}",
                 )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Namespace operation failed for {operation.namespace}: {e}")
             return NamespaceResult(
                 success=False, error_message=f"Namespace operation error: {e}"
@@ -1015,7 +1016,7 @@ class AdvancedCacheOperations:
                 cleared_count=cleared,
                 count=cleared,
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Failed to clear namespace {operation.namespace}: {e}")
             return NamespaceResult(
                 success=False,
@@ -1038,7 +1039,7 @@ class AdvancedCacheOperations:
                 keys=namespace_keys,
                 count=len(namespace_keys),
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Failed to list namespace {operation.namespace}: {e}")
             return NamespaceResult(
                 success=False,
@@ -1055,7 +1056,7 @@ class AdvancedCacheOperations:
             )
             self.operation_stats["namespace_count"] += 1
             return NamespaceResult(success=True, count=len(namespace_keys))
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Failed to count namespace {operation.namespace}: {e}")
             return NamespaceResult(
                 success=False,
@@ -1079,7 +1080,7 @@ class AdvancedCacheOperations:
                 keys=limited_keys,
                 count=len(limited_keys),
             )
-        except Exception as e:
+        except OPERATIONAL_EXCEPTIONS as e:
             logger.error(f"Failed to scan namespace {operation.namespace}: {e}")
             return NamespaceResult(
                 success=False,

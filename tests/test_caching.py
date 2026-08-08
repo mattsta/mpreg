@@ -522,7 +522,7 @@ class TestSmartCacheManager:
 
             if policy == EvictionPolicy.TTL:
                 cache.put(key1, "value1", ttl_seconds=0.01)
-                time.sleep(0.02)  # Make first entry more likely to expire
+                await asyncio.sleep(0.02)  # Make first entry more likely to expire
                 cache.put(key2, "value2", ttl_seconds=10.0)
             else:
                 cache.put(key1, "value1", computation_cost_ms=10.0)
@@ -867,7 +867,7 @@ class TestS4LRUCache:
         assert cache.key_to_segment[key1] == 1
 
         # New key goes to segment 0
-        was_hit, evicted = cache.access(key2)
+        was_hit, _evicted = cache.access(key2)
         assert not was_hit
         assert cache.key_to_segment[key2] == 0
 
@@ -877,19 +877,19 @@ class TestS4LRUCache:
         key = CacheKey.create("func", (1,), {})
 
         # Access pattern: miss -> 0, hit -> 1, hit -> 2, hit -> 3, hit -> 3 (max)
-        was_hit, evicted = cache.access(key)  # Segment 0
+        was_hit, _evicted = cache.access(key)  # Segment 0
         assert not was_hit
         assert cache.key_to_segment[key] == 0
 
-        was_hit, evicted = cache.access(key)  # Segment 1
+        was_hit, _evicted = cache.access(key)  # Segment 1
         assert was_hit
         assert cache.key_to_segment[key] == 1
 
-        was_hit, evicted = cache.access(key)  # Segment 2
+        was_hit, _evicted = cache.access(key)  # Segment 2
         assert was_hit
         assert cache.key_to_segment[key] == 2
 
-        was_hit, evicted = cache.access(key)  # Segment 3
+        was_hit, _evicted = cache.access(key)  # Segment 3
         assert was_hit
         assert cache.key_to_segment[key] == 3
 

@@ -118,17 +118,16 @@ def should_refuse_for_drain(
     """
     if not draining:
         return False
-    if is_fabric_control_plane(
-        role=role,
-        message_type=message_type,
-        topic=topic,
-        fabric_payload=fabric_payload,
-    ):
-        return False
-    if is_control_plane_role(role):
-        return False
-    # Known data-plane or unknown / empty role → refuse
-    return True
+    # Admit known control-plane roles (and fabric CONTROL peel); refuse otherwise
+    return not (
+        is_fabric_control_plane(
+            role=role,
+            message_type=message_type,
+            topic=topic,
+            fabric_payload=fabric_payload,
+        )
+        or is_control_plane_role(role)
+    )
 
 
 def drain_unavailable_response(u: str | None = None) -> Any:

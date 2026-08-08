@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from mpreg.client.client_api import MPREGClientAPI
 from mpreg.core.config import MPREGSettings
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS
 from mpreg.core.port_allocator import get_port_allocator
 from mpreg.server import MPREGServer
 from tests.test_helpers import wait_for_condition
@@ -79,7 +80,7 @@ def _snapshot_server(
             exception = task.exception()
             if exception is not None:
                 task_exception = repr(exception)
-        except Exception as exc:
+        except OPERATIONAL_EXCEPTIONS as exc:
             task_exception = repr(exc)
 
     pending_catalog_updates = -1
@@ -131,7 +132,7 @@ async def _attempt_connect(
             duration_seconds=time.monotonic() - started,
             error=None,
         )
-    except Exception as exc:
+    except OPERATIONAL_EXCEPTIONS as exc:
         return ConnectAttemptResult(
             node_index=node_index,
             port=port,
@@ -161,7 +162,7 @@ async def _attempt_connect_reuse_client(
             duration_seconds=time.monotonic() - started,
             error=None,
         )
-    except Exception as exc:
+    except OPERATIONAL_EXCEPTIONS as exc:
         return ConnectAttemptResult(
             node_index=node_index,
             port=port,

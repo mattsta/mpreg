@@ -17,6 +17,8 @@ from typing import Any
 
 from loguru import logger
 
+from mpreg.core.errors import OPERATIONAL_EXCEPTIONS, log_caught_exception
+
 task_log = logger
 
 
@@ -265,9 +267,12 @@ class RaftTaskManager:
         for managed_task in active_tasks:
             try:
                 await self._graceful_cancel_task(managed_task, timeout=grace_timeout)
-            except Exception as e:
-                task_log.warning(
-                    f"[{self.node_id}] Error cancelling task {managed_task.name}: {e}"
+            except OPERATIONAL_EXCEPTIONS as e:
+                log_caught_exception(
+                    task_log,
+                    f"[{self.node_id}] Error cancelling task {managed_task.name}",
+                    e,
+                    level="warning",
                 )
                 # Fall back to immediate cancellation
                 self._cancel_task_immediate(managed_task)
@@ -307,9 +312,12 @@ class RaftTaskManager:
                 f"[{self.node_id}] Task {group_name}.{task_name} stopped successfully"
             )
             return True
-        except Exception as e:
-            task_log.warning(
-                f"[{self.node_id}] Error stopping task {group_name}.{task_name}: {e}"
+        except OPERATIONAL_EXCEPTIONS as e:
+            log_caught_exception(
+                task_log,
+                f"[{self.node_id}] Error stopping task {group_name}.{task_name}",
+                e,
+                level="warning",
             )
             # Fall back to immediate cancellation
             self._cancel_task_immediate(managed_task)
@@ -368,9 +376,12 @@ class RaftTaskManager:
         except TimeoutError, asyncio.CancelledError:
             # Expected - task was cancelled or took too long
             task_log.debug(f"[{self.node_id}] Task {managed_task.name} cancelled")
-        except Exception as e:
-            task_log.warning(
-                f"[{self.node_id}] Task {managed_task.name} failed during cancellation: {e}"
+        except OPERATIONAL_EXCEPTIONS as e:
+            log_caught_exception(
+                task_log,
+                f"[{self.node_id}] Task {managed_task.name} failed during cancellation",
+                e,
+                level="warning",
             )
             managed_task.failure_reason = e
             managed_task.state = TaskState.FAILED
