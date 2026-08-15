@@ -1762,6 +1762,15 @@ class ProductionRaft(ProductionRaftRPCs):
                             f"Failed during commit_index propagation: {result}"
                         )
 
+        # Owner-level flush of task ops queued by replication children (e.g.
+        # step-down on a higher-term response). Children must never flush —
+        # stopping+awaiting the heartbeat from inside its own gather forms a
+        # Task.cancel cycle. Here we are the gather owner (heartbeat loop or
+        # submit path), where the self-cancel guard in _run_pending_task_ops
+        # applies correctly.
+        if self._pending_task_ops and not self.state_lock.locked():
+            await self._run_pending_task_ops()
+
     async def _replicate_to_follower(self, follower_id: str) -> None:
         """Replicate log entries to a specific follower."""
         if not self.leader_volatile_state:
@@ -1815,7 +1824,13 @@ class ProductionRaft(ProductionRaftRPCs):
                     await self._handle_append_entries_response(
                         follower_id, request, response
                     )
-                await self._run_pending_task_ops()
+                # Never flush _pending_task_ops here: this coroutine runs as a
+                # child of the replication gather owned by the heartbeat (or
+                # submit) task. A step-down queued above would stop+await the
+                # heartbeat — our own awaiter — forming a Task.cancel cycle
+                # that deadlocks and blows the recursion limit when the event
+                # loop cancels tasks at teardown. The gather owner flushes at
+                # the end of _replicate_log_entries.
             else:
                 # No response received - this indicates communication failure
                 raft_log.warning(
@@ -2086,6 +2101,12 @@ class ProductionRaft(ProductionRaftRPCs):
                 # Wait for next heartbeat interval
                 await asyncio.sleep(self.config.heartbeat_interval)
 
+            # Stepped down: flush any ops still queued by replication children
+            # (start_coordinator liveness). Safe here — we are the heartbeat
+            # task, so _run_pending_task_ops skips self-cancel.
+            if self._pending_task_ops:
+                await self._run_pending_task_ops()
+
         except asyncio.CancelledError:
             raft_log.debug("Heartbeat task cancelled")
             # Re-raise so the task settles as Cancelled; swallowing leaves odd
@@ -2303,8 +2324,11 @@ class ProductionRaft(ProductionRaftRPCs):
                 if response:
                     if response.term > self.persistent_state.current_term:
                         await self._update_term(response.term)
-                        await self._convert_to_follower()
-                        await self._run_pending_task_ops()
+                        # flush_task_ops=False: we run as a child of the
+                        # replication gather; stopping+awaiting the heartbeat
+                        # (our awaiter) from here forms a Task.cancel cycle.
+                        # The gather owner flushes in _replicate_log_entries.
+                        await self._convert_to_follower(flush_task_ops=False)
                         return
                     # COR-T10-01 / COR-T12-01: fail-closed — missing success ⇒ reject.
                     if not bool(getattr(response, "success", False)):
@@ -2434,7 +2458,10 @@ class ProductionRaft(ProductionRaftRPCs):
             self.metrics.current_term = new_term
 
     async def _convert_to_follower(
-        self, restart_timer: bool = True, reset_backoff: bool = False
+        self,
+        restart_timer: bool = True,
+        reset_backoff: bool = False,
+        flush_task_ops: bool = True,
     ) -> None:
         """Convert to follower state.
 
@@ -2442,6 +2469,11 @@ class ProductionRaft(ProductionRaftRPCs):
         safe to call while holding ``state_lock`` and from inside the heartbeat
         task itself (which would otherwise self-cancel through nested gathers
         and blow the recursion limit / deadlock on the lock).
+
+        ``flush_task_ops=False`` additionally defers the flush itself: callers
+        that run as children of the heartbeat's replication gather must not
+        stop+await the heartbeat (their own awaiter) — that forms a Task.cancel
+        cycle. The gather owner flushes instead.
         """
         raft_log.debug(
             f"[{self.node_id}] _convert_to_follower called, restart_timer={restart_timer}, current_state={self.current_state}"
@@ -2494,7 +2526,8 @@ class ProductionRaft(ProductionRaftRPCs):
 
         # If the caller is not holding state_lock, flush deferred task ops now.
         # Locked callers (RPC handlers, vote path) flush after releasing the lock.
-        if self._pending_task_ops and not self.state_lock.locked():
+        # Replication-gather children pass flush_task_ops=False (cycle hazard).
+        if flush_task_ops and self._pending_task_ops and not self.state_lock.locked():
             await self._run_pending_task_ops()
 
     async def _run_pending_task_ops(self) -> None:

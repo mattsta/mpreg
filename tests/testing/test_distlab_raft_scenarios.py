@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from mpreg.testing.distlab import (
@@ -40,6 +42,22 @@ async def test_distlab_raft_partition_heal() -> None:
     ensure_builtins()
     r = await get_registry().run("raft.partition_heal")
     assert r.ok, r.check
+
+
+@pytest.mark.asyncio
+async def test_distlab_raft_partition_heal_leaves_no_pending_tasks() -> None:
+    """Regression: a replication-gather child stepping down on a higher-term
+    response must never stop+await the heartbeat (its own awaiter). That forms
+    a Task.cancel cycle which deadlocks and explodes with RecursionError when
+    the event loop cancels tasks at teardown. After teardown the loop must be
+    quiet — no pending tasks besides this test's own."""
+    ensure_builtins()
+    r = await get_registry().run("raft.partition_heal")
+    assert r.ok, r.check
+    await asyncio.sleep(0)
+    current = asyncio.current_task()
+    leftovers = [t for t in asyncio.all_tasks() if t is not current and not t.done()]
+    assert not leftovers, [t.get_name() for t in leftovers]
 
 
 @pytest.mark.asyncio
